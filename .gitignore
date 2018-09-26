@@ -1,0 +1,4 @@
+RPMS/
+SRPMS/
+/target
+**/*.rs.bk
