@@ -1,3 +1,4 @@
+%global debug_package %{nil}
 %define release_target target/release/%{name}
 
 Name:    tornado
@@ -9,8 +10,9 @@ Group:   Applications/System
 License: ???
 Source0: %{name}.tar.gz
 
-
+%if 0%{?el7}
 BuildRequires: cargo
+%endif
 
 %description
 Tornado Package
@@ -23,7 +25,7 @@ cargo build --release
 
 %install
 mkdir -p %{buildroot}/%{_bindir}
-%{release_target} %{buildroot}/%{_bindir}/
+cp -pv %{release_target} %{buildroot}/%{_bindir}/
 
 %files
 %attr(0755, root, root) %{_bindir}/%{name}
