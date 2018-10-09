@@ -21,11 +21,13 @@ Tornado Package
 %setup -c
 
 %build
+cd src
 cargo build --release
+cd -
 
 %install
 mkdir -p %{buildroot}/%{_bindir}
-cp -pv %{release_target} %{buildroot}/%{_bindir}/
+cp -pv src/%{release_target} %{buildroot}/%{_bindir}/
 
 %files
 %attr(0755, root, root) %{_bindir}/%{name}
