@@ -182,6 +182,7 @@ impl RuleBuilder {
         match operator {
             "=" => Ok(Box::new(rule::rules::equal::EqualRule::build(&params)?)),
             "and" => Ok(Box::new(rule::rules::and::AndRule::build(&params, &self)?)),
+            "or" => Ok(Box::new(rule::rules::or::OrRule::build(&params, &self)?)),
             "regex" => Ok(Box::new(rule::rules::regex::RegexRule::build(&params)?)),
             _ => Err(RuleBuilderError::UnknownOperatorError {
                 operator: operator.to_owned(),
@@ -243,6 +244,16 @@ mod test {
         let rule = builder.build(&args).unwrap();
 
         assert_eq!("and", rule.name());
+    }
+
+    #[test]
+    fn build_should_return_the_or_rule() {
+        let builder = RuleBuilder::new();
+
+        let args = builder.parse(r#"[or,[=,1,1]]"#.to_owned()).unwrap();
+        let rule = builder.build(&args).unwrap();
+
+        assert_eq!("or", rule.name());
     }
 
     #[test]

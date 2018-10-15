@@ -67,14 +67,15 @@ mod test {
     }
 
     #[test]
-    fn build_should_recursive() {
+    fn build_should_be_recursive() {
         let rule = AndRule::build(
-            &vec!["[=,1,2]".to_string(), "[and,[=,3,4]]".to_string()],
+            &vec!["[=,1,2]".to_string(), "[or,[=,3,4]]".to_string()],
             &RuleBuilder::new(),
         ).unwrap();
+        assert_eq!("and", rule.name());
         assert_eq!(2, rule.rules.len());
         assert_eq!("equal", rule.rules[0].name());
-        assert_eq!("and", rule.rules[1].name());
+        assert_eq!("or", rule.rules[1].name());
 
         println!("{:?}", rule.rules[1]);
 
@@ -105,7 +106,7 @@ mod test {
     }
 
     #[test]
-    fn should_evaluate_to_false_if_different_arguments() {
+    fn should_evaluate_to_false_if_not_all_children_match() {
         let rule = AndRule::build(
             &vec![
                 "[=,1,1]".to_string(),
