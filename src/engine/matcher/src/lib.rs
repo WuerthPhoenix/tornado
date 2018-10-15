@@ -1,7 +1,6 @@
 //! The `tornado_engine_matcher` crate contains the event processing logic.
 //!
 
-
 extern crate chrono;
 extern crate failure;
 #[macro_use]
