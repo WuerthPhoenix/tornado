@@ -1,5 +1,6 @@
 use rule::parser::{RuleBuilder, RuleBuilderError};
 use rule::Rule;
+use tornado_common::Event;
 
 const RULE_NAME: &str = "and";
 
@@ -26,9 +27,9 @@ impl Rule for AndRule {
         RULE_NAME
     }
 
-    fn evaluate(&self) -> bool {
+    fn evaluate(&self, event: &Event) -> bool {
         for rule in &self.rules {
-            if !rule.evaluate() {
+            if !rule.evaluate(event) {
                 return false;
             }
         }
@@ -40,6 +41,7 @@ impl Rule for AndRule {
 mod test {
 
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn should_return_the_rule_name() {
@@ -81,14 +83,21 @@ mod test {
 
         assert!(
             format!("{:?}", rule.rules[1])
-                .contains(r#"EqualRule { first_arg: "3", second_arg: "4" }"#)
+                .contains(r#"EqualRule { first_arg: ConstantAccessor { value: "3" }, second_arg: ConstantAccessor { value: "4" } }"#)
         )
     }
 
     #[test]
     fn should_evaluate_to_true_if_no_children() {
         let rule = AndRule::build(&vec![], &RuleBuilder::new()).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -102,7 +111,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -116,7 +132,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(!rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
     }
 
     #[test]
@@ -130,7 +153,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -144,7 +174,56 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(!rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
+    }
+
+    #[test]
+    fn should_evaluate_using_accessors_recursively() {
+        let rule = AndRule::build(
+            &vec![
+                "[=,1,1]".to_string(),
+                "[=,2,2]".to_string(),
+                "[and,[=,3,3], [and,[=,${event.type},type]]]".to_string(),
+                "[=,4,4]".to_string(),
+            ],
+            &RuleBuilder::new(),
+        ).unwrap();
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
+    }
+
+    #[test]
+    fn should_evaluate_using_accessors_recursively_and_return_false() {
+        let rule = AndRule::build(
+            &vec![
+                "[=,1,1]".to_string(),
+                "[=,2,2]".to_string(),
+                "[and,[=,3,3], [and,[=,${event.type},type1]]]".to_string(),
+                "[=,4,4]".to_string(),
+            ],
+            &RuleBuilder::new(),
+        ).unwrap();
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
     }
 
 }

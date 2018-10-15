@@ -1,4 +1,6 @@
 use std::fmt;
+use tornado_common::Event;
+
 pub mod parser;
 pub mod rules;
 
@@ -8,5 +10,5 @@ pub trait Rule: fmt::Debug {
     fn name(&self) -> &str;
 
     /// Executes the current rule on a target Event and returns whether the Event matches it.
-    fn evaluate(&self) -> bool;
+    fn evaluate(&self, event: &Event) -> bool;
 }

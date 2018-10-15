@@ -1,5 +1,6 @@
 use rule::parser::{RuleBuilder, RuleBuilderError};
 use rule::Rule;
+use tornado_common::Event;
 
 const RULE_NAME: &str = "or";
 
@@ -26,9 +27,9 @@ impl Rule for OrRule {
         RULE_NAME
     }
 
-    fn evaluate(&self) -> bool {
+    fn evaluate(&self, event: &Event) -> bool {
         for rule in &self.rules {
-            if rule.evaluate() {
+            if rule.evaluate(event) {
                 return true;
             }
         }
@@ -40,6 +41,7 @@ impl Rule for OrRule {
 mod test {
 
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn should_return_the_rule_name() {
@@ -81,14 +83,21 @@ mod test {
 
         assert!(
             format!("{:?}", rule.rules[1])
-                .contains(r#"EqualRule { first_arg: "3", second_arg: "4" }"#)
+                .contains(r#"EqualRule { first_arg: ConstantAccessor { value: "3" }, second_arg: ConstantAccessor { value: "4" } }"#)
         )
     }
 
     #[test]
     fn should_evaluate_to_false_if_no_children() {
         let rule = OrRule::build(&vec![], &RuleBuilder::new()).unwrap();
-        assert!(!rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
     }
 
     #[test]
@@ -102,7 +111,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -116,7 +132,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -130,7 +153,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(!rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
     }
 
     #[test]
@@ -144,7 +174,14 @@ mod test {
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
     }
 
     #[test]
@@ -153,12 +190,61 @@ mod test {
             &vec![
                 "[=,1,6]".to_string(),
                 "[=,2,6]".to_string(),
-                "[and,[=,3,6], [and,[=,5,6]]]".to_string(),
+                "[or,[=,3,6], [and,[=,5,6]]]".to_string(),
                 "[=,4,6]".to_string(),
             ],
             &RuleBuilder::new(),
         ).unwrap();
-        assert!(!rule.evaluate());
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "test_type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
+    }
+
+    #[test]
+    fn should_evaluate_using_accessors_recursively() {
+        let rule = OrRule::build(
+            &vec![
+                "[=,1,6]".to_string(),
+                "[=,2,6]".to_string(),
+                "[or,[=,3,6], [and,[=,type,${event.type}]]]".to_string(),
+                "[=,4,6]".to_string(),
+            ],
+            &RuleBuilder::new(),
+        ).unwrap();
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(rule.evaluate(&event));
+    }
+
+    #[test]
+    fn should_evaluate_using_accessors_recursively_and_return_false() {
+        let rule = OrRule::build(
+            &vec![
+                "[=,1,6]".to_string(),
+                "[=,2,6]".to_string(),
+                "[or,[=,3,6], [and,[=,type1,${event.type}]]]".to_string(),
+                "[=,4,6]".to_string(),
+            ],
+            &RuleBuilder::new(),
+        ).unwrap();
+
+        let event = Event {
+            payload: HashMap::new(),
+            event_type: "type".to_owned(),
+            created_ts: 0,
+        };
+
+        assert!(!rule.evaluate(&event));
     }
 
 }

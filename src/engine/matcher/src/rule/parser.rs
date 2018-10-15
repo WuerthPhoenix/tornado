@@ -1,4 +1,4 @@
-use ::accessor::AccessorBuilder;
+use accessor::AccessorBuilder;
 use rule;
 
 /// Rule instance builder.
@@ -37,6 +37,13 @@ pub enum RuleBuilderError {
         cause
     )]
     OperatorBuildFailError { message: String, cause: String },
+    #[fail(
+        display = "UnknownAccessorError: Unknown accessor: [{}]",
+        accessor
+    )]
+    UnknownAccessorError { accessor: String },
+    #[fail(display = "AccessorWrongPayloadKeyError: [{}]", payload_key)]
+    AccessorWrongPayloadKeyError { payload_key: String },
 }
 
 impl RuleBuilder {
@@ -183,10 +190,16 @@ impl RuleBuilder {
         let mut params = args.to_owned();
         params.remove(0);
         match operator {
-            "=" => Ok(Box::new(rule::rules::equal::EqualRule::build(&params)?)),
+            "=" => Ok(Box::new(rule::rules::equal::EqualRule::build(
+                &params,
+                &self.accessor,
+            )?)),
             "and" => Ok(Box::new(rule::rules::and::AndRule::build(&params, &self)?)),
             "or" => Ok(Box::new(rule::rules::or::OrRule::build(&params, &self)?)),
-            "regex" => Ok(Box::new(rule::rules::regex::RegexRule::build(&params)?)),
+            "regex" => Ok(Box::new(rule::rules::regex::RegexRule::build(
+                &params,
+                &self.accessor,
+            )?)),
             _ => Err(RuleBuilderError::UnknownOperatorError {
                 operator: operator.to_owned(),
             }),

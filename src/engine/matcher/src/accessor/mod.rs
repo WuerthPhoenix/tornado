@@ -1,15 +1,6 @@
+use rule::parser::RuleBuilderError;
+use std::fmt;
 use tornado_common::Event;
-
-#[derive(Fail, Debug)]
-pub enum AccessorBuilderError {
-    #[fail(
-        display = "UnknownAccessorError: Unknown accessor: [{}]",
-        accessor
-    )]
-    UnknownAccessorError { accessor: String },
-    #[fail(display = "WrongPayloadKeyError: [{}]", payload_key)]
-    WrongPayloadKeyError { payload_key: String },
-}
 
 pub struct AccessorBuilder {
     start_delimiter: &'static str,
@@ -28,7 +19,7 @@ impl AccessorBuilder {
         }
     }
 
-    pub fn build(&self, value: &String) -> Result<Box<Accessor>, AccessorBuilderError> {
+    pub fn build(&self, value: &String) -> Result<Box<Accessor>, RuleBuilderError> {
         match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -42,7 +33,7 @@ impl AccessorBuilder {
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = &val[EVENT_PAYLOAD_SUFFIX.len()..];
                         if key.is_empty() {
-                            return Err(AccessorBuilderError::WrongPayloadKeyError {
+                            return Err(RuleBuilderError::AccessorWrongPayloadKeyError {
                                 payload_key: path.to_owned(),
                             });
                         }
@@ -50,7 +41,7 @@ impl AccessorBuilder {
                             key: key.to_owned(),
                         }));
                     }
-                    _ => Err(AccessorBuilderError::UnknownAccessorError {
+                    _ => Err(RuleBuilderError::UnknownAccessorError {
                         accessor: value.to_owned(),
                     }),
                 }
@@ -63,12 +54,13 @@ impl AccessorBuilder {
 }
 
 /// An Accessor returns the value of a field of an Event
-pub trait Accessor {
+pub trait Accessor: fmt::Debug {
     fn name(&self) -> &str;
     fn get(&self, event: &Event) -> Option<String>;
 }
 
 /// Returns a constant value regardless of the Event
+#[derive(Debug)]
 pub struct ConstantAccessor {
     value: String,
 }
@@ -84,6 +76,7 @@ impl Accessor for ConstantAccessor {
 }
 
 /// Returns the type of an event
+#[derive(Debug)]
 pub struct TypeAccessor {}
 
 impl Accessor for TypeAccessor {
@@ -97,6 +90,7 @@ impl Accessor for TypeAccessor {
 }
 
 /// Returns the created_ts of an event
+#[derive(Debug)]
 pub struct CreatedTsAccessor {}
 
 impl Accessor for CreatedTsAccessor {
@@ -110,6 +104,7 @@ impl Accessor for CreatedTsAccessor {
 }
 
 /// Returns a value from the payload of an event
+#[derive(Debug)]
 pub struct PayloadAccessor {
     key: String,
 }
@@ -283,9 +278,7 @@ mod test {
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
-            AccessorBuilderError::UnknownAccessorError { accessor } => {
-                assert_eq!(value, accessor)
-            }
+            RuleBuilderError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
             _ => assert!(false),
         };
     }
@@ -300,7 +293,7 @@ mod test {
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
-            AccessorBuilderError::WrongPayloadKeyError { payload_key } => {
+            RuleBuilderError::AccessorWrongPayloadKeyError { payload_key } => {
                 assert_eq!("event.payload.".to_owned(), payload_key)
             }
             _ => assert!(false),
