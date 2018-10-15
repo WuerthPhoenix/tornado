@@ -8,5 +8,5 @@ extern crate failure_derive;
 extern crate regex;
 extern crate tornado_common;
 
-pub mod extractor;
+pub mod accessor;
 pub mod rule;

@@ -3,7 +3,7 @@ use tornado_common::Event;
 #[derive(Fail, Debug)]
 pub enum ExtractorBuilderError {
     #[fail(
-        display = "UnknownExtractorError: Unknown extractor: [{}]",
+        display = "UnknownExtractorError: Unknown accessor: [{}]",
         extractor
     )]
     UnknownExtractorError { extractor: String },
