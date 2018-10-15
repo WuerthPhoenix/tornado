@@ -127,9 +127,9 @@ impl Extractor for PayloadExtractor {
 #[cfg(test)]
 mod test {
 
+    use super::*;
     use chrono::prelude::Local;
     use std::collections::HashMap;
-    use super::*;
 
     #[test]
     fn should_return_a_constant_value() {
@@ -280,7 +280,14 @@ mod test {
 
         let extractor = builder.build(&value);
 
-        assert!(extractor.is_err())
+        assert!(&extractor.is_err());
+
+        match extractor.err().unwrap() {
+            ExtractorBuilderError::UnknownExtractorError { extractor } => {
+                assert_eq!(value, extractor)
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -290,6 +297,13 @@ mod test {
 
         let extractor = builder.build(&value);
 
-        assert!(extractor.is_err())
+        assert!(&extractor.is_err());
+
+        match extractor.err().unwrap() {
+            ExtractorBuilderError::WrongPayloadKeyError { payload_key } => {
+                assert_eq!("event.payload.".to_owned(), payload_key)
+            }
+            _ => assert!(false),
+        };
     }
 }
