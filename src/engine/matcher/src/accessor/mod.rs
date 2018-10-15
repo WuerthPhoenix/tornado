@@ -1,17 +1,17 @@
 use tornado_common::Event;
 
 #[derive(Fail, Debug)]
-pub enum ExtractorBuilderError {
+pub enum AccessorBuilderError {
     #[fail(
-        display = "UnknownExtractorError: Unknown accessor: [{}]",
-        extractor
+        display = "UnknownAccessorError: Unknown accessor: [{}]",
+        accessor
     )]
-    UnknownExtractorError { extractor: String },
+    UnknownAccessorError { accessor: String },
     #[fail(display = "WrongPayloadKeyError: [{}]", payload_key)]
     WrongPayloadKeyError { payload_key: String },
 }
 
-pub struct ExtractorBuilder {
+pub struct AccessorBuilder {
     start_delimiter: &'static str,
     end_delimiter: &'static str,
 }
@@ -20,15 +20,15 @@ const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload.";
 
-impl ExtractorBuilder {
-    pub fn new() -> ExtractorBuilder {
-        ExtractorBuilder {
+impl AccessorBuilder {
+    pub fn new() -> AccessorBuilder {
+        AccessorBuilder {
             start_delimiter: "${",
             end_delimiter: "}",
         }
     }
 
-    pub fn build(&self, value: &String) -> Result<Box<Extractor>, ExtractorBuilderError> {
+    pub fn build(&self, value: &String) -> Result<Box<Accessor>, AccessorBuilderError> {
         match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -37,43 +37,43 @@ impl ExtractorBuilder {
                 let path =
                     &value[self.start_delimiter.len()..(value.len() - self.end_delimiter.len())];
                 match path.trim() {
-                    EVENT_TYPE_KEY => Ok(Box::new(TypeExtractor {})),
-                    EVENT_CREATED_TS_KEY => Ok(Box::new(CreatedTsExtractor {})),
+                    EVENT_TYPE_KEY => Ok(Box::new(TypeAccessor {})),
+                    EVENT_CREATED_TS_KEY => Ok(Box::new(CreatedTsAccessor {})),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = &val[EVENT_PAYLOAD_SUFFIX.len()..];
                         if key.is_empty() {
-                            return Err(ExtractorBuilderError::WrongPayloadKeyError {
+                            return Err(AccessorBuilderError::WrongPayloadKeyError {
                                 payload_key: path.to_owned(),
                             });
                         }
-                        return Ok(Box::new(PayloadExtractor {
+                        return Ok(Box::new(PayloadAccessor {
                             key: key.to_owned(),
                         }));
                     }
-                    _ => Err(ExtractorBuilderError::UnknownExtractorError {
-                        extractor: value.to_owned(),
+                    _ => Err(AccessorBuilderError::UnknownAccessorError {
+                        accessor: value.to_owned(),
                     }),
                 }
             }
-            value => Ok(Box::new(ConstantExtractor {
+            value => Ok(Box::new(ConstantAccessor {
                 value: value.to_owned(),
             })),
         }
     }
 }
 
-/// An Extractor returns the value of a field of an Event
-pub trait Extractor {
+/// An Accessor returns the value of a field of an Event
+pub trait Accessor {
     fn name(&self) -> &str;
     fn get(&self, event: &Event) -> Option<String>;
 }
 
 /// Returns a constant value regardless of the Event
-pub struct ConstantExtractor {
+pub struct ConstantAccessor {
     value: String,
 }
 
-impl Extractor for ConstantExtractor {
+impl Accessor for ConstantAccessor {
     fn name(&self) -> &str {
         "constant"
     }
@@ -84,9 +84,9 @@ impl Extractor for ConstantExtractor {
 }
 
 /// Returns the type of an event
-pub struct TypeExtractor {}
+pub struct TypeAccessor {}
 
-impl Extractor for TypeExtractor {
+impl Accessor for TypeAccessor {
     fn name(&self) -> &str {
         "type"
     }
@@ -97,9 +97,9 @@ impl Extractor for TypeExtractor {
 }
 
 /// Returns the created_ts of an event
-pub struct CreatedTsExtractor {}
+pub struct CreatedTsAccessor {}
 
-impl Extractor for CreatedTsExtractor {
+impl Accessor for CreatedTsAccessor {
     fn name(&self) -> &str {
         "created_ts"
     }
@@ -110,11 +110,11 @@ impl Extractor for CreatedTsExtractor {
 }
 
 /// Returns a value from the payload of an event
-pub struct PayloadExtractor {
+pub struct PayloadAccessor {
     key: String,
 }
 
-impl Extractor for PayloadExtractor {
+impl Accessor for PayloadAccessor {
     fn name(&self) -> &str {
         "payload"
     }
@@ -133,11 +133,11 @@ mod test {
 
     #[test]
     fn should_return_a_constant_value() {
-        let extractor = ConstantExtractor {
+        let accessor = ConstantAccessor {
             value: "constant_value".to_owned(),
         };
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
@@ -148,9 +148,9 @@ mod test {
 
     #[test]
     fn should_return_the_event_type() {
-        let extractor = TypeExtractor {};
+        let accessor = TypeAccessor {};
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
@@ -161,12 +161,12 @@ mod test {
 
     #[test]
     fn should_return_the_event_created_ts() {
-        let extractor = CreatedTsExtractor {};
+        let accessor = CreatedTsAccessor {};
 
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
@@ -177,7 +177,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let extractor = PayloadExtractor {
+        let accessor = PayloadAccessor {
             key: "body".to_owned(),
         };
 
@@ -185,7 +185,7 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
@@ -196,7 +196,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let extractor = PayloadExtractor {
+        let accessor = PayloadAccessor {
             key: "date".to_owned(),
         };
 
@@ -204,7 +204,7 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
@@ -214,57 +214,57 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_constant_extractor() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_constant_accessor() {
+        let builder = AccessorBuilder::new();
         let value = "constant_value".to_owned();
 
-        let extractor = builder.build(&value).unwrap();
+        let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("constant", extractor.name())
+        assert_eq!("constant", accessor.name())
     }
 
     #[test]
-    fn builder_should_return_type_extractor() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_type_accessor() {
+        let builder = AccessorBuilder::new();
         let value = "${event.type}".to_owned();
 
-        let extractor = builder.build(&value).unwrap();
+        let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("type", extractor.name())
+        assert_eq!("type", accessor.name())
     }
 
     #[test]
-    fn builder_should_return_created_ts_extractor() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_created_ts_accessor() {
+        let builder = AccessorBuilder::new();
         let value = "${event.created_ts}".to_owned();
 
-        let extractor = builder.build(&value).unwrap();
+        let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("created_ts", extractor.name())
+        assert_eq!("created_ts", accessor.name())
     }
 
     #[test]
-    fn builder_should_return_payload_extractor() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_payload_accessor() {
+        let builder = AccessorBuilder::new();
         let value = "${event.payload.key}".to_owned();
 
-        let extractor = builder.build(&value).unwrap();
+        let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("payload", extractor.name())
+        assert_eq!("payload", accessor.name())
     }
 
     #[test]
-    fn builder_should_return_payload_extractor_with_expected_key() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_payload_accessor_with_expected_key() {
+        let builder = AccessorBuilder::new();
         let value = "${event.payload.body}".to_owned();
 
-        let extractor = builder.build(&value).unwrap();
+        let accessor = builder.build(&value).unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = extractor.get(&Event {
+        let result = accessor.get(&Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
@@ -274,17 +274,17 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_error_if_unknown_extractor() {
-        let builder = ExtractorBuilder::new();
+    fn builder_should_return_error_if_unknown_accessor() {
+        let builder = AccessorBuilder::new();
         let value = "${event.types}".to_owned();
 
-        let extractor = builder.build(&value);
+        let accessor = builder.build(&value);
 
-        assert!(&extractor.is_err());
+        assert!(&accessor.is_err());
 
-        match extractor.err().unwrap() {
-            ExtractorBuilderError::UnknownExtractorError { extractor } => {
-                assert_eq!(value, extractor)
+        match accessor.err().unwrap() {
+            AccessorBuilderError::UnknownAccessorError { accessor } => {
+                assert_eq!(value, accessor)
             }
             _ => assert!(false),
         };
@@ -292,15 +292,15 @@ mod test {
 
     #[test]
     fn builder_should_return_error_if_wrong_payload() {
-        let builder = ExtractorBuilder::new();
+        let builder = AccessorBuilder::new();
         let value = "${event.payload.}".to_owned();
 
-        let extractor = builder.build(&value);
+        let accessor = builder.build(&value);
 
-        assert!(&extractor.is_err());
+        assert!(&accessor.is_err());
 
-        match extractor.err().unwrap() {
-            ExtractorBuilderError::WrongPayloadKeyError { payload_key } => {
+        match accessor.err().unwrap() {
+            AccessorBuilderError::WrongPayloadKeyError { payload_key } => {
                 assert_eq!("event.payload.".to_owned(), payload_key)
             }
             _ => assert!(false),

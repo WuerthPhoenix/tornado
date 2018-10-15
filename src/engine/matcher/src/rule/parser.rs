@@ -1,7 +1,9 @@
+use ::accessor::AccessorBuilder;
 use rule;
 
 /// Rule instance builder.
 pub struct RuleBuilder {
+    accessor: AccessorBuilder,
     delimiter: &'static str,
     array_start: &'static str,
     array_end: &'static str,
@@ -40,6 +42,7 @@ pub enum RuleBuilderError {
 impl RuleBuilder {
     pub fn new() -> RuleBuilder {
         RuleBuilder {
+            accessor: AccessorBuilder::new(),
             delimiter: ",",
             array_start: "[",
             array_end: "]",
