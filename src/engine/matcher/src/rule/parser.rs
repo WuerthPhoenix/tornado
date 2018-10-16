@@ -1,6 +1,6 @@
 use accessor::AccessorBuilder;
-use rule;
 use error::MatcherError;
+use rule;
 
 /// Rule instance builder.
 pub struct RuleBuilder {

@@ -29,11 +29,10 @@ impl RegexRule {
         let regex_string = args[0].clone();
         let regex_str = regex_string.as_str();
         let target = accessor_builder.build(&args[1])?;
-        let regex =
-            Regex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
-                message: format!("Cannot parse regex [{}]", regex_str),
-                cause: e.to_string(),
-            })?;
+        let regex = Regex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
+            message: format!("Cannot parse regex [{}]", regex_str),
+            cause: e.to_string(),
+        })?;
 
         Ok(RegexRule { target, regex })
     }

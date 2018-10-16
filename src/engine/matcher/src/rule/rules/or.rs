@@ -1,5 +1,5 @@
 use error::MatcherError;
-use rule::parser::{RuleBuilder};
+use rule::parser::RuleBuilder;
 use rule::Rule;
 use tornado_common::Event;
 
