@@ -12,16 +12,13 @@ pub struct Or {
 }
 
 impl Or {
-    pub fn build(
-        args: &[config::Operator],
-        builder: &OperatorBuilder,
-    ) -> Result<Or, MatcherError> {
-        let mut rules = vec![];
+    pub fn build(args: &[config::Operator], builder: &OperatorBuilder) -> Result<Or, MatcherError> {
+        let mut operators = vec![];
         for entry in args {
-            let rule = builder.build(&entry)?;
-            rules.push(rule)
+            let operator = builder.build(&entry)?;
+            operators.push(operator)
         }
-        Ok(Or { operators: rules })
+        Ok(Or { operators })
     }
 }
 
@@ -31,8 +28,8 @@ impl Operator for Or {
     }
 
     fn evaluate(&self, event: &Event) -> bool {
-        for rule in &self.operators {
-            if rule.evaluate(event) {
+        for operator in &self.operators {
+            if operator.evaluate(event) {
                 return true;
             }
         }
@@ -47,14 +44,14 @@ mod test {
     use std::collections::HashMap;
 
     #[test]
-    fn should_return_the_rule_name() {
-        let rule = Or { operators: vec![] };
-        assert_eq!(OPERATOR_NAME, rule.name());
+    fn should_return_the_operator_name() {
+        let operator = Or { operators: vec![] };
+        assert_eq!(OPERATOR_NAME, operator.name());
     }
 
     #[test]
     fn should_build_the_or_with_expected_arguments() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![config::Operator::Equals {
                 first: "first_arg=".to_owned(),
                 second: "second_arg".to_owned(),
@@ -62,30 +59,30 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        assert_eq!(1, rule.operators.len());
-        assert_eq!("equal", rule.operators[0].name());
+        assert_eq!(1, operator.operators.len());
+        assert_eq!("equal", operator.operators[0].name());
     }
 
     #[test]
     fn should_build_the_or_with_no_arguments() {
-        let rule = Or::build(&vec![], &OperatorBuilder::new()).unwrap();
-        assert_eq!(0, rule.operators.len());
+        let operator = Or::build(&vec![], &OperatorBuilder::new()).unwrap();
+        assert_eq!(0, operator.operators.len());
     }
 
     #[test]
-    fn build_should_fail_if_wrong_nested_rule() {
-        let rule = Or::build(
+    fn build_should_fail_if_wrong_nested_operator() {
+        let operator = Or::build(
             &vec![config::Operator::Equals {
                 first: "${NOT_EXISTING}".to_owned(),
                 second: "second_arg".to_owned(),
             }],
             &OperatorBuilder::new(),
         );
-        assert!(rule.is_err());
+        assert!(operator.is_err());
     }
     #[test]
     fn build_should_be_recursive() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -101,21 +98,21 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        assert_eq!("or", rule.name());
-        assert_eq!(2, rule.operators.len());
-        assert_eq!("equal", rule.operators[0].name());
-        assert_eq!("and", rule.operators[1].name());
+        assert_eq!("or", operator.name());
+        assert_eq!(2, operator.operators.len());
+        assert_eq!("equal", operator.operators[0].name());
+        assert_eq!("and", operator.operators[1].name());
 
-        println!("{:?}", rule.operators[1]);
+        println!("{:?}", operator.operators[1]);
 
-        assert!(format!("{:?}", rule.operators[1]).contains(
+        assert!(format!("{:?}", operator.operators[1]).contains(
             r#"Equal { first_arg: Constant { value: "3" }, second_arg: Constant { value: "4" } }"#
         ))
     }
 
     #[test]
     fn should_evaluate_to_false_if_no_children() {
-        let rule = Or::build(&vec![], &OperatorBuilder::new()).unwrap();
+        let operator = Or::build(&vec![], &OperatorBuilder::new()).unwrap();
 
         let event = Event {
             payload: HashMap::new(),
@@ -123,12 +120,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_true_if_all_children_match() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -156,12 +153,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_true_if_at_least_a_children_matches() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -189,12 +186,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_false_if_no_children_match() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -222,12 +219,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_true_if_at_least_a_children_matches_recursively() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -263,12 +260,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_false_if_no_children_match_recursively() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -304,12 +301,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_using_accessors_recursively() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -345,12 +342,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_using_accessors_recursively_and_return_false() {
-        let rule = Or::build(
+        let operator = Or::build(
             &vec![
                 config::Operator::Equals {
                     first: "1".to_owned(),
@@ -386,7 +383,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
 }

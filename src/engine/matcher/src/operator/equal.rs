@@ -39,17 +39,17 @@ mod test {
     use std::collections::HashMap;
 
     #[test]
-    fn should_return_the_rule_name() {
-        let rule = Equal {
+    fn should_return_the_operator_name() {
+        let operator = Equal {
             first_arg: AccessorBuilder::new().build(&"".to_owned()).unwrap(),
             second_arg: AccessorBuilder::new().build(&"".to_owned()).unwrap(),
         };
-        assert_eq!(OPERATOR_NAME, rule.name());
+        assert_eq!(OPERATOR_NAME, operator.name());
     }
 
     #[test]
-    fn should_build_the_rule_with_expected_arguments() {
-        let rule = Equal::build(
+    fn should_build_the_operator_with_expected_arguments() {
+        let operator = Equal::build(
             AccessorBuilder::new().build(&"one".to_owned()).unwrap(),
             AccessorBuilder::new().build(&"two".to_owned()).unwrap(),
         ).unwrap();
@@ -60,13 +60,13 @@ mod test {
             created_ts: 0,
         };
 
-        assert_eq!("one".to_string(), rule.first_arg.get(&event).unwrap());
-        assert_eq!("two".to_string(), rule.second_arg.get(&event).unwrap());
+        assert_eq!("one".to_string(), operator.first_arg.get(&event).unwrap());
+        assert_eq!("two".to_string(), operator.second_arg.get(&event).unwrap());
     }
 
     #[test]
     fn should_evaluate_to_true_if_equal_arguments() {
-        let rule = Equal::build(
+        let operator = Equal::build(
             AccessorBuilder::new().build(&"one".to_owned()).unwrap(),
             AccessorBuilder::new().build(&"one".to_owned()).unwrap(),
         ).unwrap();
@@ -77,12 +77,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_using_accessors() {
-        let rule = Equal::build(
+        let operator = Equal::build(
             AccessorBuilder::new()
                 .build(&"${event.type}".to_owned())
                 .unwrap(),
@@ -97,12 +97,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_false_if_different_arguments() {
-        let rule = Equal::build(
+        let operator = Equal::build(
             AccessorBuilder::new()
                 .build(&"${event.type}".to_owned())
                 .unwrap(),
@@ -117,12 +117,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
     #[test]
     fn should_compare_event_fields() {
-        let rule = Equal::build(
+        let operator = Equal::build(
             AccessorBuilder::new()
                 .build(&"${event.type}".to_owned())
                 .unwrap(),
@@ -140,12 +140,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_return_true_if_fields_do_not_exist() {
-        let rule = Equal::build(
+        let operator = Equal::build(
             AccessorBuilder::new()
                 .build(&"${event.payload.1}".to_owned())
                 .unwrap(),
@@ -160,7 +160,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
 }

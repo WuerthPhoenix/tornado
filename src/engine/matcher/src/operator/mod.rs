@@ -92,33 +92,33 @@ mod test {
     }
 
     #[test]
-    fn build_should_return_the_equal_rule() {
+    fn build_should_return_the_equal_operator() {
         let ops = config::Operator::Equals {
             first: "first_arg=".to_owned(),
             second: "second_arg".to_owned(),
         };
 
         let builder = OperatorBuilder::new();
-        let rule = builder.build(&ops).unwrap();
+        let operator = builder.build(&ops).unwrap();
 
-        assert_eq!("equal", rule.name());
+        assert_eq!("equal", operator.name());
     }
 
     #[test]
-    fn build_should_return_the_regex_rule() {
+    fn build_should_return_the_regex_operator() {
         let ops = config::Operator::Regex {
             regex: "[a-fA-F0-9]".to_owned(),
             target: "target".to_owned(),
         };
 
         let builder = OperatorBuilder::new();
-        let rule = builder.build(&ops).unwrap();
+        let operator = builder.build(&ops).unwrap();
 
-        assert_eq!("regex", rule.name());
+        assert_eq!("regex", operator.name());
     }
 
     #[test]
-    fn build_should_return_the_and_rule() {
+    fn build_should_return_the_and_operator() {
         let ops = config::Operator::And {
             operators: vec![config::Operator::Equals {
                 first: "first_arg".to_owned(),
@@ -127,19 +127,19 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let rule = builder.build(&ops).unwrap();
+        let operator = builder.build(&ops).unwrap();
 
-        assert_eq!("and", rule.name());
+        assert_eq!("and", operator.name());
     }
 
     #[test]
-    fn build_should_return_the_or_rule() {
+    fn build_should_return_the_or_operator() {
         let ops = config::Operator::Or { operators: vec![] };
 
         let builder = OperatorBuilder::new();
-        let rule = builder.build(&ops).unwrap();
+        let operator = builder.build(&ops).unwrap();
 
-        assert_eq!("or", rule.name());
+        assert_eq!("or", operator.name());
     }
 
 }

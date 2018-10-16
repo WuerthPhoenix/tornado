@@ -44,17 +44,17 @@ mod test {
     use std::collections::HashMap;
 
     #[test]
-    fn should_return_the_rule_name() {
-        let rule = Regex {
+    fn should_return_the_operator_name() {
+        let operator = Regex {
             regex: RustRegex::new("").unwrap(),
             target: AccessorBuilder::new().build(&"".to_owned()).unwrap(),
         };
-        assert_eq!(OPERATOR_NAME, rule.name());
+        assert_eq!(OPERATOR_NAME, operator.name());
     }
 
     #[test]
-    fn should_build_the_rule_with_expected_arguments() {
-        let rule = Regex::build(
+    fn should_build_the_operator_with_expected_arguments() {
+        let operator = Regex::build(
             &"one".to_owned(),
             AccessorBuilder::new().build(&"two".to_owned()).unwrap(),
         ).unwrap();
@@ -65,22 +65,22 @@ mod test {
             created_ts: 0,
         };
 
-        assert_eq!("one".to_string(), rule.regex.to_string());
-        assert_eq!("two".to_string(), rule.target.get(&event).unwrap());
+        assert_eq!("one".to_string(), operator.regex.to_string());
+        assert_eq!("two".to_string(), operator.target.get(&event).unwrap());
     }
 
     #[test]
     fn build_should_fail_if_invalid_regex() {
-        let rule = Regex::build(
+        let operator = Regex::build(
             &"[".to_owned(),
             AccessorBuilder::new().build(&"two".to_owned()).unwrap(),
         );
-        assert!(rule.is_err());
+        assert!(operator.is_err());
     }
 
     #[test]
     fn should_evaluate_to_true_if_it_matches_the_regex() {
-        let rule = Regex::build(
+        let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new().build(&"f".to_owned()).unwrap(),
         ).unwrap();
@@ -91,12 +91,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_using_accessors() {
-        let rule = Regex::build(
+        let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new()
                 .build(&"${event.payload.name1}".to_owned())
@@ -113,12 +113,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(rule.evaluate(&event));
+        assert!(operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_false_if_it_does_not_match_the_regex() {
-        let rule = Regex::build(
+        let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new()
                 .build(&"${event.payload.name2}".to_owned())
@@ -135,12 +135,12 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
     #[test]
     fn should_evaluate_to_false_if_field_does_not_exists() {
-        let rule = Regex::build(
+        let operator = Regex::build(
             &"[^.{0}$]".to_owned(),
             AccessorBuilder::new()
                 .build(&"${event.payload.name}".to_owned())
@@ -153,7 +153,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!rule.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
 }
