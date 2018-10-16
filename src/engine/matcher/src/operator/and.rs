@@ -8,20 +8,20 @@ const OPERATOR_NAME: &str = "and";
 /// A matching operator that evaluates whether a list of children rules are all verified.
 #[derive(Debug)]
 pub struct And {
-    rules: Vec<Box<Operator>>,
+    operators: Vec<Box<Operator>>,
 }
 
 impl And {
     pub fn build(
-        args: &Vec<config::Operator>,
+        args: &[config::Operator],
         builder: &OperatorBuilder,
     ) -> Result<And, MatcherError> {
-        let mut rules = vec![];
+        let mut operators = vec![];
         for entry in args {
             let rule = builder.build(&entry)?;
-            rules.push(rule)
+            operators.push(rule)
         }
-        Ok(And { rules })
+        Ok(And { operators })
     }
 }
 
@@ -31,12 +31,12 @@ impl Operator for And {
     }
 
     fn evaluate(&self, event: &Event) -> bool {
-        for rule in &self.rules {
+        for rule in &self.operators {
             if !rule.evaluate(event) {
                 return false;
             }
         }
-        return true;
+        true
     }
 }
 
@@ -48,7 +48,7 @@ mod test {
 
     #[test]
     fn should_return_the_rule_name() {
-        let rule = And { rules: vec![] };
+        let rule = And { operators: vec![] };
         assert_eq!(OPERATOR_NAME, rule.name());
     }
 
@@ -61,14 +61,14 @@ mod test {
             }],
             &OperatorBuilder::new(),
         ).unwrap();
-        assert_eq!(1, rule.rules.len());
-        assert_eq!("equal", rule.rules[0].name());
+        assert_eq!(1, rule.operators.len());
+        assert_eq!("equal", rule.operators[0].name());
     }
 
     #[test]
     fn should_build_the_and_with_no_arguments() {
         let rule = And::build(&vec![], &OperatorBuilder::new()).unwrap();
-        assert_eq!(0, rule.rules.len());
+        assert_eq!(0, rule.operators.len());
     }
 
     #[test]
@@ -102,16 +102,15 @@ mod test {
         ).unwrap();
 
         assert_eq!("and", rule.name());
-        assert_eq!(2, rule.rules.len());
-        assert_eq!("equal", rule.rules[0].name());
-        assert_eq!("or", rule.rules[1].name());
+        assert_eq!(2, rule.operators.len());
+        assert_eq!("equal", rule.operators[0].name());
+        assert_eq!("or", rule.operators[1].name());
 
-        println!("{:?}", rule.rules[1]);
+        println!("{:?}", rule.operators[1]);
 
-        assert!(
-            format!("{:?}", rule.rules[1])
-                .contains(r#"Equal { first_arg: ConstantAccessor { value: "3" }, second_arg: ConstantAccessor { value: "4" } }"#)
-        )
+        assert!(format!("{:?}", rule.operators[1]).contains(
+            r#"Equal { first_arg: Constant { value: "3" }, second_arg: Constant { value: "4" } }"#
+        ))
     }
 
     #[test]

@@ -1,7 +1,7 @@
 use error::MatcherError;
-use std::fmt;
 use tornado_common::Event;
 
+#[derive(Default)]
 pub struct AccessorBuilder {
     start_delimiter: &'static str,
     end_delimiter: &'static str,
@@ -19,7 +19,7 @@ impl AccessorBuilder {
         }
     }
 
-    pub fn build(&self, value: &String) -> Result<Box<Accessor>, MatcherError> {
+    pub fn build(&self, value: &str) -> Result<Accessor, MatcherError> {
         match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -28,8 +28,8 @@ impl AccessorBuilder {
                 let path =
                     &value[self.start_delimiter.len()..(value.len() - self.end_delimiter.len())];
                 match path.trim() {
-                    EVENT_TYPE_KEY => Ok(Box::new(TypeAccessor {})),
-                    EVENT_CREATED_TS_KEY => Ok(Box::new(CreatedTsAccessor {})),
+                    EVENT_TYPE_KEY => Ok(Accessor::Type {}),
+                    EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = &val[EVENT_PAYLOAD_SUFFIX.len()..];
                         if key.is_empty() {
@@ -37,85 +37,39 @@ impl AccessorBuilder {
                                 payload_key: path.to_owned(),
                             });
                         }
-                        return Ok(Box::new(PayloadAccessor {
+                        Ok(Accessor::Payload {
                             key: key.to_owned(),
-                        }));
+                        })
                     }
                     _ => Err(MatcherError::UnknownAccessorError {
                         accessor: value.to_owned(),
                     }),
                 }
             }
-            value => Ok(Box::new(ConstantAccessor {
+            value => Ok(Accessor::Constant {
                 value: value.to_owned(),
-            })),
+            }),
         }
     }
 }
 
 /// An Accessor returns the value of a field of an Event
-pub trait Accessor: fmt::Debug {
-    fn name(&self) -> &str;
-    fn get(&self, event: &Event) -> Option<String>;
+#[derive(PartialEq, Debug)]
+pub enum Accessor {
+    Constant { value: String },
+    Type {},
+    CreatedTs {},
+    Payload { key: String },
 }
 
-/// Returns a constant value regardless of the Event
-#[derive(Debug)]
-pub struct ConstantAccessor {
-    value: String,
-}
-
-impl Accessor for ConstantAccessor {
-    fn name(&self) -> &str {
-        "constant"
-    }
-
-    fn get(&self, _event: &Event) -> Option<String> {
-        return Some(self.value.to_owned());
-    }
-}
-
-/// Returns the type of an event
-#[derive(Debug)]
-pub struct TypeAccessor {}
-
-impl Accessor for TypeAccessor {
-    fn name(&self) -> &str {
-        "type"
-    }
-
-    fn get(&self, event: &Event) -> Option<String> {
-        return Some(event.event_type.to_owned());
-    }
-}
-
-/// Returns the created_ts of an event
-#[derive(Debug)]
-pub struct CreatedTsAccessor {}
-
-impl Accessor for CreatedTsAccessor {
-    fn name(&self) -> &str {
-        "created_ts"
-    }
-
-    fn get(&self, event: &Event) -> Option<String> {
-        return Some(format!("{}", event.created_ts));
-    }
-}
-
-/// Returns a value from the payload of an event
-#[derive(Debug)]
-pub struct PayloadAccessor {
-    key: String,
-}
-
-impl Accessor for PayloadAccessor {
-    fn name(&self) -> &str {
-        "payload"
-    }
-
-    fn get(&self, event: &Event) -> Option<String> {
-        return event.payload.get(&self.key).cloned();
+impl Accessor {
+    pub fn get(&self, event: &Event) -> Option<String> {
+        match &self {
+            Accessor::Constant { value } => Some(value.to_owned()),
+            Accessor::Type {} => Some(event.event_type.to_owned()),
+            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts)),
+            Accessor::Payload { key } => event.payload.get(key).cloned(),
+        }
     }
 }
 
@@ -128,7 +82,7 @@ mod test {
 
     #[test]
     fn should_return_a_constant_value() {
-        let accessor = ConstantAccessor {
+        let accessor = Accessor::Constant {
             value: "constant_value".to_owned(),
         };
 
@@ -143,7 +97,7 @@ mod test {
 
     #[test]
     fn should_return_the_event_type() {
-        let accessor = TypeAccessor {};
+        let accessor = Accessor::Type {};
 
         let result = accessor.get(&Event {
             created_ts: 0,
@@ -156,7 +110,7 @@ mod test {
 
     #[test]
     fn should_return_the_event_created_ts() {
-        let accessor = CreatedTsAccessor {};
+        let accessor = Accessor::CreatedTs {};
 
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
@@ -172,7 +126,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = PayloadAccessor {
+        let accessor = Accessor::Payload {
             key: "body".to_owned(),
         };
 
@@ -191,7 +145,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = PayloadAccessor {
+        let accessor = Accessor::Payload {
             key: "date".to_owned(),
         };
 
@@ -215,7 +169,7 @@ mod test {
 
         let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("constant", accessor.name())
+        assert_eq!(Accessor::Constant { value }, accessor)
     }
 
     #[test]
@@ -225,7 +179,7 @@ mod test {
 
         let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("type", accessor.name())
+        assert_eq!(Accessor::Type {}, accessor)
     }
 
     #[test]
@@ -235,7 +189,7 @@ mod test {
 
         let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("created_ts", accessor.name())
+        assert_eq!(Accessor::CreatedTs {}, accessor)
     }
 
     #[test]
@@ -245,7 +199,12 @@ mod test {
 
         let accessor = builder.build(&value).unwrap();
 
-        assert_eq!("payload", accessor.name())
+        assert_eq!(
+            Accessor::Payload {
+                key: "key".to_owned()
+            },
+            accessor
+        )
     }
 
     #[test]

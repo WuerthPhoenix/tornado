@@ -10,17 +10,15 @@ const OPERATOR_NAME: &str = "regex";
 #[derive(Debug)]
 pub struct Regex {
     regex: RustRegex,
-    target: Box<Accessor>,
+    target: Accessor,
 }
 
 impl Regex {
-    pub fn build(regex: &String, target: Box<Accessor>) -> Result<Regex, MatcherError> {
-        let regex_str = regex.as_str();
-        let regex =
-            RustRegex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
-                message: format!("Cannot parse regex [{}]", regex_str),
-                cause: e.to_string(),
-            })?;
+    pub fn build(regex: &str, target: Accessor) -> Result<Regex, MatcherError> {
+        let regex = RustRegex::new(regex).map_err(|e| MatcherError::OperatorBuildFailError {
+            message: format!("Cannot parse regex [{}]", regex),
+            cause: e.to_string(),
+        })?;
 
         Ok(Regex { target, regex })
     }

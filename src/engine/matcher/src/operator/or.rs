@@ -5,15 +5,15 @@ use tornado_common::Event;
 
 const OPERATOR_NAME: &str = "or";
 
-/// A matching operator that evaluates whether at list one children on a list of rules matches.
+/// A matching operator that evaluates whether at least one children on a list of operators matches.
 #[derive(Debug)]
 pub struct Or {
-    rules: Vec<Box<Operator>>,
+    operators: Vec<Box<Operator>>,
 }
 
 impl Or {
     pub fn build(
-        args: &Vec<config::Operator>,
+        args: &[config::Operator],
         builder: &OperatorBuilder,
     ) -> Result<Or, MatcherError> {
         let mut rules = vec![];
@@ -21,7 +21,7 @@ impl Or {
             let rule = builder.build(&entry)?;
             rules.push(rule)
         }
-        Ok(Or { rules })
+        Ok(Or { operators: rules })
     }
 }
 
@@ -31,12 +31,12 @@ impl Operator for Or {
     }
 
     fn evaluate(&self, event: &Event) -> bool {
-        for rule in &self.rules {
+        for rule in &self.operators {
             if rule.evaluate(event) {
                 return true;
             }
         }
-        return false;
+        false
     }
 }
 
@@ -48,7 +48,7 @@ mod test {
 
     #[test]
     fn should_return_the_rule_name() {
-        let rule = Or { rules: vec![] };
+        let rule = Or { operators: vec![] };
         assert_eq!(OPERATOR_NAME, rule.name());
     }
 
@@ -62,14 +62,14 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        assert_eq!(1, rule.rules.len());
-        assert_eq!("equal", rule.rules[0].name());
+        assert_eq!(1, rule.operators.len());
+        assert_eq!("equal", rule.operators[0].name());
     }
 
     #[test]
     fn should_build_the_or_with_no_arguments() {
         let rule = Or::build(&vec![], &OperatorBuilder::new()).unwrap();
-        assert_eq!(0, rule.rules.len());
+        assert_eq!(0, rule.operators.len());
     }
 
     #[test]
@@ -102,16 +102,15 @@ mod test {
         ).unwrap();
 
         assert_eq!("or", rule.name());
-        assert_eq!(2, rule.rules.len());
-        assert_eq!("equal", rule.rules[0].name());
-        assert_eq!("and", rule.rules[1].name());
+        assert_eq!(2, rule.operators.len());
+        assert_eq!("equal", rule.operators[0].name());
+        assert_eq!("and", rule.operators[1].name());
 
-        println!("{:?}", rule.rules[1]);
+        println!("{:?}", rule.operators[1]);
 
-        assert!(
-            format!("{:?}", rule.rules[1])
-                .contains(r#"Equal { first_arg: ConstantAccessor { value: "3" }, second_arg: ConstantAccessor { value: "4" } }"#)
-        )
+        assert!(format!("{:?}", rule.operators[1]).contains(
+            r#"Equal { first_arg: Constant { value: "3" }, second_arg: Constant { value: "4" } }"#
+        ))
     }
 
     #[test]

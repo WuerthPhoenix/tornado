@@ -8,15 +8,12 @@ const OPERATOR_NAME: &str = "equal";
 /// A matching operator that evaluates whether two strings are equals.
 #[derive(Debug)]
 pub struct Equal {
-    first_arg: Box<Accessor>,
-    second_arg: Box<Accessor>,
+    first_arg: Accessor,
+    second_arg: Accessor,
 }
 
 impl Equal {
-    pub fn build(
-        first_arg: Box<Accessor>,
-        second_arg: Box<Accessor>,
-    ) -> Result<Equal, MatcherError> {
+    pub fn build(first_arg: Accessor, second_arg: Accessor) -> Result<Equal, MatcherError> {
         Ok(Equal {
             first_arg,
             second_arg,
