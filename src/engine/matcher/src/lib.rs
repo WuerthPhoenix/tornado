@@ -8,7 +8,7 @@ extern crate tornado_common;
 
 pub mod accessor;
 pub mod error;
-pub mod rule;
+pub mod operator;
 
 #[cfg(test)]
 extern crate chrono;

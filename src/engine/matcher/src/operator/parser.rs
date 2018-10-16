@@ -1,18 +1,18 @@
 use accessor::AccessorBuilder;
 use error::MatcherError;
-use rule;
+use operator;
 
-/// Rule instance builder.
-pub struct RuleBuilder {
+/// Operator instance builder.
+pub struct OperatorBuilder {
     accessor: AccessorBuilder,
     delimiter: &'static str,
     array_start: &'static str,
     array_end: &'static str,
 }
 
-impl RuleBuilder {
-    pub fn new() -> RuleBuilder {
-        RuleBuilder {
+impl OperatorBuilder {
+    pub fn new() -> OperatorBuilder {
+        OperatorBuilder {
             accessor: AccessorBuilder::new(),
             delimiter: ",",
             array_start: "[",
@@ -20,7 +20,7 @@ impl RuleBuilder {
         }
     }
 
-    /// Parses a string representing a rule operator into an array or strings where each string
+    /// Parses a string representing an operator into an array of strings where each string
     /// is an argument of the operator.
     /// This operation is not recursive.
     ///
@@ -30,12 +30,12 @@ impl RuleBuilder {
     ///
     /// ```rust
     /// extern crate tornado_engine_matcher;
-    /// use tornado_engine_matcher::rule::parser::RuleBuilder;
+    /// use tornado_engine_matcher::operator::parser::OperatorBuilder;
     ///
-    /// let builder = RuleBuilder::new();
-    /// let rule = "[one,two,three]";
+    /// let builder = OperatorBuilder::new();
+    /// let operator = "[one,two,three]";
     ///
-    /// let args = builder.parse(rule.to_owned()).unwrap();
+    /// let args = builder.parse(operator.to_owned()).unwrap();
     ///
     /// assert_eq!(vec![
     ///     "one".to_owned(),
@@ -50,12 +50,12 @@ impl RuleBuilder {
     ///
     /// ```rust
     /// extern crate tornado_engine_matcher;
-    /// use tornado_engine_matcher::rule::parser::RuleBuilder;
+    /// use tornado_engine_matcher::operator::parser::OperatorBuilder;
     ///
-    /// let builder = RuleBuilder::new();
-    /// let rule = "[one,[in1, in2],two,three]";
+    /// let builder = OperatorBuilder::new();
+    /// let operator = "[one,[in1, in2],two,three]";
     ///
-    /// let args = builder.parse(rule.to_owned()).unwrap();
+    /// let args = builder.parse(operator.to_owned()).unwrap();
     ///
     /// assert_eq!(vec![
     ///     "one".to_owned(),
@@ -134,18 +134,18 @@ impl RuleBuilder {
     ///
     /// extern crate tornado_engine_matcher;
     ///
-    /// use tornado_engine_matcher::rule::parser::RuleBuilder;
+    /// use tornado_engine_matcher::operator::parser::OperatorBuilder;
     ///
     ///       let args = vec![
-    ///            "=".to_owned(), // "=" is the rule operator
+    ///            "=".to_owned(), // "=" is the operator operator
     ///            "first_arg=".to_owned(),
     ///            "second_arg".to_owned()
     ///        ];
     ///
-    /// let builder = RuleBuilder::new();
-    /// let rule = builder.build(&args).unwrap(); // rule is an instance of EqualRule
+    /// let builder = OperatorBuilder::new();
+    /// let operator = builder.build(&args).unwrap(); // operator is an instance of EqualRule
     /// ```
-    pub fn build(&self, args: &Vec<String>) -> Result<Box<rule::Rule>, MatcherError> {
+    pub fn build(&self, args: &Vec<String>) -> Result<Box<operator::Operator>, MatcherError> {
         if args.is_empty() {
             return Err(MatcherError::MissingOperatorError {});
         }
@@ -154,13 +154,13 @@ impl RuleBuilder {
         let mut params = args.to_owned();
         params.remove(0);
         match operator {
-            "=" => Ok(Box::new(rule::rules::equal::EqualRule::build(
+            "=" => Ok(Box::new(operator::equal::Equal::build(
                 &params,
                 &self.accessor,
             )?)),
-            "and" => Ok(Box::new(rule::rules::and::AndRule::build(&params, &self)?)),
-            "or" => Ok(Box::new(rule::rules::or::OrRule::build(&params, &self)?)),
-            "regex" => Ok(Box::new(rule::rules::regex::RegexRule::build(
+            "and" => Ok(Box::new(operator::and::And::build(&params, &self)?)),
+            "or" => Ok(Box::new(operator::or::Or::build(&params, &self)?)),
+            "regex" => Ok(Box::new(operator::regex::Regex::build(
                 &params,
                 &self.accessor,
             )?)),
@@ -180,7 +180,7 @@ mod test {
     fn build_should_return_error_if_missing_operator() {
         let args = vec![];
 
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         assert!(builder.build(&args).is_err());
     }
 
@@ -188,7 +188,7 @@ mod test {
     fn build_should_return_error_if_unknown_operator() {
         let args = vec!["unknown".to_owned()];
 
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         assert!(builder.build(&args).is_err());
     }
 
@@ -200,7 +200,7 @@ mod test {
             "second_arg".to_owned(),
         ];
 
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = builder.build(&args).unwrap();
 
         assert_eq!("equal", rule.name());
@@ -210,7 +210,7 @@ mod test {
     fn build_should_return_the_regex_rule() {
         let args = vec!["regex".to_owned(), "reg".to_owned(), "target".to_owned()];
 
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = builder.build(&args).unwrap();
 
         assert_eq!("regex", rule.name());
@@ -218,7 +218,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_and_rule() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
 
         let args = builder.parse(r#"[and,[=,1,1]]"#.to_owned()).unwrap();
         let rule = builder.build(&args).unwrap();
@@ -228,7 +228,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_or_rule() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
 
         let args = builder.parse(r#"[or,[=,1,1]]"#.to_owned()).unwrap();
         let rule = builder.build(&args).unwrap();
@@ -238,28 +238,28 @@ mod test {
 
     #[test]
     fn parse_should_fail_if_string_does_not_start_with_square_braket() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "one,two,three]";
         assert!(builder.parse(rule.to_owned()).is_err());
     }
 
     #[test]
     fn parse_should_fail_if_string_does_not_end_with_square_braket() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[one,two,three";
         assert!(builder.parse(rule.to_owned()).is_err());
     }
 
     #[test]
     fn parse_should_fail_if_not_closed_properly_arrays() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[one,[in1, in2],[two,three]";
         assert!(builder.parse(rule.to_owned()).is_err());
     }
 
     #[test]
     fn should_parse_a_comma_separated_array() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[one,two,three]";
 
         let args = builder.parse(rule.to_owned()).unwrap();
@@ -272,7 +272,7 @@ mod test {
 
     #[test]
     fn should_parse_a_empty_array() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[]";
 
         let args = builder.parse(rule.to_owned()).unwrap();
@@ -282,7 +282,7 @@ mod test {
 
     #[test]
     fn should_parse_a_single_element_array() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[hello]";
 
         let args = builder.parse(rule.to_owned()).unwrap();
@@ -292,7 +292,7 @@ mod test {
 
     #[test]
     fn parse_should_detect_correctly_a_nested_array() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[one,[in1, in2],two,three]";
 
         let args = builder.parse(rule.to_owned()).unwrap();
@@ -310,7 +310,7 @@ mod test {
 
     #[test]
     fn parse_should_detect_recursively_nested_arrays() {
-        let builder = RuleBuilder::new();
+        let builder = OperatorBuilder::new();
         let rule = "[one,[in1, in2],two,[three],[[four,[five,six]], seven]]";
 
         let args = builder.parse(rule.to_owned()).unwrap();

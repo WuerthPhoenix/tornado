@@ -10,13 +10,13 @@ pub enum MatcherError {
     )]
     UnknownOperatorError { operator: String },
     #[fail(
-        display = "WrongNumberOfArgumentsError: While building rule [{}], expected arguments [{}], found [{}]",
-        rule,
+        display = "WrongNumberOfArgumentsError: While building operator [{}], expected arguments [{}], found [{}]",
+        operator,
         expected,
         found
     )]
     WrongNumberOfArgumentsError {
-        rule: &'static str,
+        operator: &'static str,
         expected: u64,
         found: u64,
     },

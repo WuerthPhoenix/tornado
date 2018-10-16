@@ -1,27 +1,27 @@
 use accessor::{Accessor, AccessorBuilder};
 use error::MatcherError;
-use regex::Regex;
-use rule::Rule;
+use operator::Operator;
+use regex::Regex as RustRegex;
 use tornado_common::Event;
 
-const RULE_NAME: &str = "regex";
+const OPERATOR_NAME: &str = "regex";
 
-/// A matching rule that evaluates whether a string matches a regex.
+/// A matching operator that evaluates whether a string matches a regex.
 #[derive(Debug)]
-pub struct RegexRule {
-    regex: Regex,
+pub struct Regex {
+    regex: RustRegex,
     target: Box<Accessor>,
 }
 
-impl RegexRule {
+impl Regex {
     pub fn build(
         args: &Vec<String>,
         accessor_builder: &AccessorBuilder,
-    ) -> Result<RegexRule, MatcherError> {
+    ) -> Result<Regex, MatcherError> {
         let expected = 2;
         if args.len() != expected {
             return Err(MatcherError::WrongNumberOfArgumentsError {
-                rule: RULE_NAME,
+                operator: OPERATOR_NAME,
                 expected: expected as u64,
                 found: args.len() as u64,
             });
@@ -29,18 +29,19 @@ impl RegexRule {
         let regex_string = args[0].clone();
         let regex_str = regex_string.as_str();
         let target = accessor_builder.build(&args[1])?;
-        let regex = Regex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
-            message: format!("Cannot parse regex [{}]", regex_str),
-            cause: e.to_string(),
-        })?;
+        let regex =
+            RustRegex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
+                message: format!("Cannot parse regex [{}]", regex_str),
+                cause: e.to_string(),
+            })?;
 
-        Ok(RegexRule { target, regex })
+        Ok(Regex { target, regex })
     }
 }
 
-impl Rule for RegexRule {
+impl Operator for Regex {
     fn name(&self) -> &str {
-        RULE_NAME
+        OPERATOR_NAME
     }
 
     fn evaluate(&self, event: &Event) -> bool {
@@ -58,16 +59,16 @@ mod test {
 
     #[test]
     fn should_return_the_rule_name() {
-        let rule = RegexRule {
-            regex: Regex::new("").unwrap(),
+        let rule = Regex {
+            regex: RustRegex::new("").unwrap(),
             target: AccessorBuilder::new().build(&"".to_owned()).unwrap(),
         };
-        assert_eq!(RULE_NAME, rule.name());
+        assert_eq!(OPERATOR_NAME, rule.name());
     }
 
     #[test]
     fn should_build_the_rule_with_expected_arguments() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec!["one".to_string(), "two".to_string()],
             &AccessorBuilder::new(),
         ).unwrap();
@@ -84,13 +85,13 @@ mod test {
 
     #[test]
     fn build_should_fail_if_not_enough_arguments() {
-        let rule = RegexRule::build(&vec!["one".to_string()], &AccessorBuilder::new());
+        let rule = Regex::build(&vec!["one".to_string()], &AccessorBuilder::new());
         assert!(rule.is_err());
     }
 
     #[test]
     fn build_should_fail_if_too_much_arguments() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec!["one".to_string(), "two".to_string(), "three".to_string()],
             &AccessorBuilder::new(),
         );
@@ -99,7 +100,7 @@ mod test {
 
     #[test]
     fn build_should_fail_if_invalid_regex() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec!["[".to_string(), "two".to_string()],
             &AccessorBuilder::new(),
         );
@@ -108,7 +109,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_it_matches_the_regex() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec!["[a-fA-F0-9]".to_string(), "f".to_string()],
             &AccessorBuilder::new(),
         ).unwrap();
@@ -124,7 +125,7 @@ mod test {
 
     #[test]
     fn should_evaluate_using_accessors() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec![
                 "[a-fA-F0-9]".to_string(),
                 "${event.payload.name1}".to_string(),
@@ -147,7 +148,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_it_does_not_match_the_regex() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec![
                 "[a-fA-F0-9]".to_string(),
                 "${event.payload.name2}".to_string(),
@@ -170,7 +171,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_field_does_not_exists() {
-        let rule = RegexRule::build(
+        let rule = Regex::build(
             &vec!["[^.{0}$]".to_string(), "${event.payload.name}".to_string()],
             &AccessorBuilder::new(),
         ).unwrap();
