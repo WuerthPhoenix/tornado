@@ -1,4 +1,5 @@
-use rule::parser::{RuleBuilder, RuleBuilderError};
+use error::MatcherError;
+use rule::parser::{RuleBuilder};
 use rule::Rule;
 use tornado_common::Event;
 
@@ -11,7 +12,7 @@ pub struct AndRule {
 }
 
 impl AndRule {
-    pub fn build(args: &Vec<String>, builder: &RuleBuilder) -> Result<AndRule, RuleBuilderError> {
+    pub fn build(args: &Vec<String>, builder: &RuleBuilder) -> Result<AndRule, MatcherError> {
         let mut rules = vec![];
         for entry in args {
             let args = builder.parse(entry.to_owned())?;

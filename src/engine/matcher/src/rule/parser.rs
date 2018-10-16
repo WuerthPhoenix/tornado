@@ -1,5 +1,6 @@
 use accessor::AccessorBuilder;
 use rule;
+use error::MatcherError;
 
 /// Rule instance builder.
 pub struct RuleBuilder {
@@ -7,43 +8,6 @@ pub struct RuleBuilder {
     delimiter: &'static str,
     array_start: &'static str,
     array_end: &'static str,
-}
-
-#[derive(Fail, Debug)]
-pub enum RuleBuilderError {
-    #[fail(display = "MissingOperatorError: No operator specified (the args array is empty)")]
-    MissingOperatorError {},
-    #[fail(display = "ParseOperatorError: [{}]", message)]
-    ParseOperatorError { message: String },
-    #[fail(
-        display = "UnknownOperatorError: Operator [{}] is unknown",
-        operator
-    )]
-    UnknownOperatorError { operator: String },
-    #[fail(
-        display = "WrongNumberOfArgumentsError: While building rule [{}], expected arguments [{}], found [{}]",
-        rule,
-        expected,
-        found
-    )]
-    WrongNumberOfArgumentsError {
-        rule: &'static str,
-        expected: u64,
-        found: u64,
-    },
-    #[fail(
-        display = "OperatorBuildFailError: [{}]\n cause: [{}]",
-        message,
-        cause
-    )]
-    OperatorBuildFailError { message: String, cause: String },
-    #[fail(
-        display = "UnknownAccessorError: Unknown accessor: [{}]",
-        accessor
-    )]
-    UnknownAccessorError { accessor: String },
-    #[fail(display = "AccessorWrongPayloadKeyError: [{}]", payload_key)]
-    AccessorWrongPayloadKeyError { payload_key: String },
 }
 
 impl RuleBuilder {
@@ -100,7 +64,7 @@ impl RuleBuilder {
     ///     "three".to_owned()
     /// ], args);
     /// ```
-    pub fn parse(&self, rule: String) -> Result<Vec<String>, RuleBuilderError> {
+    pub fn parse(&self, rule: String) -> Result<Vec<String>, MatcherError> {
         let input = self.check_array_start_end(&rule)?;
 
         let mut start = 0;
@@ -128,11 +92,11 @@ impl RuleBuilder {
         Ok(result)
     }
 
-    fn check_array_start_end<'o>(&self, rule: &'o String) -> Result<&'o str, RuleBuilderError> {
+    fn check_array_start_end<'o>(&self, rule: &'o String) -> Result<&'o str, MatcherError> {
         let input = rule.trim();
 
         if !input.starts_with(self.array_start) {
-            return Err(RuleBuilderError::ParseOperatorError {
+            return Err(MatcherError::ParseOperatorError {
                 message: format!(
                     "Expected to start with [{}], found [{}]",
                     self.array_start, input
@@ -141,7 +105,7 @@ impl RuleBuilder {
         }
 
         if !input.ends_with(self.array_end) {
-            return Err(RuleBuilderError::ParseOperatorError {
+            return Err(MatcherError::ParseOperatorError {
                 message: format!(
                     "Expected to end with [{}], found [{}]",
                     self.array_end, input
@@ -153,7 +117,7 @@ impl RuleBuilder {
         let array_end_count = input.matches(self.array_end).count();
 
         if array_start_count != array_end_count {
-            return Err(RuleBuilderError::ParseOperatorError {
+            return Err(MatcherError::ParseOperatorError {
                 message: format!("Wrong number of open/close array delimiters. Found [{}] occurrences of [{}] and [{}] occurrences of [{}]. The should be equals.",
                                  array_start_count, self.array_start, array_end_count, self.array_end)
             });
@@ -181,9 +145,9 @@ impl RuleBuilder {
     /// let builder = RuleBuilder::new();
     /// let rule = builder.build(&args).unwrap(); // rule is an instance of EqualRule
     /// ```
-    pub fn build(&self, args: &Vec<String>) -> Result<Box<rule::Rule>, RuleBuilderError> {
+    pub fn build(&self, args: &Vec<String>) -> Result<Box<rule::Rule>, MatcherError> {
         if args.is_empty() {
-            return Err(RuleBuilderError::MissingOperatorError {});
+            return Err(MatcherError::MissingOperatorError {});
         }
 
         let operator = args[0].as_ref();
@@ -200,7 +164,7 @@ impl RuleBuilder {
                 &params,
                 &self.accessor,
             )?)),
-            _ => Err(RuleBuilderError::UnknownOperatorError {
+            _ => Err(MatcherError::UnknownOperatorError {
                 operator: operator.to_owned(),
             }),
         }

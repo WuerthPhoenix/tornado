@@ -1,4 +1,5 @@
-use rule::parser::{RuleBuilder, RuleBuilderError};
+use error::MatcherError;
+use rule::parser::{RuleBuilder};
 use rule::Rule;
 use tornado_common::Event;
 
@@ -11,7 +12,7 @@ pub struct OrRule {
 }
 
 impl OrRule {
-    pub fn build(args: &Vec<String>, builder: &RuleBuilder) -> Result<OrRule, RuleBuilderError> {
+    pub fn build(args: &Vec<String>, builder: &RuleBuilder) -> Result<OrRule, MatcherError> {
         let mut rules = vec![];
         for entry in args {
             let args = builder.parse(entry.to_owned())?;

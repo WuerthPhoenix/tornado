@@ -1,6 +1,6 @@
 use accessor::{Accessor, AccessorBuilder};
+use error::MatcherError;
 use regex::Regex;
-use rule::parser::RuleBuilderError;
 use rule::Rule;
 use tornado_common::Event;
 
@@ -17,10 +17,10 @@ impl RegexRule {
     pub fn build(
         args: &Vec<String>,
         accessor_builder: &AccessorBuilder,
-    ) -> Result<RegexRule, RuleBuilderError> {
+    ) -> Result<RegexRule, MatcherError> {
         let expected = 2;
         if args.len() != expected {
-            return Err(RuleBuilderError::WrongNumberOfArgumentsError {
+            return Err(MatcherError::WrongNumberOfArgumentsError {
                 rule: RULE_NAME,
                 expected: expected as u64,
                 found: args.len() as u64,
@@ -30,7 +30,7 @@ impl RegexRule {
         let regex_str = regex_string.as_str();
         let target = accessor_builder.build(&args[1])?;
         let regex =
-            Regex::new(regex_str).map_err(|e| RuleBuilderError::OperatorBuildFailError {
+            Regex::new(regex_str).map_err(|e| MatcherError::OperatorBuildFailError {
                 message: format!("Cannot parse regex [{}]", regex_str),
                 cause: e.to_string(),
             })?;

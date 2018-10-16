@@ -1,5 +1,5 @@
 use accessor::{Accessor, AccessorBuilder};
-use rule::parser::RuleBuilderError;
+use error::MatcherError;
 use rule::Rule;
 use tornado_common::Event;
 
@@ -16,10 +16,10 @@ impl EqualRule {
     pub fn build(
         args: &Vec<String>,
         accessor_builder: &AccessorBuilder,
-    ) -> Result<EqualRule, RuleBuilderError> {
+    ) -> Result<EqualRule, MatcherError> {
         let expected = 2;
         if args.len() != expected {
-            return Err(RuleBuilderError::WrongNumberOfArgumentsError {
+            return Err(MatcherError::WrongNumberOfArgumentsError {
                 rule: RULE_NAME,
                 expected: expected as u64,
                 found: args.len() as u64,

@@ -6,10 +6,10 @@ authors = [
 ]
 
 [dependencies]
-chrono = "0.4"
 failure = "0.1"
 failure_derive = "0.1"
 regex = "1"
 tornado_common = { path = "../../common", version = "0.0.1" }
 
 [dev-dependencies]
+chrono = "0.4"

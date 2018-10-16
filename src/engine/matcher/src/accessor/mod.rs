@@ -1,4 +1,4 @@
-use rule::parser::RuleBuilderError;
+use error::MatcherError;
 use std::fmt;
 use tornado_common::Event;
 
@@ -19,7 +19,7 @@ impl AccessorBuilder {
         }
     }
 
-    pub fn build(&self, value: &String) -> Result<Box<Accessor>, RuleBuilderError> {
+    pub fn build(&self, value: &String) -> Result<Box<Accessor>, MatcherError> {
         match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -33,7 +33,7 @@ impl AccessorBuilder {
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = &val[EVENT_PAYLOAD_SUFFIX.len()..];
                         if key.is_empty() {
-                            return Err(RuleBuilderError::AccessorWrongPayloadKeyError {
+                            return Err(MatcherError::AccessorWrongPayloadKeyError {
                                 payload_key: path.to_owned(),
                             });
                         }
@@ -41,7 +41,7 @@ impl AccessorBuilder {
                             key: key.to_owned(),
                         }));
                     }
-                    _ => Err(RuleBuilderError::UnknownAccessorError {
+                    _ => Err(MatcherError::UnknownAccessorError {
                         accessor: value.to_owned(),
                     }),
                 }
@@ -278,7 +278,7 @@ mod test {
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
-            RuleBuilderError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
+            MatcherError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
             _ => assert!(false),
         };
     }
@@ -293,7 +293,7 @@ mod test {
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
-            RuleBuilderError::AccessorWrongPayloadKeyError { payload_key } => {
+            MatcherError::AccessorWrongPayloadKeyError { payload_key } => {
                 assert_eq!("event.payload.".to_owned(), payload_key)
             }
             _ => assert!(false),
