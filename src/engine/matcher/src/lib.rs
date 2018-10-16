@@ -4,9 +4,13 @@ extern crate failure;
 #[macro_use]
 extern crate failure_derive;
 extern crate regex;
+extern crate serde;
 extern crate tornado_common;
+#[macro_use]
+extern crate serde_derive;
 
 pub mod accessor;
+pub mod config;
 pub mod error;
 pub mod operator;
 

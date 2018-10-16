@@ -9,6 +9,8 @@ authors = [
 failure = "0.1"
 failure_derive = "0.1"
 regex = "1"
+serde = "1.0"
+serde_derive = "1.0"
 tornado_common = { path = "../../common", version = "0.0.1" }
 
 [dev-dependencies]

@@ -1,6 +1,6 @@
+use config;
 use error::MatcherError;
-use operator::parser::OperatorBuilder;
-use operator::Operator;
+use operator::{Operator, OperatorBuilder};
 use tornado_common::Event;
 
 const OPERATOR_NAME: &str = "or";
@@ -12,11 +12,13 @@ pub struct Or {
 }
 
 impl Or {
-    pub fn build(args: &Vec<String>, builder: &OperatorBuilder) -> Result<Or, MatcherError> {
+    pub fn build(
+        args: &Vec<config::Operator>,
+        builder: &OperatorBuilder,
+    ) -> Result<Or, MatcherError> {
         let mut rules = vec![];
         for entry in args {
-            let args = builder.parse(entry.to_owned())?;
-            let rule = builder.build(&args)?;
+            let rule = builder.build(&entry)?;
             rules.push(rule)
         }
         Ok(Or { rules })
@@ -52,7 +54,14 @@ mod test {
 
     #[test]
     fn should_build_the_or_with_expected_arguments() {
-        let rule = Or::build(&vec!["[=,1,2]".to_string()], &OperatorBuilder::new()).unwrap();
+        let rule = Or::build(
+            &vec![config::Operator::Equals {
+                first: "first_arg=".to_owned(),
+                second: "second_arg".to_owned(),
+            }],
+            &OperatorBuilder::new(),
+        ).unwrap();
+
         assert_eq!(1, rule.rules.len());
         assert_eq!("equal", rule.rules[0].name());
     }
@@ -65,16 +74,33 @@ mod test {
 
     #[test]
     fn build_should_fail_if_wrong_nested_rule() {
-        let rule = Or::build(&vec!["WRONG_RULE_NAME".to_owned()], &OperatorBuilder::new());
+        let rule = Or::build(
+            &vec![config::Operator::Equals {
+                first: "${NOT_EXISTING}".to_owned(),
+                second: "second_arg".to_owned(),
+            }],
+            &OperatorBuilder::new(),
+        );
         assert!(rule.is_err());
     }
-
     #[test]
     fn build_should_be_recursive() {
         let rule = Or::build(
-            &vec!["[=,1,2]".to_string(), "[and,[=,3,4]]".to_string()],
+            &vec![
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "2".to_owned(),
+                },
+                config::Operator::And {
+                    operators: vec![config::Operator::Equals {
+                        first: "3".to_owned(),
+                        second: "4".to_owned(),
+                    }],
+                },
+            ],
             &OperatorBuilder::new(),
         ).unwrap();
+
         assert_eq!("or", rule.name());
         assert_eq!(2, rule.rules.len());
         assert_eq!("equal", rule.rules[0].name());
@@ -105,10 +131,22 @@ mod test {
     fn should_evaluate_to_true_if_all_children_match() {
         let rule = Or::build(
             &vec![
-                "[=,1,1]".to_string(),
-                "[=,2,2]".to_string(),
-                "[=,3,3]".to_string(),
-                "[=,4,4]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "1".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "2".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "3".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "4".to_owned(),
+                    second: "4".to_owned(),
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -126,10 +164,22 @@ mod test {
     fn should_evaluate_to_true_if_at_least_a_children_matches() {
         let rule = Or::build(
             &vec![
-                "[=,1,4]".to_string(),
-                "[=,2,4]".to_string(),
-                "[=,3,4]".to_string(),
-                "[=,4,4]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "4".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "4".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "4".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "4".to_owned(),
+                    second: "4".to_owned(),
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -147,10 +197,22 @@ mod test {
     fn should_evaluate_to_false_if_no_children_match() {
         let rule = Or::build(
             &vec![
-                "[=,1,5]".to_string(),
-                "[=,2,5]".to_string(),
-                "[=,3,5]".to_string(),
-                "[=,4,5]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "4".to_owned(),
+                    second: "5".to_owned(),
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -168,10 +230,30 @@ mod test {
     fn should_evaluate_to_true_if_at_least_a_children_matches_recursively() {
         let rule = Or::build(
             &vec![
-                "[=,1,5]".to_string(),
-                "[=,2,5]".to_string(),
-                "[or,[=,3,5], [and,[=,5,5]]]".to_string(),
-                "[=,4,5]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Or {
+                    operators: vec![
+                        config::Operator::Equals {
+                            first: "4".to_owned(),
+                            second: "5".to_owned(),
+                        },
+                        config::Operator::Equals {
+                            first: "5".to_owned(),
+                            second: "5".to_owned(),
+                        },
+                    ],
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -189,10 +271,30 @@ mod test {
     fn should_evaluate_to_false_if_no_children_match_recursively() {
         let rule = Or::build(
             &vec![
-                "[=,1,6]".to_string(),
-                "[=,2,6]".to_string(),
-                "[or,[=,3,6], [and,[=,5,6]]]".to_string(),
-                "[=,4,6]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "6".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "6".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "6".to_owned(),
+                },
+                config::Operator::Or {
+                    operators: vec![
+                        config::Operator::Equals {
+                            first: "4".to_owned(),
+                            second: "6".to_owned(),
+                        },
+                        config::Operator::Equals {
+                            first: "5".to_owned(),
+                            second: "6".to_owned(),
+                        },
+                    ],
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -210,10 +312,30 @@ mod test {
     fn should_evaluate_using_accessors_recursively() {
         let rule = Or::build(
             &vec![
-                "[=,1,6]".to_string(),
-                "[=,2,6]".to_string(),
-                "[or,[=,3,6], [and,[=,type,${event.type}]]]".to_string(),
-                "[=,4,6]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Or {
+                    operators: vec![
+                        config::Operator::Equals {
+                            first: "4".to_owned(),
+                            second: "5".to_owned(),
+                        },
+                        config::Operator::Equals {
+                            first: "type".to_owned(),
+                            second: "${event.type}".to_owned(),
+                        },
+                    ],
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
@@ -231,10 +353,30 @@ mod test {
     fn should_evaluate_using_accessors_recursively_and_return_false() {
         let rule = Or::build(
             &vec![
-                "[=,1,6]".to_string(),
-                "[=,2,6]".to_string(),
-                "[or,[=,3,6], [and,[=,type1,${event.type}]]]".to_string(),
-                "[=,4,6]".to_string(),
+                config::Operator::Equals {
+                    first: "1".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "2".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Equals {
+                    first: "3".to_owned(),
+                    second: "5".to_owned(),
+                },
+                config::Operator::Or {
+                    operators: vec![
+                        config::Operator::Equals {
+                            first: "4".to_owned(),
+                            second: "5".to_owned(),
+                        },
+                        config::Operator::Equals {
+                            first: "type1".to_owned(),
+                            second: "${event.type}".to_owned(),
+                        },
+                    ],
+                },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
