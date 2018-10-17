@@ -61,8 +61,7 @@ pub enum Operator {
 mod test {
 
     use super::*;
-    use std::fs::File;
-    use std::io::prelude::*;
+    use std::fs;
 
     #[test]
     fn should_return_error_if_invalid_json() {
@@ -96,12 +95,7 @@ mod test {
     }
 
     fn file_to_string(filename: &str) -> String {
-        let mut file =
-            File::open(filename).expect(&format!("Unable to open the file [{}]", filename));
-        let mut contents = String::new();
-        file.read_to_string(&mut contents)
-            .expect("Unable to read the file");
-        contents
+        fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename))
     }
 
 }

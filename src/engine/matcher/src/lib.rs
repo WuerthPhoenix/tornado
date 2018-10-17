@@ -13,6 +13,7 @@ extern crate tornado_common_api;
 pub mod accessor;
 pub mod config;
 pub mod error;
+pub mod matcher;
 pub mod operator;
 
 #[cfg(test)]
