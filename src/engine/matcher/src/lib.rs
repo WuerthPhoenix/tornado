@@ -7,6 +7,7 @@ extern crate regex;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
 extern crate tornado_common_api;
 
 pub mod accessor;
@@ -16,4 +17,3 @@ pub mod operator;
 
 #[cfg(test)]
 extern crate chrono;
-extern crate config as config_rs;

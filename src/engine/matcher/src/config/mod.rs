@@ -1,5 +1,7 @@
-use tornado_common_api::Action;
+use error::MatcherError;
+use serde_json;
 use std::collections::HashMap;
+use tornado_common_api::Action;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -13,11 +15,19 @@ pub struct Rule {
     pub actions: Vec<Action>,
 }
 
+impl Rule {
+    pub fn from_json(json: &str) -> Result<Rule, MatcherError> {
+        serde_json::from_str(&json).map_err(|e| MatcherError::JsonDeserializationError {
+            message: format!("Cannot deserialize Rule. Error [{}]", e),
+        })
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Constraint {
-    #[serde(rename = "where")]
+    #[serde(rename = "WHERE")]
     pub where_operator: Operator,
-    //#[serde(rename = "WITH")]
+    #[serde(rename = "WITH")]
     pub with: HashMap<String, Extractor>,
 }
 
@@ -47,45 +57,51 @@ pub enum Operator {
     Regex { regex: String, target: String },
 }
 
-
 #[cfg(test)]
 mod test {
 
     use super::*;
-    use config_rs;
-    use config_rs::{ConfigError, Config};
-    use std::io::prelude::*;
     use std::fs::File;
+    use std::io::prelude::*;
 
     #[test]
-    fn should_parse_rule_from_file() {
-        build_rule();
-        let rule = new_rule().unwrap();
+    fn should_return_error_if_invalid_json() {
+        let json = r#"{"hello":"world"}"#;
+        let rule = Rule::from_json(&json);
+        assert!(rule.is_err())
+    }
+
+    #[test]
+    fn should_deserialize_rule_from_json() {
+        let json = file_to_string("./test_resources/rules/rule_01.json");
+        let rule = Rule::from_json(&json).unwrap();
+
         assert_eq!("all_emails_and_syslogs", rule.name);
 
         match rule.constraint.where_operator {
-            Operator::And {operators} => {
+            Operator::And { operators } => {
                 assert_eq!(2, operators.len());
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
 
-        assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
-        assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
+        assert_eq!(
+            "${event.payload.body}",
+            rule.constraint.with["extracted_temp"].from
+        );
+        assert_eq!(
+            "([0-9]+\\sDegrees)",
+            rule.constraint.with["extracted_temp"].regex.regex
+        );
     }
 
-    fn new_rule() -> Result<Rule, ConfigError> {
-        let mut s = Config::new();
-        s.merge(config_rs::File::with_name("./test_resources/rules/rule_01")).unwrap();
-        s.try_into()
-    }
-
-    fn build_rule() {
-        let filename = "./test_resources/rules/rule_01.json";
-        let mut file = File::open(filename).expect(&format!("Unable to open the file [{}]", filename));
+    fn file_to_string(filename: &str) -> String {
+        let mut file =
+            File::open(filename).expect(&format!("Unable to open the file [{}]", filename));
         let mut contents = String::new();
-        file.read_to_string(&mut contents).expect("Unable to read the file");
-        println!("{}", contents);
+        file.read_to_string(&mut contents)
+            .expect("Unable to read the file");
+        contents
     }
 
 }
