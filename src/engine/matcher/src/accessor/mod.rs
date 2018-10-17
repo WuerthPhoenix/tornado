@@ -1,5 +1,5 @@
 use error::MatcherError;
-use tornado_common::Event;
+use tornado_common_api::Event;
 
 #[derive(Default)]
 pub struct AccessorBuilder {

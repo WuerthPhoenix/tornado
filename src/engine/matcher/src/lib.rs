@@ -5,7 +5,7 @@ extern crate failure;
 extern crate failure_derive;
 extern crate regex;
 extern crate serde;
-extern crate tornado_common;
+extern crate tornado_common_api;
 #[macro_use]
 extern crate serde_derive;
 

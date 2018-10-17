@@ -1,9 +1,11 @@
 [package]
-name = "tornado_common"
+name = "tornado_common_logger"
 version = "0.0.1"
 authors = [
-    "Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com>",
     "Francesco Cina <mr.francesco.cina@gmail.com>"
 ]
 
 [dependencies]
+chrono = "0.4"
+fern = "0.5"
+log = "0.4"

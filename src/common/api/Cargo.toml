@@ -1,0 +1,9 @@
+[package]
+name = "tornado_common_api"
+version = "0.0.1"
+authors = [
+    "Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com>",
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+
+[dependencies]
