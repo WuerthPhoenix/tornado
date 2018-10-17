@@ -5,9 +5,9 @@ extern crate failure;
 extern crate failure_derive;
 extern crate regex;
 extern crate serde;
-extern crate tornado_common_api;
 #[macro_use]
 extern crate serde_derive;
+extern crate tornado_common_api;
 
 pub mod accessor;
 pub mod config;
@@ -16,3 +16,4 @@ pub mod operator;
 
 #[cfg(test)]
 extern crate chrono;
+extern crate config as config_rs;
