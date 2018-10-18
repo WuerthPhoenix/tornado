@@ -10,7 +10,7 @@ pub mod equal;
 pub mod or;
 pub mod regex;
 
-/// Defines the structure of a generic operator.
+/// Trait for a generic operator.
 pub trait Operator: fmt::Debug {
     /// Returns the Operator name
     fn name(&self) -> &str;
@@ -43,7 +43,7 @@ impl OperatorBuilder {
     /// use tornado_engine_matcher::operator::OperatorBuilder;
     /// use tornado_engine_matcher::config;
     ///
-    /// let ops = config::Operator::Equals {
+    /// let ops = config::Operator::Equal {
     ///              first: "${event.type}".to_owned(),
     ///              second: "email".to_owned(),
     ///           };
@@ -56,7 +56,7 @@ impl OperatorBuilder {
         config: &config::Operator,
     ) -> Result<Box<operator::Operator>, MatcherError> {
         match config {
-            config::Operator::Equals { first, second } => {
+            config::Operator::Equal { first, second } => {
                 Ok(Box::new(operator::equal::Equal::build(
                     self.accessor.build(first)?,
                     self.accessor.build(second)?,
@@ -82,7 +82,7 @@ mod test {
 
     #[test]
     fn build_should_return_error_if_wrong_operator() {
-        let ops = config::Operator::Equals {
+        let ops = config::Operator::Equal {
             first: "${WRONG_ARG}".to_owned(),
             second: "second_arg".to_owned(),
         };
@@ -93,7 +93,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_equal_operator() {
-        let ops = config::Operator::Equals {
+        let ops = config::Operator::Equal {
             first: "first_arg=".to_owned(),
             second: "second_arg".to_owned(),
         };
@@ -120,7 +120,7 @@ mod test {
     #[test]
     fn build_should_return_the_and_operator() {
         let ops = config::Operator::And {
-            operators: vec![config::Operator::Equals {
+            operators: vec![config::Operator::Equal {
                 first: "first_arg".to_owned(),
                 second: "second_arg".to_owned(),
             }],

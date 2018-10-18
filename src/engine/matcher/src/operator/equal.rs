@@ -5,7 +5,7 @@ use tornado_common::Event;
 
 const OPERATOR_NAME: &str = "equal";
 
-/// A matching operator that evaluates whether two strings are equals.
+/// A matching operator that evaluates whether two strings are equal.
 #[derive(Debug)]
 pub struct Equal {
     first_arg: Accessor,
@@ -27,7 +27,9 @@ impl Operator for Equal {
     }
 
     fn evaluate(&self, event: &Event) -> bool {
-        self.first_arg.get(event) == self.second_arg.get(event)
+        let first = self.first_arg.get(event);
+        let second = self.second_arg.get(event);
+        first.is_some() && second.is_some() && (first == second)
     }
 }
 
@@ -144,7 +146,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_true_if_fields_do_not_exist() {
+    fn should_return_false_if_fields_do_not_exist() {
         let operator = Equal::build(
             AccessorBuilder::new()
                 .build(&"${event.payload.1}".to_owned())
@@ -160,7 +162,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(operator.evaluate(&event));
+        assert!(!operator.evaluate(&event));
     }
 
 }

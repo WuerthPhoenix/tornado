@@ -55,7 +55,7 @@ mod test {
     #[test]
     fn should_build_the_and_with_expected_arguments() {
         let operator = And::build(
-            &vec![config::Operator::Equals {
+            &vec![config::Operator::Equal {
                 first: "first_arg=".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -74,7 +74,7 @@ mod test {
     #[test]
     fn build_should_fail_if_wrong_nested_operator() {
         let operator = And::build(
-            &vec![config::Operator::Equals {
+            &vec![config::Operator::Equal {
                 first: "${NOT_EXISTING}".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -87,12 +87,12 @@ mod test {
     fn build_should_be_recursive() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "2".to_owned(),
                 },
                 config::Operator::Or {
-                    operators: vec![config::Operator::Equals {
+                    operators: vec![config::Operator::Equal {
                         first: "3".to_owned(),
                         second: "4".to_owned(),
                     }],
@@ -130,19 +130,19 @@ mod test {
     fn should_evaluate_to_true_if_all_children_match() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "4".to_owned(),
                     second: "4".to_owned(),
                 },
@@ -163,19 +163,19 @@ mod test {
     fn should_evaluate_to_false_if_not_all_children_match() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "4".to_owned(),
                     second: "1".to_owned(),
                 },
@@ -196,25 +196,25 @@ mod test {
     fn should_evaluate_to_true_if_all_children_match_recursively() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "4".to_owned(),
                             second: "4".to_owned(),
                         },
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "5".to_owned(),
                             second: "5".to_owned(),
                         },
@@ -237,25 +237,25 @@ mod test {
     fn should_evaluate_to_false_if_not_all_children_match_recursively() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "4".to_owned(),
                             second: "4".to_owned(),
                         },
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "5".to_owned(),
                             second: "6".to_owned(),
                         },
@@ -278,25 +278,25 @@ mod test {
     fn should_evaluate_using_accessors_recursively() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "4".to_owned(),
                             second: "4".to_owned(),
                         },
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type".to_owned(),
                         },
@@ -319,25 +319,25 @@ mod test {
     fn should_evaluate_using_accessors_recursively_and_return_false() {
         let operator = And::build(
             &vec![
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "1".to_owned(),
                     second: "1".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "2".to_owned(),
                     second: "2".to_owned(),
                 },
-                config::Operator::Equals {
+                config::Operator::Equal {
                     first: "3".to_owned(),
                     second: "3".to_owned(),
                 },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "4".to_owned(),
                             second: "4".to_owned(),
                         },
-                        config::Operator::Equals {
+                        config::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type1".to_owned(),
                         },

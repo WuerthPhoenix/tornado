@@ -11,6 +11,7 @@ const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload.";
 
+/// A builder for the Event Accessors
 impl AccessorBuilder {
     pub fn new() -> AccessorBuilder {
         AccessorBuilder {
@@ -19,6 +20,12 @@ impl AccessorBuilder {
         }
     }
 
+    /// Returns an Accessor instance based on its string definition.
+    /// E.g.:
+    /// - "${event.type}" -> returns an instance of Accessor::Type
+    /// - "${event.created_ts}" -> returns an instance of Accessor::CreatedTs
+    /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
+    /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
     pub fn build(&self, value: &str) -> Result<Accessor, MatcherError> {
         match value.trim() {
             value
@@ -53,7 +60,12 @@ impl AccessorBuilder {
     }
 }
 
-/// An Accessor returns the value of a field of an Event
+/// An Accessor returns the value of a specific field of an Event.
+/// The following Accessors are defined:
+/// - Constant : returns a constant value regardless of the Event;
+/// - CreatedTs : returns the value of the "created_ts" field of an Event
+/// - Payload : returns the value of an entry in the payload of an Event
+/// - Type : returns the value of the "type" field of an Event
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: String },
@@ -66,9 +78,9 @@ impl Accessor {
     pub fn get(&self, event: &Event) -> Option<String> {
         match &self {
             Accessor::Constant { value } => Some(value.to_owned()),
-            Accessor::Type {} => Some(event.event_type.to_owned()),
             Accessor::CreatedTs {} => Some(format!("{}", event.created_ts)),
             Accessor::Payload { key } => event.payload.get(key).cloned(),
+            Accessor::Type {} => Some(event.event_type.to_owned()),
         }
     }
 }
