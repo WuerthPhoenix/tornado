@@ -1,11 +1,12 @@
 use config;
+use config::Rule;
 use error::MatcherError;
 use operator;
 use tornado_common_api::Event;
 
 /// Matcher's internal Rule representation.
 /// It contains the operators and executors built from the config::Rule
-struct Rule {
+struct MatcherRule {
     name: String,
     priority: u16,
     do_continue: bool,
@@ -23,18 +24,18 @@ pub struct ProcessedEvent {
 /// It matches the incoming Events with the defined Rules.
 /// A Matcher instance is stateless and Thread safe; consequently, a single instance can serve the entire application.
 pub struct Matcher {
-    rules: Vec<Rule>,
+    rules: Vec<MatcherRule>,
 }
 
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
-    pub fn new(rules: &[config::Rule]) -> Result<Matcher, MatcherError> {
+    pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         let builder = operator::OperatorBuilder::new();
         let mut processed_rules = vec![];
 
         for rule in rules {
             if rule.active {
-                processed_rules.push(Rule {
+                processed_rules.push(MatcherRule {
                     name: rule.name.to_owned(),
                     priority: rule.priority,
                     do_continue: rule.do_continue,
