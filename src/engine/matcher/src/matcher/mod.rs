@@ -3,6 +3,8 @@ use error::MatcherError;
 use operator;
 use tornado_common_api::Event;
 
+/// Matcher's internal Rule representation.
+/// It contains the operators and executors built from the config::Rule
 struct Rule {
     name: String,
     priority: u16,
@@ -10,16 +12,22 @@ struct Rule {
     operator: Box<operator::Operator>,
 }
 
+/// The ProcessedEvent is the result of the matcher process.
+/// It contains the original Event along with the result of the matching operation.
 pub struct ProcessedEvent {
     pub event: Event,
     pub matched: Vec<String>,
 }
 
+/// The Matcher contains the core logic of the Tornado Engine.
+/// It matches the incoming Events with the defined Rules.
+/// A Matcher instance is stateless and Thread safe; consequently, a single instance can serve the entire application.
 pub struct Matcher {
     rules: Vec<Rule>,
 }
 
 impl Matcher {
+    /// Builds a new Matcher and configures it to operate with a set of Rules.
     pub fn new(rules: &[config::Rule]) -> Result<Matcher, MatcherError> {
         let builder = operator::OperatorBuilder::new();
         let mut processed_rules = vec![];
@@ -43,6 +51,8 @@ impl Matcher {
         })
     }
 
+    /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
+    /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         let mut matched = vec![];
 
