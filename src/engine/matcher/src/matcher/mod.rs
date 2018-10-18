@@ -70,7 +70,7 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule name",
-            config::Operator::Equals {
+            config::Operator::Equal {
                 first: "1".to_owned(),
                 second: "1".to_owned(),
             },
@@ -87,7 +87,7 @@ mod test {
     #[test]
     fn should_sort_the_rules_based_on_priority() {
         // Arrange
-        let op = config::Operator::Equals {
+        let op = config::Operator::Equal {
             first: "1".to_owned(),
             second: "1".to_owned(),
         };
@@ -117,7 +117,7 @@ mod test {
     #[test]
     fn should_ignore_non_active_rules() {
         // Arrange
-        let op = config::Operator::Equals {
+        let op = config::Operator::Equal {
             first: "1".to_owned(),
             second: "1".to_owned(),
         };
@@ -145,7 +145,7 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            config::Operator::Equals {
+            config::Operator::Equal {
                 first: "${event.type}".to_owned(),
                 second: "email".to_owned(),
             },
@@ -153,7 +153,7 @@ mod test {
 
         let rule_2 = new_rule(
             "rule2_sms",
-            config::Operator::Equals {
+            config::Operator::Equal {
                 first: "${event.type}".to_owned(),
                 second: "sms".to_owned(),
             },
@@ -161,7 +161,7 @@ mod test {
 
         let rule_3 = new_rule(
             "rule3_email",
-            config::Operator::Equals {
+            config::Operator::Equal {
                 first: "${event.type}".to_owned(),
                 second: "email".to_owned(),
             },
@@ -185,7 +185,7 @@ mod test {
     #[test]
     fn should_stop_execution_if_continue_is_false() {
         // Arrange
-        let op = config::Operator::Equals {
+        let op = config::Operator::Equal {
             first: "${event.type}".to_owned(),
             second: "email".to_owned(),
         };
@@ -215,7 +215,7 @@ mod test {
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
-        let op = config::Operator::Equals {
+        let op = config::Operator::Equal {
             first: "${event.type}".to_owned(),
             second: "email".to_owned(),
         };
@@ -224,7 +224,7 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_sms",
-            config::Operator::Equals {
+            config::Operator::Equal {
                 first: "${event.type}".to_owned(),
                 second: "sms".to_owned(),
             },

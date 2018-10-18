@@ -9,7 +9,7 @@
         "type": "AND",
         "operators": [
           {
-            "type": "equals",
+            "type": "equal",
             "first": "${event.type}",
             "second": "email"
           },
@@ -17,12 +17,12 @@
             "type": "OR",
             "operators": [
               {
-                "type": "equals",
+                "type": "equal",
                 "first": "${event.payload.body}",
                 "second": "something"
               },
               {
-                "type": "equals",
+                "type": "equal",
                 "first": "${event.payload.body}",
                 "second": "other"
               }
