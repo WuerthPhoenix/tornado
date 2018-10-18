@@ -35,4 +35,20 @@ pub enum MatcherError {
     AccessorWrongPayloadKeyError { payload_key: String },
     #[fail(display = "JsonDeserializationError: [{}]", message)]
     JsonDeserializationError { message: String },
+    #[fail(
+        display = "NotUniqueRulePriorityError: The Rule [{}] and [{}] have the same priority [{}] but it must be unique.",
+        first_rule_name,
+        second_rule_name,
+        priority
+    )]
+    NotUniqueRulePriorityError {
+        first_rule_name: String,
+        second_rule_name: String,
+        priority: u16,
+    },
+    #[fail(
+        display = "NotUniqueRuleNameError: Two or more Rules have the same name [{}] but it must be unique.",
+        name
+    )]
+    NotUniqueRuleNameError { name: String },
 }
