@@ -15,9 +15,9 @@ struct MatcherRule {
 
 /// The ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
-pub struct ProcessedEvent {
+pub struct ProcessedEvent<'o> {
     pub event: Event,
-    pub matched: Vec<String>,
+    pub matched: Vec<&'o str>,
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -87,9 +87,8 @@ impl Matcher {
         let mut matched = vec![];
 
         for rule in &self.rules {
-            let rule_name = &rule.name;
             if rule.operator.evaluate(&event) {
-                matched.push(rule_name.to_owned());
+                matched.push(rule.name.as_str());
                 if !rule.do_continue {
                     break;
                 }

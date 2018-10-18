@@ -21,7 +21,7 @@ impl Equal {
     }
 }
 
-impl Operator for Equal {
+impl<'o> Operator for Equal {
     fn name(&self) -> &str {
         OPERATOR_NAME
     }
@@ -62,8 +62,8 @@ mod test {
             created_ts: 0,
         };
 
-        assert_eq!("one".to_string(), operator.first_arg.get(&event).unwrap());
-        assert_eq!("two".to_string(), operator.second_arg.get(&event).unwrap());
+        assert_eq!("one", operator.first_arg.get(&event).unwrap());
+        assert_eq!("two", operator.second_arg.get(&event).unwrap());
     }
 
     #[test]

@@ -1,4 +1,5 @@
 use error::MatcherError;
+use std::borrow::Cow;
 use tornado_common_api::Event;
 
 #[derive(Default)]
@@ -75,12 +76,15 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get(&self, event: &Event) -> Option<String> {
+    pub fn get<'o>(&'o self, event: &'o Event) -> Option<Cow<'o, str>> {
         match &self {
-            Accessor::Constant { value } => Some(value.to_owned()),
-            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts)),
-            Accessor::Payload { key } => event.payload.get(key).cloned(),
-            Accessor::Type {} => Some(event.event_type.to_owned()),
+            Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
+            Accessor::CreatedTs {} => Some(Cow::Owned(format!("{}", event.created_ts))),
+            Accessor::Payload { key } => event
+                .payload
+                .get(key)
+                .map(|value| Cow::Borrowed(value.as_str())),
+            Accessor::Type {} => Some(Cow::Borrowed(&event.event_type)),
         }
     }
 }
@@ -98,26 +102,30 @@ mod test {
             value: "constant_value".to_owned(),
         };
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!("constant_value".to_owned(), result.unwrap());
+        let result = accessor.get(&event);
+
+        assert_eq!("constant_value", result.unwrap());
     }
 
     #[test]
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!("event_type_string".to_owned(), result.unwrap());
+        let result = accessor.get(&event);
+
+        assert_eq!("event_type_string", result.unwrap());
     }
 
     #[test]
@@ -127,13 +135,15 @@ mod test {
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!(format!("{}", created_ts), result.unwrap());
+        let result = accessor.get(&event);
+
+        assert_eq!(format!("{}", created_ts).as_str(), result.unwrap());
     }
 
     #[test]
@@ -146,13 +156,14 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event);
 
-        assert_eq!("body_value".to_owned(), result.unwrap());
+        assert_eq!("body_value", result.unwrap());
     }
 
     #[test]
@@ -165,11 +176,12 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event);
 
         assert!(result.is_none());
     }
@@ -230,13 +242,14 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event);
 
-        assert_eq!("body_value".to_owned(), result.unwrap());
+        assert_eq!("body_value", result.unwrap());
     }
 
     #[test]
