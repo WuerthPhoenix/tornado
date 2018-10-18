@@ -4,7 +4,7 @@ extern crate serde_derive;
 
 use std::collections::HashMap;
 
-/// An Event is correlated with an incoming action, incident, situation or whatever kind of episode that could is meaningful for the system.
+/// An Event is correlated with an incoming episode, incident, situation or whatever kind of case that could meaningful for the system.
 /// It is produced by the collectors and sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Event {
@@ -13,6 +13,8 @@ pub struct Event {
     pub payload: HashMap<String, String>,
 }
 
+/// Action is produced when an Event matches a specific Rule.
+/// It is produced by the Tornado Engine and sent to the Executors to be resolved.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     id: String,
