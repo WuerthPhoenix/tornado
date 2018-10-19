@@ -1,0 +1,20 @@
+[package]
+name = "tornado_engine_matcher"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+
+[dependencies]
+failure = "0.1"
+failure_derive = "0.1"
+log = "0.4"
+regex = "1"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+
+[dev-dependencies]
+chrono = "0.4"
+tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }

@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+   "common/api",
+   "common/logger",
+   "engine/matcher",
+]

@@ -1,4 +1,6 @@
 RPMS/
 SRPMS/
-/target
+**/target
 **/*.rs.bk
+**/.idea
+
