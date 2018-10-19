@@ -80,10 +80,7 @@ impl Accessor {
         match &self {
             Accessor::Constant { value } => Some(value.into()),
             Accessor::CreatedTs {} => Some(format!("{}", event.created_ts).into()),
-            Accessor::Payload { key } => event
-                .payload
-                .get(key)
-                .map(|value| value.as_str().into()),
+            Accessor::Payload { key } => event.payload.get(key).map(|value| value.as_str().into()),
             Accessor::Type {} => Some((&event.event_type).into()),
         }
     }
@@ -114,7 +111,7 @@ mod test {
 
         match result {
             Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -134,9 +131,8 @@ mod test {
 
         match result {
             Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
-
     }
 
     #[test]
@@ -158,7 +154,7 @@ mod test {
 
         match result {
             Cow::Owned(_) => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -183,7 +179,7 @@ mod test {
 
         match result {
             Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 

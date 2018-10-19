@@ -1,10 +1,9 @@
 #[derive(Fail, Debug)]
 pub enum MatcherError {
-
     #[fail(
-    display = "ExtractorBuildFailError: [{}]\n cause: [{}]",
-    message,
-    cause
+        display = "ExtractorBuildFailError: [{}]\n cause: [{}]",
+        message,
+        cause
     )]
     ExtractorBuildFailError { message: String, cause: String },
 

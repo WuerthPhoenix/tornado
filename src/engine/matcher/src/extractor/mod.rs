@@ -1,89 +1,134 @@
-use accessor::Accessor;
-use config::{Extractor, ExtractorRegex};
+use accessor::{Accessor, AccessorBuilder};
+use config::Extractor;
 use error::MatcherError;
-use regex::{Match, Regex as RustRegex};
+use regex::Regex as RustRegex;
+use std::collections::HashMap;
 use tornado_common_api::Event;
-use std::borrow::Cow;
+
+/// Operator instance builder.
+#[derive(Default)]
+pub struct MatcherExtractorBuilder {
+    accessor: AccessorBuilder,
+}
+
+impl MatcherExtractorBuilder {
+    pub fn new() -> MatcherExtractorBuilder {
+        MatcherExtractorBuilder {
+            accessor: AccessorBuilder::new(),
+        }
+    }
+
+    pub fn build(
+        &self,
+        config: &HashMap<String, Extractor>,
+    ) -> Result<MatcherExtractor, MatcherError> {
+        let mut extractors = HashMap::new();
+
+        for (k, v) in config.iter() {
+            extractors.insert(
+                k.to_owned(),
+                VariableExtractor::build(
+                    &v.regex.regex,
+                    v.regex.group_match_idx,
+                    self.accessor.build(&v.from)?,
+                )?,
+            );
+        }
+
+        Ok(MatcherExtractor { extractors })
+    }
+}
 
 pub struct MatcherExtractor {
+    extractors: HashMap<String, VariableExtractor>,
+}
+
+impl MatcherExtractor {
+    pub fn extract(&self, key: &str, event: &Event) -> Option<String> {
+        let extractor = self.extractors.get(key)?;
+        extractor.extract(event)
+    }
+}
+
+struct VariableExtractor {
     regex: RustRegex,
     group_match_idx: u16,
     target: Accessor,
 }
 
-impl MatcherExtractor {
-    pub fn build(regex: &str, group_match_idx: u16, target: Accessor) -> Result<MatcherExtractor, MatcherError> {
+impl VariableExtractor {
+    pub fn build(
+        regex: &str,
+        group_match_idx: u16,
+        target: Accessor,
+    ) -> Result<VariableExtractor, MatcherError> {
         let regex = RustRegex::new(regex).map_err(|e| MatcherError::ExtractorBuildFailError {
             message: format!("Cannot parse regex [{}]", regex),
             cause: e.to_string(),
         })?;
 
-        Ok(MatcherExtractor {
+        Ok(VariableExtractor {
             target,
             group_match_idx,
-            regex })
+            regex,
+        })
     }
 
-
-    // To be tested:
+    // Behaviours to be clarified:
     // - accessor returns SOME -> no regex matches
     // - accessor returns SOME -> regex matches but wrong group_match_idx
     // - accessor returns NONE
     pub fn extract(&self, event: &Event) -> Option<String> {
         let value = self.target.get(event)?;
-        let captures = self.regex.captures(&value )?;
+        let captures = self.regex.captures(&value)?;
         let group_idx = self.group_match_idx;
-        captures.get(group_idx as usize )
-            .map(|matched| matched.as_str().to_owned() )
+        captures
+            .get(group_idx as usize)
+            .map(|matched| matched.as_str().to_owned())
     }
-
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use accessor::AccessorBuilder;
+    use config::ExtractorRegex;
     use std::collections::HashMap;
 
     #[test]
     fn should_build_an_extractor() {
-        let extractor = MatcherExtractor::build(
-            "",
-            0,
-            AccessorBuilder::new().build("").unwrap()
-        );
+        let extractor = VariableExtractor::build("", 0, AccessorBuilder::new().build("").unwrap());
         assert!(extractor.is_ok());
     }
 
     #[test]
     fn build_should_fail_if_not_valid_regex() {
-        let extractor = MatcherExtractor::build(
-            "[",
-            0,
-            AccessorBuilder::new().build("").unwrap()
-        );
+        let extractor = VariableExtractor::build("[", 0, AccessorBuilder::new().build("").unwrap());
         assert!(extractor.is_err());
     }
 
     #[test]
     fn should_match_and_return_group_at_zero() {
-        let extractor = MatcherExtractor::build(
+        let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             0,
-            AccessorBuilder::new().build("${event.type}").unwrap()
+            AccessorBuilder::new().build("${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!("http://stackoverflow.com/".to_owned(), extractor.extract(&event).unwrap());
+        assert_eq!(
+            "http://stackoverflow.com/".to_owned(),
+            extractor.extract(&event).unwrap()
+        );
     }
 
     #[test]
     fn should_match_and_return_group_at_one() {
-        let extractor = MatcherExtractor::build(
+        let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             1,
-            AccessorBuilder::new().build("${event.type}").unwrap()
+            AccessorBuilder::new().build("${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -93,23 +138,26 @@ mod test {
 
     #[test]
     fn should_match_and_return_group_at_two() {
-        let extractor = MatcherExtractor::build(
+        let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             2,
-            AccessorBuilder::new().build("${event.type}").unwrap()
+            AccessorBuilder::new().build("${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!("stackoverflow.com".to_owned(), extractor.extract(&event).unwrap());
+        assert_eq!(
+            "stackoverflow.com".to_owned(),
+            extractor.extract(&event).unwrap()
+        );
     }
 
     #[test]
     fn should_match_and_return_none_if_not_valid_group() {
-        let extractor = MatcherExtractor::build(
+        let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
-            AccessorBuilder::new().build("${event.type}").unwrap()
+            AccessorBuilder::new().build("${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -119,10 +167,12 @@ mod test {
 
     #[test]
     fn should_match_and_return_none_if_not_value_from_event() {
-        let extractor = MatcherExtractor::build(
+        let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
-            AccessorBuilder::new().build("${event.payload.body}").unwrap()
+            AccessorBuilder::new()
+                .build("${event.payload.body}")
+                .unwrap(),
         ).unwrap();
 
         let event = new_event("");
@@ -130,12 +180,73 @@ mod test {
         assert!(extractor.extract(&event).is_none());
     }
 
+    #[test]
+    fn should_use_variable_extractor_based_on_variable_name() {
+        let mut from_config = HashMap::new();
+
+        from_config.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        from_config.insert(
+            String::from("extracted_text"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[a-z]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+
+        let event = new_event("temp=44'C");
+
+        assert_eq!(
+            String::from("44"),
+            extractor.extract("extracted_temp", &event).unwrap()
+        );
+        assert_eq!(
+            String::from("temp"),
+            extractor.extract("extracted_text", &event).unwrap()
+        );
+    }
+
+    #[test]
+    fn should_return_non_if_unknown_variable_name() {
+        let mut from_config = HashMap::new();
+
+        from_config.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+
+        let event = new_event("temp=44'C");
+
+        assert!(extractor.extract("extracted_text", &event).is_none());
+    }
 
     fn new_event(event_type: &str) -> Event {
-        Event{
+        Event {
             payload: HashMap::new(),
             event_type: event_type.to_owned(),
-            created_ts: 0
+            created_ts: 0,
         }
     }
 }
