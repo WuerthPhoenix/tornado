@@ -78,13 +78,13 @@ pub enum Accessor {
 impl Accessor {
     pub fn get<'o>(&'o self, event: &'o Event) -> Option<Cow<'o, str>> {
         match &self {
-            Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedTs {} => Some(Cow::Owned(format!("{}", event.created_ts))),
+            Accessor::Constant { value } => Some(value.into()),
+            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts).into()),
             Accessor::Payload { key } => event
                 .payload
                 .get(key)
-                .map(|value| Cow::Borrowed(value.as_str())),
-            Accessor::Type {} => Some(Cow::Borrowed(&event.event_type)),
+                .map(|value| value.as_str().into()),
+            Accessor::Type {} => Some((&event.event_type).into()),
         }
     }
 }
@@ -108,9 +108,14 @@ mod test {
             payload: HashMap::new(),
         };
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!("constant_value", result.unwrap());
+        assert_eq!("constant_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -123,9 +128,15 @@ mod test {
             payload: HashMap::new(),
         };
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!("event_type_string", result.unwrap());
+        assert_eq!("event_type_string", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false)
+        }
+
     }
 
     #[test]
@@ -141,9 +152,14 @@ mod test {
             payload: HashMap::new(),
         };
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!(format!("{}", created_ts).as_str(), result.unwrap());
+        assert_eq!(format!("{}", created_ts).as_str(), result);
+
+        match result {
+            Cow::Owned(_) => assert!(true),
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -161,9 +177,14 @@ mod test {
             event_type: "event_type_string".to_owned(),
             payload,
         };
-        let result = accessor.get(&event);
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!("body_value", result.unwrap());
+        assert_eq!("body_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -283,4 +304,5 @@ mod test {
             _ => assert!(false),
         };
     }
+
 }
