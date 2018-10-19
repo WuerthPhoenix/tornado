@@ -33,10 +33,11 @@ cp -pv src/%{release_target} %{buildroot}/%{_bindir}/
 %attr(0755, root, root) %{_bindir}/%{name}
 
 %changelog
-* Thu Oct 18 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.1.0-1
+* Fri Oct 19 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.1.0-1
  - New Feature: Basic matching implementation via Operators
  - New Feature: Rule parsing from JSON
  - New Feature: Config parser
+ - New Feature: Logging
 
 * Wed Sep 26 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.0.1-1
  - Initial release
