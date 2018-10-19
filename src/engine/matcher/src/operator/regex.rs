@@ -13,7 +13,7 @@ pub struct Regex {
     target: Accessor,
 }
 
-impl<'o> Regex {
+impl Regex {
     pub fn build(regex: &str, target: Accessor) -> Result<Regex, MatcherError> {
         let regex = RustRegex::new(regex).map_err(|e| MatcherError::OperatorBuildFailError {
             message: format!("Cannot parse regex [{}]", regex),
@@ -24,7 +24,7 @@ impl<'o> Regex {
     }
 }
 
-impl<'o> Operator for Regex {
+impl Operator for Regex {
     fn name(&self) -> &str {
         OPERATOR_NAME
     }

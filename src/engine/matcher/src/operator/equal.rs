@@ -21,7 +21,7 @@ impl Equal {
     }
 }
 
-impl<'o> Operator for Equal {
+impl Operator for Equal {
     fn name(&self) -> &str {
         OPERATOR_NAME
     }
