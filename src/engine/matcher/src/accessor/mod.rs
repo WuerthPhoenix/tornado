@@ -291,9 +291,9 @@ mod test {
     #[test]
     fn builder_should_return_error_if_wrong_payload() {
         let builder = AccessorBuilder::new();
-        let value = "${event.payload.}".to_owned();
+        let value = "${event.payload.}";
 
-        let accessor = builder.build(&value);
+        let accessor = builder.build(value);
 
         assert!(&accessor.is_err());
 
