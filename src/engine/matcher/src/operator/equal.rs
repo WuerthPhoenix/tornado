@@ -1,7 +1,7 @@
 use accessor::Accessor;
 use error::MatcherError;
 use operator::Operator;
-use tornado_common::Event;
+use tornado_common_api::Event;
 
 const OPERATOR_NAME: &str = "equal";
 

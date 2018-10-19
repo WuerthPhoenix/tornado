@@ -1,7 +1,7 @@
 use config;
 use error::MatcherError;
 use operator::{Operator, OperatorBuilder};
-use tornado_common::Event;
+use tornado_common_api::Event;
 
 const OPERATOR_NAME: &str = "and";
 

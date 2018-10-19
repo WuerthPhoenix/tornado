@@ -2,7 +2,7 @@ use accessor::Accessor;
 use error::MatcherError;
 use operator::Operator;
 use regex::Regex as RustRegex;
-use tornado_common::Event;
+use tornado_common_api::Event;
 
 const OPERATOR_NAME: &str = "regex";
 

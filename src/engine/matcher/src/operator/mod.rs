@@ -3,7 +3,7 @@ use config;
 use error::MatcherError;
 use operator;
 use std::fmt;
-use tornado_common::Event;
+use tornado_common_api::Event;
 
 pub mod and;
 pub mod equal;

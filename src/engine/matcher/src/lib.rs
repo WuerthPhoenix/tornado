@@ -5,13 +5,15 @@ extern crate failure;
 extern crate failure_derive;
 extern crate regex;
 extern crate serde;
-extern crate tornado_common;
 #[macro_use]
 extern crate serde_derive;
+extern crate serde_json;
+extern crate tornado_common_api;
 
 pub mod accessor;
 pub mod config;
 pub mod error;
+pub mod matcher;
 pub mod operator;
 
 #[cfg(test)]
