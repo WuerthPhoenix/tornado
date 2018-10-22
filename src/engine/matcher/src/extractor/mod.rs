@@ -44,9 +44,34 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
-    pub fn extract(&self, key: &str, event: &Event) -> Option<String> {
-        let extractor = self.extractors.get(key)?;
-        extractor.extract(event)
+    pub fn extract(&self, key: &str, event: &Event) -> Result<String, MatcherError> {
+        let extracted = self
+            .extractors
+            .get(key)
+            .and_then(|extractor| extractor.extract(event));
+        self.check_extracted(key, extracted)
+    }
+
+    pub fn extract_all(&self, event: &Event) -> Result<HashMap<String, String>, MatcherError> {
+        let mut vars = HashMap::new();
+        for (key, extractor) in &self.extractors {
+            let value = self.check_extracted(key, extractor.extract(event))?;
+            vars.insert(key.clone(), value);
+        }
+        Ok(vars)
+    }
+
+    fn check_extracted(
+        &self,
+        key: &str,
+        extracted: Option<String>,
+    ) -> Result<String, MatcherError> {
+        match extracted {
+            Some(value) => Ok(value),
+            None => Err(MatcherError::MissingExtractedVariableError {
+                variable_name: key.to_owned(),
+            }),
+        }
     }
 }
 
@@ -221,7 +246,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_non_if_unknown_variable_name() {
+    fn should_return_none_if_unknown_variable_name() {
         let mut from_config = HashMap::new();
 
         from_config.insert(
@@ -239,7 +264,77 @@ mod test {
 
         let event = new_event("temp=44'C");
 
-        assert!(extractor.extract("extracted_text", &event).is_none());
+        assert!(extractor.extract("extracted_text", &event).is_err());
+    }
+
+    #[test]
+    fn should_extract_all_variables_and_return_true() {
+        let mut from_config = HashMap::new();
+
+        from_config.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        from_config.insert(
+            String::from("extracted_text"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[a-z]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+
+        let event = new_event("temp=44'C");
+
+        let vars = extractor.extract_all(&event).unwrap();
+
+        assert_eq!(2, vars.len());
+        assert_eq!(&String::from("44"), vars.get("extracted_temp").unwrap());
+        assert_eq!(&String::from("temp"), vars.get("extracted_text").unwrap());
+    }
+
+    #[test]
+    fn should_extract_all_variables_and_return_false_is_not_all_resolved() {
+        let mut from_config = HashMap::new();
+
+        from_config.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        from_config.insert(
+            String::from("extracted_none"),
+            Extractor {
+                from: String::from("${event.payload.nothing}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[a-z]+"),
+                    group_match_idx: 0,
+                },
+            },
+        );
+
+        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+
+        let event = new_event("temp=44'C");
+
+        assert!(extractor.extract_all(&event).is_err());
     }
 
     fn new_event(event_type: &str) -> Event {

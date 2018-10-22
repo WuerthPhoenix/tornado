@@ -7,6 +7,12 @@ pub enum MatcherError {
     )]
     ExtractorBuildFailError { message: String, cause: String },
 
+    #[fail(
+        display = "MissingExtractedVariableError: Extractor cannot extract variable [{}].",
+        variable_name
+    )]
+    MissingExtractedVariableError { variable_name: String },
+
     #[fail(display = "MissingOperatorError: No operator specified (the args array is empty)")]
     MissingOperatorError {},
 
