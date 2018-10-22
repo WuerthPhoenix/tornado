@@ -145,6 +145,7 @@ mod test {
     use super::*;
     use config::{Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
+    use test_root;
 
     #[test]
     fn should_build_the_matcher() {
@@ -159,7 +160,7 @@ mod test {
         );
 
         // Act
-        let matcher = Matcher::new(&vec![rule]).unwrap();
+        let matcher = new_matcher(&vec![rule]).unwrap();
 
         // Assert
         assert_eq!(1, matcher.rules.len());
@@ -177,7 +178,7 @@ mod test {
         let rule_2 = new_rule("rule_name", 1, op.clone());
 
         // Act
-        let matcher = Matcher::new(&vec![rule_1, rule_2]);
+        let matcher = new_matcher(&vec![rule_1, rule_2]);
 
         // Assert
         assert!(matcher.is_err());
@@ -199,7 +200,7 @@ mod test {
         let rule_2 = new_rule("rule_2", 1, op.clone());
 
         // Act
-        let matcher = Matcher::new(&vec![rule_1, rule_2]);
+        let matcher = new_matcher(&vec![rule_1, rule_2]);
 
         // Assert
         assert!(matcher.is_err());
@@ -231,7 +232,7 @@ mod test {
         let rule_4 = new_rule("rule4", 100, op.clone());
 
         // Act
-        let matcher = Matcher::new(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
 
         // Assert
         assert_eq!(4, matcher.rules.len());
@@ -259,7 +260,7 @@ mod test {
         let rule_4 = new_rule("rule4", 30, op.clone());
 
         // Act
-        let matcher = Matcher::new(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
 
         // Assert
         assert_eq!(2, matcher.rules.len());
@@ -297,7 +298,7 @@ mod test {
             },
         );
 
-        let matcher = Matcher::new(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -327,7 +328,7 @@ mod test {
 
         let rule_3 = new_rule("rule3_email", 2, op.clone());
 
-        let matcher = Matcher::new(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -364,7 +365,7 @@ mod test {
 
         let rule_3 = new_rule("rule3_email", 2, op.clone());
 
-        let matcher = Matcher::new(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -402,7 +403,7 @@ mod test {
             },
         );
 
-        let matcher = Matcher::new(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -463,7 +464,7 @@ mod test {
             },
         );
 
-        let matcher = Matcher::new(&vec![rule_1, rule_2]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -527,7 +528,7 @@ mod test {
             },
         );
 
-        let matcher = Matcher::new(&vec![rule_1, rule_2]).unwrap();
+        let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
         let result = matcher.process(Event {
@@ -543,6 +544,11 @@ mod test {
         let rule_2_processed = result.matched.get("rule2_email").unwrap();
         assert!(rule_2_processed.contains_key("extracted_temp"));
         assert_eq!("ai", rule_2_processed.get("extracted_temp").unwrap());
+    }
+
+    fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {
+        test_root::start_context();
+        Matcher::new(rules)
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
