@@ -5,19 +5,62 @@ use regex::Regex as RustRegex;
 use std::collections::HashMap;
 use tornado_common_api::Event;
 
-/// Operator instance builder.
+/// MatcherExtractor instance builder.
 #[derive(Default)]
 pub struct MatcherExtractorBuilder {
     accessor: AccessorBuilder,
 }
 
 impl MatcherExtractorBuilder {
+    /// Returns a new MatcherExtractorBuilder instance
     pub fn new() -> MatcherExtractorBuilder {
         MatcherExtractorBuilder {
             accessor: AccessorBuilder::new(),
         }
     }
 
+    /// Returns a specific MatcherExtractor instance based on the rule extractor configuration.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    ///
+    ///    extern crate tornado_common_api;
+    ///    extern crate tornado_engine_matcher;
+    ///
+    ///    use tornado_common_api::Event;
+    ///    use tornado_engine_matcher::extractor::MatcherExtractorBuilder;
+    ///    use tornado_engine_matcher::config::{Extractor, ExtractorRegex};
+    ///    use std::collections::HashMap;
+    ///
+    ///    let mut extractor_config = HashMap::new();
+    ///
+    ///    extractor_config.insert(
+    ///        String::from("extracted_temp"),
+    ///        Extractor {
+    ///            from: String::from("${event.type}"),
+    ///            regex: ExtractorRegex {
+    ///                regex: String::from(r"[0-9]+"),
+    ///                group_match_idx: 0,
+    ///            },
+    ///        },
+    ///    );
+    ///
+    ///    // The matcher_extractor contains the logic to create the "extracted_temp" variable from the ${event.type}.
+    ///    // The value of the "extracted_temp" variable is obtained applying the regular expression "[0-9]+" to the event.type.
+    ///    let matcher_extractor = MatcherExtractorBuilder::new().build(&extractor_config).unwrap();
+    ///
+    ///    let event = Event {
+    ///        payload: HashMap::new(),
+    ///        event_type: "temp=44'C".to_owned(),
+    ///        created_ts: 0,
+    ///    };
+    ///
+    ///    assert_eq!(
+    ///        String::from("44"),
+    ///        matcher_extractor.extract("extracted_temp", &event).unwrap()
+    ///    );
+    /// ```
     pub fn build(
         &self,
         config: &HashMap<String, Extractor>,
@@ -51,6 +94,7 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
+    /// Returns the value of the variable with name 'key' generated from the provided Event
     pub fn extract(&self, key: &str, event: &Event) -> Result<String, MatcherError> {
         let extracted = self
             .extractors
@@ -59,6 +103,8 @@ impl MatcherExtractor {
         self.check_extracted(key, extracted)
     }
 
+    /// Returns the value of all extracted variables defined in the rule and generated from the provided Event.
+    /// Returns an Error if not all variables can be correctly extracted.
     pub fn extract_all<'o>(
         &'o self,
         event: &Event,
@@ -110,10 +156,6 @@ impl VariableExtractor {
         })
     }
 
-    // Behaviours to be clarified:
-    // - accessor returns SOME -> no regex matches
-    // - accessor returns SOME -> regex matches but wrong group_match_idx
-    // - accessor returns NONE
     pub fn extract(&self, event: &Event) -> Option<String> {
         let value = self.target.get(event)?;
         let captures = self.regex.captures(&value)?;
