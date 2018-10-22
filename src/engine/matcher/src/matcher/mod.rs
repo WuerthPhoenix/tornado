@@ -2,6 +2,7 @@ use config::Rule;
 use error::MatcherError;
 use extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use operator;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use tornado_common_api::Event;
 
@@ -19,7 +20,7 @@ struct MatcherRule {
 /// It contains the original Event along with the result of the matching operation.
 pub struct ProcessedEvent<'o> {
     pub event: Event,
-    pub matched: HashMap<&'o str, HashMap<String, String>>,
+    pub matched: HashMap<&'o str, HashMap<Cow<'o, str>, String>>,
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -88,13 +89,13 @@ impl Matcher {
     /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
-        let mut matched = HashMap::new();
+        let mut processed_event = ProcessedEvent { event, matched: HashMap::new() };
 
         for rule in &self.rules {
-            if rule.operator.evaluate(&event) {
-                match rule.extractor.extract_all(&event) {
+            if rule.operator.evaluate(&processed_event.event) {
+                match rule.extractor.extract_all(&processed_event.event) {
                     Ok(vars) => {
-                        matched.insert(rule.name.as_str(), vars);
+                        processed_event.matched.insert(rule.name.as_str(), vars);
                         if !rule.do_continue {
                             break;
                         }
@@ -106,7 +107,7 @@ impl Matcher {
             }
         }
 
-        ProcessedEvent { event, matched }
+        processed_event
     }
 }
 

@@ -2,6 +2,7 @@ use accessor::{Accessor, AccessorBuilder};
 use config::Extractor;
 use error::MatcherError;
 use regex::Regex as RustRegex;
+use std::borrow::Cow;
 use std::collections::HashMap;
 use tornado_common_api::Event;
 
@@ -52,11 +53,11 @@ impl MatcherExtractor {
         self.check_extracted(key, extracted)
     }
 
-    pub fn extract_all(&self, event: &Event) -> Result<HashMap<String, String>, MatcherError> {
+    pub fn extract_all<'o>(&'o self, event: &Event) -> Result<HashMap<Cow<'o, str>, String>, MatcherError> {
         let mut vars = HashMap::new();
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
-            vars.insert(key.clone(), value);
+            vars.insert(key.into(), value);
         }
         Ok(vars)
     }
