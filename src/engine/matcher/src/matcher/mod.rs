@@ -17,6 +17,7 @@ struct MatcherRule {
 
 /// The ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
+#[derive(Debug, Clone)]
 pub struct ProcessedEvent<'o> {
     pub event: Event,
     pub matched: HashMap<&'o str, HashMap<&'o str, String>>,
@@ -32,6 +33,8 @@ pub struct Matcher {
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
     pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
+        info!("Matcher build start");
+
         let operator_builder = operator::OperatorBuilder::new();
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
@@ -41,6 +44,9 @@ impl Matcher {
 
         for rule in rules {
             if rule.active {
+                info!("Matcher build - Processing rule: [{}]", &rule.name);
+                debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
+
                 Matcher::check_unique_name(&mut rule_names, &rule.name)?;
                 Matcher::check_unique_priority(&mut rules_by_priority, &rule)?;
                 processed_rules.push(MatcherRule {
@@ -56,6 +62,8 @@ impl Matcher {
         // Sort rules by priority
         processed_rules.sort_by(|a, b| a.priority.cmp(&b.priority));
 
+        info!("Matcher build completed");
+
         Ok(Matcher {
             rules: processed_rules,
         })
@@ -63,6 +71,10 @@ impl Matcher {
 
     fn check_unique_name(rule_names: &mut Vec<String>, name: &str) -> Result<(), MatcherError> {
         let name_string = name.to_owned();
+        debug!(
+            "Matcher build - Matching uniqueness of name for rule: [{}]",
+            &name_string
+        );
         if rule_names.contains(&name_string) {
             return Err(MatcherError::NotUniqueRuleNameError { name: name_string });
         }
@@ -74,6 +86,10 @@ impl Matcher {
         rules_by_priority: &mut HashMap<u16, String>,
         rule: &Rule,
     ) -> Result<(), MatcherError> {
+        debug!(
+            "Matcher build - Matching uniqueness of priority for rule: [{}] with priority [{}]",
+            &rule.name, &rule.priority
+        );
         if rules_by_priority.contains_key(&rule.priority) {
             return Err(MatcherError::NotUniqueRulePriorityError {
                 first_rule_name: rules_by_priority[&rule.priority].to_owned(),
@@ -88,24 +104,38 @@ impl Matcher {
     /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
-        let mut processed_event = ProcessedEvent { event, matched: HashMap::new() };
+        debug!("Matcher process - processing event: [{:#?}]", &event);
+
+        let mut processed_event = ProcessedEvent {
+            event,
+            matched: HashMap::new(),
+        };
 
         for rule in &self.rules {
+            trace!("Matcher process - check matching of rule: [{}]", &rule.name);
             if rule.operator.evaluate(&processed_event.event) {
+                trace!(
+                    "Matcher process - event matches rule: [{}]. Checking extracted variables.",
+                    &rule.name
+                );
                 match rule.extractor.extract_all(&processed_event.event) {
                     Ok(vars) => {
+                        trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
                         processed_event.matched.insert(rule.name.as_str(), vars);
                         if !rule.do_continue {
                             break;
                         }
                     }
-                    // TODO: how to handle the error?
-                    // Ignore Clippy for the moment.
-                    Err(_) => {}
+                    Err(e) => {
+                        warn!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
+                    }
                 }
             }
         }
-
+        debug!(
+            "Matcher process - event processing result: [{:#?}]",
+            &processed_event
+        );
         processed_event
     }
 }

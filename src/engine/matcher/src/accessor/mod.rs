@@ -28,7 +28,11 @@ impl AccessorBuilder {
     /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
     /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
     pub fn build(&self, value: &str) -> Result<Accessor, MatcherError> {
-        match value.trim() {
+        info!(
+            "AccessorBuilder - build: build accessor for value [{}]",
+            value
+        );
+        let result = match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
                     && value.ends_with(self.end_delimiter) =>
@@ -57,7 +61,13 @@ impl AccessorBuilder {
             value => Ok(Accessor::Constant {
                 value: value.to_owned(),
             }),
-        }
+        };
+
+        info!(
+            "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
+            &result, value
+        );
+        result
     }
 }
 

@@ -22,10 +22,11 @@ impl MatcherExtractorBuilder {
         &self,
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
-        let mut extractors = HashMap::new();
-
+        let mut matcher_extractor = MatcherExtractor {
+            extractors: HashMap::new(),
+        };
         for (k, v) in config.iter() {
-            extractors.insert(
+            matcher_extractor.extractors.insert(
                 k.to_owned(),
                 VariableExtractor::build(
                     &v.regex.regex,
@@ -35,10 +36,16 @@ impl MatcherExtractorBuilder {
             );
         }
 
-        Ok(MatcherExtractor { extractors })
+        info!(
+            "MatcherExtractorBuilder - build: built extractor [{:?}] for input value [{:?}]",
+            &matcher_extractor, config
+        );
+
+        Ok(matcher_extractor)
     }
 }
 
+#[derive(Debug)]
 pub struct MatcherExtractor {
     extractors: HashMap<String, VariableExtractor>,
 }
@@ -52,7 +59,10 @@ impl MatcherExtractor {
         self.check_extracted(key, extracted)
     }
 
-    pub fn extract_all<'o>(&'o self, event: &Event) -> Result<HashMap<&'o str, String>, MatcherError> {
+    pub fn extract_all<'o>(
+        &'o self,
+        event: &Event,
+    ) -> Result<HashMap<&'o str, String>, MatcherError> {
         let mut vars = HashMap::new();
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
@@ -75,6 +85,7 @@ impl MatcherExtractor {
     }
 }
 
+#[derive(Debug)]
 struct VariableExtractor {
     regex: RustRegex,
     group_match_idx: u16,
