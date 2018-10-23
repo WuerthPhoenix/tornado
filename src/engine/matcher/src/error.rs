@@ -73,4 +73,7 @@ pub enum MatcherError {
         name
     )]
     NotUniqueRuleNameError { name: String },
+
+    #[fail(display = "NotValidIdOrNameError: {}", message)]
+    NotValidIdOrNameError { message: String },
 }

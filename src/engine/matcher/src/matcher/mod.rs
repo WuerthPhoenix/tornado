@@ -1,6 +1,9 @@
+mod id;
+
 use config::Rule;
 use error::MatcherError;
 use extractor::{MatcherExtractor, MatcherExtractorBuilder};
+use matcher::id::IdValidator;
 use operator;
 use std::collections::HashMap;
 use tornado_common_api::Event;
@@ -35,6 +38,7 @@ impl Matcher {
     pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
 
+        let id_validator = id::IdValidator::new();
         let operator_builder = operator::OperatorBuilder::new();
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
@@ -47,6 +51,7 @@ impl Matcher {
                 info!("Matcher build - Processing rule: [{}]", &rule.name);
                 debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
 
+                id_validator.validate_rule_name(&rule.name)?;
                 Matcher::check_unique_name(&mut rule_names, &rule.name)?;
                 Matcher::check_unique_priority(&mut rules_by_priority, &rule)?;
                 processed_rules.push(MatcherRule {
