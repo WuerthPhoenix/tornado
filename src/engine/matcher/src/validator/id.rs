@@ -3,27 +3,18 @@ use regex::Regex as RustRegex;
 
 const ID_REGEX_PATTERN: &str = "^[a-zA-Z0-9_]+$";
 
-pub trait IdValidator {
-    fn validate_rule_name(&self, rule_name: &str) -> Result<(), MatcherError>;
-    fn validate_extracted_var_name(&self, id: &str, rule_name: &str) -> Result<(), MatcherError>;
-    fn validate_payload_key(&self, id: &str, rule_name: &str) -> Result<(), MatcherError>;
-    fn validate_action_id(&self, id: &str, rule_name: &str) -> Result<(), MatcherError>;
-}
-
-impl IdValidator {
-    pub fn new() -> impl IdValidator {
-        RegexIdValidator {
-            regex: RustRegex::new(ID_REGEX_PATTERN).unwrap(),
-        }
-    }
-}
-
-struct RegexIdValidator {
+pub struct IdValidator {
     regex: RustRegex,
 }
 
-impl RegexIdValidator {
-    fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
+impl IdValidator {
+    pub fn new() -> IdValidator {
+        IdValidator {
+            regex: RustRegex::new(ID_REGEX_PATTERN).unwrap(),
+        }
+    }
+
+    pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
             return Err(MatcherError::NotValidIdOrNameError {
                 message: error_message,
@@ -31,10 +22,8 @@ impl RegexIdValidator {
         }
         Ok(())
     }
-}
 
-impl IdValidator for RegexIdValidator {
-    fn validate_rule_name(&self, rule_name: &str) -> Result<(), MatcherError> {
+    pub fn validate_rule_name(&self, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Rule name [{}] is not valid. It should respect the pattern {}",
             rule_name, ID_REGEX_PATTERN
@@ -42,7 +31,7 @@ impl IdValidator for RegexIdValidator {
         self.validate(rule_name, error_message)
     }
 
-    fn validate_extracted_var_name(
+    pub fn validate_extracted_var_name(
         &self,
         var_name: &str,
         rule_name: &str,
@@ -54,15 +43,19 @@ impl IdValidator for RegexIdValidator {
         self.validate(var_name, error_message)
     }
 
-    fn validate_payload_key(&self, payload_key: &str, rule_name: &str) -> Result<(), MatcherError> {
+    pub fn validate_payload_key(
+        &self,
+        payload_key: &str,
+        full_accessor: &str,
+    ) -> Result<(), MatcherError> {
         let error_message = format!(
-            "Payload key [{}] for rule [{}] is not valid. It should respect the pattern {}",
-            payload_key, rule_name, ID_REGEX_PATTERN
+            "Payload key [{}] from accessor [{}] is not valid. It should respect the pattern {}",
+            payload_key, full_accessor, ID_REGEX_PATTERN
         );
         self.validate(payload_key, error_message)
     }
 
-    fn validate_action_id(&self, action_id: &str, rule_name: &str) -> Result<(), MatcherError> {
+    pub fn validate_action_id(&self, action_id: &str, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Action id [{}] for rule [{}] is not valid. It should respect the pattern {}",
             action_id, rule_name, ID_REGEX_PATTERN

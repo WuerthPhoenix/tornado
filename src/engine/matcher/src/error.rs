@@ -50,9 +50,6 @@ pub enum MatcherError {
     )]
     UnknownAccessorError { accessor: String },
 
-    #[fail(display = "AccessorWrongPayloadKeyError: [{}]", payload_key)]
-    AccessorWrongPayloadKeyError { payload_key: String },
-
     #[fail(display = "JsonDeserializationError: [{}]", message)]
     JsonDeserializationError { message: String },
 

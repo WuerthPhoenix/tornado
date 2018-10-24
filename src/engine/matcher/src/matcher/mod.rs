@@ -1,12 +1,10 @@
-mod id;
-
 use config::Rule;
 use error::MatcherError;
 use extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use matcher::id::IdValidator;
 use operator;
 use std::collections::HashMap;
 use tornado_common_api::Event;
+use validator::RuleValidator;
 
 /// Matcher's internal Rule representation.
 /// It contains the operators and executors built from the config::Rule
@@ -38,22 +36,17 @@ impl Matcher {
     pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
 
-        let id_validator = id::IdValidator::new();
+        RuleValidator::new().validate_all(rules)?;
+
         let operator_builder = operator::OperatorBuilder::new();
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
-
-        let mut rule_names = vec![];
-        let mut rules_by_priority = HashMap::new();
 
         for rule in rules {
             if rule.active {
                 info!("Matcher build - Processing rule: [{}]", &rule.name);
                 debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
 
-                id_validator.validate_rule_name(&rule.name)?;
-                Matcher::check_unique_name(&mut rule_names, &rule.name)?;
-                Matcher::check_unique_priority(&mut rules_by_priority, &rule)?;
                 processed_rules.push(MatcherRule {
                     name: rule.name.to_owned(),
                     priority: rule.priority,
@@ -72,38 +65,6 @@ impl Matcher {
         Ok(Matcher {
             rules: processed_rules,
         })
-    }
-
-    fn check_unique_name(rule_names: &mut Vec<String>, name: &str) -> Result<(), MatcherError> {
-        let name_string = name.to_owned();
-        debug!(
-            "Matcher build - Matching uniqueness of name for rule: [{}]",
-            &name_string
-        );
-        if rule_names.contains(&name_string) {
-            return Err(MatcherError::NotUniqueRuleNameError { name: name_string });
-        }
-        rule_names.push(name_string);
-        Ok(())
-    }
-
-    fn check_unique_priority(
-        rules_by_priority: &mut HashMap<u16, String>,
-        rule: &Rule,
-    ) -> Result<(), MatcherError> {
-        debug!(
-            "Matcher build - Matching uniqueness of priority for rule: [{}] with priority [{}]",
-            &rule.name, &rule.priority
-        );
-        if rules_by_priority.contains_key(&rule.priority) {
-            return Err(MatcherError::NotUniqueRulePriorityError {
-                first_rule_name: rules_by_priority[&rule.priority].to_owned(),
-                second_rule_name: rule.name.to_owned(),
-                priority: rule.priority,
-            });
-        }
-        rules_by_priority.insert(rule.priority, rule.name.to_owned());
-        Ok(())
     }
 
     /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
@@ -156,7 +117,7 @@ mod test {
     fn should_build_the_matcher() {
         // Arrange
         let rule = new_rule(
-            "rule name",
+            "rule_name",
             0,
             Operator::Equal {
                 first: "1".to_owned(),
@@ -169,7 +130,7 @@ mod test {
 
         // Assert
         assert_eq!(1, matcher.rules.len());
-        assert_eq!("rule name", matcher.rules[0].name);
+        assert_eq!("rule_name", matcher.rules[0].name);
     }
 
     #[test]

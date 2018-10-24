@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use tornado_common_api::Event;
 
 /// MatcherExtractor instance builder.
-#[derive(Default)]
 pub struct MatcherExtractorBuilder {
     accessor: AccessorBuilder,
 }
