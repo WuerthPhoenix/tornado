@@ -20,6 +20,7 @@ pub trait Operator: fmt::Debug {
 }
 
 /// Operator instance builder.
+#[derive(Default)]
 pub struct OperatorBuilder {
     accessor: AccessorBuilder,
 }

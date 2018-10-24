@@ -4,6 +4,8 @@ use config::Rule;
 use error::MatcherError;
 use std::collections::HashMap;
 
+/// A validator for a Rule or array of Rules
+#[derive(Default)]
 pub struct RuleValidator {
     id: id::IdValidator,
 }
@@ -15,6 +17,10 @@ impl RuleValidator {
         }
     }
 
+    /// Validates that a rule:
+    /// - has a valid name
+    /// - has valid extracted variable names
+    /// - has valid action ids
     pub fn validate(&self, rule: &Rule) -> Result<(), MatcherError> {
         let rule_name = &rule.name;
 
@@ -32,6 +38,9 @@ impl RuleValidator {
         Ok(())
     }
 
+    /// Validates a set of Rules.
+    /// In addition to the checks performed by the validate(rule) method,
+    /// it validates that rule names and rule priorities are unique.
     pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
         info!("RuleValidator validate_all - validate all rules");
 
@@ -130,7 +139,7 @@ mod test {
         );
 
         // Act
-        let result = RuleValidator::new().validate_all(&vec![rule_1,rule_2]);
+        let result = RuleValidator::new().validate_all(&vec![rule_1, rule_2]);
 
         // Assert
         assert!(result.is_ok());
@@ -229,13 +238,16 @@ mod test {
         };
         let mut rule_1 = new_rule("rule_name", 0, op.clone());
 
-        rule_1.constraint.with.insert("var.with.dot".to_owned(), Extractor {
-            from: String::from("${event.type}"),
-            regex: ExtractorRegex {
-                regex: String::from(r"[0-9]+"),
-                group_match_idx: 0,
+        rule_1.constraint.with.insert(
+            "var.with.dot".to_owned(),
+            Extractor {
+                from: String::from("${event.type}"),
+                regex: ExtractorRegex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: 0,
+                },
             },
-        });
+        );
 
         // Act
         let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
@@ -253,12 +265,10 @@ mod test {
         };
         let mut rule_1 = new_rule("rule_name", 0, op.clone());
 
-        rule_1.actions.push(
-            Action{
-                id: "id.with.dot.and.question.mark?".to_owned(),
-                payload: HashMap::new()
-            }
-        );
+        rule_1.actions.push(Action {
+            id: "id.with.dot.and.question.mark?".to_owned(),
+            payload: HashMap::new(),
+        });
 
         // Act
         let matcher = RuleValidator::new().validate_all(&vec![rule_1]);

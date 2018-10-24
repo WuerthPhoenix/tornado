@@ -3,8 +3,16 @@ use regex::Regex as RustRegex;
 
 const ID_REGEX_PATTERN: &str = "^[a-zA-Z0-9_]+$";
 
+/// A validator for name and id.
+/// It validates that a string is composed only of alphabetical characters, numbers and the _
 pub struct IdValidator {
     regex: RustRegex,
+}
+
+impl Default for IdValidator {
+    fn default() -> Self {
+        IdValidator::new()
+    }
 }
 
 impl IdValidator {
@@ -14,6 +22,7 @@ impl IdValidator {
         }
     }
 
+    /// Validates a generic id or name
     pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
             return Err(MatcherError::NotValidIdOrNameError {
@@ -23,6 +32,7 @@ impl IdValidator {
         Ok(())
     }
 
+    /// Validates a rule name
     pub fn validate_rule_name(&self, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Rule name [{}] is not valid. It should respect the pattern {}",
@@ -31,6 +41,7 @@ impl IdValidator {
         self.validate(rule_name, error_message)
     }
 
+    /// Validates an extracted variable name
     pub fn validate_extracted_var_name(
         &self,
         var_name: &str,
@@ -43,6 +54,7 @@ impl IdValidator {
         self.validate(var_name, error_message)
     }
 
+    /// Validates a payload key
     pub fn validate_payload_key(
         &self,
         payload_key: &str,
@@ -55,6 +67,7 @@ impl IdValidator {
         self.validate(payload_key, error_message)
     }
 
+    /// Validates an action id
     pub fn validate_action_id(&self, action_id: &str, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Action id [{}] for rule [{}] is not valid. It should respect the pattern {}",

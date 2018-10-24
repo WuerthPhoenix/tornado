@@ -3,6 +3,7 @@ use std::borrow::Cow;
 use tornado_common_api::Event;
 use validator::id::IdValidator;
 
+#[derive(Default)]
 pub struct AccessorBuilder {
     id_validator: IdValidator,
     start_delimiter: &'static str,
