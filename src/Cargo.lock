@@ -278,6 +278,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_network_common"
+version = "0.0.1"
+dependencies = [
+ "tornado_common_api 0.0.1",
+]
+
+[[package]]
+name = "tornado_network_simple"
+version = "0.0.1"
+dependencies = [
+ "tornado_common_api 0.0.1",
+ "tornado_network_common 0.0.1",
+]
+
+[[package]]
 name = "ucd-util"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
