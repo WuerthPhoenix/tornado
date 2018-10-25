@@ -17,6 +17,6 @@ pub struct Event {
 /// It is produced by the Tornado Engine and sent to the Executors to be resolved.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
-    id: String,
-    payload: HashMap<String, String>,
+    pub id: String,
+    pub payload: HashMap<String, String>,
 }

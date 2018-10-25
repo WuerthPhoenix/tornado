@@ -1,9 +1,11 @@
 use error::MatcherError;
 use std::borrow::Cow;
 use tornado_common_api::Event;
+use validator::id::IdValidator;
 
 #[derive(Default)]
 pub struct AccessorBuilder {
+    id_validator: IdValidator,
     start_delimiter: &'static str,
     end_delimiter: &'static str,
 }
@@ -16,6 +18,7 @@ const EVENT_PAYLOAD_SUFFIX: &str = "event.payload.";
 impl AccessorBuilder {
     pub fn new() -> AccessorBuilder {
         AccessorBuilder {
+            id_validator: IdValidator::new(),
             start_delimiter: "${",
             end_delimiter: "}",
         }
@@ -43,12 +46,8 @@ impl AccessorBuilder {
                     EVENT_TYPE_KEY => Ok(Accessor::Type {}),
                     EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
-                        let key = &val[EVENT_PAYLOAD_SUFFIX.len()..];
-                        if key.is_empty() {
-                            return Err(MatcherError::AccessorWrongPayloadKeyError {
-                                payload_key: path.to_owned(),
-                            });
-                        }
+                        let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
+                        self.id_validator.validate_payload_key(key, value)?;
                         Ok(Accessor::Payload {
                             key: key.to_owned(),
                         })
@@ -295,7 +294,7 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_error_if_wrong_payload() {
+    fn builder_should_return_error_if_empty_payload() {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.}";
 
@@ -304,8 +303,25 @@ mod test {
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
-            MatcherError::AccessorWrongPayloadKeyError { payload_key } => {
-                assert_eq!("event.payload.".to_owned(), payload_key)
+            MatcherError::NotValidIdOrNameError { message } => {
+                assert!(message.contains("${event.payload.}"));
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn builder_should_return_error_if_wrong_payload() {
+        let builder = AccessorBuilder::new();
+        let value = "${event.payload.not.valid}";
+
+        let accessor = builder.build(value);
+
+        assert!(&accessor.is_err());
+
+        match accessor.err().unwrap() {
+            MatcherError::NotValidIdOrNameError { message } => {
+                assert!(message.contains("${event.payload.not.valid}"));
             }
             _ => assert!(false),
         };

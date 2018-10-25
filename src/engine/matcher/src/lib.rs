@@ -18,6 +18,7 @@ pub mod error;
 pub mod extractor;
 pub mod matcher;
 pub mod operator;
+pub mod validator;
 
 #[cfg(test)]
 extern crate chrono;
