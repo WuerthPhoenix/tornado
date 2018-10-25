@@ -70,7 +70,7 @@ impl OperatorBuilder {
                 Ok(Box::new(operator::or::Or::build("", &operators, self)?))
             }
             config::Operator::Regex { regex, target } => Ok(Box::new(
-                operator::regex::Regex::build(regex, self.accessor.build(rule_name,target)?)?,
+                operator::regex::Regex::build(regex, self.accessor.build(rule_name, target)?)?,
             )),
         };
 

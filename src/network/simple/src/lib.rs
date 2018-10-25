@@ -20,8 +20,9 @@ impl SimpleEventBus {
 
 impl EventBus for SimpleEventBus {
     fn publish_action(&self, message: Action) {
-        if let Some(handler) = self.subscribers
-            .get(&message.id) { handler(message) };
+        if let Some(handler) = self.subscribers.get(&message.id) {
+            handler(message)
+        };
     }
 
     fn subscribe_to_action(&mut self, action_id: &str, handler: Box<Fn(Action) -> ()>) {

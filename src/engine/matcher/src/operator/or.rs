@@ -12,7 +12,11 @@ pub struct Or {
 }
 
 impl Or {
-    pub fn build(rule_name: &str, args: &[config::Operator], builder: &OperatorBuilder) -> Result<Or, MatcherError> {
+    pub fn build(
+        rule_name: &str,
+        args: &[config::Operator],
+        builder: &OperatorBuilder,
+    ) -> Result<Or, MatcherError> {
         let mut operators = vec![];
         for entry in args {
             let operator = builder.build(rule_name, &entry)?;

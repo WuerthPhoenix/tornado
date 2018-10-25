@@ -67,7 +67,10 @@ mod test {
         };
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap());
+        assert_eq!(
+            "two",
+            operator.target.get(&ProcessedEvent::new(event)).unwrap()
+        );
     }
 
     #[test]

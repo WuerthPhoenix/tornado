@@ -178,13 +178,15 @@ mod test {
 
     #[test]
     fn should_build_an_extractor() {
-        let extractor = VariableExtractor::build("", 0, AccessorBuilder::new().build("", "").unwrap());
+        let extractor =
+            VariableExtractor::build("", 0, AccessorBuilder::new().build("", "").unwrap());
         assert!(extractor.is_ok());
     }
 
     #[test]
     fn build_should_fail_if_not_valid_regex() {
-        let extractor = VariableExtractor::build("[", 0, AccessorBuilder::new().build("", "").unwrap());
+        let extractor =
+            VariableExtractor::build("[", 0, AccessorBuilder::new().build("", "").unwrap());
         assert!(extractor.is_err());
     }
 
@@ -287,7 +289,9 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new()
+            .build("", &from_config)
+            .unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -316,7 +320,9 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new()
+            .build("", &from_config)
+            .unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -349,7 +355,9 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new()
+            .build("", &from_config)
+            .unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -386,7 +394,9 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new()
+            .build("", &from_config)
+            .unwrap();
 
         let event = new_event("temp=44'C");
 

@@ -8,7 +8,7 @@ pub enum MatcherError {
     ExtractorBuildFailError { message: String, cause: String },
 
     #[fail(
-        display = "MissingExtractedVariableError: Extractor cannot extract variable [{}].",
+        display = "MissingExtractedVariableError: Cannot extract variable [{}].",
         variable_name
     )]
     MissingExtractedVariableError { variable_name: String },
@@ -73,4 +73,16 @@ pub enum MatcherError {
 
     #[fail(display = "NotValidIdOrNameError: {}", message)]
     NotValidIdOrNameError { message: String },
+
+    #[fail(
+        display = "CreateActionError: Cannot create action [{}] for rule [{}]\n cause: [{}]",
+        action_id,
+        rule_name,
+        cause
+    )]
+    CreateActionError {
+        action_id: String,
+        rule_name: String,
+        cause: String,
+    },
 }

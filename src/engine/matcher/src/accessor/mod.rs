@@ -34,8 +34,7 @@ impl AccessorBuilder {
     pub fn build(&self, rule_name: &str, value: &str) -> Result<Accessor, MatcherError> {
         info!(
             "AccessorBuilder - build: build accessor [{}] for rule [{}]",
-            value,
-            rule_name
+            value, rule_name
         );
         let result = match value.trim() {
             value
@@ -49,14 +48,16 @@ impl AccessorBuilder {
                     EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        self.id_validator.validate_payload_key(key, value, rule_name)?;
+                        self.id_validator
+                            .validate_payload_key(key, value, rule_name)?;
                         Ok(Accessor::Payload {
                             key: key.to_owned(),
                         })
-                    },
+                    }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
-                        self.id_validator.validate_extracted_var_from_accessor(key, value, rule_name)?;
+                        self.id_validator
+                            .validate_extracted_var_from_accessor(key, value, rule_name)?;
                         Ok(Accessor::ExtractedVar {
                             rule_name: rule_name.to_owned(),
                             key: key.to_owned(),
@@ -103,8 +104,12 @@ impl Accessor {
             Accessor::ExtractedVar { rule_name, key } => {
                 let vars = event.matched.get(rule_name.as_str())?;
                 vars.get(key.as_str()).map(|value| value.as_str().into())
-            },
-            Accessor::Payload { key } => event.event.payload.get(key).map(|value| value.as_str().into()),
+            }
+            Accessor::Payload { key } => event
+                .event
+                .payload
+                .get(key)
+                .map(|value| value.as_str().into()),
             Accessor::Type {} => Some((&event.event.event_type).into()),
         }
     }
@@ -280,7 +285,6 @@ mod test {
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("body2", result);
-
     }
 
     #[test]
@@ -299,7 +303,6 @@ mod test {
         let result = accessor.get(&event);
 
         assert!(result.is_none());
-
     }
 
     #[test]
@@ -320,7 +323,6 @@ mod test {
         let result = accessor.get(&event);
 
         assert!(result.is_none());
-
     }
 
     #[test]

@@ -9,11 +9,11 @@ pub struct ProcessedEvent<'o> {
     pub matched: HashMap<&'o str, HashMap<&'o str, String>>,
 }
 
-impl <'o> ProcessedEvent<'o> {
+impl<'o> ProcessedEvent<'o> {
     pub fn new(event: Event) -> ProcessedEvent<'o> {
-        ProcessedEvent{
+        ProcessedEvent {
             event,
-            matched: HashMap::new()
+            matched: HashMap::new(),
         }
     }
 }
