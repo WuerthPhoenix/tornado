@@ -32,7 +32,7 @@ impl Operator for Regex {
     fn evaluate(&self, event: &Event) -> bool {
         self.target
             .get(event)
-            .map_or(false, |value| self.regex.is_match(value.as_str()))
+            .map_or(false, |value| self.regex.is_match(&value))
     }
 }
 
@@ -65,8 +65,8 @@ mod test {
             created_ts: 0,
         };
 
-        assert_eq!("one".to_string(), operator.regex.to_string());
-        assert_eq!("two".to_string(), operator.target.get(&event).unwrap());
+        assert_eq!("one", operator.regex.to_string());
+        assert_eq!("two", operator.target.get(&event).unwrap());
     }
 
     #[test]

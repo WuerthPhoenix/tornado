@@ -55,7 +55,7 @@ impl OperatorBuilder {
         &self,
         config: &config::Operator,
     ) -> Result<Box<operator::Operator>, MatcherError> {
-        match config {
+        let result: Result<Box<operator::Operator>, MatcherError> = match config {
             config::Operator::Equal { first, second } => {
                 Ok(Box::new(operator::equal::Equal::build(
                     self.accessor.build(first)?,
@@ -71,7 +71,13 @@ impl OperatorBuilder {
             config::Operator::Regex { regex, target } => Ok(Box::new(
                 operator::regex::Regex::build(regex, self.accessor.build(target)?)?,
             )),
-        }
+        };
+
+        info!(
+            "OperatorBuilder - build: return operator [{:?}] for input value [{:?}]",
+            &result, config
+        );
+        result
     }
 }
 

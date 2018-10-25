@@ -17,4 +17,5 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
 chrono = "0.4"
+lazy_static = "1.0"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }

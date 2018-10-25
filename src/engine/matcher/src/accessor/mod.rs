@@ -1,4 +1,5 @@
 use error::MatcherError;
+use std::borrow::Cow;
 use tornado_common_api::Event;
 
 #[derive(Default)]
@@ -27,7 +28,11 @@ impl AccessorBuilder {
     /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
     /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
     pub fn build(&self, value: &str) -> Result<Accessor, MatcherError> {
-        match value.trim() {
+        info!(
+            "AccessorBuilder - build: build accessor for value [{}]",
+            value
+        );
+        let result = match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
                     && value.ends_with(self.end_delimiter) =>
@@ -56,7 +61,13 @@ impl AccessorBuilder {
             value => Ok(Accessor::Constant {
                 value: value.to_owned(),
             }),
-        }
+        };
+
+        info!(
+            "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
+            &result, value
+        );
+        result
     }
 }
 
@@ -75,12 +86,12 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get(&self, event: &Event) -> Option<String> {
+    pub fn get<'o>(&'o self, event: &'o Event) -> Option<Cow<'o, str>> {
         match &self {
-            Accessor::Constant { value } => Some(value.to_owned()),
-            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts)),
-            Accessor::Payload { key } => event.payload.get(key).cloned(),
-            Accessor::Type {} => Some(event.event_type.to_owned()),
+            Accessor::Constant { value } => Some(value.into()),
+            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts).into()),
+            Accessor::Payload { key } => event.payload.get(key).map(|value| value.as_str().into()),
+            Accessor::Type {} => Some((&event.event_type).into()),
         }
     }
 }
@@ -98,26 +109,40 @@ mod test {
             value: "constant_value".to_owned(),
         };
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!("constant_value".to_owned(), result.unwrap());
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!("constant_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false),
+        }
     }
 
     #[test]
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!("event_type_string".to_owned(), result.unwrap());
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!("event_type_string", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -127,13 +152,20 @@ mod test {
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        });
+        };
 
-        assert_eq!(format!("{}", created_ts), result.unwrap());
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!(format!("{}", created_ts).as_str(), result);
+
+        match result {
+            Cow::Owned(_) => assert!(true),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -146,13 +178,19 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!("body_value".to_owned(), result.unwrap());
+        assert_eq!("body_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -165,11 +203,12 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event);
 
         assert!(result.is_none());
     }
@@ -230,13 +269,14 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let result = accessor.get(&Event {
+        let event = Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        });
+        };
+        let result = accessor.get(&event);
 
-        assert_eq!("body_value".to_owned(), result.unwrap());
+        assert_eq!("body_value", result.unwrap());
     }
 
     #[test]
@@ -257,9 +297,9 @@ mod test {
     #[test]
     fn builder_should_return_error_if_wrong_payload() {
         let builder = AccessorBuilder::new();
-        let value = "${event.payload.}".to_owned();
+        let value = "${event.payload.}";
 
-        let accessor = builder.build(&value);
+        let accessor = builder.build(value);
 
         assert!(&accessor.is_err());
 
@@ -270,4 +310,5 @@ mod test {
             _ => assert!(false),
         };
     }
+
 }
