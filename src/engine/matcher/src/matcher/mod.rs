@@ -1,8 +1,8 @@
 use config::Rule;
 use error::MatcherError;
 use extractor::{MatcherExtractor, MatcherExtractorBuilder};
+use model::ProcessedEvent;
 use operator;
-use std::collections::HashMap;
 use tornado_common_api::Event;
 use validator::RuleValidator;
 
@@ -14,14 +14,6 @@ struct MatcherRule {
     do_continue: bool,
     operator: Box<operator::Operator>,
     extractor: MatcherExtractor,
-}
-
-/// The ProcessedEvent is the result of the matcher process.
-/// It contains the original Event along with the result of the matching operation.
-#[derive(Debug, Clone)]
-pub struct ProcessedEvent<'o> {
-    pub event: Event,
-    pub matched: HashMap<&'o str, HashMap<&'o str, String>>,
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -51,8 +43,8 @@ impl Matcher {
                     name: rule.name.to_owned(),
                     priority: rule.priority,
                     do_continue: rule.do_continue,
-                    operator: operator_builder.build(&rule.constraint.where_operator)?,
-                    extractor: extractor_builder.build(&rule.constraint.with)?,
+                    operator: operator_builder.build(&rule.name, &rule.constraint.where_operator)?,
+                    extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
                 })
             }
         }
@@ -72,19 +64,16 @@ impl Matcher {
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);
 
-        let mut processed_event = ProcessedEvent {
-            event,
-            matched: HashMap::new(),
-        };
+        let mut processed_event = ProcessedEvent::new(event);
 
         for rule in &self.rules {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
-            if rule.operator.evaluate(&processed_event.event) {
+            if rule.operator.evaluate(&processed_event) {
                 trace!(
                     "Matcher process - event matches rule: [{}]. Checking extracted variables.",
                     &rule.name
                 );
-                match rule.extractor.extract_all(&processed_event.event) {
+                match rule.extractor.extract_all(&processed_event) {
                     Ok(vars) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
                         processed_event.matched.insert(rule.name.as_str(), vars);

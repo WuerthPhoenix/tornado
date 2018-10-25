@@ -1,6 +1,6 @@
 use error::MatcherError;
+use model::ProcessedEvent;
 use std::borrow::Cow;
-use tornado_common_api::Event;
 use validator::id::IdValidator;
 
 #[derive(Default)]
@@ -13,6 +13,7 @@ pub struct AccessorBuilder {
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload.";
+const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -30,10 +31,11 @@ impl AccessorBuilder {
     /// - "${event.created_ts}" -> returns an instance of Accessor::CreatedTs
     /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
     /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
-    pub fn build(&self, value: &str) -> Result<Accessor, MatcherError> {
+    pub fn build(&self, rule_name: &str, value: &str) -> Result<Accessor, MatcherError> {
         info!(
-            "AccessorBuilder - build: build accessor for value [{}]",
-            value
+            "AccessorBuilder - build: build accessor [{}] for rule [{}]",
+            value,
+            rule_name
         );
         let result = match value.trim() {
             value
@@ -47,8 +49,16 @@ impl AccessorBuilder {
                     EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        self.id_validator.validate_payload_key(key, value)?;
+                        self.id_validator.validate_payload_key(key, value, rule_name)?;
                         Ok(Accessor::Payload {
+                            key: key.to_owned(),
+                        })
+                    },
+                    val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
+                        let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
+                        self.id_validator.validate_extracted_var_from_accessor(key, value, rule_name)?;
+                        Ok(Accessor::ExtractedVar {
+                            rule_name: rule_name.to_owned(),
                             key: key.to_owned(),
                         })
                     }
@@ -79,18 +89,23 @@ impl AccessorBuilder {
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: String },
-    Type {},
     CreatedTs {},
+    ExtractedVar { rule_name: String, key: String },
     Payload { key: String },
+    Type {},
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o Event) -> Option<Cow<'o, str>> {
+    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, str>> {
         match &self {
             Accessor::Constant { value } => Some(value.into()),
-            Accessor::CreatedTs {} => Some(format!("{}", event.created_ts).into()),
-            Accessor::Payload { key } => event.payload.get(key).map(|value| value.as_str().into()),
-            Accessor::Type {} => Some((&event.event_type).into()),
+            Accessor::CreatedTs {} => Some(format!("{}", event.event.created_ts).into()),
+            Accessor::ExtractedVar { rule_name, key } => {
+                let vars = event.matched.get(rule_name.as_str())?;
+                vars.get(key.as_str()).map(|value| value.as_str().into())
+            },
+            Accessor::Payload { key } => event.event.payload.get(key).map(|value| value.as_str().into()),
+            Accessor::Type {} => Some((&event.event.event_type).into()),
         }
     }
 }
@@ -101,6 +116,7 @@ mod test {
     use super::*;
     use chrono::prelude::Local;
     use std::collections::HashMap;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_return_a_constant_value() {
@@ -108,11 +124,11 @@ mod test {
             value: "constant_value".to_owned(),
         };
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        };
+        });
 
         let result = accessor.get(&event).unwrap();
 
@@ -128,11 +144,11 @@ mod test {
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        };
+        });
 
         let result = accessor.get(&event).unwrap();
 
@@ -151,11 +167,11 @@ mod test {
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts,
             event_type: "event_type_string".to_owned(),
             payload: HashMap::new(),
-        };
+        });
 
         let result = accessor.get(&event).unwrap();
 
@@ -177,11 +193,11 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        };
+        });
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("body_value", result);
@@ -202,14 +218,109 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        };
+        });
         let result = accessor.get(&event);
 
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn should_return_value_from_extracted_var() {
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            key: "body".to_owned(),
+        };
+
+        let mut event = ProcessedEvent::new(Event {
+            created_ts: 0,
+            event_type: "event_type_string".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        let mut vars = HashMap::new();
+        vars.insert("body", "body_value".to_owned());
+        vars.insert("subject", "subject_value".to_owned());
+        event.matched.insert("rule1", vars);
+
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!("body_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_return_value_from_current_rule() {
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule2".to_owned(),
+            key: "body".to_owned(),
+        };
+
+        let mut event = ProcessedEvent::new(Event {
+            created_ts: 0,
+            event_type: "event_type_string".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        let mut vars1 = HashMap::new();
+        vars1.insert("body", "body1".to_owned());
+        event.matched.insert("rule1", vars1);
+
+        let mut vars2 = HashMap::new();
+        vars2.insert("body", "body2".to_owned());
+        event.matched.insert("rule2", vars2);
+
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!("body2", result);
+
+    }
+
+    #[test]
+    fn should_return_none_if_no_rule() {
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            key: "body".to_owned(),
+        };
+
+        let event = ProcessedEvent::new(Event {
+            created_ts: 0,
+            event_type: "event_type_string".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        let result = accessor.get(&event);
+
+        assert!(result.is_none());
+
+    }
+
+    #[test]
+    fn should_return_none_if_no_extracted_var() {
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            key: "body".to_owned(),
+        };
+
+        let mut event = ProcessedEvent::new(Event {
+            created_ts: 0,
+            event_type: "event_type_string".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        event.matched.insert("rule1", HashMap::new());
+
+        let result = accessor.get(&event);
+
+        assert!(result.is_none());
+
     }
 
     #[test]
@@ -217,7 +328,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "constant_value".to_owned();
 
-        let accessor = builder.build(&value).unwrap();
+        let accessor = builder.build("", &value).unwrap();
 
         assert_eq!(Accessor::Constant { value }, accessor)
     }
@@ -227,7 +338,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.type}".to_owned();
 
-        let accessor = builder.build(&value).unwrap();
+        let accessor = builder.build("", &value).unwrap();
 
         assert_eq!(Accessor::Type {}, accessor)
     }
@@ -237,7 +348,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.created_ts}".to_owned();
 
-        let accessor = builder.build(&value).unwrap();
+        let accessor = builder.build("", &value).unwrap();
 
         assert_eq!(Accessor::CreatedTs {}, accessor)
     }
@@ -247,10 +358,26 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.key}".to_owned();
 
-        let accessor = builder.build(&value).unwrap();
+        let accessor = builder.build("", &value).unwrap();
 
         assert_eq!(
             Accessor::Payload {
+                key: "key".to_owned()
+            },
+            accessor
+        )
+    }
+
+    #[test]
+    fn builder_should_return_current_rule_extracted_var_accessor() {
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.key}".to_owned();
+
+        let accessor = builder.build("current_rule_name", &value).unwrap();
+
+        assert_eq!(
+            Accessor::ExtractedVar {
+                rule_name: "current_rule_name".to_string(),
                 key: "key".to_owned()
             },
             accessor
@@ -262,17 +389,17 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.body}".to_owned();
 
-        let accessor = builder.build(&value).unwrap();
+        let accessor = builder.build("", &value).unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = Event {
+        let event = ProcessedEvent::new(Event {
             created_ts: 0,
             event_type: "event_type_string".to_owned(),
             payload,
-        };
+        });
         let result = accessor.get(&event);
 
         assert_eq!("body_value", result.unwrap());
@@ -283,7 +410,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.types}".to_owned();
 
-        let accessor = builder.build(&value);
+        let accessor = builder.build("", &value);
 
         assert!(&accessor.is_err());
 
@@ -298,7 +425,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.}";
 
-        let accessor = builder.build(value);
+        let accessor = builder.build("", value);
 
         assert!(&accessor.is_err());
 
@@ -315,13 +442,30 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.not.valid}";
 
-        let accessor = builder.build(value);
+        let accessor = builder.build("", value);
 
         assert!(&accessor.is_err());
 
         match accessor.err().unwrap() {
             MatcherError::NotValidIdOrNameError { message } => {
                 assert!(message.contains("${event.payload.not.valid}"));
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn builder_should_return_error_if_wrong_extracted_var_name() {
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.not.valid}";
+
+        let accessor = builder.build("", value);
+
+        assert!(&accessor.is_err());
+
+        match accessor.err().unwrap() {
+            MatcherError::NotValidIdOrNameError { message } => {
+                assert!(message.contains("${_variables.not.valid}"));
             }
             _ => assert!(false),
         };

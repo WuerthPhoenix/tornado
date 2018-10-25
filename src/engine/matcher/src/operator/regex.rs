@@ -1,8 +1,8 @@
 use accessor::Accessor;
 use error::MatcherError;
+use model::ProcessedEvent;
 use operator::Operator;
 use regex::Regex as RustRegex;
-use tornado_common_api::Event;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -29,7 +29,7 @@ impl Operator for Regex {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &Event) -> bool {
+    fn evaluate(&self, event: &ProcessedEvent) -> bool {
         self.target
             .get(event)
             .map_or(false, |value| self.regex.is_match(&value))
@@ -42,12 +42,13 @@ mod test {
     use super::*;
     use accessor::AccessorBuilder;
     use std::collections::HashMap;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_return_the_operator_name() {
         let operator = Regex {
             regex: RustRegex::new("").unwrap(),
-            target: AccessorBuilder::new().build(&"".to_owned()).unwrap(),
+            target: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
         };
         assert_eq!(OPERATOR_NAME, operator.name());
     }
@@ -56,7 +57,7 @@ mod test {
     fn should_build_the_operator_with_expected_arguments() {
         let operator = Regex::build(
             &"one".to_owned(),
-            AccessorBuilder::new().build(&"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
         let event = Event {
@@ -66,14 +67,14 @@ mod test {
         };
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!("two", operator.target.get(&event).unwrap());
+        assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap());
     }
 
     #[test]
     fn build_should_fail_if_invalid_regex() {
         let operator = Regex::build(
             &"[".to_owned(),
-            AccessorBuilder::new().build(&"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         );
         assert!(operator.is_err());
     }
@@ -82,7 +83,7 @@ mod test {
     fn should_evaluate_to_true_if_it_matches_the_regex() {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
-            AccessorBuilder::new().build(&"f".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"f".to_owned()).unwrap(),
         ).unwrap();
 
         let event = Event {
@@ -91,7 +92,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(operator.evaluate(&event));
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
 
     #[test]
@@ -99,7 +100,7 @@ mod test {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new()
-                .build(&"${event.payload.name1}".to_owned())
+                .build("", &"${event.payload.name1}".to_owned())
                 .unwrap(),
         ).unwrap();
 
@@ -113,7 +114,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(operator.evaluate(&event));
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
 
     #[test]
@@ -121,7 +122,7 @@ mod test {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new()
-                .build(&"${event.payload.name2}".to_owned())
+                .build("", &"${event.payload.name2}".to_owned())
                 .unwrap(),
         ).unwrap();
 
@@ -135,7 +136,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!operator.evaluate(&event));
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
 
     #[test]
@@ -143,7 +144,7 @@ mod test {
         let operator = Regex::build(
             &"[^.{0}$]".to_owned(),
             AccessorBuilder::new()
-                .build(&"${event.payload.name}".to_owned())
+                .build("", &"${event.payload.name}".to_owned())
                 .unwrap(),
         ).unwrap();
 
@@ -153,7 +154,7 @@ mod test {
             created_ts: 0,
         };
 
-        assert!(!operator.evaluate(&event));
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
 
 }

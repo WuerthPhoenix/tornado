@@ -1,9 +1,9 @@
 use accessor::{Accessor, AccessorBuilder};
 use config::Extractor;
 use error::MatcherError;
+use model::ProcessedEvent;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
-use tornado_common_api::Event;
 
 /// MatcherExtractor instance builder.
 #[derive(Default)]
@@ -31,6 +31,7 @@ impl MatcherExtractorBuilder {
     ///    use tornado_common_api::Event;
     ///    use tornado_engine_matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::{Extractor, ExtractorRegex};
+    ///    use tornado_engine_matcher::model::ProcessedEvent;
     ///    use std::collections::HashMap;
     ///
     ///    let mut extractor_config = HashMap::new();
@@ -48,13 +49,13 @@ impl MatcherExtractorBuilder {
     ///
     ///    // The matcher_extractor contains the logic to create the "extracted_temp" variable from the ${event.type}.
     ///    // The value of the "extracted_temp" variable is obtained applying the regular expression "[0-9]+" to the event.type.
-    ///    let matcher_extractor = MatcherExtractorBuilder::new().build(&extractor_config).unwrap();
+    ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event = Event {
+    ///    let event = ProcessedEvent::new(Event {
     ///        payload: HashMap::new(),
     ///        event_type: "temp=44'C".to_owned(),
     ///        created_ts: 0,
-    ///    };
+    ///    });
     ///
     ///    assert_eq!(
     ///        String::from("44"),
@@ -63,6 +64,7 @@ impl MatcherExtractorBuilder {
     /// ```
     pub fn build(
         &self,
+        rule_name: &str,
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
         let mut matcher_extractor = MatcherExtractor {
@@ -74,7 +76,7 @@ impl MatcherExtractorBuilder {
                 VariableExtractor::build(
                     &v.regex.regex,
                     v.regex.group_match_idx,
-                    self.accessor.build(&v.from)?,
+                    self.accessor.build(rule_name, &v.from)?,
                 )?,
             );
         }
@@ -95,7 +97,7 @@ pub struct MatcherExtractor {
 
 impl MatcherExtractor {
     /// Returns the value of the variable with name 'key' generated from the provided Event
-    pub fn extract(&self, key: &str, event: &Event) -> Result<String, MatcherError> {
+    pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
         let extracted = self
             .extractors
             .get(key)
@@ -107,7 +109,7 @@ impl MatcherExtractor {
     /// Returns an Error if not all variables can be correctly extracted.
     pub fn extract_all<'o>(
         &'o self,
-        event: &Event,
+        event: &ProcessedEvent,
     ) -> Result<HashMap<&'o str, String>, MatcherError> {
         let mut vars = HashMap::new();
         for (key, extractor) in &self.extractors {
@@ -156,7 +158,7 @@ impl VariableExtractor {
         })
     }
 
-    pub fn extract(&self, event: &Event) -> Option<String> {
+    pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
         let value = self.target.get(event)?;
         let captures = self.regex.captures(&value)?;
         let group_idx = self.group_match_idx;
@@ -172,16 +174,17 @@ mod test {
     use accessor::AccessorBuilder;
     use config::ExtractorRegex;
     use std::collections::HashMap;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_build_an_extractor() {
-        let extractor = VariableExtractor::build("", 0, AccessorBuilder::new().build("").unwrap());
+        let extractor = VariableExtractor::build("", 0, AccessorBuilder::new().build("", "").unwrap());
         assert!(extractor.is_ok());
     }
 
     #[test]
     fn build_should_fail_if_not_valid_regex() {
-        let extractor = VariableExtractor::build("[", 0, AccessorBuilder::new().build("").unwrap());
+        let extractor = VariableExtractor::build("[", 0, AccessorBuilder::new().build("", "").unwrap());
         assert!(extractor.is_err());
     }
 
@@ -190,7 +193,7 @@ mod test {
         let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             0,
-            AccessorBuilder::new().build("${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -206,7 +209,7 @@ mod test {
         let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             1,
-            AccessorBuilder::new().build("${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -219,7 +222,7 @@ mod test {
         let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             2,
-            AccessorBuilder::new().build("${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -235,7 +238,7 @@ mod test {
         let extractor = VariableExtractor::build(
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
-            AccessorBuilder::new().build("${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
         ).unwrap();
 
         let event = new_event("http://stackoverflow.com/");
@@ -249,7 +252,7 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
             AccessorBuilder::new()
-                .build("${event.payload.body}")
+                .build("", "${event.payload.body}")
                 .unwrap(),
         ).unwrap();
 
@@ -284,7 +287,7 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -313,7 +316,7 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -346,7 +349,7 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -383,18 +386,18 @@ mod test {
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new().build(&from_config).unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
         assert!(extractor.extract_all(&event).is_err());
     }
 
-    fn new_event(event_type: &str) -> Event {
-        Event {
+    fn new_event(event_type: &str) -> ProcessedEvent {
+        ProcessedEvent::new(Event {
             payload: HashMap::new(),
             event_type: event_type.to_owned(),
             created_ts: 0,
-        }
+        })
     }
 }

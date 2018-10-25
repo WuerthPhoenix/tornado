@@ -18,6 +18,7 @@ pub mod config;
 pub mod error;
 pub mod extractor;
 pub mod matcher;
+pub mod model;
 pub mod operator;
 pub mod validator;
 
