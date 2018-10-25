@@ -6,23 +6,23 @@ use std::collections::HashMap;
 use tornado_common_api::Action;
 
 #[derive(Default)]
-pub struct DispatcherActionBuilder {
+pub struct MatcherActionBuilder {
     accessor: AccessorBuilder,
 }
 
-impl DispatcherActionBuilder {
+impl MatcherActionBuilder {
 
-    pub fn new() -> DispatcherActionBuilder {
-        DispatcherActionBuilder {
+    pub fn new() -> MatcherActionBuilder {
+        MatcherActionBuilder {
             accessor: AccessorBuilder::new(),
         }
     }
 
-    pub fn build(&self, rule_name: &str, actions: &[ConfigAction]) -> Result<Vec<DispatcherAction>, MatcherError> {
+    pub fn build(&self, rule_name: &str, actions: &[ConfigAction]) -> Result<Vec<MatcherAction>, MatcherError> {
         let mut matcher_actions = vec![];
 
         for action in actions {
-            let mut matcher_action = DispatcherAction {
+            let mut matcher_action = MatcherAction {
                 rule_name: rule_name.to_owned(),
                 id: action.id.to_owned(),
                 payload: HashMap::new()
@@ -43,13 +43,13 @@ impl DispatcherActionBuilder {
 
 }
 
-pub struct DispatcherAction {
+pub struct MatcherAction {
     rule_name: String,
     id: String,
     payload: HashMap<String, Accessor>,
 }
 
-impl DispatcherAction {
+impl MatcherAction {
 
     pub fn execute(&self, event: &ProcessedEvent) -> Result<Action, MatcherError> {
         let mut action = Action{
@@ -98,7 +98,7 @@ mod test {
         let config= vec![action];
 
         // Act
-        let actions = DispatcherActionBuilder::new().build("", &config).unwrap();
+        let actions = MatcherActionBuilder::new().build("", &config).unwrap();
 
         // Assert
         assert_eq!(1, actions.len());
@@ -127,7 +127,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config= vec![config_action];
-        let matcher_actions = DispatcherActionBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = MatcherActionBuilder::new().build(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut event = ProcessedEvent::new(

@@ -1,3 +1,4 @@
+pub mod action;
 pub mod extractor;
 pub mod operator;
 
@@ -16,6 +17,7 @@ struct MatcherRule {
     do_continue: bool,
     operator: Box<operator::Operator>,
     extractor: MatcherExtractor,
+    actions: Vec<action::MatcherAction>
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -32,6 +34,7 @@ impl Matcher {
 
         RuleValidator::new().validate_all(rules)?;
 
+        let action_builder = action::MatcherActionBuilder::new();
         let operator_builder = operator::OperatorBuilder::new();
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
@@ -48,6 +51,7 @@ impl Matcher {
                     operator: operator_builder
                         .build(&rule.name, &rule.constraint.where_operator)?,
                     extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
+                    actions: action_builder.build(&rule.name, &rule.actions)?
                 })
             }
         }
