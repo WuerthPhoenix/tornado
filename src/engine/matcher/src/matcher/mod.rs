@@ -5,9 +5,10 @@ pub mod operator;
 use config::Rule;
 use error::MatcherError;
 use matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use model::ProcessedEvent;
+use model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
 use tornado_common_api::Event;
 use validator::RuleValidator;
+use std::collections::HashMap;
 
 /// Matcher's internal Rule representation.
 /// It contains the operators and executors built from the config::Rule
@@ -75,21 +76,42 @@ impl Matcher {
 
         for rule in &self.rules {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
+
+            let mut processed_rule = ProcessedRule{
+                status: ProcessedRuleStatus::NOT_MATCHED,
+                extracted_vars: HashMap::new(),
+                actions: vec![],
+                message: None
+            };
+            processed_event.matched_new.insert(rule.name.as_str(), processed_rule);
+
             if rule.operator.evaluate(&processed_event) {
                 trace!(
                     "Matcher process - event matches rule: [{}]. Checking extracted variables.",
                     &rule.name
                 );
+
                 match rule.extractor.extract_all(&processed_event) {
                     Ok(vars) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
-                        processed_event.matched.insert(rule.name.as_str(), vars);
-                        if !rule.do_continue {
-                            break;
+
+                        match Matcher::process_actions(&processed_event, &mut processed_rule, &rule.actions ) {
+                            Ok(_) => {
+                                processed_rule.status = ProcessedRuleStatus::MATCHED;
+                                if !rule.do_continue {
+                                    break;
+                                }
+                            },
+                            Err(e) => {
+
+                            }
                         }
                     }
                     Err(e) => {
-                        warn!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
+                        let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
+                        warn!("{}", &message);
+                        processed_rule.status = ProcessedRuleStatus::PARTIALLY_MATCHED;
+                        processed_rule.message = Some(message);
                     }
                 }
             }
@@ -99,6 +121,14 @@ impl Matcher {
             &processed_event
         );
         processed_event
+    }
+
+
+    fn process_actions(processed_event: &ProcessedEvent, processed_rule: &mut ProcessedRule, actions: &[action::MatcherAction]) -> Result<(), MatcherError> {
+        for action in actions {
+            processed_rule.actions.push( action.execute(processed_event)? );
+        };
+        Ok(())
     }
 }
 
