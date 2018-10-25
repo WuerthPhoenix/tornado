@@ -1,11 +1,11 @@
 use accessor::Accessor;
 use error::MatcherError;
+use matcher::operator::Operator;
 use model::ProcessedEvent;
-use operator::Operator;
 
 const OPERATOR_NAME: &str = "equal";
 
-/// A matching operator that evaluates whether two strings are equal.
+/// A matching matcher.operator that evaluates whether two strings are equal.
 #[derive(Debug)]
 pub struct Equal {
     first_arg: Accessor,

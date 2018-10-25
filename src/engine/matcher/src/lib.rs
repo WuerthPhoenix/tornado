@@ -13,13 +13,10 @@ extern crate serde_json;
 extern crate tornado_common_api;
 
 pub mod accessor;
-pub mod action;
 pub mod config;
 pub mod error;
-pub mod extractor;
 pub mod matcher;
 pub mod model;
-pub mod operator;
 pub mod validator;
 
 #[cfg(test)]

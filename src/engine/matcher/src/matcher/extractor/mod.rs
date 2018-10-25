@@ -19,7 +19,7 @@ impl MatcherExtractorBuilder {
         }
     }
 
-    /// Returns a specific MatcherExtractor instance based on the rule extractor configuration.
+    /// Returns a specific MatcherExtractor instance based on the rule matcher.extractor configuration.
     ///
     /// # Example
     ///
@@ -29,7 +29,7 @@ impl MatcherExtractorBuilder {
     ///    extern crate tornado_engine_matcher;
     ///
     ///    use tornado_common_api::Event;
-    ///    use tornado_engine_matcher::extractor::MatcherExtractorBuilder;
+    ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::{Extractor, ExtractorRegex};
     ///    use tornado_engine_matcher::model::ProcessedEvent;
     ///    use std::collections::HashMap;
@@ -82,7 +82,7 @@ impl MatcherExtractorBuilder {
         }
 
         info!(
-            "MatcherExtractorBuilder - build: built extractor [{:?}] for input value [{:?}]",
+            "MatcherExtractorBuilder - build: built matcher.extractor [{:?}] for input value [{:?}]",
             &matcher_extractor, config
         );
 

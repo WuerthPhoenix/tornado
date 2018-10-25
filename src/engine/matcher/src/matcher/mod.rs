@@ -1,8 +1,10 @@
+pub mod extractor;
+pub mod operator;
+
 use config::Rule;
 use error::MatcherError;
-use extractor::{MatcherExtractor, MatcherExtractorBuilder};
+use matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use model::ProcessedEvent;
-use operator;
 use tornado_common_api::Event;
 use validator::RuleValidator;
 

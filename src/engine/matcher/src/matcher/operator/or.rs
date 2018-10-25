@@ -1,11 +1,11 @@
 use config;
 use error::MatcherError;
+use matcher::operator::{Operator, OperatorBuilder};
 use model::ProcessedEvent;
-use operator::{Operator, OperatorBuilder};
 
 const OPERATOR_NAME: &str = "or";
 
-/// A matching operator that evaluates whether at least one children on a list of operators is verified.
+/// A matching matcher.operator that evaluates whether at least one children on a list of operators is verified.
 #[derive(Debug)]
 pub struct Or {
     operators: Vec<Box<Operator>>,

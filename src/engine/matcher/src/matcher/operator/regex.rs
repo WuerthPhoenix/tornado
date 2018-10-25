@@ -1,12 +1,12 @@
 use accessor::Accessor;
 use error::MatcherError;
+use matcher::operator::Operator;
 use model::ProcessedEvent;
-use operator::Operator;
 use regex::Regex as RustRegex;
 
 const OPERATOR_NAME: &str = "regex";
 
-/// A matching operator that evaluates whether a string matches a regex.
+/// A matching matcher.operator that evaluates whether a string matches a regex.
 #[derive(Debug)]
 pub struct Regex {
     regex: RustRegex,

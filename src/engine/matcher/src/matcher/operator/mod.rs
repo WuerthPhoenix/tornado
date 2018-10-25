@@ -2,7 +2,6 @@ use accessor::AccessorBuilder;
 use config;
 use error::MatcherError;
 use model::ProcessedEvent;
-use operator;
 use std::fmt;
 
 pub mod and;
@@ -10,12 +9,12 @@ pub mod equal;
 pub mod or;
 pub mod regex;
 
-/// Trait for a generic operator.
+/// Trait for a generic matcher.operator.
 pub trait Operator: fmt::Debug {
     /// Returns the Operator name
     fn name(&self) -> &str;
 
-    /// Executes the current operator on a target Event and returns whether the Event matches it.
+    /// Executes the current matcher.operator on a target Event and returns whether the Event matches it.
     fn evaluate(&self, event: &ProcessedEvent) -> bool;
 }
 
@@ -32,7 +31,7 @@ impl OperatorBuilder {
         }
     }
 
-    /// Returns a specific Operator instance based on operator configuration.
+    /// Returns a specific Operator instance based on matcher.operator configuration.
     ///
     /// # Example
     ///
@@ -40,7 +39,7 @@ impl OperatorBuilder {
     ///
     /// extern crate tornado_engine_matcher;
     ///
-    /// use tornado_engine_matcher::operator::OperatorBuilder;
+    /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
     /// use tornado_engine_matcher::config;
     ///
     /// let ops = config::Operator::Equal {
@@ -55,27 +54,27 @@ impl OperatorBuilder {
         &self,
         rule_name: &str,
         config: &config::Operator,
-    ) -> Result<Box<operator::Operator>, MatcherError> {
-        let result: Result<Box<operator::Operator>, MatcherError> = match config {
+    ) -> Result<Box<Operator>, MatcherError> {
+        let result: Result<Box<Operator>, MatcherError> = match config {
             config::Operator::Equal { first, second } => {
-                Ok(Box::new(operator::equal::Equal::build(
+                Ok(Box::new(::matcher::operator::equal::Equal::build(
                     self.accessor.build(rule_name, first)?,
                     self.accessor.build(rule_name, second)?,
                 )?))
             }
             config::Operator::And { operators } => {
-                Ok(Box::new(operator::and::And::build("", &operators, self)?))
+                Ok(Box::new(::matcher::operator::and::And::build("", &operators, self)?))
             }
             config::Operator::Or { operators } => {
-                Ok(Box::new(operator::or::Or::build("", &operators, self)?))
+                Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
             }
             config::Operator::Regex { regex, target } => Ok(Box::new(
-                operator::regex::Regex::build(regex, self.accessor.build(rule_name, target)?)?,
+                ::matcher::operator::regex::Regex::build(regex, self.accessor.build(rule_name, target)?)?,
             )),
         };
 
         info!(
-            "OperatorBuilder - build: return operator [{:?}] for input value [{:?}]",
+            "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
         result

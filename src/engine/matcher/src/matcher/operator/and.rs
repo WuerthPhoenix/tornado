@@ -1,11 +1,11 @@
 use config;
 use error::MatcherError;
+use matcher::operator::{Operator, OperatorBuilder};
 use model::ProcessedEvent;
-use operator::{Operator, OperatorBuilder};
 
 const OPERATOR_NAME: &str = "and";
 
-/// A matching operator that evaluates whether a list of children operators are all verified.
+/// A matching matcher.operator that evaluates whether a list of children operators are all verified.
 #[derive(Debug)]
 pub struct And {
     operators: Vec<Box<Operator>>,
