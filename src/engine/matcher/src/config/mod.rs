@@ -1,7 +1,6 @@
 use error::MatcherError;
 use serde_json;
 use std::collections::HashMap;
-use tornado_common_api::Action;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -55,6 +54,12 @@ pub enum Operator {
     Equal { first: String, second: String },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Action {
+    pub id: String,
+    pub payload: HashMap<String, String>,
 }
 
 #[cfg(test)]

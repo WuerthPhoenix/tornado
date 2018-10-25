@@ -94,9 +94,8 @@ impl RuleValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use config::{Constraint, Extractor, ExtractorRegex, Operator};
+    use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
-    use tornado_common_api::Action;
 
     #[test]
     fn should_validate_correct_rule() {

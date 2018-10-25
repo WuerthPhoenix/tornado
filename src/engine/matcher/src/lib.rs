@@ -13,6 +13,7 @@ extern crate serde_json;
 extern crate tornado_common_api;
 
 pub mod accessor;
+pub mod action;
 pub mod config;
 pub mod error;
 pub mod extractor;
