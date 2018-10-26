@@ -78,12 +78,11 @@ impl Matcher {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule{
-                status: ProcessedRuleStatus::NOT_MATCHED,
+                status: ProcessedRuleStatus::NotMatched,
                 extracted_vars: HashMap::new(),
                 actions: vec![],
                 message: None
             };
-            processed_event.matched_new.insert(rule.name.as_str(), processed_rule);
 
             if rule.operator.evaluate(&processed_event) {
                 trace!(
@@ -95,26 +94,35 @@ impl Matcher {
                     Ok(vars) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
 
+                        processed_rule.extracted_vars = vars;
+
                         match Matcher::process_actions(&processed_event, &mut processed_rule, &rule.actions ) {
                             Ok(_) => {
-                                processed_rule.status = ProcessedRuleStatus::MATCHED;
+                                processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
+                                    processed_event.matched.insert(rule.name.as_str(), processed_rule);
                                     break;
                                 }
                             },
                             Err(e) => {
-
+                                let message = format!("Matcher process - The event matches the rule [{}] and all variables are extracted correctly; however, some actions cannot be resolved: [{}]", &rule.name, e.to_string());
+                                warn!("{}", &message);
+                                processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
+                                processed_rule.message = Some(message);
                             }
                         }
                     }
                     Err(e) => {
                         let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
                         warn!("{}", &message);
-                        processed_rule.status = ProcessedRuleStatus::PARTIALLY_MATCHED;
+                        processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                         processed_rule.message = Some(message);
                     }
                 }
             }
+
+            processed_event.matched.insert(rule.name.as_str(), processed_rule);
+
         }
         debug!(
             "Matcher process - event processing result: [{:#?}]",
@@ -131,6 +139,7 @@ impl Matcher {
         Ok(())
     }
 }
+
 
 #[cfg(test)]
 mod test {
@@ -300,10 +309,15 @@ mod test {
         });
 
         // Assert
-        assert_eq!(2, result.matched.len());
+        assert_eq!(3, result.matched.len());
         assert!(result.matched.contains_key("rule1_email"));
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule1_email").unwrap().status);
+        assert!(result.matched.contains_key("rule2_sms"));
+        assert_eq!( ProcessedRuleStatus::NotMatched, result.matched.get("rule2_sms").unwrap().status);
         assert!(result.matched.contains_key("rule3_email"));
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule3_email").unwrap().status);
     }
+
 
     #[test]
     fn should_stop_execution_if_continue_is_false() {
@@ -332,9 +346,11 @@ mod test {
         // Assert
         assert_eq!(2, result.matched.len());
         assert!(result.matched.contains_key("rule1_email"));
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule1_email").unwrap().status);
         assert!(result.matched.contains_key("rule2_email"));
-    }
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule2_email").unwrap().status);
 
+    }
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
@@ -367,9 +383,13 @@ mod test {
         });
 
         // Assert
-        assert_eq!(2, result.matched.len());
+        assert_eq!(3, result.matched.len());
         assert!(result.matched.contains_key("rule1_email"));
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule1_email").unwrap().status);
+        assert!(result.matched.contains_key("rule2_sms"));
+        assert_eq!( ProcessedRuleStatus::NotMatched, result.matched.get("rule2_sms").unwrap().status);
         assert!(result.matched.contains_key("rule3_email"));
+        assert_eq!( ProcessedRuleStatus::Matched, result.matched.get("rule3_email").unwrap().status);
     }
 
     #[test]
@@ -409,8 +429,9 @@ mod test {
         assert!(result.matched.contains_key("rule1_email"));
 
         let rule_1_processed = result.matched.get("rule1_email").unwrap();
-        assert!(rule_1_processed.contains_key("extracted_temp"));
-        assert_eq!("ai", rule_1_processed.get("extracted_temp").unwrap());
+        assert_eq!( ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert!(rule_1_processed.extracted_vars.contains_key("extracted_temp"));
+        assert_eq!("ai", rule_1_processed.extracted_vars.get("extracted_temp").unwrap());
     }
 
     #[test]
@@ -469,12 +490,14 @@ mod test {
         assert_eq!(2, result.matched.len());
 
         let rule_1_processed = result.matched.get("rule1_email").unwrap();
-        assert!(rule_1_processed.contains_key("extracted_temp"));
-        assert_eq!("ai", rule_1_processed.get("extracted_temp").unwrap());
+        assert_eq!( ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert!(rule_1_processed.extracted_vars.contains_key("extracted_temp"));
+        assert_eq!("ai", rule_1_processed.extracted_vars.get("extracted_temp").unwrap());
 
         let rule_2_processed = result.matched.get("rule2_email").unwrap();
-        assert!(rule_2_processed.contains_key("extracted_temp"));
-        assert_eq!("em", rule_2_processed.get("extracted_temp").unwrap());
+        assert_eq!( ProcessedRuleStatus::Matched, rule_2_processed.status);
+        assert!(rule_2_processed.extracted_vars.contains_key("extracted_temp"));
+        assert_eq!("em", rule_2_processed.extracted_vars.get("extracted_temp").unwrap());
     }
 
     #[test]
@@ -530,12 +553,16 @@ mod test {
         });
 
         // Assert
-        assert_eq!(1, result.matched.len());
-        assert!(result.matched.contains_key("rule2_email"));
+        assert_eq!(2, result.matched.len());
+
+        let rule_1_processed = result.matched.get("rule1_email").unwrap();
+        assert_eq!( ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
+        assert!(!rule_1_processed.extracted_vars.contains_key("extracted_temp"));
 
         let rule_2_processed = result.matched.get("rule2_email").unwrap();
-        assert!(rule_2_processed.contains_key("extracted_temp"));
-        assert_eq!("ai", rule_2_processed.get("extracted_temp").unwrap());
+        assert_eq!( ProcessedRuleStatus::Matched, rule_2_processed.status);
+        assert!(rule_2_processed.extracted_vars.contains_key("extracted_temp"));
+        assert_eq!("ai", rule_2_processed.extracted_vars.get("extracted_temp").unwrap());
     }
 
     fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {

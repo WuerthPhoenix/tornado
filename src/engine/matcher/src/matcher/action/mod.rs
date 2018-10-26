@@ -82,6 +82,7 @@ impl MatcherAction {
 mod test {
     use super::*;
     use accessor::Accessor;
+    use model::{ProcessedRule, ProcessedRuleStatus};
     use std::collections::HashMap;
     use tornado_common_api::Event;
 
@@ -141,12 +142,18 @@ mod test {
         event.event.payload.insert("body".to_owned(),    "body_value".to_owned());
         event.event.payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        event.matched.insert(rule_name, HashMap::new());
-        event.matched.get_mut(rule_name).unwrap().insert("test1", "var_test_1_value".to_owned());
-        event.matched.get_mut(rule_name).unwrap().insert("test2", "var_test_2_value".to_owned());
+        let mut processed_rule = ProcessedRule{
+            status: ProcessedRuleStatus::NotMatched,
+            extracted_vars: HashMap::new(),
+            actions: vec![],
+            message: None
+        };
+        processed_rule.extracted_vars.insert("test1", "var_test_1_value".to_owned());
+        processed_rule.extracted_vars.insert("test2", "var_test_2_value".to_owned());
+
+        event.matched.insert(rule_name, processed_rule);
 
         // Act
-
         let result = matcher_action.execute(&event).unwrap();
 
         // Assert

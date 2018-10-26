@@ -103,7 +103,7 @@ impl Accessor {
             Accessor::CreatedTs {} => Some(format!("{}", event.event.created_ts).into()),
             Accessor::ExtractedVar { rule_name, key } => {
                 // ToDo: this double look up in two nested maps could be optimized
-                let processed_rule = event.matched_new.get(rule_name.as_str())?;
+                let processed_rule = event.matched.get(rule_name.as_str())?;
                 processed_rule.extracted_vars.get(key.as_str()).map(|value| value.as_str().into())
             }
             Accessor::Payload { key } => event
@@ -251,8 +251,8 @@ mod test {
         let mut vars = HashMap::new();
         vars.insert("body", "body_value".to_owned());
         vars.insert("subject", "subject_value".to_owned());
-        event.matched_new.insert("rule1", ProcessedRule{
-            status: ProcessedRuleStatus::NOT_PROCESSED,
+        event.matched.insert("rule1", ProcessedRule{
+            status: ProcessedRuleStatus::NotProcessed,
             extracted_vars: vars,
             actions: vec![],
             message: None
@@ -283,8 +283,8 @@ mod test {
 
         let mut vars1 = HashMap::new();
         vars1.insert("body", "body1".to_owned());
-        event.matched_new.insert("rule1", ProcessedRule{
-            status: ProcessedRuleStatus::NOT_PROCESSED,
+        event.matched.insert("rule1", ProcessedRule{
+            status: ProcessedRuleStatus::NotProcessed,
             extracted_vars: vars1,
             actions: vec![],
             message: None
@@ -292,8 +292,8 @@ mod test {
 
         let mut vars2 = HashMap::new();
         vars2.insert("body", "body2".to_owned());
-        event.matched_new.insert("rule2", ProcessedRule{
-            status: ProcessedRuleStatus::NOT_PROCESSED,
+        event.matched.insert("rule2", ProcessedRule{
+            status: ProcessedRuleStatus::NotProcessed,
             extracted_vars: vars2,
             actions: vec![],
             message: None
@@ -335,8 +335,8 @@ mod test {
             payload: HashMap::new(),
         });
 
-        event.matched_new.insert("rule1", ProcessedRule{
-            status: ProcessedRuleStatus::NOT_PROCESSED,
+        event.matched.insert("rule1", ProcessedRule{
+            status: ProcessedRuleStatus::NotProcessed,
             extracted_vars: HashMap::new(),
             actions: vec![],
             message: None

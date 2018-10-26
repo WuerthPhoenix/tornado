@@ -6,20 +6,19 @@ use tornado_common_api::{Action, Event};
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent<'o> {
     pub event: Event,
-    pub matched_deprecated: HashMap<&'o str, HashMap<&'o str, String>>,
-    pub matched_new: HashMap<&'o str, ProcessedRule<'o>>
+    pub matched: HashMap<&'o str, ProcessedRule<'o>>
 }
 
 impl<'o> ProcessedEvent<'o> {
     pub fn new(event: Event) -> ProcessedEvent<'o> {
         ProcessedEvent {
             event,
-            matched_deprecated: HashMap::new(),
-            matched_new: HashMap::new()
+            matched: HashMap::new()
         }
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ProcessedRule<'o> {
     pub status: ProcessedRuleStatus,
     pub extracted_vars: HashMap<&'o str, String>,
@@ -27,9 +26,10 @@ pub struct ProcessedRule<'o> {
     pub message: Option<String>,
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProcessedRuleStatus {
-    MATCHED,
-    PARTIALLY_MATCHED,
-    NOT_MATCHED,
-    NOT_PROCESSED
+    Matched,
+    PartiallyMatched,
+    NotMatched,
+    NotProcessed
 }
