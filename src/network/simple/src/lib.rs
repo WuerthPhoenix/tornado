@@ -12,9 +12,7 @@ pub struct SimpleEventBus {
 
 impl SimpleEventBus {
     pub fn new() -> SimpleEventBus {
-        SimpleEventBus {
-            subscribers: HashMap::new(),
-        }
+        SimpleEventBus { subscribers: HashMap::new() }
     }
 }
 
@@ -52,10 +50,7 @@ mod test {
             }),
         );
 
-        bus.publish_action(Action {
-            id: String::from(action_id),
-            payload: HashMap::new(),
-        });
+        bus.publish_action(Action { id: String::from(action_id), payload: HashMap::new() });
 
         let value = &*received.lock().unwrap();
         assert_eq!(action_id, value)

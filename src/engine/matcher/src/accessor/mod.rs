@@ -32,10 +32,7 @@ impl AccessorBuilder {
     /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
     /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
     pub fn build(&self, rule_name: &str, value: &str) -> Result<Accessor, MatcherError> {
-        info!(
-            "AccessorBuilder - build: build accessor [{}] for rule [{}]",
-            value, rule_name
-        );
+        info!("AccessorBuilder - build: build accessor [{}] for rule [{}]", value, rule_name);
         let result = match value.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -48,28 +45,19 @@ impl AccessorBuilder {
                     EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
                     val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        self.id_validator
-                            .validate_payload_key(key, value, rule_name)?;
-                        Ok(Accessor::Payload {
-                            key: key.to_owned(),
-                        })
+                        self.id_validator.validate_payload_key(key, value, rule_name)?;
+                        Ok(Accessor::Payload { key: key.to_owned() })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
                         self.id_validator
                             .validate_extracted_var_from_accessor(key, value, rule_name)?;
-                        Ok(Accessor::ExtractedVar {
-                            key: format!("{}.{}", rule_name, key),
-                        })
+                        Ok(Accessor::ExtractedVar { key: format!("{}.{}", rule_name, key) })
                     }
-                    _ => Err(MatcherError::UnknownAccessorError {
-                        accessor: value.to_owned(),
-                    }),
+                    _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            value => Ok(Accessor::Constant {
-                value: value.to_owned(),
-            }),
+            value => Ok(Accessor::Constant { value: value.to_owned() }),
         };
 
         info!(
@@ -103,11 +91,9 @@ impl Accessor {
             Accessor::ExtractedVar { key } => {
                 event.extracted_vars.get(key.as_str()).map(|value| value.as_str().into())
             }
-            Accessor::Payload { key } => event
-                .event
-                .payload
-                .get(key)
-                .map(|value| value.as_str().into()),
+            Accessor::Payload { key } => {
+                event.event.payload.get(key).map(|value| value.as_str().into())
+            }
             Accessor::Type {} => Some((&event.event.event_type).into()),
         }
     }
@@ -124,9 +110,7 @@ mod test {
 
     #[test]
     fn should_return_a_constant_value() {
-        let accessor = Accessor::Constant {
-            value: "constant_value".to_owned(),
-        };
+        let accessor = Accessor::Constant { value: "constant_value".to_owned() };
 
         let event = ProcessedEvent::new(Event {
             created_ts: 0,
@@ -189,9 +173,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload {
-            key: "body".to_owned(),
-        };
+        let accessor = Accessor::Payload { key: "body".to_owned() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), "body_value".to_owned());
@@ -214,9 +196,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload {
-            key: "date".to_owned(),
-        };
+        let accessor = Accessor::Payload { key: "date".to_owned() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), "body_value".to_owned());
@@ -234,9 +214,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_extracted_var() {
-        let accessor = Accessor::ExtractedVar {
-            key: "rule1.body".to_owned(),
-        };
+        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
         let mut event = ProcessedEvent::new(Event {
             created_ts: 0,
@@ -259,9 +237,7 @@ mod test {
 
     #[test]
     fn should_return_none_if_no_match() {
-        let accessor = Accessor::ExtractedVar {
-            key: "rule1.body".to_owned(),
-        };
+        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
         let event = ProcessedEvent::new(Event {
             created_ts: 0,
@@ -311,12 +287,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(
-            Accessor::Payload {
-                key: "key".to_owned()
-            },
-            accessor
-        )
+        assert_eq!(Accessor::Payload { key: "key".to_owned() }, accessor)
     }
 
     #[test]
@@ -326,12 +297,7 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        assert_eq!(
-            Accessor::ExtractedVar {
-                key: "current_rule_name.key".to_owned()
-            },
-            accessor
-        )
+        assert_eq!(Accessor::ExtractedVar { key: "current_rule_name.key".to_owned() }, accessor)
     }
 
     #[test]

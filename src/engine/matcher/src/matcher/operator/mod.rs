@@ -26,9 +26,7 @@ pub struct OperatorBuilder {
 
 impl OperatorBuilder {
     pub fn new() -> OperatorBuilder {
-        OperatorBuilder {
-            accessor: AccessorBuilder::new(),
-        }
+        OperatorBuilder { accessor: AccessorBuilder::new() }
     }
 
     /// Returns a specific Operator instance based on matcher.operator configuration.
@@ -68,9 +66,12 @@ impl OperatorBuilder {
             config::Operator::Or { operators } => {
                 Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
             }
-            config::Operator::Regex { regex, target } => Ok(Box::new(
-                ::matcher::operator::regex::Regex::build(regex, self.accessor.build(rule_name, target)?)?,
-            )),
+            config::Operator::Regex { regex, target } => {
+                Ok(Box::new(::matcher::operator::regex::Regex::build(
+                    regex,
+                    self.accessor.build(rule_name, target)?,
+                )?))
+            }
         };
 
         info!(

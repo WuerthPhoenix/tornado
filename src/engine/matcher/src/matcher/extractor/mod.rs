@@ -14,9 +14,7 @@ pub struct MatcherExtractorBuilder {
 impl MatcherExtractorBuilder {
     /// Returns a new MatcherExtractorBuilder instance
     pub fn new() -> MatcherExtractorBuilder {
-        MatcherExtractorBuilder {
-            accessor: AccessorBuilder::new(),
-        }
+        MatcherExtractorBuilder { accessor: AccessorBuilder::new() }
     }
 
     /// Returns a specific MatcherExtractor instance based on the rule matcher.extractor configuration.
@@ -67,9 +65,7 @@ impl MatcherExtractorBuilder {
         rule_name: &str,
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
-        let mut matcher_extractor = MatcherExtractor {
-            extractors: HashMap::new(),
-        };
+        let mut matcher_extractor = MatcherExtractor { extractors: HashMap::new() };
         for (key, v) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
@@ -100,10 +96,7 @@ pub struct MatcherExtractor {
 impl MatcherExtractor {
     /// Returns the value of the variable with name 'key' generated from the provided Event
     pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
-        let extracted = self
-            .extractors
-            .get(key)
-            .and_then(|extractor| extractor.extract(event));
+        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event));
         self.check_extracted(key, extracted)
     }
 
@@ -111,10 +104,7 @@ impl MatcherExtractor {
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable key in the event.extracted_vars map is in the form:
     /// rule_name.extracted_var_name
-    pub fn process_all<'o>(
-        &'o self,
-        event: &mut ProcessedEvent<'o>,
-    ) -> Result<(), MatcherError> {
+    pub fn process_all<'o>(&'o self, event: &mut ProcessedEvent<'o>) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
             event.extracted_vars.insert(extractor.scoped_key.as_str(), value);
@@ -122,13 +112,16 @@ impl MatcherExtractor {
         Ok(())
     }
 
-    fn check_extracted(&self, key: &str, extracted: Option<String>)
-        -> Result<String, MatcherError> {
+    fn check_extracted(
+        &self,
+        key: &str,
+        extracted: Option<String>,
+    ) -> Result<String, MatcherError> {
         match extracted {
             Some(value) => Ok(value),
-            None => Err(MatcherError::MissingExtractedVariableError {
-                variable_name: key.to_owned(),
-            }),
+            None => {
+                Err(MatcherError::MissingExtractedVariableError { variable_name: key.to_owned() })
+            }
         }
     }
 }
@@ -166,9 +159,7 @@ impl VariableExtractor {
         let value = self.target.get(event)?;
         let captures = self.regex.captures(&value)?;
         let group_idx = self.group_match_idx;
-        captures
-            .get(group_idx as usize)
-            .map(|matched| matched.as_str().to_owned())
+        captures.get(group_idx as usize).map(|matched| matched.as_str().to_owned())
     }
 }
 
@@ -182,15 +173,25 @@ mod test {
 
     #[test]
     fn should_build_an_extractor() {
-        let extractor =
-            VariableExtractor::build("rule_name", "key","", 0, AccessorBuilder::new().build("", "").unwrap());
+        let extractor = VariableExtractor::build(
+            "rule_name",
+            "key",
+            "",
+            0,
+            AccessorBuilder::new().build("", "").unwrap(),
+        );
         assert!(extractor.is_ok());
     }
 
     #[test]
     fn build_should_fail_if_not_valid_regex() {
-        let extractor =
-            VariableExtractor::build("rule_name", "key","[", 0, AccessorBuilder::new().build("", "").unwrap());
+        let extractor = VariableExtractor::build(
+            "rule_name",
+            "key",
+            "[",
+            0,
+            AccessorBuilder::new().build("", "").unwrap(),
+        );
         assert!(extractor.is_err());
     }
 
@@ -206,10 +207,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!(
-            "http://stackoverflow.com/".to_owned(),
-            extractor.extract(&event).unwrap()
-        );
+        assert_eq!("http://stackoverflow.com/".to_owned(), extractor.extract(&event).unwrap());
     }
 
     #[test]
@@ -239,10 +237,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!(
-            "stackoverflow.com".to_owned(),
-            extractor.extract(&event).unwrap()
-        );
+        assert_eq!("stackoverflow.com".to_owned(), extractor.extract(&event).unwrap());
     }
 
     #[test]
@@ -267,9 +262,7 @@ mod test {
             "key",
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
-            AccessorBuilder::new()
-                .build("", "${event.payload.body}")
-                .unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.body}").unwrap(),
         ).unwrap();
 
         let event = new_event("");
@@ -285,10 +278,7 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[0-9]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
             },
         );
 
@@ -296,27 +286,16 @@ mod test {
             String::from("extracted_text"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[a-z]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new()
-            .build("", &from_config)
-            .unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
-        assert_eq!(
-            String::from("44"),
-            extractor.extract("extracted_temp", &event).unwrap()
-        );
-        assert_eq!(
-            String::from("temp"),
-            extractor.extract("extracted_text", &event).unwrap()
-        );
+        assert_eq!(String::from("44"), extractor.extract("extracted_temp", &event).unwrap());
+        assert_eq!(String::from("temp"), extractor.extract("extracted_text", &event).unwrap());
     }
 
     #[test]
@@ -327,16 +306,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[0-9]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new()
-            .build("", &from_config)
-            .unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
 
@@ -351,10 +325,7 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[0-9]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
             },
         );
 
@@ -362,16 +333,11 @@ mod test {
             String::from("extracted_text"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[a-z]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new()
-            .build("rule", &from_config)
-            .unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
 
         let mut event = new_event("temp=44'C");
         extractor.process_all(&mut event).unwrap();
@@ -391,10 +357,7 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[0-9]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
             },
         );
 
@@ -402,16 +365,11 @@ mod test {
             String::from("extracted_none"),
             Extractor {
                 from: String::from("${event.payload.nothing}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[a-z]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
             },
         );
 
-        let extractor = MatcherExtractorBuilder::new()
-            .build("", &from_config)
-            .unwrap();
+        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let mut event = new_event("temp=44'C");
 

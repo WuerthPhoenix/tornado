@@ -17,17 +17,13 @@ impl Default for IdValidator {
 
 impl IdValidator {
     pub fn new() -> IdValidator {
-        IdValidator {
-            regex: RustRegex::new(ID_REGEX_PATTERN).unwrap(),
-        }
+        IdValidator { regex: RustRegex::new(ID_REGEX_PATTERN).unwrap() }
     }
 
     /// Validates a generic id or name
     pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
-            return Err(MatcherError::NotValidIdOrNameError {
-                message: error_message,
-            });
+            return Err(MatcherError::NotValidIdOrNameError { message: error_message });
         }
         Ok(())
     }
@@ -122,10 +118,7 @@ mod test {
 
         assert!(id.validate_extracted_var_name("hello", "rule").is_ok());
         assert!(id.validate_extracted_var_name("helloWorld", "rule").is_ok());
-        assert!(
-            id.validate_extracted_var_name("Hello_WORLD", "rule")
-                .is_ok()
-        );
+        assert!(id.validate_extracted_var_name("Hello_WORLD", "rule").is_ok());
 
         assert!(id.validate_extracted_var_name("", "rule").is_err());
         assert!(id.validate_extracted_var_name(" ", "rule").is_err());

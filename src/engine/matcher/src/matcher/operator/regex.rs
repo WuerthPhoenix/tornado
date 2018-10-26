@@ -30,9 +30,7 @@ impl Operator for Regex {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        self.target
-            .get(event)
-            .map_or(false, |value| self.regex.is_match(&value))
+        self.target.get(event).map_or(false, |value| self.regex.is_match(&value))
     }
 }
 
@@ -60,17 +58,11 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "test_type".to_owned(),
-            created_ts: 0,
-        };
+        let event =
+            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!(
-            "two",
-            operator.target.get(&ProcessedEvent::new(event)).unwrap()
-        );
+        assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap());
     }
 
     #[test]
@@ -89,11 +81,8 @@ mod test {
             AccessorBuilder::new().build("", &"f".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "test_type".to_owned(),
-            created_ts: 0,
-        };
+        let event =
+            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -102,20 +91,14 @@ mod test {
     fn should_evaluate_using_accessors() {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
-            AccessorBuilder::new()
-                .build("", &"${event.payload.name1}".to_owned())
-                .unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.name1}".to_owned()).unwrap(),
         ).unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("name1".to_owned(), "F".to_owned());
         payload.insert("name2".to_owned(), "G".to_owned());
 
-        let event = Event {
-            payload,
-            event_type: "test_type".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload, event_type: "test_type".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -124,20 +107,14 @@ mod test {
     fn should_evaluate_to_false_if_it_does_not_match_the_regex() {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
-            AccessorBuilder::new()
-                .build("", &"${event.payload.name2}".to_owned())
-                .unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.name2}".to_owned()).unwrap(),
         ).unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("name1".to_owned(), "F".to_owned());
         payload.insert("name2".to_owned(), "G".to_owned());
 
-        let event = Event {
-            payload,
-            event_type: "test_type".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload, event_type: "test_type".to_owned(), created_ts: 0 };
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -146,16 +123,11 @@ mod test {
     fn should_evaluate_to_false_if_field_does_not_exists() {
         let operator = Regex::build(
             &"[^.{0}$]".to_owned(),
-            AccessorBuilder::new()
-                .build("", &"${event.payload.name}".to_owned())
-                .unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.name}".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "test_type".to_owned(),
-            created_ts: 0,
-        };
+        let event =
+            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }

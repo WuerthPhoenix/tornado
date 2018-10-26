@@ -89,14 +89,8 @@ mod test {
             _ => assert!(false),
         }
 
-        assert_eq!(
-            "${event.payload.body}",
-            rule.constraint.with["extracted_temp"].from
-        );
-        assert_eq!(
-            "([0-9]+\\sDegrees)",
-            rule.constraint.with["extracted_temp"].regex.regex
-        );
+        assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
+        assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
     }
 
     fn file_to_string(filename: &str) -> String {

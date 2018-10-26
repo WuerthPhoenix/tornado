@@ -92,10 +92,7 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "2".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
                 config::Operator::Or {
                     operators: vec![config::Operator::Equal {
                         first: "3".to_owned(),
@@ -122,11 +119,7 @@ mod test {
     fn should_evaluate_to_true_if_no_children() {
         let operator = And::build("", &vec![], &OperatorBuilder::new()).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -136,31 +129,15 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "4".to_owned(),
-                    second: "4".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -170,31 +147,15 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "4".to_owned(),
-                    second: "1".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -204,39 +165,20 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "4".to_owned(),
-                        },
-                        config::Operator::Equal {
-                            first: "5".to_owned(),
-                            second: "5".to_owned(),
-                        },
+                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                        config::Operator::Equal { first: "5".to_owned(), second: "5".to_owned() },
                     ],
                 },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -246,39 +188,20 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "4".to_owned(),
-                        },
-                        config::Operator::Equal {
-                            first: "5".to_owned(),
-                            second: "6".to_owned(),
-                        },
+                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                        config::Operator::Equal { first: "5".to_owned(), second: "6".to_owned() },
                     ],
                 },
             ],
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -288,24 +211,12 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "4".to_owned(),
-                        },
+                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
                         config::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type".to_owned(),
@@ -316,11 +227,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "type".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -330,24 +237,12 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal {
-                    first: "1".to_owned(),
-                    second: "1".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "2".to_owned(),
-                    second: "2".to_owned(),
-                },
-                config::Operator::Equal {
-                    first: "3".to_owned(),
-                    second: "3".to_owned(),
-                },
+                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
                 config::Operator::And {
                     operators: vec![
-                        config::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "4".to_owned(),
-                        },
+                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
                         config::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type1".to_owned(),
@@ -358,11 +253,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event {
-            payload: HashMap::new(),
-            event_type: "type".to_owned(),
-            created_ts: 0,
-        };
+        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }

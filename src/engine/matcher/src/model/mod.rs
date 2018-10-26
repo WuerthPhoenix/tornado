@@ -7,16 +7,12 @@ use tornado_common_api::{Action, Event};
 pub struct ProcessedEvent<'o> {
     pub event: Event,
     pub rules: HashMap<&'o str, ProcessedRule>,
-    pub extracted_vars: HashMap<&'o str, String>
+    pub extracted_vars: HashMap<&'o str, String>,
 }
 
 impl<'o> ProcessedEvent<'o> {
     pub fn new(event: Event) -> ProcessedEvent<'o> {
-        ProcessedEvent {
-            event,
-            rules: HashMap::new(),
-            extracted_vars: HashMap::new()
-        }
+        ProcessedEvent { event, rules: HashMap::new(), extracted_vars: HashMap::new() }
     }
 }
 
@@ -32,5 +28,5 @@ pub enum ProcessedRuleStatus {
     Matched,
     PartiallyMatched,
     NotMatched,
-    NotProcessed
+    NotProcessed,
 }
