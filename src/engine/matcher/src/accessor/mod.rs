@@ -104,7 +104,6 @@ mod test {
 
     use super::*;
     use chrono::prelude::Local;
-    use model::{ProcessedRule, ProcessedRuleStatus};
     use std::collections::HashMap;
     use tornado_common_api::Event;
 

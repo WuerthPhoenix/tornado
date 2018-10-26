@@ -6,7 +6,6 @@ use config::Rule;
 use error::MatcherError;
 use matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
-use std::collections::HashMap;
 use tornado_common_api::Event;
 use validator::RuleValidator;
 
@@ -334,6 +333,116 @@ mod test {
         assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
         assert_eq!(1, processed_rule.actions.len());
         assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
+        assert!(processed_rule.message.is_none())
+    }
+
+    #[test]
+    fn should_return_status_not_matched_if_where_returns_false() {
+        // Arrange
+        let rule_1 = new_rule(
+            "rule1_email",
+            0,
+            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        // Act
+        let result = matcher.process(Event {
+            created_ts: 0,
+            event_type: String::from("sms"),
+            payload: HashMap::new(),
+        });
+
+        // Assert
+        assert_eq!(1, result.rules.len());
+        assert!(result.rules.contains_key("rule1_email"));
+
+        let processed_rule = result.rules.get("rule1_email").unwrap();
+        assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
+    }
+
+    #[test]
+    fn should_return_status_partially_matched_if_extracted_var_is_missing() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1_email",
+            0,
+            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.temp}"),
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        // Act
+        let result = matcher.process(Event {
+            created_ts: 0,
+            event_type: String::from("email"),
+            payload: HashMap::new(),
+        });
+
+        // Assert
+        assert_eq!(1, result.rules.len());
+        assert!(result.rules.contains_key("rule1_email"));
+
+        let processed_rule = result.rules.get("rule1_email").unwrap();
+        assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+
+        info!("Message: {:?}", processed_rule.message);
+        assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
+    }
+
+    #[test]
+    fn should_return_status_partially_matched_if_action_payload_cannot_be_resolved() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1_email",
+            0,
+            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.temp}"),
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+            },
+        );
+
+        let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+
+        action.payload.insert("temp".to_owned(), "${_variables.extracted_temp}".to_owned());
+        action.payload.insert("missing".to_owned(), "${_variables.missing}".to_owned());
+        rule_1.actions.push(action);
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        let mut event_payload = HashMap::new();
+        event_payload.insert(String::from("temp"), String::from("temp_value"));
+
+        // Act
+        let result = matcher.process(Event {
+            created_ts: 0,
+            event_type: String::from("email"),
+            payload: event_payload,
+        });
+
+        // Assert
+        assert_eq!(1, result.rules.len());
+        assert!(result.rules.contains_key("rule1_email"));
+
+        let processed_rule = result.rules.get("rule1_email").unwrap();
+        assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+
+        info!("Message: {:?}", processed_rule.message);
+        assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
     }
 
     #[test]
