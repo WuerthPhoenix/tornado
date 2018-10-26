@@ -142,16 +142,8 @@ mod test {
         event.event.payload.insert("body".to_owned(),    "body_value".to_owned());
         event.event.payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let mut processed_rule = ProcessedRule{
-            status: ProcessedRuleStatus::NotMatched,
-            extracted_vars: HashMap::new(),
-            actions: vec![],
-            message: None
-        };
-        processed_rule.extracted_vars.insert("test1", "var_test_1_value".to_owned());
-        processed_rule.extracted_vars.insert("test2", "var_test_2_value".to_owned());
-
-        event.matched.insert(rule_name, processed_rule);
+        event.extracted_vars.insert("rule_for_test.test1", "var_test_1_value".to_owned());
+        event.extracted_vars.insert("rule_for_test.test2", "var_test_2_value".to_owned());
 
         // Act
         let result = matcher_action.execute(&event).unwrap();

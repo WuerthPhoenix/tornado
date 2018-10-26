@@ -13,7 +13,7 @@ pub enum MatcherError {
     )]
     MissingExtractedVariableError { variable_name: String },
 
-    #[fail(display = "MissingOperatorError: No matcher.operator specified (the args array is empty)")]
+    #[fail(display = "MissingOperatorError: No operator specified (the args array is empty)")]
     MissingOperatorError {},
 
     #[fail(display = "ParseOperatorError: [{}]", message)]
@@ -26,7 +26,7 @@ pub enum MatcherError {
     UnknownOperatorError { operator: String },
 
     #[fail(
-        display = "WrongNumberOfArgumentsError: While building matcher.operator [{}], expected arguments [{}], found [{}]",
+        display = "WrongNumberOfArgumentsError: While building operator [{}], expected arguments [{}], found [{}]",
         operator,
         expected,
         found
@@ -75,7 +75,7 @@ pub enum MatcherError {
     NotValidIdOrNameError { message: String },
 
     #[fail(
-        display = "CreateActionError: Cannot create dispatcher.action [{}] for rule [{}]\n cause: [{}]",
+        display = "CreateActionError: Cannot create action [{}] for rule [{}]\n cause: [{}]",
         action_id,
         rule_name,
         cause

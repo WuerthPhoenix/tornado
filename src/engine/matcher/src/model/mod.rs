@@ -6,22 +6,23 @@ use tornado_common_api::{Action, Event};
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent<'o> {
     pub event: Event,
-    pub matched: HashMap<&'o str, ProcessedRule<'o>>
+    pub rules: HashMap<&'o str, ProcessedRule>,
+    pub extracted_vars: HashMap<&'o str, String>
 }
 
 impl<'o> ProcessedEvent<'o> {
     pub fn new(event: Event) -> ProcessedEvent<'o> {
         ProcessedEvent {
             event,
-            matched: HashMap::new()
+            rules: HashMap::new(),
+            extracted_vars: HashMap::new()
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessedRule<'o> {
+pub struct ProcessedRule {
     pub status: ProcessedRuleStatus,
-    pub extracted_vars: HashMap<&'o str, String>,
     pub actions: Vec<Action>,
     pub message: Option<String>,
 }
