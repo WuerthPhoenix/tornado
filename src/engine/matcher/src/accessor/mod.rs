@@ -102,6 +102,7 @@ impl Accessor {
             Accessor::Constant { value } => Some(value.into()),
             Accessor::CreatedTs {} => Some(format!("{}", event.event.created_ts).into()),
             Accessor::ExtractedVar { rule_name, key } => {
+                // ToDo: this double look up in two nested maps could be optimized
                 let processed_rule = event.matched_new.get(rule_name.as_str())?;
                 processed_rule.extracted_vars.get(key.as_str()).map(|value| value.as_str().into())
             }

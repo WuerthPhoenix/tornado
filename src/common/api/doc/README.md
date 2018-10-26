@@ -20,6 +20,9 @@ An event has a simple structure, it is composed of:
 - __created_ts__: the Event creation timestamp in nanoseconds;
 - __payload__: a Map<String, String> with event specific data.
 
+All fields are mandatory.
+The payload is required but it can be empty.
+
 Example of an Event in JSON format:
 ```json
 {
@@ -37,6 +40,9 @@ As for the Event, the structure of an Action is really simple:
 
 - __id__: the Action type identifier. Usually, an executor always processed a single type of action;
 - __payload__: a Map<String, String> with action specific data.
+
+All fields are mandatory. 
+The payload is required but it can be empty.
 
 Example of an Action in JSON format:
 ```json

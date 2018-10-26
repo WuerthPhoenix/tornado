@@ -31,6 +31,8 @@ The following operators are available:
 - __'AND'__: it receives an array of operators and returns true if all the operators evaluate to true.
 - __'OR'__: it receives an array of operators and returns true if at least one of the operators evaluates to true.
 
+The regular expressions provided by the _WITH_ clause and by the _regex_ operator, are evaluated through the Rust Regex library (see: https://github.com/rust-lang/regex ). Please refer to the specific documentation (here: https://docs.rs/regex ) for details about features and limitations.  
+
 ### Actions
 
 An action is an operation triggered when an event matches the rule.  
