@@ -4,4 +4,6 @@ members = [
    "common/api",
    "common/logger",
    "engine/matcher",
+   "network/common",
+   "network/simple",
 ]

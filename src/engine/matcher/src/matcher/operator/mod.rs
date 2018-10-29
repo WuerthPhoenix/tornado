@@ -1,22 +1,21 @@
 use accessor::AccessorBuilder;
 use config;
 use error::MatcherError;
-use operator;
+use model::ProcessedEvent;
 use std::fmt;
-use tornado_common_api::Event;
 
 pub mod and;
 pub mod equal;
 pub mod or;
 pub mod regex;
 
-/// Trait for a generic operator.
+/// Trait for a generic matcher.operator.
 pub trait Operator: fmt::Debug {
     /// Returns the Operator name
     fn name(&self) -> &str;
 
-    /// Executes the current operator on a target Event and returns whether the Event matches it.
-    fn evaluate(&self, event: &Event) -> bool;
+    /// Executes the current matcher.operator on a target Event and returns whether the Event matches it.
+    fn evaluate(&self, event: &ProcessedEvent) -> bool;
 }
 
 /// Operator instance builder.
@@ -27,12 +26,10 @@ pub struct OperatorBuilder {
 
 impl OperatorBuilder {
     pub fn new() -> OperatorBuilder {
-        OperatorBuilder {
-            accessor: AccessorBuilder::new(),
-        }
+        OperatorBuilder { accessor: AccessorBuilder::new() }
     }
 
-    /// Returns a specific Operator instance based on operator configuration.
+    /// Returns a specific Operator instance based on matcher.operator configuration.
     ///
     /// # Example
     ///
@@ -40,7 +37,7 @@ impl OperatorBuilder {
     ///
     /// extern crate tornado_engine_matcher;
     ///
-    /// use tornado_engine_matcher::operator::OperatorBuilder;
+    /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
     /// use tornado_engine_matcher::config;
     ///
     /// let ops = config::Operator::Equal {
@@ -49,32 +46,36 @@ impl OperatorBuilder {
     ///           };
     ///
     /// let builder = OperatorBuilder::new();
-    /// let operator = builder.build(&ops).unwrap(); // operator is an instance of Equal
+    /// let operator = builder.build("rule_name", &ops).unwrap(); // operator is an instance of Equal
     /// ```
     pub fn build(
         &self,
+        rule_name: &str,
         config: &config::Operator,
-    ) -> Result<Box<operator::Operator>, MatcherError> {
-        let result: Result<Box<operator::Operator>, MatcherError> = match config {
+    ) -> Result<Box<Operator>, MatcherError> {
+        let result: Result<Box<Operator>, MatcherError> = match config {
             config::Operator::Equal { first, second } => {
-                Ok(Box::new(operator::equal::Equal::build(
-                    self.accessor.build(first)?,
-                    self.accessor.build(second)?,
+                Ok(Box::new(::matcher::operator::equal::Equal::build(
+                    self.accessor.build(rule_name, first)?,
+                    self.accessor.build(rule_name, second)?,
                 )?))
             }
             config::Operator::And { operators } => {
-                Ok(Box::new(operator::and::And::build(&operators, self)?))
+                Ok(Box::new(::matcher::operator::and::And::build("", &operators, self)?))
             }
             config::Operator::Or { operators } => {
-                Ok(Box::new(operator::or::Or::build(&operators, self)?))
+                Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
             }
-            config::Operator::Regex { regex, target } => Ok(Box::new(
-                operator::regex::Regex::build(regex, self.accessor.build(target)?)?,
-            )),
+            config::Operator::Regex { regex, target } => {
+                Ok(Box::new(::matcher::operator::regex::Regex::build(
+                    regex,
+                    self.accessor.build(rule_name, target)?,
+                )?))
+            }
         };
 
         info!(
-            "OperatorBuilder - build: return operator [{:?}] for input value [{:?}]",
+            "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
         result
@@ -94,7 +95,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        assert!(builder.build(&ops).is_err());
+        assert!(builder.build("", &ops).is_err());
     }
 
     #[test]
@@ -105,7 +106,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build(&ops).unwrap();
+        let operator = builder.build("", &ops).unwrap();
 
         assert_eq!("equal", operator.name());
     }
@@ -118,7 +119,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build(&ops).unwrap();
+        let operator = builder.build("", &ops).unwrap();
 
         assert_eq!("regex", operator.name());
     }
@@ -133,7 +134,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build(&ops).unwrap();
+        let operator = builder.build("", &ops).unwrap();
 
         assert_eq!("and", operator.name());
     }
@@ -143,7 +144,7 @@ mod test {
         let ops = config::Operator::Or { operators: vec![] };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build(&ops).unwrap();
+        let operator = builder.build("", &ops).unwrap();
 
         assert_eq!("or", operator.name());
     }

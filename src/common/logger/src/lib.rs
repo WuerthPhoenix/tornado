@@ -27,17 +27,13 @@ pub enum LoggerError {
 
 impl From<log::SetLoggerError> for LoggerError {
     fn from(error: log::SetLoggerError) -> Self {
-        LoggerError::LoggerConfigurationError {
-            message: format!("{}", error),
-        }
+        LoggerError::LoggerConfigurationError { message: format!("{}", error) }
     }
 }
 
 impl From<std::io::Error> for LoggerError {
     fn from(error: std::io::Error) -> Self {
-        LoggerError::LoggerConfigurationError {
-            message: format!("{}", error),
-        }
+        LoggerError::LoggerConfigurationError { message: format!("{}", error) }
     }
 }
 

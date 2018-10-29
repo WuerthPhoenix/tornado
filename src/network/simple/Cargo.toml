@@ -1,0 +1,12 @@
+[package]
+name = "tornado_network_simple"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+
+[dependencies]
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_network_common = { path = "../common", version = "0.0.1" }
+
+

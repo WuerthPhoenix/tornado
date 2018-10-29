@@ -12,9 +12,7 @@ pub struct RuleValidator {
 
 impl RuleValidator {
     pub fn new() -> RuleValidator {
-        RuleValidator {
-            id: id::IdValidator::new(),
-        }
+        RuleValidator { id: id::IdValidator::new() }
     }
 
     /// Validates that a rule:
@@ -60,10 +58,7 @@ impl RuleValidator {
 
     fn check_unique_name(rule_names: &mut Vec<String>, name: &str) -> Result<(), MatcherError> {
         let name_string = name.to_owned();
-        debug!(
-            "RuleValidator - Validating uniqueness of name for rule: [{}]",
-            &name_string
-        );
+        debug!("RuleValidator - Validating uniqueness of name for rule: [{}]", &name_string);
         if rule_names.contains(&name_string) {
             return Err(MatcherError::NotUniqueRuleNameError { name: name_string });
         }
@@ -94,9 +89,8 @@ impl RuleValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use config::{Constraint, Extractor, ExtractorRegex, Operator};
+    use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
-    use tornado_common_api::Action;
 
     #[test]
     fn should_validate_correct_rule() {
@@ -104,10 +98,7 @@ mod test {
         let rule = new_rule(
             "rule_name",
             0,
-            Operator::Equal {
-                first: "1".to_owned(),
-                second: "1".to_owned(),
-            },
+            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
         // Act
@@ -123,19 +114,13 @@ mod test {
         let rule_1 = new_rule(
             "rule_name",
             0,
-            Operator::Equal {
-                first: "1".to_owned(),
-                second: "1".to_owned(),
-            },
+            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
         let rule_2 = new_rule(
             "rule_name_2",
             1,
-            Operator::Equal {
-                first: "1".to_owned(),
-                second: "1".to_owned(),
-            },
+            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
         // Act
@@ -148,10 +133,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_name() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let rule_1 = new_rule("rule_name", 0, op.clone());
         let rule_2 = new_rule("rule_name", 1, op.clone());
 
@@ -170,10 +152,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_priority() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let rule_1 = new_rule("rule_1", 1, op.clone());
         let rule_2 = new_rule("rule_2", 1, op.clone());
 
@@ -200,10 +179,7 @@ mod test {
     #[test]
     fn build_should_fail_if_empty_spaces_in_rule_name() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let rule_1 = new_rule("rule name", 0, op.clone());
 
         // Act
@@ -216,10 +192,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_name() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let rule_1 = new_rule("rule.name", 0, op.clone());
 
         // Act
@@ -232,20 +205,14 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_extracted_var_name() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let mut rule_1 = new_rule("rule_name", 0, op.clone());
 
         rule_1.constraint.with.insert(
             "var.with.dot".to_owned(),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex {
-                    regex: String::from(r"[0-9]+"),
-                    group_match_idx: 0,
-                },
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
             },
         );
 
@@ -259,10 +226,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_action_id() {
         // Arrange
-        let op = Operator::Equal {
-            first: "1".to_owned(),
-            second: "1".to_owned(),
-        };
+        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
         let mut rule_1 = new_rule("rule_name", 0, op.clone());
 
         rule_1.actions.push(Action {
@@ -278,10 +242,7 @@ mod test {
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-        let constraint = Constraint {
-            where_operator: operator,
-            with: HashMap::new(),
-        };
+        let constraint = Constraint { where_operator: operator, with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),

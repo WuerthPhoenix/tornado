@@ -11,13 +11,14 @@ extern crate serde;
 extern crate serde_derive;
 extern crate serde_json;
 extern crate tornado_common_api;
+extern crate tornado_network_common;
 
 pub mod accessor;
 pub mod config;
+pub mod dispatcher;
 pub mod error;
-pub mod extractor;
 pub mod matcher;
-pub mod operator;
+pub mod model;
 pub mod validator;
 
 #[cfg(test)]
@@ -29,6 +30,9 @@ extern crate lazy_static;
 
 #[cfg(test)]
 extern crate tornado_common_logger;
+
+#[cfg(test)]
+extern crate tornado_network_simple;
 
 #[cfg(test)]
 pub mod test_root {

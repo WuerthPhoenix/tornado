@@ -16,9 +16,12 @@ An executor is in charge or performing a specific Action (usually only one, but 
 # Event
 An event has a simple structure, it is composed of:
 
-- type: the Event type identifier. Usually, a collector always sends Events of the same type;
-- created_ts: the Event creation timestamp in nanoseconds;
-- payload: a Map<String, String> with event specific data.
+- __type__: the Event type identifier. Usually, a collector always sends Events of the same type;
+- __created_ts__: the Event creation timestamp in nanoseconds;
+- __payload__: a Map<String, String> with event specific data.
+
+All fields are mandatory.
+The payload is required but it can be empty.
 
 Example of an Event in JSON format:
 ```json
@@ -30,15 +33,16 @@ Example of an Event in JSON format:
         "body": "everything's done"
     }
 }
-
 ```
 
 # Action
-# Event
 As for the Event, the structure of an Action is really simple:
 
-- id: the Action type identifier. Usually, an executor always processed a single type of action;
-- payload: a Map<String, String> with action specific data.
+- __id__: the Action type identifier. Usually, an executor always processed a single type of action;
+- __payload__: a Map<String, String> with action specific data.
+
+All fields are mandatory. 
+The payload is required but it can be empty.
 
 Example of an Action in JSON format:
 ```json

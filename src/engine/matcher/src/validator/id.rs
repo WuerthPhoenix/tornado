@@ -17,17 +17,13 @@ impl Default for IdValidator {
 
 impl IdValidator {
     pub fn new() -> IdValidator {
-        IdValidator {
-            regex: RustRegex::new(ID_REGEX_PATTERN).unwrap(),
-        }
+        IdValidator { regex: RustRegex::new(ID_REGEX_PATTERN).unwrap() }
     }
 
     /// Validates a generic id or name
     pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
-            return Err(MatcherError::NotValidIdOrNameError {
-                message: error_message,
-            });
+            return Err(MatcherError::NotValidIdOrNameError { message: error_message });
         }
         Ok(())
     }
@@ -59,12 +55,27 @@ impl IdValidator {
         &self,
         payload_key: &str,
         full_accessor: &str,
+        rule_name: &str,
     ) -> Result<(), MatcherError> {
         let error_message = format!(
-            "Payload key [{}] from accessor [{}] is not valid. It should respect the pattern {}",
-            payload_key, full_accessor, ID_REGEX_PATTERN
+            "Payload key [{}] from accessor [{}] for rule [{}] is not valid. It should respect the pattern {}",
+            payload_key, full_accessor, rule_name, ID_REGEX_PATTERN
         );
         self.validate(payload_key, error_message)
+    }
+
+    /// Validates extracted var name from an accessor
+    pub fn validate_extracted_var_from_accessor(
+        &self,
+        extracted_var: &str,
+        full_accessor: &str,
+        rule_name: &str,
+    ) -> Result<(), MatcherError> {
+        let error_message = format!(
+            "Variable key [{}] from accessor [{}] for rule [{}] is not valid. It should respect the pattern {}",
+            extracted_var, full_accessor, rule_name, ID_REGEX_PATTERN
+        );
+        self.validate(extracted_var, error_message)
     }
 
     /// Validates an action id
@@ -107,10 +118,7 @@ mod test {
 
         assert!(id.validate_extracted_var_name("hello", "rule").is_ok());
         assert!(id.validate_extracted_var_name("helloWorld", "rule").is_ok());
-        assert!(
-            id.validate_extracted_var_name("Hello_WORLD", "rule")
-                .is_ok()
-        );
+        assert!(id.validate_extracted_var_name("Hello_WORLD", "rule").is_ok());
 
         assert!(id.validate_extracted_var_name("", "rule").is_err());
         assert!(id.validate_extracted_var_name(" ", "rule").is_err());
@@ -121,13 +129,13 @@ mod test {
     fn should_check_if_valid_payload_key() {
         let id = IdValidator::new();
 
-        assert!(id.validate_payload_key("hello", "rule").is_ok());
-        assert!(id.validate_payload_key("helloWorld", "rule").is_ok());
-        assert!(id.validate_payload_key("Hello_WORLD", "rule").is_ok());
+        assert!(id.validate_payload_key("hello", "rule", "").is_ok());
+        assert!(id.validate_payload_key("helloWorld", "rule", "").is_ok());
+        assert!(id.validate_payload_key("Hello_WORLD", "rule", "").is_ok());
 
-        assert!(id.validate_payload_key("", "rule").is_err());
-        assert!(id.validate_payload_key(" ", "rule").is_err());
-        assert!(id.validate_payload_key("!", "rule").is_err());
+        assert!(id.validate_payload_key("", "rule", "").is_err());
+        assert!(id.validate_payload_key(" ", "rule", "").is_err());
+        assert!(id.validate_payload_key("!", "rule", "").is_err());
     }
 
     #[test]
