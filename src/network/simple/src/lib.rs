@@ -35,6 +35,7 @@ mod test {
 
     #[test]
     fn should_subscribe_and_be_called() {
+
         // Arrange
         let mut bus = SimpleEventBus::new();
         let action_id = "test";
@@ -50,8 +51,10 @@ mod test {
             }),
         );
 
+        // Act
         bus.publish_action(Action { id: String::from(action_id), payload: HashMap::new() });
 
+        // Assert
         let value = &*received.lock().unwrap();
         assert_eq!(action_id, value)
     }

@@ -23,6 +23,16 @@ pub struct ProcessedRule {
     pub message: Option<String>,
 }
 
+impl ProcessedRule {
+    pub fn new() -> ProcessedRule {
+        ProcessedRule{
+            status: ProcessedRuleStatus::NotProcessed,
+            actions: vec![],
+            message: None
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProcessedRuleStatus {
     Matched,
