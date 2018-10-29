@@ -23,13 +23,15 @@ pub struct ProcessedRule {
     pub message: Option<String>,
 }
 
+impl Default for ProcessedRule {
+    fn default() -> Self {
+            ProcessedRule { status: ProcessedRuleStatus::NotProcessed, actions: vec![], message: None }
+    }
+}
+
 impl ProcessedRule {
     pub fn new() -> ProcessedRule {
-        ProcessedRule{
-            status: ProcessedRuleStatus::NotProcessed,
-            actions: vec![],
-            message: None
-        }
+        Default::default()
     }
 }
 

@@ -17,7 +17,7 @@ struct MatcherRule {
     do_continue: bool,
     operator: Box<operator::Operator>,
     extractor: MatcherExtractor,
-    actions: Vec<action::MatcherAction>,
+    actions: Vec<action::ActionResolver>,
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -34,7 +34,7 @@ impl Matcher {
 
         RuleValidator::new().validate_all(rules)?;
 
-        let action_builder = action::MatcherActionBuilder::new();
+        let action_builder = action::ActionResolverBuilder::new();
         let operator_builder = operator::OperatorBuilder::new();
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
@@ -130,7 +130,7 @@ impl Matcher {
     fn process_actions(
         processed_event: &ProcessedEvent,
         processed_rule: &mut ProcessedRule,
-        actions: &[action::MatcherAction],
+        actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
         for action in actions {
             processed_rule.actions.push(action.execute(processed_event)?);

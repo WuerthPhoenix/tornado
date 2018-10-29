@@ -35,7 +35,6 @@ mod test {
 
     #[test]
     fn should_subscribe_and_be_called() {
-
         // Arrange
         let mut bus = SimpleEventBus::new();
         let action_id = "test";

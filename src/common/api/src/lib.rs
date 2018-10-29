@@ -19,11 +19,7 @@ impl Event {
     pub fn new(event_type: String) -> Event {
         let dt = Local::now();
         let created_ts = dt.timestamp_millis() as u64;
-        Event {
-            event_type,
-            created_ts,
-            payload: HashMap::new()
-        }
+        Event { event_type, created_ts, payload: HashMap::new() }
     }
 }
 
@@ -37,9 +33,6 @@ pub struct Action {
 
 impl Action {
     pub fn new(id: String) -> Action {
-        Action {
-            id,
-            payload: HashMap::new()
-        }
+        Action { id, payload: HashMap::new() }
     }
 }
