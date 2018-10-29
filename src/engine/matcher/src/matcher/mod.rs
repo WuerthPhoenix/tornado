@@ -75,6 +75,7 @@ impl Matcher {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
+                rule_name: &rule.name,
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
