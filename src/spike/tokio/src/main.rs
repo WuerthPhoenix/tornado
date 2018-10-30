@@ -1,5 +1,4 @@
 extern crate tokio;
-extern crate tokio_core;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 extern crate tornado_engine_matcher;
@@ -9,7 +8,6 @@ extern crate tornado_network_simple;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
-use tokio_core::reactor::Core;
 
 fn main() {
 

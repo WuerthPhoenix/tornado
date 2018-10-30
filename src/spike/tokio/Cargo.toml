@@ -6,13 +6,14 @@ authors = [
 ]
 
 [dependencies]
-tokio = "0.1"
-tokio-core = "0.1"
 futures = "0.1"
+tokio = "0.1"
+tokio-uds = "0.2"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
 
-
+[dev-dependencies]
+tempfile = "3"

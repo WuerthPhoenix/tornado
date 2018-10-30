@@ -7,6 +7,10 @@ extern crate tornado_network_simple;
 extern crate actix;
 extern crate futures;
 extern crate tokio;
+extern crate tokio_codec;
+extern crate tokio_uds;
+
+mod uds;
 
 use actix::prelude::*;
 use futures::Future;
@@ -36,3 +40,6 @@ impl Handler<EventMessage> for MatcherActor {
         self.dispatcher.dispatch_actions(&processed_event)
     }
 }
+
+#[cfg(test)]
+extern crate tempfile;
