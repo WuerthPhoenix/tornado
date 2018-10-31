@@ -1,13 +1,19 @@
-extern crate tokio;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 extern crate tornado_engine_matcher;
 extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
+extern crate futures;
+extern crate tokio;
+extern crate tokio_codec;
+extern crate tokio_uds;
+
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
+
+mod uds;
 
 fn main() {
 
@@ -36,3 +42,6 @@ fn main() {
     println!("Stream has been created and written to.");
 
 }
+
+#[cfg(test)]
+extern crate tempfile;

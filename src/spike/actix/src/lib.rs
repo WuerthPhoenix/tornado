@@ -10,8 +10,6 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
 
-mod uds;
-
 use actix::prelude::*;
 use futures::Future;
 

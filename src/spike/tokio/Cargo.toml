@@ -8,6 +8,7 @@ authors = [
 [dependencies]
 futures = "0.1"
 tokio = "0.1"
+tokio-codec = "0.1"
 tokio-uds = "0.2"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
