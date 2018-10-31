@@ -15,6 +15,7 @@ mod test {
 
     use super::*;
     use std::thread;
+    use std::sync::Arc;
     use tokio_uds::UnixStream;
     use tokio::io::AsyncRead;
     use tempfile::Builder;
@@ -30,7 +31,6 @@ mod test {
         let mut rt = Runtime::new().unwrap();
 
         let server = UnixListener::bind(&sock_path).unwrap();
-        //let (tx, rx) = oneshot::channel();
 
         let (tx, rx) = mpsc::unbounded();
 
@@ -44,52 +44,38 @@ mod test {
 
                     // Default constructor has no buffer size limits. To be used only with trusted sources.
                     let codec = LinesCodec::new();
-                    let framed = stream.framed(codec).for_each(move |line| {
-                        println!("Received line {}", line);
+
+                    let mut framed = Framed::new(stream, codec).for_each(move |line| {
+                        println!("Server - Thread {:?} - Received line {}", thread::current().name(), line);
                         tx_clone.send(line).expect("should send a line");
-                        thread::sleep_ms(2000);
                         Ok(())
                     });
 
                     tokio::spawn(framed.map_err(|e| panic!("err={:?}", e)));
-
-                    //tx.send(sock.unwrap()).unwrap();
-
-                    // let stream = sock.expect("Should return a valid socket");
-                    // let (reader, writer) = stream.split();
-
-
-/*
-                    let mut framed_sock = Framed::new(stream, codec);
-
-                    framed_sock.for_each(move |line| {
-                        println!("Received line {}", line);
-                        //tx.send(line).expect("should send a line");
-                        thread::sleep_ms(2000);
-                        Ok(())
-                    }).poll().expect("should poll the framed_socket");
-*/
-                    thread::sleep_ms(2000);
 
                     Ok(())
                 })
                 .map_err(|e| panic!("err={:?}", e))
         });
 
+        thread::sleep_ms(100);
 
-        let client = rt.block_on(UnixStream::connect(&sock_path)).unwrap();
+        let client_socket = UnixStream::connect(&sock_path.clone());
+        let client = rt.block_on(client_socket).unwrap();
         //let server = rt.block_on(rx).unwrap();
 
         println!("Write to the client");
         // Write to the client
-        rt.block_on(io::write_all(client, b"hello\nhello\n")).unwrap();
+        rt.block_on(io::write_all(client, b"hello1\nhello2\n")).unwrap();
 
         println!("Written");
-        // Read from the server
-       // let (_, buf) = rt.block_on(io::read_to_end(server, vec![])).unwrap();
 
-        //assert_eq!(buf, b"hello");
+        rt.spawn(rx.for_each(move |line| {
+            //save receiver side tx to db
+            println!("Client - Thread {:?} - Received line {}", thread::current().name() , line);
+            Ok(())
+        }));
 
-        thread::sleep_ms(2000);
+        thread::sleep_ms(100);
     }
 }
