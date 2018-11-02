@@ -51,21 +51,38 @@ fn main() {
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
-    let event_bus = Arc::new(SimpleEventBus::new());
-    let dispatcher = Arc::new(Dispatcher::new(event_bus.clone()).unwrap());
+    //let event_bus = Arc::new(SimpleEventBus::new());
+    //let dispatcher = Arc::new(Dispatcher::new(event_bus.clone()).unwrap());
 
     // start system
     System::run(|| {
 
         // start new actor
+        let matcher_actor = SyncArbiter::start(2, move || {
+                let event_bus = Arc::new(SimpleEventBus::new());
+                let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
+                MatcherActor {
+                    dispatcher,
+                    matcher: matcher.clone()
+                }
+            }
+        );
+
+        /*
         let matcher_actor = MatcherActor{
             dispatcher: dispatcher,
             matcher: matcher
         }.start();
+*/
 
         let sock_path = "/tmp/something";
-        let listener = UnixListener::bind(&sock_path).unwrap();
-
+        let listener = match UnixListener::bind(sock_path) {
+            Ok(m) => m,
+            Err(_) => {
+                fs::remove_file(sock_path).unwrap();
+                UnixListener::bind(sock_path).unwrap()
+            }
+        };;
 
         UdsServerActor::create(|ctx| {
             ctx.add_message_stream(listener.incoming()
@@ -96,4 +113,34 @@ fn main() {
         rules
     }
 
+}
+
+
+
+#[cfg(test)]
+mod test {
+
+    use std::os::unix::net::UnixStream;
+    use std::io::prelude::*;
+    use tornado_common_api::Event;
+    use serde_json;
+
+    //#[test]
+    fn should_write_to_socket() {
+        let mut stream = UnixStream::connect("/tmp/something").expect("Should connect to socket");
+
+        let event = Event::new(String::from("email"));
+        write_to_socket(&mut stream, &event);
+
+
+        //write_to_socket(&mut stream, b"hello world 2\n");
+        //write_to_socket(&mut stream, b"hello world 3\n");
+        //write_to_socket(&mut stream, b"hello world 4\n");
+    }
+
+    fn write_to_socket(stream: &mut UnixStream, event: &Event) {
+        let event_bytes = serde_json::to_vec(event).unwrap();
+        stream.write_all(&event_bytes).expect("should write to socket");
+        stream.write_all(b"\n").expect("should write to socket");
+    }
 }

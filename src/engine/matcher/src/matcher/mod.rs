@@ -75,7 +75,7 @@ impl Matcher {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
-                rule_name: &rule.name,
+                rule_name: rule.name.clone(),
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
@@ -101,7 +101,7 @@ impl Matcher {
                                 if !rule.do_continue {
                                     processed_event
                                         .rules
-                                        .insert(rule.name.as_str(), processed_rule);
+                                        .insert(rule.name.clone(), processed_rule);
                                     break;
                                 }
                             }
@@ -122,7 +122,7 @@ impl Matcher {
                 }
             }
 
-            processed_event.rules.insert(rule.name.as_str(), processed_rule);
+            processed_event.rules.insert(rule.name.clone(), processed_rule);
         }
         debug!("Matcher process - event processing result: [{:#?}]", &processed_event);
         processed_event

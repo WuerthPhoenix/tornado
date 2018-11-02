@@ -4,20 +4,18 @@ use tokio_uds::*;
 
 use tokio;
 use tokio::io;
-use tokio_codec::{Framed, FramedRead, LinesCodec};
+use tokio_codec::{Framed, LinesCodec};
 use tokio::runtime::Runtime;
 
-use futures::{Future, Stream};
-use futures::sync::{mpsc, oneshot};
+use futures::sync::mpsc;
 
 #[cfg(test)]
 mod test {
 
     use super::*;
-    use std::thread;
-    use std::sync::Arc;
+    use futures::{Future, Stream};
+    use std::{thread, time};
     use tokio_uds::UnixStream;
-    use tokio::io::AsyncRead;
     use tempfile::Builder;
 
     #[test]
@@ -45,9 +43,9 @@ mod test {
                     // Default constructor has no buffer size limits. To be used only with trusted sources.
                     let codec = LinesCodec::new();
 
-                    let mut framed = Framed::new(stream, codec).for_each(move |line| {
+                    let framed = Framed::new(stream, codec).for_each(move |line| {
                         println!("Server - Thread {:?} - Received line {}", thread::current().name(), line);
-                        tx_clone.send(line).expect("should send a line");
+                        tx_clone.unbounded_send(line).expect("should send a line");
                         Ok(())
                     });
 
@@ -58,7 +56,7 @@ mod test {
                 .map_err(|e| panic!("err={:?}", e))
         });
 
-        thread::sleep_ms(100);
+        thread::sleep(time::Duration::from_millis(100));
 
         let client_socket = UnixStream::connect(&sock_path.clone());
         let client = rt.block_on(client_socket).unwrap();
@@ -76,6 +74,6 @@ mod test {
             Ok(())
         }));
 
-        thread::sleep_ms(100);
+        thread::sleep(time::Duration::from_millis(100));
     }
 }

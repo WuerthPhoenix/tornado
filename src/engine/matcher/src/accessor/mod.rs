@@ -221,8 +221,8 @@ mod test {
             payload: HashMap::new(),
         });
 
-        event.extracted_vars.insert("rule1.body", "body_value".to_owned());
-        event.extracted_vars.insert("rule1.subject", "subject_value".to_owned());
+        event.extracted_vars.insert("rule1.body".to_owned(), "body_value".to_owned());
+        event.extracted_vars.insert("rule1.subject".to_owned(), "subject_value".to_owned());
 
         let result = accessor.get(&event).unwrap();
 

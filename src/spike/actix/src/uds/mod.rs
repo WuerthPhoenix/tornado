@@ -1,13 +1,10 @@
 use actix::prelude::*;
 use bytes::BytesMut;
-use futures::Future;
-use futures::Stream;
-use tokio::io::AsyncRead;
-use tokio_codec::{Decoder, Encoder, Framed, FramedRead, LinesCodec};
+use tokio_codec::{Decoder, Encoder, Framed, LinesCodec};
 use tokio_uds::UnixStream;
 use serde_json;
-use std::net;
 use std::io;
+use std::thread;
 use tornado_common_api;
 use matcher::{EventMessage, MatcherActor};
 
@@ -27,6 +24,8 @@ impl Handler<UdsConnectMessage> for UdsServerActor {
     type Result = ();
 
     fn handle(&mut self, msg: UdsConnectMessage, _: &mut Context<Self>) {
+
+        info!("UdsServerActor - {:?} - new client connected", thread::current().name());
 
         // For each incoming connection we create `UnixStreamReaderActor` actor
         let matcher_addr = self.matcher_addr.clone();
@@ -56,23 +55,15 @@ impl Actor for UnixStreamReaderActor {
 #[derive(Message)]
 struct LineFeedMessage(pub String);
 
-impl Handler<LineFeedMessage> for UnixStreamReaderActor {
-    type Result = ();
-
-    fn handle(&mut self, msg: LineFeedMessage, _: &mut Context<Self>) -> <Self as Handler<LineFeedMessage>>::Result {
-        unimplemented!()
-    }
-}
-
 /// To use `Framed` with an actor, we have to implement `StreamHandler` trait
 impl StreamHandler<LineFeedMessage, io::Error> for UnixStreamReaderActor {
 
-    fn handle(&mut self, msg: LineFeedMessage, ctx: &mut Self::Context) {
-        debug!("UnixStreamReaderActor - received msg: [{}]", &msg.0);
+    fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
+        info!("UnixStreamReaderActor - {:?} - received msg: [{}]", thread::current().name(), &msg.0);
 
         match serde_json::from_str::<tornado_common_api::Event>(&msg.0) {
             Ok(event) => self.matcher_addr.do_send(EventMessage{event}),
-            Err(e) => error!("UnixStreamReaderActor - Cannot unmarshal event from json: {}", e)
+            Err(e) => error!("UnixStreamReaderActor - {:?} - Cannot unmarshal event from json: {}", thread::current().name(), e)
         };
     }
 }
@@ -101,4 +92,3 @@ impl Encoder for LineFeedMessageDecoder {
         self.lines_codec.encode(item.0, dst)
     }
 }
-

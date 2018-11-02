@@ -69,13 +69,13 @@ mod test {
 
         let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
 
-        let mut rule = ProcessedRule::new("rule1");
+        let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1", rule);
+        event.rules.insert("rule1".to_owned(), rule);
 
         // Act
         dispatcher.dispatch_actions(&event).unwrap();
@@ -106,11 +106,11 @@ mod test {
 
         let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
 
-        let mut rule = ProcessedRule::new("rule1");
+        let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1", rule);
+        event.rules.insert("rule1".to_owned(), rule);
 
         // Act
         dispatcher.dispatch_actions(&event).unwrap();
