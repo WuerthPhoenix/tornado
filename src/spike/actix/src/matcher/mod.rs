@@ -1,5 +1,6 @@
 use actix::prelude::*;
 use futures::Future;
+use std::sync::Arc;
 use tornado_common_api;
 use tornado_common_logger;
 use tornado_engine_matcher::{matcher, error, dispatcher};
@@ -15,8 +16,8 @@ impl Message for EventMessage {
 }
 
 pub struct MatcherActor {
-    matcher: matcher::Matcher,
-    dispatcher: dispatcher::Dispatcher
+    pub matcher: Arc<matcher::Matcher>,
+    pub dispatcher: Arc<dispatcher::Dispatcher>
 }
 
 impl Actor for MatcherActor {

@@ -12,7 +12,7 @@ use tornado_common_api;
 use matcher::{EventMessage, MatcherActor};
 
 pub struct UdsServerActor {
-    matcher_addr: Addr<MatcherActor>,
+    pub matcher_addr: Addr<MatcherActor>,
 }
 
 impl Actor for UdsServerActor {
