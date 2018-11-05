@@ -69,16 +69,20 @@ fn main() {
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
-        // Configure action dispatcher - Begin
-        let mut event_bus = SimpleEventBus::new();
+        // Configure action dispatcher
+        let event_bus = {
+            let mut event_bus = SimpleEventBus::new();
 
-        let executor = LoggerExecutor::new();
-        event_bus.subscribe_to_action("Logger", Box::new(move |action| {
-            executor.execute(&action);
-        }));
+            let executor = LoggerExecutor::new();
+            event_bus.subscribe_to_action("Logger", Box::new(move |action| {
+                match executor.execute(&action) {
+                    Ok(_) => {},
+                    Err(e) => error!("Cannot log action: {}", e)
+                }
+            }));
 
-        let event_bus = Arc::new(event_bus);
-        // Configure action dispatcher - End
+            Arc::new(event_bus)
+        };
 
         // Start executor
         let executor_actor = SyncArbiter::start(1, move || {
