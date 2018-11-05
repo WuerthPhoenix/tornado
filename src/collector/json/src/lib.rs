@@ -1,9 +1,9 @@
 extern crate serde_json;
-extern crate tornado_common_api;
 extern crate tornado_collector_common;
+extern crate tornado_common_api;
 
-use tornado_common_api::Event;
 use tornado_collector_common::{Collector, CollectorError};
+use tornado_common_api::Event;
 
 /// A collector that receives an input JSON and unmarshal it into the Event struct.
 #[derive(Default)]
@@ -16,14 +16,11 @@ impl JsonCollector {
 }
 
 impl Collector<String> for JsonCollector {
-
     fn to_event(&self, input: &String) -> Result<Event, CollectorError> {
         serde_json::from_str::<tornado_common_api::Event>(input)
-            .map_err(|e| CollectorError::EventCreationError {message: format!("{}", e)})
+            .map_err(|e| CollectorError::EventCreationError { message: format!("{}", e) })
     }
-
 }
-
 
 #[cfg(test)]
 mod test {
@@ -44,7 +41,6 @@ mod test {
         // Assert
         assert_eq!(event.event_type, from_json.event_type);
         assert_eq!(event.created_ts, from_json.created_ts);
-
     }
 
     #[test]

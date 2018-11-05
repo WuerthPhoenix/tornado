@@ -32,7 +32,7 @@ impl Dispatcher {
     fn dispatch(&self, actions: &[Action]) -> Result<(), MatcherError> {
         for action in actions {
             // ToDo: avoid cloning. To be fixed when implementing the underlying network as the object could be serialized here.
-            self.event_bus.publish_action(action.clone())
+            self.event_bus.publish_action(&action)
         }
         Ok(())
     }
@@ -59,10 +59,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
+                Box::new(move |message: &Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message)
+                    value.push(message.clone())
                 }),
             );
         }
@@ -96,10 +96,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
+                Box::new(move |message: &Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message)
+                    value.push(message.clone())
                 }),
             );
         }

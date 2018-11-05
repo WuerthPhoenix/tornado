@@ -74,12 +74,13 @@ fn main() {
             let mut event_bus = SimpleEventBus::new();
 
             let executor = LoggerExecutor::new();
-            event_bus.subscribe_to_action("Logger", Box::new(move |action| {
-                match executor.execute(&action) {
-                    Ok(_) => {},
-                    Err(e) => error!("Cannot log action: {}", e)
-                }
-            }));
+            event_bus.subscribe_to_action(
+                "Logger",
+                Box::new(move |action| match executor.execute(&action) {
+                    Ok(_) => {}
+                    Err(e) => error!("Cannot log action: {}", e),
+                }),
+            );
 
             Arc::new(event_bus)
         };

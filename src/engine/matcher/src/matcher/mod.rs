@@ -99,9 +99,7 @@ impl Matcher {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
-                                    processed_event
-                                        .rules
-                                        .insert(rule.name.clone(), processed_rule);
+                                    processed_event.rules.insert(rule.name.clone(), processed_rule);
                                     break;
                                 }
                             }

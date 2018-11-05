@@ -16,5 +16,5 @@ pub trait Collector<T> {
 #[derive(Fail, Debug)]
 pub enum CollectorError {
     #[fail(display = "EventCreationError: [{}]", message)]
-    EventCreationError { message: String }
+    EventCreationError { message: String },
 }

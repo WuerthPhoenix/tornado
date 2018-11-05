@@ -133,8 +133,12 @@ mod test {
         event.event.payload.insert("body".to_owned(), "body_value".to_owned());
         event.event.payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        event.extracted_vars.insert("rule_for_test.test1".to_owned(), "var_test_1_value".to_owned());
-        event.extracted_vars.insert("rule_for_test.test2".to_owned(), "var_test_2_value".to_owned());
+        event
+            .extracted_vars
+            .insert("rule_for_test.test1".to_owned(), "var_test_1_value".to_owned());
+        event
+            .extracted_vars
+            .insert("rule_for_test.test2".to_owned(), "var_test_2_value".to_owned());
 
         // Act
         let result = matcher_action.execute(&event).unwrap();

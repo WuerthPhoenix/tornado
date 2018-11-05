@@ -17,10 +17,8 @@ impl LoggerExecutor {
 }
 
 impl Executor for LoggerExecutor {
-
     fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:#?}]", action);
         Ok(())
     }
-
 }

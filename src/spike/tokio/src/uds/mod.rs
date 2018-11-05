@@ -4,8 +4,8 @@ use tokio_uds::*;
 
 use tokio;
 use tokio::io;
-use tokio_codec::{Framed, LinesCodec};
 use tokio::runtime::Runtime;
+use tokio_codec::{Framed, LinesCodec};
 
 use futures::sync::mpsc;
 
@@ -15,12 +15,11 @@ mod test {
     use super::*;
     use futures::{Future, Stream};
     use std::{thread, time};
-    use tokio_uds::UnixStream;
     use tempfile::Builder;
+    use tokio_uds::UnixStream;
 
     #[test]
     fn echo() {
-
         println!("start test");
 
         let dir = Builder::new().prefix("tokio-uds-tests").tempdir().unwrap();
@@ -33,9 +32,9 @@ mod test {
         let (tx, rx) = mpsc::unbounded();
 
         rt.spawn({
-            server.incoming()
+            server
+                .incoming()
                 .for_each(move |stream| {
-
                     println!("Socket created");
 
                     let tx_clone = tx.clone();
@@ -44,7 +43,11 @@ mod test {
                     let codec = LinesCodec::new();
 
                     let framed = Framed::new(stream, codec).for_each(move |line| {
-                        println!("Server - Thread {:?} - Received line {}", thread::current().name(), line);
+                        println!(
+                            "Server - Thread {:?} - Received line {}",
+                            thread::current().name(),
+                            line
+                        );
                         tx_clone.unbounded_send(line).expect("should send a line");
                         Ok(())
                     });
@@ -52,8 +55,7 @@ mod test {
                     tokio::spawn(framed.map_err(|e| panic!("err={:?}", e)));
 
                     Ok(())
-                })
-                .map_err(|e| panic!("err={:?}", e))
+                }).map_err(|e| panic!("err={:?}", e))
         });
 
         thread::sleep(time::Duration::from_millis(100));
@@ -70,7 +72,7 @@ mod test {
 
         rt.spawn(rx.for_each(move |line| {
             //save receiver side tx to db
-            println!("Client - Thread {:?} - Received line {}", thread::current().name() , line);
+            println!("Client - Thread {:?} - Received line {}", thread::current().name(), line);
             Ok(())
         }));
 
