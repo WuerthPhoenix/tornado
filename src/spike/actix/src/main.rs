@@ -19,13 +19,15 @@ extern crate tokio_codec;
 extern crate tokio_uds;
 
 pub mod collector;
-pub mod matcher;
+pub mod engine;
+pub mod executor;
 pub mod reader;
 
 use actix::prelude::*;
 use collector::JsonReaderActor;
-use matcher::MatcherActor;
-use reader::uds::{listen_to_uds_socket};
+use engine::MatcherActor;
+use executor::ExecutorActor;
+use reader::uds::listen_to_uds_socket;
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
@@ -37,13 +39,16 @@ use tornado_network_simple::SimpleEventBus;
 
 fn main() {
     // Setup logger
-    let conf = LoggerConfig {
-        root_level: String::from("debug"),
+    let mut conf = LoggerConfig {
+        root_level: String::from("info"),
         output_system_enabled: true,
         output_file_enabled: false,
         output_file_name: String::from(""),
         module_level: HashMap::new(),
     };
+
+    conf.module_level.insert("tornado_spike_actix".to_owned(), "debug".to_owned());
+
     setup_logger(&conf).unwrap();
 
     // Load rules from fs
@@ -61,20 +66,25 @@ fn main() {
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
-        // start new actor
-        let matcher_actor = SyncArbiter::start(cpus, move || {
+        // Start executor
+        let executor_actor = SyncArbiter::start(1, move || {
             let event_bus = Arc::new(SimpleEventBus::new());
             let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
-            MatcherActor { dispatcher, matcher: matcher.clone() }
+            ExecutorActor { dispatcher }
         });
 
+        // Start engine
+        let matcher_actor = SyncArbiter::start(cpus, move || MatcherActor {
+            matcher: matcher.clone(),
+            executor_addr: executor_actor.clone(),
+        });
+
+        // Start collector
         let sock_path = "/tmp/something";
         listen_to_uds_socket(sock_path, move |msg| {
             JsonReaderActor::start_new(msg, matcher_actor.clone());
         });
-
     });
-
 }
 
 fn read_rules_from_config(path: &str) -> Vec<Rule> {
@@ -108,7 +118,7 @@ mod test {
     use std::os::unix::net::UnixStream;
     use tornado_common_api::Event;
 
-    #[test]
+    //#[test]
     fn should_write_to_socket() {
         let mut stream = UnixStream::connect("/tmp/something").expect("Should connect to socket");
 
