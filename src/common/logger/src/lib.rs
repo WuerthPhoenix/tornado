@@ -8,7 +8,9 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
+use std::borrow::Cow;
 use std::str::FromStr;
+use std::collections::HashMap;
 
 /// The logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,6 +19,7 @@ pub struct LoggerConfig {
     pub output_system_enabled: bool,
     pub output_file_enabled: bool,
     pub output_file_name: String,
+    pub module_level: HashMap<String, String>
 }
 
 #[derive(Fail, Debug)]
@@ -50,8 +53,10 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
             ))
         }).level(log::LevelFilter::from_str(&logger_config.root_level).unwrap());
 
-    // ToDo: if needed, add per module logger config here
-    // .level_for("tornado", log::LevelFilter::from_str(&logger_config.level).unwrap());
+    for (module, level) in logger_config.module_level.iter() {
+        log_dispatcher = log_dispatcher
+            .level_for(module.to_owned(), log::LevelFilter::from_str(level).unwrap())
+    }
 
     if logger_config.output_system_enabled {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());

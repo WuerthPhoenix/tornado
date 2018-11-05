@@ -25,6 +25,7 @@ use actix::prelude::*;
 use futures::Stream;
 use matcher::MatcherActor;
 use uds::{UdsConnectMessage, UdsServerActor};
+use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
 use tokio_uds::*;
@@ -42,6 +43,7 @@ fn main() {
         output_system_enabled: true,
         output_file_enabled: false,
         output_file_name: String::from(""),
+        module_level: HashMap::new()
     };
     setup_logger(&conf).unwrap();
 
