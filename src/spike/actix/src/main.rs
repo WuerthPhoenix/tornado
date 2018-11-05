@@ -35,12 +35,15 @@ use tornado_common_logger::{setup_logger, LoggerConfig};
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
+use tornado_executor_common::Executor;
+use tornado_executor_logger::LoggerExecutor;
+use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
     // Setup logger
     let mut conf = LoggerConfig {
-        root_level: String::from("info"),
+        root_level: String::from("debug"),
         output_system_enabled: true,
         output_file_enabled: false,
         output_file_name: String::from(""),
@@ -66,9 +69,19 @@ fn main() {
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
+        // Configure action dispatcher - Begin
+        let mut event_bus = SimpleEventBus::new();
+
+        let executor = LoggerExecutor::new();
+        event_bus.subscribe_to_action("Logger", Box::new(move |action| {
+            executor.execute(&action);
+        }));
+
+        let event_bus = Arc::new(event_bus);
+        // Configure action dispatcher - End
+
         // Start executor
         let executor_actor = SyncArbiter::start(1, move || {
-            let event_bus = Arc::new(SimpleEventBus::new());
             let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
             ExecutorActor { dispatcher }
         });

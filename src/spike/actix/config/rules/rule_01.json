@@ -1,6 +1,6 @@
 {
-    "name": "all_emails_and_syslogs",
-    "description": "This is All Emails and Syslogs",
+    "name": "all_emails",
+    "description": "This matches all emails",
     "priority": 42,
     "continue": true,
     "active": true,
@@ -12,42 +12,16 @@
             "type": "equal",
             "first": "${event.type}",
             "second": "email"
-          },
-          {
-            "type": "OR",
-            "operators": [
-              {
-                "type": "equal",
-                "first": "${event.payload.body}",
-                "second": "something"
-              },
-              {
-                "type": "equal",
-                "first": "${event.payload.body}",
-                "second": "other"
-              }
-            ]
           }
         ]
       },
-      "WITH": {
-        "extracted_temp": {
-          "from": "${event.payload.body}",
-          "regex": {
-            "match": "([0-9]+\\sDegrees)",
-            "group_match_idx": 2
-          }
-        }
-      }
+      "WITH": {}
     },
     "actions": [
       {
-        "id": "Log",
+        "id": "Logger",
         "payload": {
-          "type": "${event.payload.hostname}",
-          "service": "${event.payload.service}",
-          "state": "CRITICAL",
-          "comment": "${_variables.extracted_temp}"
+          "type": "${event.type}"
         }
     }
     ]
