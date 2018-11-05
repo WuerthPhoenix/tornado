@@ -8,6 +8,7 @@ extern crate actix;
 extern crate bytes;
 extern crate futures;
 #[macro_use] extern crate log;
+extern crate num_cpus;
 extern crate serde;
 extern crate serde_json;
 extern crate tokio;
@@ -37,7 +38,7 @@ fn main() {
 
     // Setup logger
     let conf = LoggerConfig {
-        root_level: String::from("trace"),
+        root_level: String::from("debug"),
         output_system_enabled: true,
         output_file_enabled: false,
         output_file_name: String::from(""),
@@ -57,8 +58,11 @@ fn main() {
     // start system
     System::run(|| {
 
+        let cpus = num_cpus::get();
+        info!("Available CPUs: {}", cpus);
+
         // start new actor
-        let matcher_actor = SyncArbiter::start(2, move || {
+        let matcher_actor = SyncArbiter::start(cpus, move || {
                 let event_bus = Arc::new(SimpleEventBus::new());
                 let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
                 MatcherActor {

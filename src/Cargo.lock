@@ -919,6 +919,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_collector_common"
+version = "0.0.1"
+dependencies = [
+ "tornado_common_api 0.0.1",
+]
+
+[[package]]
 name = "tornado_common_api"
 version = "0.0.1"
 dependencies = [
@@ -960,6 +967,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_executor_common"
+version = "0.0.1"
+dependencies = [
+ "tornado_common_api 0.0.1",
+]
+
+[[package]]
 name = "tornado_network_common"
 version = "0.0.1"
 dependencies = [
@@ -982,6 +996,7 @@ dependencies = [
  "bytes 0.4.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
  "tempfile 3.0.4 (registry+https://github.com/rust-lang/crates.io-index)",

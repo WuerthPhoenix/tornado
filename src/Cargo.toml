@@ -3,7 +3,9 @@
 members = [
    "common/api",
    "common/logger",
+   "collector/common",
    "engine/matcher",
+   "executor/common",
    "network/common",
    "network/simple",
    "spike/actix",
