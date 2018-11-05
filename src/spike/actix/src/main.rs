@@ -17,13 +17,13 @@ extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
 
+pub mod collector;
 pub mod matcher;
-pub mod uds;
 
 use actix::prelude::*;
 use futures::Stream;
 use matcher::MatcherActor;
-use uds::{UdsConnectMessage, UdsServerActor};
+use collector::{UdsConnectMessage, UdsServerActor};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;

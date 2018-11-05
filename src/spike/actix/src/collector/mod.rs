@@ -4,7 +4,6 @@ use tokio_codec::{Decoder, Encoder, Framed, LinesCodec};
 use tokio_uds::UnixStream;
 use std::io;
 use std::thread;
-use tornado_common_api;
 use matcher::{EventMessage, MatcherActor};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonCollector;
