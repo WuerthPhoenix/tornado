@@ -2,11 +2,12 @@ use actix::prelude::*;
 use bytes::BytesMut;
 use tokio_codec::{Decoder, Encoder, Framed, LinesCodec};
 use tokio_uds::UnixStream;
-use serde_json;
 use std::io;
 use std::thread;
 use tornado_common_api;
 use matcher::{EventMessage, MatcherActor};
+use tornado_collector_common::Collector;
+use tornado_collector_json::JsonCollector;
 
 pub struct UdsServerActor {
     pub matcher_addr: Addr<MatcherActor>,
@@ -30,7 +31,7 @@ impl Handler<UdsConnectMessage> for UdsServerActor {
         // For each incoming connection we create `UnixStreamReaderActor` actor
         let matcher_addr = self.matcher_addr.clone();
 
-        UnixStreamReaderActor::create(move |ctx| {
+        JsonReaderActor::create(move |ctx| {
 
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LineFeedMessageDecoder {
@@ -38,17 +39,20 @@ impl Handler<UdsConnectMessage> for UdsServerActor {
             };
 
             let framed = Framed::new(msg.0, codec);
-            UnixStreamReaderActor::add_stream(framed, ctx);
-            UnixStreamReaderActor { matcher_addr }
+            JsonReaderActor::add_stream(framed, ctx);
+            JsonReaderActor {
+                json_collector: JsonCollector::new(),
+                matcher_addr }
         });
     }
 }
 
-struct UnixStreamReaderActor {
+struct JsonReaderActor {
+    json_collector: JsonCollector,
     matcher_addr: Addr<MatcherActor>
 }
 
-impl Actor for UnixStreamReaderActor {
+impl Actor for JsonReaderActor {
     type Context = Context<Self>;
 }
 
@@ -56,14 +60,14 @@ impl Actor for UnixStreamReaderActor {
 struct LineFeedMessage(pub String);
 
 /// To use `Framed` with an actor, we have to implement `StreamHandler` trait
-impl StreamHandler<LineFeedMessage, io::Error> for UnixStreamReaderActor {
+impl StreamHandler<LineFeedMessage, io::Error> for JsonReaderActor {
 
     fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
         info!("UnixStreamReaderActor - {:?} - received msg: [{}]", thread::current().name(), &msg.0);
 
-        match serde_json::from_str::<tornado_common_api::Event>(&msg.0) {
+        match self.json_collector.to_event(&msg.0) {
             Ok(event) => self.matcher_addr.do_send(EventMessage{event}),
-            Err(e) => error!("UnixStreamReaderActor - {:?} - Cannot unmarshal event from json: {}", thread::current().name(), e)
+            Err(e) => error!("JsonReaderActor - {:?} - Cannot unmarshal event from json: {}", thread::current().name(), e)
         };
     }
 }

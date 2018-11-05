@@ -1,6 +1,10 @@
+extern crate tornado_collector_common;
+extern crate tornado_collector_json;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 extern crate tornado_engine_matcher;
+extern crate tornado_executor_common;
+extern crate tornado_executor_logger;
 extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
@@ -9,17 +13,12 @@ extern crate bytes;
 extern crate futures;
 #[macro_use] extern crate log;
 extern crate num_cpus;
-extern crate serde;
-extern crate serde_json;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
 
 pub mod matcher;
 pub mod uds;
-
-#[cfg(test)]
-extern crate tempfile;
 
 use actix::prelude::*;
 use futures::Stream;
@@ -74,13 +73,6 @@ fn main() {
             }
         );
 
-        /*
-        let matcher_actor = MatcherActor{
-            dispatcher: dispatcher,
-            matcher: matcher
-        }.start();
-*/
-
         let sock_path = "/tmp/something";
         let listener = match UnixListener::bind(sock_path) {
             Ok(m) => m,
@@ -122,6 +114,10 @@ fn main() {
 }
 
 
+#[cfg(test)]
+extern crate serde_json;
+#[cfg(test)]
+extern crate tempfile;
 
 #[cfg(test)]
 mod test {
