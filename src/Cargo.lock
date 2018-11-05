@@ -922,6 +922,17 @@ dependencies = [
 name = "tornado_collector_common"
 version = "0.0.1"
 dependencies = [
+ "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_common_api 0.0.1",
+]
+
+[[package]]
+name = "tornado_collector_json"
+version = "0.0.1"
+dependencies = [
+ "serde_json 1.0.32 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_collector_common 0.0.1",
  "tornado_common_api 0.0.1",
 ]
 
@@ -970,6 +981,8 @@ dependencies = [
 name = "tornado_executor_common"
 version = "0.0.1"
 dependencies = [
+ "failure 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_common_api 0.0.1",
 ]
 

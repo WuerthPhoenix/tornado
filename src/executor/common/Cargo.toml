@@ -6,4 +6,6 @@ authors = [
 ]
 
 [dependencies]
+failure = "0.1"
+failure_derive = "0.1"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

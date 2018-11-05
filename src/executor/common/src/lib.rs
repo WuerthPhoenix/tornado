@@ -1,3 +1,6 @@
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate tornado_common_api;
 
 use tornado_common_api::Action;
@@ -7,5 +10,11 @@ use tornado_common_api::Action;
 pub trait Executor {
 
     /// Executes the operation linked to the received action
-    fn execute(&self, action: &Action);
+    fn execute(&self, action: &Action) -> Result<(), ExecutorError>;
+}
+
+#[derive(Fail, Debug)]
+pub enum ExecutorError {
+    #[fail(display = "ActionExecutionError: [{}]", message)]
+    ActionExecutionError { message: String }
 }
