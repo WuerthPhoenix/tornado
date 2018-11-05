@@ -8,7 +8,6 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 
-use std::borrow::Cow;
 use std::str::FromStr;
 use std::collections::HashMap;
 

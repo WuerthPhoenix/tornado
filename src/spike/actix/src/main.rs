@@ -11,7 +11,8 @@ extern crate tornado_network_simple;
 extern crate actix;
 extern crate bytes;
 extern crate futures;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate num_cpus;
 extern crate tokio;
 extern crate tokio_codec;
@@ -19,30 +20,29 @@ extern crate tokio_uds;
 
 pub mod collector;
 pub mod matcher;
+pub mod reader;
 
 use actix::prelude::*;
-use futures::Stream;
+use collector::JsonReaderActor;
 use matcher::MatcherActor;
-use collector::{UdsConnectMessage, UdsServerActor};
+use reader::uds::{listen_to_uds_socket};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
-use tokio_uds::*;
-use tornado_engine_matcher::config::Rule;
-use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_common_logger::{setup_logger, LoggerConfig};
+use tornado_engine_matcher::config::Rule;
+use tornado_engine_matcher::dispatcher::Dispatcher;
+use tornado_engine_matcher::matcher::Matcher;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
-
     // Setup logger
     let conf = LoggerConfig {
         root_level: String::from("debug"),
         output_system_enabled: true,
         output_file_enabled: false,
         output_file_name: String::from(""),
-        module_level: HashMap::new()
+        module_level: HashMap::new(),
     };
     setup_logger(&conf).unwrap();
 
@@ -58,61 +58,42 @@ fn main() {
 
     // start system
     System::run(|| {
-
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
         // start new actor
         let matcher_actor = SyncArbiter::start(cpus, move || {
-                let event_bus = Arc::new(SimpleEventBus::new());
-                let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
-                MatcherActor {
-                    dispatcher,
-                    matcher: matcher.clone()
-                }
-            }
-        );
+            let event_bus = Arc::new(SimpleEventBus::new());
+            let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
+            MatcherActor { dispatcher, matcher: matcher.clone() }
+        });
 
         let sock_path = "/tmp/something";
-        let listener = match UnixListener::bind(sock_path) {
-            Ok(m) => m,
-            Err(_) => {
-                fs::remove_file(sock_path).unwrap();
-                UnixListener::bind(sock_path).unwrap()
-            }
-        };;
-
-        UdsServerActor::create(|ctx| {
-            ctx.add_message_stream(listener.incoming()
-                .map_err(|e| panic!("err={:?}", e))
-                .map(|stream| {
-                    //let addr = stream.peer_addr().unwrap();
-                    UdsConnectMessage(stream)
-                }));
-            UdsServerActor{ matcher_addr: matcher_actor }
+        listen_to_uds_socket(sock_path, move |msg| {
+            JsonReaderActor::start_new(msg, matcher_actor.clone());
         });
 
     });
 
-    fn read_rules_from_config(path: &str) -> Vec<Rule> {
-        let paths = fs::read_dir(path).unwrap();
-        let mut rules = vec![];
-
-        for path in paths {
-            let filename = path.unwrap().path();
-            info!("Loading rule from file: [{}]", filename.display());
-            let rule_body = fs::read_to_string(&filename).expect(&format!("Unable to open the file [{}]", filename.display()));
-            trace!("Rule body: \n{}", rule_body);
-            rules.push(Rule::from_json(&rule_body).unwrap());
-        };
-
-        info!("Loaded {} rule(s) from [{}]", rules.len(), path);
-
-        rules
-    }
-
 }
 
+fn read_rules_from_config(path: &str) -> Vec<Rule> {
+    let paths = fs::read_dir(path).unwrap();
+    let mut rules = vec![];
+
+    for path in paths {
+        let filename = path.unwrap().path();
+        info!("Loading rule from file: [{}]", filename.display());
+        let rule_body = fs::read_to_string(&filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
+        trace!("Rule body: \n{}", rule_body);
+        rules.push(Rule::from_json(&rule_body).unwrap());
+    }
+
+    info!("Loaded {} rule(s) from [{}]", rules.len(), path);
+
+    rules
+}
 
 #[cfg(test)]
 extern crate serde_json;
@@ -122,18 +103,17 @@ extern crate tempfile;
 #[cfg(test)]
 mod test {
 
-    use std::os::unix::net::UnixStream;
-    use std::io::prelude::*;
-    use tornado_common_api::Event;
     use serde_json;
+    use std::io::prelude::*;
+    use std::os::unix::net::UnixStream;
+    use tornado_common_api::Event;
 
-    //#[test]
+    #[test]
     fn should_write_to_socket() {
         let mut stream = UnixStream::connect("/tmp/something").expect("Should connect to socket");
 
         let event = Event::new(String::from("email"));
         write_to_socket(&mut stream, &event);
-
 
         //write_to_socket(&mut stream, b"hello world 2\n");
         //write_to_socket(&mut stream, b"hello world 3\n");
