@@ -105,7 +105,7 @@ impl Matcher {
                             }
                             Err(e) => {
                                 let message = format!("Matcher process - The event matches the rule [{}] and all variables are extracted correctly; however, some actions cannot be resolved: [{}]", &rule.name, e.to_string());
-                                warn!("{}", &message);
+                                debug!("{}", &message);
                                 processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                                 processed_rule.message = Some(message);
                             }
@@ -113,7 +113,7 @@ impl Matcher {
                     }
                     Err(e) => {
                         let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
-                        warn!("{}", &message);
+                        debug!("{}", &message);
                         processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                         processed_rule.message = Some(message);
                     }

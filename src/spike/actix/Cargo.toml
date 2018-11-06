@@ -8,9 +8,12 @@ authors = [
 [dependencies]
 actix = "0.7"
 bytes = "0.4"
+config = "0.9"
 futures = "0.1"
 log = "0.4"
 num_cpus = "1.8"
+serde = "1.0"
+serde_derive = "1.0"
 tokio = "0.1"
 tokio-codec = "0.1"
 tokio-uds = "0.2"
@@ -23,8 +26,3 @@ tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 tornado_executor_logger = { path = "../../executor/logger", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
-
-[dev-dependencies]
-serde = "1.0"
-serde_json = "1.0"
-tempfile = "3"

@@ -1,0 +1,13 @@
+[logger]
+root_level = "info"
+output_system_enabled = true
+output_file_enabled = false
+output_file_name = ""
+
+[logger.module_level]
+uds_writer_collector = "debug"
+
+[io]
+json_events_path = "./config/events"
+uds_socket_path = "/tmp/tornado_actix_spike"
+repeat_send = 1

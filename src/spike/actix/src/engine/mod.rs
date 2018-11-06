@@ -26,7 +26,7 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        info!("MatcherActor - {:?} - received new event", thread::current().name());
+        debug!("MatcherActor - {:?} - received new event", thread::current().name());
         let processed_event = self.matcher.process(msg.event);
         self.executor_addr.do_send(ProcessedEventMessage { event: processed_event });
         Ok(())

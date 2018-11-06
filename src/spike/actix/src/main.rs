@@ -10,15 +10,20 @@ extern crate tornado_network_simple;
 
 extern crate actix;
 extern crate bytes;
+extern crate config as config_rs;
 extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate num_cpus;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
 
 pub mod collector;
+pub mod config;
 pub mod engine;
 pub mod executor;
 pub mod reader;
@@ -28,10 +33,9 @@ use collector::JsonReaderActor;
 use engine::MatcherActor;
 use executor::ExecutorActor;
 use reader::uds::listen_to_uds_socket;
-use std::collections::HashMap;
 use std::fs;
 use std::sync::Arc;
-use tornado_common_logger::{setup_logger, LoggerConfig};
+use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
@@ -41,23 +45,12 @@ use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
-    // Setup logger
-    let mut conf = LoggerConfig {
-        root_level: String::from("debug"),
-        output_system_enabled: true,
-        output_file_enabled: false,
-        output_file_name: String::from(""),
-        module_level: HashMap::new(),
-    };
+    let conf = config::Conf::new().expect("Should read the configuration");
 
-    conf.module_level.insert("tornado_spike_actix".to_owned(), "debug".to_owned());
-
-    setup_logger(&conf).unwrap();
+    setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_path = "./config";
-    let config_rules_path = format!("{}{}", config_path, "/rules");
-    let config_rules = read_rules_from_config(&config_rules_path);
+    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
@@ -65,7 +58,7 @@ fn main() {
     //let dispatcher = Arc::new(Dispatcher::new(event_bus.clone()).unwrap());
 
     // start system
-    System::run(|| {
+    System::run(move || {
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
@@ -98,8 +91,7 @@ fn main() {
         });
 
         // Start collector
-        let sock_path = "/tmp/something";
-        listen_to_uds_socket(sock_path, move |msg| {
+        listen_to_uds_socket(&conf.io.uds_socket_path, move |msg| {
             JsonReaderActor::start_new(msg, matcher_actor.clone());
         });
     });

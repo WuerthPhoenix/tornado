@@ -1,47 +1,43 @@
+extern crate config as config_rs;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
-extern crate tornado_collector_common;
-extern crate tornado_collector_json;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 
 #[macro_use]
 extern crate log;
 
-use std::collections::HashMap;
-use std::io::prelude::*;
+pub mod config;
+
 use std::fs;
+use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
 use tornado_common_api::Event;
-use tornado_common_logger::{setup_logger, LoggerConfig};
+use tornado_common_logger::setup_logger;
 
 fn main() {
+    let conf = config::Conf::new().expect("Should read the configuration");
+
     // Setup logger
-    let mut conf = LoggerConfig {
-        root_level: String::from("info"),
-        output_system_enabled: true,
-        output_file_enabled: false,
-        output_file_name: String::from(""),
-        module_level: HashMap::new(),
-    };
-
-    conf.module_level.insert("uds_writer_collector".to_owned(), "debug".to_owned());
-
-    setup_logger(&conf).unwrap();
+    setup_logger(&conf.logger).unwrap();
 
     // Load events from fs
-    let config_path = "./config";
-    let config_events_path = format!("{}{}", config_path, "/events");
-    let events = read_events_from_config(&config_events_path);
+    let events = read_events_from_config(&conf.io.json_events_path);
 
     // Create uds writer
-    let sock_path = "/tmp/something";
-    let mut stream = UnixStream::connect(sock_path).expect("Should connect to socket");
+    let mut stream =
+        UnixStream::connect(&conf.io.uds_socket_path).expect("Should connect to socket");
 
     // Send events
-    for event in events {
-        write_to_socket(&mut stream, &event);
+    for _ in 0..conf.io.repeat_send {
+        for event in &events {
+            write_to_socket(&mut stream, event);
+        }
     }
 
+    info!("Completed sending {} events", conf.io.repeat_send * events.len());
 }
 
 fn read_events_from_config(path: &str) -> Vec<Event> {
