@@ -1,7 +1,7 @@
 {
-    "name": "all_emails",
+    "name": "emails_with_temperature",
     "description": "This matches all emails",
-    "priority": 1,
+    "priority": 42,
     "continue": true,
     "active": true,
     "constraint": {
@@ -15,14 +15,23 @@
           }
         ]
       },
-      "WITH": {}
+      "WITH": {
+        "temperature": {
+          "from": "${event.payload.body}",
+          "regex": {
+            "match": "[0-9]+\\sDegrees",
+            "group_match_idx": 0
+          }
+        }
+      }
     },
     "actions": [
       {
         "id": "Logger",
         "payload": {
           "type": "${event.type}",
-          "subject": "${event.payload.subject}"
+          "subject": "${event.payload.subject}",
+          "temperature:": "${_variables.temperature}"
         }
     }
     ]

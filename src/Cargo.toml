@@ -12,4 +12,5 @@ members = [
    "network/simple",
    "spike/actix",
    "spike/tokio",
+   "spike/uds_writer_collector",
 ]

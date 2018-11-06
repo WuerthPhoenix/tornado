@@ -122,35 +122,3 @@ fn read_rules_from_config(path: &str) -> Vec<Rule> {
 
     rules
 }
-
-#[cfg(test)]
-extern crate serde_json;
-#[cfg(test)]
-extern crate tempfile;
-
-#[cfg(test)]
-mod test {
-
-    use serde_json;
-    use std::io::prelude::*;
-    use std::os::unix::net::UnixStream;
-    use tornado_common_api::Event;
-
-    //#[test]
-    fn should_write_to_socket() {
-        let mut stream = UnixStream::connect("/tmp/something").expect("Should connect to socket");
-
-        let event = Event::new(String::from("email"));
-        write_to_socket(&mut stream, &event);
-
-        //write_to_socket(&mut stream, b"hello world 2\n");
-        //write_to_socket(&mut stream, b"hello world 3\n");
-        //write_to_socket(&mut stream, b"hello world 4\n");
-    }
-
-    fn write_to_socket(stream: &mut UnixStream, event: &Event) {
-        let event_bytes = serde_json::to_vec(event).unwrap();
-        stream.write_all(&event_bytes).expect("should write to socket");
-        stream.write_all(b"\n").expect("should write to socket");
-    }
-}
