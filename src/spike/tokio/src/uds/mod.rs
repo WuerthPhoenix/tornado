@@ -60,13 +60,22 @@ mod test {
 
         thread::sleep(time::Duration::from_millis(100));
 
-        let client_socket = UnixStream::connect(&sock_path.clone());
-        let client = rt.block_on(client_socket).unwrap();
         //let server = rt.block_on(rx).unwrap();
 
         println!("Write to the client");
         // Write to the client
-        rt.block_on(io::write_all(client, b"hello1\nhello2\n")).unwrap();
+         for i in 0..100 {
+                 let client_socket = UnixStream::connect(&sock_path.clone())
+                 .and_then(|client| {
+                     io::write_all(client, b"hello1\nhello2\n").then(|result| {
+                         println!("wrote to stream; success={:?}", result.is_ok());
+                         Ok(())
+                     })
+                 }).map_err(|err| {
+                     println!("client connection error = {:?}", err);
+                 });
+             tokio::spawn(client_socket);
+         }
 
         println!("Written");
 
@@ -76,6 +85,6 @@ mod test {
             Ok(())
         }));
 
-        thread::sleep(time::Duration::from_millis(100));
+        thread::sleep(time::Duration::from_millis(250));
     }
 }

@@ -4,43 +4,63 @@ extern crate tornado_engine_matcher;
 extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
+extern crate config as config_rs;
+#[macro_use]
+extern crate log;
 extern crate futures;
+extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
 
+use std::sync::Arc;
+use std::fs;
 use tokio::io;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
+use tornado_common_logger::setup_logger;
+use tornado_engine_matcher::config::Rule;
+use tornado_engine_matcher::matcher::Matcher;
 
+mod config;
+mod reader;
 mod uds;
 
 fn main() {
-    println!("Hello from Tokio!");
 
-    // Parse the address of whatever server we're talking to
-    let addr = "127.0.0.1:6142".parse().unwrap();
+    let conf = config::Conf::new().expect("Should read the configuration");
 
-    let client = TcpStream::connect(&addr)
-        .and_then(|stream| {
-            println!("created stream");
+    setup_logger(&conf.logger).unwrap();
 
-            io::write_all(stream, "hello world\n").then(|result| {
-                println!("wrote to stream; success={:?}", result.is_ok());
-                Ok(())
-            })
-        }).map_err(|err| {
-            // All tasks must have an `Error` type of `()`. This forces error
-            // handling and helps avoid silencing failures.
-            //
-            // In our example, we are only going to log the error to STDOUT.
-            println!("connection error = {:?}", err);
-        });
+    // Load rules from fs
+    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
 
-    println!("About to create the stream and write to it...");
-    tokio::run(client);
-    println!("Stream has been created and written to.");
+    // Start matcher & dispatcher
+    let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
+
+
+    let server = reader::uds::start_uds_socket(conf.io.uds_socket_path);
+
+    tokio::run(server.map_err(|e| panic!("err={:?}", e)) );
+
 }
 
-#[cfg(test)]
-extern crate tempfile;
+fn read_rules_from_config(path: &str) -> Vec<Rule> {
+    let paths = fs::read_dir(path).unwrap();
+    let mut rules = vec![];
+
+    for path in paths {
+        let filename = path.unwrap().path();
+        info!("Loading rule from file: [{}]", filename.display());
+        let rule_body = fs::read_to_string(&filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
+        trace!("Rule body: \n{}", rule_body);
+        rules.push(Rule::from_json(&rule_body).unwrap());
+    }
+
+    info!("Loaded {} rule(s) from [{}]", rules.len(), path);
+
+    rules
+}

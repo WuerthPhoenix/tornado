@@ -9,5 +9,5 @@ uds_writer_collector = "debug"
 
 [io]
 json_events_path = "./config/events"
-uds_socket_path = "/tmp/tornado_actix_spike"
+uds_socket_path = "/tmp/tornado_spike_tokio"
 repeat_send = 1

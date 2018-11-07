@@ -6,7 +6,6 @@ use std::io;
 use std::path::Path;
 use std::thread;
 use tokio_codec::{Decoder, Encoder, LinesCodec};
-use tokio_uds::UnixStream;
 use tokio_uds::*;
 
 pub fn listen_to_uds_socket<P: AsRef<Path>, F: 'static + FnMut(UdsConnectMessage) -> () + Sized>(
@@ -19,7 +18,7 @@ pub fn listen_to_uds_socket<P: AsRef<Path>, F: 'static + FnMut(UdsConnectMessage
             fs::remove_file(&path).unwrap();
             UnixListener::bind(&path).unwrap()
         }
-    };;
+    };
 
     UdsServerActor::create(|ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
