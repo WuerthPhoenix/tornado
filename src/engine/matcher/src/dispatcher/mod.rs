@@ -32,7 +32,7 @@ impl Dispatcher {
     fn dispatch(&self, actions: &[Action]) -> Result<(), MatcherError> {
         for action in actions {
             // ToDo: avoid cloning. To be fixed when implementing the underlying network as the object could be serialized here.
-            self.event_bus.publish_action(action.clone())
+            self.event_bus.publish_action(&action)
         }
         Ok(())
     }
@@ -59,23 +59,23 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
+                Box::new(move |message: &Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message)
+                    value.push(message.clone())
                 }),
             );
         }
 
         let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
 
-        let mut rule = ProcessedRule::new("rule1");
+        let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1", rule);
+        event.rules.insert("rule1".to_owned(), rule);
 
         // Act
         dispatcher.dispatch_actions(&event).unwrap();
@@ -96,21 +96,21 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
+                Box::new(move |message: &Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message)
+                    value.push(message.clone())
                 }),
             );
         }
 
         let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
 
-        let mut rule = ProcessedRule::new("rule1");
+        let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1", rule);
+        event.rules.insert("rule1".to_owned(), rule);
 
         // Act
         dispatcher.dispatch_actions(&event).unwrap();

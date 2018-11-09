@@ -10,7 +10,7 @@ pub mod or;
 pub mod regex;
 
 /// Trait for a generic matcher.operator.
-pub trait Operator: fmt::Debug {
+pub trait Operator: fmt::Debug + Send + Sync {
     /// Returns the Operator name
     fn name(&self) -> &str;
 

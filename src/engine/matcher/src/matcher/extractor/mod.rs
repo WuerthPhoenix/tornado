@@ -104,10 +104,10 @@ impl MatcherExtractor {
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable key in the event.extracted_vars map is in the form:
     /// rule_name.extracted_var_name
-    pub fn process_all<'o>(&'o self, event: &mut ProcessedEvent<'o>) -> Result<(), MatcherError> {
+    pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
-            event.extracted_vars.insert(extractor.scoped_key.as_str(), value);
+            event.extracted_vars.insert(extractor.scoped_key.clone(), value);
         }
         Ok(())
     }

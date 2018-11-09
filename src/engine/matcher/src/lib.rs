@@ -37,6 +37,7 @@ extern crate tornado_network_simple;
 #[cfg(test)]
 pub mod test_root {
 
+    use std::collections::HashMap;
     use std::sync::Mutex;
     use tornado_common_logger::{setup_logger, LoggerConfig};
 
@@ -61,6 +62,7 @@ pub mod test_root {
             output_system_enabled: true,
             output_file_enabled: false,
             output_file_name: String::from(""),
+            module_level: HashMap::new(),
         };
         setup_logger(&conf).unwrap();
     }

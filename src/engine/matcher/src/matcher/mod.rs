@@ -75,7 +75,7 @@ impl Matcher {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
-                rule_name: &rule.name,
+                rule_name: rule.name.clone(),
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
@@ -99,15 +99,13 @@ impl Matcher {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
-                                    processed_event
-                                        .rules
-                                        .insert(rule.name.as_str(), processed_rule);
+                                    processed_event.rules.insert(rule.name.clone(), processed_rule);
                                     break;
                                 }
                             }
                             Err(e) => {
                                 let message = format!("Matcher process - The event matches the rule [{}] and all variables are extracted correctly; however, some actions cannot be resolved: [{}]", &rule.name, e.to_string());
-                                warn!("{}", &message);
+                                debug!("{}", &message);
                                 processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                                 processed_rule.message = Some(message);
                             }
@@ -115,14 +113,14 @@ impl Matcher {
                     }
                     Err(e) => {
                         let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{}]", &rule.name, e.to_string());
-                        warn!("{}", &message);
+                        debug!("{}", &message);
                         processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                         processed_rule.message = Some(message);
                     }
                 }
             }
 
-            processed_event.rules.insert(rule.name.as_str(), processed_rule);
+            processed_event.rules.insert(rule.name.clone(), processed_rule);
         }
         debug!("Matcher process - event processing result: [{:#?}]", &processed_event);
         processed_event

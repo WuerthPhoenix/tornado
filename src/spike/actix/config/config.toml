@@ -1,0 +1,13 @@
+[logger]
+root_level = "warn"
+output_system_enabled = true
+output_file_enabled = false
+output_file_name = ""
+
+[logger.module_level]
+tornado_spike_actix = "info"
+tornado_executor_logger = "info"
+
+[io]
+json_rules_path = "./config/rules"
+uds_socket_path = "/tmp/tornado_spike_actix"

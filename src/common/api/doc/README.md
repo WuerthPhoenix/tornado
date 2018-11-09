@@ -6,12 +6,7 @@ Three main components are currently defined:
 - the Tornado Engine 
 - the Executors
 
-A Collector is an event data source. 
-It collects information from one or more unstructured sources (e.g. emails, log files, etc.), produces structured Events and sends them to the Tornado engine.
-
 The Tornado Engine receives Events from the collectors, processes them against a set of rules and triggers the Actions defined on the matching rules sending messages to the appropriate executors.
-
-An executor is in charge or performing a specific Action (usually only one, but it could be more). It receives the action description from the Tornado engine and delivers the linked operation.
 
 # Event
 An event has a simple structure, it is composed of:
