@@ -81,7 +81,10 @@ fn main() {
                 tokio::spawn(future::lazy(move || {
                     debug!("Client - Thread {:?} - Got event!! span matcher thread", thread::current().name());
                     let processed_event = matcher_clone.process(event);
-                    Dispatcher::new(event_bus_clone).unwrap().dispatch_actions(&processed_event);
+                    match Dispatcher::new(event_bus_clone).unwrap().dispatch_actions(&processed_event) {
+                        Ok(_) => {}
+                        Err(e) => error!("Cannot dispatch action: {}", e),
+                    };
                     Ok(())
                 }));
             },
