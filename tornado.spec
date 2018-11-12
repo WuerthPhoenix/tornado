@@ -1,5 +1,6 @@
 %global debug_package %{nil}
 %define release_target_dir target/release/
+%define deploy_dir /opt/tornado/
 
 Name:    tornado
 Version: 0.2.0
@@ -26,16 +27,19 @@ cargo build --release
 cd -
 
 %install
-mkdir -p %{buildroot}/%{_bindir}
+mkdir -p %{buildroot}/%{deploy_dir}
 EXECUTABLES="tornado_spike_actix tornado_spike_tokio uds_writer_collector"
 for binary in $EXECUTABLES ; do
-    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{_bindir}/
+    mkdir -p %{buildroot}/%{deploy_dir}/$binary
+    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/$binary/$binary
 done
 
 %files
-%attr(0755, root, root) %{_bindir}/tornado_spike_actix
-%attr(0755, root, root) %{_bindir}/tornado_spike_tokio
-%attr(0755, root, root) %{_bindir}/uds_writer_collector
+%defattr(0755, root, root, 0775)
+%{deploy_dir}/tornado_spike_actix/tornado_spike_actix
+%{deploy_dir}/tornado_spike_tokio/tornado_spike_tokio
+%{deploy_dir}/uds_writer_collector/uds_writer_collector
+
 
 %changelog
 * Fri Nov 09 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.2.0-1
