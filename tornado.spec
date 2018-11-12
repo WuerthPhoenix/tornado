@@ -40,7 +40,6 @@ done
 %{deploy_dir}/tornado_spike_tokio/tornado_spike_tokio
 %{deploy_dir}/uds_writer_collector/uds_writer_collector
 
-
 %changelog
 * Fri Nov 09 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.2.0-1
  - New Feature: UDS Json Collector
@@ -50,6 +49,7 @@ done
  - New Feature: Benchmark Tests
  - Improvement: Module level logging
  - Improvement: Enable LTO for release builds
+ - Improvement: Move up to date markdown documentation to project
 
 * Fri Oct 19 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.1.0-1
  - New Feature: Basic matching implementation via Operators
