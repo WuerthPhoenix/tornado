@@ -31,9 +31,9 @@ impl AccessorBuilder {
     /// - "${event.created_ts}" -> returns an instance of Accessor::CreatedTs
     /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
     /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
-    pub fn build(&self, rule_name: &str, value: &str) -> Result<Accessor, MatcherError> {
-        info!("AccessorBuilder - build: build accessor [{}] for rule [{}]", value, rule_name);
-        let result = match value.trim() {
+    pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
+        info!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
+        let result = match input.trim() {
             value
                 if value.starts_with(self.start_delimiter)
                     && value.ends_with(self.end_delimiter) =>
@@ -57,12 +57,12 @@ impl AccessorBuilder {
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            value => Ok(Accessor::Constant { value: value.to_owned() }),
+            _value => Ok(Accessor::Constant { value: input.to_owned() }),
         };
 
         info!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
-            &result, value
+            &result, input
         );
         result
     }
@@ -120,6 +120,26 @@ mod test {
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("constant_value", result);
+
+        match result {
+            Cow::Borrowed(_) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_not_trigger_a_constant_value() {
+        let accessor = Accessor::Constant { value: "  constant_value  ".to_owned() };
+
+        let event = ProcessedEvent::new(Event {
+            created_ts: 0,
+            event_type: "event_type_string".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        let result = accessor.get(&event).unwrap();
+
+        assert_eq!("  constant_value  ", result);
 
         match result {
             Cow::Borrowed(_) => assert!(true),

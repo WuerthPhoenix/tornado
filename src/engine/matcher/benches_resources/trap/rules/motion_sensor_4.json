@@ -21,7 +21,7 @@
           {
             "type": "contain",
             "text": "${event.payload.line_11}",
-            "substring": "1"
+            "substring": " 1"
           },
           {
             "type": "contain",
@@ -46,7 +46,7 @@
         "payload": {
           "host": "bz-outsideserverroom-sensors",
           "service": "motion_sensor_port_4",
-          "status": "CRITICAL",
+          "status": "Critical",
           "message": "${_variables.sensor_description}"
         }
       }

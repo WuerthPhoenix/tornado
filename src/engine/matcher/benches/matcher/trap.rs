@@ -14,7 +14,7 @@ pub fn bench(c: &mut Criterion) {
     // Create Matcher
     let matcher = Matcher::new(&vec![rule]).unwrap();
 
-    //println!("result is : {:#?}", matcher.process(event.clone()));
+    // println!("result is : {:#?}", matcher.process(event.clone()));
 
     c.bench_function("Trap - Sensor 4", move |b| b.iter(||
         matcher.process(event.clone())
