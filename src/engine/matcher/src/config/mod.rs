@@ -50,6 +50,8 @@ pub enum Operator {
     And { operators: Vec<Operator> },
     #[serde(rename = "OR")]
     Or { operators: Vec<Operator> },
+    #[serde(rename = "contain")]
+    Contain { text: String, substring: String },
     #[serde(rename = "equal")]
     Equal { first: String, second: String },
     #[serde(rename = "regex")]

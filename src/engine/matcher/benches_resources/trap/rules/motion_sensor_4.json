@@ -19,14 +19,14 @@
             "second": "10.65.5.31"
           },
           {
-            "type": "regex",
-            "target": "${event.payload.line_11}",
-            "regex": "1"
+            "type": "contain",
+            "text": "${event.payload.line_11}",
+            "substring": "1"
           },
           {
             "type": "regex",
-            "target": "${event.payload.line_9}",
-            "regex": "Sensor 4"
+            "text": "${event.payload.line_9}",
+            "substring": "Sensor 4"
           }
         ]
       },
