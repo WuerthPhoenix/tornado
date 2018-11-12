@@ -1,7 +1,6 @@
 use error::MatcherError;
 use serde_json;
 use std::collections::HashMap;
-use tornado_common_api::Action;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -57,6 +56,12 @@ pub enum Operator {
     Regex { regex: String, target: String },
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Action {
+    pub id: String,
+    pub payload: HashMap<String, String>,
+}
+
 #[cfg(test)]
 mod test {
 
@@ -84,14 +89,8 @@ mod test {
             _ => assert!(false),
         }
 
-        assert_eq!(
-            "${event.payload.body}",
-            rule.constraint.with["extracted_temp"].from
-        );
-        assert_eq!(
-            "([0-9]+\\sDegrees)",
-            rule.constraint.with["extracted_temp"].regex.regex
-        );
+        assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
+        assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
     }
 
     fn file_to_string(filename: &str) -> String {
