@@ -24,7 +24,7 @@
             "substring": "1"
           },
           {
-            "type": "regex",
+            "type": "contain",
             "text": "${event.payload.line_9}",
             "substring": "Sensor 4"
           }

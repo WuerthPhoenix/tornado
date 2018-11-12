@@ -45,6 +45,8 @@ pub fn bench(c: &mut Criterion) {
         event
     };
 
+    //println!("result is : {:#?}", matcher.process(event.clone()));
+
     c.bench_function("One simple rule", move |b| b.iter(||
         matcher.process(event.clone())
     ));
