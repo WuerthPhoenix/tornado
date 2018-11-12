@@ -11,8 +11,6 @@ pub mod utils;
 use criterion::Criterion;
 use matcher::*;
 
-criterion_group!(benches,
-    one_simple_rule::bench,
-    trap::bench);
+criterion_group!(benches, one_simple_rule::bench, trap::bench);
 
 criterion_main!(benches);

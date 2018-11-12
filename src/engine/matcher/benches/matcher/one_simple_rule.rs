@@ -4,9 +4,7 @@ use tornado_common_api::Event;
 use tornado_engine_matcher::config::*;
 use tornado_engine_matcher::matcher::Matcher;
 
-
 pub fn bench(c: &mut Criterion) {
-
     // Create rule
     let rule = {
         let mut rule = new_rule(
@@ -25,10 +23,7 @@ pub fn bench(c: &mut Criterion) {
         );
 
         // Add action
-        let mut action = Action {
-            id: "log".to_owned(),
-            payload: HashMap::new()
-        };
+        let mut action = Action { id: "log".to_owned(), payload: HashMap::new() };
 
         action.payload.insert("var".to_owned(), "${_variables.extracted_var}".to_owned());
         rule.actions.push(action);
@@ -47,9 +42,7 @@ pub fn bench(c: &mut Criterion) {
 
     // println!("result is : {:#?}", matcher.process(event.clone()));
 
-    c.bench_function("One simple rule", move |b| b.iter(||
-        matcher.process(event.clone())
-    ));
+    c.bench_function("One simple rule", move |b| b.iter(|| matcher.process(event.clone())));
 }
 
 fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {

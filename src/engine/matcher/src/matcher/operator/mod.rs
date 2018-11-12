@@ -5,8 +5,8 @@ use model::ProcessedEvent;
 use std::fmt;
 
 pub mod and;
-pub mod equal;
 pub mod contain;
+pub mod equal;
 pub mod or;
 pub mod regex;
 

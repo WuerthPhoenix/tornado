@@ -20,8 +20,8 @@ extern crate tokio_codec;
 extern crate tokio_uds;
 
 use futures::sync::mpsc;
-use std::sync::Arc;
 use std::fs;
+use std::sync::Arc;
 use std::thread;
 use tokio::prelude::*;
 use tokio::runtime::Runtime;
@@ -40,7 +40,6 @@ mod config;
 mod reader;
 
 fn main() {
-
     let conf = config::Conf::new().expect("Should read the configuration");
     setup_logger(&conf.logger).unwrap();
 
@@ -79,15 +78,21 @@ fn main() {
                 let matcher_clone = matcher.clone();
                 let event_bus_clone = event_bus.clone();
                 tokio::spawn(future::lazy(move || {
-                    debug!("Client - Thread {:?} - Got event!! span matcher thread", thread::current().name());
+                    debug!(
+                        "Client - Thread {:?} - Got event!! span matcher thread",
+                        thread::current().name()
+                    );
                     let processed_event = matcher_clone.process(event);
-                    match Dispatcher::new(event_bus_clone).unwrap().dispatch_actions(&processed_event) {
+                    match Dispatcher::new(event_bus_clone)
+                        .unwrap()
+                        .dispatch_actions(&processed_event)
+                    {
                         Ok(_) => {}
                         Err(e) => error!("Cannot dispatch action: {}", e),
                     };
                     Ok(())
                 }));
-            },
+            }
             Err(e) => error!(
                 "JsonReaderActor - {:?} - Cannot unmarshal event from json: {}",
                 thread::current().name(),
@@ -99,9 +104,9 @@ fn main() {
     }));
 
     let server = reader::uds::start_uds_socket(conf.io.uds_socket_path, tx);
-    runtime.block_on(server.map_err(|e| panic!("err={:?}", e)) )
+    runtime
+        .block_on(server.map_err(|e| panic!("err={:?}", e)))
         .expect("Tokio runtime should start");
-
 }
 
 fn read_rules_from_config(path: &str) -> Vec<Rule> {
