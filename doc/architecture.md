@@ -1,14 +1,16 @@
 # Target Project Structure
 
     Tornado
-      |-- executors
+      |-- executor
       |     |-- common
+      |     |-- logger
       |     |-- archive_influx
       |     |-- archive_filesystem
       |     |-- log_es
       |     |-- Monitoring
-      |-- collectors
+      |-- collector
       |     |-- common
+      |     |-- json
       |     |-- icinga2
       |     |-- snmtptrap
       |     |-- procmail
@@ -22,6 +24,7 @@
       |     |-- logger # logger configuration
       |-- network #Abstract service which will be used by all components to communicate
       |     |-- common
+      |     |-- simple
       |     |-- nats
       |     |-- nanomsg
       |-- RestApi
@@ -192,22 +195,3 @@
             "comment": "42 Degrees"
         }
     }
-
-
-#Corellation (not definitively decided)
-
-##Corellation Brain Storming
-
-    all_emails_and_syslogs.incoming_time {
-        monitoring {
-            action = "set"
-            host = hostname
-            service = servicename
-            state = "OK"
-        }
-    }
-    
-    DIV(SUM( IF( IF( METRIC("Metric1", 0) == "ABC" , "MATCHES", "DOESN'T") == "MATCHES", 1.0, 0.0), 2.0), 1.0)
-    
-    all_emails_and_syslog( EVENT(1) )
-
