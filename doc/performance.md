@@ -13,6 +13,12 @@ Performance related notes:
 - SIMD?
 
 
+Noteworthy libraries:
+- https://github.com/Amanieu/hashbrown
+- https://github.com/Amanieu/parking_lot
+- https://docs.rs/chashmap/2.2.0/chashmap/
+
+
 Useful tips:
 - https://llogiq.github.io/2017/06/01/perf-pitfalls.html
 -    When compiling on the target machine we can use CPU specific features: RUSTFLAGS='-C target-cpu=native' cargo build --release
