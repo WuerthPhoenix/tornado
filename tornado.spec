@@ -3,7 +3,7 @@
 %define deploy_dir /opt/tornado/
 
 Name:    tornado
-Version: 0.2.0
+Version: 0.3.0
 Release: 1
 Summary: Tornado Package
 
@@ -41,6 +41,10 @@ done
 %{deploy_dir}/uds_writer_collector/uds_writer_collector
 
 %changelog
+* Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
+ - New Feature: Contains Operation
+ - Improvement: Additional Benchmark for performance tracking
+
 * Fri Nov 09 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.2.0-1
  - New Feature: UDS Json Collector
  - New Feature: Logger Executor
