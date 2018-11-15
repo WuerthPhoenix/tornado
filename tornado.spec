@@ -33,12 +33,20 @@ for binary in $EXECUTABLES ; do
     mkdir -p %{buildroot}/%{deploy_dir}/$binary
     cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/$binary/$binary
 done
+cp -rpv ./src/spike/tokio/config  %{buildroot}/%{deploy_dir}/tornado_spike_tokio/config
+cp -rpv ./src/spike/actix/config  %{buildroot}/%{deploy_dir}/tornado_spike_actix/config
+cp -prv ./src/spike/uds_writer_collector/config  %{buildroot}/%{deploy_dir}/uds_writer_collector/config
 
 %files
 %defattr(0755, root, root, 0775)
 %{deploy_dir}/tornado_spike_actix/tornado_spike_actix
 %{deploy_dir}/tornado_spike_tokio/tornado_spike_tokio
 %{deploy_dir}/uds_writer_collector/uds_writer_collector
+
+%defattr(0664, root, root, 0775)
+%{deploy_dir}/tornado_spike_actix/config
+%{deploy_dir}/tornado_spike_tokio/config
+%{deploy_dir}/uds_writer_collector/config
 
 %changelog
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
