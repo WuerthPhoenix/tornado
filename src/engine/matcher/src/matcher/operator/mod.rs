@@ -5,6 +5,7 @@ use model::ProcessedEvent;
 use std::fmt;
 
 pub mod and;
+pub mod contain;
 pub mod equal;
 pub mod or;
 pub mod regex;
@@ -54,17 +55,23 @@ impl OperatorBuilder {
         config: &config::Operator,
     ) -> Result<Box<Operator>, MatcherError> {
         let result: Result<Box<Operator>, MatcherError> = match config {
+            config::Operator::And { operators } => {
+                Ok(Box::new(::matcher::operator::and::And::build("", &operators, self)?))
+            }
+            config::Operator::Or { operators } => {
+                Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
+            }
             config::Operator::Equal { first, second } => {
                 Ok(Box::new(::matcher::operator::equal::Equal::build(
                     self.accessor.build(rule_name, first)?,
                     self.accessor.build(rule_name, second)?,
                 )?))
             }
-            config::Operator::And { operators } => {
-                Ok(Box::new(::matcher::operator::and::And::build("", &operators, self)?))
-            }
-            config::Operator::Or { operators } => {
-                Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
+            config::Operator::Contain { text, substring } => {
+                Ok(Box::new(::matcher::operator::contain::Contain::build(
+                    self.accessor.build(rule_name, text)?,
+                    self.accessor.build(rule_name, substring)?,
+                )?))
             }
             config::Operator::Regex { regex, target } => {
                 Ok(Box::new(::matcher::operator::regex::Regex::build(
@@ -109,6 +116,19 @@ mod test {
         let operator = builder.build("", &ops).unwrap();
 
         assert_eq!("equal", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_contain_operator() {
+        let ops = config::Operator::Contain {
+            text: "first_arg=".to_owned(),
+            substring: "second_arg".to_owned(),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build("", &ops).unwrap();
+
+        assert_eq!("contain", operator.name());
     }
 
     #[test]

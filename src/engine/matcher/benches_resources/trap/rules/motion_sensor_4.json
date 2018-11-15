@@ -1,0 +1,54 @@
+{
+    "name": "motion_sensor_4",
+    "description": "Motion Sensor port4: Motion Detection",
+    "priority": 9,
+    "continue": true,
+    "active": true,
+    "constraint": {
+      "WHERE": {
+        "type": "AND",
+        "operators": [
+          {
+            "type": "equal",
+            "first": "${event.type}",
+            "second": "trap"
+          },
+          {
+            "type": "equal",
+            "first": "${event.payload.host_ip}",
+            "second": "10.65.5.31"
+          },
+          {
+            "type": "contain",
+            "text": "${event.payload.line_11}",
+            "substring": " 1"
+          },
+          {
+            "type": "contain",
+            "text": "${event.payload.line_9}",
+            "substring": "Sensor 4"
+          }
+        ]
+      },
+      "WITH": {
+        "sensor_description": {
+          "from": "${event.payload.line_5}",
+          "regex": {
+            "match": "(.*)",
+            "group_match_idx": 0
+          }
+        }
+      }
+    },
+    "actions": [
+      {
+        "id": "nagios",
+        "payload": {
+          "host": "bz-outsideserverroom-sensors",
+          "service": "motion_sensor_port_4",
+          "status": "Critical",
+          "message": "${_variables.sensor_description}"
+        }
+      }
+    ]
+  }
