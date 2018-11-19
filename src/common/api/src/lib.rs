@@ -41,6 +41,13 @@ impl Action {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Value {
+    Text(String),
+    // Array(Vec<Value>),
+    // Map(HashMap<String, Value>),
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
