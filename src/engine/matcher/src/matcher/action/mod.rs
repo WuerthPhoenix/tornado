@@ -126,7 +126,7 @@ mod test {
 
         let mut event = ProcessedEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: 123456,
+            created_ts: "123456".to_owned(),
             payload: HashMap::new(),
         });
 

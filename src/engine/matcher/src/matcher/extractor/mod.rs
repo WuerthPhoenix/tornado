@@ -49,11 +49,7 @@ impl MatcherExtractorBuilder {
     ///    // The value of the "extracted_temp" variable is obtained applying the regular expression "[0-9]+" to the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event = ProcessedEvent::new(Event {
-    ///        payload: HashMap::new(),
-    ///        event_type: "temp=44'C".to_owned(),
-    ///        created_ts: 0,
-    ///    });
+    ///    let event = ProcessedEvent::new(Event::new("temp=44'C"));
     ///
     ///    assert_eq!(
     ///        String::from("44"),
@@ -377,10 +373,6 @@ mod test {
     }
 
     fn new_event(event_type: &str) -> ProcessedEvent {
-        ProcessedEvent::new(Event {
-            payload: HashMap::new(),
-            event_type: event_type.to_owned(),
-            created_ts: 0,
-        })
+        ProcessedEvent::new(Event::new(event_type))
     }
 }

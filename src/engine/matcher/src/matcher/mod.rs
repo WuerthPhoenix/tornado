@@ -275,11 +275,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(3, result.rules.len());
@@ -316,11 +312,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -347,11 +339,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("sms"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("sms"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -381,11 +369,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -427,11 +411,7 @@ mod test {
         event_payload.insert(String::from("temp"), String::from("temp_value"));
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: event_payload,
-        });
+        let result = matcher.process(Event::new_with_payload("email", event_payload));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -459,11 +439,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());
@@ -491,11 +467,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(3, result.rules.len());
@@ -527,11 +499,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -576,11 +544,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());
@@ -630,11 +594,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());

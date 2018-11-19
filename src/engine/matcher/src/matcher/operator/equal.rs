@@ -54,11 +54,7 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = ProcessedEvent::new(Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        });
+        let event = ProcessedEvent::new( Event::new("test_type"));
 
         assert_eq!("one", operator.first_arg.get(&event).unwrap());
         assert_eq!("two", operator.second_arg.get(&event).unwrap());
@@ -71,7 +67,7 @@ mod test {
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event =  Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -83,8 +79,7 @@ mod test {
             AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -96,8 +91,7 @@ mod test {
             AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -112,7 +106,7 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("type".to_owned(), "type".to_owned());
 
-        let event = Event { payload, event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new_with_payload("type", payload);
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -124,7 +118,7 @@ mod test {
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }

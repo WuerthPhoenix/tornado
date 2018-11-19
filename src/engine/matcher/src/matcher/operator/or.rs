@@ -45,7 +45,6 @@ impl Operator for Or {
 mod test {
 
     use super::*;
-    use std::collections::HashMap;
     use tornado_common_api::Event;
 
     #[test]
@@ -119,8 +118,7 @@ mod test {
     fn should_evaluate_to_false_if_no_children() {
         let operator = Or::build("", &vec![], &OperatorBuilder::new()).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -138,8 +136,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -157,8 +154,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -176,8 +172,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -200,8 +195,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -224,8 +218,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -251,7 +244,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -277,7 +270,7 @@ mod test {
             &OperatorBuilder::new(),
         ).unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
