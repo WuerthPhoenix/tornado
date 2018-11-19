@@ -26,7 +26,7 @@ impl Operator for Contain {
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
         match self.text.get(event) {
             Some(text) => match self.substring.get(event) {
-                Some(substring) => (&text).contains(substring.as_ref()),
+                Some(substring) => (&text).contains(substring),
                 None => false,
             },
             None => false,

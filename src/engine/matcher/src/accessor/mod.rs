@@ -1,6 +1,5 @@
 use error::MatcherError;
 use model::ProcessedEvent;
-use std::borrow::Cow;
 use validator::id::IdValidator;
 
 #[derive(Default)]
@@ -84,17 +83,17 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, str>> {
+    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<&'o str> {
         match &self {
-            Accessor::Constant { value } => Some(value.into()),
-            Accessor::CreatedTs {} => Some((&event.event.created_ts).into()),
+            Accessor::Constant { value } => Some(&value),
+            Accessor::CreatedTs {} => Some(&event.event.created_ts),
             Accessor::ExtractedVar { key } => {
-                event.extracted_vars.get(key.as_str()).map(|value| value.as_str().into())
+                event.extracted_vars.get(key.as_str()).map(|value| value.as_str())
             }
             Accessor::Payload { key } => {
-                event.event.payload.get(key).map(|value| value.as_str().into())
+                event.event.payload.get(key).map(|value| value.as_str())
             }
-            Accessor::Type {} => Some((&event.event.event_type).into()),
+            Accessor::Type {} => Some(&event.event.event_type),
         }
     }
 }
@@ -117,10 +116,6 @@ mod test {
 
         assert_eq!("constant_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -133,10 +128,6 @@ mod test {
 
         assert_eq!("  constant_value  ", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -148,11 +139,6 @@ mod test {
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("event_type_string", result);
-
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -165,10 +151,6 @@ mod test {
 
         assert!(DateTime::parse_from_rfc3339(&result).is_ok());
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -185,10 +167,6 @@ mod test {
 
         assert_eq!("body_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -218,10 +196,6 @@ mod test {
 
         assert_eq!("body_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
