@@ -12,7 +12,7 @@ The Tornado Engine receives Events from the collectors, processes them against a
 An event has a simple structure, it is composed of:
 
 - __type__: the Event type identifier. Usually, a collector always sends Events of the same type;
-- __created_ts__: the Event creation timestamp in nanoseconds;
+- __created_ts__: the Event creation timestamp in ISO 8601 format;
 - __payload__: a Map<String, String> with event specific data.
 
 All fields are mandatory.
@@ -22,7 +22,7 @@ Example of an Event in JSON format:
 ```json
 {
     "type": "email",
-    "created_ts": 12345678123123123, 
+    "created_ts": "2018-11-28T21:45:59.324310806+09:00", 
     "payload": {
         "subject" : "Doing something",
         "body": "everything's done"
