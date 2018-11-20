@@ -1,6 +1,8 @@
 use error::MatcherError;
 use model::ProcessedEvent;
 use validator::id::IdValidator;
+use std::borrow::Cow;
+use tornado_common_api::Value;
 
 #[derive(Default)]
 pub struct AccessorBuilder {
@@ -56,7 +58,7 @@ impl AccessorBuilder {
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            _value => Ok(Accessor::Constant { value: input.to_owned() }),
+            _value => Ok(Accessor::Constant { value: Value::Text(input.to_owned()) }),
         };
 
         info!(
@@ -75,7 +77,7 @@ impl AccessorBuilder {
 /// - Type : returns the value of the "type" field of an Event
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
-    Constant { value: String },
+    Constant { value: Value },
     CreatedTs {},
     ExtractedVar { key: String },
     Payload { key: String },
@@ -83,17 +85,17 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<&'o str> {
+    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, Value>> {
         match &self {
-            Accessor::Constant { value } => Some(&value),
-            Accessor::CreatedTs {} => Some(&event.event.created_ts),
+            Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
+            Accessor::CreatedTs {} => Some( Cow::Owned(Value::Text(event.event.created_ts.clone()))),
             Accessor::ExtractedVar { key } => {
-                event.extracted_vars.get(key.as_str()).map(|value| value.as_str())
+                event.extracted_vars.get(key.as_str()).map(|value| Cow::Borrowed(value))
             }
             Accessor::Payload { key } => {
-                event.event.payload.get(key).map(|value| value.as_str())
+                event.event.payload.get(key).map(|value| Cow::Borrowed(value))
             }
-            Accessor::Type {} => Some(&event.event.event_type),
+            Accessor::Type {} => Some( Cow::Owned(Value::Text(event.event.event_type.clone()))),
         }
     }
 }

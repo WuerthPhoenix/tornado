@@ -68,7 +68,7 @@ impl ActionResolver {
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 }),
             };
-            action.payload.insert(key.to_owned(), value?.to_string());
+            action.payload.insert(key.to_owned(), value?.as_ref().clone());
         }
 
         Ok(action)
