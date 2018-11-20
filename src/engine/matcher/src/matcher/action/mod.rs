@@ -60,15 +60,13 @@ impl ActionResolver {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, accessor) in &self.payload {
-            let value = match accessor.get(event) {
-                Some(value) => Ok(value),
-                None => Err(MatcherError::CreateActionError {
-                    action_id: self.id.to_owned(),
-                    rule_name: self.rule_name.to_owned(),
-                    cause: format!("Accessor [{:?}] returned empty value.", accessor),
-                }),
-            };
-            action.payload.insert(key.to_owned(), value?.as_ref().clone());
+            let value = accessor.get(event).ok_or(MatcherError::CreateActionError {
+                action_id: self.id.to_owned(),
+                rule_name: self.rule_name.to_owned(),
+                cause: format!("Accessor [{:?}] returned empty value.", accessor),
+            })?;
+
+            action.payload.insert(key.to_owned(), value.as_ref().clone());
         }
 
         Ok(action)

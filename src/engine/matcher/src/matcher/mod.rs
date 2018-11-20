@@ -39,21 +39,18 @@ impl Matcher {
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
 
-        for rule in rules {
-            if rule.active {
-                info!("Matcher build - Processing rule: [{}]", &rule.name);
-                debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
+        for rule in rules.iter().filter(|rule| rule.active) {
+            info!("Matcher build - Processing rule: [{}]", &rule.name);
+            debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
 
-                processed_rules.push(MatcherRule {
-                    name: rule.name.to_owned(),
-                    priority: rule.priority,
-                    do_continue: rule.do_continue,
-                    operator: operator_builder
-                        .build(&rule.name, &rule.constraint.where_operator)?,
-                    extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                    actions: action_builder.build(&rule.name, &rule.actions)?,
-                })
-            }
+            processed_rules.push(MatcherRule {
+                name: rule.name.to_owned(),
+                priority: rule.priority,
+                do_continue: rule.do_continue,
+                operator: operator_builder.build(&rule.name, &rule.constraint.where_operator)?,
+                extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
+                actions: action_builder.build(&rule.name, &rule.actions)?,
+            })
         }
 
         // Sort rules by priority
