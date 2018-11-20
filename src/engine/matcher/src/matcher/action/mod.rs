@@ -80,7 +80,7 @@ mod test {
     use super::*;
     use accessor::Accessor;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_build_a_matcher_action() {
@@ -101,7 +101,7 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-        assert_eq!(&Accessor::Constant { value }, action_payload.get("key").unwrap())
+        assert_eq!(&Accessor::Constant { value: Value::Text(value) }, action_payload.get("key").unwrap())
     }
 
     #[test]
@@ -130,15 +130,15 @@ mod test {
             payload: HashMap::new(),
         });
 
-        event.event.payload.insert("body".to_owned(), "body_value".to_owned());
-        event.event.payload.insert("subject".to_owned(), "subject_value".to_owned());
+        event.event.payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        event.event.payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         event
             .extracted_vars
-            .insert("rule_for_test.test1".to_owned(), "var_test_1_value".to_owned());
+            .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
         event
             .extracted_vars
-            .insert("rule_for_test.test2".to_owned(), "var_test_2_value".to_owned());
+            .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
 
         // Act
         let result = matcher_action.execute(&event).unwrap();

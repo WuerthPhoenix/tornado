@@ -52,6 +52,22 @@ pub enum Value {
     // Map(HashMap<String, Value>),
 }
 
+impl PartialEq<str> for Value {
+    fn eq(&self, other: &str) -> bool {
+        let option_text: Option<&str> = self.into();
+        match option_text {
+            Some(text) => text == other,
+            None => false
+        }
+    }
+}
+// To make comparison bidirectional
+impl PartialEq<Value> for str {
+    fn eq(&self, other: &Value) -> bool {
+       other == self
+    }
+}
+
 impl <'o> Into<Option<&'o str>> for &'o Value {
     fn into(self) -> Option<&'o str> {
         match self {
@@ -132,4 +148,13 @@ mod test {
         assert_eq!("text_value", text.unwrap());
     }
 
+    #[test]
+    fn should_compare_value_with_str() {
+        // Arrange
+        let value = Value::Text("text_value".to_owned());
+
+        // Assert
+        assert_eq!("text_value", &value);
+        assert_eq!(&value, "text_value");
+    }
 }

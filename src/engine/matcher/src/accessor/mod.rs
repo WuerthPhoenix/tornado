@@ -106,29 +106,29 @@ mod test {
     use super::*;
     use chrono::prelude::{DateTime};
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_return_a_constant_value() {
-        let accessor = Accessor::Constant { value: "constant_value".to_owned() };
+        let accessor = Accessor::Constant { value: Value::Text("constant_value".to_owned()) };
 
         let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!("constant_value", result);
+        assert_eq!("constant_value", result.as_ref());
 
     }
 
     #[test]
     fn should_not_trigger_a_constant_value() {
-        let accessor = Accessor::Constant { value: "  constant_value  ".to_owned() };
+        let accessor = Accessor::Constant { value: Value::Text("  constant_value  ".to_owned()) };
 
         let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!("  constant_value  ", result);
+        assert_eq!("  constant_value  ", result.as_ref());
 
     }
 
@@ -140,7 +140,7 @@ mod test {
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!("event_type_string", result);
+        assert_eq!("event_type_string", result.as_ref());
     }
 
     #[test]
@@ -149,9 +149,9 @@ mod test {
 
         let event = ProcessedEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event);
 
-        assert!(DateTime::parse_from_rfc3339(&result).is_ok());
+        assert!(DateTime::parse_from_rfc3339(to_option_str(&result).unwrap()).is_ok());
 
     }
 
@@ -160,14 +160,14 @@ mod test {
         let accessor = Accessor::Payload { key: "body".to_owned() };
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), "body_value".to_owned());
-        payload.insert("subject".to_owned(), "subject_value".to_owned());
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!("body_value", result);
+        assert_eq!("body_value", result.as_ref());
 
     }
 
@@ -176,8 +176,8 @@ mod test {
         let accessor = Accessor::Payload { key: "date".to_owned() };
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), "body_value".to_owned());
-        payload.insert("subject".to_owned(), "subject_value".to_owned());
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
         let result = accessor.get(&event);
@@ -191,12 +191,12 @@ mod test {
 
         let mut event = ProcessedEvent::new(Event::new("event_type_string"));
 
-        event.extracted_vars.insert("rule1.body".to_owned(), "body_value".to_owned());
-        event.extracted_vars.insert("rule1.subject".to_owned(), "subject_value".to_owned());
+        event.extracted_vars.insert("rule1.body".to_owned(), Value::Text("body_value".to_owned()));
+        event.extracted_vars.insert("rule1.subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!("body_value", result);
+        assert_eq!("body_value", result.as_ref());
 
     }
 
@@ -218,7 +218,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Constant { value }, accessor)
+        assert_eq!(Accessor::Constant { value: Value::Text(value) }, accessor);
     }
 
     #[test]
@@ -269,14 +269,14 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), "body_value".to_owned());
-        payload.insert("subject".to_owned(), "subject_value".to_owned());
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event).unwrap();
 
-        assert_eq!("body_value", result.unwrap());
+        assert_eq!("body_value", result.as_ref());
     }
 
     #[test]

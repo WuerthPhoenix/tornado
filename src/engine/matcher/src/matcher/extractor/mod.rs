@@ -343,8 +343,8 @@ mod test {
         let vars = &event.extracted_vars;
 
         assert_eq!(2, vars.len());
-        assert_eq!(&String::from("44"), vars.get("rule.extracted_temp").unwrap());
-        assert_eq!(&String::from("temp"), vars.get("rule.extracted_text").unwrap());
+        assert_eq!("44", vars.get("rule.extracted_temp").unwrap());
+        assert_eq!("temp", vars.get("rule.extracted_text").unwrap());
     }
 
     #[test]

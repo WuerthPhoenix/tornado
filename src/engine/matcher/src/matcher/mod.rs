@@ -144,6 +144,7 @@ mod test {
     use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
     use test_root;
+    use tornado_common_api::*;
 
     #[test]
     fn should_build_the_matcher() {
@@ -408,7 +409,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         let mut event_payload = HashMap::new();
-        event_payload.insert(String::from("temp"), String::from("temp_value"));
+        event_payload.insert(String::from("temp"), Value::Text(String::from("temp_value")));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", event_payload));
