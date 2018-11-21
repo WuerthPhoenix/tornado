@@ -1,6 +1,5 @@
 use error::MatcherError;
 use model::ProcessedEvent;
-use std::borrow::Cow;
 use validator::id::IdValidator;
 
 #[derive(Default)]
@@ -84,17 +83,17 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, str>> {
+    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<&'o str> {
         match &self {
-            Accessor::Constant { value } => Some(value.into()),
-            Accessor::CreatedTs {} => Some(format!("{}", event.event.created_ts).into()),
+            Accessor::Constant { value } => Some(&value),
+            Accessor::CreatedTs {} => Some(&event.event.created_ts),
             Accessor::ExtractedVar { key } => {
-                event.extracted_vars.get(key.as_str()).map(|value| value.as_str().into())
+                event.extracted_vars.get(key.as_str()).map(|value| value.as_str())
             }
             Accessor::Payload { key } => {
-                event.event.payload.get(key).map(|value| value.as_str().into())
+                event.event.payload.get(key).map(|value| value.as_str())
             }
-            Accessor::Type {} => Some((&event.event.event_type).into()),
+            Accessor::Type {} => Some(&event.event.event_type),
         }
     }
 }
@@ -103,7 +102,7 @@ impl Accessor {
 mod test {
 
     use super::*;
-    use chrono::prelude::Local;
+    use chrono::prelude::{DateTime};
     use std::collections::HashMap;
     use tornado_common_api::Event;
 
@@ -111,83 +110,47 @@ mod test {
     fn should_return_a_constant_value() {
         let accessor = Accessor::Constant { value: "constant_value".to_owned() };
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("constant_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
     fn should_not_trigger_a_constant_value() {
         let accessor = Accessor::Constant { value: "  constant_value  ".to_owned() };
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("  constant_value  ", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("event_type_string", result);
-
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
     fn should_return_the_event_created_ts() {
         let accessor = Accessor::CreatedTs {};
 
-        let dt = Local::now();
-        let created_ts = dt.timestamp_millis() as u64;
-
-        let event = ProcessedEvent::new(Event {
-            created_ts,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event).unwrap();
 
-        assert_eq!(format!("{}", created_ts).as_str(), result);
+        assert!(DateTime::parse_from_rfc3339(&result).is_ok());
 
-        match result {
-            Cow::Owned(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -198,19 +161,12 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload,
-        });
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("body_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
@@ -221,11 +177,7 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload,
-        });
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
         let result = accessor.get(&event);
 
         assert!(result.is_none());
@@ -235,11 +187,7 @@ mod test {
     fn should_return_value_from_extracted_var() {
         let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
-        let mut event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let mut event = ProcessedEvent::new(Event::new("event_type_string"));
 
         event.extracted_vars.insert("rule1.body".to_owned(), "body_value".to_owned());
         event.extracted_vars.insert("rule1.subject".to_owned(), "subject_value".to_owned());
@@ -248,21 +196,13 @@ mod test {
 
         assert_eq!("body_value", result);
 
-        match result {
-            Cow::Borrowed(_) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
     fn should_return_none_if_no_match() {
         let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload: HashMap::new(),
-        });
+        let event = ProcessedEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event);
 
@@ -330,11 +270,8 @@ mod test {
         payload.insert("body".to_owned(), "body_value".to_owned());
         payload.insert("subject".to_owned(), "subject_value".to_owned());
 
-        let event = ProcessedEvent::new(Event {
-            created_ts: 0,
-            event_type: "event_type_string".to_owned(),
-            payload,
-        });
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
         let result = accessor.get(&event);
 
         assert_eq!("body_value", result.unwrap());

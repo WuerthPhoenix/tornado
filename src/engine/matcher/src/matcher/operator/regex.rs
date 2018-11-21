@@ -58,8 +58,7 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert_eq!("one", operator.regex.to_string());
         assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap());
@@ -81,8 +80,7 @@ mod test {
             AccessorBuilder::new().build("", &"f".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -98,7 +96,7 @@ mod test {
         payload.insert("name1".to_owned(), "F".to_owned());
         payload.insert("name2".to_owned(), "G".to_owned());
 
-        let event = Event { payload, event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new_with_payload("test_type", payload);
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -114,7 +112,7 @@ mod test {
         payload.insert("name1".to_owned(), "F".to_owned());
         payload.insert("name2".to_owned(), "G".to_owned());
 
-        let event = Event { payload, event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new_with_payload("test_type", payload);
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -126,8 +124,7 @@ mod test {
             AccessorBuilder::new().build("", &"${event.payload.name}".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
