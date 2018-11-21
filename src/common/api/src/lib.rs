@@ -91,11 +91,15 @@ pub fn to_option_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
     }
 }
 
+#[cfg(test)]
+extern crate serde_json;
 
 #[cfg(test)]
 mod test {
     use super::*;
     use chrono::prelude::*;
+    use std::fs;
+    use serde_json;
 
     #[test]
     fn created_ts_should_be_iso_8601() {
@@ -172,5 +176,18 @@ mod test {
         // Assert
         assert_eq!("text_value", &value);
         assert_eq!(&value, "text_value");
+    }
+
+    #[test]
+    fn should_parse_a_json_event_with_nested_payload() {
+        // Arrange
+        let filename = "./test_resources/event_nested_01.json";
+        let event_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json);
+
+        // Assert
+        assert!(event.is_ok());
     }
 }
