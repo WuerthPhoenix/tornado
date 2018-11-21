@@ -3,7 +3,7 @@ use error::MatcherError;
 use matcher::operator::Operator;
 use model::ProcessedEvent;
 use regex::Regex as RustRegex;
-use tornado_common_api::Value;
+use tornado_common_api::to_option_str;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -31,11 +31,8 @@ impl Operator for Regex {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        self.target.get(event).map_or(false, |value| {
-            match value.as_ref() {
-                Value::Text(text) => self.regex.is_match(&text),
-            }
-        })
+        let cow_value = self.target.get(event);
+        to_option_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }
 

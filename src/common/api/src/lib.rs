@@ -13,7 +13,7 @@ use std::collections::HashMap;
 pub struct Event {
     pub event_type: String,
     pub created_ts: String,
-    pub payload: HashMap<String, Value>,
+    pub payload: Payload,
 }
 
 impl Event {
@@ -21,7 +21,7 @@ impl Event {
         Event::new_with_payload(event_type, HashMap::new())
     }
 
-    pub fn new_with_payload<S: Into<String>>(event_type: S, payload: HashMap<String, Value>) -> Event {
+    pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ts: String = dt.to_rfc3339();
         Event { event_type: event_type.into(), created_ts, payload }
@@ -33,24 +33,26 @@ impl Event {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
-    pub payload: HashMap<String, Value>,
+    pub payload: Payload,
 }
 
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
         Action::new_with_payload(id , HashMap::new())
     }
-    pub fn new_with_payload<S: Into<String>>(id: S, payload: HashMap<String, Value>) -> Action {
+    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
         Action { id: id.into(), payload }
     }
 }
+
+pub type Payload = HashMap<String, Value>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
     Text(String),
     // Array(Vec<Value>),
-    // Map(HashMap<String, Value>),
+    Map(Payload),
 }
 
 impl PartialEq<str> for Value {
@@ -72,7 +74,8 @@ impl PartialEq<Value> for str {
 impl <'o> Into<Option<&'o str>> for &'o Value {
     fn into(self) -> Option<&'o str> {
         match self {
-            Value::Text(text) => Some(text)
+            Value::Text(text) => Some(text),
+            _ => None
         }
     }
 }
@@ -119,6 +122,18 @@ mod test {
         // Assert
         assert!(text.is_some());
         assert_eq!("text_value", text.unwrap());
+    }
+
+    #[test]
+    fn should_return_an_empty_option() {
+        // Arrange
+        let value = Value::Map(HashMap::new());
+
+        // Act
+        let text: Option<&str> = (&value).into();
+
+        // Assert
+        assert!(text.is_none());
     }
 
     #[test]
