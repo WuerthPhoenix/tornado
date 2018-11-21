@@ -46,6 +46,7 @@ impl Action {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
 pub enum Value {
     Text(String),
     // Array(Vec<Value>),
