@@ -38,7 +38,7 @@ pub struct Action {
 
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
-        Action::new_with_payload(id , HashMap::new())
+        Action::new_with_payload(id, HashMap::new())
     }
     pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
         Action { id: id.into(), payload }
@@ -55,27 +55,36 @@ pub enum Value {
     Map(Payload),
 }
 
+impl Value {
+    pub fn child(&self, key: &str) -> Option<&Value> {
+        match self {
+            Value::Map(payload) => payload.get(key),
+            Value::Text(_) => None,
+        }
+    }
+}
+
 impl PartialEq<str> for Value {
     fn eq(&self, other: &str) -> bool {
         let option_text: Option<&str> = self.into();
         match option_text {
             Some(text) => text == other,
-            None => false
+            None => false,
         }
     }
 }
 // To make comparison bidirectional
 impl PartialEq<Value> for str {
     fn eq(&self, other: &Value) -> bool {
-       other == self
+        other == self
     }
 }
 
-impl <'o> Into<Option<&'o str>> for &'o Value {
+impl<'o> Into<Option<&'o str>> for &'o Value {
     fn into(self) -> Option<&'o str> {
         match self {
             Value::Text(text) => Some(text),
-            _ => None
+            _ => None,
         }
     }
 }
@@ -87,7 +96,7 @@ pub fn cow_to_option_str<'o>(value: &'o Cow<'o, Value>) -> Option<&'o str> {
 pub fn to_option_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
     match value {
         Some(cow) => cow.as_ref().into(),
-        None => None
+        None => None,
     }
 }
 
@@ -98,8 +107,8 @@ extern crate serde_json;
 mod test {
     use super::*;
     use chrono::prelude::*;
-    use std::fs;
     use serde_json;
+    use std::fs;
 
     #[test]
     fn created_ts_should_be_iso_8601() {
@@ -182,12 +191,58 @@ mod test {
     fn should_parse_a_json_event_with_nested_payload() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
-        let event_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json);
 
         // Assert
         assert!(event.is_ok());
+    }
+
+    #[test]
+    fn value_text_should_return_no_child() {
+        // Arrange
+        let value = Value::Text("".to_owned());
+
+        // Act
+        let result = value.child("");
+
+        // Assert
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn value_map_should_return_child_if_exists() {
+        // Arrange
+        let mut children = HashMap::new();
+        children.insert("first".to_owned(), Value::Text("first_value".to_owned()));
+        children.insert("second".to_owned(), Value::Text("second_value".to_owned()));
+
+        let value = Value::Map(children);
+
+        // Act
+        let result = value.child("second");
+
+        // Assert
+        assert!(result.is_some());
+        assert_eq!("second_value", result.unwrap());
+    }
+
+    #[test]
+    fn value_map_should_return_no_child_if_absent() {
+        // Arrange
+        let mut children = HashMap::new();
+        children.insert("first".to_owned(), Value::Text("first_value".to_owned()));
+        children.insert("second".to_owned(), Value::Text("second_value".to_owned()));
+
+        let value = Value::Map(children);
+
+        // Act
+        let result = value.child("third");
+
+        // Assert
+        assert!(result.is_none());
     }
 }

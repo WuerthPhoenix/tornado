@@ -25,7 +25,6 @@ impl Operator for Contain {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-
         let option_text = self.text.get(event);
         match to_option_str(&option_text) {
             Some(text) => {
@@ -34,14 +33,11 @@ impl Operator for Contain {
                     Some(substring) => (&text).contains(substring),
                     None => false,
                 }
-            },
+            }
             None => false,
         }
     }
 }
-
-
-
 
 #[cfg(test)]
 mod test {
@@ -67,7 +63,7 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = ProcessedEvent::new( Event::new("test_type"));
+        let event = ProcessedEvent::new(Event::new("test_type"));
 
         assert_eq!("one", operator.text.get(&event).unwrap().as_ref());
         assert_eq!("two", operator.substring.get(&event).unwrap().as_ref());

@@ -4,7 +4,7 @@ use error::MatcherError;
 use model::ProcessedEvent;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
-use tornado_common_api::{Value, cow_to_option_str};
+use tornado_common_api::{cow_to_option_str, Value};
 
 /// MatcherExtractor instance builder.
 #[derive(Default)]
@@ -154,7 +154,7 @@ impl VariableExtractor {
 
     pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
         let cow_value = self.target.get(event)?;
-        let value= cow_to_option_str(&cow_value)?;
+        let value = cow_to_option_str(&cow_value)?;
         let captures = self.regex.captures(value)?;
         let group_idx = self.group_match_idx;
         captures.get(group_idx as usize).map(|matched| matched.as_str().to_owned())

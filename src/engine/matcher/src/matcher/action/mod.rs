@@ -101,7 +101,10 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-        assert_eq!(&Accessor::Constant { value: Value::Text(value) }, action_payload.get("key").unwrap())
+        assert_eq!(
+            &Accessor::Constant { value: Value::Text(value) },
+            action_payload.get("key").unwrap()
+        )
     }
 
     #[test]
@@ -154,4 +157,38 @@ mod test {
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
     }
 
+    #[test]
+    fn should_build_an_action_with_maps_in_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("payload_body".to_owned(), "${event.payload.body}".to_owned());
+        config_action
+            .payload
+            .insert("payload_body_inner".to_owned(), "${event.payload.body.inner}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload: HashMap::new(),
+        });
+
+        let mut body = HashMap::new();
+        body.insert("inner".to_owned(), Value::Text("inner_body_value".to_owned()));
+
+        event.event.payload.insert("body".to_owned(), Value::Map(body.clone()));
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!("inner_body_value", result.payload.get("payload_body_inner").unwrap());
+        assert_eq!(&Value::Map(body.clone()), result.payload.get("payload_body").unwrap());
+    }
 }

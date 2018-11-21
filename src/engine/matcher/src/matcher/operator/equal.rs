@@ -54,7 +54,7 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = ProcessedEvent::new( Event::new("test_type"));
+        let event = ProcessedEvent::new(Event::new("test_type"));
 
         assert_eq!("one", operator.first_arg.get(&event).unwrap().as_ref());
         assert_eq!("two", operator.second_arg.get(&event).unwrap().as_ref());
@@ -67,7 +67,7 @@ mod test {
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =  Event::new("test_type");
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
