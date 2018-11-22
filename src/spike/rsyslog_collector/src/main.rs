@@ -26,17 +26,21 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     info!("Rsyslog collector started");
+    let stdin = io::stdin();
+    let mut stdin = stdin.lock();
+
+    let mut input = String::new();
 
     loop {
-        let mut input = String::new();
-        match io::stdin().read_line(&mut input) {
+        match stdin.read_line(&mut input) {
             Ok(len) => if len == 0 {
                 return;
             } else {
-                println!("Received line: {}", input);
+                trace!("Received line: {}", input);
+                input.clear();
             }
             Err(error) => {
-                eprintln!("error: {}", error);
+                error!("error: {}", error);
                 return;
             }
         }
