@@ -16,8 +16,8 @@ impl JsonCollector {
 }
 
 impl Collector<String> for JsonCollector {
-    fn to_event(&self, input: &String) -> Result<Event, CollectorError> {
-        serde_json::from_str::<tornado_common_api::Event>(input)
+    fn to_event(&self, input: String) -> Result<Event, CollectorError> {
+        serde_json::from_str::<tornado_common_api::Event>(&input)
             .map_err(|e| CollectorError::EventCreationError { message: format!("{}", e) })
     }
 }
@@ -36,7 +36,7 @@ mod test {
         let collector = JsonCollector::new();
 
         // Act
-        let from_json = collector.to_event(&json).unwrap();
+        let from_json = collector.to_event(json).unwrap();
 
         // Assert
         assert_eq!(event.event_type, from_json.event_type);
@@ -50,7 +50,7 @@ mod test {
         let collector = JsonCollector::new();
 
         // Act
-        let result = collector.to_event(&json);
+        let result = collector.to_event(json);
 
         // Assert
         assert!(result.is_err())

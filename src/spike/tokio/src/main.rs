@@ -73,7 +73,7 @@ fn main() {
     runtime.spawn(rx.for_each(move |line| {
         debug!("Client - Thread {:?} - Received line {}", thread::current().name(), line);
 
-        match collector.to_event(&line) {
+        match collector.to_event(line) {
             Ok(event) => {
                 let matcher_clone = matcher.clone();
                 let event_bus_clone = event_bus.clone();
