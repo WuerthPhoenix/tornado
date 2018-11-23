@@ -17,4 +17,6 @@ pub trait Collector<T> {
 pub enum CollectorError {
     #[fail(display = "EventCreationError: [{}]", message)]
     EventCreationError { message: String },
+    #[fail(display = "JsonParsingError: [{}]", message)]
+    JsonParsingError { message: String },
 }

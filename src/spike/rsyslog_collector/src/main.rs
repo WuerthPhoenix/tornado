@@ -5,6 +5,7 @@ extern crate serde_derive;
 extern crate serde_json;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
+extern crate tornado_collector_common;
 extern crate tornado_collector_rsyslog;
 
 #[macro_use]
@@ -12,10 +13,10 @@ extern crate log;
 
 pub mod config;
 
-use std::fs;
 use std::io;
 use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
+use tornado_collector_common::Collector;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
@@ -26,17 +27,28 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     info!("Rsyslog collector started");
+
+    // Create uds writer
+    let mut stream =
+        UnixStream::connect(&conf.io.uds_socket_path).expect(&format!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
+
+    // Create rsyslog collector
+    let collector = tornado_collector_rsyslog::RsyslogCollector::new();
+
     let stdin = io::stdin();
-    let mut stdin = stdin.lock();
+    let mut stdin_lock = stdin.lock();
 
     let mut input = String::new();
 
     loop {
-        match stdin.read_line(&mut input) {
+        match stdin_lock.read_line(&mut input) {
             Ok(len) => if len == 0 {
+                info!("EOF received. Stopping Rsyslog collector.");
                 return;
             } else {
-                trace!("Received line: {}", input);
+                info!("Received line: {}", input);
+                let event = collector.to_event(&input).unwrap();
+                write_to_socket(&mut stream, &event);
                 input.clear();
             }
             Err(error) => {
@@ -45,21 +57,6 @@ fn main() {
             }
         }
     }
-
-    // Create uds writer
-    //let mut stream =
-    //    UnixStream::connect(&conf.io.uds_socket_path).expect("Should connect to socket");
-
-
-
-    // Send events
-    /*
-    for _ in 0..conf.io.repeat_send {
-        for event in &events {
-            write_to_socket(&mut stream, event);
-        }
-    }
-    */
 
 }
 

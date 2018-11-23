@@ -34,7 +34,7 @@ impl StreamHandler<LineFeedMessage, io::Error> for JsonReaderActor {
     fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
         debug!("JsonReaderActor - {:?} - received msg: [{}]", thread::current().name(), &msg.0);
 
-        match self.json_collector.to_event(msg.0) {
+        match self.json_collector.to_event(&msg.0) {
             Ok(event) => self.matcher_addr.do_send(EventMessage { event }),
             Err(e) => error!(
                 "JsonReaderActor - {:?} - Cannot unmarshal event from json: {}",
