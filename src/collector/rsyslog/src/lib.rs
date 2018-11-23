@@ -6,16 +6,14 @@ extern crate tornado_collector_common;
 extern crate tornado_common_api;
 
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::{Event};
-
+use tornado_common_api::Event;
 
 pub mod model;
 
 pub const EVENT_TYPE: &str = "syslog";
 
 #[derive(Default)]
-pub struct RsyslogCollector {
-}
+pub struct RsyslogCollector {}
 
 impl RsyslogCollector {
     pub fn new() -> RsyslogCollector {
@@ -23,7 +21,7 @@ impl RsyslogCollector {
     }
 }
 
-impl <'a> Collector<&'a str> for RsyslogCollector {
+impl<'a> Collector<&'a str> for RsyslogCollector {
     fn to_event(&self, json_str: &'a str) -> Result<Event, CollectorError> {
         let json = serde_json::from_str::<model::Json>(json_str)
             .map_err(|e| CollectorError::JsonParsingError { message: format!("{}", e) })?;
@@ -40,13 +38,14 @@ mod test {
     fn should_produce_event_from_rsyslog_json_input() {
         // Arrange
         let rsyslog_filename = "./test_resources/rsyslog_01_input.json";
-        let rsyslog_string =
-            fs::read_to_string(rsyslog_filename).expect(&format!("Unable to open the file [{}]", rsyslog_filename));
+        let rsyslog_string = fs::read_to_string(rsyslog_filename)
+            .expect(&format!("Unable to open the file [{}]", rsyslog_filename));
 
         let expected_event_filename = "./test_resources/rsyslog_01_output.json";
-        let expected_event_string =
-            fs::read_to_string(expected_event_filename).expect(&format!("Unable to open the file [{}]", expected_event_filename));
-        let mut expected_event = serde_json::from_str::<Event>(&expected_event_string).expect("should parse the event");
+        let expected_event_string = fs::read_to_string(expected_event_filename)
+            .expect(&format!("Unable to open the file [{}]", expected_event_filename));
+        let mut expected_event =
+            serde_json::from_str::<Event>(&expected_event_string).expect("should parse the event");
 
         let collector = RsyslogCollector::new();
 
@@ -61,4 +60,3 @@ mod test {
         assert_eq!(expected_event, event);
     }
 }
-

@@ -15,7 +15,7 @@ impl JsonCollector {
     }
 }
 
-impl <'a> Collector<&'a str> for JsonCollector {
+impl<'a> Collector<&'a str> for JsonCollector {
     fn to_event(&self, input: &'a str) -> Result<Event, CollectorError> {
         serde_json::from_str::<tornado_common_api::Event>(&input)
             .map_err(|e| CollectorError::EventCreationError { message: format!("{}", e) })

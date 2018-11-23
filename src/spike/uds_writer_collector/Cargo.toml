@@ -1,5 +1,5 @@
 [package]
-name = "uds_writer_collector"
+name = "tornado_spike_uds_writer_collector"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"

@@ -12,6 +12,7 @@ members = [
    "network/common",
    "network/simple",
    "spike/actix",
+   "spike/actix_rsyslog_collector",
    "spike/rsyslog_collector",
    "spike/tokio",
    "spike/uds_writer_collector",

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use tornado_common_api::{Value, Payload};
+use tornado_common_api::{Payload, Value};
 
 // Temporal structure to be replaced with tornado_common_api::Value.
 // Todo: to be removed when arrays are added to tornado_common_api::Value
@@ -17,11 +17,12 @@ impl Into<Value> for JsonValue {
             JsonValue::Text(text) => Value::Text(text),
             JsonValue::Array(values) => Value::Text(values.join(",")),
             JsonValue::Map(map) => {
-                let payload: Payload = map.into_iter().map(|(key, json_value)| {
-                    (key, Value::Text(json_value))
-                }).collect();
+                let payload: Payload = map
+                    .into_iter()
+                    .map(|(key, json_value)| (key, Value::Text(json_value)))
+                    .collect();
                 Value::Map(payload)
-            },
+            }
         }
     }
 }
@@ -54,10 +55,7 @@ impl PartialEq<JsonValue> for str {
 pub type Json = HashMap<String, JsonValue>;
 
 pub fn to_payload(json: Json) -> Payload {
-    json.into_iter().map(|(key, json_value)| {
-        (key, json_value.into())
-    }).collect()
-
+    json.into_iter().map(|(key, json_value)| (key, json_value.into())).collect()
 }
 
 #[cfg(test)]
@@ -84,11 +82,8 @@ mod test {
     #[test]
     fn should_convert_array_into_comma_separated() {
         // Arrange
-        let array = JsonValue::Array(vec![
-            "first".to_owned(),
-            "second".to_owned(),
-            "third".to_owned()
-        ]);
+        let array =
+            JsonValue::Array(vec!["first".to_owned(), "second".to_owned(), "third".to_owned()]);
 
         // Act
         let value: Value = array.into();

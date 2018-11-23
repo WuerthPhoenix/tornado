@@ -3,10 +3,10 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
 extern crate tornado_collector_common;
 extern crate tornado_collector_rsyslog;
+extern crate tornado_common_api;
+extern crate tornado_common_logger;
 
 #[macro_use]
 extern crate log;
@@ -29,8 +29,8 @@ fn main() {
     info!("Rsyslog collector started");
 
     // Create uds writer
-    let mut stream =
-        UnixStream::connect(&conf.io.uds_socket_path).expect(&format!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
+    let mut stream = UnixStream::connect(&conf.io.uds_socket_path)
+        .expect(&format!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
 
     // Create rsyslog collector
     let collector = tornado_collector_rsyslog::RsyslogCollector::new();
@@ -50,14 +50,13 @@ fn main() {
                 let event = collector.to_event(&input).unwrap();
                 write_to_socket(&mut stream, &event);
                 input.clear();
-            }
+            },
             Err(error) => {
                 error!("error: {}", error);
                 return;
             }
         }
     }
-
 }
 
 fn write_to_socket(stream: &mut UnixStream, event: &Event) {
