@@ -32,12 +32,7 @@ impl Operator for Or {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        for operator in &self.operators {
-            if operator.evaluate(event) {
-                return true;
-            }
-        }
-        false
+        self.operators.iter().any(|op| op.evaluate(event))
     }
 }
 
