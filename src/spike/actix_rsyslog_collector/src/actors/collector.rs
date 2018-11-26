@@ -2,7 +2,7 @@ use actix::prelude::*;
 use actors::uds_writer::{EventMessage, UdsWriterActor};
 use tokio::io::AsyncRead;
 use tokio::prelude::Stream;
-use tokio_codec::{LinesCodec, FramedRead};
+use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_rsyslog::RsyslogCollector;
 

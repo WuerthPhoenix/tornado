@@ -20,7 +20,7 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
-use std::os::unix::net::UnixStream;
+use tokio::prelude::*;
 use tornado_common_logger::setup_logger;
 
 fn main() {
@@ -34,14 +34,22 @@ fn main() {
     // start system
     System::run(move || {
         // Start uds_writer
-        let uds_writer_addr = SyncArbiter::start(1, move || {
-            // Create uds writer
-            let stream = UnixStream::connect(&conf.io.uds_socket_path)
-                .expect(&format!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
-            actors::uds_writer::UdsWriterActor { stream }
-        });
+        Arbiter::spawn(
+            tokio_uds::UnixStream::connect(&conf.io.uds_socket_path)
+                .and_then(move |stream| {
+                    let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(stream);
 
-        let stdin = tokio::io::stdin();
-        actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
+                    let stdin = tokio::io::stdin();
+                    actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
+
+                    futures::future::ok(())
+                }).map_err(move |e| {
+                    println!(
+                        "Can not connect to socket: {}. Cause [{}]",
+                        &conf.io.uds_socket_path, e
+                    );
+                    //                    process::exit(1)
+                }),
+        );
     });
 }
