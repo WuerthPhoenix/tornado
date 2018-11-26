@@ -36,7 +36,7 @@ mod test {
     use super::*;
     use accessor::AccessorBuilder;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_return_the_operator_name() {
@@ -54,10 +54,10 @@ mod test {
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         ).unwrap();
 
-        let event = ProcessedEvent::new( Event::new("test_type"));
+        let event = ProcessedEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.first_arg.get(&event).unwrap());
-        assert_eq!("two", operator.second_arg.get(&event).unwrap());
+        assert_eq!("one", operator.first_arg.get(&event).unwrap().as_ref());
+        assert_eq!("two", operator.second_arg.get(&event).unwrap().as_ref());
     }
 
     #[test]
@@ -67,7 +67,7 @@ mod test {
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
         ).unwrap();
 
-        let event =  Event::new("test_type");
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -104,7 +104,7 @@ mod test {
         ).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), "type".to_owned());
+        payload.insert("type".to_owned(), Value::Text("type".to_owned()));
 
         let event = Event::new_with_payload("type", payload);
 

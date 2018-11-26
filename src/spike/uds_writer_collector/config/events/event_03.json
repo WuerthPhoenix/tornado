@@ -1,6 +1,6 @@
 {
   "event_type":"email",
-  "created_ts": 1234567812312312,
+  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
   "payload":{
     "subject":"third email"
   }

@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event};
+use tornado_common_api::{Action, Event, Value};
 
 /// The ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
@@ -7,7 +7,7 @@ use tornado_common_api::{Action, Event};
 pub struct ProcessedEvent {
     pub event: Event,
     pub rules: HashMap<String, ProcessedRule>,
-    pub extracted_vars: HashMap<String, String>,
+    pub extracted_vars: HashMap<String, Value>,
 }
 
 impl ProcessedEvent {

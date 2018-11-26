@@ -4,6 +4,7 @@ use error::MatcherError;
 use model::ProcessedEvent;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
+use tornado_common_api::{cow_to_option_str, Value};
 
 /// MatcherExtractor instance builder.
 #[derive(Default)]
@@ -103,7 +104,7 @@ impl MatcherExtractor {
     pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
-            event.extracted_vars.insert(extractor.scoped_key.clone(), value);
+            event.extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
         }
         Ok(())
     }
@@ -152,8 +153,9 @@ impl VariableExtractor {
     }
 
     pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
-        let value = self.target.get(event)?;
-        let captures = self.regex.captures(&value)?;
+        let cow_value = self.target.get(event)?;
+        let value = cow_to_option_str(&cow_value)?;
+        let captures = self.regex.captures(value)?;
         let group_idx = self.group_match_idx;
         captures.get(group_idx as usize).map(|matched| matched.as_str().to_owned())
     }
@@ -341,8 +343,8 @@ mod test {
         let vars = &event.extracted_vars;
 
         assert_eq!(2, vars.len());
-        assert_eq!(&String::from("44"), vars.get("rule.extracted_temp").unwrap());
-        assert_eq!(&String::from("temp"), vars.get("rule.extracted_text").unwrap());
+        assert_eq!("44", vars.get("rule.extracted_temp").unwrap());
+        assert_eq!("temp", vars.get("rule.extracted_text").unwrap());
     }
 
     #[test]

@@ -36,3 +36,32 @@ The regular expressions provided by the _WITH_ clause and by the _regex_ operato
 ### Actions
 
 An action is an operation triggered when an event matches the rule.  
+
+### Reading Event fields
+A rule can access event fields through the "${" and "}" delimiters; the following conventions are defined:
+- the '.' (dot) char is used to access inner fields;
+- Keys containing dots are escaped with trailing and an ending double quotes;
+- Double quote chars are not accepted in a key.
+
+For example, given the incoming event:
+```json
+{
+    "event_type": "trap",
+    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "payload":{
+        "protocol": "UDP",
+        "oids": {
+            "key.with.dots": "38:10:38:30.98",
+        }
+    }
+}
+```
+
+The following accessors are valid:
+- `${event.type}` -> returns "trap"
+- `${event.payload.protocol}` -> returns "UDP"
+- `${event.payload.oids."key.with.dots"}` -> returns "38:10:38:30.98"
+- `${event.payload}` -> returns the entire payload
+
+ 
+

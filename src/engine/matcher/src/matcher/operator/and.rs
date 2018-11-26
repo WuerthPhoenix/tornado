@@ -110,7 +110,7 @@ mod test {
         println!("{:?}", operator.operators[1]);
 
         assert!(format!("{:?}", operator.operators[1]).contains(
-            r#"Equal { first_arg: Constant { value: "3" }, second_arg: Constant { value: "4" } }"#
+            r#"Equal { first_arg: Constant { value: Text("3") }, second_arg: Constant { value: Text("4") } }"#
         ))
     }
 

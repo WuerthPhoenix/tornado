@@ -3,6 +3,7 @@ use error::MatcherError;
 use matcher::operator::Operator;
 use model::ProcessedEvent;
 use regex::Regex as RustRegex;
+use tornado_common_api::to_option_str;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -30,7 +31,8 @@ impl Operator for Regex {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        self.target.get(event).map_or(false, |value| self.regex.is_match(&value))
+        let cow_value = self.target.get(event);
+        to_option_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }
 
@@ -40,7 +42,7 @@ mod test {
     use super::*;
     use accessor::AccessorBuilder;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_return_the_operator_name() {
@@ -61,7 +63,7 @@ mod test {
         let event = Event::new("test_type");
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap());
+        assert_eq!("two", operator.target.get(&ProcessedEvent::new(event)).unwrap().as_ref());
     }
 
     #[test]
@@ -93,8 +95,8 @@ mod test {
         ).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), "F".to_owned());
-        payload.insert("name2".to_owned(), "G".to_owned());
+        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
@@ -109,8 +111,8 @@ mod test {
         ).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), "F".to_owned());
-        payload.insert("name2".to_owned(), "G".to_owned());
+        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
