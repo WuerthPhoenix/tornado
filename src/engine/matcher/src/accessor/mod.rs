@@ -85,7 +85,7 @@ impl AccessorBuilder {
         full_accessor: &str,
         rule_name: &str,
     ) -> Result<Vec<String>, MatcherError> {
-        let result: Vec<String> = self
+        let result = self
             .regex
             .captures_iter(key)
             .map(|cap| {
@@ -93,15 +93,20 @@ impl AccessorBuilder {
 
                 // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
-                        result = result[1..].to_string();
+                    if result.starts_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) &&
+                        result.ends_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                        result = result[1..(result.len() - 1)].to_string();
                     }
-                    if result.ends_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
-                        result = result[..(result.len() - 1)].to_string();
+                    if result.contains(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                        let error_message = format!(
+                            "Payload key [{}] from accessor [{}] for rule [{}] contains not valid characters: [{}]",
+                            key, full_accessor, rule_name, PAYLOAD_KEY_PARSE_TRAILING_DELIMITER
+                        );
+                        return Err(MatcherError::NotValidIdOrNameError { message: error_message });
                     }
                 }
-                result
-            }).collect();
+                Ok(result)
+            }).collect::<Result<Vec<String>, MatcherError>>()?;
 
         if result.is_empty() {
             let error_message = format!(
@@ -477,6 +482,8 @@ mod test {
 
         assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two.", "", "").unwrap());
 
+        assert_eq!(vec!["one", ""], builder.parse_payload_key(r#"one."""#, "", "").unwrap());
+
         assert_eq!(
             vec!["one", "two", "th ir.d"],
             builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap()
@@ -496,6 +503,31 @@ mod test {
                     ""
                 ).unwrap()
         );
+    }
+
+    #[test]
+    fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+
+        // Act
+        let result = builder.parse_payload_key(r#"o"ne"#, "", "");
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_double_quotes(
+) {
+        // Arrange
+        let builder = AccessorBuilder::new();
+
+        // Act
+        let result = builder.parse_payload_key(r#"one."two"#, "", "");
+
+        // Assert
+        assert!(result.is_err());
     }
 
     #[test]
