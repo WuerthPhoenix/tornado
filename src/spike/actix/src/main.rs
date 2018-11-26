@@ -9,7 +9,6 @@ extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
 extern crate actix;
-extern crate bytes;
 extern crate config as config_rs;
 extern crate futures;
 #[macro_use]

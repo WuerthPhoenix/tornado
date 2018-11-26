@@ -7,7 +7,6 @@ authors = [
 
 [dependencies]
 actix = "0.7"
-bytes = "0.4"
 config = "0.9"
 futures = "0.1"
 log = "0.4"

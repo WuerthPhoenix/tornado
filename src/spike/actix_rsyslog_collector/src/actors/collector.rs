@@ -2,8 +2,7 @@ use actix::prelude::*;
 use actors::uds_writer::{EventMessage, UdsWriterActor};
 use tokio::io::AsyncRead;
 use tokio::prelude::Stream;
-use tokio_codec::FramedRead;
-use tokio_codec::LinesCodec;
+use tokio_codec::{LinesCodec, FramedRead};
 use tornado_collector_common::Collector;
 use tornado_collector_rsyslog::RsyslogCollector;
 
@@ -24,7 +23,7 @@ impl RsyslogCollectorActor {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed = FramedRead::new(source, codec).map(|line| RsyslogMessage(line));
+            let framed = FramedRead::new(source, codec).map(RsyslogMessage);
 
             RsyslogCollectorActor::add_stream(framed, ctx);
             RsyslogCollectorActor { collector: RsyslogCollector::new(), writer_addr }
