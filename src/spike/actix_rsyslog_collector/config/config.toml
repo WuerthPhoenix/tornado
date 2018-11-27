@@ -8,4 +8,5 @@ output_file_name = ""
 uds_writer_collector = "debug"
 
 [io]
+uds_socket_mailbox_capacity = 10000
 uds_socket_path = "/tmp/tornado_spike_actix"

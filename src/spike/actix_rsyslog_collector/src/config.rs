@@ -3,6 +3,7 @@ use tornado_common_logger::LoggerConfig;
 
 #[derive(Debug, Deserialize)]
 pub struct Io {
+    pub uds_socket_mailbox_capacity: usize,
     pub uds_socket_path: String,
 }
 

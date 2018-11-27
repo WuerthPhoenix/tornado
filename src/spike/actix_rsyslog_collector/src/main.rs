@@ -33,11 +33,13 @@ fn main() {
 
     // start system
     System::run(move || {
+        let uds_socket_mailbox_capacity = conf.io.uds_socket_mailbox_capacity.clone();
+
         // Start uds_writer
         Arbiter::spawn(
             tokio_uds::UnixStream::connect(&conf.io.uds_socket_path)
                 .and_then(move |stream| {
-                    let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(stream);
+                    let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(stream, uds_socket_mailbox_capacity);
 
                     let stdin = tokio::io::stdin();
                     actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);

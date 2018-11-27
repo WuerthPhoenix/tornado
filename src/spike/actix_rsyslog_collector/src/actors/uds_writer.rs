@@ -22,8 +22,9 @@ pub struct UdsWriterActor {
 impl actix::io::WriteHandler<Error> for UdsWriterActor {}
 
 impl UdsWriterActor {
-    pub fn start_new(stream: UnixStream) -> Addr<UdsWriterActor> {
-        UdsWriterActor::create(|ctx| {
+    pub fn start_new(stream: UnixStream, uds_socket_mailbox_capacity: usize) -> Addr<UdsWriterActor> {
+        UdsWriterActor::create(move |ctx| {
+            ctx.set_mailbox_capacity(uds_socket_mailbox_capacity);
             let (_r, w) = stream.split();
             UdsWriterActor { tx: actix::io::FramedWrite::new(w, LinesCodec::new(), ctx) }
         })

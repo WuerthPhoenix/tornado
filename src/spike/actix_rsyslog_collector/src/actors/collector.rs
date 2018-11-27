@@ -24,7 +24,6 @@ impl RsyslogCollectorActor {
             let codec = LinesCodec::new();
 
             let framed = FramedRead::new(source, codec).map(RsyslogMessage);
-
             RsyslogCollectorActor::add_stream(framed, ctx);
             RsyslogCollectorActor { collector: RsyslogCollector::new(), writer_addr }
         });
