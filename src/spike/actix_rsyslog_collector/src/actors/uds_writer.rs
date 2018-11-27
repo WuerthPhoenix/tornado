@@ -6,6 +6,7 @@ use tokio::prelude::*;
 use tokio_codec::LinesCodec;
 use tokio_uds::*;
 use tornado_common_api;
+use std::path::PathBuf;
 
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
@@ -24,20 +25,20 @@ pub enum UdsWriterActorError {
 }
 
 pub struct UdsWriterActor {
-    socket_path: String,
+    socket_path: PathBuf,
     tx: Option<actix::io::FramedWrite<WriteHalf<UnixStream>, LinesCodec>>,
 }
 
 impl actix::io::WriteHandler<Error> for UdsWriterActor {}
 
 impl UdsWriterActor {
-    pub fn start_new(
-        socket_path: String,
+    pub fn start_new<T: Into<PathBuf> + 'static>(
+        socket_path: T,
         uds_socket_mailbox_capacity: usize,
     ) -> Addr<UdsWriterActor> {
         actix::Supervisor::start(move |ctx: &mut Context<UdsWriterActor>| {
             ctx.set_mailbox_capacity(uds_socket_mailbox_capacity);
-            UdsWriterActor { socket_path, tx: None }
+            UdsWriterActor { socket_path: socket_path.into(), tx: None }
         })
     }
 }
@@ -46,17 +47,17 @@ impl Actor for UdsWriterActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        info!("UdsWriterActor started. Attempt connection to socket [{}]", &self.socket_path);
+        info!("UdsWriterActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
         tokio_uds::UnixStream::connect(&self.socket_path)
             .into_actor(self)
             .map(move |stream, act, ctx| {
-                println!("UdsWriterActor connected to socket [{}]", &act.socket_path);
+                println!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
                 let (_r, w) = stream.split();
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
             }).map_err(|err, act, ctx| {
                 println!(
-                    "UdsWriterActor failed to connected to socket [{}]: {}",
+                    "UdsWriterActor failed to connected to socket [{:?}]: {}",
                     &act.socket_path, err
                 );
                 ctx.stop();
@@ -82,6 +83,7 @@ impl Handler<EventMessage> for UdsWriterActor {
                     UdsWriterActorError::SerdeError { message: format!{"{}", err} }
                 })?;
                 event.push('\n');
+
                 stream.write(event);
                 Ok(())
             }

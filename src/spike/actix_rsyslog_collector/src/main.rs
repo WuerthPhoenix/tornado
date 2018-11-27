@@ -35,14 +35,16 @@ fn main() {
 
     // start system
     System::run(move || {
-        let uds_socket_mailbox_capacity = conf.io.uds_socket_mailbox_capacity.clone();
 
+        // Start UdsWriter
         let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
             conf.io.uds_socket_path.clone(),
-            uds_socket_mailbox_capacity,
+            conf.io.uds_socket_mailbox_capacity,
         );
 
+        // Start Rsyslog collector
         let stdin = tokio::io::stdin();
         actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
+
     });
 }
