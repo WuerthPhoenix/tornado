@@ -1,5 +1,8 @@
 extern crate actix;
 extern crate config as config_rs;
+extern crate failure;
+#[macro_use]
+extern crate failure_derive;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
@@ -20,7 +23,6 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
-use tokio::prelude::*;
 use tornado_common_logger::setup_logger;
 
 fn main() {
@@ -35,23 +37,12 @@ fn main() {
     System::run(move || {
         let uds_socket_mailbox_capacity = conf.io.uds_socket_mailbox_capacity.clone();
 
-        // Start uds_writer
-        Arbiter::spawn(
-            tokio_uds::UnixStream::connect(&conf.io.uds_socket_path)
-                .and_then(move |stream| {
-                    let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(stream, uds_socket_mailbox_capacity);
-
-                    let stdin = tokio::io::stdin();
-                    actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
-
-                    futures::future::ok(())
-                }).map_err(move |e| {
-                    println!(
-                        "Can not connect to socket: {}. Cause [{}]",
-                        &conf.io.uds_socket_path, e
-                    );
-                    //                    process::exit(1)
-                }),
+        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
+            conf.io.uds_socket_path.clone(),
+            uds_socket_mailbox_capacity,
         );
+
+        let stdin = tokio::io::stdin();
+        actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
     });
 }
