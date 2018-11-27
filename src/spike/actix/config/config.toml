@@ -5,8 +5,8 @@ output_file_enabled = false
 output_file_name = ""
 
 [logger.module_level]
-tornado_spike_actix = "info"
-tornado_executor_logger = "info"
+tornado_spike_actix = "debug"
+tornado_executor_logger = "debug"
 
 [io]
 json_rules_path = "./config/rules"

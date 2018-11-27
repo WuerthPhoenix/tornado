@@ -23,6 +23,7 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
+use std::thread;
 use tornado_common_logger::setup_logger;
 
 fn main() {
@@ -44,7 +45,35 @@ fn main() {
 
         // Start Rsyslog collector
         let stdin = tokio::io::stdin();
-        actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr);
+
+
+        actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr.clone());
+
+        actors::sync_collector::RsyslogCollectorActor::start_new(uds_writer_addr.clone());
+
+        thread::spawn({
+
+            let stdin = std::io::stdin();
+            let mut stdin_lock = stdin.lock();
+
+            let mut input = String::new();
+
+            loop {
+                match stdin_lock.read_line(&mut input) {
+                    Ok(len) => if len == 0 {
+                        info!("EOF received. Stopping Rsyslog collector.");
+                        System::current().stop();
+                    } else {
+                        info!("Received line: {}", input);
+                        input.clear();
+                    },
+                    Err(error) => {
+                        error!("error: {}", error);
+                        System::current().stop();
+                    }
+                }
+            }
+        });
 
     });
 }

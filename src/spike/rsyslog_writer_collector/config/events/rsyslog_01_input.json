@@ -1,0 +1,18 @@
+{
+  "@timestamp": "2018-11-01T23:59:59+01:00",
+  "host": "neteye01",
+  "hostgroups": [
+    "windows",
+    "database",
+    "rome"
+  ],
+  "icinga_customfields": {
+    "snmpcommunity": "secret",
+    "os": "windows"
+  },
+  "severity": "DEBUG",
+  "facility": "daemon",
+  "syslog-tag": "nfcapd[20747]:",
+  "source": "nfcapd",
+  "message": " Process_v9: Found options flowset: template 259"
+}
