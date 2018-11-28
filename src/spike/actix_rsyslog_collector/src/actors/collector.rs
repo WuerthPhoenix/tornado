@@ -33,7 +33,7 @@ impl RsyslogCollectorActor {
 impl Actor for RsyslogCollectorActor {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
+    fn started(&mut self, _ctx: &mut Self::Context) {
         info!("RsyslogCollectorActor started.");
     }
 }

@@ -3,8 +3,8 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate tornado_common_logger;
 extern crate tornado_collector_rsyslog;
+extern crate tornado_common_logger;
 
 #[macro_use]
 extern crate log;
@@ -14,8 +14,8 @@ pub mod config;
 use std::fs;
 use std::io;
 use std::{thread, time};
-use tornado_common_logger::setup_logger;
 use tornado_collector_rsyslog::model::{Json, JsonValue};
+use tornado_common_logger::setup_logger;
 
 fn main() {
     let conf = config::Conf::new().expect("Should read the configuration");

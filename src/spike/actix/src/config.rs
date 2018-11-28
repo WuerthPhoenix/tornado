@@ -17,7 +17,7 @@ impl Conf {
     pub fn new() -> Result<Self, ConfigError> {
         let mut s = Config::new();
         s.merge(File::with_name("config/config"))?;
-        s.merge(Environment::with_prefix("engine"))?;
+        s.merge(Environment::with_prefix("TORNADO"))?;
         s.try_into()
     }
 }

@@ -1,12 +1,12 @@
 use actix::prelude::*;
 use serde_json;
 use std::io::Error;
+use std::path::PathBuf;
 use tokio::io::WriteHalf;
 use tokio::prelude::*;
 use tokio_codec::LinesCodec;
 use tokio_uds::*;
 use tornado_common_api;
-use std::path::PathBuf;
 
 pub struct EventMessage {
     pub event: tornado_common_api::Event,

@@ -30,7 +30,7 @@ fn main() {
 
     // Create uds writer
     let mut stream = UnixStream::connect(&conf.io.uds_socket_path)
-        .expect(&format!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
+        .unwrap_or_else(|_| panic!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
 
     // Create rsyslog collector
     let collector = tornado_collector_rsyslog::RsyslogCollector::new();

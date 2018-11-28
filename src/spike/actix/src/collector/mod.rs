@@ -4,7 +4,7 @@ use futures::Stream;
 use reader::uds::UdsConnectMessage;
 use std::io;
 use std::thread;
-use tokio_codec::{LinesCodec, FramedRead};
+use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonCollector;
 
@@ -22,8 +22,7 @@ impl JsonReaderActor {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed = FramedRead::new(uds_connect_msg.0, codec)
-                .map(LineFeedMessage);
+            let framed = FramedRead::new(uds_connect_msg.0, codec).map(LineFeedMessage);
             JsonReaderActor::add_stream(framed, ctx);
             JsonReaderActor { json_collector: JsonCollector::new(), matcher_addr }
         });

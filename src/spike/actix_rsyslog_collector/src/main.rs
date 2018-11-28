@@ -23,6 +23,7 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
+use std::io::*;
 use std::thread;
 use tornado_common_logger::setup_logger;
 
@@ -36,7 +37,6 @@ fn main() {
 
     // start system
     System::run(move || {
-
         // Start UdsWriter
         let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
             conf.io.uds_socket_path.clone(),
@@ -44,28 +44,26 @@ fn main() {
         );
 
         // Start Rsyslog collector
-        let stdin = tokio::io::stdin();
+        //actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
 
+        // Start Rsyslog collector
+        let rsyslog_addr = SyncArbiter::start(1, move || {
+            actors::sync_collector::RsyslogCollectorActor::new(uds_writer_addr.clone())
+        });
 
-        actors::collector::RsyslogCollectorActor::start_new(stdin, uds_writer_addr.clone());
-
-        actors::sync_collector::RsyslogCollectorActor::start_new(uds_writer_addr.clone());
-
-        thread::spawn({
-
-            let stdin = std::io::stdin();
+        thread::spawn(move || {
+            let stdin = stdin();
             let mut stdin_lock = stdin.lock();
 
-            let mut input = String::new();
-
             loop {
+                let mut input = String::new();
                 match stdin_lock.read_line(&mut input) {
                     Ok(len) => if len == 0 {
                         info!("EOF received. Stopping Rsyslog collector.");
                         System::current().stop();
                     } else {
                         info!("Received line: {}", input);
-                        input.clear();
+                        rsyslog_addr.do_send(actors::sync_collector::RsyslogMessage(input));
                     },
                     Err(error) => {
                         error!("error: {}", error);
@@ -74,6 +72,5 @@ fn main() {
                 }
             }
         });
-
     });
 }
