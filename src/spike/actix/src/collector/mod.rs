@@ -6,13 +6,13 @@ use std::io;
 use std::thread;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
-use tornado_collector_json::JsonCollector;
+use tornado_collector_json::JsonEventCollector;
 
 #[derive(Message)]
 pub struct LineFeedMessage(pub String);
 
 pub struct JsonReaderActor {
-    pub json_collector: JsonCollector,
+    pub json_collector: JsonEventCollector,
     pub matcher_addr: Addr<MatcherActor>,
 }
 
@@ -24,7 +24,7 @@ impl JsonReaderActor {
 
             let framed = FramedRead::new(uds_connect_msg.0, codec).map(LineFeedMessage);
             JsonReaderActor::add_stream(framed, ctx);
-            JsonReaderActor { json_collector: JsonCollector::new(), matcher_addr }
+            JsonReaderActor { json_collector: JsonEventCollector::new(), matcher_addr }
         });
     }
 }

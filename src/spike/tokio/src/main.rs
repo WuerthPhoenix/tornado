@@ -26,7 +26,7 @@ use std::thread;
 use tokio::prelude::*;
 use tokio::runtime::Runtime;
 use tornado_collector_common::Collector;
-use tornado_collector_json::JsonCollector;
+use tornado_collector_json::JsonEventCollector;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
@@ -48,7 +48,7 @@ fn main() {
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
-    let collector = Arc::new(JsonCollector::new());
+    let collector = Arc::new(JsonEventCollector::new());
 
     // Configure action dispatcher
     let event_bus = {

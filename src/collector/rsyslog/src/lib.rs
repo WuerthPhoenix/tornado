@@ -10,22 +10,24 @@ use tornado_common_api::Event;
 
 pub mod model;
 
-pub const EVENT_TYPE: &str = "syslog";
+pub struct JsonPayloadCollector {
+    event_type: String
+}
 
-#[derive(Default)]
-pub struct RsyslogCollector {}
-
-impl RsyslogCollector {
-    pub fn new() -> RsyslogCollector {
-        Default::default()
+/// A collector that receives a json and creates an Event whose payload is the json input
+impl JsonPayloadCollector {
+    pub fn new<S: Into<String>>(event_type: S) -> JsonPayloadCollector {
+        JsonPayloadCollector{
+            event_type: event_type.into()
+        }
     }
 }
 
-impl<'a> Collector<&'a str> for RsyslogCollector {
+impl<'a> Collector<&'a str> for JsonPayloadCollector {
     fn to_event(&self, json_str: &'a str) -> Result<Event, CollectorError> {
         let json = serde_json::from_str::<model::Json>(json_str)
             .map_err(|e| CollectorError::JsonParsingError { message: format!("{}", e) })?;
-        Ok(Event::new_with_payload(EVENT_TYPE.to_owned(), model::to_payload(json)))
+        Ok(Event::new_with_payload(self.event_type.to_owned(), model::to_payload(json)))
     }
 }
 
@@ -47,13 +49,13 @@ mod test {
         let mut expected_event =
             serde_json::from_str::<Event>(&expected_event_string).expect("should parse the event");
 
-        let collector = RsyslogCollector::new();
+        let collector = JsonPayloadCollector::new("syslog");
 
         // Act
         let event = collector.to_event(&rsyslog_string).unwrap();
 
         // Assert
-        assert_eq!(EVENT_TYPE, &event.event_type);
+        assert_eq!("syslog", &event.event_type);
         assert_eq!("2018-11-01T23:59:59+01:00", event.payload.get("@timestamp").unwrap());
 
         expected_event.created_ts = event.created_ts.clone();

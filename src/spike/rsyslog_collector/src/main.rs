@@ -33,7 +33,7 @@ fn main() {
         .unwrap_or_else(|_| panic!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
 
     // Create rsyslog collector
-    let collector = tornado_collector_rsyslog::RsyslogCollector::new();
+    let collector = tornado_collector_rsyslog::JsonPayloadCollector::new("syslog");
 
     let stdin = io::stdin();
     let mut stdin_lock = stdin.lock();

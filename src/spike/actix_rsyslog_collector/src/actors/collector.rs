@@ -4,10 +4,10 @@ use tokio::io::AsyncRead;
 use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
-use tornado_collector_rsyslog::RsyslogCollector;
+use tornado_collector_rsyslog::JsonPayloadCollector;
 
 pub struct RsyslogCollectorActor {
-    pub collector: RsyslogCollector,
+    pub collector: JsonPayloadCollector,
     pub writer_addr: Addr<UdsWriterActor>,
 }
 
@@ -25,7 +25,7 @@ impl RsyslogCollectorActor {
 
             let framed = FramedRead::new(source, codec).map(RsyslogMessage);
             RsyslogCollectorActor::add_stream(framed, ctx);
-            RsyslogCollectorActor { collector: RsyslogCollector::new(), writer_addr }
+            RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
         });
     }
 }

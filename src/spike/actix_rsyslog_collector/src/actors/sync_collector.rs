@@ -1,10 +1,10 @@
 use actix::prelude::*;
 use actors::uds_writer::{EventMessage, UdsWriterActor};
 use tornado_collector_common::Collector;
-use tornado_collector_rsyslog::RsyslogCollector;
+use tornado_collector_rsyslog::JsonPayloadCollector;
 
 pub struct RsyslogCollectorActor {
-    pub collector: RsyslogCollector,
+    pub collector: JsonPayloadCollector,
     pub writer_addr: Addr<UdsWriterActor>,
 }
 
@@ -13,7 +13,7 @@ pub struct RsyslogMessage(pub String);
 
 impl RsyslogCollectorActor {
     pub fn new(writer_addr: Addr<UdsWriterActor>) -> RsyslogCollectorActor {
-        RsyslogCollectorActor { collector: RsyslogCollector::new(), writer_addr }
+        RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
     }
 }
 

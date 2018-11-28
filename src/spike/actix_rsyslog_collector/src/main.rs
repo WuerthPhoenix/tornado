@@ -44,9 +44,10 @@ fn main() {
         );
 
         // Start Rsyslog collector
-        //actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
+        actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
 
         // Start Rsyslog collector
+        /*
         let rsyslog_addr = SyncArbiter::start(1, move || {
             actors::sync_collector::RsyslogCollectorActor::new(uds_writer_addr.clone())
         });
@@ -73,5 +74,6 @@ fn main() {
                 }
             }
         });
+        */
     });
 }

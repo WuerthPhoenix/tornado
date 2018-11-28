@@ -51,7 +51,7 @@ impl Actor for UdsWriterActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("UdsWriterActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
-        let mut delay_until = time::Instant::now() + time::Duration::new(1, 0);
+        let mut delay_until = time::Instant::now();
         if self.restarted {
             delay_until = delay_until + time::Duration::new(1, 0)
         }
