@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use actors::uds_writer::{EventMessage, UdsWriterActor};
 use tornado_collector_common::Collector;
-use tornado_collector_rsyslog::JsonPayloadCollector;
+use tornado_collector_json::JsonPayloadCollector;
 
 pub struct RsyslogCollectorActor {
     pub collector: JsonPayloadCollector,

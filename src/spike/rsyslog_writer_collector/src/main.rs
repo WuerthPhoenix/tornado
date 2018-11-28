@@ -3,7 +3,7 @@ extern crate serde;
 #[macro_use]
 extern crate serde_derive;
 extern crate serde_json;
-extern crate tornado_collector_rsyslog;
+extern crate tornado_collector_json;
 extern crate tornado_common_logger;
 
 #[macro_use]
@@ -14,7 +14,7 @@ pub mod config;
 use std::fs;
 use std::io;
 use std::{thread, time};
-use tornado_collector_rsyslog::model::{Json, JsonValue};
+use tornado_collector_json::model::{Json, JsonValue};
 use tornado_common_logger::setup_logger;
 
 fn main() {

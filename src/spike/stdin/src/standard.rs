@@ -1,7 +1,6 @@
 use std::io::BufRead;
 
 pub fn start_standard_stdin() {
-
     let stdin = std::io::stdin();
     let mut stdin_lock = stdin.lock();
 
@@ -20,5 +19,4 @@ pub fn start_standard_stdin() {
             }
         }
     }
-
 }

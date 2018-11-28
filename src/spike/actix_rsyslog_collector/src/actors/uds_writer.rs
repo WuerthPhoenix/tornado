@@ -53,7 +53,7 @@ impl Actor for UdsWriterActor {
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
-            delay_until = delay_until + time::Duration::new(1, 0)
+            delay_until += time::Duration::new(1, 0)
         }
         let path = (&self.socket_path).clone();
 
@@ -72,7 +72,6 @@ impl Actor for UdsWriterActor {
                 );
                 ctx.stop();
             }).wait(ctx);
-
     }
 }
 

@@ -3,9 +3,7 @@ use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};
 
 pub fn start_actix_stdin() {
-
     System::run(move || {
-
         StdinActor::create(move |ctx| {
             let codec = LinesCodec::new();
             let source = tokio::io::stdin();
@@ -13,16 +11,13 @@ pub fn start_actix_stdin() {
             StdinActor::add_stream(framed, ctx);
             StdinActor {}
         });
-
     });
-
 }
 
 #[derive(Message)]
 pub struct LineMessage(pub String);
 
-pub struct StdinActor {
-}
+pub struct StdinActor {}
 
 impl Actor for StdinActor {
     type Context = Context<Self>;

@@ -4,7 +4,7 @@ use tokio::io::AsyncRead;
 use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
-use tornado_collector_rsyslog::JsonPayloadCollector;
+use tornado_collector_json::JsonPayloadCollector;
 
 pub struct RsyslogCollectorActor {
     pub collector: JsonPayloadCollector,

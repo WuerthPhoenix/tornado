@@ -29,14 +29,12 @@ impl<'a> Collector<&'a str> for JsonEventCollector {
 
 /// A collector that receives a json and creates an Event whose payload is the json input
 pub struct JsonPayloadCollector {
-    event_type: String
+    event_type: String,
 }
 
 impl JsonPayloadCollector {
     pub fn new<S: Into<String>>(event_type: S) -> JsonPayloadCollector {
-        JsonPayloadCollector{
-            event_type: event_type.into()
-        }
+        JsonPayloadCollector { event_type: event_type.into() }
     }
 }
 

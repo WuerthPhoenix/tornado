@@ -5,7 +5,6 @@ members = [
    "common/logger",
    "collector/common",
    "collector/json",
-   "collector/rsyslog",
    "engine/matcher",
    "executor/common",
    "executor/logger",

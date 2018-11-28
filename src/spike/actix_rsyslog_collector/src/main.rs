@@ -12,7 +12,7 @@ extern crate tokio_codec;
 extern crate tokio_io;
 extern crate tokio_uds;
 extern crate tornado_collector_common;
-extern crate tornado_collector_rsyslog;
+extern crate tornado_collector_json;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 
@@ -44,10 +44,9 @@ fn main() {
         );
 
         // Start Rsyslog collector
-        actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
+        // actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
 
         // Start Rsyslog collector
-        /*
         let rsyslog_addr = SyncArbiter::start(1, move || {
             actors::sync_collector::RsyslogCollectorActor::new(uds_writer_addr.clone())
         });
@@ -74,6 +73,5 @@ fn main() {
                 }
             }
         });
-        */
     });
 }
