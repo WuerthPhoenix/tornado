@@ -51,6 +51,7 @@ fn main() {
             actors::sync_collector::RsyslogCollectorActor::new(uds_writer_addr.clone())
         });
 
+        let system = System::current();
         thread::spawn(move || {
             let stdin = stdin();
             let mut stdin_lock = stdin.lock();
@@ -60,14 +61,14 @@ fn main() {
                 match stdin_lock.read_line(&mut input) {
                     Ok(len) => if len == 0 {
                         info!("EOF received. Stopping Rsyslog collector.");
-                        System::current().stop();
+                        system.stop();
                     } else {
                         info!("Received line: {}", input);
                         rsyslog_addr.do_send(actors::sync_collector::RsyslogMessage(input));
                     },
                     Err(error) => {
                         error!("error: {}", error);
-                        System::current().stop();
+                        system.stop();
                     }
                 }
             }

@@ -15,6 +15,7 @@ members = [
    "spike/actix_rsyslog_collector",
    "spike/rsyslog_collector",
    "spike/rsyslog_writer_collector",
+   "spike/stdin",
    "spike/tokio",
    "spike/uds_writer_collector",
 ]

@@ -2,6 +2,7 @@ use actix::prelude::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
+use std::time;
 use tokio::io::WriteHalf;
 use tokio::prelude::*;
 use tokio_codec::LinesCodec;
@@ -25,6 +26,7 @@ pub enum UdsWriterActorError {
 }
 
 pub struct UdsWriterActor {
+    restarted: bool,
     socket_path: PathBuf,
     tx: Option<actix::io::FramedWrite<WriteHalf<UnixStream>, LinesCodec>>,
 }
@@ -38,7 +40,7 @@ impl UdsWriterActor {
     ) -> Addr<UdsWriterActor> {
         actix::Supervisor::start(move |ctx: &mut Context<UdsWriterActor>| {
             ctx.set_mailbox_capacity(uds_socket_mailbox_capacity);
-            UdsWriterActor { socket_path: socket_path.into(), tx: None }
+            UdsWriterActor { restarted: false, socket_path: socket_path.into(), tx: None }
         })
     }
 }
@@ -49,7 +51,15 @@ impl Actor for UdsWriterActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("UdsWriterActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
-        tokio_uds::UnixStream::connect(&self.socket_path)
+        let mut delay_until = time::Instant::now() + time::Duration::new(1, 0);
+        if self.restarted {
+            delay_until = delay_until + time::Duration::new(1, 0)
+        }
+        let path = (&self.socket_path).clone();
+
+        tokio::timer::Delay::new(delay_until)
+            .map_err(|_| ())
+            .and_then(move |_| tokio_uds::UnixStream::connect(path).map_err(|_| ()))
             .into_actor(self)
             .map(move |stream, act, ctx| {
                 println!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
@@ -57,17 +67,19 @@ impl Actor for UdsWriterActor {
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
             }).map_err(|err, act, ctx| {
                 println!(
-                    "UdsWriterActor failed to connected to socket [{:?}]: {}",
+                    "UdsWriterActor failed to connected to socket [{:?}]: {:?}",
                     &act.socket_path, err
                 );
                 ctx.stop();
             }).wait(ctx);
+
     }
 }
 
 impl actix::Supervised for UdsWriterActor {
     fn restarting(&mut self, _ctx: &mut Context<UdsWriterActor>) {
         info!("Restarting UdsWriterActor");
+        self.restarted = true;
     }
 }
 
