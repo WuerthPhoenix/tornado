@@ -9,14 +9,11 @@ extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
 extern crate actix;
-extern crate config as config_rs;
 extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate num_cpus;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 #[macro_use]
 extern crate structopt;
 extern crate tokio;
@@ -46,12 +43,12 @@ use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::new();
 
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
+    let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
@@ -92,7 +89,7 @@ fn main() {
         });
 
         // Start collector
-        listen_to_uds_socket(&conf.io.uds_socket_path, move |msg| {
+        listen_to_uds_socket(&conf.io.uds_path, move |msg| {
             JsonReaderActor::start_new(msg, matcher_actor.clone());
         });
     });

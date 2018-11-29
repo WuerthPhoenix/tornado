@@ -15,11 +15,10 @@ pub struct Io {
 
 #[derive(Debug, StructOpt)]
 pub struct Conf {
-    // Configure the logger.
+
     #[structopt(flatten)]
     pub logger: LoggerConfig,
 
-    // Configure the Input/Output options.
     #[structopt(flatten)]
     pub io: Io,
 }
