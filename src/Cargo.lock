@@ -975,6 +975,86 @@ dependencies = [
 ]
 
 [[package]]
+name = "spike_rsyslog_collector"
+version = "0.0.1"
+dependencies = [
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_collector_common 0.0.1",
+ "tornado_collector_json 0.0.1",
+ "tornado_common_api 0.0.1",
+ "tornado_common_logger 0.0.1",
+]
+
+[[package]]
+name = "spike_rsyslog_writer_collector"
+version = "0.0.1"
+dependencies = [
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_collector_json 0.0.1",
+ "tornado_common_logger 0.0.1",
+]
+
+[[package]]
+name = "spike_stdin"
+version = "0.0.1"
+dependencies = [
+ "actix 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-io 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
+name = "spike_tokio"
+version = "0.0.1"
+dependencies = [
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_collector_common 0.0.1",
+ "tornado_collector_json 0.0.1",
+ "tornado_common_api 0.0.1",
+ "tornado_common_logger 0.0.1",
+ "tornado_engine_matcher 0.0.1",
+ "tornado_executor_common 0.0.1",
+ "tornado_executor_logger 0.0.1",
+ "tornado_network_common 0.0.1",
+ "tornado_network_simple 0.0.1",
+]
+
+[[package]]
+name = "spike_uds_writer_collector"
+version = "0.0.1"
+dependencies = [
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_common_api 0.0.1",
+ "tornado_common_logger 0.0.1",
+]
+
+[[package]]
 name = "stable_deref_trait"
 version = "1.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1273,6 +1353,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado"
+version = "0.0.1"
+dependencies = [
+ "actix 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_collector_common 0.0.1",
+ "tornado_collector_json 0.0.1",
+ "tornado_common_api 0.0.1",
+ "tornado_common_logger 0.0.1",
+ "tornado_engine_matcher 0.0.1",
+ "tornado_executor_common 0.0.1",
+ "tornado_executor_logger 0.0.1",
+ "tornado_network_common 0.0.1",
+ "tornado_network_simple 0.0.1",
+]
+
+[[package]]
 name = "tornado_collector_common"
 version = "0.0.1"
 dependencies = [
@@ -1369,32 +1474,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tornado_spike_actix"
-version = "0.0.1"
-dependencies = [
- "actix 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "num_cpus 1.8.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "tornado_collector_common 0.0.1",
- "tornado_collector_json 0.0.1",
- "tornado_common_api 0.0.1",
- "tornado_common_logger 0.0.1",
- "tornado_engine_matcher 0.0.1",
- "tornado_executor_common 0.0.1",
- "tornado_executor_logger 0.0.1",
- "tornado_network_common 0.0.1",
- "tornado_network_simple 0.0.1",
-]
-
-[[package]]
-name = "tornado_spike_actix_rsyslog_collector"
+name = "tornado_rsyslog_collector"
 version = "0.0.1"
 dependencies = [
  "actix 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1412,86 +1492,6 @@ dependencies = [
  "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_collector_common 0.0.1",
  "tornado_collector_json 0.0.1",
- "tornado_common_api 0.0.1",
- "tornado_common_logger 0.0.1",
-]
-
-[[package]]
-name = "tornado_spike_rsyslog_collector"
-version = "0.0.1"
-dependencies = [
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "tornado_collector_common 0.0.1",
- "tornado_collector_json 0.0.1",
- "tornado_common_api 0.0.1",
- "tornado_common_logger 0.0.1",
-]
-
-[[package]]
-name = "tornado_spike_rsyslog_writer_collector"
-version = "0.0.1"
-dependencies = [
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "tornado_collector_json 0.0.1",
- "tornado_common_logger 0.0.1",
-]
-
-[[package]]
-name = "tornado_spike_stdin"
-version = "0.0.1"
-dependencies = [
- "actix 0.7.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "structopt 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-io 0.1.10 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "tornado_spike_tokio"
-version = "0.0.1"
-dependencies = [
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio 0.1.13 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-codec 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
- "tornado_collector_common 0.0.1",
- "tornado_collector_json 0.0.1",
- "tornado_common_api 0.0.1",
- "tornado_common_logger 0.0.1",
- "tornado_engine_matcher 0.0.1",
- "tornado_executor_common 0.0.1",
- "tornado_executor_logger 0.0.1",
- "tornado_network_common 0.0.1",
- "tornado_network_simple 0.0.1",
-]
-
-[[package]]
-name = "tornado_spike_uds_writer_collector"
-version = "0.0.1"
-dependencies = [
- "config 0.9.1 (registry+https://github.com/rust-lang/crates.io-index)",
- "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_common_api 0.0.1",
  "tornado_common_logger 0.0.1",
 ]
