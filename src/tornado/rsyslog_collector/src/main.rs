@@ -62,7 +62,7 @@ fn main() {
                         info!("EOF received. Stopping Rsyslog collector.");
                         system.stop();
                     } else {
-                        info!("Received line: {}", input);
+                        debug!("Received line: {}", input);
                         rsyslog_addr.do_send(actors::sync_collector::RsyslogMessage(input));
                     },
                     Err(error) => {

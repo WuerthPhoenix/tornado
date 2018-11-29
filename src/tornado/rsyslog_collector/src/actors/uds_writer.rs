@@ -62,11 +62,11 @@ impl Actor for UdsWriterActor {
             .and_then(move |_| tokio_uds::UnixStream::connect(path).map_err(|_| ()))
             .into_actor(self)
             .map(move |stream, act, ctx| {
-                println!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
+                info!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
                 let (_r, w) = stream.split();
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
             }).map_err(|err, act, ctx| {
-                println!(
+                warn!(
                     "UdsWriterActor failed to connected to socket [{:?}]: {:?}",
                     &act.socket_path, err
                 );

@@ -29,7 +29,7 @@ impl Handler<RsyslogMessage> for RsyslogCollectorActor {
     type Result = ();
 
     fn handle(&mut self, msg: RsyslogMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        warn!("JsonReaderActor - received msg: [{}]", &msg.0);
+        debug!("JsonReaderActor - received msg: [{}]", &msg.0);
 
         match self.collector.to_event(&msg.0) {
             Ok(event) => self.writer_addr.do_send(EventMessage { event }),
