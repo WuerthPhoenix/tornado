@@ -17,6 +17,8 @@ extern crate num_cpus;
 extern crate serde;
 #[macro_use]
 extern crate serde_derive;
+#[macro_use]
+extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;

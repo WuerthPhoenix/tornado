@@ -58,10 +58,10 @@ pub mod test_root {
         println!("Init logger");
 
         let conf = LoggerConfig {
-            root_level: String::from("trace"),
-            output_system_enabled: true,
+            level: String::from("trace"),
+            stdout_output: true,
             output_file_enabled: false,
-            output_file_name: String::from(""),
+            file_output_path: String::from(""),
             module_level: HashMap::new(),
         };
         setup_logger(&conf).unwrap();
