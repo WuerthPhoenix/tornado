@@ -23,7 +23,7 @@ pub struct Conf {
 }
 
 impl Conf {
-    pub fn new() -> Self {
+    pub fn build() -> Self {
         Conf::from_args()
     }
 }

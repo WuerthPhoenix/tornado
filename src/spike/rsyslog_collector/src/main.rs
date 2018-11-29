@@ -1,8 +1,7 @@
-extern crate config as config_rs;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
+#[macro_use]
+extern crate structopt;
 extern crate tornado_collector_common;
 extern crate tornado_collector_json;
 extern crate tornado_common_api;
@@ -21,7 +20,7 @@ use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::build();
 
     // Setup logger
     setup_logger(&conf.logger).unwrap();
@@ -29,8 +28,8 @@ fn main() {
     info!("Rsyslog collector started");
 
     // Create uds writer
-    let mut stream = UnixStream::connect(&conf.io.uds_socket_path)
-        .unwrap_or_else(|_| panic!("Cannot connect to socket on [{}]", &conf.io.uds_socket_path));
+    let mut stream = UnixStream::connect(&conf.io.uds_path)
+        .unwrap_or_else(|_| panic!("Cannot connect to socket on [{}]", &conf.io.uds_path));
 
     // Create rsyslog collector
     let collector = tornado_collector_json::JsonPayloadCollector::new("syslog");

@@ -27,7 +27,7 @@ use std::thread;
 use tornado_common_logger::setup_logger;
 
 fn main() {
-    let conf = config::Conf::new();
+    let conf = config::Conf::build();
 
     // Setup logger
     setup_logger(&conf.logger).unwrap();

@@ -43,7 +43,7 @@ use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
-    let conf = config::Conf::new();
+    let conf = config::Conf::build();
 
     setup_logger(&conf.logger).unwrap();
 

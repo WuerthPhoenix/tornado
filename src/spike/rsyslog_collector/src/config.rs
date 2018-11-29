@@ -1,32 +1,26 @@
-use config_rs::{Config, ConfigError, Environment};
-use std::collections::HashMap;
 use tornado_common_logger::LoggerConfig;
+use structopt::StructOpt;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
 pub struct Io {
-    pub uds_socket_path: String,
+
+    /// The Unix Socket path where to write the outcoming events.
+    #[structopt(long, default_value="/tmp/tornado")]
+    pub uds_path: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
 pub struct Conf {
+
+    #[structopt(flatten)]
     pub logger: LoggerConfig,
+
+    #[structopt(flatten)]
     pub io: Io,
 }
 
 impl Conf {
-    pub fn new() -> Result<Self, ConfigError> {
-        let mut s = Config::new();
-
-        s.set_default("io.uds_socket_path", "/tmp/tornado_spike_actix")?;
-
-        s.set_default("logger.root_level", "debug")?;
-        s.set_default("logger.output_system_enabled", true)?;
-        s.set_default("logger.output_file_enabled", false)?;
-        s.set_default("logger.output_file_name", "")?;
-        s.set_default("logger.module_level", HashMap::<String, String>::new())?;
-
-        //s.merge(File::with_name("config/config"))?;
-        s.merge(Environment::with_prefix("TORNADO_RSYSLOG"))?;
-        s.try_into()
+    pub fn build() -> Self {
+        Conf::from_args()
     }
 }

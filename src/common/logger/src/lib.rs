@@ -4,10 +4,8 @@ extern crate fern;
 extern crate log;
 #[macro_use]
 extern crate failure_derive;
-#[macro_use]
 extern crate structopt;
 
-use std::collections::HashMap;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -79,10 +77,7 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());
     }
 
-    match &logger_config.file_output_path {
-        Some(path) => log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?),
-        _=> {}
-    }
+    if let Some(path) = &logger_config.file_output_path { log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?) }
 
     log_dispatcher.apply()?;
 

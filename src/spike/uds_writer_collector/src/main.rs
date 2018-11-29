@@ -1,8 +1,7 @@
-extern crate config as config_rs;
 extern crate serde;
-#[macro_use]
-extern crate serde_derive;
 extern crate serde_json;
+#[macro_use]
+extern crate structopt;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 
@@ -18,7 +17,7 @@ use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::build();
 
     // Setup logger
     setup_logger(&conf.logger).unwrap();
@@ -28,7 +27,7 @@ fn main() {
 
     // Create uds writer
     let mut stream =
-        UnixStream::connect(&conf.io.uds_socket_path).expect("Should connect to socket");
+        UnixStream::connect(&conf.io.uds_path).expect("Should connect to socket");
 
     // Send events
     for _ in 0..conf.io.repeat_send {

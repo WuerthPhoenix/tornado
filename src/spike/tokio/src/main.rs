@@ -8,13 +8,12 @@ extern crate tornado_executor_logger;
 extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
-extern crate config as config_rs;
 #[macro_use]
 extern crate log;
 extern crate futures;
 extern crate serde;
 #[macro_use]
-extern crate serde_derive;
+extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
@@ -40,11 +39,11 @@ mod config;
 mod reader;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::build();
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
+    let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
@@ -103,7 +102,7 @@ fn main() {
         Ok(())
     }));
 
-    let server = reader::uds::start_uds_socket(conf.io.uds_socket_path, tx);
+    let server = reader::uds::start_uds_socket(conf.io.uds_path, tx);
     runtime
         .block_on(server.map_err(|e| panic!("err={:?}", e)))
         .expect("Tokio runtime should start");
