@@ -8,7 +8,7 @@ pub struct Io {
     pub json_events_path: String,
 
     /// The Unix Socket path where to write the events.
-    #[structopt(long, default_value="/tmp/tornado")]
+    #[structopt(long, default_value="/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 
     /// How many times each event should be sent.

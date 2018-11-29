@@ -5,7 +5,7 @@ use structopt::StructOpt;
 pub struct Io {
 
     /// The Unix Socket path where to write the outcoming events.
-    #[structopt(long, default_value="/tmp/tornado")]
+    #[structopt(long, default_value="/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 }
 

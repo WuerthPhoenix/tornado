@@ -9,7 +9,7 @@ pub struct Io {
     pub uds_mailbox_capacity: usize,
 
     /// The Unix Socket path where to write the outcoming events.
-    #[structopt(long, default_value="/tmp/tornado")]
+    #[structopt(long, default_value="/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 }
 
