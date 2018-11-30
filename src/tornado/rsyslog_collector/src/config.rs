@@ -2,6 +2,7 @@ use tornado_common_logger::LoggerConfig;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
 pub struct Io {
     /// Set the size of the in memory queue where messages are stored before being written
     /// to the output socket.

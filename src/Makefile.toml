@@ -1,0 +1,34 @@
+# Prerequisites:
+# Install cargo-make:
+# > cargo install --force cargo-make
+
+
+# Starts the tornado engine.
+#
+# Execute with:
+# > cargo make --no-workspace run-tornado
+[tasks.run-tornado]
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--uds-path=/tmp/tornado",
+    "--rules-dir=./tornado/tornado/rules"
+]
+dependencies = ["build"]
+
+# Starts the rsyslog-collector and the rsyslog_collector_writer.
+# Output from the rsyslog_collector_writer is piped into the rsyslog_collector.
+#
+# Execute with:
+# > cargo make --no-workspace run-rsyslog-collector
+[tasks.run-rsyslog-collector]
+script = [
+    "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
+    "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug --uds-path=/tmp/tornado"
+]
+dependencies = ["build"]

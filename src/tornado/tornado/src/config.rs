@@ -2,6 +2,7 @@ use tornado_common_logger::LoggerConfig;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
 pub struct Io {
     /// The filesystem folder where the Rules are saved in json format.
     #[structopt(long, default_value="/etc/tornado/rules.d/")]

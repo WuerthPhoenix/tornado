@@ -1,5 +1,5 @@
 [package]
-name = "spike_rsyslog_writer_collector"
+name = "spike_rsyslog_collector_writer"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
