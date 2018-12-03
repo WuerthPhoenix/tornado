@@ -2,6 +2,7 @@ use tornado_common_logger::LoggerConfig;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
 pub struct Io {
 
     /// The Unix Socket path where to write the outcoming events.

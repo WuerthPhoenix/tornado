@@ -93,8 +93,6 @@ impl Handler<EventMessage> for UdsWriterActor {
                 let mut event = serde_json::to_string(&msg.event).map_err(|err| {
                     UdsWriterActorError::SerdeError { message: format!{"{}", err} }
                 })?;
-                event.push('\n');
-
                 stream.write(event);
                 Ok(())
             }
