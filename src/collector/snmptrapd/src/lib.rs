@@ -4,6 +4,7 @@ extern crate serde_json;
 extern crate tornado_collector_common;
 extern crate tornado_common_api;
 
+use regex::Captures;
 use regex::Regex;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::{Event, Payload, Value};
@@ -37,7 +38,7 @@ impl<'a> Collector<&'a str> for SnmptradpCollector {
 
         let mut event = Event::new("snmptrapd");
 
-        self.parse_address(&mut trapd, &mut event.payload);
+        self.parse_address(&mut trapd, &mut event.payload)?;
 
         if let Some(oids) = trapd.remove("VarBinds") {
             event.payload.insert("oids".to_owned(), oids);
@@ -48,23 +49,42 @@ impl<'a> Collector<&'a str> for SnmptradpCollector {
 }
 
 impl SnmptradpCollector {
-    fn parse_address(&self, trapd: &mut Payload, event_payload: &mut Payload) {
+    fn parse_address(
+        &self,
+        trapd: &mut Payload,
+        event_payload: &mut Payload,
+    ) -> Result<(), CollectorError> {
         if let Some(received_from) = trapd
             .get("PDUInfo")
             .and_then(|value| value.child("receivedfrom"))
             .and_then(|value| value.text())
         {
-            match self.address_regex.captures_iter(received_from).next() {
-                Some(capture) => {
-                    event_payload.insert("protocol".to_owned(), Value::Text(capture[1].to_owned()));
-                    event_payload.insert("src_ip".to_owned(), Value::Text(capture[2].to_owned()));
-                    event_payload.insert("src_port".to_owned(), Value::Text(capture[3].to_owned()));
-                    event_payload.insert("dest_ip".to_owned(), Value::Text(capture[4].to_owned()));
-                }
-                None => {
-                    // Return a result Error
-                }
+            if let Some(capture) = self.address_regex.captures_iter(received_from).next() {
+                self.insert_into_payload(&capture, 1, "protocol", event_payload, received_from)?;
+                self.insert_into_payload(&capture, 2, "src_ip", event_payload, received_from)?;
+                self.insert_into_payload(&capture, 3, "src_port", event_payload, received_from)?;
+                self.insert_into_payload(&capture, 4, "dest_ip", event_payload, received_from)?;
             }
+        }
+        Ok(())
+    }
+
+    fn insert_into_payload(
+        &self,
+        capture: &Captures,
+        group: usize,
+        field: &str,
+        event_payload: &mut Payload,
+        input: &str,
+    ) -> Result<(), CollectorError> {
+        let protocol = capture.get(group).ok_or_else(|| self.error(field, input))?;
+        event_payload.insert(field.to_owned(), Value::Text(protocol.as_str().to_owned()));
+        Ok(())
+    }
+
+    fn error(&self, field: &str, input: &str) -> CollectorError {
+        CollectorError::EventCreationError {
+            message: format!("Cannot extract [{}] from [{}]", field, input),
         }
     }
 }
