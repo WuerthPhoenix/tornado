@@ -89,7 +89,12 @@ impl AccessorBuilder {
             .regex
             .captures_iter(key)
             .map(|cap| {
-                let mut result = cap[0].to_string();
+                let capture = cap.get(0)
+                    .ok_or_else(|| MatcherError::NotValidIdOrNameError {message: format!(
+                        "Error parsing payload key [{}] from accessor [{}] for rule [{}]",
+                        key, full_accessor, rule_name
+                    )})?;
+                let mut result = capture.as_str().to_string();
 
                 // Remove trailing delimiters
                 {
