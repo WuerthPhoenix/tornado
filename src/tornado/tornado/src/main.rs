@@ -1,5 +1,6 @@
 extern crate tornado_collector_common;
 extern crate tornado_collector_json;
+extern crate tornado_collector_snmptrapd;
 extern crate tornado_common_api;
 extern crate tornado_common_logger;
 extern crate tornado_engine_matcher;
@@ -27,7 +28,6 @@ pub mod executor;
 pub mod reader;
 
 use actix::prelude::*;
-use collector::JsonReaderActor;
 use engine::MatcherActor;
 use executor::ExecutorActor;
 use reader::uds::listen_to_uds_socket;
@@ -78,21 +78,34 @@ fn main() {
             Arc::new(event_bus)
         };
 
-        // Start executor
+        // Start executor actor
         let executor_actor = SyncArbiter::start(1, move || {
             let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
             ExecutorActor { dispatcher }
         });
 
-        // Start engine
+        // Start matcher actor
         let matcher_actor = SyncArbiter::start(cpus, move || MatcherActor {
             matcher: matcher.clone(),
             executor_addr: executor_actor.clone(),
         });
 
-        // Start collector
-        listen_to_uds_socket(&conf.io.uds_path, move |msg| {
-            JsonReaderActor::start_new(msg, matcher_actor.clone());
+        // Start Event Json UDS listener
+        let json_matcher_actor_clone = matcher_actor.clone();
+        listen_to_uds_socket(conf.io.uds_path, move |msg| {
+            collector::event::EventJsonReaderActor::start_new(
+                msg,
+                json_matcher_actor_clone.clone(),
+            );
+        });
+
+        // Start snmptrapd Json UDS listener
+        let snmptrapd_matcher_actor_clone = matcher_actor.clone();
+        listen_to_uds_socket(conf.io.snmptrapd_uds_path, move |msg| {
+            collector::snmptrapd::SnmptrapdJsonReaderActor::start_new(
+                msg,
+                snmptrapd_matcher_actor_clone.clone(),
+            );
         });
     });
 }

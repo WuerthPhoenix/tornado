@@ -1270,6 +1270,7 @@ dependencies = [
  "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_collector_common 0.0.1",
  "tornado_collector_json 0.0.1",
+ "tornado_collector_snmptrapd 0.0.1",
  "tornado_common_api 0.0.1",
  "tornado_common_logger 0.0.1",
  "tornado_engine_matcher 0.0.1",

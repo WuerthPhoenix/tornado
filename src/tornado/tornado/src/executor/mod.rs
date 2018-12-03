@@ -1,5 +1,4 @@
 use actix::prelude::*;
-use std::thread;
 use tornado_engine_matcher::{dispatcher, error, model};
 
 pub struct ProcessedEventMessage {
@@ -16,13 +15,16 @@ pub struct ExecutorActor {
 
 impl Actor for ExecutorActor {
     type Context = SyncContext<Self>;
+    fn started(&mut self, _ctx: &mut Self::Context) {
+        info!("ExecutorActor started.");
+    }
 }
 
 impl Handler<ProcessedEventMessage> for ExecutorActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("ExecutorActor - {:?} - received new processed event", thread::current().name());
+        debug!("ExecutorActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(&msg.event)
     }
 }

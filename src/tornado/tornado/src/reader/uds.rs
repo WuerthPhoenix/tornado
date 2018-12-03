@@ -1,19 +1,21 @@
 use actix::prelude::*;
 use futures::Stream;
 use std::fs;
-use std::path::Path;
-use std::thread;
 use tokio_uds::*;
 
-pub fn listen_to_uds_socket<P: AsRef<Path>, F: 'static + FnMut(UdsConnectMessage) -> () + Sized>(
+pub fn listen_to_uds_socket<
+    P: Into<String>,
+    F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
+>(
     path: P,
     callback: F,
 ) {
-    let listener = match UnixListener::bind(&path) {
+    let path_string = path.into();
+    let listener = match UnixListener::bind(&path_string) {
         Ok(m) => m,
         Err(_) => {
-            fs::remove_file(&path).unwrap();
-            UnixListener::bind(&path).unwrap()
+            fs::remove_file(&path_string).unwrap();
+            UnixListener::bind(&path_string).unwrap()
         }
     };
 
@@ -24,7 +26,7 @@ pub fn listen_to_uds_socket<P: AsRef<Path>, F: 'static + FnMut(UdsConnectMessage
                 UdsConnectMessage(stream)
             },
         ));
-        UdsServerActor { callback }
+        UdsServerActor { path: path_string, callback }
     });
 }
 
@@ -32,7 +34,8 @@ struct UdsServerActor<F>
 where
     F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
 {
-    pub callback: F,
+    path: String,
+    callback: F,
 }
 
 impl<F> Actor for UdsServerActor<F>
@@ -53,7 +56,7 @@ where
     type Result = ();
 
     fn handle(&mut self, msg: UdsConnectMessage, _: &mut Context<Self>) {
-        info!("UdsServerActor - {:?} - new client connected", thread::current().name());
+        info!("UdsServerActor - new client connected to [{}]", &self.path);
         (&mut self.callback)(msg);
     }
 }

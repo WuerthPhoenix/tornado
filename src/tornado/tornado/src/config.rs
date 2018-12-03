@@ -11,6 +11,10 @@ pub struct Io {
     /// The Unix Socket path where to listen for incoming events.
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
+
+    /// The Unix Socket path where to listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "/var/run/tornado/tornado_snmptrapd.sock")]
+    pub snmptrapd_uds_path: String,
 }
 
 #[derive(Debug, StructOpt)]
