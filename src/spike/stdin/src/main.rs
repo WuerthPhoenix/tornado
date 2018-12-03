@@ -7,7 +7,6 @@ pub mod standard;
 pub mod tokio_actix;
 
 fn main() {
-
     // with tokio/actix
     tokio_actix::start_actix_stdin();
 

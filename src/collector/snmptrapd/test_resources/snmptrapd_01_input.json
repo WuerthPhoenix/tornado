@@ -1,18 +1,22 @@
 {
-  "@timestamp": "2018-11-01T23:59:59+01:00",
-  "host": "neteye01",
-  "hostgroups": [
-    "windows",
-    "database",
-    "rome"
-  ],
-  "icinga_customfields": {
-    "snmpcommunity": "secret",
-    "os": "windows"
+  "PDUInfo": {
+    "notificationtype": "TRAP",
+    "receivedfrom": "UDP: [10.62.5.31]:161->[10.62.5.115]:162",
+    "version": "1",
+    "errorstatus": "0",
+    "messageid": "0",
+    "community": "mycommunity",
+    "transactionid": "1",
+    "errorindex": "0",
+    "requestid": "1590637175"
   },
-  "severity": "DEBUG",
-  "facility": "daemon",
-  "syslog-tag": "nfcapd[20747]:",
-  "source": "nfcapd",
-  "message": " Process_v9: Found options flowset: template 259"
+  "VarBinds": {
+    "IF-MIB::ifDescr": "4",
+    "IF-MIB::ifAdminStatus.1": "2",
+    "DISMAN-EVENT-MIB::sysUpTimeInstance": "67",
+    "IF-MIB::ifIndex.1": "2",
+    "SNMPv2-MIB::snmpTrapOID.0": "6",
+    "IF-MIB::ifOperStatus.1": "2"
+  },
+  "counter": "0"
 }

@@ -59,7 +59,7 @@ pub mod test_root {
         let conf = LoggerConfig {
             level: String::from("trace"),
             stdout_output: true,
-            file_output_path: None
+            file_output_path: None,
         };
         setup_logger(&conf).unwrap();
     }

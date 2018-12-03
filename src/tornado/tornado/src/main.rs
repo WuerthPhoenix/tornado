@@ -51,8 +51,9 @@ fn main() {
     let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
-    let matcher = Arc::new(Matcher::new(&config_rules)
-        .unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)));
+    let matcher = Arc::new(
+        Matcher::new(&config_rules).unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)),
+    );
     //let event_bus = Arc::new(SimpleEventBus::new());
     //let dispatcher = Arc::new(Dispatcher::new(event_bus.clone()).unwrap());
 
@@ -97,7 +98,8 @@ fn main() {
 }
 
 fn read_rules_from_config(path: &str) -> Vec<Rule> {
-    let paths = fs::read_dir(path).unwrap_or_else(|err| panic!("Cannot access specified folder [{}]: {}", path, err));
+    let paths = fs::read_dir(path)
+        .unwrap_or_else(|err| panic!("Cannot access specified folder [{}]: {}", path, err));
     let mut rules = vec![];
 
     for path in paths {
@@ -106,8 +108,9 @@ fn read_rules_from_config(path: &str) -> Vec<Rule> {
         let rule_body = fs::read_to_string(&filename)
             .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
         trace!("Rule body: \n{}", rule_body);
-        rules.push(Rule::from_json(&rule_body)
-            .unwrap_or_else(|err| panic!("Cannot build rule from provided: [{:?}] \n error: [{}]", &rule_body, err)));
+        rules.push(Rule::from_json(&rule_body).unwrap_or_else(|err| {
+            panic!("Cannot build rule from provided: [{:?}] \n error: [{}]", &rule_body, err)
+        }));
     }
 
     info!("Loaded {} rule(s) from [{}]", rules.len(), path);
