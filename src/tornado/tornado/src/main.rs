@@ -9,15 +9,13 @@ extern crate tornado_network_common;
 extern crate tornado_network_simple;
 
 extern crate actix;
-extern crate bytes;
-extern crate config as config_rs;
 extern crate futures;
 #[macro_use]
 extern crate log;
 extern crate num_cpus;
 extern crate serde;
 #[macro_use]
-extern crate serde_derive;
+extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;
 extern crate tokio_uds;
@@ -45,15 +43,16 @@ use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::build();
 
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
+    let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
-    let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
+    let matcher = Arc::new(Matcher::new(&config_rules)
+        .unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)));
     //let event_bus = Arc::new(SimpleEventBus::new());
     //let dispatcher = Arc::new(Dispatcher::new(event_bus.clone()).unwrap());
 
@@ -91,14 +90,14 @@ fn main() {
         });
 
         // Start collector
-        listen_to_uds_socket(&conf.io.uds_socket_path, move |msg| {
+        listen_to_uds_socket(&conf.io.uds_path, move |msg| {
             JsonReaderActor::start_new(msg, matcher_actor.clone());
         });
     });
 }
 
 fn read_rules_from_config(path: &str) -> Vec<Rule> {
-    let paths = fs::read_dir(path).unwrap();
+    let paths = fs::read_dir(path).unwrap_or_else(|err| panic!("Cannot access specified folder [{}]: {}", path, err));
     let mut rules = vec![];
 
     for path in paths {
@@ -107,7 +106,8 @@ fn read_rules_from_config(path: &str) -> Vec<Rule> {
         let rule_body = fs::read_to_string(&filename)
             .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
         trace!("Rule body: \n{}", rule_body);
-        rules.push(Rule::from_json(&rule_body).unwrap());
+        rules.push(Rule::from_json(&rule_body)
+            .unwrap_or_else(|err| panic!("Cannot build rule from provided: [{:?}] \n error: [{}]", &rule_body, err)));
     }
 
     info!("Loaded {} rule(s) from [{}]", rules.len(), path);

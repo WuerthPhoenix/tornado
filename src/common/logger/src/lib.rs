@@ -4,21 +4,35 @@ extern crate fern;
 extern crate log;
 #[macro_use]
 extern crate failure_derive;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
+extern crate structopt;
 
-use std::collections::HashMap;
 use std::str::FromStr;
+use structopt::StructOpt;
 
 /// The logger configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, StructOpt)]
 pub struct LoggerConfig {
-    pub root_level: String,
-    pub output_system_enabled: bool,
-    pub output_file_enabled: bool,
-    pub output_file_name: String,
-    pub module_level: HashMap<String, String>,
+
+    // Todo: check if an enum can be used
+
+    /// The logger level
+    /// Valid values: trace, debug, info, warn, error
+    #[structopt(long = "logger-level", default_value = "warn")]
+    pub level: String,
+
+    /// Whether the logger should print on the standard output.
+    /// Valid values: true, false
+    #[structopt(long = "logger-stdout")]
+    pub stdout_output: bool,
+
+    /// A file path on the file system.
+    /// If provided, the logger will append any output to it.
+    #[structopt(long = "logger-file-path")]
+    pub file_output_path: Option<String>,
+
+    // #[structopt(short = "o", long = "value_one", default_value = "10000")]
+    // pub module_level: HashMap<String, String>,
+
 }
 
 #[derive(Fail, Debug)]
@@ -50,20 +64,20 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
                 record.level(),
                 message
             ))
-        }).level(log::LevelFilter::from_str(&logger_config.root_level).unwrap());
+        }).level(log::LevelFilter::from_str(&logger_config.level).unwrap());
 
+    /*
     for (module, level) in logger_config.module_level.iter() {
         log_dispatcher =
             log_dispatcher.level_for(module.to_owned(), log::LevelFilter::from_str(level).unwrap())
     }
+    */
 
-    if logger_config.output_system_enabled {
+    if logger_config.stdout_output {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());
     }
 
-    if logger_config.output_file_enabled {
-        log_dispatcher = log_dispatcher.chain(fern::log_file(&logger_config.output_file_name)?);
-    }
+    if let Some(path) = &logger_config.file_output_path { log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?) }
 
     log_dispatcher.apply()?;
 

@@ -3,11 +3,12 @@ use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 pub struct Io {
-    /// The filesystem folder where the Rules are saved in json format.
-    #[structopt(long, default_value="/etc/tornado/rules.d/")]
-    pub rules_dir: String,
+    /// Set the size of the in memory queue where messages are stored before being written
+    /// to the output socket.
+    #[structopt(long, default_value="10000")]
+    pub uds_mailbox_capacity: usize,
 
-    /// The Unix Socket path where to listen for incoming events.
+    /// The Unix Socket path where to write the outcoming events.
     #[structopt(long, default_value="/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 }

@@ -1,14 +1,18 @@
 use actix::prelude::*;
 use engine::{EventMessage, MatcherActor};
-use reader::uds::{LineFeedMessage, LineFeedMessageDecoder, UdsConnectMessage};
+use futures::Stream;
+use reader::uds::UdsConnectMessage;
 use std::io;
 use std::thread;
-use tokio_codec::Framed;
+use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
-use tornado_collector_json::JsonCollector;
+use tornado_collector_json::JsonEventCollector;
+
+#[derive(Message)]
+pub struct LineFeedMessage(pub String);
 
 pub struct JsonReaderActor {
-    pub json_collector: JsonCollector,
+    pub json_collector: JsonEventCollector,
     pub matcher_addr: Addr<MatcherActor>,
 }
 
@@ -16,11 +20,11 @@ impl JsonReaderActor {
     pub fn start_new(uds_connect_msg: UdsConnectMessage, matcher_addr: Addr<MatcherActor>) {
         JsonReaderActor::create(move |ctx| {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
-            let codec = LineFeedMessageDecoder::new();
+            let codec = LinesCodec::new();
 
-            let framed = Framed::new(uds_connect_msg.0, codec);
+            let framed = FramedRead::new(uds_connect_msg.0, codec).map(LineFeedMessage);
             JsonReaderActor::add_stream(framed, ctx);
-            JsonReaderActor { json_collector: JsonCollector::new(), matcher_addr }
+            JsonReaderActor { json_collector: JsonEventCollector::new(), matcher_addr }
         });
     }
 }

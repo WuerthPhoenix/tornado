@@ -9,7 +9,7 @@ use std::collections::HashMap;
 
 /// An Event is correlated with an incoming episode, incident, situation or whatever kind of case that could meaningful for the system.
 /// It is produced by the collectors and sent to the Tornado Engine to be processed.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Event {
     pub event_type: String,
     pub created_ts: String,
@@ -89,8 +89,8 @@ impl<'o> Into<Option<&'o str>> for &'o Value {
     }
 }
 
-pub fn cow_to_option_str<'o>(value: &'o Cow<'o, Value>) -> Option<&'o str> {
-    value.as_ref().into()
+pub fn ref_to_option_str(value: &Value) -> Option<&str> {
+    value.into()
 }
 
 pub fn to_option_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
@@ -156,7 +156,7 @@ mod test {
         let cow = Cow::Borrowed(&value);
 
         // Act
-        let text = cow_to_option_str(&cow);
+        let text = ref_to_option_str(&cow);
 
         // Assert
         assert!(text.is_some());

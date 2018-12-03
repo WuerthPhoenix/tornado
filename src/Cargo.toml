@@ -10,9 +10,13 @@ members = [
    "executor/logger",
    "network/common",
    "network/simple",
-   "spike/actix",
+   "spike/rsyslog_collector",
+   "spike/rsyslog_writer_collector",
+   "spike/stdin",
    "spike/tokio",
    "spike/uds_writer_collector",
+   "tornado/tornado",
+   "tornado/rsyslog_collector",
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once

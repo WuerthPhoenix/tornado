@@ -9,12 +9,14 @@ use tornado_common_api::Event;
 /// It collects information from one or more unstructured sources (e.g. emails, log files, etc.)
 /// and produces structured Events to be sent to the Tornado engine.
 pub trait Collector<T> {
-    /// Receives an input an produces an Event
-    fn to_event(&self, input: &T) -> Result<Event, CollectorError>;
+    /// Consumes an input an produces an Event
+    fn to_event(&self, input: T) -> Result<Event, CollectorError>;
 }
 
 #[derive(Fail, Debug)]
 pub enum CollectorError {
     #[fail(display = "EventCreationError: [{}]", message)]
     EventCreationError { message: String },
+    #[fail(display = "JsonParsingError: [{}]", message)]
+    JsonParsingError { message: String },
 }

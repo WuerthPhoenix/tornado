@@ -2,7 +2,7 @@ extern crate serde;
 extern crate serde_json;
 #[macro_use]
 extern crate structopt;
-extern crate tornado_common_api;
+extern crate tornado_collector_json;
 extern crate tornado_common_logger;
 
 #[macro_use]
@@ -11,9 +11,9 @@ extern crate log;
 pub mod config;
 
 use std::fs;
-use std::io::prelude::*;
-use std::os::unix::net::UnixStream;
-use tornado_common_api::Event;
+use std::io;
+use std::{thread, time};
+use tornado_collector_json::model::{Json, JsonValue};
 use tornado_common_logger::setup_logger;
 
 fn main() {
@@ -26,20 +26,25 @@ fn main() {
     let events = read_events_from_config(&conf.io.json_events_path);
 
     // Create uds writer
-    let mut stream =
-        UnixStream::connect(&conf.io.uds_path).expect("Should connect to socket");
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
 
     // Send events
-    for _ in 0..conf.io.repeat_send {
+    let sleep_millis = time::Duration::from_millis(conf.io.repeat_sleep_ms);
+
+    for i in 0..conf.io.repeat_send {
         for event in &events {
-            write_to_socket(&mut stream, event);
+            let mut event_clone = event.clone();
+            event_clone.insert("count".to_owned(), JsonValue::Text(i.to_string()));
+            write(&mut handle, &event_clone);
+            thread::sleep(sleep_millis);
         }
     }
 
     info!("Completed sending {} events", conf.io.repeat_send * events.len());
 }
 
-fn read_events_from_config(path: &str) -> Vec<Event> {
+fn read_events_from_config(path: &str) -> Vec<Json> {
     let paths = fs::read_dir(path).unwrap();
     let mut events = vec![];
 
@@ -57,8 +62,8 @@ fn read_events_from_config(path: &str) -> Vec<Event> {
     events
 }
 
-fn write_to_socket(stream: &mut UnixStream, event: &Event) {
+fn write(stdout: &mut io::Write, event: &Json) {
     let event_bytes = serde_json::to_vec(event).unwrap();
-    stream.write_all(&event_bytes).expect("should write event to socket");
-    stream.write_all(b"\n").expect("should write endline to socket");
+    stdout.write_all(&event_bytes).expect("should write event to socket");
+    stdout.write_all(b"\n").expect("should write endline to socket");
 }

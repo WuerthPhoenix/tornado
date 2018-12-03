@@ -1,5 +1,5 @@
 [package]
-name = "spike_uds_writer_collector"
+name = "spike_rsyslog_collector"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
@@ -12,5 +12,7 @@ serde_json = "1.0"
 structopt = "0.2"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
+tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
+tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 
 [dev-dependencies]

@@ -1,24 +1,26 @@
 [package]
-name = "spike_tokio"
+name = "tornado_rsyslog_collector"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
 ]
 
 [dependencies]
+actix = "0.7"
+failure = "0.1"
+failure_derive = "0.1"
 futures = "0.1"
 log = "0.4"
 serde = "1.0"
+serde_json = "1.0"
 structopt = "0.2"
 tokio = "0.1"
 tokio-codec = "0.1"
+tokio-io = "0.1"
 tokio-uds = "0.2"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
-tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
-tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
-tornado_executor_logger = { path = "../../executor/logger", version = "0.0.1" }
-tornado_network_common = { path = "../../network/common", version = "0.0.1" }
-tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
+
+[dev-dependencies]
