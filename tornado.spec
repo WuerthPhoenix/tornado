@@ -1,6 +1,7 @@
 %global debug_package %{nil}
 %define release_target_dir target/release/
 %define deploy_dir /opt/tornado/
+%define conf_dir %{_sysconfdir}/tornado/
 
 Name:    tornado
 Version: 0.3.0
@@ -28,29 +29,24 @@ cd -
 
 %install
 mkdir -p %{buildroot}/%{deploy_dir}
-EXECUTABLES="tornado_spike_actix tornado_spike_tokio uds_writer_collector"
+EXECUTABLES="tornado tornado_rsyslog_collector"
 for binary in $EXECUTABLES ; do
-    mkdir -p %{buildroot}/%{deploy_dir}/$binary
-    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/$binary/$binary
+    mkdir -p %{buildroot}/%{deploy_dir}/bin/
+    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
 done
-cp -rpv ./src/spike/tokio/config  %{buildroot}/%{deploy_dir}/tornado_spike_tokio/config
-cp -rpv ./src/spike/actix/config  %{buildroot}/%{deploy_dir}/tornado_spike_actix/config
-cp -prv ./src/spike/uds_writer_collector/config  %{buildroot}/%{deploy_dir}/uds_writer_collector/config
+mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 
 %files
 %defattr(0755, root, root, 0775)
-%{deploy_dir}/tornado_spike_actix/tornado_spike_actix
-%{deploy_dir}/tornado_spike_tokio/tornado_spike_tokio
-%{deploy_dir}/uds_writer_collector/uds_writer_collector
-
-%defattr(0664, root, root, 0775)
-%{deploy_dir}/tornado_spike_actix/config
-%{deploy_dir}/tornado_spike_tokio/config
-%{deploy_dir}/uds_writer_collector/config
+%{deploy_dir}/bin/tornado
+%{deploy_dir}/bin/tornado_rsyslog_collector
+%dir %{conf_dir}/rules.d/
 
 %changelog
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
  - New Feature: Contains Operation
+ - New Feature: Rsyslog Collector
+ - New Feature: Tornado Executable with 3 Level Configuration
  - Improvement: Additional Benchmark for performance tracking
 
 * Fri Nov 09 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.2.0-1
