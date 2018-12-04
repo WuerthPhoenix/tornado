@@ -12,8 +12,8 @@ pub struct RsyslogCollectorActor {
 }
 
 #[derive(Message)]
-pub struct RsyslogMessage{
-    pub json: String
+pub struct RsyslogMessage {
+    pub json: String,
 }
 
 impl RsyslogCollectorActor {
@@ -25,7 +25,7 @@ impl RsyslogCollectorActor {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed = FramedRead::new(source, codec).map(|msg| RsyslogMessage{ json: msg });
+            let framed = FramedRead::new(source, codec).map(|msg| RsyslogMessage { json: msg });
             RsyslogCollectorActor::add_stream(framed, ctx);
             RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
         });

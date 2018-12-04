@@ -125,14 +125,15 @@ mod test {
         let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+
         let mut event = ProcessedEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
-            payload: HashMap::new(),
+            payload,
         });
-
-        event.event.payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        event.event.payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         event
             .extracted_vars
@@ -170,16 +171,17 @@ mod test {
         let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
-        let mut event = ProcessedEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
-            payload: HashMap::new(),
-        });
-
         let mut body = HashMap::new();
         body.insert("inner".to_owned(), Value::Text("inner_body_value".to_owned()));
 
-        event.event.payload.insert("body".to_owned(), Value::Map(body.clone()));
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Map(body.clone()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload,
+        });
 
         // Act
         let result = matcher_action.execute(&event).unwrap();

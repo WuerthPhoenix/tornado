@@ -18,18 +18,16 @@ impl Default for AccessorBuilder {
             id_validator: IdValidator::new(),
             start_delimiter: "${",
             end_delimiter: "}",
-            regex: RustRegex::new(PAYLOAD_KEY_PARSE_REGEX)
+            regex: RustRegex::new(EVENT_KEY_PARSE_REGEX)
                 .expect("AccessorBuilder regex should be valid"),
         }
     }
 }
 
-const EVENT_TYPE_KEY: &str = "event.type";
-const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
-const EVENT_PAYLOAD_SUFFIX: &str = "event.payload.";
+const EVENT_SUFFIX: &str = "event.";
 const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
-const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.]+)"#;
-const PAYLOAD_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const EVENT_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.]+)"#;
+const EVENT_KEY_PARSE_TRAILING_DELIMITER: char = '"';
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -53,12 +51,10 @@ impl AccessorBuilder {
                 let path =
                     &value[self.start_delimiter.len()..(value.len() - self.end_delimiter.len())];
                 match path.trim() {
-                    EVENT_TYPE_KEY => Ok(Accessor::Type {}),
-                    EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
-                    val if val.starts_with(EVENT_PAYLOAD_SUFFIX) => {
-                        let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        let keys = self.parse_payload_key(key, value, rule_name)?;
-                        Ok(Accessor::Payload { keys })
+                    val if val.starts_with(EVENT_SUFFIX) => {
+                        let key = val[EVENT_SUFFIX.len()..].trim();
+                        let keys = self.parse_event_key(key, value, rule_name)?;
+                        Ok(Accessor::Event { keys })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
@@ -79,7 +75,7 @@ impl AccessorBuilder {
         result
     }
 
-    fn parse_payload_key(
+    fn parse_event_key(
         &self,
         key: &str,
         full_accessor: &str,
@@ -98,14 +94,14 @@ impl AccessorBuilder {
 
                 // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) &&
-                        result.ends_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(EVENT_KEY_PARSE_TRAILING_DELIMITER) &&
+                        result.ends_with(EVENT_KEY_PARSE_TRAILING_DELIMITER) {
                         result = result[1..(result.len() - 1)].to_string();
                     }
-                    if result.contains(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.contains(EVENT_KEY_PARSE_TRAILING_DELIMITER) {
                         let error_message = format!(
                             "Payload key [{}] from accessor [{}] for rule [{}] contains not valid characters: [{}]",
-                            key, full_accessor, rule_name, PAYLOAD_KEY_PARSE_TRAILING_DELIMITER
+                            key, full_accessor, rule_name, EVENT_KEY_PARSE_TRAILING_DELIMITER
                         );
                         return Err(MatcherError::NotValidIdOrNameError { message: error_message });
                     }
@@ -128,28 +124,24 @@ impl AccessorBuilder {
 /// An Accessor returns the value of a specific field of an Event.
 /// The following Accessors are defined:
 /// - Constant : returns a constant value regardless of the Event;
-/// - CreatedTs : returns the value of the "created_ts" field of an Event
-/// - Payload : returns the value of an entry in the payload of an Event
-/// - Type : returns the value of the "type" field of an Event
+/// - ExtractedVar : returns the value of one extracted variable
+/// - Event : returns the value of an entry of the Event
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: Value },
-    CreatedTs {},
     ExtractedVar { key: String },
-    Payload { keys: Vec<String> },
-    Type {},
+    Event { keys: Vec<String> },
 }
 
 impl Accessor {
     pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedTs {} => Some(Cow::Owned(Value::Text(event.event.created_ts.clone()))),
             Accessor::ExtractedVar { key } => {
                 event.extracted_vars.get(key.as_str()).map(|value| Cow::Borrowed(value))
             }
-            Accessor::Payload { keys } => {
-                let mut value = event.event.payload.get(&keys[0]);
+            Accessor::Event { keys } => {
+                let mut value = event.event.child(&keys[0]);
 
                 let mut count = 1;
 
@@ -160,7 +152,6 @@ impl Accessor {
 
                 value.map(|value| Cow::Borrowed(value))
             }
-            Accessor::Type {} => Some(Cow::Owned(Value::Text(event.event.event_type.clone()))),
         }
     }
 }
@@ -197,7 +188,7 @@ mod test {
 
     #[test]
     fn should_return_the_event_type() {
-        let accessor = Accessor::Type {};
+        let accessor = Accessor::Event { keys: vec!["type".to_owned()] };
 
         let event = ProcessedEvent::new(Event::new("event_type_string"));
 
@@ -208,7 +199,7 @@ mod test {
 
     #[test]
     fn should_return_the_event_created_ts() {
-        let accessor = Accessor::CreatedTs {};
+        let accessor = Accessor::Event { keys: vec!["created_ts".to_owned()] };
 
         let event = ProcessedEvent::new(Event::new("event_type_string"));
 
@@ -219,7 +210,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Event { keys: vec!["payload".to_owned(), "body".to_owned()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -235,7 +226,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Event { keys: vec!["payload".to_owned(), "body".to_owned()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -258,7 +249,9 @@ mod test {
     #[test]
     fn should_return_value_from_nested_payload_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned(), "first".to_owned()] };
+        let accessor = Accessor::Event {
+            keys: vec!["payload".to_owned(), "body".to_owned(), "first".to_owned()],
+        };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -279,8 +272,9 @@ mod test {
     #[test]
     fn should_return_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor =
-            Accessor::Payload { keys: vec!["body".to_owned(), "second.with.dot".to_owned()] };
+        let accessor = Accessor::Event {
+            keys: vec!["payload".to_owned(), "body".to_owned(), "second.with.dot".to_owned()],
+        };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -301,7 +295,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { keys: vec!["date".to_owned()] };
+        let accessor = Accessor::Event { keys: vec!["payload".to_owned(), "date".to_owned()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -351,23 +345,23 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_type_accessor() {
+    fn builder_should_return_event_accessor_for_type() {
         let builder = AccessorBuilder::new();
         let value = "${event.type}".to_owned();
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Type {}, accessor)
+        assert_eq!(Accessor::Event { keys: vec!["type".to_owned()] }, accessor)
     }
 
     #[test]
-    fn builder_should_return_created_ts_accessor() {
+    fn builder_should_return_event_accessor_for_created_ts() {
         let builder = AccessorBuilder::new();
         let value = "${event.created_ts}".to_owned();
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::CreatedTs {}, accessor)
+        assert_eq!(Accessor::Event { keys: vec!["created_ts".to_owned()] }, accessor)
     }
 
     #[test]
@@ -377,7 +371,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec!["key".to_owned()] }, accessor)
+        assert_eq!(Accessor::Event { keys: vec!["payload".to_owned(), "key".to_owned()] }, accessor)
     }
 
     #[test]
@@ -388,8 +382,9 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         assert_eq!(
-            Accessor::Payload {
+            Accessor::Event {
                 keys: vec![
+                    "payload".to_owned(),
                     "first".to_owned(),
                     "second".to_owned(),
                     "th. ird".to_owned(),
@@ -431,7 +426,7 @@ mod test {
     #[test]
     fn builder_should_return_error_if_unknown_accessor() {
         let builder = AccessorBuilder::new();
-        let value = "${event.types}".to_owned();
+        let value = "${events.types}".to_owned();
 
         let accessor = builder.build("", &value);
 
@@ -444,20 +439,13 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_error_if_empty_payload() {
+    fn builder_should_return_the_entire_payload_if_empty_payload() {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.}";
 
         let accessor = builder.build("", value);
 
-        assert!(&accessor.is_err());
-
-        match accessor.err().unwrap() {
-            MatcherError::NotValidIdOrNameError { message } => {
-                assert!(message.contains("${event.payload.}"));
-            }
-            _ => assert!(false),
-        };
+        assert!(&accessor.is_ok());
     }
 
     #[test]
@@ -481,28 +469,28 @@ mod test {
     fn builder_should_parse_a_payload_key() {
         let builder = AccessorBuilder::new();
 
-        assert_eq!(vec!["one"], builder.parse_payload_key("one", "", "").unwrap());
+        assert_eq!(vec!["one"], builder.parse_event_key("one", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two", "", "").unwrap());
+        assert_eq!(vec!["one", "two"], builder.parse_event_key("one.two", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two.", "", "").unwrap());
+        assert_eq!(vec!["one", "two"], builder.parse_event_key("one.two.", "", "").unwrap());
 
-        assert_eq!(vec!["one", ""], builder.parse_payload_key(r#"one."""#, "", "").unwrap());
+        assert_eq!(vec!["one", ""], builder.parse_event_key(r#"one."""#, "", "").unwrap());
 
         assert_eq!(
             vec!["one", "two", "th ir.d"],
-            builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap()
+            builder.parse_event_key(r#"one.two."th ir.d""#, "", "").unwrap()
         );
 
         assert_eq!(
             vec!["th ir.d", "a", "fourth", "two",],
-            builder.parse_payload_key(r#""th ir.d".a."fourth".two"#, "", "").unwrap()
+            builder.parse_event_key(r#""th ir.d".a."fourth".two"#, "", "").unwrap()
         );
 
         assert_eq!(
             vec!["payload", "oids", "SNMPv2-SMI::enterprises.14848.2.1.1.6.0"],
             builder
-                .parse_payload_key(
+                .parse_event_key(
                     r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#,
                     "",
                     ""
@@ -516,20 +504,19 @@ mod test {
         let builder = AccessorBuilder::new();
 
         // Act
-        let result = builder.parse_payload_key(r#"o"ne"#, "", "");
+        let result = builder.parse_event_key(r#"o"ne"#, "", "");
 
         // Assert
         assert!(result.is_err());
     }
 
     #[test]
-    fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_double_quotes(
-) {
+    fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
         // Arrange
         let builder = AccessorBuilder::new();
 
         // Act
-        let result = builder.parse_payload_key(r#"one."two"#, "", "");
+        let result = builder.parse_event_key(r#"one."two"#, "", "");
 
         // Assert
         assert!(result.is_err());
@@ -538,7 +525,7 @@ mod test {
     #[test]
     fn builder_parser_should_fail_if_no_matches() {
         let builder = AccessorBuilder::new();
-        assert!(builder.parse_payload_key("", "", "").is_err())
+        assert!(builder.parse_event_key("", "", "").is_err())
     }
 
 }

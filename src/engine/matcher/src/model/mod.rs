@@ -5,14 +5,18 @@ use tornado_common_api::{Action, Event, Value};
 /// It contains the original Event along with the result of the matching operation.
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent {
-    pub event: Event,
+    pub event: Value,
     pub rules: HashMap<String, ProcessedRule>,
     pub extracted_vars: HashMap<String, Value>,
 }
 
 impl ProcessedEvent {
     pub fn new(event: Event) -> ProcessedEvent {
-        ProcessedEvent { event, rules: HashMap::new(), extracted_vars: HashMap::new() }
+        ProcessedEvent {
+            event: event.into(),
+            rules: HashMap::new(),
+            extracted_vars: HashMap::new(),
+        }
     }
 }
 

@@ -28,6 +28,16 @@ impl Event {
     }
 }
 
+impl Into<Value> for Event {
+    fn into(self) -> Value {
+        let mut payload = Payload::new();
+        payload.insert("type".to_owned(), Value::Text(self.event_type));
+        payload.insert("created_ts".to_owned(), Value::Text(self.created_ts));
+        payload.insert("payload".to_owned(), Value::Map(self.payload));
+        Value::Map(payload)
+    }
+}
+
 /// Action is produced when an Event matches a specific Rule.
 /// It is produced by the Tornado Engine and sent to the Executors to be resolved.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -250,5 +260,24 @@ mod test {
 
         // Assert
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn should_convert_event_into_type() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
+        payload.insert("two-key".to_owned(), Value::Text("two-value".to_owned()));
+
+        let event = Event::new_with_payload("my-event-type", payload.clone());
+        let created_ts = event.created_ts.to_owned();
+
+        // Act
+        let event_value: Value = event.into();
+
+        // Assert
+        assert_eq!("my-event-type", event_value.child("type").unwrap().text().unwrap());
+        assert_eq!(created_ts, event_value.child("created_ts").unwrap().text().unwrap());
+        assert_eq!(&Value::Map(payload), event_value.child("payload").unwrap());
     }
 }
