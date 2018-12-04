@@ -466,6 +466,21 @@ mod test {
     }
 
     #[test]
+    fn builder_should_return_error_if_unknown_accessor_with_event_suffix() {
+        let builder = AccessorBuilder::new();
+        let value = "${events}".to_owned();
+
+        let accessor = builder.build("", &value);
+
+        assert!(&accessor.is_err());
+
+        match accessor.err().unwrap() {
+            MatcherError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
     fn accessor_should_return_the_entire_payload_if_empty_payload_key() {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.}";
