@@ -191,4 +191,62 @@ mod test {
         assert_eq!("inner_body_value", result.payload.get("payload_body_inner").unwrap());
         assert_eq!(&Value::Map(body.clone()), result.payload.get("payload_body").unwrap());
     }
+
+    #[test]
+    fn should_put_the_whole_event_in_the_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("event".to_owned(), "${event}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload,
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!(&event.event, result.payload.get("event").unwrap());
+    }
+
+    #[test]
+    fn should_put_the_whole_event_payload_in_the_action_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("event_payload".to_owned(), "${event.payload}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload: payload.clone(),
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!(&Value::Map(payload), result.payload.get("event_payload").unwrap());
+    }
 }
