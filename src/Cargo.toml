@@ -13,6 +13,7 @@ members = [
    "network/simple",
    "spike/rsyslog_collector",
    "spike/rsyslog_collector_writer",
+   "spike/snmptrapd_collector_writer",
    "spike/stdin",
    "spike/tokio",
    "spike/uds_writer_collector",

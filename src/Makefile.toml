@@ -23,6 +23,7 @@ args = [
 ]
 dependencies = ["build"]
 
+
 # Starts the rsyslog-collector and the rsyslog_collector_writer.
 # Output from the rsyslog_collector_writer is piped into the rsyslog_collector.
 #
@@ -33,5 +34,25 @@ workspace = false
 script = [
     "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
     "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug --uds-path=/tmp/tornado"
+]
+dependencies = ["build"]
+
+
+# Starts the snmptrapd-writer.
+#
+# Execute with:
+# > cargo make run-snmptrapd-writer
+[tasks.run-snmptrapd-writer]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "spike_snmptrapd_collector_writer",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--json-events-path=./spike/snmptrapd_collector_writer/events",
+    "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]
