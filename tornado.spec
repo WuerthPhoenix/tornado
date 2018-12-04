@@ -4,7 +4,7 @@
 %define conf_dir %{_sysconfdir}/tornado/
 
 Name:    tornado
-Version: 0.3.0
+Version: 0.4.0
 Release: 1
 Summary: Tornado Package
 
@@ -43,10 +43,12 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 %dir %{conf_dir}/rules.d/
 
 %changelog
-* Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
- - New Feature: Contains Operation
+* Tue Dec 04 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
  - New Feature: Rsyslog Collector
  - New Feature: Tornado Executable with 3 Level Configuration
+
+* Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
+ - New Feature: Contains Operation
  - Improvement: Additional Benchmark for performance tracking
 
 * Fri Nov 09 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.2.0-1
