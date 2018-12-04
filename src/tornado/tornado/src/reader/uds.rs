@@ -23,7 +23,7 @@ pub fn listen_to_uds_socket<
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
-                UdsConnectMessage(stream)
+                UdsConnectMessage{stream}
             },
         ));
         UdsServerActor { path: path_string, callback }
@@ -46,7 +46,9 @@ where
 }
 
 #[derive(Message)]
-pub struct UdsConnectMessage(pub UnixStream);
+pub struct UdsConnectMessage{
+    pub stream: UnixStream
+}
 
 /// Handle stream of UnixStream's
 impl<F> Handler<UdsConnectMessage> for UdsServerActor<F>

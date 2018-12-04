@@ -63,7 +63,7 @@ fn main() {
                         system.stop();
                     } else {
                         debug!("Received line: {}", input);
-                        rsyslog_addr.do_send(actors::sync_collector::RsyslogMessage(input));
+                        rsyslog_addr.do_send(actors::sync_collector::RsyslogMessage{json: input});
                     },
                     Err(error) => {
                         error!("error: {}", error);

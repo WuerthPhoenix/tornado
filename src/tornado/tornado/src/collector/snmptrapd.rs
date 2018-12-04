@@ -8,7 +8,9 @@ use tornado_collector_common::Collector;
 use tornado_collector_snmptrapd::SnmptradpCollector;
 
 #[derive(Message)]
-pub struct LineFeedMessage(pub String);
+struct LineFeedMessage{
+    pub msg: String
+}
 
 pub struct SnmptrapdJsonReaderActor {
     pub collector: SnmptradpCollector,
@@ -21,7 +23,7 @@ impl SnmptrapdJsonReaderActor {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed = FramedRead::new(uds_connect_msg.0, codec).map(LineFeedMessage);
+            let framed = FramedRead::new(uds_connect_msg.stream, codec).map(|msg| LineFeedMessage{msg});
             SnmptrapdJsonReaderActor::add_stream(framed, ctx);
             SnmptrapdJsonReaderActor { collector: SnmptradpCollector::new(), matcher_addr }
         });
@@ -39,9 +41,9 @@ impl Actor for SnmptrapdJsonReaderActor {
 /// To use `Framed` with an actor, we have to implement `StreamHandler` trait
 impl StreamHandler<LineFeedMessage, io::Error> for SnmptrapdJsonReaderActor {
     fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
-        debug!("SnmptrapdJsonReaderActor - received msg: [{}]", &msg.0);
+        debug!("SnmptrapdJsonReaderActor - received msg: [{}]", &msg.msg);
 
-        match self.collector.to_event(&msg.0) {
+        match self.collector.to_event(&msg.msg) {
             Ok(event) => self.matcher_addr.do_send(EventMessage { event }),
             Err(e) => error!("SnmptrapdJsonReaderActor - Cannot unmarshal event from json: {}", e),
         };
