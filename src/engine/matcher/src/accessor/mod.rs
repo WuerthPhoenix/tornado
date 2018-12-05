@@ -126,8 +126,11 @@ impl AccessorBuilder {
 /// An Accessor returns the value of a specific field of an Event.
 /// The following Accessors are defined:
 /// - Constant : returns a constant value regardless of the Event;
+/// - CreatedTs : returns the value of the "created_ts" field of an Event
 /// - ExtractedVar : returns the value of one extracted variable
-/// - Event : returns the value of an entry of the Event
+/// - Payload : returns the value of an entry in the payload of an Event
+/// - Type : returns the value of the "type" field of an Event
+/// - Event : returns the entire Event
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: Value },
