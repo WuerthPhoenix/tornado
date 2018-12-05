@@ -29,23 +29,35 @@ cd -
 
 %install
 mkdir -p %{buildroot}/%{deploy_dir}
+# Install executables
 EXECUTABLES="tornado tornado_rsyslog_collector"
 for binary in $EXECUTABLES ; do
     mkdir -p %{buildroot}/%{deploy_dir}/bin/
     cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
 done
+
+# Install spikes
+mkdir -p %{buildroot}/%{deploy_dir}/bin/spikes
+find src/%{release_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{deploy_dir}/bin/spikes/ \;
+
+# Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 
 %files
 %defattr(0755, root, root, 0775)
 %{deploy_dir}/bin/tornado
 %{deploy_dir}/bin/tornado_rsyslog_collector
+%{deploy_dir}/bin/spikes/*
+
+%defattr(0660, root, root, 0770)
 %dir %{conf_dir}/rules.d/
 
 %changelog
 * Tue Dec 04 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
  - New Feature: Rsyslog Collector
+ - New Feature: Snmptrapd Collector
  - New Feature: Tornado Executable with 3 Level Configuration
+ - Spikes are now deployed in spikes subdirectory
 
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
  - New Feature: Contains Operation
