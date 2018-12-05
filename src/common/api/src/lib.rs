@@ -62,6 +62,12 @@ impl Value {
             Value::Text(_) => None,
         }
     }
+    pub fn text(&self) -> Option<&str> {
+        match self {
+            Value::Text(value) => Some(value),
+            _ => None,
+        }
+    }
 }
 
 impl PartialEq<str> for Value {

@@ -26,8 +26,7 @@ fn main() {
     let events = read_events_from_config(&conf.io.json_events_path);
 
     // Create uds writer
-    let mut stream =
-        UnixStream::connect(&conf.io.uds_path).expect("Should connect to socket");
+    let mut stream = UnixStream::connect(&conf.io.uds_path).expect("Should connect to socket");
 
     // Send events
     for _ in 0..conf.io.repeat_send {

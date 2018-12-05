@@ -6,8 +6,9 @@
 # Starts the tornado engine.
 #
 # Execute with:
-# > cargo make --no-workspace run-tornado
+# > cargo make run-tornado
 [tasks.run-tornado]
+workspace = false
 command = "cargo"
 args = [
     "run",
@@ -25,8 +26,9 @@ dependencies = ["build"]
 # Output from the rsyslog_collector_writer is piped into the rsyslog_collector.
 #
 # Execute with:
-# > cargo make --no-workspace run-rsyslog-collector
+# > cargo make run-rsyslog-collector
 [tasks.run-rsyslog-collector]
+workspace = false
 script = [
     "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
     "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug --uds-path=/tmp/tornado"

@@ -12,9 +12,7 @@ use structopt::StructOpt;
 /// The logger configuration.
 #[derive(Debug, Clone, StructOpt)]
 pub struct LoggerConfig {
-
     // Todo: check if an enum can be used
-
     /// The logger level
     /// Valid values: trace, debug, info, warn, error
     #[structopt(long = "logger-level", default_value = "warn")]
@@ -29,10 +27,8 @@ pub struct LoggerConfig {
     /// If provided, the logger will append any output to it.
     #[structopt(long = "logger-file-path")]
     pub file_output_path: Option<String>,
-
     // #[structopt(short = "o", long = "value_one", default_value = "10000")]
     // pub module_level: HashMap<String, String>,
-
 }
 
 #[derive(Fail, Debug)]
@@ -77,7 +73,9 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());
     }
 
-    if let Some(path) = &logger_config.file_output_path { log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?) }
+    if let Some(path) = &logger_config.file_output_path {
+        log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?)
+    }
 
     log_dispatcher.apply()?;
 

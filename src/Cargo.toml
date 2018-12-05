@@ -5,6 +5,7 @@ members = [
    "common/logger",
    "collector/common",
    "collector/json",
+   "collector/snmptrapd",
    "engine/matcher",
    "executor/common",
    "executor/logger",
