@@ -218,7 +218,9 @@ mod test {
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&event.event, result.payload.get("event").unwrap());
+
+        let event_value: Value = event.event.clone().into();
+        assert_eq!(&event_value, result.payload.get("event").unwrap());
     }
 
     #[test]
