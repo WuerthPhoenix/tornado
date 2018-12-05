@@ -9,7 +9,9 @@ pub struct RsyslogCollectorActor {
 }
 
 #[derive(Message)]
-pub struct RsyslogMessage(pub String);
+pub struct RsyslogMessage{
+    pub json: String
+}
 
 impl RsyslogCollectorActor {
     pub fn new(writer_addr: Addr<UdsWriterActor>) -> RsyslogCollectorActor {
@@ -29,9 +31,9 @@ impl Handler<RsyslogMessage> for RsyslogCollectorActor {
     type Result = ();
 
     fn handle(&mut self, msg: RsyslogMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("JsonReaderActor - received msg: [{}]", &msg.0);
+        debug!("JsonReaderActor - received msg: [{}]", &msg.json);
 
-        match self.collector.to_event(&msg.0) {
+        match self.collector.to_event(&msg.json) {
             Ok(event) => self.writer_addr.do_send(EventMessage { event }),
             Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
         };

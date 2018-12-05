@@ -921,6 +921,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "spike_snmptrapd_collector_writer"
+version = "0.0.1"
+dependencies = [
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "structopt 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_common_api 0.0.1",
+ "tornado_common_logger 0.0.1",
+]
+
+[[package]]
 name = "spike_stdin"
 version = "0.0.1"
 dependencies = [
@@ -1270,6 +1282,7 @@ dependencies = [
  "tokio-uds 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_collector_common 0.0.1",
  "tornado_collector_json 0.0.1",
+ "tornado_collector_snmptrapd 0.0.1",
  "tornado_common_api 0.0.1",
  "tornado_common_logger 0.0.1",
  "tornado_engine_matcher 0.0.1",

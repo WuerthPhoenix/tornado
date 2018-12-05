@@ -57,6 +57,7 @@ fn read_events_from_config(path: &str) -> Vec<Event> {
 }
 
 fn write_to_socket(stream: &mut UnixStream, event: &Event) {
+    debug!("Sending event: \n{:?}", event);
     let event_bytes = serde_json::to_vec(event).unwrap();
     stream.write_all(&event_bytes).expect("should write event to socket");
     stream.write_all(b"\n").expect("should write endline to socket");
