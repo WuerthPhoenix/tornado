@@ -1,5 +1,6 @@
 #[macro_use]
 extern crate log;
+extern crate regex;
 extern crate serde;
 extern crate serde_json;
 extern crate tornado_common_api;
@@ -8,6 +9,8 @@ extern crate tornado_executor_common;
 use std::io::prelude::*;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
+
+mod groups;
 
 pub struct ArchiveExecutor<W: Write> {
     writer: W,
