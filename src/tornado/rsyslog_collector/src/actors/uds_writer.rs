@@ -65,13 +65,15 @@ impl Actor for UdsWriterActor {
                 info!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
                 let (_r, w) = stream.split();
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            }).map_err(|err, act, ctx| {
+            })
+            .map_err(|err, act, ctx| {
                 warn!(
                     "UdsWriterActor failed to connected to socket [{:?}]: {:?}",
                     &act.socket_path, err
                 );
                 ctx.stop();
-            }).wait(ctx);
+            })
+            .wait(ctx);
     }
 }
 
@@ -91,7 +93,7 @@ impl Handler<EventMessage> for UdsWriterActor {
         match &mut self.tx {
             Some(stream) => {
                 let mut event = serde_json::to_string(&msg.event).map_err(|err| {
-                    UdsWriterActorError::SerdeError { message: format!{"{}", err} }
+                    UdsWriterActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 stream.write(event);
                 Ok(())

@@ -58,14 +58,16 @@ fn main() {
             loop {
                 let mut input = String::new();
                 match stdin_lock.read_line(&mut input) {
-                    Ok(len) => if len == 0 {
-                        info!("EOF received. Stopping Rsyslog collector.");
-                        system.stop();
-                    } else {
-                        debug!("Received line: {}", input);
-                        rsyslog_addr
-                            .do_send(actors::sync_collector::RsyslogMessage { json: input });
-                    },
+                    Ok(len) => {
+                        if len == 0 {
+                            info!("EOF received. Stopping Rsyslog collector.");
+                            system.stop();
+                        } else {
+                            debug!("Received line: {}", input);
+                            rsyslog_addr
+                                .do_send(actors::sync_collector::RsyslogMessage { json: input });
+                        }
+                    }
                     Err(error) => {
                         error!("error: {}", error);
                         system.stop();

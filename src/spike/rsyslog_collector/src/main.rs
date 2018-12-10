@@ -41,15 +41,17 @@ fn main() {
 
     loop {
         match stdin_lock.read_line(&mut input) {
-            Ok(len) => if len == 0 {
-                info!("EOF received. Stopping Rsyslog collector.");
-                return;
-            } else {
-                info!("Received line: {}", input);
-                let event = collector.to_event(&input).unwrap();
-                write_to_socket(&mut stream, &event);
-                input.clear();
-            },
+            Ok(len) => {
+                if len == 0 {
+                    info!("EOF received. Stopping Rsyslog collector.");
+                    return;
+                } else {
+                    info!("Received line: {}", input);
+                    let event = collector.to_event(&input).unwrap();
+                    write_to_socket(&mut stream, &event);
+                    input.clear();
+                }
+            }
             Err(error) => {
                 error!("error: {}", error);
                 return;

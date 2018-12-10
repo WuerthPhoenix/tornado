@@ -60,7 +60,8 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
                 record.level(),
                 message
             ))
-        }).level(log::LevelFilter::from_str(&logger_config.level).unwrap());
+        })
+        .level(log::LevelFilter::from_str(&logger_config.level).unwrap());
 
     /*
     for (module, level) in logger_config.module_level.iter() {
