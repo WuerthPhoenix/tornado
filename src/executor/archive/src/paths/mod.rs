@@ -27,24 +27,24 @@ impl PathMatcherBuilder {
         for capture in self.regex.captures_iter(&path) {
             if let Some(value) = capture.get(0) {
                 let group = value.as_str();
-                let var = Variable {
+                let param = Parameter {
                     simple: group[2..group.len() - 1].to_owned(),
                     full: group.to_owned(),
                 };
-                variables.push(var)
+                variables.push(param)
             }
         }
-        PathMatcher { path, variables }
+        PathMatcher { path, parameters: variables }
     }
 }
 
 pub struct PathMatcher {
     path: String,
-    variables: Vec<Variable>,
+    parameters: Vec<Parameter>,
 }
 
 #[derive(Debug, PartialEq)]
-pub struct Variable {
+pub struct Parameter {
     pub simple: String,
     pub full: String,
 }
@@ -52,17 +52,17 @@ pub struct Variable {
 impl PathMatcher {
     pub fn build_path(&self, payload: &Payload) -> Result<String, ExecutorError> {
         let mut path = self.path.clone();
-        for var in self.variables.iter() {
+        for param in self.parameters.iter() {
             let var_value =
-                payload.get(&var.simple).and_then(|val| val.text()).ok_or_else(|| {
+                payload.get(&param.simple).and_then(|val| val.text()).ok_or_else(|| {
                     let message = format!(
                         "Cannot resolve path parameter [{}] for path [{}]",
-                        &var.simple, self.path
+                        &param.simple, self.path
                     );
                     warn!("{}", &message);
                     ExecutorError::ActionExecutionError { message }
                 })?;
-            path = path.replace(&var.full, var_value);
+            path = path.replace(&param.full, var_value);
         }
         Ok(path)
     }
@@ -75,23 +75,23 @@ mod test {
     use tornado_common_api::Value;
 
     #[test]
-    fn should_extract_vars() {
+    fn should_extract_parameters() {
         // Arrange
         let builder = PathMatcherBuilder::new();
-        let empty: Vec<Variable> = vec![];
+        let empty: Vec<Parameter> = vec![];
 
         // Assert
-        assert_eq!(empty, builder.build("").variables);
+        assert_eq!(empty, builder.build("").parameters);
         assert_eq!(
             vec![
-                Variable { simple: "one".to_owned(), full: "${one}".to_owned() },
-                Variable { simple: "two".to_owned(), full: "${two}".to_owned() }
+                Parameter { simple: "one".to_owned(), full: "${one}".to_owned() },
+                Parameter { simple: "two".to_owned(), full: "${two}".to_owned() }
             ],
-            builder.build("/dir/${one}/${two}").variables
+            builder.build("/dir/${one}/${two}").parameters
         );
         assert_eq!(
-            vec![Variable { simple: "one_tw.o".to_owned(), full: "${one_tw.o}".to_owned() }],
-            builder.build("/dir/${one_tw.o}").variables
+            vec![Parameter { simple: "one_tw.o".to_owned(), full: "${one_tw.o}".to_owned() }],
+            builder.build("/dir/${one_tw.o}").parameters
         );
     }
 
@@ -159,5 +159,20 @@ mod test {
 
         // Assert
         assert_eq!("/dir/one_value/two_value/one_value", result);
+    }
+
+    #[test]
+    fn should_always_return_path_if_it_has_no_parameters() {
+        // Arrange
+        let builder = PathMatcherBuilder::new();
+        let path_matcher = builder.build("/dir/one/two");
+
+        let payload = Payload::new();
+
+        // Act
+        let result = path_matcher.build_path(&payload).unwrap();
+
+        // Assert
+        assert_eq!("/dir/one/two", result);
     }
 }
