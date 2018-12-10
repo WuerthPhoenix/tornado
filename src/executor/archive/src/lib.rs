@@ -56,6 +56,4 @@ impl<W: Write> Executor for ArchiveExecutor<W> {
 extern crate tempfile;
 
 #[cfg(test)]
-mod test {
-
-}
+mod test {}
