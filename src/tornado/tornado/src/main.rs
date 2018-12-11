@@ -25,6 +25,7 @@ pub mod collector;
 pub mod config;
 pub mod dispatcher;
 pub mod engine;
+pub mod executor;
 pub mod io;
 
 use actix::prelude::*;
