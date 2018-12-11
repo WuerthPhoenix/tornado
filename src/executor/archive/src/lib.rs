@@ -1,14 +1,16 @@
 #[macro_use]
 extern crate log;
+extern crate lru_time_cache;
 extern crate regex;
 extern crate serde;
 extern crate serde_json;
 extern crate tornado_common_api;
 extern crate tornado_executor_common;
 
+use lru_time_cache::Entry;
+use lru_time_cache::LruCache;
 use std::collections::HashMap;
-use std::fs::create_dir_all;
-use std::fs::OpenOptions;
+use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 use tornado_common_api::Action;
@@ -24,6 +26,7 @@ pub struct ArchiveExecutor {
     pub base_path: String,
     pub default_path: String,
     paths: HashMap<String, paths::PathMatcher>,
+    file_cache: LruCache<String, File>,
 }
 
 impl ArchiveExecutor {
@@ -34,41 +37,62 @@ impl ArchiveExecutor {
             .iter()
             .map(|(key, value)| (key.to_owned(), builder.build(value.to_owned())))
             .collect::<HashMap<String, paths::PathMatcher>>();
+
+        let time_to_live = ::std::time::Duration::from_secs(config.file_cache_ttl_secs);
+        let file_cache = LruCache::<String, File>::with_expiry_duration_and_capacity(
+            time_to_live,
+            config.file_cache_size,
+        );
+
         ArchiveExecutor {
             base_path: config.base_path.clone(),
             default_path: config.default_path.clone(),
             paths,
+            file_cache,
         }
     }
 
     fn write(&mut self, relative_path: &str, buf: &[u8]) -> Result<(), ExecutorError> {
-        let path = format!("{}{}{}", self.base_path, std::path::MAIN_SEPARATOR, relative_path);
+        let absolute_path_string =
+            format!("{}{}{}", self.base_path, std::path::MAIN_SEPARATOR, relative_path);
 
-        if path.contains(r"\..") || path.contains("/..") {
-            return Err(ExecutorError::ActionExecutionError {
-                message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &path),
-            });
-        }
+        let file = match self.file_cache.entry(absolute_path_string.clone()) {
+            Entry::Occupied(occupied) => occupied.into_mut(),
+            Entry::Vacant(vacant) => {
+                if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
+                    return Err(ExecutorError::ActionExecutionError {
+                        message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
+                    });
+                }
 
-        let path = Path::new(&path);
+                let path = Path::new(&absolute_path_string);
 
-        if let Some(parent) = path.parent() {
-            create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
-                message: format!(
-                    "Cannot create required directories for path [{:?}]: {}",
-                    &path, err
-                ),
-            })?;
-        }
+                if let Some(parent) = path.parent() {
+                    create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
+                        message: format!(
+                            "Cannot create required directories for path [{:?}]: {}",
+                            &path, err
+                        ),
+                    })?;
+                }
 
-        OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&path)
-            .and_then(|mut file| file.write_all(buf))
-            .map_err(|err| ExecutorError::ActionExecutionError {
-                message: format!("Cannot write to file: {}", err),
-            })
+                let file =
+                    OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
+                        ExecutorError::ActionExecutionError {
+                            message: format!(
+                                "Cannot open file [{}]: {}",
+                                &absolute_path_string, err
+                            ),
+                        }
+                    })?;
+
+                vacant.insert(file)
+            }
+        };
+
+        file.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
+            message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
+        })
     }
 }
 
@@ -137,6 +161,8 @@ mod test {
             base_path: dir.to_owned(),
             default_path: "/default/file.out".to_owned(),
             paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
         };
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
@@ -175,6 +201,8 @@ mod test {
             base_path: dir.to_owned(),
             default_path: "/default/file.out".to_owned(),
             paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
         };
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
@@ -228,6 +256,8 @@ mod test {
             base_path: dir.to_owned(),
             default_path: "/default/file.out".to_owned(),
             paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
         };
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
@@ -257,6 +287,8 @@ mod test {
             base_path: dir.to_owned(),
             default_path: "/default/file.out".to_owned(),
             paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
         };
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());

@@ -10,4 +10,10 @@ pub struct ArchiveConfig {
 
     /// A map of relative path groups.
     pub paths: HashMap<String, String>,
+
+    /// The file cache size for storing open files
+    pub file_cache_size: usize,
+
+    /// The file cache Time To Live in seconds
+    pub file_cache_ttl_secs: u64,
 }
