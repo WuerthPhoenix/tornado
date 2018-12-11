@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use engine::{EventMessage, MatcherActor};
 use futures::Stream;
-use reader::uds::UdsConnectMessage;
+use io::uds::UdsConnectMessage;
 use std::io;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;

@@ -7,7 +7,7 @@ use tornado_network_common::EventBus;
 
 #[derive(Default)]
 pub struct SimpleEventBus {
-    subscribers: HashMap<String, Box<'static + Fn(&Action) -> () + Sync + Send>>,
+    subscribers: HashMap<String, Box<'static + Fn(Action) -> () + Sync + Send>>,
 }
 
 impl SimpleEventBus {
@@ -16,19 +16,21 @@ impl SimpleEventBus {
     }
 }
 
+impl SimpleEventBus {
+    pub fn subscribe_to_action(
+        &mut self,
+        action_id: &str,
+        handler: Box<'static + Fn(Action) -> () + Sync + Send>,
+    ) {
+        self.subscribers.insert(action_id.to_owned(), handler);
+    }
+}
+
 impl EventBus for SimpleEventBus {
-    fn publish_action(&self, message: &Action) {
+    fn publish_action(&self, message: Action) {
         if let Some(handler) = self.subscribers.get(&message.id) {
             handler(message)
         };
-    }
-
-    fn subscribe_to_action(
-        &mut self,
-        action_id: &str,
-        handler: Box<'static + Fn(&Action) -> () + Sync + Send>,
-    ) {
-        self.subscribers.insert(action_id.to_owned(), handler);
     }
 }
 
@@ -47,7 +49,7 @@ mod test {
         let clone = received.clone();
         bus.subscribe_to_action(
             action_id,
-            Box::new(move |message: &Action| {
+            Box::new(move |message: Action| {
                 println!("received action of id: {}", message.id);
                 let mut value = clone.lock().unwrap();
                 *value = message.id.clone();
@@ -55,7 +57,7 @@ mod test {
         );
 
         // Act
-        bus.publish_action(&Action { id: String::from(action_id), payload: HashMap::new() });
+        bus.publish_action(Action { id: String::from(action_id), payload: HashMap::new() });
 
         // Assert
         let value = &*received.lock().unwrap();

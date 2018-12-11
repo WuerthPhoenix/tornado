@@ -50,4 +50,9 @@ impl StreamHandler<RsyslogMessage, std::io::Error> for RsyslogCollectorActor {
             Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
         };
     }
+
+    fn error(&mut self, err: std::io::Error, _ctx: &mut Self::Context) -> actix::Running {
+        error!("{}", err);
+        actix::Running::Continue
+    }
 }

@@ -33,7 +33,7 @@ use tornado_engine_matcher::matcher::Matcher;
 use tornado_network_simple::SimpleEventBus;
 
 mod config;
-mod reader;
+mod io;
 
 fn main() {
     let conf = config::Conf::build();
@@ -82,7 +82,7 @@ fn main() {
                     let processed_event = matcher_clone.process(event);
                     match Dispatcher::new(event_bus_clone)
                         .unwrap()
-                        .dispatch_actions(&processed_event)
+                        .dispatch_actions(processed_event)
                     {
                         Ok(_) => {}
                         Err(e) => error!("Cannot dispatch action: {}", e),
@@ -100,7 +100,7 @@ fn main() {
         Ok(())
     }));
 
-    let server = reader::uds::start_uds_socket(conf.io.uds_path, tx);
+    let server = io::uds::start_uds_socket(conf.io.uds_path, tx);
     runtime
         .block_on(server.map_err(|e| panic!("err={:?}", e)))
         .expect("Tokio runtime should start");
