@@ -76,9 +76,13 @@ fn main() {
             let mut archive_executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             event_bus.subscribe_to_action(
                 "archive",
-                Box::new(move |action| match archive_executor.execute(&action) {
-                    Ok(_) => {}
-                    Err(e) => error!("Cannot log action: {}", e),
+                Box::new(move |action| {
+                    /*
+                    match archive_executor.execute(&action) {
+                        Ok(_) => {}
+                        Err(e) => error!("Cannot log action: {}", e),
+                    }
+                    */
                 }),
             );
 
