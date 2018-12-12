@@ -9,6 +9,7 @@ pub mod contain;
 pub mod equal;
 pub mod or;
 pub mod regex;
+pub mod true_operator;
 
 /// Trait for a generic matcher.operator.
 pub trait Operator: fmt::Debug + Send + Sync {
@@ -30,25 +31,43 @@ impl OperatorBuilder {
         OperatorBuilder { accessor: AccessorBuilder::new() }
     }
 
+    pub fn build_option(
+        &self,
+        rule_name: &str,
+        config: &Option<config::Operator>,
+    ) -> Result<Box<Operator>, MatcherError> {
+
+        let result: Result<Box<Operator>, MatcherError> = match config {
+            Some(operator) => self.build(rule_name, operator),
+            None => Ok(Box::new(::matcher::operator::true_operator::True{}))
+        };
+
+        info!(
+            "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
+            &result, config
+        );
+        result
+    }
+
     /// Returns a specific Operator instance based on matcher.operator configuration.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    ///
-    /// extern crate tornado_engine_matcher;
-    ///
-    /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
-    /// use tornado_engine_matcher::config;
-    ///
-    /// let ops = config::Operator::Equal {
-    ///              first: "${event.type}".to_owned(),
-    ///              second: "email".to_owned(),
-    ///           };
-    ///
-    /// let builder = OperatorBuilder::new();
-    /// let operator = builder.build("rule_name", &ops).unwrap(); // operator is an instance of Equal
-    /// ```
+///
+/// # Example
+///
+/// ```rust
+///
+/// extern crate tornado_engine_matcher;
+///
+/// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
+/// use tornado_engine_matcher::config;
+///
+/// let ops = config::Operator::Equal {
+///              first: "${event.type}".to_owned(),
+///              second: "email".to_owned(),
+///           };
+///
+/// let builder = OperatorBuilder::new();
+/// let operator = builder.build("rule_name", &ops).unwrap(); // operator is an instance of Equal
+/// ```
     pub fn build(
         &self,
         rule_name: &str,
@@ -102,7 +121,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        assert!(builder.build("", &ops).is_err());
+        assert!(builder.build_option("", &Some(ops)).is_err());
     }
 
     #[test]
@@ -113,7 +132,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build("", &ops).unwrap();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("equal", operator.name());
     }
@@ -126,7 +145,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build("", &ops).unwrap();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("contain", operator.name());
     }
@@ -139,7 +158,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build("", &ops).unwrap();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("regex", operator.name());
     }
@@ -154,7 +173,7 @@ mod test {
         };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build("", &ops).unwrap();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("and", operator.name());
     }
@@ -164,9 +183,18 @@ mod test {
         let ops = config::Operator::Or { operators: vec![] };
 
         let builder = OperatorBuilder::new();
-        let operator = builder.build("", &ops).unwrap();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("or", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_true_operator() {
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &None).unwrap();
+
+        assert_eq!("true", operator.name());
     }
 
 }

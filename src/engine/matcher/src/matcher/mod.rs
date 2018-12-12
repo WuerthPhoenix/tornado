@@ -47,7 +47,7 @@ impl Matcher {
                 name: rule.name.to_owned(),
                 priority: rule.priority,
                 do_continue: rule.do_continue,
-                operator: operator_builder.build(&rule.name, &rule.constraint.where_operator)?,
+                operator: operator_builder.build_option(&rule.name, &rule.constraint.where_operator)?,
                 extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
                 actions: action_builder.build(&rule.name, &rule.actions)?,
             })
@@ -446,6 +446,7 @@ mod test {
         assert!(result.rules.contains_key("rule2_email"));
         assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule2_email").unwrap().status);
     }
+
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
@@ -508,6 +509,7 @@ mod test {
         assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
         assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
     }
+
     #[test]
     fn should_return_extracted_vars_grouped_by_rule() {
         // Arrange
@@ -613,7 +615,7 @@ mod test {
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-        let constraint = Constraint { where_operator: operator, with: HashMap::new() };
+        let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),
