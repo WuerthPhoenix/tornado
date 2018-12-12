@@ -1,7 +1,6 @@
 use actix::prelude::*;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
-use tornado_executor_common::ExecutorError;
 
 #[derive(Message)]
 pub struct ActionMessage {
@@ -26,8 +25,8 @@ impl <E: Executor + 'static> Handler<ActionMessage> for ExecutorActor<E> {
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
         debug!("ExecutorActor - received new action [{:?}]", &msg.action);
         match self.executor.execute(&msg.action) {
-            Ok(_) => debug!("ExecutorActor - Action executed successfully"),
-            Err(e) => error!("ExecutorActor - Failed to execute action: {}", e),
+            Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", self.action_id),
+            Err(e) => error!("ExecutorActor - {} - Failed to execute action: {}", self.action_id, e),
         };
     }
 }

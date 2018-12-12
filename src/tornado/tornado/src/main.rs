@@ -38,7 +38,6 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_executor_common::Executor;
 use tornado_network_simple::SimpleEventBus;
 use std::collections::HashMap;
 use executor::ExecutorActor;
