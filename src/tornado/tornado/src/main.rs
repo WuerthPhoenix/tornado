@@ -67,7 +67,7 @@ fn main() {
 
             // ToDo move to external configuration
             let mut archive_config = tornado_executor_archive::config::ArchiveConfig {
-                base_path: "./target".to_owned(),
+                base_path: "/tmp/tornado-log".to_owned(),
                 default_path: "/default/file.log".to_owned(),
                 paths: HashMap::new(),
                 file_cache_size: 10,
@@ -87,7 +87,7 @@ fn main() {
 
             event_bus.subscribe_to_action(
                 "archive",
-                Box::new(move |action| { archive_executor_addr.send(ActionMessage{action}); }),
+                Box::new(move |action| { archive_executor_addr.do_send(ActionMessage{action}); }),
             );
 
             Arc::new(event_bus)

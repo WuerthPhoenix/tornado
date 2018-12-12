@@ -5,7 +5,10 @@
     "continue": true,
     "active": true,
     "constraint": {
-      "WHERE": {},
+      "WHERE":  {
+        "type": "AND",
+        "operators": []
+      },
       "WITH": {}
     },
     "actions": [
