@@ -41,6 +41,8 @@ use tornado_engine_matcher::matcher::Matcher;
 use tornado_executor_common::Executor;
 use tornado_network_simple::SimpleEventBus;
 use std::collections::HashMap;
+use executor::ExecutorActor;
+use executor::ActionMessage;
 
 fn main() {
     let conf = config::Conf::build();
@@ -60,36 +62,38 @@ fn main() {
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
-        // Configure action dispatcher
-        let event_bus = {
-            let mut event_bus = SimpleEventBus::new();
+        // Start archive executor actor
+        let archive_executor_addr = SyncArbiter::start(1, move || {
 
-            let archive_config = tornado_executor_archive::config::ArchiveConfig {
+            // ToDo move to external configuration
+            let mut archive_config = tornado_executor_archive::config::ArchiveConfig {
                 base_path: "./target".to_owned(),
-                default_path: "/default/file.out".to_owned(),
+                default_path: "/default/file.log".to_owned(),
                 paths: HashMap::new(),
                 file_cache_size: 10,
                 file_cache_ttl_secs: 1,
             };
 
-            // ToDo the eventbus needs to be reworked when the archive executor is completed
-            let mut archive_executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
+            archive_config.paths.insert("one".to_owned(), "/one/file.log".to_owned());
+
+            let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
+            ExecutorActor{action_id: "archive".to_owned(), executor}
+
+        });
+
+        // Configure action dispatcher
+        let event_bus = {
+            let mut event_bus = SimpleEventBus::new();
+
             event_bus.subscribe_to_action(
                 "archive",
-                Box::new(move |action| {
-                    /*
-                    match archive_executor.execute(&action) {
-                        Ok(_) => {}
-                        Err(e) => error!("Cannot log action: {}", e),
-                    }
-                    */
-                }),
+                Box::new(move |action| { archive_executor_addr.send(ActionMessage{action}); }),
             );
 
             Arc::new(event_bus)
         };
 
-        // Start executor actor
+        // Start dispatcher actor
         let dispatcher_addr = SyncArbiter::start(1, move || {
             let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
             DispatcherActor { dispatcher }
