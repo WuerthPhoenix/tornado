@@ -100,15 +100,18 @@ impl Executor for ArchiveExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         debug!("ArchiveExecutor - received action: \n{:#?}", action);
 
-        let archive_type =
-            action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.text()).ok_or_else(
-                || ExecutorError::ActionExecutionError {
-                    message: format!(
-                        "[{}] key not found be in action payload or it is not a String.",
-                        ARCHIVE_TYPE_KEY
-                    ),
-                },
-            )?;
+        let path = match action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.text()) {
+            Some(archive_type) => {
+                match self.paths.get(archive_type) {
+                    Some(path_matcher) => path_matcher.build_path(&action.payload),
+                    None => Err(ExecutorError::ActionExecutionError {
+                        message: format!("Cannot find mapping for {} value: [{}]", ARCHIVE_TYPE_KEY, archive_type),
+                    }),
+                }
+            },
+            // ToDo: clone to be removed when edition 2018 is enabled
+            None => Ok(self.default_path.clone())
+        }?;
 
         let mut event_bytes = action
             .payload
@@ -123,16 +126,6 @@ impl Executor for ArchiveExecutor {
             })?;
 
         event_bytes.push(b'\n');
-
-        let path = match self.paths.get(archive_type) {
-            Some(path_matcher) => path_matcher.build_path(&action.payload).unwrap_or_else(|err| {
-                warn!("Fallback to default path: {}", err);
-                // ToDo: clone to be removed when edition 2018 is enabled
-                self.default_path.clone()
-            }),
-            // ToDo: clone to be removed when edition 2018 is enabled
-            None => self.default_path.clone(),
-        };
 
         self.write(&path, &event_bytes)?;
 
@@ -279,7 +272,7 @@ mod test {
     }
 
     #[test]
-    fn should_fallback_to_default_path_if_cannot_resolve_params() {
+    fn should_return_error_if_cannot_resolve_params() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -293,8 +286,66 @@ mod test {
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
 
-        let expected_path = format!("{}/{}", &dir, "/default/file.out");
+        let mut archiver = ArchiveExecutor::new(&config);
 
+        let event = Event::new("event-name");
+        let mut action = Action::new("action");
+        action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
+
+        // Act
+        let result = archiver.execute(&action);
+
+        // Assert
+        assert!(result.is_err());
+
+    }
+
+
+    #[test]
+    fn should_return_error_if_action_type_is_not_mapped() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let dir = tempdir.path().to_str().unwrap().to_owned();
+        let mut config = config::ArchiveConfig {
+            base_path: dir.to_owned(),
+            default_path: "/default/file.out".to_owned(),
+            paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
+        };
+
+        config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
+
+        let mut archiver = ArchiveExecutor::new(&config);
+
+        let event = Event::new("event-name");
+        let mut action = Action::new("action");
+        action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("two".to_owned()));
+
+        // Act
+        let result = archiver.execute(&action);
+
+        // Assert
+        assert!(result.is_err());
+
+    }
+
+    #[test]
+    fn should_use_default_if_archive_type_not_specified() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let dir = tempdir.path().to_str().unwrap().to_owned();
+        let config = config::ArchiveConfig {
+            base_path: dir.to_owned(),
+            default_path: "/default/file.out".to_owned(),
+            paths: HashMap::new(),
+            file_cache_size: 10,
+            file_cache_ttl_secs: 1,
+        };
+
+        let expected_path = format!("{}/{}", &dir, "/default/file.out");
         println!("Expected file path: [{}]", &expected_path);
 
         let mut archiver = ArchiveExecutor::new(&config);
@@ -302,7 +353,6 @@ mod test {
         let event = Event::new("event-name");
         let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
 
         // Act
         let result = archiver.execute(&action);
