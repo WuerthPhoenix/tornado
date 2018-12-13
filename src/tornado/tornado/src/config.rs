@@ -4,8 +4,14 @@ use tornado_common_logger::LoggerConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
-    /// The filesystem folder where the Rules are saved in json format.
-    #[structopt(long, default_value = "/etc/tornado/rules.d/")]
+
+    /// The filesystem folder where the Tornado configuration is saved.
+    #[structopt(long, default_value = "/etc/tornado")]
+    pub config_dir: String,
+
+    /// The folder where the Rules are saved in json format.
+    /// This folder is relative to the config_dir.
+    #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
 
     /// The Unix Socket path where to listen for incoming events.

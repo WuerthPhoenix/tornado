@@ -49,7 +49,7 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.rules_dir);
+    let config_rules = read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir));
 
     // Start matcher
     let matcher = Arc::new(
