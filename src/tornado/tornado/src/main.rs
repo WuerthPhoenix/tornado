@@ -9,6 +9,7 @@ extern crate tornado_executor_common;
 extern crate tornado_network_common;
 
 extern crate actix;
+extern crate config as config_rs;
 extern crate futures;
 #[macro_use]
 extern crate log;
@@ -28,8 +29,10 @@ pub mod executor;
 pub mod io;
 
 use actix::prelude::*;
-use engine::MatcherActor;
 use dispatcher::{ActixEventBus, DispatcherActor};
+use engine::MatcherActor;
+use executor::ActionMessage;
+use executor::ExecutorActor;
 use io::uds::listen_to_uds_socket;
 use std::fs;
 use std::sync::Arc;
@@ -37,9 +40,6 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use std::collections::HashMap;
-use executor::ExecutorActor;
-use executor::ActionMessage;
 
 fn main() {
     let conf = config::Conf::build();
@@ -47,7 +47,8 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir));
+    let config_rules =
+        read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir));
 
     // Start matcher
     let matcher = Arc::new(
@@ -60,32 +61,25 @@ fn main() {
         info!("Available CPUs: {}", cpus);
 
         // Start archive executor actor
+        let archive_config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
         let archive_executor_addr = SyncArbiter::start(1, move || {
-
-            // ToDo move to external configuration
-            let mut archive_config = tornado_executor_archive::config::ArchiveConfig {
-                base_path: "/tmp/tornado-log".to_owned(),
-                default_path: "/default/file.log".to_owned(),
-                paths: HashMap::new(),
-                file_cache_size: 10,
-                file_cache_ttl_secs: 1,
-            };
-
-            archive_config.paths.insert("one".to_owned(), "/one/file.log".to_owned());
+            let archive_config =
+                config::build_archive_config(&archive_config_file_path.clone()).unwrap();
 
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-            ExecutorActor{executor}
-
+            ExecutorActor { executor }
         });
 
         // Configure action dispatcher
         let event_bus = {
-            let mut event_bus = ActixEventBus{callback: move |action| {
-                match action.id.as_ref() {
-                    "archive" => archive_executor_addr.do_send(ActionMessage{action}),
-                    _ => error!("There are not executors for action id [{}]", &action.id)
-                };
-            }};
+            let mut event_bus = ActixEventBus {
+                callback: move |action| {
+                    match action.id.as_ref() {
+                        "archive" => archive_executor_addr.do_send(ActionMessage { action }),
+                        _ => error!("There are not executors for action id [{}]", &action.id),
+                    };
+                },
+            };
             Arc::new(event_bus)
         };
 
@@ -104,10 +98,7 @@ fn main() {
         // Start Event Json UDS listener
         let json_matcher_addr_clone = matcher_addr.clone();
         listen_to_uds_socket(conf.io.uds_path, move |msg| {
-            collector::event::EventJsonReaderActor::start_new(
-                msg,
-                json_matcher_addr_clone.clone(),
-            );
+            collector::event::EventJsonReaderActor::start_new(msg, json_matcher_addr_clone.clone());
         });
 
         // Start snmptrapd Json UDS listener

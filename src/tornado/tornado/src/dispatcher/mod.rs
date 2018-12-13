@@ -4,10 +4,10 @@ use tornado_engine_matcher::{dispatcher, error, model};
 use tornado_network_common::EventBus;
 
 pub struct ActixEventBus<F: Fn(Action) -> ()> {
-    pub callback: F
+    pub callback: F,
 }
 
-impl <F: Fn(Action) -> ()> EventBus for ActixEventBus<F> {
+impl<F: Fn(Action) -> ()> EventBus for ActixEventBus<F> {
     fn publish_action(&self, message: Action) {
         (self.callback)(message)
     }

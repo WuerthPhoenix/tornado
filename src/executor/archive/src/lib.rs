@@ -3,6 +3,8 @@ extern crate log;
 extern crate lru_time_cache;
 extern crate regex;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
 extern crate tornado_common_api;
 extern crate tornado_executor_common;
@@ -31,9 +33,9 @@ pub struct ArchiveExecutor {
 
 impl std::fmt::Display for ArchiveExecutor {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-            fmt.write_str("ArchiveExecutor(base_path='")?;
-            fmt.write_str(&self.base_path)?;
-            fmt.write_str("')")?;
+        fmt.write_str("ArchiveExecutor(base_path='")?;
+        fmt.write_str(&self.base_path)?;
+        fmt.write_str("')")?;
         Ok(())
     }
 }
@@ -110,16 +112,17 @@ impl Executor for ArchiveExecutor {
         debug!("ArchiveExecutor - received action: \n{:#?}", action);
 
         let path = match action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.text()) {
-            Some(archive_type) => {
-                match self.paths.get(archive_type) {
-                    Some(path_matcher) => path_matcher.build_path(&action.payload),
-                    None => Err(ExecutorError::ActionExecutionError {
-                        message: format!("Cannot find mapping for {} value: [{}]", ARCHIVE_TYPE_KEY, archive_type),
-                    }),
-                }
+            Some(archive_type) => match self.paths.get(archive_type) {
+                Some(path_matcher) => path_matcher.build_path(&action.payload),
+                None => Err(ExecutorError::ActionExecutionError {
+                    message: format!(
+                        "Cannot find mapping for {} value: [{}]",
+                        ARCHIVE_TYPE_KEY, archive_type
+                    ),
+                }),
             },
             // ToDo: clone to be removed when edition 2018 is enabled
-            None => Ok(self.default_path.clone())
+            None => Ok(self.default_path.clone()),
         }?;
 
         let mut event_bytes = action
@@ -307,9 +310,7 @@ mod test {
 
         // Assert
         assert!(result.is_err());
-
     }
-
 
     #[test]
     fn should_return_error_if_action_type_is_not_mapped() {
@@ -338,7 +339,6 @@ mod test {
 
         // Assert
         assert!(result.is_err());
-
     }
 
     #[test]

@@ -1,0 +1,7 @@
+base_path =  "./target/tornado-log"
+default_path = "/default/file.log"
+file_cache_size = 10
+file_cache_ttl_secs = 1
+
+[paths]
+"one" = "/one/file.log"
