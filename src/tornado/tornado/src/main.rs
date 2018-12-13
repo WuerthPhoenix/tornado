@@ -7,7 +7,6 @@ extern crate tornado_engine_matcher;
 extern crate tornado_executor_archive;
 extern crate tornado_executor_common;
 extern crate tornado_network_common;
-extern crate tornado_network_simple;
 
 extern crate actix;
 extern crate futures;
@@ -30,7 +29,7 @@ pub mod io;
 
 use actix::prelude::*;
 use engine::MatcherActor;
-use dispatcher::DispatcherActor;
+use dispatcher::{ActixEventBus, DispatcherActor};
 use io::uds::listen_to_uds_socket;
 use std::fs;
 use std::sync::Arc;
@@ -38,7 +37,6 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_network_simple::SimpleEventBus;
 use std::collections::HashMap;
 use executor::ExecutorActor;
 use executor::ActionMessage;
@@ -76,19 +74,18 @@ fn main() {
             archive_config.paths.insert("one".to_owned(), "/one/file.log".to_owned());
 
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-            ExecutorActor{action_id: "archive".to_owned(), executor}
+            ExecutorActor{executor}
 
         });
 
         // Configure action dispatcher
         let event_bus = {
-            let mut event_bus = SimpleEventBus::new();
-
-            event_bus.subscribe_to_action(
-                "archive",
-                Box::new(move |action| { archive_executor_addr.do_send(ActionMessage{action}); }),
-            );
-
+            let mut event_bus = ActixEventBus{callback: move |action| {
+                match action.id.as_ref() {
+                    "archive" => archive_executor_addr.do_send(ActionMessage{action}),
+                    _ => error!("There are not executors for action id [{}]", &action.id)
+                };
+            }};
             Arc::new(event_bus)
         };
 

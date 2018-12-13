@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
 
@@ -7,26 +8,25 @@ pub struct ActionMessage {
     pub action: Action,
 }
 
-pub struct ExecutorActor<E: Executor> {
-    pub action_id: String,
+pub struct ExecutorActor<E: Executor + Display> {
     pub executor: E,
 }
 
-impl <E: Executor + 'static> Actor for ExecutorActor<E>{
+impl <E: Executor + Display + 'static> Actor for ExecutorActor<E>{
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
         info!("ExecutorActor started.");
     }
 }
 
-impl <E: Executor + 'static> Handler<ActionMessage> for ExecutorActor<E> {
+impl <E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E> {
     type Result = ();
 
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
         debug!("ExecutorActor - received new action [{:?}]", &msg.action);
         match self.executor.execute(&msg.action) {
-            Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", self.action_id),
-            Err(e) => error!("ExecutorActor - {} - Failed to execute action: {}", self.action_id, e),
+            Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
+            Err(e) => error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e),
         };
     }
 }

@@ -1315,7 +1315,6 @@ dependencies = [
  "tornado_executor_archive 0.0.1",
  "tornado_executor_common 0.0.1",
  "tornado_network_common 0.0.1",
- "tornado_network_simple 0.0.1",
 ]
 
 [[package]]

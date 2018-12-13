@@ -29,6 +29,15 @@ pub struct ArchiveExecutor {
     file_cache: LruCache<String, File>,
 }
 
+impl std::fmt::Display for ArchiveExecutor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+            fmt.write_str("ArchiveExecutor(base_path='")?;
+            fmt.write_str(&self.base_path)?;
+            fmt.write_str("')")?;
+        Ok(())
+    }
+}
+
 impl ArchiveExecutor {
     pub fn new(config: &config::ArchiveConfig) -> ArchiveExecutor {
         let builder = paths::PathMatcherBuilder::new();
