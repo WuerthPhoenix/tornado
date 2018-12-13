@@ -9,8 +9,8 @@ pub struct RsyslogCollectorActor {
 }
 
 #[derive(Message)]
-pub struct RsyslogMessage{
-    pub json: String
+pub struct RsyslogMessage {
+    pub json: String,
 }
 
 impl RsyslogCollectorActor {

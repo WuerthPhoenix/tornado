@@ -8,8 +8,8 @@ use tornado_collector_common::Collector;
 use tornado_collector_snmptrapd::SnmptradpCollector;
 
 #[derive(Message)]
-struct LineFeedMessage{
-    pub msg: String
+struct LineFeedMessage {
+    pub msg: String,
 }
 
 pub struct SnmptrapdJsonReaderActor {
@@ -23,7 +23,8 @@ impl SnmptrapdJsonReaderActor {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed = FramedRead::new(uds_connect_msg.stream, codec).map(|msg| LineFeedMessage{msg});
+            let framed =
+                FramedRead::new(uds_connect_msg.stream, codec).map(|msg| LineFeedMessage { msg });
             SnmptrapdJsonReaderActor::add_stream(framed, ctx);
             SnmptrapdJsonReaderActor { collector: SnmptradpCollector::new(), matcher_addr }
         });
