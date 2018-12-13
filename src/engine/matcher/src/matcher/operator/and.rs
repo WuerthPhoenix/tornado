@@ -57,7 +57,8 @@ mod test {
                 second: "second_arg".to_owned(),
             }],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(1, operator.operators.len());
         assert_eq!("equal", operator.operators[0].name());
     }
@@ -95,7 +96,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!("and", operator.name());
         assert_eq!(2, operator.operators.len());
@@ -129,7 +131,8 @@ mod test {
                 config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -147,7 +150,8 @@ mod test {
                 config::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("");
 
@@ -170,7 +174,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("");
 
@@ -193,7 +198,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("");
 
@@ -219,7 +225,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("type");
 
@@ -245,7 +252,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("type");
 

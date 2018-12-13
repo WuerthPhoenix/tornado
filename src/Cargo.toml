@@ -8,6 +8,7 @@ members = [
    "collector/snmptrapd",
    "engine/matcher",
    "executor/common",
+   "executor/archive",
    "executor/logger",
    "network/common",
    "network/simple",

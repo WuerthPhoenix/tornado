@@ -11,6 +11,7 @@ use std::collections::HashMap;
 /// It is produced by the collectors and sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Event {
+    #[serde(rename = "type")]
     pub event_type: String,
     pub created_ts: String,
     pub payload: Payload,

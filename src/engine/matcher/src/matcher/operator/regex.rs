@@ -58,7 +58,8 @@ mod test {
         let operator = Regex::build(
             &"one".to_owned(),
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -80,7 +81,8 @@ mod test {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new().build("", &"f".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -92,7 +94,8 @@ mod test {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new().build("", &"${event.payload.name1}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
@@ -108,7 +111,8 @@ mod test {
         let operator = Regex::build(
             &"[a-fA-F0-9]".to_owned(),
             AccessorBuilder::new().build("", &"${event.payload.name2}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
@@ -124,7 +128,8 @@ mod test {
         let operator = Regex::build(
             &"[^.{0}$]".to_owned(),
             AccessorBuilder::new().build("", &"${event.payload.name}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 

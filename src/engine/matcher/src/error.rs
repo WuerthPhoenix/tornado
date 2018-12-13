@@ -4,7 +4,8 @@ pub enum MatcherError {
     ExtractorBuildFailError { message: String, cause: String },
 
     #[fail(
-        display = "MissingExtractedVariableError: Cannot extract variable [{}].", variable_name
+        display = "MissingExtractedVariableError: Cannot extract variable [{}].",
+        variable_name
     )]
     MissingExtractedVariableError { variable_name: String },
 
@@ -19,9 +20,7 @@ pub enum MatcherError {
 
     #[fail(
         display = "WrongNumberOfArgumentsError: While building operator [{}], expected arguments [{}], found [{}]",
-        operator,
-        expected,
-        found
+        operator, expected, found
     )]
     WrongNumberOfArgumentsError { operator: &'static str, expected: u64, found: u64 },
 
@@ -36,9 +35,7 @@ pub enum MatcherError {
 
     #[fail(
         display = "NotUniqueRulePriorityError: The Rule [{}] and [{}] have the same priority [{}] but it must be unique.",
-        first_rule_name,
-        second_rule_name,
-        priority
+        first_rule_name, second_rule_name, priority
     )]
     NotUniqueRulePriorityError { first_rule_name: String, second_rule_name: String, priority: u16 },
 
@@ -53,9 +50,7 @@ pub enum MatcherError {
 
     #[fail(
         display = "CreateActionError: Cannot create action [{}] for rule [{}]\n cause: [{}]",
-        action_id,
-        rule_name,
-        cause
+        action_id, rule_name, cause
     )]
     CreateActionError { action_id: String, rule_name: String, cause: String },
 }

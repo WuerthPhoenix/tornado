@@ -592,7 +592,8 @@ mod test {
                     r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#,
                     "",
                     ""
-                ).unwrap()
+                )
+                .unwrap()
         );
     }
 

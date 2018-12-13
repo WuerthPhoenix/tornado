@@ -201,7 +201,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             0,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -216,7 +217,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             1,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -231,7 +233,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             2,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -246,7 +249,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -261,7 +265,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
             AccessorBuilder::new().build("", "${event.payload.body}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("");
 

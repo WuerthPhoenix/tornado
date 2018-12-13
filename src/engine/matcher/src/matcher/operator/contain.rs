@@ -61,7 +61,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = ProcessedEvent::new(Event::new("test_type"));
 
@@ -74,7 +75,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -86,7 +88,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"two or one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -98,7 +101,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -110,7 +114,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 
@@ -122,7 +127,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut payload = HashMap::new();
         payload.insert("type".to_owned(), Value::Text("type".to_owned()));
@@ -137,7 +143,8 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = Event::new("test_type");
 

@@ -30,9 +30,6 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_executor_common::Executor;
-use tornado_executor_logger::LoggerExecutor;
-use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 mod config;
@@ -53,6 +50,7 @@ fn main() {
     let event_bus = {
         let mut event_bus = SimpleEventBus::new();
 
+        /*
         let executor = LoggerExecutor::new();
         event_bus.subscribe_to_action(
             "Logger",
@@ -61,7 +59,7 @@ fn main() {
                 Err(e) => error!("Cannot log action: {}", e),
             }),
         );
-
+        */
         Arc::new(event_bus)
     };
 

@@ -9,7 +9,7 @@ use tornado_common_api::Action;
 /// It receives the action description from the Tornado engine and delivers the linked operation.
 pub trait Executor {
     /// Executes the operation linked to the received action
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError>;
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError>;
 }
 
 #[derive(Fail, Debug)]
