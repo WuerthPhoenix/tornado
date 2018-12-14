@@ -51,6 +51,9 @@ impl StreamHandler<RsyslogMessage, std::io::Error> for RsyslogCollectorActor {
         };
     }
 
+    // The error method intercept errors that can happen during the actor initialization phase.
+    // This would have reported that the tokio::stdin() was not not able to start due to the
+    // specific runtime used by Actix (See: https://github.com/actix/actix/issues/181 )
     fn error(&mut self, err: std::io::Error, _ctx: &mut Self::Context) -> actix::Running {
         error!("{}", err);
         actix::Running::Continue
