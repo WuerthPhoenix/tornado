@@ -78,8 +78,8 @@ then:
 ## How it works
 The archive executor expects the action to include in the payload:
 
-1. The event: the event to be archived should be included in the payload with the key "event"
-1. The archive type (optional): the archive type can be specified in the payload with the key "archive_type". 
+1. The __event__: the event to be archived should be included in the payload with the key "event"
+1. The __archive type__ (optional): the archive type can be specified in the payload with the key "archive_type". 
 When it is not specified, the default archive path is used; 
 otherwise, the one in the in the "paths" configuration corresponding to the "archive_type" key.
 
@@ -87,5 +87,5 @@ When the "archive_path" is specified but there is no correspondence on the confi
 or it is not possible to resolve all the path parameters, then the event will not be archived. 
 Instead, an error is returned.  
 
-The event from the payload is written into the lof file in json format, one event per line.
+The event from the payload is written into the log file in json format, one event per line.
 
