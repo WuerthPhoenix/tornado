@@ -1,30 +1,34 @@
 use actix::prelude::*;
-use tornado_engine_matcher::{dispatcher, error, model};
+use std::fmt::Display;
+use tornado_common_api::Action;
+use tornado_executor_common::Executor;
 
-pub struct ProcessedEventMessage {
-    pub event: model::ProcessedEvent,
+#[derive(Message)]
+pub struct ActionMessage {
+    pub action: Action,
 }
 
-impl Message for ProcessedEventMessage {
-    type Result = Result<(), error::MatcherError>;
+pub struct ExecutorActor<E: Executor + Display> {
+    pub executor: E,
 }
 
-pub struct ExecutorActor {
-    pub dispatcher: dispatcher::Dispatcher,
-}
-
-impl Actor for ExecutorActor {
+impl<E: Executor + Display + 'static> Actor for ExecutorActor<E> {
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
         info!("ExecutorActor started.");
     }
 }
 
-impl Handler<ProcessedEventMessage> for ExecutorActor {
-    type Result = Result<(), error::MatcherError>;
+impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E> {
+    type Result = ();
 
-    fn handle(&mut self, msg: ProcessedEventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("ExecutorActor - received new processed event [{:?}]", &msg.event);
-        self.dispatcher.dispatch_actions(&msg.event)
+    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
+        debug!("ExecutorActor - received new action [{:?}]", &msg.action);
+        match self.executor.execute(&msg.action) {
+            Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
+            Err(e) => {
+                error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e)
+            }
+        };
     }
 }

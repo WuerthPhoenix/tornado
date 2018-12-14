@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use executor::{ExecutorActor, ProcessedEventMessage};
+use dispatcher::{DispatcherActor, ProcessedEventMessage};
 use std::sync::Arc;
 use tornado_common_api;
 use tornado_engine_matcher::{error, matcher};
@@ -13,7 +13,7 @@ impl Message for EventMessage {
 }
 
 pub struct MatcherActor {
-    pub executor_addr: Addr<ExecutorActor>,
+    pub dispatcher_addr: Addr<DispatcherActor>,
     pub matcher: Arc<matcher::Matcher>,
 }
 
@@ -30,7 +30,7 @@ impl Handler<EventMessage> for MatcherActor {
     fn handle(&mut self, msg: EventMessage, _: &mut SyncContext<Self>) -> Self::Result {
         debug!("MatcherActor - received new event [{:?}]", &msg.event);
         let processed_event = self.matcher.process(msg.event);
-        self.executor_addr.do_send(ProcessedEventMessage { event: processed_event });
+        self.dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event });
         Ok(())
     }
 }

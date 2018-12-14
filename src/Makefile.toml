@@ -18,7 +18,7 @@ args = [
     "--logger-stdout",
     "--logger-level=debug",
     "--uds-path=/tmp/tornado",
-    "--rules-dir=./tornado/tornado/rules",
+    "--config-dir=./tornado/tornado/config",
     "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]

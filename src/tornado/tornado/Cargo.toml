@@ -7,6 +7,7 @@ authors = [
 
 [dependencies]
 actix = "0.7"
+config = "0.9"
 futures = "0.1"
 log = "0.4"
 num_cpus = "1.8"
@@ -21,7 +22,6 @@ tornado_collector_common = { path = "../../collector/common", version = "0.0.1" 
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_collector_snmptrapd = { path = "../../collector/snmptrapd", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
+tornado_executor_archive = { path = "../../executor/archive", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
-tornado_executor_logger = { path = "../../executor/logger", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
-tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }

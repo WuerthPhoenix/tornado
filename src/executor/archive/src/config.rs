@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[derive(Deserialize, Serialize)]
 pub struct ArchiveConfig {
     /// The base path where the archive executor writes into.
     /// All other paths are relative to this one.
