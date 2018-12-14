@@ -21,42 +21,51 @@ however, the archive executor blocks every attempt at writing outside of this fo
 The subpaths can have placeholders, specified with the syntax ```${parameter_name}```, that are replaced at runtime by the action payload's values.
 
 For example, let's suppose the following configuration:
-```
-base_path = "/tmp"
-default_path = /default/out.log
-paths = {
-    "type_one": "/dir_one/file.log",
-    "type_two": "/dir_two/${hostname}/file.log"
-}
-...
+```toml
+base_path =  "/tmp"
+default_path = "/default/out.log"
+file_cache_size = 10
+file_cache_ttl_secs = 1
+
+[paths]
+"type_one" = "/dir_one/file.log"
+"type_two" = "/dir_two/${hostname}/file.log"
+
 ``` 
 
 and the three incoming actions:
+
+_action_one_:
+```json
+{
+    "id": "archive",
+    "payload": {
+        "archive_type": "type_one",
+        "event": "__the_incoming_event__"
+    }
+}
 ```
-action_one = {
-    ...
-    payload = {
-        archive_type = "type_one",
-        event = ...
+
+_action_two_:
+```json
+{
+    "id": "archive",
+    "payload": {
+        "archive_type": "type_two",
+        "hostname": "net-test",
+        "event": "__the_incoming_event__"
     }
 }
+```
 
-action_two = {
-    ...
-    payload = {
-        archive_type = "type_two",
-        hostname = net-test
-        event = ...
+_action_three_:
+```json
+{
+    "id": "archive",
+    "payload": {
+        "event": "__the_incoming_event__"
     }
 }
-
-action_three = {
-    ...
-    payload = {
-        event = ...
-    }
-}
-
 ```
 
 then:
@@ -77,4 +86,6 @@ otherwise, the one in the in the "paths" configuration corresponding to the "arc
 When the "archive_path" is specified but there is no correspondence on the configured "paths",
 or it is not possible to resolve all the path parameters, then the event will not be archived. 
 Instead, an error is returned.  
- 
+
+The event from the payload is written into the lof file in json format, one event per line.
+
