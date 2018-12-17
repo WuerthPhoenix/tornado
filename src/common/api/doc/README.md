@@ -2,23 +2,26 @@
 
 The common API module contains the Trait definitions for cross-component communication.
 Three main components are currently defined: 
-- the Collectors 
-- the Tornado Engine 
-- the Executors
+- The Collectors 
+- The Tornado Engine 
+- The Executors
 
-The Tornado Engine receives Events from the collectors, processes them against a set of rules and triggers the Actions defined on the matching rules sending messages to the appropriate executors.
+The Tornado Engine receives Events from the collectors, checks them against a set of rules, and
+triggers Actions defined on the Rules matched by sending messages to the appropriate executors.
+
+
 
 # Event
-An event has a simple structure, it is composed of:
 
-- __type__: the Event type identifier. Usually, a collector always sends Events of the same type;
-- __created_ts__: the Event creation timestamp in ISO 8601 format;
-- __payload__: a Map<String, String> with event specific data.
+An event has a simple structure, composed of:
 
-All fields are mandatory.
-The payload is required but it can be empty.
+- __type__:  The Event type identifier (a collector usually sends Events of a single type)
+- __created_ts__:  The Event creation timestamp in ISO 8601 format
+- __payload__:  A Map<String, String> with event-specific data
 
-Example of an Event in JSON format:
+All fields are mandatory, although the payload can be an empty structure.
+
+Example Event in JSON format:
 ```json
 {
     "type": "email",
@@ -30,16 +33,18 @@ Example of an Event in JSON format:
 }
 ```
 
+
+
 # Action
-As for the Event, the structure of an Action is really simple:
 
-- __id__: the Action type identifier. Usually, an executor always processed a single type of action;
-- __payload__: a Map<String, String> with action specific data.
+Like the Event structure, the structure of an Action is rather simple:
 
-All fields are mandatory. 
-The payload is required but it can be empty.
+- __id__:  The Action type identifier (an executor usually processes a single action type)
+- __payload__:  A Map<String, String> with action-specific data.
 
-Example of an Action in JSON format:
+All fields are mandatory, although again the payload can be an empty structure.
+
+Example Action in JSON format:
 ```json
 {
     "id": "Monitoring",

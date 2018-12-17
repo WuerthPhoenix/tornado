@@ -1,3 +1,3 @@
-# Json Collector
+# JSON Collector
 
-A collector that receives an input JSON and unmarshal it into the Event struct. 
+A collector that receives an input in JSON and unmarshalls it into an internal Event struct.
