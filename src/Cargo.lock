@@ -1508,6 +1508,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_executor_script"
+version = "0.0.1"
+dependencies = [
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "regex 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.80 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempfile 3.0.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_common_api 0.0.1",
+ "tornado_executor_common 0.0.1",
+]
+
+[[package]]
 name = "tornado_network_common"
 version = "0.0.1"
 dependencies = [

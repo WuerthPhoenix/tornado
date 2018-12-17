@@ -10,6 +10,7 @@ members = [
    "executor/common",
    "executor/archive",
    "executor/logger",
+   "executor/script",
    "network/common",
    "network/simple",
    "spike/rsyslog_collector",
