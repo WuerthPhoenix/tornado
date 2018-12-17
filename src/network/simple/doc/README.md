@@ -1,3 +1,4 @@
 # Simple Network
 
-The simple network is an implementation of the network common API that dispatches events and actions on a single process without actual network calls.
+The Simple Network is an implementation of the Network Common API that dispatches Events and
+Actions on a single process without actually making network calls.
