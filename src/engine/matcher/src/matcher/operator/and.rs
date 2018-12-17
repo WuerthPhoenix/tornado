@@ -5,7 +5,7 @@ use model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "and";
 
-/// A matching matcher.operator that evaluates whether a list of children operators are all verified.
+/// A matching matcher.operator that evaluates whether a list of child operators have all been verified
 #[derive(Debug)]
 pub struct And {
     operators: Vec<Box<Operator>>,

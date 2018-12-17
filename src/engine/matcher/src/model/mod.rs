@@ -28,7 +28,7 @@ impl Into<Value> for InternalEvent {
     }
 }
 
-/// The ProcessedEvent is the result of the matcher process.
+/// A ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent {

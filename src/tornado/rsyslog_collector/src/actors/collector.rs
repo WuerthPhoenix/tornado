@@ -40,7 +40,7 @@ impl Actor for RsyslogCollectorActor {
     }
 }
 
-/// To use `Framed` with an actor, we have to implement `StreamHandler` trait
+/// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
 impl StreamHandler<RsyslogMessage, std::io::Error> for RsyslogCollectorActor {
     fn handle(&mut self, msg: RsyslogMessage, _ctx: &mut Self::Context) {
         debug!("JsonReaderActor - received msg: [{}]", &msg.json);

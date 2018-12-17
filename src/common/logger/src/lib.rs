@@ -9,22 +9,21 @@ extern crate structopt;
 use std::str::FromStr;
 use structopt::StructOpt;
 
-/// The logger configuration.
+/// Defines the Logger configuration.
 #[derive(Debug, Clone, StructOpt)]
 pub struct LoggerConfig {
     // Todo: check if an enum can be used
-    /// The logger level
+    /// The Logger level
     /// Valid values: trace, debug, info, warn, error
     #[structopt(long = "logger-level", default_value = "warn")]
     pub level: String,
 
-    /// Whether the logger should print on the standard output.
+    /// Determines whether the Logger should print to standard output.
     /// Valid values: true, false
     #[structopt(long = "logger-stdout")]
     pub stdout_output: bool,
 
-    /// A file path on the file system.
-    /// If provided, the logger will append any output to it.
+    /// A file path in the file system; if provided, the Logger will append any output to it.
     #[structopt(long = "logger-file-path")]
     pub file_output_path: Option<String>,
     // #[structopt(short = "o", long = "value_one", default_value = "10000")]
@@ -49,7 +48,7 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
-/// It configures the underlying logger implementation and activate it.
+/// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
     let mut log_dispatcher = fern::Dispatch::new()
         .format(|out, message, record| {

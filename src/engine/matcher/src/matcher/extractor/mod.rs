@@ -6,19 +6,19 @@ use regex::Regex as RustRegex;
 use std::collections::HashMap;
 use tornado_common_api::{ref_to_option_str, Value};
 
-/// MatcherExtractor instance builder.
+/// The MatcherExtractor instance builder.
 #[derive(Default)]
 pub struct MatcherExtractorBuilder {
     accessor: AccessorBuilder,
 }
 
 impl MatcherExtractorBuilder {
-    /// Returns a new MatcherExtractorBuilder instance
+    /// Returns a new MatcherExtractorBuilder instance.
     pub fn new() -> MatcherExtractorBuilder {
         MatcherExtractorBuilder { accessor: AccessorBuilder::new() }
     }
 
-    /// Returns a specific MatcherExtractor instance based on the rule matcher.extractor configuration.
+    /// Returns a specific MatcherExtractor instance based on the matcher.extractor rule configuration.
     ///
     /// # Example
     ///
@@ -47,7 +47,8 @@ impl MatcherExtractorBuilder {
     ///    );
     ///
     ///    // The matcher_extractor contains the logic to create the "extracted_temp" variable from the ${event.type}.
-    ///    // The value of the "extracted_temp" variable is obtained applying the regular expression "[0-9]+" to the event.type.
+    ///    // The value of the "extracted_temp" variable is obtained by applying the regular expression "[0-9]+" to
+    ///    // the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
     ///    let event = ProcessedEvent::new(Event::new("temp=44'C"));
@@ -91,7 +92,7 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
-    /// Returns the value of the variable with name 'key' generated from the provided Event
+    /// Returns the value of the variable named 'key' generated from the provided Event.
     pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
         let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event));
         self.check_extracted(key, extracted)
@@ -99,7 +100,7 @@ impl MatcherExtractor {
 
     /// Fills the Event with the extracted variables defined in the rule and generated from the Event itself.
     /// Returns an Error if not all variables can be correctly extracted.
-    /// The variable key in the event.extracted_vars map is in the form:
+    /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
     pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {

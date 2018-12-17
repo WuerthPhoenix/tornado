@@ -6,7 +6,7 @@ extern crate tornado_executor_common;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
 
-/// An executor that logs received actions at info level.
+/// An executor that logs received actions at the 'info' level
 #[derive(Default)]
 pub struct LoggerExecutor {}
 

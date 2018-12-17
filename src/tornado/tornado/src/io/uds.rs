@@ -50,7 +50,7 @@ pub struct UdsConnectMessage {
     pub stream: UnixStream,
 }
 
-/// Handle stream of UnixStream's
+/// Handle a stream of UnixStream elements
 impl<F> Handler<UdsConnectMessage> for UdsServerActor<F>
 where
     F: 'static + FnMut(UdsConnectMessage) -> () + Sized,

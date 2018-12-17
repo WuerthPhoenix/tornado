@@ -7,7 +7,7 @@ use tornado_common_api::to_option_str;
 
 const OPERATOR_NAME: &str = "regex";
 
-/// A matching matcher.operator that evaluates whether a string matches a regex.
+/// A matching matcher.operator that checks whether a string matches a given regex
 #[derive(Debug)]
 pub struct Regex {
     regex: RustRegex,

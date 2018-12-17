@@ -4,12 +4,12 @@ use tornado_common_logger::LoggerConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
-    /// Set the size of the in memory queue where messages are stored before being written
+    /// Set the size of the in-memory queue where messages will be stored before being written
     /// to the output socket.
     #[structopt(long, default_value = "10000")]
     pub uds_mailbox_capacity: usize,
 
-    /// The Unix Socket path where to write the outcoming events.
+    /// The Unix Socket path where outgoing events will be written
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 }

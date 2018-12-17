@@ -7,8 +7,9 @@ use chrono::prelude::Local;
 use std::borrow::Cow;
 use std::collections::HashMap;
 
-/// An Event is correlated with an incoming episode, incident, situation or whatever kind of case that could meaningful for the system.
-/// It is produced by the collectors and sent to the Tornado Engine to be processed.
+/// An Event is correlated with an incoming episode, incident, situation or any kind of message
+///   that could be meaningful to the system.
+/// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Event {
     #[serde(rename = "type")]
@@ -39,8 +40,8 @@ impl Into<Value> for Event {
     }
 }
 
-/// Action is produced when an Event matches a specific Rule.
-/// It is produced by the Tornado Engine and sent to the Executors to be resolved.
+/// An Action is produced when an Event matches a specific Rule.
+/// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,

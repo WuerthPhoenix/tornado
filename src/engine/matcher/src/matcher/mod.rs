@@ -9,8 +9,8 @@ use model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
 use tornado_common_api::Event;
 use validator::RuleValidator;
 
-/// Matcher's internal Rule representation.
-/// It contains the operators and executors built from the config::Rule
+/// The Matcher's internal Rule representation, which contains the operators and executors built
+///   from the config::Rule.
 struct MatcherRule {
     name: String,
     priority: u16,
@@ -21,8 +21,8 @@ struct MatcherRule {
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
-/// It matches the incoming Events with the defined Rules.
-/// A Matcher instance is stateless and Thread safe; consequently, a single instance can serve the entire application.
+/// It matches incoming Events against the defined Rules.
+/// A Matcher instance is stateless and thread-safe; consequently, a single instance can serve the entire application.
 pub struct Matcher {
     rules: Vec<MatcherRule>,
 }
@@ -61,7 +61,7 @@ impl Matcher {
         Ok(Matcher { rules: processed_rules })
     }
 
-    /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
+    /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);

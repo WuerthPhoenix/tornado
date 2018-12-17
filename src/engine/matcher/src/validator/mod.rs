@@ -15,10 +15,10 @@ impl RuleValidator {
         RuleValidator { id: id::IdValidator::new() }
     }
 
-    /// Validates that a rule:
+    /// Checks that a rule:
     /// - has a valid name
     /// - has valid extracted variable names
-    /// - has valid action ids
+    /// - has valid action IDs
     pub fn validate(&self, rule: &Rule) -> Result<(), MatcherError> {
         let rule_name = &rule.name;
 
@@ -38,7 +38,7 @@ impl RuleValidator {
 
     /// Validates a set of Rules.
     /// In addition to the checks performed by the validate(rule) method,
-    /// it validates that rule names and rule priorities are unique.
+    ///   it verifies that rule names and rule priorities are unique.
     pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
         info!("RuleValidator validate_all - validate all rules");
 

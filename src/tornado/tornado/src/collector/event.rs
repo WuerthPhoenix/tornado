@@ -39,7 +39,7 @@ impl Actor for EventJsonReaderActor {
     }
 }
 
-/// To use `Framed` with an actor, we have to implement `StreamHandler` trait
+/// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
 impl StreamHandler<LineFeedMessage, io::Error> for EventJsonReaderActor {
     fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
         debug!("JsonReaderActor - received msg: [{}]", &msg.msg);

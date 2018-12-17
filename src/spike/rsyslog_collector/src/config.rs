@@ -4,7 +4,7 @@ use tornado_common_logger::LoggerConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
-    /// The Unix Socket path where to write the outcoming events.
+    /// The Unix Socket path where outgoing events will be written
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 }
