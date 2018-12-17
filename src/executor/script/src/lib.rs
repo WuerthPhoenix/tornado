@@ -82,9 +82,9 @@ impl Executor for ScriptExecutor {
         )?;
 
         debug!(
-            "ScriptExecutor - executed: [{}] - Success: {}",
+            "ScriptExecutor - executed: [{}] - Status: {}",
             &final_script,
-            output.status.success()
+            output.status
         );
 
         Ok(())
