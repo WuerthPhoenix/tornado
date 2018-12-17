@@ -12,17 +12,18 @@
       |     |-- common
       |     |-- json
       |     |-- icinga2
-      |     |-- snmtptrap
+      |     |-- snmptrap
       |     |-- procmail
       |     |-- rsyslog
-      |-- engine # Tornado engine core logic
-      |     |-- parser # the parser is non needed with the currently architecture.
-      |     |          # It could anyway be required by the correlation engine and/or for a custom DSL
-      |     |-- matcher # the matcher contains the logic to evaluate whether an Event matches a rule and to trigger the related Actions.
-      |-- common #Common interfaces and message definitions
-      |     |-- api    # global traits required by engine, collectors and executors
-      |     |-- logger # logger configuration
-      |-- network #Abstract service which will be used by all components to communicate
+      |-- engine # The Tornado engine's core logic
+      |     |-- parser # The parser is not necessary for the current architecture.
+      |     |          # But it might be required by the correlation engine and/or for a custom DSL.
+      |     |-- matcher # The matcher contains the logic that evaluates whether an Event matches a rule,
+      |     |           # and to trigger the related Actions.
+      |-- common # Common interfaces and message definitions
+      |     |-- api    # Global traits required by the engine, collectors and executors
+      |     |-- logger # The logger configuration
+      |-- network # An abstract service which will be used by all components to communicate with each other
       |     |-- common
       |     |-- simple
       |     |-- nats
@@ -30,7 +31,9 @@
       |-- RestApi
       |     |-- http
 
-# How to reference to fields
+
+
+# How to Reference Fields
 
     event.<variablename>
     event.type
@@ -43,11 +46,16 @@
     matched.<rulename>.<variablename>
     matched.tempmail.Extracted_Temp
      
-    _variables.<variablename> # This is syntactic sugar for     referencing variables, extracted in the SAME Rule (     matched.<own_rule_name>.<variablename> )
+    _variables.<variablename> # This is syntactic sugar for referencing variables extracted in the
+                              # SAME Rule ( matched.<own_rule_name>.<variablename> )
 
-# Datastructures (no guarantee for completeness)
 
-## Incoming Event (collector output)
+
+# Data Structures (No Guarantee for Completeness)
+
+
+
+## Incoming Event Structure (Collector Output)
 
     {
         "event_type": "Email",
@@ -58,7 +66,9 @@
         }
     }
 
-## Internal Representation (during processing)
+
+
+## Internal Representation (During Processing)
 
     {
        "event":{
@@ -72,9 +82,10 @@
     #
     # Processed Rules are store here.
     # Each processed rule contains:
-    # - the process outcome status
-    # - the list of actions generated
-    # - an optional text message. This is used, for example, to report eventual processing errors or for debugging purpose.
+    # - The process outcome status
+    # - The list of actions generated
+    # - An optional text message.  This is used, for example, to report eventual processing errors
+    #   or for debugging purposes.
     #
        "rules":{
           "syslog_rule":{
@@ -97,11 +108,11 @@
           },
           "all_emails_and_syslogs":{
               "status": "NotMatched",
-              "message": "Could not resolve the extracted     variable [variable_name]"
+              "message": "Could not resolve the extracted variable [variable_name]"
           }
        },
      
-    # Contains the extracted variables, prefixed by the rule     name, and their computed value
+    # Contains a list of the extracted variables, prefixed by the rule name, and their computed values
        "extracted_vars": {
            "syslog_rule.extracted_temp": "42 Degree",
            "syslog_rule.body": "body content",
@@ -109,18 +120,21 @@
        }
     }
 
-#Definition of a Rule
+
+
+# Definition of a Rule
 
     {
 
-       "name": "all_emails_and_syslogs", # Validated only     [a-z0-9_]+
-       "description" : "This is All Emails and Syslogs", #     Human readable description. We could prepare a     suggested name in the frontend based on this.
+       "name": "all_emails_and_syslogs", # Only the characters [a-z0-9_]+ are valid.
+       "description": "This is All Emails and Syslogs", # A human-readable description. We could prepare
+                                                        # a suggested name for the frontend based on this.
        "priority": 42,
-       "continue": true,  # Continue processing after     matching this rule
+       "continue": true, # Continue processing after matching this rule.
        "active": true,
-       "constraint": {   
-            # Constraint evaluation happens in sequence,     first WHERE, then WITH for performance reasons
-            # Query optimization is a nice to have for     future versions. For now the user is     responsible for query performance
+       "constraint": {
+            # Constraint evaluation happens in sequence, first WHERE, then WITH, for performance reasons.
+            # Query optimization would be nice to have for future versions.  For now, the user is responsible for query performance.
             "WHERE": {
                 "type": "AND",
                 "operators": [
@@ -175,7 +189,8 @@
                "id": "Command",
                "payload" : {
                    {
-                       # Syntax + Escaping to be defined:     Current proposal behaviour of bash     limited to ${VAR_NAME} notation,     without recursive resolving
+                       # Syntax + Escaping to be defined:  Current proposal behavior of bash limited to
+                       # ${VAR_NAME} notation, without recursive resolving
                        "command": "/usr/bin/sudo     /usr/bin/rm -rf '$    {_variables.extracted_temp}p'     --no-preserve-root \${HOME}p",
                    }
                }
@@ -184,7 +199,8 @@
     }
 
 
-# Internal Representation of Action Call
+
+# Internal Representation of an Action Call
 
     {
         "id": "Monitoring",
