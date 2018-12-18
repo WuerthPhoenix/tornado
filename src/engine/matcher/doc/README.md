@@ -36,6 +36,7 @@ An event matches a rule if and only if the WHERE clause evaluates to `true` and 
 expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
+- __'contain'__: Evaluates whether a string contains a given substring.
 - __'equal'__:  Compares two values and returns whether or not they are equal.  If one or both of
   the values do not exist, it returns `false`.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.

@@ -126,7 +126,7 @@
 
     {
 
-       "name": "all_emails_and_syslogs", # Only the characters [a-z0-9_]+ are valid.
+       "name": "all_emails_and_syslogs", # Only the characters that matches the regex [a-z0-9_]+ are valid.
        "description": "This is All Emails and Syslogs", # A human-readable description. We could prepare
                                                         # a suggested name for the frontend based on this.
        "priority": 42,
