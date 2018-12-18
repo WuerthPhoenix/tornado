@@ -53,10 +53,14 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 %dir %{conf_dir}/rules.d/
 
 %changelog
-* Tue Dec 04 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
- - New Feature: Rsyslog Collector
- - New Feature: Snmptrapd Collector
- - New Feature: Tornado Executable with 3 Level Configuration
+* Tue Dec 18 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
+ - New Feature: Rsyslog Collector & Rsyslog 'omprog' forwarder
+ - New Feature: Snmptrapd Collector & Embedded snmptrapd forwarder
+ - New Feature: Script Executor
+ - New Feature: Archive Executor
+ - Improvement: Tornado Executable with 3 Level Configuration
+ - Improvement: Nested Structures in Action Payload
+ - Improvement: All dates are expected and parsed into ISO 8601
  - Spikes are now deployed in spikes subdirectory
 
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
