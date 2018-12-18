@@ -6,6 +6,7 @@ extern crate tornado_common_logger;
 extern crate tornado_engine_matcher;
 extern crate tornado_executor_archive;
 extern crate tornado_executor_common;
+extern crate tornado_executor_script;
 extern crate tornado_network_common;
 
 extern crate actix;
@@ -70,12 +71,19 @@ fn main() {
             ExecutorActor { executor }
         });
 
+        // Start script executor actor
+        let script_executor_addr = SyncArbiter::start(1, move || {
+            let executor = tornado_executor_script::ScriptExecutor::new();
+            ExecutorActor { executor }
+        });
+
         // Configure action dispatcher
         let event_bus = {
             let mut event_bus = ActixEventBus {
                 callback: move |action| {
                     match action.id.as_ref() {
                         "archive" => archive_executor_addr.do_send(ActionMessage { action }),
+                        "script" => script_executor_addr.do_send(ActionMessage { action }),
                         _ => error!("There are not executors for action id [{}]", &action.id),
                     };
                 },
