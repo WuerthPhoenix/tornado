@@ -81,11 +81,17 @@ impl Executor for ScriptExecutor {
             },
         )?;
 
-        debug!(
-            "ScriptExecutor - executed: [{}] - Status: {}",
-            &final_script,
-            output.status
-        );
+        if output.status.success() {
+            debug!(
+                "ScriptExecutor - Script completed successfully with status: [{}] - script: [{}]",
+                &final_script, output.status
+            );
+        } else {
+            error!(
+                "ScriptExecutor - Script returned error status: [{}] - script: [{}]",
+                &final_script, output.status
+            );
+        }
 
         Ok(())
     }
