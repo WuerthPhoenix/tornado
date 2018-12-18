@@ -74,7 +74,7 @@ For example, given the incoming event:
     "payload":{
         "protocol": "UDP",
         "oids": {
-            "key.with.dots": "38:10:38:30.98",
+            "key.with.dots": "38:10:38:30.98"
         }
     }
 }
@@ -85,6 +85,6 @@ The following accessors are valid:
 - `${event.payload.protocol}`:  Returns "UDP"
 - `${event.payload.oids."key.with.dots"}`:  Returns "38:10:38:30.98"
 - `${event.payload}`:  Returns the entire payload
-
+- `${event}`: Returns the entire event
  
 
