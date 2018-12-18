@@ -20,7 +20,7 @@ A rule is composed of a set of properties:
 The constraint section contains the tests that determine whether an event matches the rule.
 There are two types of constraint:
 
-- __WHERE__: it is composed of a set of operators that applied to an event return true or false.
+- __WHERE__: it is composed of a set of operators that applied to an event return true or false. This key is optional, if not specified, it will be always evaluated to true.
 - __WITH__: it is composed of a set of regular expressions to extract values from an Event and associate them to named variables.
 
 An event matches a rule if and only if the WHERE clause evaluates to true and all the regular expressions of the WITH clause return a non-empty value.
@@ -51,7 +51,7 @@ For example, given the incoming event:
     "payload":{
         "protocol": "UDP",
         "oids": {
-            "key.with.dots": "38:10:38:30.98",
+            "key.with.dots": "38:10:38:30.98"
         }
     }
 }
@@ -62,6 +62,7 @@ The following accessors are valid:
 - `${event.payload.protocol}` -> returns "UDP"
 - `${event.payload.oids."key.with.dots"}` -> returns "38:10:38:30.98"
 - `${event.payload}` -> returns the entire payload
+- `${event}` -> returns the entire event
 
  
 
