@@ -1,3 +1,3 @@
 # Common Logger
 
-The *Common Logger* module contains the logger configuration of the Tornado components.  
+The *tornado_common_logger* crate contains the logger configuration of the Tornado components.  

@@ -1,6 +1,6 @@
 # Common API
 
-The common API module contains the Trait definitions for cross-component communication.
+The *tornado_common_api* crate contains the API for cross-component communication.
 Three main components are currently defined: 
 - The Collectors 
 - The Tornado Engine 
