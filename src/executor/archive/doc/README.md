@@ -22,15 +22,15 @@ The archive executor has the following configuration options:
 - __file_cache_ttl_secs__:  The *Time To Live* of a file descriptor.  When this time reaches 0,
   the descriptor will be removed from the cache.
 - __base_path__:  A directory on the file system where all logs are written.  Based on their type,
-  rule actions received from the Matcher can be logged in subdirectories of the base_path.
+  rule Actions received from the Matcher can be logged in subdirectories of the base_path.
   However, the archive executor will only allow files to be written inside this folder.
-- __default_path__:  A default path where all actions that do not specify an ```archive_type``` in
+- __default_path__:  A default path where all Actions that do not specify an `archive_type` in
   the payload are logged.
-- __paths__:  A set of mappings from an archive_type to an ```archive_path```, which is a subpath
+- __paths__:  A set of mappings from an archive_type to an `archive_path`, which is a subpath
   relative to the base_path.  The archive_path can contain variables, specified by the syntax
-  ```${parameter_name}```, which are replaced at runtime by the values in the action's payload.
+  `${parameter_name}`, which are replaced at runtime by the values in the Action's payload.
 
-The archive path serves to decouple the type from the actual subpath, allowing you to write action
+The archive path serves to decouple the type from the actual subpath, allowing you to write Action
 rules without worrying about having to modify them if you later change the directory structure or
 destination paths.
 
@@ -92,18 +92,18 @@ then:
 
 ## How it Works
 
-The archive executor expects an action to include the following elements in the payload:
+The archive executor expects an Action to include the following elements in the payload:
 
-1. An __event__:  The event to be archived should be included in the payload under the key ```event```.
+1. An __event__:  The Event to be archived should be included in the payload under the key `event`.
 1. An __archive type__ (optional):  The archive type is specified in the payload under the key
-   ```archive_type```.
+   `archive_type`.
 
 When an archive_type is not specified, the default_path is used (as in action_three).  Otherwise,
-the executor will use the archive_path in the ```paths``` configuration corresponding to the
-```archive_type``` key (action_one and action_two).
+the executor will use the archive_path in the `paths` configuration corresponding to the
+`archive_type` key (action_one and action_two).
 
 When an archive_type is specified but there is no corresponding key in the mappings under the
-```paths``` configuration, or it is not possible to resolve all path parameters, then the event
+`paths` configuration, or it is not possible to resolve all path parameters, then the Event
 will not be archived.   Instead, the archiver will return an error.
 
-The event from the payload is written into the log file in json format, one event per line.
+The Event from the payload is written into the log file in JSON format, one event per line.
