@@ -10,15 +10,15 @@ pub struct ActionResolverBuilder {
     accessor: AccessorBuilder,
 }
 
-/// ActionResolver builder
+/// The ActionResolver builder
 impl ActionResolverBuilder {
     pub fn new() -> ActionResolverBuilder {
         ActionResolverBuilder { accessor: AccessorBuilder::new() }
     }
 
-    /// Receives an array of Actions as defined in a Rule an returns an array of ActionResolver.
-    /// Each ActionResolver is linked to an input Action definition and contains the logic build the final
-    /// Action object ready to be sent to the executors.
+    /// Receives an array of Actions as defined in a Rule and returns an array of ActionResolver elements.
+    /// Each ActionResolver is linked to an input Action definition and contains the logic needed to build
+    /// the final Action object, ready to be sent to the executors.
     pub fn build(
         &self,
         rule_name: &str,
@@ -46,7 +46,7 @@ impl ActionResolverBuilder {
     }
 }
 
-/// An Action resolver creates Actions from a ProcessedEvent
+/// An Action resolver creates Actions from a ProcessedEvent.
 pub struct ActionResolver {
     rule_name: String,
     id: String,
@@ -54,7 +54,7 @@ pub struct ActionResolver {
 }
 
 impl ActionResolver {
-    /// Builds an Action extracting the required data from the ProcessedEvent.
+    /// Builds an Action by extracting the required data from the ProcessedEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn execute(&self, event: &ProcessedEvent) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };

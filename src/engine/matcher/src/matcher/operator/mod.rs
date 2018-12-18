@@ -11,16 +11,16 @@ pub mod or;
 pub mod regex;
 pub mod true_operator;
 
-/// Trait for a generic matcher.operator.
+/// The Trait for a generic matcher.operator
 pub trait Operator: fmt::Debug + Send + Sync {
-    /// Returns the Operator name
+    /// Returns the Operator name.
     fn name(&self) -> &str;
 
     /// Executes the current matcher.operator on a target Event and returns whether the Event matches it.
     fn evaluate(&self, event: &ProcessedEvent) -> bool;
 }
 
-/// Operator instance builder.
+/// The Operator instance builder
 #[derive(Default)]
 pub struct OperatorBuilder {
     accessor: AccessorBuilder,
@@ -49,7 +49,7 @@ impl OperatorBuilder {
         result
     }
 
-    /// Returns a specific Operator instance based on matcher.operator configuration.
+    /// Returns a specific Operator instance based on the matcher.operator configuration.
 ///
 /// # Example
 ///

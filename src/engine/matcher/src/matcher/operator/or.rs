@@ -5,7 +5,7 @@ use model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "or";
 
-/// A matching matcher.operator that evaluates whether at least one children on a list of operators is verified.
+/// A matching matcher.operator that checks whether at least one child on a list of operators has been verified
 #[derive(Debug)]
 pub struct Or {
     operators: Vec<Box<Operator>>,

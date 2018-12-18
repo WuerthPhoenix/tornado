@@ -3,8 +3,8 @@ use regex::Regex as RustRegex;
 
 const ID_REGEX_PATTERN: &str = "^[a-zA-Z0-9_]+$";
 
-/// A validator for name and id.
-/// It validates that a string is composed only of alphabetical characters, numbers and the _
+/// A validator for name and ID
+/// It checks that a string is composed only of alphabetical characters, numbers, and the '_' character.
 pub struct IdValidator {
     regex: RustRegex,
 }
@@ -20,7 +20,7 @@ impl IdValidator {
         IdValidator { regex: RustRegex::new(ID_REGEX_PATTERN).unwrap() }
     }
 
-    /// Validates a generic id or name
+    /// Validates a generic ID or name.
     pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
             return Err(MatcherError::NotValidIdOrNameError { message: error_message });
@@ -28,7 +28,7 @@ impl IdValidator {
         Ok(())
     }
 
-    /// Validates a rule name
+    /// Validates a rule name.
     pub fn validate_rule_name(&self, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Rule name [{}] is not valid. It should respect the pattern {}",
@@ -37,7 +37,7 @@ impl IdValidator {
         self.validate(rule_name, error_message)
     }
 
-    /// Validates an extracted variable name
+    /// Validates an extracted variable name.
     pub fn validate_extracted_var_name(
         &self,
         var_name: &str,
@@ -50,7 +50,7 @@ impl IdValidator {
         self.validate(var_name, error_message)
     }
 
-    /// Validates extracted var name from an accessor
+    /// Validates an extracted variable name from an accessor.
     pub fn validate_extracted_var_from_accessor(
         &self,
         extracted_var: &str,
@@ -64,7 +64,7 @@ impl IdValidator {
         self.validate(extracted_var, error_message)
     }
 
-    /// Validates an action id
+    /// Validates an action ID.
     pub fn validate_action_id(&self, action_id: &str, rule_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Action id [{}] for rule [{}] is not valid. It should respect the pattern {}",

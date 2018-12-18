@@ -40,12 +40,12 @@ impl AccessorBuilder {
 
     /// Returns an Accessor instance based on its string definition.
     /// E.g.:
-    /// - "${event}" -> returns the entire Event instance
-    /// - "${event.type}" -> returns an instance of Accessor::Type
-    /// - "${event.created_ts}" -> returns an instance of Accessor::CreatedTs
-    /// - "${event.payload}" -> returns the entire Payload of the Event
-    /// - "${event.payload.body}" -> returns an instance of Accessor::Payload that returns the value of the entry with key "body" from the event payload
-    /// - "event.type" -> returns an instance of Accessor::Constant that always return the String "event.type"
+    /// - "${event}": returns the entire Event instance
+    /// - "${event.type}": returns an instance of Accessor::Type
+    /// - "${event.created_ts}": returns an instance of Accessor::CreatedTs
+    /// - "${event.payload}": returns the entire Payload of the Event
+    /// - "${event.payload.body}": returns an instance of Accessor::Payload that returns the value of the entry with the key "body" from the event payload
+    /// - "event.type": returns an instance of Accessor::Constant that always return the String "event.type"
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
         info!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
         let result = match input.trim() {
@@ -125,12 +125,12 @@ impl AccessorBuilder {
 
 /// An Accessor returns the value of a specific field of an Event.
 /// The following Accessors are defined:
-/// - Constant : returns a constant value regardless of the Event;
-/// - CreatedTs : returns the value of the "created_ts" field of an Event
-/// - ExtractedVar : returns the value of one extracted variable
-/// - Payload : returns the value of an entry in the payload of an Event
-/// - Type : returns the value of the "type" field of an Event
-/// - Event : returns the entire Event
+/// - Constant: returns a constant value regardless of the Event;
+/// - CreatedTs: returns the value of the "created_ts" field of an Event
+/// - ExtractedVar: returns the value of one extracted variable
+/// - Payload: returns the value of an entry in the payload of an Event
+/// - Type: returns the value of the "type" field of an Event
+/// - Event: returns the entire Event
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: Value },

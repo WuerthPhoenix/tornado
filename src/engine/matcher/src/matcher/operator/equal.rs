@@ -5,7 +5,7 @@ use model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "equal";
 
-/// A matching matcher.operator that evaluates whether two strings are equal.
+/// A matching matcher.operator that checks whether two strings are equal
 #[derive(Debug)]
 pub struct Equal {
     first_arg: Accessor,

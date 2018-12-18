@@ -26,7 +26,7 @@ impl Actor for StdinActor {
     }
 }
 
-/// To use `Framed` with an actor, we have to implement `StreamHandler` trait
+/// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
 impl StreamHandler<LineMessage, std::io::Error> for StdinActor {
     fn handle(&mut self, msg: LineMessage, _ctx: &mut Self::Context) {
         println!("StdinActor - Received msg: [{}]", &msg.0);

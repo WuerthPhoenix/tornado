@@ -9,12 +9,12 @@ pub struct ArchiveConfig {
     /// The relative default path
     pub default_path: String,
 
-    /// A map of relative path groups.
+    /// A map of relative path groups
     pub paths: HashMap<String, String>,
 
     /// The file cache size for storing open files
     pub file_cache_size: usize,
 
-    /// The file cache Time To Live in seconds
+    /// The file cache Time-To-Live in seconds
     pub file_cache_ttl_secs: u64,
 }

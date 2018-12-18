@@ -11,7 +11,7 @@ use tornado_common_api::{Event, Payload, Value};
 
 const ADDRESS_PARSE_REGEX: &str = r#"^([^:]+):\s\[([^\]]+)\]:([0-9]+)->\[([^\]]+)\]"#;
 
-/// A collector that receives snmptrad input messages formatted as JSON and create the related Event struct.
+/// A collector that receives snmptrapd input messages formatted as JSON, and creates the related Event struct
 pub struct SnmptradpCollector {
     address_regex: Regex,
 }

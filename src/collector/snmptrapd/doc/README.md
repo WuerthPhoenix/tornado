@@ -1,3 +1,4 @@
-# SNMP trapd Collector
+# SNMP Trap Daemon Collector
 
-A collector that receives snmptrad input messages formatted as JSON and create the related Event struct. 
+A collector that receives snmptrapd input messages formatted as JSON and creates the related
+internal Event struct. 

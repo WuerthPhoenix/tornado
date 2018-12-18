@@ -6,20 +6,20 @@ use tornado_executor_archive::config::ArchiveConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
-    /// The filesystem folder where the Tornado configuration is saved.
+    /// The filesystem folder where the Tornado configuration is saved
     #[structopt(long, default_value = "/etc/tornado")]
     pub config_dir: String,
 
-    /// The folder where the Rules are saved in json format.
-    /// This folder is relative to the config_dir.
+    /// The folder where the Rules are saved in JSON format;
+    ///   this folder is relative to the `config_dir`.
     #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
 
-    /// The Unix Socket path where to listen for incoming events.
+    /// The Unix Socket path where we will listen for incoming events.
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 
-    /// The Unix Socket path where to listen for incoming snmptrapd events.
+    /// The Unix Socket path where we will listen for incoming snmptrapd events.
     #[structopt(long, default_value = "/var/run/tornado/tornado_snmptrapd.sock")]
     pub snmptrapd_uds_path: String,
 }

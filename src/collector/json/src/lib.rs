@@ -10,7 +10,7 @@ use tornado_common_api::Event;
 
 pub mod model;
 
-/// A collector that receives an input JSON and unmarshal it directly into the Event struct.
+/// A collector that receives an input JSON and unmarshalls/deserializes it directly into an Event struct
 #[derive(Default)]
 pub struct JsonEventCollector {}
 
@@ -27,7 +27,7 @@ impl<'a> Collector<&'a str> for JsonEventCollector {
     }
 }
 
-/// A collector that receives a json and creates an Event whose payload is the json input
+/// A collector that receives an input JSON and creates an Event whose payload is the JSON input
 pub struct JsonPayloadCollector {
     event_type: String,
 }

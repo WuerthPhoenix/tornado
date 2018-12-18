@@ -15,7 +15,7 @@ impl Dispatcher {
     }
 
     /// Receives a fully processed ProcessedEvent and dispatches the actions linked to Rules whose status is Matched.
-    /// The actions resolution (i.e. resolving the extracted variables, filling the action payload, etc.) is supposed to be performed before this method execution.
+    /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
     pub fn dispatch_actions(&self, event: ProcessedEvent) -> Result<(), MatcherError> {
         for (rule_name, rule) in event.rules {
             match rule.status {

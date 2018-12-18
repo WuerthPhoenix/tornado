@@ -1,6 +1,6 @@
 # Archive Executor
 
-The archive executor logs incoming events to the file system.
+An executor that writes the Events from the received Actions to a file.
 
 
 

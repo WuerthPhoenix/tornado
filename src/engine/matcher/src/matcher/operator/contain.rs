@@ -6,7 +6,7 @@ use tornado_common_api::to_option_str;
 
 const OPERATOR_NAME: &str = "contain";
 
-/// A matching matcher.operator that evaluates whether a string contains a substring
+/// A matching matcher.operator that evaluates whether a string contains a given substring
 #[derive(Debug)]
 pub struct Contain {
     text: Accessor,
