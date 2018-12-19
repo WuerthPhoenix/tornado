@@ -63,7 +63,7 @@ pub type Payload = HashMap<String, Value>;
 #[serde(untagged)]
 pub enum Value {
     Text(String),
-    // Array(Vec<Value>),
+    Array(Vec<Value>),
     Map(Payload),
 }
 
@@ -71,6 +71,7 @@ impl Value {
     pub fn child(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Map(payload) => payload.get(key),
+            Value::Array(_array) => None,
             Value::Text(_) => None,
         }
     }

@@ -6,9 +6,7 @@ extern crate tornado_collector_common;
 extern crate tornado_common_api;
 
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::Event;
-
-pub mod model;
+use tornado_common_api::{Event, Payload};
 
 /// A collector that receives an input JSON and unmarshalls/deserializes it directly into an Event struct
 #[derive(Default)]
@@ -40,9 +38,9 @@ impl JsonPayloadCollector {
 
 impl<'a> Collector<&'a str> for JsonPayloadCollector {
     fn to_event(&self, json_str: &'a str) -> Result<Event, CollectorError> {
-        let json = serde_json::from_str::<model::Json>(json_str)
+        let json = serde_json::from_str::<Payload>(json_str)
             .map_err(|e| CollectorError::JsonParsingError { message: format!("{}", e) })?;
-        Ok(Event::new_with_payload(self.event_type.to_owned(), model::to_payload(json)))
+        Ok(Event::new_with_payload(self.event_type.to_owned(), json))
     }
 }
 

@@ -5,8 +5,7 @@ const OPERATOR_NAME: &str = "true";
 
 /// A matching matcher.operator that always evaluates to true
 #[derive(Debug)]
-pub struct True {
-}
+pub struct True {}
 
 impl Operator for True {
     fn name(&self) -> &str {

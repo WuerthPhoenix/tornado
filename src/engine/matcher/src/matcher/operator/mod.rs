@@ -36,10 +36,9 @@ impl OperatorBuilder {
         rule_name: &str,
         config: &Option<config::Operator>,
     ) -> Result<Box<Operator>, MatcherError> {
-
         let result: Result<Box<Operator>, MatcherError> = match config {
             Some(operator) => self.build(rule_name, operator),
-            None => Ok(Box::new(::matcher::operator::true_operator::True{}))
+            None => Ok(Box::new(::matcher::operator::true_operator::True {})),
         };
 
         info!(
@@ -50,24 +49,24 @@ impl OperatorBuilder {
     }
 
     /// Returns a specific Operator instance based on the matcher.operator configuration.
-///
-/// # Example
-///
-/// ```rust
-///
-/// extern crate tornado_engine_matcher;
-///
-/// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
-/// use tornado_engine_matcher::config;
-///
-/// let ops = config::Operator::Equal {
-///              first: "${event.type}".to_owned(),
-///              second: "email".to_owned(),
-///           };
-///
-/// let builder = OperatorBuilder::new();
-/// let operator = builder.build("rule_name", &ops).unwrap(); // operator is an instance of Equal
-/// ```
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    ///
+    /// extern crate tornado_engine_matcher;
+    ///
+    /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
+    /// use tornado_engine_matcher::config;
+    ///
+    /// let ops = config::Operator::Equal {
+    ///              first: "${event.type}".to_owned(),
+    ///              second: "email".to_owned(),
+    ///           };
+    ///
+    /// let builder = OperatorBuilder::new();
+    /// let operator = builder.build("rule_name", &ops).unwrap(); // operator is an instance of Equal
+    /// ```
     pub fn build(
         &self,
         rule_name: &str,
@@ -190,7 +189,6 @@ mod test {
 
     #[test]
     fn build_should_return_the_true_operator() {
-
         let builder = OperatorBuilder::new();
         let operator = builder.build_option("", &None).unwrap();
 

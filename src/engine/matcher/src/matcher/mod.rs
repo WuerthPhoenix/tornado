@@ -47,7 +47,8 @@ impl Matcher {
                 name: rule.name.to_owned(),
                 priority: rule.priority,
                 do_continue: rule.do_continue,
-                operator: operator_builder.build_option(&rule.name, &rule.constraint.where_operator)?,
+                operator: operator_builder
+                    .build_option(&rule.name, &rule.constraint.where_operator)?,
                 extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
                 actions: action_builder.build(&rule.name, &rule.actions)?,
             })
