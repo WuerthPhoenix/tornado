@@ -155,7 +155,7 @@ impl Accessor {
                 let mut count = 0;
 
                 while count < keys.len() && value.is_some() {
-                    value = value.and_then(|val| val.child(&keys[count]));
+                    value = value.and_then(|val| val.getFromMap(&keys[count]));
                     count += 1;
                 }
 

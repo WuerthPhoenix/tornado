@@ -56,7 +56,7 @@ impl SnmptradpCollector {
     ) -> Result<(), CollectorError> {
         if let Some(received_from) = trapd
             .get("PDUInfo")
-            .and_then(|value| value.child("receivedfrom"))
+            .and_then(|value| value.getFromMap("receivedfrom"))
             .and_then(|value| value.text())
         {
             if let Some(capture) = self.address_regex.captures_iter(received_from).next() {
