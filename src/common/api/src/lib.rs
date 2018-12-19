@@ -68,14 +68,14 @@ pub enum Value {
 }
 
 impl Value {
-    pub fn getFromMap(&self, key: &str) -> Option<&Value> {
+    pub fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Map(payload) => payload.get(key),
             Value::Array(_array) => None,
             Value::Text(_) => None,
         }
     }
-    pub fn getFromArray(&self, index: usize) -> Option<&Value> {
+    pub fn get_from_array(&self, index: usize) -> Option<&Value> {
         match self {
             Value::Map(_payload) => None,
             Value::Array(array) => array.get(index),
@@ -233,7 +233,7 @@ mod test {
         let value = Value::Text("".to_owned());
 
         // Act
-        let result = value.getFromMap("");
+        let result = value.get_from_map("");
 
         // Assert
         assert!(result.is_none());
@@ -249,7 +249,7 @@ mod test {
         let value = Value::Map(children);
 
         // Act
-        let result = value.getFromMap("second");
+        let result = value.get_from_map("second");
 
         // Assert
         assert!(result.is_some());
@@ -266,7 +266,7 @@ mod test {
         let value = Value::Map(children);
 
         // Act
-        let result = value.getFromMap("third");
+        let result = value.get_from_map("third");
 
         // Assert
         assert!(result.is_none());
@@ -286,8 +286,8 @@ mod test {
         let event_value: Value = event.into();
 
         // Assert
-        assert_eq!("my-event-type", event_value.getFromMap("type").unwrap().text().unwrap());
-        assert_eq!(created_ts, event_value.getFromMap("created_ts").unwrap().text().unwrap());
-        assert_eq!(&Value::Map(payload), event_value.getFromMap("payload").unwrap());
+        assert_eq!("my-event-type", event_value.get_from_map("type").unwrap().text().unwrap());
+        assert_eq!(created_ts, event_value.get_from_map("created_ts").unwrap().text().unwrap());
+        assert_eq!(&Value::Map(payload), event_value.get_from_map("payload").unwrap());
     }
 }

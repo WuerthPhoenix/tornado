@@ -90,8 +90,8 @@ impl AccessorBuilder {
         key: &str,
         full_accessor: &str,
         rule_name: &str,
-    ) -> Result<Vec<String>, MatcherError> {
-        let result = self
+    ) -> Result<Vec<ValueReader>, MatcherError> {
+        self
             .regex
             .captures_iter(key)
             .map(|cap| {
@@ -116,10 +116,8 @@ impl AccessorBuilder {
                         return Err(MatcherError::NotValidIdOrNameError { message: error_message });
                     }
                 }
-                Ok(result)
-            }).collect::<Result<Vec<String>, MatcherError>>()?;
-
-        Ok(result)
+                Ok(ValueReader::Map {key: result})
+            }).collect()
     }
 }
 
@@ -136,7 +134,7 @@ pub enum Accessor {
     Constant { value: Value },
     CreatedTs {},
     ExtractedVar { key: String },
-    Payload { keys: Vec<String> },
+    Payload { keys: Vec<ValueReader> },
     Type {},
     Event {},
 }
@@ -155,7 +153,7 @@ impl Accessor {
                 let mut count = 0;
 
                 while count < keys.len() && value.is_some() {
-                    value = value.and_then(|val| val.getFromMap(&keys[count]));
+                    value = value.and_then(|val| keys[count].get(val));
                     count += 1;
                 }
 
@@ -167,6 +165,33 @@ impl Accessor {
                 Some(Cow::Owned(event_value))
             }
         }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ValueReader {
+    Map { key: String },
+    Array { index: usize },
+}
+
+impl ValueReader {
+    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
+        match self {
+            ValueReader::Map { key } => value.get_from_map(key),
+            ValueReader::Array { index } => value.get_from_array(*index),
+        }
+    }
+}
+
+impl Into<ValueReader> for &str {
+    fn into(self) -> ValueReader {
+        ValueReader::Map { key: self.to_owned() }
+    }
+}
+
+impl Into<ValueReader> for usize {
+    fn into(self) -> ValueReader {
+        ValueReader::Array { index: self }
     }
 }
 
@@ -224,7 +249,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -240,7 +265,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -263,7 +288,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_payload_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned(), "first".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -284,8 +309,7 @@ mod test {
     #[test]
     fn should_return_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor =
-            Accessor::Payload { keys: vec!["body".to_owned(), "second.with.dot".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -306,7 +330,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { keys: vec!["date".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["date".into()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -421,7 +445,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec!["key".to_owned()] }, accessor)
+        assert_eq!(Accessor::Payload { keys: vec!["key".into()] }, accessor)
     }
 
     #[test]
@@ -433,12 +457,7 @@ mod test {
 
         assert_eq!(
             Accessor::Payload {
-                keys: vec![
-                    "first".to_owned(),
-                    "second".to_owned(),
-                    "th. ird".to_owned(),
-                    "four".to_owned()
-                ]
+                keys: vec!["first".into(), "second".into(), "th. ird".into(), "four".into()]
             },
             accessor
         )
@@ -567,26 +586,32 @@ mod test {
     fn builder_should_parse_a_payload_key() {
         let builder = AccessorBuilder::new();
 
-        assert_eq!(vec!["one"], builder.parse_payload_key("one", "", "").unwrap());
+        let expected: Vec<ValueReader> = vec!["one".into()];
+        assert_eq!(expected, builder.parse_payload_key("one", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two", "", "").unwrap());
+        let expected: Vec<ValueReader> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, builder.parse_payload_key("one.two", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two.", "", "").unwrap());
+        let expected: Vec<ValueReader> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, builder.parse_payload_key("one.two.", "", "").unwrap());
 
-        assert_eq!(vec!["one", ""], builder.parse_payload_key(r#"one."""#, "", "").unwrap());
+        let expected: Vec<ValueReader> = vec!["one".into(), "".into()];
+        assert_eq!(expected, builder.parse_payload_key(r#"one."""#, "", "").unwrap());
 
+        let expected: Vec<ValueReader> = vec!["one".into(), "two".into(), "th ir.d".into()];
+        assert_eq!(expected, builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap());
+
+        let expected: Vec<ValueReader> =
+            vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
         assert_eq!(
-            vec!["one", "two", "th ir.d"],
-            builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap()
-        );
-
-        assert_eq!(
-            vec!["th ir.d", "a", "fourth", "two",],
+            expected,
             builder.parse_payload_key(r#""th ir.d".a."fourth".two"#, "", "").unwrap()
         );
 
+        let expected: Vec<ValueReader> =
+            vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
         assert_eq!(
-            vec!["payload", "oids", "SNMPv2-SMI::enterprises.14848.2.1.1.6.0"],
+            expected,
             builder
                 .parse_payload_key(
                     r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#,
@@ -624,21 +649,21 @@ mod test {
     #[test]
     fn builder_parser_should_return_empty_vector_if_no_matches() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec![];
+        let expected: Vec<ValueReader> = vec![];
         assert_eq!(expected, builder.parse_payload_key("", "", "").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_empty_vector_if_single_dot() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec![];
+        let expected: Vec<ValueReader> = vec![];
         assert_eq!(expected, builder.parse_payload_key(".", "", "").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_ignore_trailing_dot() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec!["hello".to_owned(), "world".to_owned()];
+        let expected: Vec<ValueReader> = vec!["hello".into(), "world".into()];
         assert_eq!(expected, builder.parse_payload_key(".hello.world", "", "").unwrap())
     }
 }
