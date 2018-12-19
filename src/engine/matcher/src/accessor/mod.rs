@@ -29,8 +29,10 @@ const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
-const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.]+)"#;
-const PAYLOAD_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[0-9]+\])"#;
+const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
+const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -104,14 +106,21 @@ impl AccessorBuilder {
 
                 // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) &&
-                        result.ends_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) &&
+                        result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
                         result = result[1..(result.len() - 1)].to_string();
                     }
-                    if result.contains(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER) &&
+                        result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER) {
+                        result = result[1..(result.len() - 1)].to_string();
+                        let index = usize::from_str_radix(&result, 10)
+                            .map_err(|err| MatcherError::ParseOperatorError { message: format!("Cannot parse value [{}] to number: {}", &result, err) })?;
+                        return Ok(ValueReader::Array {index})
+                    }
+                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
                         let error_message = format!(
                             "Payload key [{}] from accessor [{}] for rule [{}] contains not valid characters: [{}]",
-                            key, full_accessor, rule_name, PAYLOAD_KEY_PARSE_TRAILING_DELIMITER
+                            key, full_accessor, rule_name, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
                         );
                         return Err(MatcherError::NotValidIdOrNameError { message: error_message });
                     }
@@ -286,7 +295,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_value_from_nested_payload_if_exists() {
+    fn should_return_value_from_nested_map_if_exists() {
         // Arrange
         let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()] };
 
@@ -304,6 +313,29 @@ mod test {
 
         // Assert
         assert_eq!("body_first_value", result.as_ref());
+    }
+
+    #[test]
+    fn should_return_value_from_nested_array_if_exists() {
+        // Arrange
+        let accessor = Accessor::Payload { keys: vec!["body".into(), 1.into()] };
+
+        let mut payload = HashMap::new();
+        payload.insert(
+            "body".to_owned(),
+            Value::Array(vec![
+                Value::Text("body_first_value".to_owned()),
+                Value::Text("body_second_value".to_owned()),
+            ]),
+        );
+
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
+        // Act
+        let result = accessor.get(&event).unwrap();
+
+        // Assert
+        assert_eq!("body_second_value", result.as_ref());
     }
 
     #[test]
@@ -665,5 +697,13 @@ mod test {
         let builder = AccessorBuilder::new();
         let expected: Vec<ValueReader> = vec!["hello".into(), "world".into()];
         assert_eq!(expected, builder.parse_payload_key(".hello.world", "", "").unwrap())
+    }
+
+    #[test]
+    fn builder_parser_should_return_array_reader() {
+        let builder = AccessorBuilder::new();
+        let expected: Vec<ValueReader> =
+            vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
+        assert_eq!(expected, builder.parse_payload_key("hello.world[11].inner[0]", "", "").unwrap())
     }
 }
