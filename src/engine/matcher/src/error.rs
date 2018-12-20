@@ -1,3 +1,5 @@
+use failure_derive::Fail;
+
 #[derive(Fail, Debug)]
 pub enum MatcherError {
     #[fail(display = "ExtractorBuildFailError: [{}]\n cause: [{}]", message, cause)]

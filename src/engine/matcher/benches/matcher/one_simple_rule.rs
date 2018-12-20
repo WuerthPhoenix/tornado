@@ -31,7 +31,7 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // Create Matcher
-    let matcher = Matcher::new(&vec![rule]).unwrap();
+    let matcher = Matcher::build(&vec![rule]).unwrap();
 
     // Create event
     let event = {

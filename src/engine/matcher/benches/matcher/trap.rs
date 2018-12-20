@@ -11,7 +11,7 @@ pub fn bench(c: &mut Criterion) {
     let event = utils::read_event_from_file("./benches_resources/trap/events/event_01.json");
 
     // Create Matcher
-    let matcher = Matcher::new(&vec![rule]).unwrap();
+    let matcher = Matcher::build(&vec![rule]).unwrap();
 
     // println!("result is : {:#?}", matcher.process(event.clone()));
 

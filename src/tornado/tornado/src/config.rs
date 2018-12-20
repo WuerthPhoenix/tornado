@@ -1,4 +1,4 @@
-use crate::config_rs::{Config, ConfigError, File};
+use config_rs::{Config, ConfigError, File};
 use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
 use tornado_executor_archive::config::ArchiveConfig;

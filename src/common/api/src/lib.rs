@@ -1,9 +1,5 @@
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate chrono;
-
 use chrono::prelude::Local;
+use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashMap;
 
@@ -125,9 +121,6 @@ pub fn to_option_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
         None => None,
     }
 }
-
-#[cfg(test)]
-extern crate serde_json;
 
 #[cfg(test)]
 mod test {

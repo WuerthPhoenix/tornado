@@ -1,26 +1,8 @@
-extern crate actix;
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate serde;
-extern crate serde_json;
-extern crate structopt;
-extern crate tokio;
-extern crate tokio_codec;
-extern crate tokio_io;
-extern crate tokio_uds;
-extern crate tornado_collector_common;
-extern crate tornado_collector_json;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
-
-#[macro_use]
-extern crate log;
-
 pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
+use log::*;
 use std::io::*;
 use std::thread;
 use tornado_common_logger::setup_logger;

@@ -1,5 +1,6 @@
 use crate::error::MatcherError;
 use crate::model::{ProcessedEvent, ProcessedRuleStatus};
+use log::*;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_network_common::EventBus;
@@ -10,7 +11,7 @@ pub struct Dispatcher {
 }
 
 impl Dispatcher {
-    pub fn new(event_bus: Arc<EventBus>) -> Result<Dispatcher, MatcherError> {
+    pub fn build(event_bus: Arc<EventBus>) -> Result<Dispatcher, MatcherError> {
         Ok(Dispatcher { event_bus })
     }
 
@@ -65,7 +66,7 @@ mod test {
             );
         }
 
-        let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
+        let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
@@ -102,7 +103,7 @@ mod test {
             );
         }
 
-        let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
+        let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });

@@ -1,23 +1,5 @@
-extern crate tornado_collector_common;
-extern crate tornado_collector_json;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
-extern crate tornado_engine_matcher;
-extern crate tornado_executor_common;
-extern crate tornado_executor_logger;
-extern crate tornado_network_common;
-extern crate tornado_network_simple;
-
-#[macro_use]
-extern crate log;
-extern crate futures;
-extern crate serde;
-extern crate structopt;
-extern crate tokio;
-extern crate tokio_codec;
-extern crate tokio_uds;
-
 use futures::sync::mpsc;
+use log::*;
 use std::fs;
 use std::sync::Arc;
 use std::thread;
@@ -42,12 +24,12 @@ fn main() {
     let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
-    let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
+    let matcher = Arc::new(Matcher::build(&config_rules).unwrap());
     let collector = Arc::new(JsonEventCollector::new());
 
     // Configure action dispatcher
     let event_bus = {
-        let mut event_bus = SimpleEventBus::new();
+        let event_bus = SimpleEventBus::new();
 
         /*
         let executor = LoggerExecutor::new();
@@ -79,7 +61,7 @@ fn main() {
                         thread::current().name()
                     );
                     let processed_event = matcher_clone.process(event);
-                    match Dispatcher::new(event_bus_clone)
+                    match Dispatcher::build(event_bus_clone)
                         .unwrap()
                         .dispatch_actions(processed_event)
                     {

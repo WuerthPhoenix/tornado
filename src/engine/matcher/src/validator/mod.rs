@@ -2,6 +2,7 @@ pub mod id;
 
 use crate::config::Rule;
 use crate::error::MatcherError;
+use log::*;
 use std::collections::HashMap;
 
 /// A validator for a Rule or array of Rules

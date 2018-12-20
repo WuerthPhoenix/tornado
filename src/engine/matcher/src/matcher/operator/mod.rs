@@ -2,6 +2,7 @@ use crate::accessor::AccessorBuilder;
 use crate::config;
 use crate::error::MatcherError;
 use crate::model::ProcessedEvent;
+use log::*;
 use std::fmt;
 
 pub mod and;
@@ -53,8 +54,6 @@ impl OperatorBuilder {
     /// # Example
     ///
     /// ```rust
-    ///
-    /// extern crate tornado_engine_matcher;
     ///
     /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
     /// use tornado_engine_matcher::config;

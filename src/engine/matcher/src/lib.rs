@@ -1,18 +1,5 @@
 //! The `tornado_engine_matcher` crate contains the event processing logic.
 //!
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-#[macro_use]
-extern crate log;
-extern crate regex;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate tornado_common_api;
-extern crate tornado_network_common;
-
 pub mod accessor;
 pub mod config;
 pub mod dispatcher;
@@ -22,21 +9,9 @@ pub mod model;
 pub mod validator;
 
 #[cfg(test)]
-extern crate chrono;
-
-#[cfg(test)]
-#[macro_use]
-extern crate lazy_static;
-
-#[cfg(test)]
-extern crate tornado_common_logger;
-
-#[cfg(test)]
-extern crate tornado_network_simple;
-
-#[cfg(test)]
 pub mod test_root {
 
+    use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tornado_common_logger::{setup_logger, LoggerConfig};
 

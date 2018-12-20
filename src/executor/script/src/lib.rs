@@ -1,9 +1,4 @@
-#[macro_use]
-extern crate log;
-extern crate regex;
-extern crate tornado_common_api;
-extern crate tornado_executor_common;
-
+use log::*;
 use regex::Regex;
 use std::fmt;
 use std::process::Command;
@@ -96,9 +91,6 @@ impl Executor for ScriptExecutor {
         Ok(())
     }
 }
-
-#[cfg(test)]
-extern crate tempfile;
 
 #[cfg(test)]
 mod test {

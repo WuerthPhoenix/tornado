@@ -1,26 +1,3 @@
-extern crate tornado_collector_common;
-extern crate tornado_collector_json;
-extern crate tornado_collector_snmptrapd;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
-extern crate tornado_engine_matcher;
-extern crate tornado_executor_archive;
-extern crate tornado_executor_common;
-extern crate tornado_executor_script;
-extern crate tornado_network_common;
-
-extern crate actix;
-extern crate config as config_rs;
-extern crate futures;
-#[macro_use]
-extern crate log;
-extern crate num_cpus;
-extern crate serde;
-extern crate structopt;
-extern crate tokio;
-extern crate tokio_codec;
-extern crate tokio_uds;
-
 pub mod collector;
 pub mod config;
 pub mod dispatcher;
@@ -28,12 +5,13 @@ pub mod engine;
 pub mod executor;
 pub mod io;
 
-use actix::prelude::*;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::MatcherActor;
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 use crate::io::uds::listen_to_uds_socket;
+use actix::prelude::*;
+use log::*;
 use std::fs;
 use std::sync::Arc;
 use tornado_common_logger::setup_logger;
@@ -52,7 +30,7 @@ fn main() {
 
     // Start matcher
     let matcher = Arc::new(
-        Matcher::new(&config_rules).unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)),
+        Matcher::build(&config_rules).unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)),
     );
 
     // start system
@@ -78,7 +56,7 @@ fn main() {
 
         // Configure action dispatcher
         let event_bus = {
-            let mut event_bus = ActixEventBus {
+            let event_bus = ActixEventBus {
                 callback: move |action| {
                     match action.id.as_ref() {
                         "archive" => archive_executor_addr.do_send(ActionMessage { action }),
@@ -92,7 +70,7 @@ fn main() {
 
         // Start dispatcher actor
         let dispatcher_addr = SyncArbiter::start(1, move || {
-            let dispatcher = Dispatcher::new(event_bus.clone()).unwrap();
+            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
             DispatcherActor { dispatcher }
         });
 

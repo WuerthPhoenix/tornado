@@ -1,14 +1,6 @@
-extern crate serde;
-extern crate serde_json;
-extern crate structopt;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
-
-#[macro_use]
-extern crate log;
-
 pub mod config;
 
+use log::*;
 use std::fs;
 use std::io::Write;
 use std::os::unix::net::UnixStream;

@@ -1,14 +1,4 @@
-#[macro_use]
-extern crate log;
-extern crate lru_time_cache;
-extern crate regex;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_json;
-extern crate tornado_common_api;
-extern crate tornado_executor_common;
-
+use log::*;
 use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
 use std::collections::HashMap;
@@ -144,9 +134,6 @@ impl Executor for ArchiveExecutor {
         Ok(())
     }
 }
-
-#[cfg(test)]
-extern crate tempfile;
 
 #[cfg(test)]
 mod test {

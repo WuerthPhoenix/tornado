@@ -6,8 +6,9 @@ use crate::config::Rule;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
-use tornado_common_api::Event;
 use crate::validator::RuleValidator;
+use log::*;
+use tornado_common_api::Event;
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
 ///   from the config::Rule.
@@ -29,7 +30,7 @@ pub struct Matcher {
 
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
-    pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
+    pub fn build(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
 
         RuleValidator::new().validate_all(rules)?;
@@ -140,8 +141,8 @@ impl Matcher {
 mod test {
     use super::*;
     use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
-    use std::collections::HashMap;
     use crate::test_root;
+    use std::collections::HashMap;
     use tornado_common_api::*;
 
     #[test]
@@ -692,7 +693,7 @@ mod test {
 
     fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         test_root::start_context();
-        Matcher::new(rules)
+        Matcher::build(rules)
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
