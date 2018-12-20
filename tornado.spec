@@ -60,6 +60,7 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
  - New Feature: Archive Executor
  - Improvement: Tornado Executable with 3 Level Configuration
  - Improvement: Nested Structures in Action Payload
+ - Improvement: Support List Structures ( Arrays )
  - Improvement: All dates are expected and parsed into ISO 8601
  - Spikes are now deployed in spikes subdirectory
 
