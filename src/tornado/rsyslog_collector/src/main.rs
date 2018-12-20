@@ -4,7 +4,6 @@ extern crate failure;
 extern crate failure_derive;
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
 extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;

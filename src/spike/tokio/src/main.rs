@@ -12,7 +12,6 @@ extern crate tornado_network_simple;
 extern crate log;
 extern crate futures;
 extern crate serde;
-#[macro_use]
 extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;

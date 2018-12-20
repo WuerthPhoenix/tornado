@@ -16,7 +16,6 @@ extern crate futures;
 extern crate log;
 extern crate num_cpus;
 extern crate serde;
-#[macro_use]
 extern crate structopt;
 extern crate tokio;
 extern crate tokio_codec;

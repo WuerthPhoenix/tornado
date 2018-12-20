@@ -1,7 +1,7 @@
 use criterion::Criterion;
 use tornado_engine_matcher::matcher::Matcher;
 
-use utils;
+use crate::utils;
 
 pub fn bench(c: &mut Criterion) {
     // Create rule

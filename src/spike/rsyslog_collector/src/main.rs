@@ -1,6 +1,5 @@
 extern crate serde;
 extern crate serde_json;
-#[macro_use]
 extern crate structopt;
 extern crate tornado_collector_common;
 extern crate tornado_collector_json;
