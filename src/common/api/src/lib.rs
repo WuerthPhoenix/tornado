@@ -71,21 +71,22 @@ impl Value {
     pub fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Map(payload) => payload.get(key),
-            Value::Array(_array) => None,
+            Value::Array(_) => None,
             Value::Text(_) => None,
         }
     }
     pub fn get_from_array(&self, index: usize) -> Option<&Value> {
         match self {
-            Value::Map(_payload) => None,
+            Value::Map(_) => None,
             Value::Array(array) => array.get(index),
             Value::Text(_) => None,
         }
     }
-    pub fn text(&self) -> Option<&str> {
+    pub fn get_text(&self) -> Option<&str> {
         match self {
             Value::Text(value) => Some(value),
-            _ => None,
+            Value::Map(_) => None,
+            Value::Array(_) => None,
         }
     }
 }
@@ -286,8 +287,8 @@ mod test {
         let event_value: Value = event.into();
 
         // Assert
-        assert_eq!("my-event-type", event_value.get_from_map("type").unwrap().text().unwrap());
-        assert_eq!(created_ts, event_value.get_from_map("created_ts").unwrap().text().unwrap());
+        assert_eq!("my-event-type", event_value.get_from_map("type").unwrap().get_text().unwrap());
+        assert_eq!(created_ts, event_value.get_from_map("created_ts").unwrap().get_text().unwrap());
         assert_eq!(&Value::Map(payload), event_value.get_from_map("payload").unwrap());
     }
 }

@@ -646,7 +646,7 @@ mod test {
         assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
         assert_eq!(
             "zzz",
-            result.extracted_vars.get("rule1.extracted_temp").unwrap().text().unwrap()
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
         );
     }
 
@@ -686,7 +686,7 @@ mod test {
         assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
         assert_eq!(
             "zzz",
-            result.extracted_vars.get("rule1.extracted_temp").unwrap().text().unwrap()
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
         );
     }
 

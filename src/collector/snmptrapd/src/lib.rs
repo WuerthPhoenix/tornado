@@ -57,7 +57,7 @@ impl SnmptradpCollector {
         if let Some(received_from) = trapd
             .get("PDUInfo")
             .and_then(|value| value.get_from_map("receivedfrom"))
-            .and_then(|value| value.text())
+            .and_then(|value| value.get_text())
         {
             if let Some(capture) = self.address_regex.captures_iter(received_from).next() {
                 self.insert_into_payload(&capture, 1, "protocol", event_payload, received_from)?;

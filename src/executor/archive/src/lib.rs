@@ -111,7 +111,7 @@ impl Executor for ArchiveExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         debug!("ArchiveExecutor - received action: \n{:#?}", action);
 
-        let path = match action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.text()) {
+        let path = match action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.get_text()) {
             Some(archive_type) => match self.paths.get(archive_type) {
                 Some(path_matcher) => path_matcher.build_path(&action.payload),
                 None => Err(ExecutorError::ActionExecutionError {

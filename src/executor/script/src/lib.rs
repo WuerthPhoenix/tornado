@@ -38,14 +38,14 @@ impl ScriptExecutor {
                 let group = value.as_str();
                 let param = &group[2..group.len() - 1];
 
-                let param_value =
-                    payload.get(param).and_then(|value| value.text()).ok_or_else(|| {
-                        ExecutorError::ActionExecutionError {
-                            message: format!(
-                                "Cannot find entry [{}] in the action payload for script [{}].",
-                                &param, script
-                            ),
-                        }
+                let param_value = payload
+                    .get(param)
+                    .and_then(|value| value.get_text())
+                    .ok_or_else(|| ExecutorError::ActionExecutionError {
+                        message: format!(
+                            "Cannot find entry [{}] in the action payload for script [{}].",
+                            &param, script
+                        ),
                     })?;
 
                 script_final = script_final.replace(group, param_value);
@@ -68,7 +68,7 @@ impl Executor for ScriptExecutor {
         let script = action
             .payload
             .get(SCRIPT_TYPE_KEY)
-            .and_then(|value| value.text())
+            .and_then(|value| value.get_text())
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
             })?;
