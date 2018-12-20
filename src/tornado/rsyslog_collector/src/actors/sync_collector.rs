@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use actors::uds_writer::{EventMessage, UdsWriterActor};
+use crate::actors::uds_writer::{EventMessage, UdsWriterActor};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
 

@@ -1,9 +1,9 @@
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
 use regex::Regex as RustRegex;
 use std::borrow::Cow;
 use tornado_common_api::Value;
-use validator::id::IdValidator;
+use crate::validator::id::IdValidator;
 
 pub struct AccessorBuilder {
     id_validator: IdValidator,

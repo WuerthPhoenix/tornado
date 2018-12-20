@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use actors::uds_writer::{EventMessage, UdsWriterActor};
+use crate::actors::uds_writer::{EventMessage, UdsWriterActor};
 use tokio::io::AsyncRead;
 use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};

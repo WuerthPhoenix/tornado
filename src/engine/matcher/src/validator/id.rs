@@ -1,4 +1,4 @@
-use error::MatcherError;
+use crate::error::MatcherError;
 use regex::Regex as RustRegex;
 
 const ID_REGEX_PATTERN: &str = "^[a-zA-Z0-9_]+$";

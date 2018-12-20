@@ -1,4 +1,4 @@
-use error::MatcherError;
+use crate::error::MatcherError;
 use serde_json;
 use std::collections::HashMap;
 

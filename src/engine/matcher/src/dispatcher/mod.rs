@@ -1,5 +1,5 @@
-use error::MatcherError;
-use model::{ProcessedEvent, ProcessedRuleStatus};
+use crate::error::MatcherError;
+use crate::model::{ProcessedEvent, ProcessedRuleStatus};
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_network_common::EventBus;
@@ -39,7 +39,7 @@ impl Dispatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use model::ProcessedRule;
+    use crate::model::ProcessedRule;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use tornado_common_api::Event;

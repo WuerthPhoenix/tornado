@@ -1,7 +1,7 @@
-use accessor::AccessorBuilder;
-use config;
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::accessor::AccessorBuilder;
+use crate::config;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
 use std::fmt;
 
 pub mod and;
@@ -38,7 +38,7 @@ impl OperatorBuilder {
     ) -> Result<Box<Operator>, MatcherError> {
         let result: Result<Box<Operator>, MatcherError> = match config {
             Some(operator) => self.build(rule_name, operator),
-            None => Ok(Box::new(::matcher::operator::true_operator::True {})),
+            None => Ok(Box::new(crate::matcher::operator::true_operator::True {})),
         };
 
         info!(
@@ -74,25 +74,25 @@ impl OperatorBuilder {
     ) -> Result<Box<Operator>, MatcherError> {
         let result: Result<Box<Operator>, MatcherError> = match config {
             config::Operator::And { operators } => {
-                Ok(Box::new(::matcher::operator::and::And::build("", &operators, self)?))
+                Ok(Box::new(crate::matcher::operator::and::And::build("", &operators, self)?))
             }
             config::Operator::Or { operators } => {
-                Ok(Box::new(::matcher::operator::or::Or::build("", &operators, self)?))
+                Ok(Box::new(crate::matcher::operator::or::Or::build("", &operators, self)?))
             }
             config::Operator::Equal { first, second } => {
-                Ok(Box::new(::matcher::operator::equal::Equal::build(
+                Ok(Box::new(crate::matcher::operator::equal::Equal::build(
                     self.accessor.build(rule_name, first)?,
                     self.accessor.build(rule_name, second)?,
                 )?))
             }
             config::Operator::Contain { text, substring } => {
-                Ok(Box::new(::matcher::operator::contain::Contain::build(
+                Ok(Box::new(crate::matcher::operator::contain::Contain::build(
                     self.accessor.build(rule_name, text)?,
                     self.accessor.build(rule_name, substring)?,
                 )?))
             }
             config::Operator::Regex { regex, target } => {
-                Ok(Box::new(::matcher::operator::regex::Regex::build(
+                Ok(Box::new(crate::matcher::operator::regex::Regex::build(
                     regex,
                     self.accessor.build(rule_name, target)?,
                 )?))

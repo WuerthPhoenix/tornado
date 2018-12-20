@@ -46,7 +46,7 @@ pub fn bench(c: &mut Criterion) {
 }
 
 fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-    let constraint = Constraint { where_operator: operator, with: HashMap::new() };
+    let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
     Rule {
         name: name.to_owned(),

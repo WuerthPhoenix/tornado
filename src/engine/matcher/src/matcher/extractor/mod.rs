@@ -1,7 +1,7 @@
-use accessor::{Accessor, AccessorBuilder};
-use config::Extractor;
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::accessor::{Accessor, AccessorBuilder};
+use crate::config::Extractor;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
 use tornado_common_api::{ref_to_option_str, Value};
@@ -165,8 +165,8 @@ impl VariableExtractor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use accessor::AccessorBuilder;
-    use config::ExtractorRegex;
+    use crate::accessor::AccessorBuilder;
+    use crate::config::ExtractorRegex;
     use std::collections::HashMap;
     use tornado_common_api::Event;
 
