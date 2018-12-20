@@ -53,9 +53,15 @@ impl ArchiveExecutor {
         }
     }
 
-    fn write(&mut self, relative_path: &str, buf: &[u8]) -> Result<(), ExecutorError> {
-        let absolute_path_string =
-            format!("{}{}{}", self.base_path, std::path::MAIN_SEPARATOR, relative_path);
+    fn write(&mut self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
+        let absolute_path_string = format!(
+            "{}{}{}",
+            self.base_path,
+            std::path::MAIN_SEPARATOR,
+            relative_path
+                .map(std::borrow::Cow::Owned)
+                .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
+        );
 
         let file = match self.file_cache.entry(absolute_path_string.clone()) {
             Entry::Occupied(occupied) => occupied.into_mut(),
@@ -103,7 +109,7 @@ impl Executor for ArchiveExecutor {
 
         let path = match action.payload.get(ARCHIVE_TYPE_KEY).and_then(|value| value.text()) {
             Some(archive_type) => match self.paths.get(archive_type) {
-                Some(path_matcher) => path_matcher.build_path(&action.payload),
+                Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
                 None => Err(ExecutorError::ActionExecutionError {
                     message: format!(
                         "Cannot find mapping for {} value: [{}]",
@@ -111,8 +117,7 @@ impl Executor for ArchiveExecutor {
                     ),
                 }),
             },
-            // ToDo: clone to be removed when edition 2018 is enabled
-            None => Ok(self.default_path.clone()),
+            None => Ok(None),
         }?;
 
         let mut event_bytes = action
@@ -129,7 +134,7 @@ impl Executor for ArchiveExecutor {
 
         event_bytes.push(b'\n');
 
-        self.write(&path, &event_bytes)?;
+        self.write(path, &event_bytes)?;
 
         Ok(())
     }
