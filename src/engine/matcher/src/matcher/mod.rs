@@ -47,7 +47,8 @@ impl Matcher {
                 name: rule.name.to_owned(),
                 priority: rule.priority,
                 do_continue: rule.do_continue,
-                operator: operator_builder.build_option(&rule.name, &rule.constraint.where_operator)?,
+                operator: operator_builder
+                    .build_option(&rule.name, &rule.constraint.where_operator)?,
                 extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
                 actions: action_builder.build(&rule.name, &rule.actions)?,
             })
@@ -607,6 +608,86 @@ mod test {
         assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
         assert!(result.extracted_vars.contains_key("rule2_email.extracted_temp"));
         assert_eq!("ai", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+    }
+
+    #[test]
+    fn should_match_rule_against_inner_array() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1",
+            0,
+            Operator::Equal {
+                first: "${event.payload.array[0]}".to_owned(),
+                second: "aaa".to_owned(),
+            },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.array[1]}"),
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert(
+            "array".to_owned(),
+            Value::Array(vec![Value::Text("aaa".to_owned()), Value::Text("zzz".to_owned())]),
+        );
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        let rule_1_processed = result.rules.get("rule1").unwrap();
+        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert_eq!(
+            "zzz",
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+        );
+    }
+
+    #[test]
+    fn should_match_rule_against_inner_map() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1",
+            0,
+            Operator::Equal {
+                first: "${event.payload.map.key0}".to_owned(),
+                second: "aaa".to_owned(),
+            },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.map.key1}"),
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        let mut payload = Payload::new();
+        let mut inner = Payload::new();
+        inner.insert("key0".to_owned(), Value::Text("aaa".to_owned()));
+        inner.insert("key1".to_owned(), Value::Text("zzz".to_owned()));
+        payload.insert("map".to_owned(), Value::Map(inner));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        let rule_1_processed = result.rules.get("rule1").unwrap();
+        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert_eq!(
+            "zzz",
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+        );
     }
 
     fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {

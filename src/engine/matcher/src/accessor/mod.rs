@@ -29,8 +29,10 @@ const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
-const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.]+)"#;
-const PAYLOAD_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
+const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
+const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -90,8 +92,8 @@ impl AccessorBuilder {
         key: &str,
         full_accessor: &str,
         rule_name: &str,
-    ) -> Result<Vec<String>, MatcherError> {
-        let result = self
+    ) -> Result<Vec<ValueGetter>, MatcherError> {
+        self
             .regex
             .captures_iter(key)
             .map(|cap| {
@@ -104,22 +106,27 @@ impl AccessorBuilder {
 
                 // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) &&
-                        result.ends_with(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) &&
+                        result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
                         result = result[1..(result.len() - 1)].to_string();
                     }
-                    if result.contains(PAYLOAD_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER) &&
+                        result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER) {
+                        result = result[1..(result.len() - 1)].to_string();
+                        let index = usize::from_str_radix(&result, 10)
+                            .map_err(|err| MatcherError::ParseOperatorError { message: format!("Cannot parse value [{}] to number: {}", &result, err) })?;
+                        return Ok(ValueGetter::Array {index})
+                    }
+                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
                         let error_message = format!(
                             "Payload key [{}] from accessor [{}] for rule [{}] contains not valid characters: [{}]",
-                            key, full_accessor, rule_name, PAYLOAD_KEY_PARSE_TRAILING_DELIMITER
+                            key, full_accessor, rule_name, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
                         );
                         return Err(MatcherError::NotValidIdOrNameError { message: error_message });
                     }
                 }
-                Ok(result)
-            }).collect::<Result<Vec<String>, MatcherError>>()?;
-
-        Ok(result)
+                Ok(ValueGetter::Map {key: result})
+            }).collect()
     }
 }
 
@@ -136,7 +143,7 @@ pub enum Accessor {
     Constant { value: Value },
     CreatedTs {},
     ExtractedVar { key: String },
-    Payload { keys: Vec<String> },
+    Payload { keys: Vec<ValueGetter> },
     Type {},
     Event {},
 }
@@ -155,7 +162,7 @@ impl Accessor {
                 let mut count = 0;
 
                 while count < keys.len() && value.is_some() {
-                    value = value.and_then(|val| val.child(&keys[count]));
+                    value = value.and_then(|val| keys[count].get(val));
                     count += 1;
                 }
 
@@ -167,6 +174,33 @@ impl Accessor {
                 Some(Cow::Owned(event_value))
             }
         }
+    }
+}
+
+#[derive(PartialEq, Debug)]
+pub enum ValueGetter {
+    Map { key: String },
+    Array { index: usize },
+}
+
+impl ValueGetter {
+    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
+        match self {
+            ValueGetter::Map { key } => value.get_from_map(key),
+            ValueGetter::Array { index } => value.get_from_array(*index),
+        }
+    }
+}
+
+impl Into<ValueGetter> for &str {
+    fn into(self) -> ValueGetter {
+        ValueGetter::Map { key: self.to_owned() }
+    }
+}
+
+impl Into<ValueGetter> for usize {
+    fn into(self) -> ValueGetter {
+        ValueGetter::Array { index: self }
     }
 }
 
@@ -224,7 +258,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -240,7 +274,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -261,9 +295,9 @@ mod test {
     }
 
     #[test]
-    fn should_return_value_from_nested_payload_if_exists() {
+    fn should_return_value_from_nested_map_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".to_owned(), "first".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -282,10 +316,32 @@ mod test {
     }
 
     #[test]
+    fn should_return_value_from_nested_array_if_exists() {
+        // Arrange
+        let accessor = Accessor::Payload { keys: vec!["body".into(), 1.into()] };
+
+        let mut payload = HashMap::new();
+        payload.insert(
+            "body".to_owned(),
+            Value::Array(vec![
+                Value::Text("body_first_value".to_owned()),
+                Value::Text("body_second_value".to_owned()),
+            ]),
+        );
+
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
+        // Act
+        let result = accessor.get(&event).unwrap();
+
+        // Assert
+        assert_eq!("body_second_value", result.as_ref());
+    }
+
+    #[test]
     fn should_return_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor =
-            Accessor::Payload { keys: vec!["body".to_owned(), "second.with.dot".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()] };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -306,7 +362,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { keys: vec!["date".to_owned()] };
+        let accessor = Accessor::Payload { keys: vec!["date".into()] };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -421,7 +477,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec!["key".to_owned()] }, accessor)
+        assert_eq!(Accessor::Payload { keys: vec!["key".into()] }, accessor)
     }
 
     #[test]
@@ -433,12 +489,7 @@ mod test {
 
         assert_eq!(
             Accessor::Payload {
-                keys: vec![
-                    "first".to_owned(),
-                    "second".to_owned(),
-                    "th. ird".to_owned(),
-                    "four".to_owned()
-                ]
+                keys: vec!["first".into(), "second".into(), "th. ird".into(), "four".into()]
             },
             accessor
         )
@@ -567,26 +618,32 @@ mod test {
     fn builder_should_parse_a_payload_key() {
         let builder = AccessorBuilder::new();
 
-        assert_eq!(vec!["one"], builder.parse_payload_key("one", "", "").unwrap());
+        let expected: Vec<ValueGetter> = vec!["one".into()];
+        assert_eq!(expected, builder.parse_payload_key("one", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two", "", "").unwrap());
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, builder.parse_payload_key("one.two", "", "").unwrap());
 
-        assert_eq!(vec!["one", "two"], builder.parse_payload_key("one.two.", "", "").unwrap());
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, builder.parse_payload_key("one.two.", "", "").unwrap());
 
-        assert_eq!(vec!["one", ""], builder.parse_payload_key(r#"one."""#, "", "").unwrap());
+        let expected: Vec<ValueGetter> = vec!["one".into(), "".into()];
+        assert_eq!(expected, builder.parse_payload_key(r#"one."""#, "", "").unwrap());
 
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into(), "th ir.d".into()];
+        assert_eq!(expected, builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap());
+
+        let expected: Vec<ValueGetter> =
+            vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
         assert_eq!(
-            vec!["one", "two", "th ir.d"],
-            builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap()
-        );
-
-        assert_eq!(
-            vec!["th ir.d", "a", "fourth", "two",],
+            expected,
             builder.parse_payload_key(r#""th ir.d".a."fourth".two"#, "", "").unwrap()
         );
 
+        let expected: Vec<ValueGetter> =
+            vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
         assert_eq!(
-            vec!["payload", "oids", "SNMPv2-SMI::enterprises.14848.2.1.1.6.0"],
+            expected,
             builder
                 .parse_payload_key(
                     r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#,
@@ -624,21 +681,40 @@ mod test {
     #[test]
     fn builder_parser_should_return_empty_vector_if_no_matches() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec![];
+        let expected: Vec<ValueGetter> = vec![];
         assert_eq!(expected, builder.parse_payload_key("", "", "").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_empty_vector_if_single_dot() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec![];
+        let expected: Vec<ValueGetter> = vec![];
         assert_eq!(expected, builder.parse_payload_key(".", "", "").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_ignore_trailing_dot() {
         let builder = AccessorBuilder::new();
-        let expected: Vec<String> = vec!["hello".to_owned(), "world".to_owned()];
+        let expected: Vec<ValueGetter> = vec!["hello".into(), "world".into()];
         assert_eq!(expected, builder.parse_payload_key(".hello.world", "", "").unwrap())
+    }
+
+    #[test]
+    fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
+        let builder = AccessorBuilder::new();
+        let expected: Vec<ValueGetter> =
+            vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
+        assert_eq!(
+            expected,
+            builder.parse_payload_key(r#"hello."world[11]".inner[0]"#, "", "").unwrap()
+        )
+    }
+
+    #[test]
+    fn builder_parser_should_return_array_reader() {
+        let builder = AccessorBuilder::new();
+        let expected: Vec<ValueGetter> =
+            vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
+        assert_eq!(expected, builder.parse_payload_key("hello.world[11].inner[0]", "", "").unwrap())
     }
 }

@@ -3,6 +3,7 @@ extern crate serde_json;
 #[macro_use]
 extern crate structopt;
 extern crate tornado_collector_json;
+extern crate tornado_common_api;
 extern crate tornado_common_logger;
 
 #[macro_use]
@@ -13,7 +14,7 @@ pub mod config;
 use std::fs;
 use std::io;
 use std::{thread, time};
-use tornado_collector_json::model::{Json, JsonValue};
+use tornado_common_api::{Payload, Value};
 use tornado_common_logger::setup_logger;
 
 fn main() {
@@ -35,7 +36,7 @@ fn main() {
     for i in 0..conf.io.repeat_send {
         for event in &events {
             let mut event_clone = event.clone();
-            event_clone.insert("count".to_owned(), JsonValue::Text(i.to_string()));
+            event_clone.insert("count".to_owned(), Value::Text(i.to_string()));
             write(&mut handle, &event_clone);
             thread::sleep(sleep_millis);
         }
@@ -44,7 +45,7 @@ fn main() {
     info!("Completed sending {} events", conf.io.repeat_send * events.len());
 }
 
-fn read_events_from_config(path: &str) -> Vec<Json> {
+fn read_events_from_config(path: &str) -> Vec<Payload> {
     let paths = fs::read_dir(path).unwrap();
     let mut events = vec![];
 
@@ -62,7 +63,7 @@ fn read_events_from_config(path: &str) -> Vec<Json> {
     events
 }
 
-fn write(stdout: &mut io::Write, event: &Json) {
+fn write(stdout: &mut io::Write, event: &Payload) {
     debug!("Sending event: \n{:?}", event);
     let event_bytes = serde_json::to_vec(event).unwrap();
     stdout.write_all(&event_bytes).expect("should write event to socket");

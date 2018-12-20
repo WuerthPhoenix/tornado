@@ -54,7 +54,7 @@ impl PathMatcher {
         let mut path = self.path.clone();
         for param in self.parameters.iter() {
             let var_value =
-                payload.get(&param.simple).and_then(|val| val.text()).ok_or_else(|| {
+                payload.get(&param.simple).and_then(|val| val.get_text()).ok_or_else(|| {
                     let message = format!(
                         "Cannot resolve path parameter [{}] for path [{}]",
                         &param.simple, self.path
