@@ -1,7 +1,7 @@
-use accessor::Accessor;
-use error::MatcherError;
-use matcher::operator::Operator;
-use model::ProcessedEvent;
+use crate::accessor::Accessor;
+use crate::error::MatcherError;
+use crate::matcher::operator::Operator;
+use crate::model::ProcessedEvent;
 use tornado_common_api::to_option_str;
 
 const OPERATOR_NAME: &str = "contain";
@@ -43,7 +43,7 @@ impl Operator for Contain {
 mod test {
 
     use super::*;
-    use accessor::AccessorBuilder;
+    use crate::accessor::AccessorBuilder;
     use std::collections::HashMap;
     use tornado_common_api::*;
 

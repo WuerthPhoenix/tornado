@@ -1,8 +1,4 @@
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate tornado_common_api;
-
+use failure_derive::Fail;
 use tornado_common_api::Event;
 
 /// A Collector is a source of Events.

@@ -1,11 +1,4 @@
-extern crate chrono;
-extern crate failure;
-extern crate fern;
-extern crate log;
-#[macro_use]
-extern crate failure_derive;
-extern crate structopt;
-
+use failure_derive::Fail;
 use std::str::FromStr;
 use structopt::StructOpt;
 

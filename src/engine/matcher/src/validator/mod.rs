@@ -1,7 +1,8 @@
 pub mod id;
 
-use config::Rule;
-use error::MatcherError;
+use crate::config::Rule;
+use crate::error::MatcherError;
+use log::*;
 use std::collections::HashMap;
 
 /// A validator for a Rule or array of Rules
@@ -89,7 +90,7 @@ impl RuleValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
 
     #[test]

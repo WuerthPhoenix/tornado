@@ -1,7 +1,7 @@
-use accessor::{Accessor, AccessorBuilder};
-use config::Action as ConfigAction;
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::accessor::{Accessor, AccessorBuilder};
+use crate::config::Action as ConfigAction;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
 use std::collections::HashMap;
 use tornado_common_api::Action;
 
@@ -76,7 +76,7 @@ impl ActionResolver {
 #[cfg(test)]
 mod test {
     use super::*;
-    use accessor::Accessor;
+    use crate::accessor::Accessor;
     use std::collections::HashMap;
     use tornado_common_api::*;
 

@@ -4,10 +4,11 @@ version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
 ]
+edition = "2018"
 
 [dependencies]
 actix = "0.7"
-config = "0.9"
+config_rs = { version = "0.9", package = "config" }
 futures = "0.1"
 log = "0.4"
 num_cpus = "1.8"

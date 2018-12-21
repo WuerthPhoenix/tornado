@@ -1,8 +1,4 @@
-extern crate failure;
-#[macro_use]
-extern crate failure_derive;
-extern crate tornado_common_api;
-
+use failure_derive::Fail;
 use tornado_common_api::Action;
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).

@@ -1,5 +1,5 @@
-use matcher::operator::Operator;
-use model::ProcessedEvent;
+use crate::matcher::operator::Operator;
+use crate::model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "true";
 

@@ -1,7 +1,7 @@
-use config;
-use error::MatcherError;
-use matcher::operator::{Operator, OperatorBuilder};
-use model::ProcessedEvent;
+use crate::config;
+use crate::error::MatcherError;
+use crate::matcher::operator::{Operator, OperatorBuilder};
+use crate::model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "or";
 

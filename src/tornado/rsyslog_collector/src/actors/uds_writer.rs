@@ -1,4 +1,6 @@
 use actix::prelude::*;
+use failure_derive::Fail;
+use log::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
@@ -92,7 +94,7 @@ impl Handler<EventMessage> for UdsWriterActor {
 
         match &mut self.tx {
             Some(stream) => {
-                let mut event = serde_json::to_string(&msg.event).map_err(|err| {
+                let event = serde_json::to_string(&msg.event).map_err(|err| {
                     UdsWriterActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 stream.write(event);

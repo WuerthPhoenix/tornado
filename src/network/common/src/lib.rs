@@ -1,5 +1,3 @@
-extern crate tornado_common_api;
-
 use tornado_common_api::Action;
 
 pub trait EventBus {

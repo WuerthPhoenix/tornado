@@ -1,3 +1,4 @@
+use log::*;
 use regex::Regex;
 use tornado_common_api::Payload;
 use tornado_executor_common::ExecutorError;

@@ -1,9 +1,3 @@
-extern crate regex;
-extern crate serde;
-extern crate serde_json;
-extern crate tornado_collector_common;
-extern crate tornado_common_api;
-
 use regex::Captures;
 use regex::Regex;
 use tornado_collector_common::{Collector, CollectorError};

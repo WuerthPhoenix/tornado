@@ -1,4 +1,5 @@
-use error::MatcherError;
+use crate::error::MatcherError;
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 
