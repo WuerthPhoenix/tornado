@@ -63,6 +63,7 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
  - Improvement: Support List Structures ( Arrays )
  - Improvement: All dates are expected and parsed into ISO 8601
  - Spikes are now deployed in spikes subdirectory
+ - Updated to Rust Edition 2018
 
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
  - New Feature: Contains Operation
