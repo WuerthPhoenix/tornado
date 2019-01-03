@@ -6,7 +6,7 @@ use tornado_engine_matcher::matcher::Matcher;
 use crate::utils;
 
 // Use case for an event with a big payload and a rule with two extracted variables that fully matches the event.
-// This bench represents the "worst case" situation in which each event goes through the entire process.
+// This benchmark represents the "worst case" situation in which each event goes through the entire process.
 pub fn bench(c: &mut Criterion) {
     // Create rule
     let rule = utils::read_rule_from_file("./benches_resources/full_match/rules/rule_01.json");

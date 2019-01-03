@@ -6,7 +6,7 @@ use tornado_engine_matcher::matcher::Matcher;
 use crate::utils;
 
 // Use case with a single rule and a single event that does not match the rule.
-// This bench represents the "best case" situation from a performance point of view.
+// This benchmark represents the "best case" situation from a performance point of view.
 pub fn bench(c: &mut Criterion) {
     // Create rule
     let rule = utils::read_rule_from_file("./benches_resources/no_match/rules/rule_01.json");
