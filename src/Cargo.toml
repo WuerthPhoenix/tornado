@@ -13,6 +13,7 @@ members = [
    "executor/script",
    "network/common",
    "network/simple",
+   "spike/jmespath",
    "spike/rsyslog_collector",
    "spike/rsyslog_collector_writer",
    "spike/snmptrapd_collector_writer",
