@@ -5,7 +5,6 @@ mod test {
 
     #[test]
     fn should_return_event_type() {
-
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
@@ -23,7 +22,6 @@ mod test {
 
     #[test]
     fn should_return_the_hostgroup() {
-
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
@@ -41,7 +39,6 @@ mod test {
 
     #[test]
     fn should_return_from_nested_map() {
-
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
