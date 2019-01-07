@@ -37,6 +37,13 @@
             "match": "(.*)",
             "group_match_idx": 0
           }
+        },
+        "sensor_room": {
+          "from": "${event.payload.line_6}",
+          "regex": {
+            "match": "(.*)",
+            "group_match_idx": 0
+          }
         }
       }
     },
@@ -47,6 +54,8 @@
           "host": "bz-outsideserverroom-sensors",
           "service": "motion_sensor_port_4",
           "status": "Critical",
+          "host_ip": "${event.payload.host_ip}",
+          "room": "${_variables.sensor_room}",
           "message": "${_variables.sensor_description}"
         }
       }

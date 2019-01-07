@@ -33,4 +33,7 @@ lto = true
 # E.g.:
 # > RUSTFLAGS='-C target-cpu=native' cargo bench
 [profile.bench]
-lto = true
+debug = true
+# When lto is enabled the profiler results are less clear.
+# It should be taken into account a performance penalty of at least the 15% without the lto.
+#lto = true
