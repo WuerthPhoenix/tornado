@@ -8,7 +8,7 @@ fn greet(req: &HttpRequest) -> impl Responder {
     format!("Hello {}!\n", to)
 }
 
-fn get_event(evt: Json<Value>) -> Result<String> {
+fn post_event(evt: Json<Value>) -> Result<String> {
     println!("received event: \n{:#?}", evt);
     Ok(format!("got event \n{:#?}\n", evt))
 }
@@ -25,8 +25,8 @@ fn main() {
 fn create_app() -> App {
     App::new()
         .resource("/", |r| r.method(Method::GET).f(greet))
+        .resource("/event", |r| r.method(Method::POST).with(post_event))
         .resource("/{name}", |r| r.method(Method::GET).f(greet))
-        .resource("/event", |r| r.method(Method::POST).with(get_event))
 }
 
 #[cfg(test)]
@@ -35,6 +35,7 @@ mod test {
     use super::*;
     use actix_web::{HttpRequest, HttpMessage, http};
     use actix_web::test::TestServer;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_get_hello_world() {
@@ -57,7 +58,7 @@ mod test {
         let mut srv = TestServer::with_factory(create_app);
 
         let request = srv.client(
-            http::Method::POST, "/event").finish().unwrap();
+            http::Method::POST, "/event").json(Event::new("Prova1")).unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
 
