@@ -68,7 +68,7 @@ fn is_valid_signature(signature: &str, body: &str, secret: &str) -> bool {
     let mut hmac = Hmac::new(digest, secret.as_bytes());
     hmac.input(body.as_bytes());
     let expected_signature = hmac.result();
-
+    println!("Expected signature {:#?}", expected_signature.code().to_vec());
     crypto::util::fixed_time_eq(
         bytes_to_hex(expected_signature.code().to_vec()).as_bytes(),
         signature.as_bytes(),
@@ -135,12 +135,6 @@ mod test {
             http::Method::POST, "/event").content_type("application/json").body(github_json).unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
-
-        /*
-        let bytes = srv.execute(response.body()).unwrap();
-        let body = str::from_utf8(&bytes).unwrap();
-        assert_eq!(body, "Hello world!");
-        */
     }
 
     #[test]
@@ -149,19 +143,11 @@ mod test {
         let filename = "./test_resources/github-push-02.json";
         let github_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
-        /*
-        Request URL: http://35.205.131.72/event_signed
-        Request method: POST
-        content-type: application/json
-        Expect:
-        User-Agent: GitHub-Hookshot/8e148c0
-        X-GitHub-Delivery: 54b2c95c-13f7-11e9-8b5d-0704feb425a3
-        X-GitHub-Event: push
-        X-Hub-Signature: sha1=c01c6f2efadbb04b44a7bdfc555d4a86fb388998
-        */
-
         let request = srv.client(
-            http::Method::POST, "/event_signed").content_type("application/json").body(github_json).unwrap();
+            http::Method::POST, "/event_signed")
+            .header("X-Hub-Signature", "sha1=89ac00d2c641c3136fa0c6dded600f935d8011bb")
+            .content_type("application/json")
+            .body(github_json).unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
     }
@@ -173,7 +159,10 @@ mod test {
         let filename = "./test_resources/github-push-02.json";
         let github_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
         let request = srv.client(
-            http::Method::POST, "/event_signed").content_type("application/json").body(github_json).unwrap();
+            http::Method::POST, "/event_signed")
+            .header("X-Hub-Signature", "sha1=0123456789012345678901234567890123456789")
+            .content_type("application/json")
+            .body(github_json).unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(!response.status().is_success());
     }
