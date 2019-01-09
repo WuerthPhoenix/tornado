@@ -1,10 +1,8 @@
 use actix_web::http::Method;
-use actix_web::{FromRequest, server, App, HttpRequest, Json, Responder, Result};
+use actix_web::{server, App, HttpRequest, Json, Responder, Result};
 use crypto::hmac::Hmac;
 use crypto::mac::Mac;
 use crypto::sha1::Sha1;
-use serde_json::Value;
-use tornado_common_api::Event;
 
 fn greet(req: &HttpRequest) -> impl Responder {
     let to = req.match_info().get("name").unwrap_or("World");
@@ -12,8 +10,8 @@ fn greet(req: &HttpRequest) -> impl Responder {
     format!("Hello {}!\n", to)
 }
 
-fn post_event((req, evt): (HttpRequest, Json<jmespath::Variable>)) -> Result<String> {
-    let mut event = Event::new("webhook");
+fn post_event((_req, evt): (HttpRequest, Json<jmespath::Variable>)) -> Result<String> {
+    //let event = Event::new("webhook");
     let expr = jmespath::compile("commits[0].author.name").unwrap();
     let result = expr.search(evt.as_object()).unwrap();
 
@@ -23,13 +21,12 @@ fn post_event((req, evt): (HttpRequest, Json<jmespath::Variable>)) -> Result<Str
 }
 
 fn post_event_signed((req, body): (HttpRequest, String)) -> Result<String> {
-
     validate_request(&req, &body)?;
 
-    let evt: jmespath::Variable = serde_json::from_str(&body)
-        .map_err(actix_web::error::ErrorBadRequest)?;
+    let evt: jmespath::Variable =
+        serde_json::from_str(&body).map_err(actix_web::error::ErrorBadRequest)?;
 
-    let mut event = Event::new("webhook");
+    //let event = Event::new("webhook");
     let expr = jmespath::compile("commits[0].author.name").unwrap();
     let result = expr.search(evt.as_object()).unwrap();
 
@@ -38,14 +35,12 @@ fn post_event_signed((req, body): (HttpRequest, String)) -> Result<String> {
     Ok(format!("got event \n{:#?}\n", evt))
 }
 
-
 fn validate_request(req: &HttpRequest, body: &str) -> Result<()> {
-    use std::io::Read;
-
     let r = req.clone();
-    let s: &str = r.headers()
+    let s: &str = r
+        .headers()
         .get("X-Hub-Signature")
-        .ok_or(actix_web::error::ErrorUnauthorized(actix_web::error::ParseError::Header))?
+        .ok_or_else(|| actix_web::error::ErrorUnauthorized(actix_web::error::ParseError::Header))?
         .to_str()
         .map_err(actix_web::error::ErrorUnauthorized)?;
 
@@ -68,29 +63,19 @@ fn is_valid_signature(signature: &str, body: &str, secret: &str) -> bool {
     let mut hmac = Hmac::new(digest, secret.as_bytes());
     hmac.input(body.as_bytes());
     let expected_signature = hmac.result();
-    println!("Expected signature {:#?}", expected_signature.code().to_vec());
+    // println!("Expected signature {:#?}", expected_signature.code().to_vec());
     crypto::util::fixed_time_eq(
-        bytes_to_hex(expected_signature.code().to_vec()).as_bytes(),
+        bytes_to_hex(&expected_signature.code().to_vec()).as_bytes(),
         signature.as_bytes(),
     )
 }
 
-
-fn bytes_to_hex(bytes: Vec<u8>) -> String {
-    bytes
-        .iter()
-        .map(|b| format!("{:02x}", b))
-        .collect::<Vec<String>>()
-        .join("")
+fn bytes_to_hex(bytes: &[u8]) -> String {
+    bytes.iter().map(|b| format!("{:02x}", b)).collect::<Vec<String>>().join("")
 }
 
 fn main() {
-    server::new(|| {
-        create_app()
-    })
-    .bind("0.0.0.0:80")
-    .expect("Can not bind to port 80")
-    .run();
+    server::new(|| create_app()).bind("0.0.0.0:80").expect("Can not bind to port 80").run();
 }
 
 fn create_app() -> App {
@@ -105,9 +90,8 @@ fn create_app() -> App {
 mod test {
 
     use super::*;
-    use actix_web::{HttpRequest, HttpMessage, http};
     use actix_web::test::TestServer;
-    use tornado_common_api::Event;
+    use actix_web::{http, HttpMessage};
     use std::fs;
 
     #[test]
@@ -115,8 +99,7 @@ mod test {
         // start new test server
         let mut srv = TestServer::with_factory(create_app);
 
-        let request = srv.client(
-            http::Method::GET, "/").finish().unwrap();
+        let request = srv.client(http::Method::GET, "/").finish().unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
 
@@ -130,9 +113,13 @@ mod test {
         // start new test server
         let mut srv = TestServer::with_factory(create_app);
         let filename = "./test_resources/github-push-01.json";
-        let github_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
-        let request = srv.client(
-            http::Method::POST, "/event").content_type("application/json").body(github_json).unwrap();
+        let github_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let request = srv
+            .client(http::Method::POST, "/event")
+            .content_type("application/json")
+            .body(github_json)
+            .unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
     }
@@ -141,13 +128,15 @@ mod test {
     fn should_post_a_signed_event() {
         let mut srv = TestServer::with_factory(create_app);
         let filename = "./test_resources/github-push-02.json";
-        let github_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let github_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
-        let request = srv.client(
-            http::Method::POST, "/event_signed")
+        let request = srv
+            .client(http::Method::POST, "/event_signed")
             .header("X-Hub-Signature", "sha1=89ac00d2c641c3136fa0c6dded600f935d8011bb")
             .content_type("application/json")
-            .body(github_json).unwrap();
+            .body(github_json)
+            .unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(response.status().is_success());
     }
@@ -157,12 +146,14 @@ mod test {
         // start new test server
         let mut srv = TestServer::with_factory(create_app);
         let filename = "./test_resources/github-push-02.json";
-        let github_json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
-        let request = srv.client(
-            http::Method::POST, "/event_signed")
+        let github_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let request = srv
+            .client(http::Method::POST, "/event_signed")
             .header("X-Hub-Signature", "sha1=0123456789012345678901234567890123456789")
             .content_type("application/json")
-            .body(github_json).unwrap();
+            .body(github_json)
+            .unwrap();
         let response = srv.execute(request.send()).unwrap();
         assert!(!response.status().is_success());
     }
