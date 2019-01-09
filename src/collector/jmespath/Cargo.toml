@@ -1,0 +1,13 @@
+[package]
+name = "tornado_collector_jmespath"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+edition = "2018"
+
+[dependencies]
+jmespath = "0.2"
+serde_json = "1.0"
+tornado_collector_common = { path = "../common", version = "0.0.1" }
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
