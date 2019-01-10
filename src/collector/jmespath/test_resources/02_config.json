@@ -1,3 +1,7 @@
 {
-  "event_type": "${hostgroups[0]}"
+  "event_type": "${hostgroups[0]}",
+  "payload": {
+    "constant": "constant_value",
+    "expression": "${icinga_customfields.snmpcommunity}"
+  }
 }

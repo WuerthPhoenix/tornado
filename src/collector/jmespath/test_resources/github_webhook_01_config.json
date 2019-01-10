@@ -1,3 +1,7 @@
 {
-  "event_type": "${commits[0].committer.name}"
+  "event_type": "${commits[0].committer.name}",
+  "payload": {
+    "ref": "${ref}",
+    "repository_name": "${repository.name}"
+  }
 }

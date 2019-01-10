@@ -1,3 +1,6 @@
 {
-  "event_type": "webhook"
+  "event_type": "webhook",
+  "payload": {
+    "one": "one_value"
+  }
 }

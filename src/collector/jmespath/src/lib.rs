@@ -1,5 +1,7 @@
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::{Event, Payload};
+use tornado_common_api::{Event};
+use std::collections::HashMap;
+use tornado_common_api::Value;
 
 pub mod config;
 
@@ -30,16 +32,29 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
 
 struct EventProcessor {
     event_type: ValueProcessor,
+    payload: EventProcessorPayload
 }
+
+type EventProcessorPayload = HashMap<String, ValueProcessor>;
 
 const EXPRESSION_START_DELIMITER: &str = "${";
 const EXPRESSION_END_DELIMITER: &str = "}";
 
 impl EventProcessor {
+
     pub fn build(
         config: &config::JMESPathEventCollectorConfig,
     ) -> Result<EventProcessor, CollectorError> {
-        Ok(EventProcessor { event_type: EventProcessor::build_value(&config.event_type)? })
+        let mut processor = EventProcessor{
+            event_type: EventProcessor::build_value(&config.event_type)?,
+            payload: HashMap::new()
+        };
+
+        for (key, value) in &config.payload {
+            processor.payload.insert(key.to_owned(), EventProcessor::build_value(value)?);
+        }
+
+        Ok(processor)
     }
 
     fn build_value(value: &str) -> Result<ValueProcessor, CollectorError> {
@@ -60,6 +75,14 @@ impl EventProcessor {
             event.event_type = value.to_owned();
             Ok(())
         })?;
+
+        for (key, value_processor ) in &self.payload {
+            value_processor.process(var, |value| {
+                event.payload.insert(key.clone(), Value::Text(value.to_owned()));
+                Ok(())
+            })?;
+        }
+
         Ok(event)
     }
 }
@@ -104,6 +127,7 @@ mod test {
     use std::fs;
     use std::rc::Rc;
     use std::sync::Mutex;
+    use std::collections::HashMap;
 
     #[test]
     fn value_processor_text_should_return_static_text() {
@@ -216,10 +240,43 @@ mod test {
         assert_eq!("", *atomic.lock().unwrap());
     }
 
+    /*
+    #[test]
+    fn value_processor_expression_should_handle_non_string_values() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let value_proc = ValueProcessor::Expression { exp };
+        let json = r#"
+        {
+            "key": true
+        }
+        "#;
+        let data = jmespath::Variable::from_json(&json).unwrap();
+        let atomic = Rc::new(Mutex::new("".to_owned()));
+        let atomic_clone = atomic.clone();
+
+        // Act
+        let result = value_proc.process(&data, move |value| {
+            let mut lock = atomic_clone.lock().unwrap();
+            *lock = value.to_owned();
+            Ok(())
+        });
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!("true", *atomic.lock().unwrap());
+    }
+    */
+
     #[test]
     fn event_processor_should_build_from_config_with_static_type() {
         // Arrange
-        let config = config::JMESPathEventCollectorConfig { event_type: "hello world".to_owned() };
+        let mut config = config::JMESPathEventCollectorConfig {
+            event_type: "hello world".to_owned(),
+            payload: HashMap::new()
+        };
+        config.payload.insert("one".to_owned(), "value_one".to_owned());
+        config.payload.insert("two".to_owned(), "value_two".to_owned());
 
         // Act
         let event_processor = EventProcessor::build(&config).unwrap();
@@ -229,22 +286,39 @@ mod test {
             ValueProcessor::Text { text: "hello world".to_owned() },
             event_processor.event_type
         );
+        assert_eq!(
+            &ValueProcessor::Text { text: "value_one".to_owned() },
+            event_processor.payload.get("one").unwrap()
+        );
+        assert_eq!(
+            &ValueProcessor::Text { text: "value_two".to_owned() },
+            event_processor.payload.get("two").unwrap()
+        );
     }
 
     #[test]
     fn event_processor_should_build_from_config_with_expression() {
         // Arrange
-        let config =
-            config::JMESPathEventCollectorConfig { event_type: "${first.second[0]}".to_owned() };
-        let expected_expression = jmespath::compile("first.second[0]").unwrap();
+        let mut config =
+            config::JMESPathEventCollectorConfig {
+                event_type: "${first.second[0]}".to_owned(),
+                payload: HashMap::new()
+            };
+        config.payload.insert("one".to_owned(), "${first.third}".to_owned());
+        let expected_event_expression = jmespath::compile("first.second[0]").unwrap();
+        let expected_payload_expression = jmespath::compile("first.third").unwrap();
 
         // Act
         let event_processor = EventProcessor::build(&config).unwrap();
 
         // Assert
         assert_eq!(
-            ValueProcessor::Expression { exp: expected_expression },
+            ValueProcessor::Expression { exp: expected_event_expression },
             event_processor.event_type
+        );
+        assert_eq!(
+            &ValueProcessor::Expression { exp: expected_payload_expression },
+            event_processor.payload.get("one").unwrap()
         );
     }
 
