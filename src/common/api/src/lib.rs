@@ -58,6 +58,8 @@ pub type Payload = HashMap<String, Value>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
+    Bool(bool),
+    Number(f64),
     Text(String),
     Array(Vec<Value>),
     Map(Payload),
@@ -69,6 +71,8 @@ impl Value {
             Value::Map(payload) => payload.get(key),
             Value::Array(_) => None,
             Value::Text(_) => None,
+            Value::Bool(_) => None,
+            Value::Number(_) => None,
         }
     }
     pub fn get_from_array(&self, index: usize) -> Option<&Value> {
@@ -76,6 +80,8 @@ impl Value {
             Value::Map(_) => None,
             Value::Array(array) => array.get(index),
             Value::Text(_) => None,
+            Value::Bool(_) => None,
+            Value::Number(_) => None,
         }
     }
     pub fn get_text(&self) -> Option<&str> {
@@ -83,42 +89,87 @@ impl Value {
             Value::Text(value) => Some(value),
             Value::Map(_) => None,
             Value::Array(_) => None,
+            Value::Bool(_) => None,
+            Value::Number(_) => None,
+        }
+    }
+    pub fn get_bool(&self) -> Option<&bool> {
+        match self {
+            Value::Text(_) => None,
+            Value::Map(_) => None,
+            Value::Array(_) => None,
+            Value::Bool(value) => Some(value),
+            Value::Number(_) => None,
+        }
+    }
+    pub fn get_number(&self) -> Option<&f64> {
+        match self {
+            Value::Text(_) => None,
+            Value::Map(_) => None,
+            Value::Array(_) => None,
+            Value::Bool(_) => None,
+            Value::Number(value) => Some(value),
         }
     }
 }
 
+// Allows str == Value
 impl PartialEq<str> for Value {
     fn eq(&self, other: &str) -> bool {
-        let option_text: Option<&str> = self.into();
+        let option_text = self.get_text();
         match option_text {
             Some(text) => text == other,
             None => false,
         }
     }
 }
-// To make comparison bidirectional
+
+// Allows Value == str
 impl PartialEq<Value> for str {
     fn eq(&self, other: &Value) -> bool {
         other == self
     }
 }
 
-impl<'o> Into<Option<&'o str>> for &'o Value {
-    fn into(self) -> Option<&'o str> {
-        match self {
-            Value::Text(text) => Some(text),
-            _ => None,
+// Allows bool == Value
+impl PartialEq<bool> for Value {
+    fn eq(&self, other: &bool) -> bool {
+        let option_bool = self.get_bool();
+        match option_bool {
+            Some(value) => value == other,
+            None => false,
         }
     }
 }
 
-pub fn ref_to_option_str(value: &Value) -> Option<&str> {
-    value.into()
+// Allows Value == bool
+impl PartialEq<Value> for bool {
+    fn eq(&self, other: &Value) -> bool {
+        other == self
+    }
 }
 
-pub fn to_option_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
+// Allows f64 == Value
+impl PartialEq<f64> for Value {
+    fn eq(&self, other: &f64) -> bool {
+        let option_number = self.get_number();
+        match option_number {
+            Some(value) => value == other,
+            None => false,
+        }
+    }
+}
+
+// Allows Value == f64
+impl PartialEq<Value> for f64 {
+    fn eq(&self, other: &Value) -> bool {
+        other == self
+    }
+}
+
+pub fn cow_to_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
     match value {
-        Some(cow) => cow.as_ref().into(),
+        Some(cow) => cow.as_ref().get_text(),
         None => None,
     }
 }
@@ -150,7 +201,7 @@ mod test {
         let value = Value::Text("text_value".to_owned());
 
         // Act
-        let text: Option<&str> = (&value).into();
+        let text = (&value).get_text();
 
         // Assert
         assert!(text.is_some());
@@ -163,10 +214,37 @@ mod test {
         let value = Value::Map(HashMap::new());
 
         // Act
-        let text: Option<&str> = (&value).into();
+        let text = (&value).get_text();
 
         // Assert
         assert!(text.is_none());
+    }
+
+    #[test]
+    fn should_return_an_option_with_bool() {
+        // Arrange
+        let value = Value::Bool(true);
+
+        // Act
+        let boolean = value.get_bool();
+
+        // Assert
+        assert!(boolean.is_some());
+        assert!(boolean.unwrap());
+    }
+
+
+    #[test]
+    fn should_return_an_option_with_number() {
+        // Arrange
+        let value = Value::Number(64.0);
+
+        // Act
+        let number = value.get_number();
+
+        // Assert
+        assert!(number.is_some());
+        assert_eq!(&64.0, number.unwrap());
     }
 
     #[test]
@@ -176,7 +254,7 @@ mod test {
         let cow = Cow::Borrowed(&value);
 
         // Act
-        let text = ref_to_option_str(&cow);
+        let text = cow.get_text();
 
         // Assert
         assert!(text.is_some());
@@ -190,7 +268,7 @@ mod test {
         let option = Some(Cow::Borrowed(&value));
 
         // Act
-        let text = to_option_str(&option);
+        let text = cow_to_str(&option);
 
         // Assert
         assert!(text.is_some());
@@ -205,6 +283,58 @@ mod test {
         // Assert
         assert_eq!("text_value", &value);
         assert_eq!(&value, "text_value");
+    }
+
+    #[test]
+    fn should_compare_value_with_bool() {
+        // Arrange
+        let value = Value::Bool(true);
+
+        // Assert
+        assert_eq!(&true, &value);
+        assert_eq!(&value, &true);
+    }
+
+    #[test]
+    fn should_compare_value_with_f64() {
+        // Arrange
+        let value = Value::Number(69.0);
+
+        // Assert
+        assert_eq!(&69.0, &value);
+        assert_eq!(&value, &69.0);
+    }
+
+    #[test]
+    fn should_compare_array_values() {
+        // Arrange
+        let value_1 = Value::Array(vec![
+            Value::Text("text_value".to_owned()),
+            Value::Bool(false)
+        ]);
+
+        // Assert
+        assert_ne!(Value::Array(vec![]), value_1);
+        assert_eq!(value_1.clone(), value_1);
+    }
+
+    #[test]
+    fn should_compare_map_values() {
+        // Arrange
+        let array = Value::Array(vec![
+            Value::Text("text_value".to_owned()),
+            Value::Bool(false)
+        ]);
+
+        let mut payload = Payload::new();
+        payload.insert("array".to_owned(), array);
+        payload.insert("bool".to_owned(), Value::Bool(false));
+
+        let map = Value::Map(payload.clone());
+
+        // Assert
+        assert_ne!(Value::Map(Payload::new()), map);
+        assert_eq!(Value::Map(payload.clone()), map);
     }
 
     #[test]
@@ -272,6 +402,8 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
         payload.insert("two-key".to_owned(), Value::Text("two-value".to_owned()));
+        payload.insert("number".to_owned(), Value::Number(999.99));
+        payload.insert("bool".to_owned(), Value::Bool(false));
 
         let event = Event::new_with_payload("my-event-type", payload.clone());
         let created_ts = event.created_ts.to_owned();

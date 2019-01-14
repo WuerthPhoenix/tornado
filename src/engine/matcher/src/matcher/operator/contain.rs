@@ -2,7 +2,7 @@ use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::ProcessedEvent;
-use tornado_common_api::to_option_str;
+use tornado_common_api::cow_to_str;
 
 const OPERATOR_NAME: &str = "contain";
 
@@ -26,10 +26,10 @@ impl Operator for Contain {
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
         let option_text = self.text.get(event);
-        match to_option_str(&option_text) {
+        match cow_to_str(&option_text) {
             Some(text) => {
                 let option_substring = self.substring.get(event);
-                match to_option_str(&option_substring) {
+                match cow_to_str(&option_substring) {
                     Some(substring) => (&text).contains(substring),
                     None => false,
                 }

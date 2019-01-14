@@ -3,7 +3,7 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::ProcessedEvent;
 use regex::Regex as RustRegex;
-use tornado_common_api::to_option_str;
+use tornado_common_api::cow_to_str;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -32,7 +32,7 @@ impl Operator for Regex {
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
         let cow_value = self.target.get(event);
-        to_option_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
+        cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }
 

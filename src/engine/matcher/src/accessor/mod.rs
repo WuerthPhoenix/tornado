@@ -254,7 +254,7 @@ mod test {
 
         let result = accessor.get(&event);
 
-        assert!(DateTime::parse_from_rfc3339(to_option_str(&result).unwrap()).is_ok());
+        assert!(DateTime::parse_from_rfc3339(cow_to_str(&result).unwrap()).is_ok());
     }
 
     #[test]
