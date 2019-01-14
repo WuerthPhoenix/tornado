@@ -233,7 +233,6 @@ mod test {
         assert!(boolean.unwrap());
     }
 
-
     #[test]
     fn should_return_an_option_with_number() {
         // Arrange
@@ -308,10 +307,7 @@ mod test {
     #[test]
     fn should_compare_array_values() {
         // Arrange
-        let value_1 = Value::Array(vec![
-            Value::Text("text_value".to_owned()),
-            Value::Bool(false)
-        ]);
+        let value_1 = Value::Array(vec![Value::Text("text_value".to_owned()), Value::Bool(false)]);
 
         // Assert
         assert_ne!(Value::Array(vec![]), value_1);
@@ -321,10 +317,7 @@ mod test {
     #[test]
     fn should_compare_map_values() {
         // Arrange
-        let array = Value::Array(vec![
-            Value::Text("text_value".to_owned()),
-            Value::Bool(false)
-        ]);
+        let array = Value::Array(vec![Value::Text("text_value".to_owned()), Value::Bool(false)]);
 
         let mut payload = Payload::new();
         payload.insert("array".to_owned(), array);

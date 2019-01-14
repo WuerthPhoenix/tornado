@@ -151,4 +151,32 @@ mod test {
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
 
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_bool() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"t".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Bool(true));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_number() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"9".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Number(999.99));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
 }
