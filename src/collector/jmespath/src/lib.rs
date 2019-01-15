@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::Event;
 use tornado_common_api::Value;
+use tornado_common_api::Payload;
+use jmespath::Rcvar;
 
 pub mod config;
 
@@ -12,7 +14,7 @@ pub struct JMESPathEventCollector {
 
 impl JMESPathEventCollector {
     pub fn build(
-        config: &config::JMESPathEventCollectorConfig,
+        config: config::JMESPathEventCollectorConfig,
     ) -> Result<JMESPathEventCollector, CollectorError> {
         let processor = EventProcessor::build(config)?;
         Ok(JMESPathEventCollector { processor })
@@ -26,7 +28,7 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
                 message: format!("Cannot parse received json. Err: {} - Json: {}.", err, input),
             }
         })?;
-        self.processor.process(&data)
+        self.processor.process(data)
     }
 }
 
@@ -42,44 +44,53 @@ const EXPRESSION_END_DELIMITER: &str = "}";
 
 impl EventProcessor {
     pub fn build(
-        config: &config::JMESPathEventCollectorConfig,
+        config: config::JMESPathEventCollectorConfig,
     ) -> Result<EventProcessor, CollectorError> {
         let mut processor = EventProcessor {
-            event_type: EventProcessor::build_value(&config.event_type)?,
-            payload: HashMap::new(),
+            event_type: EventProcessor::build_value(Value::Text(config.event_type))?,
+            payload: EventProcessorPayload::new(),
         };
 
-        for (key, value) in &config.payload {
-            processor.payload.insert(key.to_owned(), EventProcessor::build_value(value)?);
+        for (key, value) in config.payload {
+            processor.payload.insert(key, EventProcessor::build_value(value)?);
         }
 
         Ok(processor)
     }
 
-    fn build_value(value: &str) -> Result<ValueProcessor, CollectorError> {
-        if value.starts_with(EXPRESSION_START_DELIMITER)
-            && value.ends_with(EXPRESSION_END_DELIMITER)
-        {
-            let expression = &value
-                [EXPRESSION_START_DELIMITER.len()..(value.len() - EXPRESSION_END_DELIMITER.len())];
-            Ok(ValueProcessor::Expression { exp: jmespath::compile(expression).unwrap() })
-        } else {
-            Ok(ValueProcessor::Text { text: value.to_owned() })
+    fn build_value(value: Value) -> Result<ValueProcessor, CollectorError> {
+        match value {
+            // ToDo: implement Map
+            Value::Map(payload) => Err(CollectorError::EventCreationError{message: "MAP not implemented yet".to_owned()}),
+            // ToDo: implement Array
+            Value::Array(_) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()}),
+            Value::Text(text) => EventProcessor::build_value_from_str(&text),
+            Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
+            Value::Number(number) => Ok(ValueProcessor::Number(number)),
         }
     }
 
-    pub fn process(&self, var: &jmespath::Variable) -> Result<Event, CollectorError> {
-        let mut event = Event::new("");
-        self.event_type.process(var, |value| {
-            event.event_type = value.to_owned();
-            Ok(())
-        })?;
+    fn build_value_from_str(text: &str) -> Result<ValueProcessor, CollectorError> {
+        if text.starts_with(EXPRESSION_START_DELIMITER)
+            && text.ends_with(EXPRESSION_END_DELIMITER)
+        {
+            let expression = &text
+                [EXPRESSION_START_DELIMITER.len()..(text.len() - EXPRESSION_END_DELIMITER.len())];
+            let jmespath_exp = jmespath::compile(expression)
+                .map_err(|err| CollectorError::EventCreationError{message: format!("Not valid jmespath expression: [{}]. Err: {}", expression, err)})?;
+            Ok(ValueProcessor::Expression { exp: jmespath_exp })
+        } else {
+            Ok(ValueProcessor::Text(text.to_owned()))
+        }
+    }
+
+    pub fn process(&self, var: jmespath::Variable) -> Result<Event, CollectorError> {
+        let event_type = self.event_type.process(&var)?.get_text()
+            .ok_or(CollectorError::EventCreationError{message: "Event type must be a string".to_owned()})?;
+        let mut event = Event::new(event_type);
 
         for (key, value_processor) in &self.payload {
-            value_processor.process(var, |value| {
-                event.payload.insert(key.clone(), Value::Text(value.to_owned()));
-                Ok(())
-            })?;
+            event.payload.insert(key.clone(), value_processor.process(&var)?);
         }
 
         Ok(event)
@@ -89,35 +100,64 @@ impl EventProcessor {
 #[derive(Debug, PartialEq)]
 enum ValueProcessor {
     Expression { exp: jmespath::Expression<'static> },
-    Text { text: String },
+    Bool(bool),
+    Number(f64),
+    Text(String),
+    Array(Vec<ValueProcessor>),
+    Map(HashMap<String, ValueProcessor>)
 }
 
 impl ValueProcessor {
-    pub fn process<F>(&self, var: &jmespath::Variable, func: F) -> Result<(), CollectorError>
-    where
-        F: FnOnce(&str) -> Result<(), CollectorError>,
+    pub fn process(&self, var: &jmespath::Variable) -> Result<Value, CollectorError>
     {
         match self {
             ValueProcessor::Expression { exp } => {
-                let search_result =
+                let search_result: Rcvar =
                     exp.search(var).map_err(|e| CollectorError::EventCreationError {
                         message: format!(
                             "Expression failed to execute. Exp: {}. Error: {}",
                             exp, e
                         ),
                     })?;
-                let val = search_result.as_string().ok_or_else(|| {
-                    CollectorError::EventCreationError {
-                        message: format!("Cannot parse expression result as string. Exp: {}.", exp),
-                    }
-                })?;
-
-                func(val)
+                variable_to_value(search_result)
             }
-            ValueProcessor::Text { text } => func(&text),
+            ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
+            ValueProcessor::Number(number) => Ok(Value::Number(number.clone())),
+            ValueProcessor::Bool(boolean) => Ok(Value::Bool(boolean.clone())),
+            // ToDo implement Map
+            ValueProcessor::Map(map) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()}),
+            // ToDo implement Array
+            ValueProcessor::Array(array) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()})
         }
     }
 }
+
+fn variable_to_value(var: Rcvar) -> Result<Value, CollectorError> {
+    match *var {
+        jmespath::Variable::String(s) => Ok(Value::Text(s)),
+        jmespath::Variable::Bool(b) => Ok(Value::Bool(b)),
+        jmespath::Variable::Number(n) => Ok(Value::Number(n)),
+        jmespath::Variable::Object(values) => {
+            let mut payload = Payload::new();
+            for (key, value) in values {
+                payload.insert(key, variable_to_value(value)?);
+            }
+            Ok(Value::Map(payload))
+        },
+        jmespath::Variable::Array(values) => {
+            let mut payload = vec![];
+            for value in values {
+                payload.push(variable_to_value(value)?);
+            }
+            Ok(Value::Array(payload))
+        },
+        // ToDo how to map null?
+        jmespath::Variable::Null => Err(CollectorError::EventCreationError{message: "Cannot map jmespath::Variable::Null to the Event payload".to_owned()}),
+        // ToDo how to map Expref?
+        jmespath::Variable::Expref(_) => Err(CollectorError::EventCreationError{message: "Cannot map jmespath::Variable::Expref to the Event payload".to_owned()}),
+    }
+}
+
 
 #[cfg(test)]
 mod test {
