@@ -20,6 +20,7 @@ members = [
    "spike/stdin",
    "spike/tokio",
    "spike/uds_writer_collector",
+   "spike/webhook",
    "tornado/tornado",
    "tornado/rsyslog_collector",
 ]
