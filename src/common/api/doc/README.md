@@ -17,7 +17,14 @@ An event has a simple structure, composed of:
 
 - __type__:  The Event type identifier (a collector usually sends Events of a single type)
 - __created_ts__:  The Event creation timestamp in ISO 8601 format
-- __payload__:  A Map<String, String> with event-specific data
+- __payload__:  A Map<String, Value> with event-specific data
+
+where the payload __Value__ can be any valid JSON type:
+- A __string__
+- A __bool__ value (i.e. true or false)
+- A __number__ 
+- An __array__ of Values
+- A __map__ of type Map<String, Value>
 
 All fields are mandatory, although the payload can be an empty structure.
 
@@ -40,7 +47,7 @@ Example Event in JSON format:
 Like the Event structure, the structure of an Action is rather simple:
 
 - __id__:  The Action type identifier (an executor usually processes a single action type)
-- __payload__:  A Map<String, String> with action-specific data.
+- __payload__:  A Map<String, Value> with action-specific data.
 
 All fields are mandatory, although again the payload can be an empty structure.
 
