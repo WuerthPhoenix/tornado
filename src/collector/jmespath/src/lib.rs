@@ -126,14 +126,14 @@ impl ValueProcessor {
     pub fn process(&self, var: &jmespath::Variable) -> Result<Value, CollectorError> {
         match self {
             ValueProcessor::Expression { exp } => {
-                let search_result: Rcvar =
+                let search_result =
                     exp.search(var).map_err(|e| CollectorError::EventCreationError {
                         message: format!(
                             "Expression failed to execute. Exp: {}. Error: {}",
                             exp, e
                         ),
                     })?;
-                variable_to_value(search_result.as_ref().clone())
+                variable_to_value(&search_result)
             }
             ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
             ValueProcessor::Number(number) => Ok(Value::Number(*number)),
@@ -150,22 +150,22 @@ impl ValueProcessor {
     }
 }
 
-fn variable_to_value(var: jmespath::Variable) -> Result<Value, CollectorError> {
-    match var {
-        jmespath::Variable::String(s) => Ok(Value::Text(s)),
-        jmespath::Variable::Bool(b) => Ok(Value::Bool(b)),
-        jmespath::Variable::Number(n) => Ok(Value::Number(n)),
+fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
+    match var.as_ref() {
+        jmespath::Variable::String(s) => Ok(Value::Text(s.to_owned())),
+        jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
+        jmespath::Variable::Number(n) => Ok(Value::Number(*n)),
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
             for (key, value) in values {
-                payload.insert(key, variable_to_value(value.as_ref().clone())?);
+                payload.insert(key.to_owned(), variable_to_value(value)?);
             }
             Ok(Value::Map(payload))
         }
-        jmespath::Variable::Array(values) => {
+        jmespath::Variable::Array(ref values) => {
             let mut payload = vec![];
             for value in values {
-                payload.push(variable_to_value(value.as_ref().clone())?);
+                payload.push(variable_to_value(value)?);
             }
             Ok(Value::Array(payload))
         }
