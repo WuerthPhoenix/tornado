@@ -1,9 +1,9 @@
+use jmespath::Rcvar;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::Event;
-use tornado_common_api::Value;
 use tornado_common_api::Payload;
-use jmespath::Rcvar;
+use tornado_common_api::Value;
 
 pub mod config;
 
@@ -28,7 +28,7 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
                 message: format!("Cannot parse received json. Err: {} - Json: {}.", err, input),
             }
         })?;
-        self.processor.process(data)
+        self.processor.process(&data)
     }
 }
 
@@ -61,9 +61,13 @@ impl EventProcessor {
     fn build_value(value: Value) -> Result<ValueProcessor, CollectorError> {
         match value {
             // ToDo: implement Map
-            Value::Map(payload) => Err(CollectorError::EventCreationError{message: "MAP not implemented yet".to_owned()}),
+            Value::Map(payload) => Err(CollectorError::EventCreationError {
+                message: "MAP not implemented yet".to_owned(),
+            }),
             // ToDo: implement Array
-            Value::Array(_) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()}),
+            Value::Array(_) => Err(CollectorError::EventCreationError {
+                message: "ARRAY not implemented yet".to_owned(),
+            }),
             Value::Text(text) => EventProcessor::build_value_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
             Value::Number(number) => Ok(ValueProcessor::Number(number)),
@@ -71,26 +75,37 @@ impl EventProcessor {
     }
 
     fn build_value_from_str(text: &str) -> Result<ValueProcessor, CollectorError> {
-        if text.starts_with(EXPRESSION_START_DELIMITER)
-            && text.ends_with(EXPRESSION_END_DELIMITER)
+        if text.starts_with(EXPRESSION_START_DELIMITER) && text.ends_with(EXPRESSION_END_DELIMITER)
         {
             let expression = &text
                 [EXPRESSION_START_DELIMITER.len()..(text.len() - EXPRESSION_END_DELIMITER.len())];
-            let jmespath_exp = jmespath::compile(expression)
-                .map_err(|err| CollectorError::EventCreationError{message: format!("Not valid jmespath expression: [{}]. Err: {}", expression, err)})?;
+            let jmespath_exp = jmespath::compile(expression).map_err(|err| {
+                CollectorError::EventCreationError {
+                    message: format!(
+                        "Not valid jmespath expression: [{}]. Err: {}",
+                        expression, err
+                    ),
+                }
+            })?;
             Ok(ValueProcessor::Expression { exp: jmespath_exp })
         } else {
             Ok(ValueProcessor::Text(text.to_owned()))
         }
     }
 
-    pub fn process(&self, var: jmespath::Variable) -> Result<Event, CollectorError> {
-        let event_type = self.event_type.process(&var)?.get_text()
-            .ok_or(CollectorError::EventCreationError{message: "Event type must be a string".to_owned()})?;
+    pub fn process(&self, var: &jmespath::Variable) -> Result<Event, CollectorError> {
+        let event_type = self
+            .event_type
+            .process(var)?
+            .get_text()
+            .ok_or(CollectorError::EventCreationError {
+                message: "Event type must be a string".to_owned(),
+            })?
+            .to_owned();
         let mut event = Event::new(event_type);
 
         for (key, value_processor) in &self.payload {
-            event.payload.insert(key.clone(), value_processor.process(&var)?);
+            event.payload.insert(key.clone(), value_processor.process(var)?);
         }
 
         Ok(event)
@@ -104,12 +119,11 @@ enum ValueProcessor {
     Number(f64),
     Text(String),
     Array(Vec<ValueProcessor>),
-    Map(HashMap<String, ValueProcessor>)
+    Map(HashMap<String, ValueProcessor>),
 }
 
 impl ValueProcessor {
-    pub fn process(&self, var: &jmespath::Variable) -> Result<Value, CollectorError>
-    {
+    pub fn process(&self, var: &jmespath::Variable) -> Result<Value, CollectorError> {
         match self {
             ValueProcessor::Expression { exp } => {
                 let search_result: Rcvar =
@@ -119,45 +133,52 @@ impl ValueProcessor {
                             exp, e
                         ),
                     })?;
-                variable_to_value(search_result)
+                variable_to_value(search_result.as_ref().clone())
             }
             ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
-            ValueProcessor::Number(number) => Ok(Value::Number(number.clone())),
-            ValueProcessor::Bool(boolean) => Ok(Value::Bool(boolean.clone())),
+            ValueProcessor::Number(number) => Ok(Value::Number(*number)),
+            ValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             // ToDo implement Map
-            ValueProcessor::Map(map) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()}),
+            ValueProcessor::Map(map) => Err(CollectorError::EventCreationError {
+                message: "ARRAY not implemented yet".to_owned(),
+            }),
             // ToDo implement Array
-            ValueProcessor::Array(array) => Err(CollectorError::EventCreationError{message: "ARRAY not implemented yet".to_owned()})
+            ValueProcessor::Array(array) => Err(CollectorError::EventCreationError {
+                message: "ARRAY not implemented yet".to_owned(),
+            }),
         }
     }
 }
 
-fn variable_to_value(var: Rcvar) -> Result<Value, CollectorError> {
-    match *var {
+fn variable_to_value(var: jmespath::Variable) -> Result<Value, CollectorError> {
+    match var {
         jmespath::Variable::String(s) => Ok(Value::Text(s)),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(b)),
         jmespath::Variable::Number(n) => Ok(Value::Number(n)),
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
             for (key, value) in values {
-                payload.insert(key, variable_to_value(value)?);
+                payload.insert(key, variable_to_value(value.as_ref().clone())?);
             }
             Ok(Value::Map(payload))
-        },
+        }
         jmespath::Variable::Array(values) => {
             let mut payload = vec![];
             for value in values {
-                payload.push(variable_to_value(value)?);
+                payload.push(variable_to_value(value.as_ref().clone())?);
             }
             Ok(Value::Array(payload))
-        },
+        }
         // ToDo how to map null?
-        jmespath::Variable::Null => Err(CollectorError::EventCreationError{message: "Cannot map jmespath::Variable::Null to the Event payload".to_owned()}),
+        jmespath::Variable::Null => Err(CollectorError::EventCreationError {
+            message: "Cannot map jmespath::Variable::Null to the Event payload".to_owned(),
+        }),
         // ToDo how to map Expref?
-        jmespath::Variable::Expref(_) => Err(CollectorError::EventCreationError{message: "Cannot map jmespath::Variable::Expref to the Event payload".to_owned()}),
+        jmespath::Variable::Expref(_) => Err(CollectorError::EventCreationError {
+            message: "Cannot map jmespath::Variable::Expref to the Event payload".to_owned(),
+        }),
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -165,13 +186,11 @@ mod test {
     use super::*;
     use std::collections::HashMap;
     use std::fs;
-    use std::rc::Rc;
-    use std::sync::Mutex;
 
     #[test]
     fn value_processor_text_should_return_static_text() {
         // Arrange
-        let value_proc = ValueProcessor::Text { text: "hello world".to_owned() };
+        let value_proc = ValueProcessor::Text("hello world".to_owned());
         let json = r#"
         {
             "level_one": {
@@ -180,19 +199,13 @@ mod test {
         }
         "#;
         let data = jmespath::Variable::from_json(&json).unwrap();
-        let atomic = Rc::new(Mutex::new("".to_owned()));
-        let atomic_clone = atomic.clone();
 
         // Act
-        let result = value_proc.process(&data, move |value| {
-            let mut lock = atomic_clone.lock().unwrap();
-            *lock = value.to_owned();
-            Ok(())
-        });
+        let result = value_proc.process(&data);
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!("hello world", *atomic.lock().unwrap());
+        assert_eq!(Value::Text("hello world".to_owned()), result.unwrap());
     }
 
     #[test]
@@ -208,19 +221,13 @@ mod test {
         }
         "#;
         let data = jmespath::Variable::from_json(&json).unwrap();
-        let atomic = Rc::new(Mutex::new("".to_owned()));
-        let atomic_clone = atomic.clone();
 
         // Act
-        let result = value_proc.process(&data, move |value| {
-            let mut lock = atomic_clone.lock().unwrap();
-            *lock = value.to_owned();
-            Ok(())
-        });
+        let result = value_proc.process(&data);
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!("level_two_value", *atomic.lock().unwrap());
+        assert_eq!(Value::Text("level_two_value".to_owned()), result.unwrap());
     }
 
     #[test]
@@ -236,19 +243,12 @@ mod test {
         }
         "#;
         let data = jmespath::Variable::from_json(&json).unwrap();
-        let atomic = Rc::new(Mutex::new("".to_owned()));
-        let atomic_clone = atomic.clone();
 
         // Act
-        let result = value_proc.process(&data, move |value| {
-            let mut lock = atomic_clone.lock().unwrap();
-            *lock = value.to_owned();
-            Ok(())
-        });
+        let result = value_proc.process(&data);
 
         // Assert
         assert!(result.is_err());
-        assert_eq!("", *atomic.lock().unwrap());
     }
 
     #[test]
@@ -264,24 +264,16 @@ mod test {
         }
         "#;
         let data = jmespath::Variable::from_json(&json).unwrap();
-        let atomic = Rc::new(Mutex::new("".to_owned()));
-        let atomic_clone = atomic.clone();
 
         // Act
-        let result = value_proc.process(&data, move |value| {
-            let mut lock = atomic_clone.lock().unwrap();
-            *lock = value.to_owned();
-            Ok(())
-        });
+        let result = value_proc.process(&data);
 
         // Assert
         assert!(result.is_err());
-        assert_eq!("", *atomic.lock().unwrap());
     }
 
-    /*
     #[test]
-    fn value_processor_expression_should_handle_non_string_values() {
+    fn value_processor_expression_should_handle_boolean_values() {
         // Arrange
         let exp = jmespath::compile("key").unwrap();
         let value_proc = ValueProcessor::Expression { exp };
@@ -291,21 +283,34 @@ mod test {
         }
         "#;
         let data = jmespath::Variable::from_json(&json).unwrap();
-        let atomic = Rc::new(Mutex::new("".to_owned()));
-        let atomic_clone = atomic.clone();
 
         // Act
-        let result = value_proc.process(&data, move |value| {
-            let mut lock = atomic_clone.lock().unwrap();
-            *lock = value.to_owned();
-            Ok(())
-        });
+        let result = value_proc.process(&data);
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!("true", *atomic.lock().unwrap());
+        assert_eq!(Value::Bool(true), result.unwrap());
     }
-    */
+
+    #[test]
+    fn value_processor_expression_should_handle_numeric_values() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let value_proc = ValueProcessor::Expression { exp };
+        let json = r#"
+        {
+            "key": 99.66
+        }
+        "#;
+        let data = jmespath::Variable::from_json(&json).unwrap();
+
+        // Act
+        let result = value_proc.process(&data);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(Value::Number(99.66), result.unwrap());
+    }
 
     #[test]
     fn event_processor_should_build_from_config_with_static_type() {
@@ -314,23 +319,20 @@ mod test {
             event_type: "hello world".to_owned(),
             payload: HashMap::new(),
         };
-        config.payload.insert("one".to_owned(), "value_one".to_owned());
-        config.payload.insert("two".to_owned(), "value_two".to_owned());
+        config.payload.insert("one".to_owned(), Value::Text("value_one".to_owned()));
+        config.payload.insert("two".to_owned(), Value::Text("value_two".to_owned()));
 
         // Act
-        let event_processor = EventProcessor::build(&config).unwrap();
+        let event_processor = EventProcessor::build(config).unwrap();
 
         // Assert
+        assert_eq!(ValueProcessor::Text("hello world".to_owned()), event_processor.event_type);
         assert_eq!(
-            ValueProcessor::Text { text: "hello world".to_owned() },
-            event_processor.event_type
-        );
-        assert_eq!(
-            &ValueProcessor::Text { text: "value_one".to_owned() },
+            &ValueProcessor::Text("value_one".to_owned()),
             event_processor.payload.get("one").unwrap()
         );
         assert_eq!(
-            &ValueProcessor::Text { text: "value_two".to_owned() },
+            &ValueProcessor::Text("value_two".to_owned()),
             event_processor.payload.get("two").unwrap()
         );
     }
@@ -342,12 +344,12 @@ mod test {
             event_type: "${first.second[0]}".to_owned(),
             payload: HashMap::new(),
         };
-        config.payload.insert("one".to_owned(), "${first.third}".to_owned());
+        config.payload.insert("one".to_owned(), Value::Text("${first.third}".to_owned()));
         let expected_event_expression = jmespath::compile("first.second[0]").unwrap();
         let expected_payload_expression = jmespath::compile("first.third").unwrap();
 
         // Act
-        let event_processor = EventProcessor::build(&config).unwrap();
+        let event_processor = EventProcessor::build(config).unwrap();
 
         // Assert
         assert_eq!(
@@ -387,7 +389,7 @@ mod test {
             .map_err(|e| panic!("Cannot parse config json. Err: {}", e))
             .unwrap();
 
-        let collector = JMESPathEventCollector::build(&config).unwrap();
+        let collector = JMESPathEventCollector::build(config).unwrap();
 
         let input_json = fs::read_to_string(input_path)
             .expect(&format!("Unable to open the file [{}]", input_path));
