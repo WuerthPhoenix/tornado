@@ -3,7 +3,7 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::ProcessedEvent;
 use regex::Regex as RustRegex;
-use tornado_common_api::to_option_str;
+use tornado_common_api::cow_to_str;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -32,7 +32,7 @@ impl Operator for Regex {
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
         let cow_value = self.target.get(event);
-        to_option_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
+        cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }
 
@@ -132,6 +132,34 @@ mod test {
         .unwrap();
 
         let event = Event::new("test_type");
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_bool() {
+        let operator = Regex::build(
+            &"[a-fA-F0-9]".to_owned(),
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Bool(true));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_number() {
+        let operator = Regex::build(
+            &"[a-fA-F0-9]".to_owned(),
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Number(999.99));
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
