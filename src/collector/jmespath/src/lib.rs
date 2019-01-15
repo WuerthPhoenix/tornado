@@ -1,6 +1,6 @@
-use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::{Event};
 use std::collections::HashMap;
+use tornado_collector_common::{Collector, CollectorError};
+use tornado_common_api::Event;
 use tornado_common_api::Value;
 
 pub mod config;
@@ -11,7 +11,7 @@ pub struct JMESPathEventCollector {
 }
 
 impl JMESPathEventCollector {
-    pub fn new(
+    pub fn build(
         config: &config::JMESPathEventCollectorConfig,
     ) -> Result<JMESPathEventCollector, CollectorError> {
         let processor = EventProcessor::build(config)?;
@@ -32,7 +32,7 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
 
 struct EventProcessor {
     event_type: ValueProcessor,
-    payload: EventProcessorPayload
+    payload: EventProcessorPayload,
 }
 
 type EventProcessorPayload = HashMap<String, ValueProcessor>;
@@ -41,13 +41,12 @@ const EXPRESSION_START_DELIMITER: &str = "${";
 const EXPRESSION_END_DELIMITER: &str = "}";
 
 impl EventProcessor {
-
     pub fn build(
         config: &config::JMESPathEventCollectorConfig,
     ) -> Result<EventProcessor, CollectorError> {
-        let mut processor = EventProcessor{
+        let mut processor = EventProcessor {
             event_type: EventProcessor::build_value(&config.event_type)?,
-            payload: HashMap::new()
+            payload: HashMap::new(),
         };
 
         for (key, value) in &config.payload {
@@ -76,7 +75,7 @@ impl EventProcessor {
             Ok(())
         })?;
 
-        for (key, value_processor ) in &self.payload {
+        for (key, value_processor) in &self.payload {
             value_processor.process(var, |value| {
                 event.payload.insert(key.clone(), Value::Text(value.to_owned()));
                 Ok(())
@@ -124,10 +123,10 @@ impl ValueProcessor {
 mod test {
 
     use super::*;
+    use std::collections::HashMap;
     use std::fs;
     use std::rc::Rc;
     use std::sync::Mutex;
-    use std::collections::HashMap;
 
     #[test]
     fn value_processor_text_should_return_static_text() {
@@ -273,7 +272,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "hello world".to_owned(),
-            payload: HashMap::new()
+            payload: HashMap::new(),
         };
         config.payload.insert("one".to_owned(), "value_one".to_owned());
         config.payload.insert("two".to_owned(), "value_two".to_owned());
@@ -299,11 +298,10 @@ mod test {
     #[test]
     fn event_processor_should_build_from_config_with_expression() {
         // Arrange
-        let mut config =
-            config::JMESPathEventCollectorConfig {
-                event_type: "${first.second[0]}".to_owned(),
-                payload: HashMap::new()
-            };
+        let mut config = config::JMESPathEventCollectorConfig {
+            event_type: "${first.second[0]}".to_owned(),
+            payload: HashMap::new(),
+        };
         config.payload.insert("one".to_owned(), "${first.third}".to_owned());
         let expected_event_expression = jmespath::compile("first.second[0]").unwrap();
         let expected_payload_expression = jmespath::compile("first.third").unwrap();
@@ -349,7 +347,7 @@ mod test {
             .map_err(|e| panic!("Cannot parse config json. Err: {}", e))
             .unwrap();
 
-        let collector = JMESPathEventCollector::new(&config).unwrap();
+        let collector = JMESPathEventCollector::build(&config).unwrap();
 
         let input_json = fs::read_to_string(input_path)
             .expect(&format!("Unable to open the file [{}]", input_path));
