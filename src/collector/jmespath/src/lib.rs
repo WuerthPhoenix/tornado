@@ -60,14 +60,20 @@ impl EventProcessor {
 
     fn build_value(value: Value) -> Result<ValueProcessor, CollectorError> {
         match value {
-            // ToDo: implement Map
-            Value::Map(payload) => Err(CollectorError::EventCreationError {
-                message: "MAP not implemented yet".to_owned(),
-            }),
-            // ToDo: implement Array
-            Value::Array(_) => Err(CollectorError::EventCreationError {
-                message: "ARRAY not implemented yet".to_owned(),
-            }),
+            Value::Map(payload) => {
+                let mut processor_payload = HashMap::new();
+                for (key, value) in payload {
+                    processor_payload.insert(key, EventProcessor::build_value(value)?);
+                }
+                Ok(ValueProcessor::Map(processor_payload))
+            },
+            Value::Array(values) => {
+                let mut processor_values = vec![];
+                for value in values {
+                    processor_values.push(EventProcessor::build_value(value)?)
+                }
+                Ok(ValueProcessor::Array(processor_values))
+            },
             Value::Text(text) => EventProcessor::build_value_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
             Value::Number(number) => Ok(ValueProcessor::Number(number)),
@@ -169,7 +175,8 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
             }
             Ok(Value::Array(payload))
         }
-        // ToDo how to map null?
+        // ToDo: we could map Null to a Value::Null but this way the desired behavior that a missing node
+        // causes a failure will not be true any more. In fact, a missing node will return Null instead.
         jmespath::Variable::Null => Err(CollectorError::EventCreationError {
             message: "Cannot map jmespath::Variable::Null to the Event payload".to_owned(),
         }),
@@ -360,6 +367,66 @@ mod test {
             &ValueProcessor::Expression { exp: expected_payload_expression },
             event_processor.payload.get("one").unwrap()
         );
+    }
+
+    #[test]
+    fn event_processor_should_build_from_config_with_recursive_maps() {
+        // Arrange
+        let mut config = config::JMESPathEventCollectorConfig {
+            event_type: "type".to_owned(),
+            payload: HashMap::new(),
+        };
+        config.payload.insert("one".to_owned(), Value::Text("${first.third}".to_owned()));
+
+        let mut inner_map = HashMap::new();
+        inner_map.insert("two".to_owned(), Value::Text("${first.second[0]}".to_owned()));
+        config.payload.insert("two".to_owned(), Value::Map(inner_map));
+
+        let expected_payload_expression_one = jmespath::compile("first.third").unwrap();
+        let expected_payload_expression_two = jmespath::compile("first.second[0]").unwrap();
+
+        // Act
+        let event_processor = EventProcessor::build(config).unwrap();
+
+        // Assert
+        assert_eq!(
+            &ValueProcessor::Expression { exp: expected_payload_expression_one },
+            event_processor.payload.get("one").unwrap()
+        );
+
+        let mut inner_processor = HashMap::new();
+        inner_processor.insert("two".to_owned(), ValueProcessor::Expression { exp: expected_payload_expression_two });
+        assert_eq!(
+            &ValueProcessor::Map(inner_processor),
+            event_processor.payload.get("two").unwrap()
+        );
+
+    }
+
+    #[test]
+    fn event_processor_should_build_from_config_with_recursive_arrays() {
+        // Arrange
+        let mut config = config::JMESPathEventCollectorConfig {
+            event_type: "type".to_owned(),
+            payload: HashMap::new(),
+        };
+
+        let mut inner_array = vec![];
+        inner_array.push(Value::Text("${first.second[0]}".to_owned()));
+        config.payload.insert("array".to_owned(), Value::Array(inner_array));
+
+        let expected_payload_expression = jmespath::compile("first.second[0]").unwrap();
+
+        // Act
+        let event_processor = EventProcessor::build(config).unwrap();
+
+        let mut inner_processor = vec![];
+        inner_processor.push(ValueProcessor::Expression { exp: expected_payload_expression });
+        assert_eq!(
+            &ValueProcessor::Array(inner_processor),
+            event_processor.payload.get("array").unwrap()
+        );
+
     }
 
     #[test]
