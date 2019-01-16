@@ -1,12 +1,12 @@
 # JMESPath Collector
 
-A collector that receives an input in JSON format and allows the creation of Events using the
+A Collector that receives an input in JSON format and allows the creation of Events using the
 [JMESPath JSON query language](http://jmespath.org/).
 
 ## Configuration
-The collector configuration is composed of:
-- __event_type__: It identifies the event type; it can be a String or a JMESPath expression
-(see below).
+The Collector configuration is composed of:
+- __event_type__: It identifies the type of Event, and can be a String or a JMESPath expression
+  (see below).
 - __payload__: A Map<String, ValueProcessor> with event-specific data.
 
 where the payload __ValueProcessor__ can be:
@@ -15,16 +15,16 @@ where the payload __ValueProcessor__ can be:
 - A __number__ 
 - An __array__ of values
 - A __map__ of type Map<String, ValueProcessor>
-- A __JMESpath expression__ : A valid JMESpath expression delimited by the '${' and '}' identifiers.
+- A __JMESpath expression__ : A valid JMESpath expression delimited by the '${' and '}' characters.
 
-The collector configuration defines the structure of the Event produced.
+The Collector configuration defines the structure of the Event produced.
 
-The configuration's event_type property will define the event type.
+The configuration's event_type property will define the type of Event.
 
-The event payload will have the same structure of the configuration's payload.
+The Event's payload will have the same structure as the configuration's payload.
 
 The __JMESpath expressions__ of the configuration will be applied to incoming inputs, 
-and the results will be included in the produced event. All other __ValueProcessors__, 
+and the results will be included in the Event produced. All other __ValueProcessors__, 
 instead, are copied without modifications.
 
 For example, consider the following configuration:
@@ -56,7 +56,7 @@ If this input is received:
 }
 ```
 
-The collector will produce the event:
+Then the Collector will produce the Event:
 ```json
 {
     "event_type": "webhook",
@@ -68,10 +68,13 @@ The collector will produce the event:
 }
 ```
 
-## Runtime behaviour
-When the JMESpath expression returns an array or a map, 
-the entire object will be put as-is in the event.
 
-However, if a JMESpath expression does not return a valid result, then the event is not created,
+
+## Runtime behavior
+
+When the JMESpath expression returns an array or a map, 
+the entire object will be inserted as-is into the Event.
+
+However, if a JMESpath expression does not return a valid result, then no Event is created,
 and an error is produced.
 This happens, for example, when the expression points to a non-existing node in the input JSON.
