@@ -47,40 +47,40 @@ impl EventProcessor {
         config: config::JMESPathEventCollectorConfig,
     ) -> Result<EventProcessor, CollectorError> {
         let mut processor = EventProcessor {
-            event_type: EventProcessor::build_value(Value::Text(config.event_type))?,
+            event_type: EventProcessor::build_value_processor(Value::Text(config.event_type))?,
             payload: EventProcessorPayload::new(),
         };
 
         for (key, value) in config.payload {
-            processor.payload.insert(key, EventProcessor::build_value(value)?);
+            processor.payload.insert(key, EventProcessor::build_value_processor(value)?);
         }
 
         Ok(processor)
     }
 
-    fn build_value(value: Value) -> Result<ValueProcessor, CollectorError> {
+    fn build_value_processor(value: Value) -> Result<ValueProcessor, CollectorError> {
         match value {
             Value::Map(payload) => {
                 let mut processor_payload = HashMap::new();
                 for (key, value) in payload {
-                    processor_payload.insert(key, EventProcessor::build_value(value)?);
+                    processor_payload.insert(key, EventProcessor::build_value_processor(value)?);
                 }
                 Ok(ValueProcessor::Map(processor_payload))
-            },
+            }
             Value::Array(values) => {
                 let mut processor_values = vec![];
                 for value in values {
-                    processor_values.push(EventProcessor::build_value(value)?)
+                    processor_values.push(EventProcessor::build_value_processor(value)?)
                 }
                 Ok(ValueProcessor::Array(processor_values))
-            },
-            Value::Text(text) => EventProcessor::build_value_from_str(&text),
+            }
+            Value::Text(text) => EventProcessor::build_value_processor_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
             Value::Number(number) => Ok(ValueProcessor::Number(number)),
         }
     }
 
-    fn build_value_from_str(text: &str) -> Result<ValueProcessor, CollectorError> {
+    fn build_value_processor_from_str(text: &str) -> Result<ValueProcessor, CollectorError> {
         if text.starts_with(EXPRESSION_START_DELIMITER) && text.ends_with(EXPRESSION_END_DELIMITER)
         {
             let expression = &text
@@ -144,14 +144,20 @@ impl ValueProcessor {
             ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
             ValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
-            // ToDo implement Map
-            ValueProcessor::Map(map) => Err(CollectorError::EventCreationError {
-                message: "ARRAY not implemented yet".to_owned(),
-            }),
-            // ToDo implement Array
-            ValueProcessor::Array(array) => Err(CollectorError::EventCreationError {
-                message: "ARRAY not implemented yet".to_owned(),
-            }),
+            ValueProcessor::Map(payload) => {
+                let mut processor_payload = HashMap::new();
+                for (key, value) in payload {
+                    processor_payload.insert(key.to_owned(), value.process(var)?);
+                }
+                Ok(Value::Map(processor_payload))
+            }
+            ValueProcessor::Array(values) => {
+                let mut processor_values = vec![];
+                for value in values {
+                    processor_values.push(value.process(var)?)
+                }
+                Ok(Value::Array(processor_values))
+            }
         }
     }
 }
@@ -320,6 +326,61 @@ mod test {
     }
 
     #[test]
+    fn value_processor_expression_should_handle_arrays() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let value_proc = ValueProcessor::Expression { exp };
+        let json = r#"
+        {
+            "key": ["one", true, 13]
+        }
+        "#;
+        let data = jmespath::Variable::from_json(&json).unwrap();
+
+        // Act
+        let result = value_proc.process(&data);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(
+            Value::Array(vec![
+                Value::Text("one".to_owned()),
+                Value::Bool(true),
+                Value::Number(13 as f64)
+            ]),
+            result.unwrap()
+        );
+    }
+
+    #[test]
+    fn value_processor_expression_should_handle_maps() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let value_proc = ValueProcessor::Expression { exp };
+        let json = r#"
+        {
+            "key": {
+                "one": true,
+                "two": 13
+            }
+        }
+        "#;
+        let data = jmespath::Variable::from_json(&json).unwrap();
+
+        // Act
+        let result = value_proc.process(&data);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let mut payload = HashMap::new();
+        payload.insert("one".to_owned(), Value::Bool(true));
+        payload.insert("two".to_owned(), Value::Number(13 as f64));
+
+        assert_eq!(Value::Map(payload), result.unwrap());
+    }
+
+    #[test]
     fn event_processor_should_build_from_config_with_static_type() {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
@@ -395,12 +456,14 @@ mod test {
         );
 
         let mut inner_processor = HashMap::new();
-        inner_processor.insert("two".to_owned(), ValueProcessor::Expression { exp: expected_payload_expression_two });
+        inner_processor.insert(
+            "two".to_owned(),
+            ValueProcessor::Expression { exp: expected_payload_expression_two },
+        );
         assert_eq!(
             &ValueProcessor::Map(inner_processor),
             event_processor.payload.get("two").unwrap()
         );
-
     }
 
     #[test]
@@ -426,7 +489,6 @@ mod test {
             &ValueProcessor::Array(inner_processor),
             event_processor.payload.get("array").unwrap()
         );
-
     }
 
     #[test]

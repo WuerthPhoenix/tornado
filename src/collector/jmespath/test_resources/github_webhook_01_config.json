@@ -2,6 +2,15 @@
   "event_type": "${commits[0].committer.name}",
   "payload": {
     "ref": "${ref}",
-    "repository_name": "${repository.name}"
+    "repository_name": "${repository.name}",
+    "inner_map": {
+      "map": {
+        "number": 123,
+        "boolean": true,
+        "text": "text_value",
+        "exp": "${repository.private}"
+      },
+      "array": [99.9, false, "Francesco", "${repository.owner.id}"]
+    }
   }
 }
