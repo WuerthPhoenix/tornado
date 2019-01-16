@@ -22,7 +22,7 @@ use tornado_engine_matcher::matcher::Matcher;
 fn main() {
     let conf = config::Conf::build();
 
-    setup_logger(&conf.logger).unwrap();
+    setup_logger(&conf.logger).expect("Cannot configure the logger");
 
     // Load rules from fs
     let config_rules =
@@ -41,8 +41,8 @@ fn main() {
         // Start archive executor actor
         let archive_config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
         let archive_executor_addr = SyncArbiter::start(1, move || {
-            let archive_config =
-                config::build_archive_config(&archive_config_file_path.clone()).unwrap();
+            let archive_config = config::build_archive_config(&archive_config_file_path.clone())
+                .expect("Cannot build the ArchiveExecutor configuration");
 
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -70,7 +70,8 @@ fn main() {
 
         // Start dispatcher actor
         let dispatcher_addr = SyncArbiter::start(1, move || {
-            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
+            let dispatcher =
+                Dispatcher::build(event_bus.clone()).expect("Cannot build the dispatcher");
             DispatcherActor { dispatcher }
         });
 
@@ -103,7 +104,7 @@ fn read_rules_from_config(path: &str) -> Vec<Rule> {
     let mut rules = vec![];
 
     for path in paths {
-        let filename = path.unwrap().path();
+        let filename = path.expect("Cannot get the filename").path();
         info!("Loading rule from file: [{}]", filename.display());
         let rule_body = fs::read_to_string(&filename)
             .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
