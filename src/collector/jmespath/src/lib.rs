@@ -7,14 +7,14 @@ use tornado_common_api::Value;
 
 pub mod config;
 
-/// A collector that receives an input in JSON format and allows the creation of Events
+/// A Collector that receives an input in JSON format and allows the creation of Events
 ///   using the JMESPath JSON query language.
 pub struct JMESPathEventCollector {
     processor: EventProcessor,
 }
 
 impl JMESPathEventCollector {
-    /// Builds a new collector instance
+    /// Builds a new Collector instance.
     pub fn build(
         config: config::JMESPathEventCollectorConfig,
     ) -> Result<JMESPathEventCollector, CollectorError> {
