@@ -7,6 +7,8 @@
     "hostgroups": ["linux0", "unix1"],
     "first_level": {
       "second_level_text": "some text",
+      "second_level_bool": true,
+      "second_level_number": 123456.789,
       "second_level_map": {}
     }
   }

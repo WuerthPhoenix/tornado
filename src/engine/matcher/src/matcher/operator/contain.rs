@@ -2,7 +2,7 @@ use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::ProcessedEvent;
-use tornado_common_api::to_option_str;
+use tornado_common_api::cow_to_str;
 
 const OPERATOR_NAME: &str = "contain";
 
@@ -26,10 +26,10 @@ impl Operator for Contain {
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
         let option_text = self.text.get(event);
-        match to_option_str(&option_text) {
+        match cow_to_str(&option_text) {
             Some(text) => {
                 let option_substring = self.substring.get(event);
-                match to_option_str(&option_substring) {
+                match cow_to_str(&option_substring) {
                     Some(substring) => (&text).contains(substring),
                     None => false,
                 }
@@ -147,6 +147,34 @@ mod test {
         .unwrap();
 
         let event = Event::new("test_type");
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_bool() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"t".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Bool(true));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_number() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"9".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Number(999.99));
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
