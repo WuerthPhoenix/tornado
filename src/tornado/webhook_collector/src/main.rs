@@ -43,19 +43,12 @@ fn create_app(webhooks_config: Vec<WebhookConfig>) -> App {
             id: config.id.clone(),
             token: config.token,
             collector: JMESPathEventCollector::build(config.collector_config).unwrap_or_else(
-                |err| {
-                    panic!(
-                        "Cannot create collector for webhook with id [{}]. Err: {}",
-                        id, err
-                    )
-                },
+                |err| panic!("Cannot create collector for webhook with id [{}]. Err: {}", id, err),
             ),
         };
         let path = format!("/event/{}", config.id);
         info!("Creating endpoint: [{}]", &path);
-        app = app.resource(&path, |r| {
-            r.method(Method::POST).with(move |f| handler.handle(f))
-        });
+        app = app.resource(&path, |r| r.method(Method::POST).with(move |f| handler.handle(f)));
     }
 
     app
@@ -67,8 +60,8 @@ mod test {
     use super::*;
     use actix_web::test::TestServer;
     use actix_web::{http, HttpMessage};
-    use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
     use std::collections::HashMap;
+    use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 
     #[test]
     fn ping_should_return_pong() {
@@ -92,21 +85,21 @@ mod test {
     fn should_create_a_path_per_webhook() {
         // Arrange
         let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig{
+        webhooks_config.push(WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "hook_1_type".to_owned(),
-                payload: HashMap::new()
-            }
+                payload: HashMap::new(),
+            },
         });
-        webhooks_config.push(WebhookConfig{
+        webhooks_config.push(WebhookConfig {
             id: "hook_2".to_owned(),
             token: "hook_2_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "hook_2_type".to_owned(),
-                payload: HashMap::new()
-            }
+                payload: HashMap::new(),
+            },
         });
         let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone()));
 
@@ -127,34 +120,35 @@ mod test {
 
         // Assert
         assert!(response_1.status().is_success());
-        let body_1 = std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
+        let body_1 =
+            std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
         assert_eq!("hook_1", &body_1);
 
         assert!(response_2.status().is_success());
-        let body_2 = std::str::from_utf8(&srv.execute(response_2.body()).unwrap()).unwrap().to_owned();
+        let body_2 =
+            std::str::from_utf8(&srv.execute(response_2.body()).unwrap()).unwrap().to_owned();
         assert_eq!("hook_2", &body_2);
-
     }
 
     #[test]
     fn should_accept_calls_only_if_token_matches() {
         // Arrange
         let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig{
+        webhooks_config.push(WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "hook_1_type".to_owned(),
-                payload: HashMap::new()
-            }
+                payload: HashMap::new(),
+            },
         });
-        webhooks_config.push(WebhookConfig{
+        webhooks_config.push(WebhookConfig {
             id: "hook_2".to_owned(),
             token: "hook_2_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "hook_2_type".to_owned(),
-                payload: HashMap::new()
-            }
+                payload: HashMap::new(),
+            },
         });
         let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone()));
 
@@ -175,10 +169,10 @@ mod test {
 
         // Assert
         assert!(response_1.status().is_success());
-        let body_1 = std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
+        let body_1 =
+            std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
         assert_eq!("hook_1", &body_1);
 
-        assert!(!response_2.status().is_success());
-
+        assert_eq!(http::StatusCode::UNAUTHORIZED, response_2.status());
     }
 }

@@ -43,7 +43,6 @@ impl Conf {
 }
 
 pub fn read_webhooks_from_config(path: &str) -> io::Result<Vec<WebhookConfig>> {
-
     info!("Loading webhook configurations from path: [{}]", path);
 
     let paths = fs::read_dir(path)?;
