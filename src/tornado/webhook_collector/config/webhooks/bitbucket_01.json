@@ -1,0 +1,10 @@
+{
+  "id": "bitbucket_test_repository",
+  "token": "abcdefghilmon",
+  "collector_config": {
+    "event_type": "webhook_bitbucket",
+    "payload": {
+      "source": "bitbucket"
+    }
+  }
+}
