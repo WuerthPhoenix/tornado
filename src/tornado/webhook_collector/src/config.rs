@@ -18,7 +18,12 @@ pub struct Io {
     #[structopt(long, default_value = "/webhooks/")]
     pub webhooks_dir: String,
 
-    /// The Unix Socket path where we will write the Tornado events.
+    /// Set the size of the in-memory queue where messages will be stored before being written
+    /// to the output socket.
+    #[structopt(long, default_value = "10000")]
+    pub uds_mailbox_capacity: usize,
+
+    /// The Unix Socket path where outgoing events will be written
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 

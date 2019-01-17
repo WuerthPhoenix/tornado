@@ -1,4 +1,5 @@
 use crate::config::WebhookConfig;
+use actix::prelude::*;
 use actix_web::http::Method;
 use actix_web::{server, App, HttpRequest, Responder};
 use chrono::prelude::Local;
@@ -6,6 +7,7 @@ use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_logger::setup_logger;
 
+mod actors;
 mod config;
 mod handler;
 
@@ -26,12 +28,21 @@ fn main() {
 
     let port = config.io.server_port;
 
-    info!("Starting web server at port {}", port);
+    System::run(move || {
+        info!("Starting web server at port {}", port);
 
-    server::new(move || create_app(webhooks_config.clone()))
-        .bind(format!("0.0.0.0:{}", port))
-        .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
-        .run();
+        // Start UdsWriter
+        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
+            config.io.uds_path.clone(),
+            config.io.uds_mailbox_capacity,
+        );
+
+        server::new(move || create_app(webhooks_config.clone()))
+            .bind(format!("0.0.0.0:{}", port))
+            .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
+            .start();
+
+    });
 }
 
 fn create_app(webhooks_config: Vec<WebhookConfig>) -> App {
