@@ -254,7 +254,7 @@ mod test {
 
         let result = accessor.get(&event);
 
-        assert!(DateTime::parse_from_rfc3339(to_option_str(&result).unwrap()).is_ok());
+        assert!(DateTime::parse_from_rfc3339(cow_to_str(&result).unwrap()).is_ok());
     }
 
     #[test]
@@ -270,6 +270,41 @@ mod test {
         let result = accessor.get(&event).unwrap();
 
         assert_eq!("body_value", result.as_ref());
+    }
+
+    #[test]
+    fn should_return_bool_value_from_payload() {
+        // Arrange
+        let accessor = Accessor::Payload { keys: vec!["bool_true".into()] };
+
+        let mut payload = HashMap::new();
+        payload.insert("bool_true".to_owned(), Value::Bool(true));
+        payload.insert("bool_false".to_owned(), Value::Bool(false));
+
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
+        // Act
+        let result = accessor.get(&event).unwrap();
+
+        // Assert
+        assert_eq!(&true, result.as_ref());
+    }
+
+    #[test]
+    fn should_return_number_value_from_payload() {
+        // Arrange
+        let accessor = Accessor::Payload { keys: vec!["num_555".into()] };
+
+        let mut payload = HashMap::new();
+        payload.insert("num_555".to_owned(), Value::Number(555.0));
+
+        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+
+        // Act
+        let result = accessor.get(&event).unwrap();
+
+        // Assert
+        assert_eq!(&555.0, result.as_ref());
     }
 
     #[test]
@@ -340,7 +375,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_accept_double_quotas_delimited_keys() {
+    fn should_accept_double_quotas_delimited_keys() {
         // Arrange
         let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()] };
 

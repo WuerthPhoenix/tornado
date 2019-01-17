@@ -75,7 +75,7 @@ fn bytes_to_hex(bytes: &[u8]) -> String {
 }
 
 fn main() {
-    server::new(|| create_app()).bind("0.0.0.0:80").expect("Can not bind to port 80").run();
+    server::new(create_app).bind("0.0.0.0:80").expect("Can not bind to port 80").run();
 }
 
 fn create_app() -> App {
