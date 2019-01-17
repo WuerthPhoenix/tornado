@@ -1,7 +1,9 @@
 use actix_web::{error, HttpRequest, HttpResponse, Query, http};
 use serde_derive::Deserialize;
 use failure::Fail;
-use tornado_collector_common::{Collector};
+use log::{debug, info, error};
+use tornado_collector_common::Collector;
+use tornado_collector_jmespath::JMESPathEventCollector;
 
 #[derive(Deserialize)]
 pub struct TokenQuery {
@@ -18,19 +20,26 @@ impl error::ResponseError for WrongTokenError {
     }
 }
 
-pub struct Handler<C>
-    where C: Collector<&'static str>
+pub struct Handler
 {
     pub id: String,
     pub token: String,
-    pub collector: C,
+    pub collector: JMESPathEventCollector
 }
 
-impl <C> Handler<C> where C: Collector<&'static str> {
+impl Handler {
     pub fn handle(&self, (_req, body, query): (HttpRequest, String, Query<TokenQuery>)) -> Result<String, WrongTokenError> {
-        if !(self.token.eq(&query.token)) {
+        let received_token = &query.token;
+
+        debug!("Endpoint [{}] called with token [{}]", self.id, received_token);
+
+        if !(self.token.eq(received_token)) {
+            error!("Endpoint [{}] - Token is not valid: [{}]", self.id, received_token);
             return Err(WrongTokenError{});
         }
+
+        info!("collector result = {:#?}", self.collector.to_event(&body));
+
         Ok(format!("{}", self.id))
     }
 }
