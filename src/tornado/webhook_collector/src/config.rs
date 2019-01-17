@@ -1,12 +1,12 @@
-use structopt::StructOpt;
-use serde_derive::{Deserialize};
-use tornado_common_logger::LoggerConfig;
-use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+use log::{info, trace};
+use serde_derive::Deserialize;
 use std::fs;
 use std::io;
-use log::{info, trace};
+use structopt::StructOpt;
+use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+use tornado_common_logger::LoggerConfig;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
     /// The filesystem folder where the Tornado Webhook collector configuration is saved
@@ -21,9 +21,13 @@ pub struct Io {
     /// The Unix Socket path where we will write the Tornado events.
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
+
+    /// The port to be use by the HTTP Server.
+    #[structopt(long, default_value = "8080")]
+    pub server_port: u32,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, StructOpt, Clone)]
 pub struct Conf {
     #[structopt(flatten)]
     pub logger: LoggerConfig,
@@ -55,11 +59,11 @@ pub fn read_webhooks_from_config(path: &str) -> io::Result<Vec<WebhookConfig>> {
     Ok(webhooks)
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone)]
 pub struct WebhookConfig {
-    id: String,
-    token: String,
-    collector_config: JMESPathEventCollectorConfig,
+    pub id: String,
+    pub token: String,
+    pub collector_config: JMESPathEventCollectorConfig,
 }
 
 #[cfg(test)]
