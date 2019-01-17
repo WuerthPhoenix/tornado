@@ -2,6 +2,7 @@ use crate::config::WebhookConfig;
 use actix_web::http::Method;
 use actix_web::{server, App, HttpRequest, Responder};
 use chrono::prelude::Local;
+use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_logger::setup_logger;
 
@@ -24,6 +25,9 @@ fn main() {
         .expect("Cannot parse the webhooks configuration");
 
     let port = config.io.server_port;
+
+    info!("Starting web server at port {}", port);
+
     server::new(move || create_app(webhooks_config.clone()))
         .bind(format!("0.0.0.0:{}", port))
         .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
@@ -38,7 +42,7 @@ fn create_app(webhooks_config: Vec<WebhookConfig>) -> App {
         let handler = handler::Handler {
             id: config.id.clone(),
             token: config.token,
-            collector: JMESPathEventCollector::new(&config.collector_config).unwrap_or_else(
+            collector: JMESPathEventCollector::build(config.collector_config).unwrap_or_else(
                 |err| {
                     panic!(
                         "Cannot create collector for webhook with id [{}]. Err: {}",
@@ -47,7 +51,9 @@ fn create_app(webhooks_config: Vec<WebhookConfig>) -> App {
                 },
             ),
         };
-        app = app.resource(&format!("/event/{}", config.id), |r| {
+        let path = format!("/event/{}", config.id);
+        info!("Creating endpoint: [{}]", &path);
+        app = app.resource(&path, |r| {
             r.method(Method::POST).with(move |f| handler.handle(f))
         });
     }
