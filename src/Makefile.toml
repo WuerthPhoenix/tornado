@@ -56,3 +56,23 @@ args = [
     "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]
+
+
+# Starts the webhook-collector.
+#
+# Execute with:
+# > cargo make run-webhook-collector
+[tasks.run-webhook-collector]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado_webhook_collector",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--uds-path=/tmp/tornado",
+    "--config-dir=./tornado/webhook_collector/config"
+]
+dependencies = ["build"]
