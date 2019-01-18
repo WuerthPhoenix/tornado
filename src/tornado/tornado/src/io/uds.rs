@@ -15,8 +15,15 @@ pub fn listen_to_uds_socket<
     let listener = match UnixListener::bind(&path_string) {
         Ok(m) => m,
         Err(_) => {
-            fs::remove_file(&path_string).unwrap();
-            UnixListener::bind(&path_string).unwrap()
+            fs::remove_file(&path_string).unwrap_or_else(|err| {
+                panic!(
+                    "Cannot bind UDS socket to path [{}] and cannot remove such file if exists: {}",
+                    path_string, err
+                )
+            });
+            UnixListener::bind(&path_string).unwrap_or_else(|err| {
+                panic!("Cannot bind UDS socket to path [{}]: {}", path_string, err)
+            })
         }
     };
 

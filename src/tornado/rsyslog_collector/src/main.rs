@@ -11,7 +11,7 @@ fn main() {
     let conf = config::Conf::build();
 
     // Setup logger
-    setup_logger(&conf.logger).unwrap();
+    setup_logger(&conf.logger).expect("Cannot configure the logger");
 
     info!("Rsyslog collector started");
 
