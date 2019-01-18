@@ -1,4 +1,3 @@
-
 //
 // ToDo: code copied from rsyslog_collector. To be moved in common library.
 //

@@ -92,7 +92,13 @@ mod test {
 
         // Assert
         assert_eq!(2, webhooks_config.len());
-        assert_eq!("bitbucket_test_repository", webhooks_config[0].id);
-        assert_eq!("github_test_repository", webhooks_config[1].id);
+        assert_eq!(
+            1,
+            webhooks_config.iter().filter(|val| "bitbucket_test_repository".eq(&val.id)).count()
+        );
+        assert_eq!(
+            1,
+            webhooks_config.iter().filter(|val| "github_test_repository".eq(&val.id)).count()
+        );
     }
 }

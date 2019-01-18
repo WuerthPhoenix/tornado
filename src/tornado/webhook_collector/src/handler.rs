@@ -5,7 +5,6 @@ use serde_derive::Deserialize;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
-use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct TokenQuery {
@@ -17,27 +16,28 @@ pub enum HandlerError {
     #[fail(display = "The request cannot be processed: {}", message)]
     CollectorError { message: String },
     #[fail(display = "NotValidToken")]
-    WrongTokenError
+    WrongTokenError,
 }
 
 impl error::ResponseError for HandlerError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            HandlerError::CollectorError{message: _} => HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR),
-            HandlerError::WrongTokenError => HttpResponse::new(http::StatusCode::UNAUTHORIZED)
+            HandlerError::CollectorError { .. } => {
+                HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR)
+            }
+            HandlerError::WrongTokenError => HttpResponse::new(http::StatusCode::UNAUTHORIZED),
         }
     }
 }
 
-pub struct Handler
-{
+pub struct Handler<F: Fn(Event)> {
     pub id: String,
     pub token: String,
-    pub collector: JMESPathEventCollector
-   // pub callback: Arc<Box<Fn(Event) + Send + Sync>>
+    pub collector: JMESPathEventCollector,
+    pub callback: F,
 }
 
-impl Handler {
+impl<F: Fn(Event)> Handler<F> {
     pub fn handle(
         &self,
         (_req, body, query): (HttpRequest, String, Query<TokenQuery>),
@@ -51,10 +51,12 @@ impl Handler {
             return Err(HandlerError::WrongTokenError);
         }
 
-        let event = self.collector.to_event(&body)
-            .map_err(|err| HandlerError::CollectorError{message: format!("{}", err)})?;
+        let event = self
+            .collector
+            .to_event(&body)
+            .map_err(|err| HandlerError::CollectorError { message: format!("{}", err) })?;
 
-        //callback(event);
+        (self.callback)(event);
 
         Ok(self.id.to_string())
     }
