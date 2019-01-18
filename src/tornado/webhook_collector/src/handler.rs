@@ -5,6 +5,7 @@ use serde_derive::Deserialize;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
+use std::sync::Arc;
 
 #[derive(Deserialize)]
 pub struct TokenQuery {
@@ -29,11 +30,11 @@ impl error::ResponseError for HandlerError {
 }
 
 pub struct Handler
-//<F> where F: Fn(Event)
 {
     pub id: String,
     pub token: String,
     pub collector: JMESPathEventCollector
+   // pub callback: Arc<Box<Fn(Event) + Send + Sync>>
 }
 
 impl Handler {
@@ -52,6 +53,8 @@ impl Handler {
 
         let event = self.collector.to_event(&body)
             .map_err(|err| HandlerError::CollectorError{message: format!("{}", err)})?;
+
+        //callback(event);
 
         Ok(self.id.to_string())
     }

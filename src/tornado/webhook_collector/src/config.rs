@@ -27,6 +27,10 @@ pub struct Io {
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
 
+    /// IP to bind the HTTP server to.
+    #[structopt(long, default_value = "0.0.0.0")]
+    pub bind_address: String,
+
     /// The port to be use by the HTTP Server.
     #[structopt(long, default_value = "8080")]
     pub server_port: u32,

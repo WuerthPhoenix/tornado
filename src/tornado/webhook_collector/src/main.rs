@@ -8,6 +8,7 @@ use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_logger::setup_logger;
 use tornado_common_api::Event;
 use crate::actors::uds_writer::EventMessage;
+use std::sync::Arc;
 
 mod actors;
 mod config;
@@ -29,6 +30,7 @@ fn main() {
         .expect("Cannot parse the webhooks configuration");
 
     let port = config.io.server_port;
+    let bind_address = config.io.bind_address.to_owned();
 
     System::run(move || {
         info!("Starting web server at port {}", port);
@@ -42,15 +44,16 @@ fn main() {
         server::new(move || create_app(webhooks_config.clone(), |event| {
             uds_writer_addr.do_send(EventMessage { event })
         }))
-            .bind(format!("0.0.0.0:{}", port))
+            .bind(format!("{}:{}", bind_address, port))
             .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
             .start();
 
     });
 }
 
-fn create_app<F>(webhooks_config: Vec<WebhookConfig>, callback: F) -> App
-    where F: Fn(Event)
+fn create_app<F: Fn(Event)>(webhooks_config: Vec<WebhookConfig>, callback: F
+//              , callback: Arc<Box<Fn(Event) + Send + Sync>>
+) -> App
 {
     let mut app = App::new().resource("/ping", |r| r.method(Method::GET).f(pong));
 
@@ -61,7 +64,8 @@ fn create_app<F>(webhooks_config: Vec<WebhookConfig>, callback: F) -> App
             token: config.token,
             collector: JMESPathEventCollector::build(config.collector_config).unwrap_or_else(
                 |err| panic!("Cannot create collector for webhook with id [{}]. Err: {}", id, err),
-            ),
+            )
+            //callback: callback.clone()
         };
         let path = format!("/event/{}", config.id);
         info!("Creating endpoint: [{}]", &path);
