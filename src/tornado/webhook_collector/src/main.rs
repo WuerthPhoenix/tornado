@@ -6,6 +6,8 @@ use chrono::prelude::Local;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_logger::setup_logger;
+use tornado_common_api::Event;
+use crate::actors::uds_writer::EventMessage;
 
 mod actors;
 mod config;
@@ -37,7 +39,9 @@ fn main() {
             config.io.uds_mailbox_capacity,
         );
 
-        server::new(move || create_app(webhooks_config.clone()))
+        server::new(move || create_app(webhooks_config.clone(), |event| {
+            uds_writer_addr.do_send(EventMessage { event })
+        }))
             .bind(format!("0.0.0.0:{}", port))
             .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
             .start();
@@ -45,7 +49,9 @@ fn main() {
     });
 }
 
-fn create_app(webhooks_config: Vec<WebhookConfig>) -> App {
+fn create_app<F>(webhooks_config: Vec<WebhookConfig>, callback: F) -> App
+    where F: Fn(Event)
+{
     let mut app = App::new().resource("/ping", |r| r.method(Method::GET).f(pong));
 
     for config in webhooks_config {
@@ -73,11 +79,13 @@ mod test {
     use actix_web::{http, HttpMessage};
     use std::collections::HashMap;
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+    use std::sync::Arc;
+    use std::sync::Mutex;
 
     #[test]
     fn ping_should_return_pong() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| create_app(vec![]));
+        let mut srv = TestServer::with_factory(|| create_app(vec![], |_| {}));
 
         // Act
         let request = srv.client(http::Method::GET, "/ping").finish().unwrap();
@@ -112,7 +120,7 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone()));
+        let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone(),|_| {}));
 
         // Act
         let request_1 = srv
@@ -161,7 +169,7 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone()));
+        let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone(), |_| {}));
 
         // Act
         let request_1 = srv
@@ -185,5 +193,50 @@ mod test {
         assert_eq!("hook_1", &body_1);
 
         assert_eq!(http::StatusCode::UNAUTHORIZED, response_2.status());
+    }
+
+    #[test]
+    fn should_call_the_callback_on_each_event() {
+        // Arrange
+        let mut webhooks_config = vec![];
+
+        webhooks_config.push(WebhookConfig {
+            id: "hook_1".to_owned(),
+            token: "hook_1_token".to_owned(),
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "${map.first}".to_owned(),
+                payload: HashMap::new(),
+            },
+        });
+
+        let event = Arc::new(Mutex::new(None));
+        let event_clone = event.clone();
+        let mut srv = TestServer::with_factory(move || create_app(webhooks_config.clone(), |evt| {
+            let mut wrapper = event.lock().unwrap();
+            *wrapper = Some(evt)
+        }));
+
+        // Act
+        let request_1 = srv
+            .client(http::Method::POST, "/event/hook_1?token=hook_1_token")
+            .content_type("application/json")
+            .body(
+                r#"{
+                    "map" : {
+                        "first": "webhook_event"
+                    }
+                }"#)
+            .unwrap();
+        let response_1 = srv.execute(request_1.send()).unwrap();
+
+        // Assert
+        assert!(response_1.status().is_success());
+        let body_1 =
+            std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
+        assert_eq!("hook_1", &body_1);
+
+        let value = event_clone.lock().unwrap();
+        assert_eq!("webhook_event", value.as_ref().unwrap().event_type)
+
     }
 }

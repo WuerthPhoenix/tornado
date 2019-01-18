@@ -1,9 +1,10 @@
 use actix_web::{error, http, HttpRequest, HttpResponse, Query};
 use failure::Fail;
-use log::{debug, error, info};
+use log::{debug, error};
 use serde_derive::Deserialize;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
+use tornado_common_api::Event;
 
 #[derive(Deserialize)]
 pub struct TokenQuery {
@@ -11,36 +12,46 @@ pub struct TokenQuery {
 }
 
 #[derive(Fail, Debug)]
-#[fail(display = "NotValidToken")]
-pub struct WrongTokenError {}
+pub enum HandlerError {
+    #[fail(display = "The request cannot be processed: {}", message)]
+    CollectorError { message: String },
+    #[fail(display = "NotValidToken")]
+    WrongTokenError
+}
 
-impl error::ResponseError for WrongTokenError {
+impl error::ResponseError for HandlerError {
     fn error_response(&self) -> HttpResponse {
-        HttpResponse::new(http::StatusCode::UNAUTHORIZED)
+        match self {
+            HandlerError::CollectorError{message: _} => HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR),
+            HandlerError::WrongTokenError => HttpResponse::new(http::StatusCode::UNAUTHORIZED)
+        }
     }
 }
 
-pub struct Handler {
+pub struct Handler
+//<F> where F: Fn(Event)
+{
     pub id: String,
     pub token: String,
-    pub collector: JMESPathEventCollector,
+    pub collector: JMESPathEventCollector
 }
 
 impl Handler {
     pub fn handle(
         &self,
         (_req, body, query): (HttpRequest, String, Query<TokenQuery>),
-    ) -> Result<String, WrongTokenError> {
+    ) -> Result<String, HandlerError> {
         let received_token = &query.token;
 
         debug!("Endpoint [{}] called with token [{}]", self.id, received_token);
 
         if !(self.token.eq(received_token)) {
             error!("Endpoint [{}] - Token is not valid: [{}]", self.id, received_token);
-            return Err(WrongTokenError {});
+            return Err(HandlerError::WrongTokenError);
         }
 
-        info!("collector result = {:#?}", self.collector.to_event(&body));
+        let event = self.collector.to_event(&body)
+            .map_err(|err| HandlerError::CollectorError{message: format!("{}", err)})?;
 
         Ok(self.id.to_string())
     }
