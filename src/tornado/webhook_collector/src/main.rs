@@ -269,10 +269,8 @@ mod test {
             },
         });
 
-
-        let mut srv = TestServer::with_factory(move || {
-            create_app(webhooks_config.clone(), || { |_| {} })
-        });
+        let mut srv =
+            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
 
         // Act
         let request = srv
@@ -300,9 +298,8 @@ mod test {
             },
         });
 
-        let mut srv = TestServer::with_factory(move || {
-            create_app(webhooks_config.clone(), || { |_| {} })
-        });
+        let mut srv =
+            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
 
         // Act
         let request_1 = srv
@@ -317,6 +314,5 @@ mod test {
         let body_1 =
             std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
         assert_eq!("hook with space", &body_1);
-
     }
 }
