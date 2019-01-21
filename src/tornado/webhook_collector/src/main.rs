@@ -8,6 +8,7 @@ use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
+use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 
 mod actors;
 mod config;
@@ -68,7 +69,9 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
             ),
             callback: factory(),
         };
-        let path = format!("/event/{}", config.id);
+
+        let url_encoded_id: String = utf8_percent_encode(&config.id, DEFAULT_ENCODE_SET).collect();
+        let path = format!("/event/{}", url_encoded_id);
         info!("Creating endpoint: [{}]", &path);
         app = app.resource(&path, move |r| r.method(Method::POST).with(move |f| handler.handle(f)));
     }
@@ -250,5 +253,70 @@ mod test {
 
         let value = event_clone.lock().unwrap();
         assert_eq!("webhook_event", value.as_ref().unwrap().event_type)
+    }
+
+    #[test]
+    fn should_return_404_if_get_instead_of_post() {
+        // Arrange
+        let mut webhooks_config = vec![];
+
+        webhooks_config.push(WebhookConfig {
+            id: "hook_1".to_owned(),
+            token: "hook_1_token".to_owned(),
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "${map.first}".to_owned(),
+                payload: HashMap::new(),
+            },
+        });
+
+
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || { |_| {} })
+        });
+
+        // Act
+        let request = srv
+            .client(http::Method::GET, "/event/hook_1?token=hook_1_token")
+            .content_type("application/json")
+            .finish()
+            .unwrap();
+        let response = srv.execute(request.send()).unwrap();
+
+        // Assert
+        assert_eq!(http::StatusCode::NOT_FOUND, response.status());
+    }
+
+    #[test]
+    fn should_url_encode_id_and_token() {
+        // Arrange
+        let mut webhooks_config = vec![];
+
+        webhooks_config.push(WebhookConfig {
+            id: "hook with space".to_owned(),
+            token: "token&#".to_owned(),
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "type".to_owned(),
+                payload: HashMap::new(),
+            },
+        });
+
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || { |_| {} })
+        });
+
+        // Act
+        let request_1 = srv
+            .client(http::Method::POST, "/event/hook%20with%20space?token=token%26%23")
+            .content_type("application/json")
+            .body("{}")
+            .unwrap();
+        let response_1 = srv.execute(request_1.send()).unwrap();
+
+        // Assert
+        assert!(response_1.status().is_success());
+        let body_1 =
+            std::str::from_utf8(&srv.execute(response_1.body()).unwrap()).unwrap().to_owned();
+        assert_eq!("hook with space", &body_1);
+
     }
 }
