@@ -1,8 +1,8 @@
-use crate::actors::uds_writer::{EventMessage, UdsWriterActor};
 use actix::prelude::*;
 use log::*;
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
+use tornado_common::actors::uds_writer::{EventMessage, UdsWriterActor};
 
 pub struct RsyslogCollectorActor {
     pub collector: JsonPayloadCollector,

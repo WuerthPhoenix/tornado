@@ -6,11 +6,11 @@ use actix_web::{server, App, HttpRequest, Responder};
 use chrono::prelude::Local;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
+use tornado_common::actors;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
 
-mod actors;
 mod config;
 mod handler;
 
