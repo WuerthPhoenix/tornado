@@ -1,7 +1,3 @@
-//
-// ToDo: code copied from rsyslog_collector. To be moved in common library.
-//
-
 use actix::prelude::*;
 use failure_derive::Fail;
 use log::*;
