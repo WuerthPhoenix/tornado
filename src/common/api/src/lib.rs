@@ -58,57 +58,42 @@ pub type Payload = HashMap<String, Value>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
+    Text(String),
     Bool(bool),
     Number(f64),
-    Text(String),
-    Array(Vec<Value>),
     Map(Payload),
+    Array(Vec<Value>),
 }
 
 impl Value {
     pub fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Map(payload) => payload.get(key),
-            Value::Array(_) => None,
-            Value::Text(_) => None,
-            Value::Bool(_) => None,
-            Value::Number(_) => None,
+            _ => None,
         }
     }
     pub fn get_from_array(&self, index: usize) -> Option<&Value> {
         match self {
-            Value::Map(_) => None,
             Value::Array(array) => array.get(index),
-            Value::Text(_) => None,
-            Value::Bool(_) => None,
-            Value::Number(_) => None,
+            _ => None,
         }
     }
     pub fn get_text(&self) -> Option<&str> {
         match self {
             Value::Text(value) => Some(value),
-            Value::Map(_) => None,
-            Value::Array(_) => None,
-            Value::Bool(_) => None,
-            Value::Number(_) => None,
+            _ => None,
         }
     }
     pub fn get_bool(&self) -> Option<&bool> {
         match self {
-            Value::Text(_) => None,
-            Value::Map(_) => None,
-            Value::Array(_) => None,
             Value::Bool(value) => Some(value),
-            Value::Number(_) => None,
+            _ => None,
         }
     }
     pub fn get_number(&self) -> Option<&f64> {
         match self {
-            Value::Text(_) => None,
-            Value::Map(_) => None,
-            Value::Array(_) => None,
-            Value::Bool(_) => None,
             Value::Number(value) => Some(value),
+            _ => None,
         }
     }
 }

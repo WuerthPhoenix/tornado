@@ -18,7 +18,7 @@ fn main() {
     // start system
     System::run(move || {
         // Start UdsWriter
-        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
+        let uds_writer_addr = tornado_common::actors::uds_writer::UdsWriterActor::start_new(
             conf.io.uds_path.clone(),
             conf.io.uds_mailbox_capacity,
         );

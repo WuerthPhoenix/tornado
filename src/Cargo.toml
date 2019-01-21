@@ -22,8 +22,10 @@ members = [
    "spike/tokio",
    "spike/uds_writer_collector",
    "spike/webhook",
+   "tornado/common",
    "tornado/tornado",
    "tornado/rsyslog_collector",
+   "tornado/webhook_collector"
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
