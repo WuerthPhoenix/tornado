@@ -291,7 +291,7 @@ mod test {
 
         webhooks_config.push(WebhookConfig {
             id: "hook with space".to_owned(),
-            token: "token&#".to_owned(),
+            token: "token&#?=".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "type".to_owned(),
                 payload: HashMap::new(),
@@ -303,7 +303,7 @@ mod test {
 
         // Act
         let request_1 = srv
-            .client(http::Method::POST, "/event/hook%20with%20space?token=token%26%23")
+            .client(http::Method::POST, "/event/hook%20with%20space?token=token%26%23%3F%3D")
             .content_type("application/json")
             .body("{}")
             .unwrap();
