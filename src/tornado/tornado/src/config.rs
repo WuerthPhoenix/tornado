@@ -83,3 +83,27 @@ pub fn read_rules_from_config(path: &str) -> Result<Vec<Rule>, TornadoError> {
 
     Ok(rules)
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn should_read_all_rule_configurations_from_file() {
+        // Arrange
+        let path = "./config/rules.d";
+
+        // Act
+        let rules_config = read_rules_from_config(path).unwrap();
+
+        // Assert
+        assert_eq!(3, rules_config.len());
+        assert_eq!(1, rules_config.iter().filter(|val| "all_emails".eq(&val.name)).count());
+        assert_eq!(
+            1,
+            rules_config.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
+        );
+        assert_eq!(1, rules_config.iter().filter(|val| "archive_all".eq(&val.name)).count());
+    }
+}
