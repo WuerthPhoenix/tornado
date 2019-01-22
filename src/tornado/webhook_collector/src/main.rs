@@ -20,7 +20,7 @@ fn pong(_req: &HttpRequest) -> impl Responder {
     format!("pong - {}", created_ts)
 }
 
-fn main() {
+fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
 
     setup_logger(&config.logger).expect("Cannot configure the logger");
@@ -51,6 +51,7 @@ fn main() {
         .unwrap_or_else(|err| panic!("Server cannot start on port {}. Err: {}", port, err))
         .start();
     });
+    Ok(())
 }
 
 fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
