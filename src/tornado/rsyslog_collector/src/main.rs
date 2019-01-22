@@ -2,16 +2,17 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
+use failure::Fail;
 use log::*;
-use std::io::*;
+use std::io::{stdin, BufRead};
 use std::thread;
 use tornado_common_logger::setup_logger;
 
-fn main() {
+fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
 
     // Setup logger
-    setup_logger(&conf.logger).expect("Cannot configure the logger");
+    setup_logger(&conf.logger).map_err(|err| err.compat())?;
 
     info!("Rsyslog collector started");
 
@@ -57,4 +58,6 @@ fn main() {
             }
         });
     });
+
+    Ok(())
 }
