@@ -88,7 +88,7 @@ impl EventProcessor {
             let expression = &text
                 [EXPRESSION_START_DELIMITER.len()..(text.len() - EXPRESSION_END_DELIMITER.len())];
             let jmespath_exp = jmespath::compile(expression).map_err(|err| {
-                CollectorError::EventCreationError {
+                CollectorError::CollectorCreationError {
                     message: format!(
                         "Not valid jmespath expression: [{}]. Err: {}",
                         expression, err
