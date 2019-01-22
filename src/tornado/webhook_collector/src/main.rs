@@ -28,8 +28,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
     setup_logger(&config.logger).map_err(|err| err.compat())?;
 
     let webhooks_dir = format!("{}/{}", &config.io.config_dir, &config.io.webhooks_dir);
-    let webhooks_config = config::read_webhooks_from_config(&webhooks_dir)
-        .expect("Cannot parse the webhooks configuration");
+    let webhooks_config =
+        config::read_webhooks_from_config(&webhooks_dir).map_err(|err| err.compat())?;
 
     let port = config.io.server_port;
     let bind_address = config.io.bind_address.to_owned();
@@ -110,7 +110,7 @@ mod test {
     #[test]
     fn ping_should_return_pong() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| create_app(vec![], || |_| {}));
+        let mut srv = TestServer::with_factory(|| create_app(vec![], || |_| {}).unwrap());
 
         // Act
         let request = srv.client(http::Method::GET, "/ping").finish().unwrap();
@@ -145,8 +145,9 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        let mut srv =
-            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || |_| {}).unwrap()
+        });
 
         // Act
         let request_1 = srv
@@ -195,8 +196,9 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        let mut srv =
-            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || |_| {}).unwrap()
+        });
 
         // Act
         let request_1 = srv
@@ -246,6 +248,7 @@ mod test {
                     *wrapper = Some(evt)
                 }
             })
+            .unwrap()
         });
 
         // Act
@@ -286,8 +289,9 @@ mod test {
             },
         });
 
-        let mut srv =
-            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || |_| {}).unwrap()
+        });
 
         // Act
         let request = srv
@@ -315,8 +319,9 @@ mod test {
             },
         });
 
-        let mut srv =
-            TestServer::with_factory(move || create_app(webhooks_config.clone(), || |_| {}));
+        let mut srv = TestServer::with_factory(move || {
+            create_app(webhooks_config.clone(), || |_| {}).unwrap()
+        });
 
         // Act
         let request_1 = srv

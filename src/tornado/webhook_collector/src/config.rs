@@ -1,9 +1,9 @@
 use log::{info, trace};
 use serde_derive::Deserialize;
 use std::fs;
-use std::io;
 use structopt::StructOpt;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
 
 #[derive(Debug, StructOpt, Clone)]
@@ -51,18 +51,34 @@ impl Conf {
     }
 }
 
-pub fn read_webhooks_from_config(path: &str) -> io::Result<Vec<WebhookConfig>> {
+pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, TornadoError> {
     info!("Loading webhook configurations from path: [{}]", path);
 
-    let paths = fs::read_dir(path)?;
+    let paths = fs::read_dir(path).map_err(|e| TornadoError::ConfigurationError {
+        message: format!("Cannot access config path [{}]: {}", path, e),
+    })?;
     let mut webhooks = vec![];
 
     for path in paths {
-        let filename = path?.path();
+        let filename = path
+            .map_err(|e| TornadoError::ConfigurationError {
+                message: format!("Cannot get the filename. Err: {}", e),
+            })?
+            .path();
         info!("Loading webhook configuration from file: [{}]", filename.display());
-        let webhook_body = fs::read_to_string(&filename)?;
+        let webhook_body =
+            fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
+                message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
+            })?;
         trace!("Webhook configuration body: \n{}", webhook_body);
-        webhooks.push(serde_json::from_str::<WebhookConfig>(&webhook_body)?);
+        webhooks.push(serde_json::from_str::<WebhookConfig>(&webhook_body).map_err(|e| {
+            TornadoError::ConfigurationError {
+                message: format!(
+                    "Cannot build webhook from json config: [{:?}] \n error: [{}]",
+                    &webhook_body, e
+                ),
+            }
+        })?)
     }
 
     info!("Loaded {} webhook(s) from [{}]", webhooks.len(), path);

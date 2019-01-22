@@ -1,6 +1,10 @@
 use config_rs::{Config, ConfigError, File};
+use log::{info, trace};
+use std::fs;
 use structopt::StructOpt;
+use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
+use tornado_engine_matcher::config::Rule;
 use tornado_executor_archive::config::ArchiveConfig;
 
 #[derive(Debug, StructOpt)]
@@ -44,4 +48,38 @@ pub fn build_archive_config(config_file_path: &str) -> Result<ArchiveConfig, Con
     s.merge(File::with_name(config_file_path))?;
     // s.merge(Environment::with_prefix("TORNADO_RSYSLOG"))?;
     s.try_into()
+}
+
+pub fn read_rules_from_config(path: &str) -> Result<Vec<Rule>, TornadoError> {
+    let paths = fs::read_dir(path).map_err(|e| TornadoError::ConfigurationError {
+        message: format!("Cannot access config path [{}]: {}", path, e),
+    })?;
+
+    let mut rules = vec![];
+
+    for path in paths {
+        let filename = path
+            .map_err(|e| TornadoError::ConfigurationError {
+                message: format!("Cannot get the filename. Err: {}", e),
+            })?
+            .path();
+
+        info!("Loading rule from file: [{}]", filename.display());
+        let rule_body =
+            fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
+                message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
+            })?;
+
+        trace!("Rule body: \n{}", rule_body);
+        rules.push(Rule::from_json(&rule_body).map_err(|e| TornadoError::ConfigurationError {
+            message: format!(
+                "Cannot build webhook from json config: [{:?}] \n error: [{}]",
+                &rule_body, e
+            ),
+        })?)
+    }
+
+    info!("Loaded {} rule(s) from [{}]", rules.len(), path);
+
+    Ok(rules)
 }
