@@ -83,6 +83,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
             collector::event::EventJsonReaderActor::start_new(msg, json_matcher_addr_clone.clone());
         })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
             error!("Cannot start uds socket reader on path [{}]. Err: {}", conf.io.uds_path, err);
             std::process::exit(1);
@@ -96,6 +97,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 snmptrapd_matcher_addr_clone.clone(),
             );
         })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
             error!(
                 "Cannot start uds socket reader on path [{}]. Err: {}",

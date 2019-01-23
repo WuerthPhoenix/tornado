@@ -48,6 +48,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 let clone = uds_writer_addr.clone();
                 move |event| clone.do_send(EventMessage { event })
             })
+            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {
                 error!("Cannot create the webhook handlers. Err: {}", err);
                 //System::current().stop_with_code(1);
@@ -55,6 +56,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             })
         })
         .bind(format!("{}:{}", bind_address, port))
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
             error!("Server cannot start on port {}. Err: {}", port, err);
             //System::current().stop_with_code(1);
