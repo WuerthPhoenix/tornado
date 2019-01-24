@@ -39,7 +39,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
         let archive_config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let archive_config = config::build_archive_config(&archive_config_file_path.clone())
-                .expect("Cannot build the ArchiveExecutor configuration");
+                .unwrap_or_else(|err| {
+                    error!("Cannot build the ArchiveExecutor configuration. Err: {}", err);
+                    std::process::exit(1);
+                });
 
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
