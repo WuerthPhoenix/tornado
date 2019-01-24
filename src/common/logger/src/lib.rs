@@ -53,7 +53,14 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
                 message
             ))
         })
-        .level(log::LevelFilter::from_str(&logger_config.level).unwrap());
+        .level(log::LevelFilter::from_str(&logger_config.level).map_err(|err| {
+            LoggerError::LoggerConfigurationError {
+                message: format!(
+                    "The specified logger level is not valid: [{}]. err: {}",
+                    &logger_config.level, err
+                ),
+            }
+        })?);
 
     /*
     for (module, level) in logger_config.module_level.iter() {

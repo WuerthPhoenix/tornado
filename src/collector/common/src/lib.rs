@@ -16,4 +16,6 @@ pub enum CollectorError {
     EventCreationError { message: String },
     #[fail(display = "JsonParsingError: [{}]", message)]
     JsonParsingError { message: String },
+    #[fail(display = "CollectorCreationError: [{}]", message)]
+    CollectorCreationError { message: String },
 }

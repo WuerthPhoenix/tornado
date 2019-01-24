@@ -3,35 +3,32 @@ pub mod config;
 pub mod dispatcher;
 pub mod engine;
 pub mod executor;
-pub mod io;
 
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::MatcherActor;
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
-use crate::io::uds::listen_to_uds_socket;
 use actix::prelude::*;
+use failure::Fail;
 use log::*;
-use std::fs;
 use std::sync::Arc;
+use tornado_common::actors::uds_reader::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
-use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-fn main() {
+fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
 
-    setup_logger(&conf.logger).expect("Cannot configure the logger");
+    setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
     // Load rules from fs
     let config_rules =
-        read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir));
+        config::read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
+            .map_err(|e| e.compat())?;
 
     // Start matcher
-    let matcher = Arc::new(
-        Matcher::build(&config_rules).unwrap_or_else(|err| panic!("Cannot parse rules: {}", err)),
-    );
+    let matcher = Arc::new(Matcher::build(&config_rules).map_err(|e| e.compat())?);
 
     // start system
     System::run(move || {
@@ -42,7 +39,10 @@ fn main() {
         let archive_config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let archive_config = config::build_archive_config(&archive_config_file_path.clone())
-                .expect("Cannot build the ArchiveExecutor configuration");
+                .unwrap_or_else(|err| {
+                    error!("Cannot build the ArchiveExecutor configuration. Err: {}", err);
+                    std::process::exit(1);
+                });
 
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -83,38 +83,32 @@ fn main() {
 
         // Start Event Json UDS listener
         let json_matcher_addr_clone = matcher_addr.clone();
-        listen_to_uds_socket(conf.io.uds_path, move |msg| {
+        listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
             collector::event::EventJsonReaderActor::start_new(msg, json_matcher_addr_clone.clone());
+        })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Cannot start uds socket reader on path [{}]. Err: {}", conf.io.uds_path, err);
+            std::process::exit(1);
         });
 
         // Start snmptrapd Json UDS listener
         let snmptrapd_matcher_addr_clone = matcher_addr.clone();
-        listen_to_uds_socket(conf.io.snmptrapd_uds_path, move |msg| {
+        listen_to_uds_socket(conf.io.snmptrapd_uds_path.clone(), move |msg| {
             collector::snmptrapd::SnmptrapdJsonReaderActor::start_new(
                 msg,
                 snmptrapd_matcher_addr_clone.clone(),
             );
+        })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!(
+                "Cannot start uds socket reader on path [{}]. Err: {}",
+                conf.io.snmptrapd_uds_path, err
+            );
+            std::process::exit(1);
         });
     });
-}
 
-fn read_rules_from_config(path: &str) -> Vec<Rule> {
-    let paths = fs::read_dir(path)
-        .unwrap_or_else(|err| panic!("Cannot access specified folder [{}]: {}", path, err));
-    let mut rules = vec![];
-
-    for path in paths {
-        let filename = path.expect("Cannot get the filename").path();
-        info!("Loading rule from file: [{}]", filename.display());
-        let rule_body = fs::read_to_string(&filename)
-            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
-        trace!("Rule body: \n{}", rule_body);
-        rules.push(Rule::from_json(&rule_body).unwrap_or_else(|err| {
-            panic!("Cannot build rule from provided: [{:?}] \n error: [{}]", &rule_body, err)
-        }));
-    }
-
-    info!("Loaded {} rule(s) from [{}]", rules.len(), path);
-
-    rules
+    Ok(())
 }

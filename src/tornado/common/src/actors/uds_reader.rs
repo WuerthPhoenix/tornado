@@ -1,3 +1,4 @@
+use crate::TornadoError;
 use actix::prelude::*;
 use futures::Stream;
 use log::*;
@@ -10,20 +11,20 @@ pub fn listen_to_uds_socket<
 >(
     path: P,
     callback: F,
-) {
+) -> Result<(), TornadoError> {
     let path_string = path.into();
     let listener = match UnixListener::bind(&path_string) {
         Ok(m) => m,
         Err(_) => {
-            fs::remove_file(&path_string).unwrap_or_else(|err| {
-                panic!(
+            fs::remove_file(&path_string).map_err(|err| TornadoError::ActorCreationError {
+                message: format!(
                     "Cannot bind UDS socket to path [{}] and cannot remove such file if exists: {}",
                     path_string, err
-                )
-            });
-            UnixListener::bind(&path_string).unwrap_or_else(|err| {
-                panic!("Cannot bind UDS socket to path [{}]: {}", path_string, err)
-            })
+                ),
+            })?;
+            UnixListener::bind(&path_string).map_err(|err| TornadoError::ActorCreationError {
+                message: format!("Cannot bind UDS socket to path [{}]: {}", path_string, err),
+            })?
         }
     };
 
@@ -36,6 +37,8 @@ pub fn listen_to_uds_socket<
         ));
         UdsServerActor { path: path_string, callback }
     });
+
+    Ok(())
 }
 
 struct UdsServerActor<F>
