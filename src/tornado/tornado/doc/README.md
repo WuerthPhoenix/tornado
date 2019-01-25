@@ -35,6 +35,43 @@ or with a message queue system (e.g. Nats.io, Kafka) in the middle for deploying
 a distributed system.
 
 
+### Configuration
+The executable configuration is partially on configuration files
+and partially on command line parameters.
+
+The available startup parameters are:
+- __logger-stdout__: Determines whether the Logger should print to standard output. 
+  Valid values: true, false. False by default.
+- __logger-file-path__: A file path in the file system; if provided, the Logger will 
+  append any output to it.
+- __logger-level__: The Logger level; valid values: _trace_, _debug_, _info_, _warn_, _error_.
+  The default value is _warn_.
+- __config-dir__: The filesystem folder from where the Tornado configuration is read.
+  The default path is _/etc/tornado_
+- __rules-dir__: The folder where the Rules are saved in JSON format; 
+  this folder is relative to the `config_dir`. The default value is _/rules.d/_
+- __uds-path__: The Unix Socket path where Tornado will listen for incoming events.
+  By default it is _/var/run/tornado/tornado.sock_
+- __snmptrapd-uds-path__: The Unix Socket path where Tornado will listen for incoming snmptrapd events.
+  By default it is _/var/run/tornado/tornado_snmptrapd.sock_
+  
+More information about the logger configuration are available [here](../../../common/logger/doc/README.md).
+
+An example of a full startup command is:
+```bash
+./tornado --logger-stdout --logger-level=debug \
+    --config-dir=./tornado/tornado/config \
+    --uds-path=/tmp/tornado \
+    --snmptrapd-uds-path=/tmp/tornado_snmptrapd
+```
+
+In this case Tornado:
+- logs to standard output at debug level
+- reads the configuration from the _./tornado/tornado/config_ directory,
+- creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
+  respectively, the Event and Snmptrapd inputs.     
+
+
 ### Structure and configuration: The json collector 
 The [json collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
@@ -185,3 +222,6 @@ archive executor can be obtained from the
 The [script executor](../../../executor/script/doc/README.md) processes and executes Actions 
 of type "script".
 
+This executor has no specific configuration as everything required for a script 
+execution is contained in the Action itself as described in the 
+[executor documentation](../../../executor/script/doc/README.md)
