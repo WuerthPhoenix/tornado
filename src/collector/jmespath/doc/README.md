@@ -23,6 +23,8 @@ The configuration's event_type property will define the type of Event.
 
 The Event's payload will have the same structure as the configuration's payload.
 
+## How it Works
+
 The __JMESpath expressions__ of the configuration will be applied to incoming inputs, 
 and the results will be included in the Event produced. All other __ValueProcessors__, 
 instead, are copied without modifications.

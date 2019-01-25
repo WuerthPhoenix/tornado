@@ -3,7 +3,6 @@
 An executor that writes the Events from the received Actions to a file.
 
 
-
 ## Requirements and Limitations
 
 The archive executor can only write to locally mounted file systems.

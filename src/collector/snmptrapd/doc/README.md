@@ -3,6 +3,8 @@
 A collector that receives snmptrapd input messages formatted as JSON and generates 
 from them an internal Event struct. 
 
+## How it Works
+
 The snmptrapd input should be in the form:
 ```json
 {
