@@ -2,10 +2,13 @@
 
 This crate contains the Tornado executable code.
 
-The Tornado executable is a configuration of the matcher engine based on actix and 
+## How it works
+
+The Tornado executable is a configuration of the matcher engine based on [actix](https://github.com/actix/actix) and 
 built as a portable executable.
 
-At runtime the executable opens two UDS sockets for receiving inputs from external collectors.
+It currently builds only on linux-like OSes as, at runtime, 
+it uses two UDS sockets for receiving inputs from external collectors.
 
 ## Structure of Tornado
 
@@ -23,13 +26,13 @@ Each component is, in fact, developed as an independent library allowing
 great flexibility in deciding whether and how to use it.
 
 At the same, there are no restrictions that force the use of the components into the same 
-executable.
-While this is the simplest way of assembling them into a working product, the collectors 
-and executors could live on their own executables and communicate with the Tornado engine 
-through remote call. 
+executable. While this is the simplest way of assembling them into a working product, 
+the collectors and executors could live on their own executables and communicate with 
+the Tornado engine through remote call. 
 This can be achieved through direct TCP or HTTP call, using an RPC technology 
 (e.g. Protobuf, Flatbuffer, CAP'n'proto) 
-or with a message queue system (e.g. Nats.io, Kafka) creating a scalable distributed system.
+or with a message queue system (e.g. Nats.io, Kafka) in the middle for deploying it as 
+a distributed system.
 
 
 ### Structure and configuration: The json collector 
@@ -47,8 +50,8 @@ tornado --uds-path=/my/custom/path
 If not specified, Tornado will use the default value `/var/run/tornado/tornado.sock`.
 
 ### Structure and configuration: The snmptrapd collector
-the [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap specific input, 
-transform them in Tornado Events and forwards them to the matcher engine;
+the [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap specific
+inputs, transform them in Tornado Events and forwards them to the matcher engine;
 
 Snmptrapd are published to the UDS socket
 configured by the _snmptrapd-uds-path_ command line parameter.
@@ -61,7 +64,7 @@ tornado --snmptrapd-uds-path=/my/custom/path
 If not specified, Tornado will use the default value `/var/run/tornado/tornado_snmptrapd.sock`.
 
 The snmptrapd input documents should be in JSON format as described by the 
-[collector's docs](../../../collector/snmptrapd/doc/README.md).
+[snmptrapd collector's documentation](../../../collector/snmptrapd/doc/README.md).
 
 
 ### Structure and configuration: The matching engine
@@ -69,21 +72,31 @@ The [matching engine](../../../engine/matcher/doc/README.md) receives Events fro
 processes them against the configured Rules and, in case of a match, produces the Actions to be 
 performed.  
 
-Two startup parameters determine the path to matcher configuration:
+Two startup parameters determine the path to the Rules configuration:
 - _config-dir_: The filesystem folder where the Tornado configuration is saved; 
 default value is __/etc/tornado__.
 _ _rules-dir_: A folder relative to the _config_dir_ where the Rules are saved in JSON format; 
 the default value is __/rules.d/__.
 
-E.g.:
+For example, this command will run Tornado and load the Rules configuration from the 
+`/tornado/config/rules` directory:
 ```bash
 tornado --config-dir=/tornado/config --rules-dir=/rules
 ```  
 
-Each Rule should be saved in the resulting configuration folder, 
-in a dedicate file and in JSON format.
+Into the configuration directory, each Rule is saved in a separated file in JSON format.
+E.g.:
+```
+/tornado/config/rules
+                 |- rule_01.json
+                 |- rule_02.json
+                 |- ...
+```
 
-An example of a valid rule is:
+The alphabetical order determined by the filenames has no impact on the Rule configuration.
+In fact, the runtime order execution will depend on the _priority_ property exclusively.
+
+An example of a valid content for a Rule JSON file is:
 ```json
 {
   "name": "emails_with_temperature",
@@ -125,23 +138,47 @@ An example of a valid rule is:
 }
 ```
 
-This creates a rule with these properties:
+This creates a Rule with these characteristics:
 - Its unique name is 'emails_with_temperature'. There cannot be two rules with the same name;
 - Its priority is 2. The priority defines the execution order of the rules;
   '0' (zero) is the highest priority and denotes the first rule to be evaluated;
-- An Event matches this Rule if it is of type "email", as requested by the _WHERE_ clause, and
-  it is possible to extract the "temperature" variable from the "event.payload.body",
-  as requested by the _WITH_ clause; 
-- If an Event meets the Rule's requirements, the matcher produces an Action with _id_ "Logger"
-  and the _payload_ with the three entries _type_, _subject_ and _temperature_. 
+- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and, 
+  as requested by the _WITH_ clause, 
+  it is possible to extract the "temperature" variable from the "event.payload.body"; 
+- If an Event meets the previously stated requirements, the matcher produces an Action 
+  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_. 
 
-More information about the Rule's properties and the matcher can be found in the 
+More information about the Rule's properties and configuration can be found in the 
 [matching engine documentation](../../../engine/matcher/doc/README.md) 
 
 
 ### Structure and configuration: The archive executor
 The [archive executor](../../../executor/archive/doc/README.md) processes and executes Actions 
 of type "archive".
+
+This executor is configuration is specified in the `archive_executor.toml` file
+into the Tornado config folder.
+
+For example, if Tornado is started with the command:
+```bash
+tornado --config-dir=/tornado/config
+```  
+the configuration file full path will be `/tornado/config/archive_executor.toml`.
+
+The archive_executor.toml file has the following structure:
+```toml
+base_path =  "./target/tornado-log"
+default_path = "/default/file.log"
+file_cache_size = 10
+file_cache_ttl_secs = 1
+
+[paths]
+"one" = "/one/file.log"
+```  
+
+More details about the meaning of each entry and the functioning of the 
+archive executor can be obtained from the 
+[executor documentation](../../../executor/archive/doc/README.md). 
 
 
 ### Structure and configuration: The script executor
