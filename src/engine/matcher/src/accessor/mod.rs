@@ -1,3 +1,5 @@
+//! The accessor module contains the logic to extract data from an incoming Event.
+
 use crate::error::MatcherError;
 use crate::model::ProcessedEvent;
 use crate::validator::id::IdValidator;
