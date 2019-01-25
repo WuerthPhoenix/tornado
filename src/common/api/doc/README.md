@@ -10,7 +10,6 @@ The Tornado Engine receives Events from the Collectors, checks them against a se
 then triggers Actions defined on the Rules matched by sending messages to the appropriate executors.
 
 
-
 # Event
 
 An event has a simple structure, composed of:
@@ -23,7 +22,7 @@ where the payload __Value__ can be any valid JSON type:
 - A __string__
 - A __bool__ value (i.e., true or false)
 - A __number__ 
-- An __array__ of values
+- An __array__ of Values
 - A __map__ of type Map<String, Value>
 
 All fields are mandatory, although the _payload_ can be an empty structure.
