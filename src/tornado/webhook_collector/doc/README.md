@@ -62,19 +62,93 @@ An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
       --logger-stdout --logger-level=debug \
-      --config-dir=./tornado-webhook-collector/config \
+      --config-dir=/tornado-webhook-collector/config \
       --bind_address=127.0.0.1
-      --server-port=12345
+      --server-port=1234
       --uds-path=/tmp/tornado
 ```
 
 In this case the Webhook Collector:
 - logs to standard output at debug level
-- reads the configuration from the _./tornado-webhook-collector/config_ directory,
-- searches for webhook configurations in the _./tornado-webhook-collector/config/webhooks_ directory,
+- reads the configuration from the _/tornado-webhook-collector/config_ directory,
+- searches for webhook configurations in the _/tornado-webhook-collector/config/webhooks_ directory,
 - binds the HTTP server to the 127.0.0.1 IP,
-- starts the HTTP server at port 12345,
+- starts the HTTP server at port 1234,
 - writes outcoming Events to the UDS socket at _/tmp/tornado_.   
 
 
 ## Webhooks configuration
+
+As described before, the two startup parameters _config-dir_ and _webhooks_dir_ 
+determine the path to the Webhook configurations. In addition, it was already reported that 
+each webhook configuration is achieved providing _id_, _token_ and _collector_config_.
+
+As an example, let's now configure a webhook for a repository hosted on 
+[Github](https://github.com/).
+
+If we start the application using the command line provided on the previous chapter,
+the webhook configuration files should be in the _/tornado-webhook-collector/config/webhooks_
+directory.
+Into this directory, each configuration is saved in a separated file in JSON format:
+```
+/tornado-webhook-collector/config/webhooks
+                 |- github.json
+                 |- bitbucket_first_repository.json
+                 |- bitbucket_second_repository.json
+                 |- ...
+```
+
+The alphabetical order has no impact on the configuration.
+
+An example of a valid content for a Webhook configuration JSON file is:
+```json
+{
+  "id": "github_repository",
+  "token": "secret_token",
+  "collector_config": {
+    "event_type": "${commits[0].committer.name}",
+    "payload": {
+      "source": "github",
+      "ref": "${ref}",
+      "repository_name": "${repository.name}"
+    }
+  }
+}
+```
+
+This configuration predisposes the creation of the endpoint:
+
+__http(s)://collector_ip:collector_port/event/github_repository__
+
+However, the Github webhook issuer must pass the token on each call; consequently,
+the final URL of the collector will be:
+  
+__http(s)://collector_ip:collector_port/event/github_repository?token=secret_token__
+
+Due to the fact that the security token is present in the query string, 
+it is extremely important that the webhook collector is always deployed 
+in https in production; otherwise, the token will be sent unencrypted along with the
+entire URL.
+
+Consequently, if the public IP of the collector is, for example, 35.35.35.35 and the server 
+port is 1234, in Github, the webhook settings page will look like:
+![github_webhook_settings](./github_webhook_01.png)
+
+
+
+TO BE REMOVED:
+TO BE REMOVED:
+TO BE REMOVED:
+TO BE REMOVED:
+TO BE REMOVED:
+- Its unique name is 'emails_with_temperature'. There cannot be two rules with the same name;
+- Its priority is 2. The priority defines the execution order of the rules;
+  '0' (zero) is the highest priority and denotes the first rule to be evaluated;
+- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and, 
+  as requested by the _WITH_ clause, 
+  it is possible to extract the "temperature" variable from the "event.payload.body"; 
+- If an Event meets the previously stated requirements, the matcher produces an Action 
+  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_. 
+
+More information about the Rule's properties and configuration can be found in the 
+[matching engine documentation](../../../engine/matcher/doc/README.md) 
