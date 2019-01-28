@@ -1,4 +1,4 @@
-# Tornado
+# Tornado (binary)
 
 This crate contains the Tornado executable code.
 
@@ -68,6 +68,7 @@ An example of a full startup command is:
 In this case Tornado:
 - logs to standard output at debug level
 - reads the configuration from the _./tornado/tornado/config_ directory,
+- searches for Rules definitions in the _./tornado/tornado/config/rules.d_ directory,
 - creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
   respectively, the Event and Snmptrapd inputs.     
 
