@@ -71,6 +71,10 @@ hundreds of thousands of events per second and apply millions of rules per secon
 
 ## Tornado Configuration and Rules
 
+* UDS socket configuration
+* Logger configuration
+* Config folder
+
 * Tornado is aware when its configuration changes and will automatically reload it.
 * Location of configuration files
 * How Tornado should be configured internally
@@ -123,6 +127,23 @@ Is the following rule to big?  Can it be shortened?
 
 
 
+## The Tornado Project
+
+Tornado is still in a beta phase, thus the next steps in its development are to finish the
+remaining elements of the architecture.  Longer term, we plan to add additional datasources,
+collectors and executors, and eventually create a graphical interface for rule configuration
+and integration.
+
+Tornado adheres to v2.0.0 of the [Semantic Versioning Initiative](http://semver.org/spec/v2.0.0.html).
+It is fully open source with the official repository on [GitHub](link.html),
+and available under the X license.  (Support?)
+
+You can contribute to Tornado by reporting bugs, requesting features, or contributing code
+on GitHub.  (Forum or feedback channels?)  If you intend to submit a bug, please check first that
+someone else has not already submitted it by searching the issue tracker on GitHub.
+
+
+
 ## Navigating Tornado's Code and Documentation
 
 * Navigating the documentation/code (searchable API?)
@@ -140,22 +161,6 @@ Is the following rule to big?  Can it be shortened?
         * The expected environment
     * The executable to call
         * systemctl start tornado.service
-
-
-
-## The Tornado Project
-
-* Near term plans
-  Finish the system
-* Long term plans
-  Add additional datasources, collectors and executors
-  A graphical configuration interface for IcingaWeb2
-* We follow semantic versioning
-* License, support?   Fully open-sourced
-* How to contribute to the project (is Github the focal point?)
-    * Bug reports, requesting features, contributing code
-    * Forum / Feedback channels?
-    * Check that a bug hasn't already been reported?
 
 
 
