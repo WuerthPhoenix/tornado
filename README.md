@@ -22,8 +22,9 @@ for new event types can be easily extended from existing types:
 * SNMP
 * Operating system and authorization events
 
-Because all collectors and rules are defined as JSON, the matching engine can be simplified and
-standardized.  Matched events can potentially trigger multiple rules, whose actions can include:
+Because all collectors and rules are defined with a standard format in JSON, the matching engine
+can be simplified.  Matched events can potentially trigger multiple rules, whose actions can
+include:
 * Forwarding the events to a monitoring system
 * Logging events locally (e.g., as processed, discarded or matched)
 * Archiving events using an application such as Elastic Stack
@@ -32,44 +33,43 @@ standardized.  Matched events can potentially trigger multiple rules, whose acti
 
 
 
-## Tornado Architecture  (Add figure here?)
+## Tornado Architecture  (Add architecture figure?)
 
-The three principal data types of Tornado are:
-* Incoming events
-* Rule matching conditions
-* Rule actions to be executed
+The principal data types of Tornado are:
+* Incoming Events
+* Rules, that have (defined in next section):
+    * Matching conditions
+    * Definable variables 
+    * Actions to be executed
 
-Composable rules (unique names, unique priority, strong ordering).  These are JSON
-elements (Figure X) which can be configured with variables and two clause types:
-* WHERE:
-* WITH:
+On startup, Tornado's Configuration Parser reads stored rule configurations and converts them into
+internal rule objects.  Rules are composable, and are required to have unique names, unique
+priorities, and thus a strong ordering.  They are written in JSON (see Figure X for an example).
 
-Tornado is organized as a processing pipeline, where input events move from collectors to the
-rule engine, to executors without branching or returning.  The principal stages are:
-* Datasources:  Sources of events
-* Event Collectors:
-* Rule Engine Matcher:
-* Rule Engine Extractor:
-* Action Executors:
+Architecturally, Tornado is organized as a processing pipeline, where input events move from
+collectors to the rule engine, to executors, without branching or returning.  This pipeline
+architecture greatly contributes to its speed.  The principal modules are:
+* Datasources:  Original sources of events, typically applications or hardware, where different
+    event types have different communication patterns.
+    * Channel subscriptions for streamed events (e.g., Syslog, SNMP traps, DNS) or via NATS (e.g., monitoring, or Telegram)
+    * Polling / Call (e.g., Email)
+    * Direct read (e.g., SMS)
+    * API call (e.g., AWS, Azure)
+* Event Collectors:  Listens for events from a datasource and rewrites them into a standard format
+  (payload?) that can be used by the Matcher.
+* Rule Engine Matcher:  Compares the rewritten event against the pre-configured rule set in
+  priority order until it finds a matching rule.
+* Rule Engine Extractor/Dispatcher:  Once a matching rule is found, it creates variables from both
+  the event payload and the rule definition, then sending it to the appropriate Tornado Executor.
+* Action Executors:  Instantiates the variables into an action template and invokes that action.
 
-An additional element of Tornado is the Configuration Parser which on startup reads configurations
-from disk and converts them into internal rule structures.
-
-* Datasource to collector:
-    * Communication method depends on event type: Channel subscribe, steam, call, read, API call
-    * Patterns (n-to-1):  poll/call, stream/subscribe
-
-* Why we chose Rust to implement Tornado
-    * Thread-safe and memory safe
-    * Fully compiled and thus fast
-    * Excellent error handling
-
-By using Rust, Tornado can receive hundreds of thousands of events per second and apply millions
-of rules per second.
-
+Tornado is implemented in Rust, so that it is fully compiled and thus blazingly fast, is both
+thread-safe and memory safe, and has excellent error handling.  By using Rust, Tornado can receive
+hundreds of thousands of events per second and apply millions of rules per second.
 
 
-## Tornado Configuration
+
+## Tornado Configuration and Rules
 
 * Tornado is aware when its configuration changes and will automatically reload it.
 * Location of configuration files
