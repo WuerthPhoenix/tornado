@@ -115,7 +115,7 @@ regular expression "[0-9]+\\sDegrees" matches the body of the email.  The rule i
 efficient because events that are not of type "email" are discarded immediately before
 an attempt is made at finding a more time-consuming regex match.
 
-```
+```json
 {
     "name": "emails_with_temperature_measurements",
     "description": "Matches all emails containing ",
@@ -170,7 +170,7 @@ You can download and install the Tornado source for Linux by cloning from the .g
 To build the source (assuming you have already installed Rust) and run Tornado, open a shell where
 you cloned the repository, change to the *src* directory, and type:
 ```
-$ rustc main.rs
+$ cargo build
 $ systemctl start tornado.service
 ```
 
@@ -211,34 +211,70 @@ The shortcuts below, organized thematically, will take you to the documentation 
 
 
 ### Common Traits and Code
+
+The Common API page describes the API and defines the Event and Action structures.
 - [tornado_common_api](src/common/api/doc/README.md)
+
+The Logger page describes how Tornado logs its own actions.
 - [tornado_common_logger](src/common/logger/doc/README.md)
 
 
 
 ### Collectors
+
+This crate describes the commonalities of all Collector types.
+<!-- This page of doc. is very short. -->
 - [tornado_collector_common](src/collector/common/doc/README.md)
+
+This page illustrates the Collector for JSON evevents using the JMESPath JSON query language.
 - [tornado_collector_jmespath](src/collector/jmespath/doc/README.md)
+
+Presents the standard JSON collector that deserializes an unstructured JSON string into an Event.
 - [tornado_collector_json](src/collector/json/doc/README.md)
+
+Describes an SNMP trap collector that receives *snmptrapd* messages formatted as JSON and generates 
+an Event.
 - [tornado_collector_snmptrapd](src/collector/snmptrapd/doc/README.md)
 
 
 
 ### Engine
+
+The Matcher page describes the structure of the rules used in matching.
+<!-- It doesn't describe anything else about the matcher besides the rule structure. -->
 - [tornado_engine_matcher](src/engine/matcher/doc/README.md)
 
 
 
 ### Executors
-- [tornado_executor_archive](src/executor/archive/doc/README.md)
+
+This crate describes the commonalities of all Executor types.
+<!-- This page of doc. is very short. -->
 - [tornado_executor_common](src/executor/common/doc/README.md)
+
+This page describes how the Archive executor writes to log files on locally mounted file systems,
+with a focus on configuration.
+- [tornado_executor_archive](src/executor/archive/doc/README.md)
+
+The Logger executor simply outputs the whole Action body 
+to the standard [log](https://crates.io/crates/log) at _info_ level.
+<!-- This page of doc. is very short. -->
 - [tornado_executor_logger](src/executor/logger/doc/README.md)
+
+The Executor Script page defines how to configure Actions that launch shell scripts.
+<!-- Has not been checked for English yet. -->
 - [tornado_executor_script](src/executor/script/doc/README.md)
 
 
 
 ### Network
+
+This page contains high level traits not bound to any specific network technology.
+<!-- This page of doc. is very short. -->
 - [tornado_network_common](src/network/common/doc/README.md)
+
+Describes tests that dispatch Events and Actions on a single process without actually making network calls.
+<!-- This page of doc. is very short. -->
 - [tornado_network_simple](src/network/simple/doc/README.md)
 
 
@@ -248,12 +284,21 @@ The shortcuts below, organized thematically, will take you to the documentation 
 
 
 ### Common code
+
+This page describes common structures and error handling, especially for UDS code from third
+parties, such as Actix and Tokio.
+<!-- README.md not yet in a branch? -->
 - [tornado_common](src/tornado/common/doc/README.md)
 
 
 
 ### Executables
-- [tornado](src/tornado/tornado/doc/README.md)
-- [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
-- [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md)
 
+Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
+- [tornado](src/tornado/tornado/doc/README.md)
+
+The description of a binary executable that generates Tornado Events from rsyslog inputs.
+- [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
+
+A standalone HTTP server binary executable that listens for REST calls from a generic webhook.
+- [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md)
