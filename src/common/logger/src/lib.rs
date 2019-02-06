@@ -1,24 +1,26 @@
-extern crate chrono;
-extern crate failure;
-extern crate fern;
-extern crate log;
-#[macro_use]
-extern crate failure_derive;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-
-use std::collections::HashMap;
+use failure_derive::Fail;
 use std::str::FromStr;
+use structopt::StructOpt;
 
-/// The logger configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+/// Defines the Logger configuration.
+#[derive(Debug, Clone, StructOpt)]
 pub struct LoggerConfig {
-    pub root_level: String,
-    pub output_system_enabled: bool,
-    pub output_file_enabled: bool,
-    pub output_file_name: String,
-    pub module_level: HashMap<String, String>,
+    // Todo: check if an enum can be used
+    /// The Logger level
+    /// Valid values: trace, debug, info, warn, error
+    #[structopt(long = "logger-level", default_value = "warn")]
+    pub level: String,
+
+    /// Determines whether the Logger should print to standard output.
+    /// Valid values: true, false
+    #[structopt(long = "logger-stdout")]
+    pub stdout_output: bool,
+
+    /// A file path in the file system; if provided, the Logger will append any output to it.
+    #[structopt(long = "logger-file-path")]
+    pub file_output_path: Option<String>,
+    // #[structopt(short = "o", long = "value_one", default_value = "10000")]
+    // pub module_level: HashMap<String, String>,
 }
 
 #[derive(Fail, Debug)]
@@ -39,7 +41,7 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
-/// It configures the underlying logger implementation and activate it.
+/// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
     let mut log_dispatcher = fern::Dispatch::new()
         .format(|out, message, record| {
@@ -50,19 +52,29 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
                 record.level(),
                 message
             ))
-        }).level(log::LevelFilter::from_str(&logger_config.root_level).unwrap());
+        })
+        .level(log::LevelFilter::from_str(&logger_config.level).map_err(|err| {
+            LoggerError::LoggerConfigurationError {
+                message: format!(
+                    "The specified logger level is not valid: [{}]. err: {}",
+                    &logger_config.level, err
+                ),
+            }
+        })?);
 
+    /*
     for (module, level) in logger_config.module_level.iter() {
         log_dispatcher =
             log_dispatcher.level_for(module.to_owned(), log::LevelFilter::from_str(level).unwrap())
     }
+    */
 
-    if logger_config.output_system_enabled {
+    if logger_config.stdout_output {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());
     }
 
-    if logger_config.output_file_enabled {
-        log_dispatcher = log_dispatcher.chain(fern::log_file(&logger_config.output_file_name)?);
+    if let Some(path) = &logger_config.file_output_path {
+        log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?)
     }
 
     log_dispatcher.apply()?;

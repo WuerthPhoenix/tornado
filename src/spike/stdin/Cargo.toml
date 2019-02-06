@@ -1,0 +1,16 @@
+[package]
+name = "spike_stdin"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+edition = "2018"
+
+[dependencies]
+actix = "0.7"
+futures = "0.1"
+tokio = "0.1"
+tokio-codec = "0.1"
+tokio-io = "0.1"
+
+[dev-dependencies]

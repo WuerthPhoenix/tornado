@@ -2,15 +2,16 @@ pub mod action;
 pub mod extractor;
 pub mod operator;
 
-use config::Rule;
-use error::MatcherError;
-use matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
+use crate::config::Rule;
+use crate::error::MatcherError;
+use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
+use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
+use crate::validator::RuleValidator;
+use log::*;
 use tornado_common_api::Event;
-use validator::RuleValidator;
 
-/// Matcher's internal Rule representation.
-/// It contains the operators and executors built from the config::Rule
+/// The Matcher's internal Rule representation, which contains the operators and executors built
+///   from the config::Rule.
 struct MatcherRule {
     name: String,
     priority: u16,
@@ -21,15 +22,15 @@ struct MatcherRule {
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
-/// It matches the incoming Events with the defined Rules.
-/// A Matcher instance is stateless and Thread safe; consequently, a single instance can serve the entire application.
+/// It matches incoming Events against the defined Rules.
+/// A Matcher instance is stateless and thread-safe; consequently, a single instance can serve the entire application.
 pub struct Matcher {
     rules: Vec<MatcherRule>,
 }
 
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
-    pub fn new(rules: &[Rule]) -> Result<Matcher, MatcherError> {
+    pub fn build(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
 
         RuleValidator::new().validate_all(rules)?;
@@ -39,21 +40,19 @@ impl Matcher {
         let extractor_builder = MatcherExtractorBuilder::new();
         let mut processed_rules = vec![];
 
-        for rule in rules {
-            if rule.active {
-                info!("Matcher build - Processing rule: [{}]", &rule.name);
-                debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
+        for rule in rules.iter().filter(|rule| rule.active) {
+            info!("Matcher build - Processing rule: [{}]", &rule.name);
+            debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
 
-                processed_rules.push(MatcherRule {
-                    name: rule.name.to_owned(),
-                    priority: rule.priority,
-                    do_continue: rule.do_continue,
-                    operator: operator_builder
-                        .build(&rule.name, &rule.constraint.where_operator)?,
-                    extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                    actions: action_builder.build(&rule.name, &rule.actions)?,
-                })
-            }
+            processed_rules.push(MatcherRule {
+                name: rule.name.to_owned(),
+                priority: rule.priority,
+                do_continue: rule.do_continue,
+                operator: operator_builder
+                    .build_option(&rule.name, &rule.constraint.where_operator)?,
+                extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
+                actions: action_builder.build(&rule.name, &rule.actions)?,
+            })
         }
 
         // Sort rules by priority
@@ -64,7 +63,7 @@ impl Matcher {
         Ok(Matcher { rules: processed_rules })
     }
 
-    /// Processes an incoming Event against the set of Rules defined at Matcher's creation time.
+    /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);
@@ -141,9 +140,10 @@ impl Matcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::test_root;
     use std::collections::HashMap;
-    use test_root;
+    use tornado_common_api::*;
 
     #[test]
     fn should_build_the_matcher() {
@@ -275,11 +275,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(3, result.rules.len());
@@ -316,11 +312,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -347,11 +339,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("sms"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("sms"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -381,11 +369,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -424,14 +408,10 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         let mut event_payload = HashMap::new();
-        event_payload.insert(String::from("temp"), String::from("temp_value"));
+        event_payload.insert(String::from("temp"), Value::Text(String::from("temp_value")));
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: event_payload,
-        });
+        let result = matcher.process(Event::new_with_payload("email", event_payload));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -459,11 +439,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());
@@ -472,6 +448,7 @@ mod test {
         assert!(result.rules.contains_key("rule2_email"));
         assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule2_email").unwrap().status);
     }
+
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
@@ -491,11 +468,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(3, result.rules.len());
@@ -527,11 +500,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(1, result.rules.len());
@@ -542,6 +511,7 @@ mod test {
         assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
         assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
     }
+
     #[test]
     fn should_return_extracted_vars_grouped_by_rule() {
         // Arrange
@@ -576,11 +546,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());
@@ -630,11 +596,7 @@ mod test {
         let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
 
         // Act
-        let result = matcher.process(Event {
-            created_ts: 0,
-            event_type: String::from("email"),
-            payload: HashMap::new(),
-        });
+        let result = matcher.process(Event::new("email"));
 
         // Assert
         assert_eq!(2, result.rules.len());
@@ -649,13 +611,93 @@ mod test {
         assert_eq!("ai", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
     }
 
+    #[test]
+    fn should_match_rule_against_inner_array() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1",
+            0,
+            Operator::Equal {
+                first: "${event.payload.array[0]}".to_owned(),
+                second: "aaa".to_owned(),
+            },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.array[1]}"),
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert(
+            "array".to_owned(),
+            Value::Array(vec![Value::Text("aaa".to_owned()), Value::Text("zzz".to_owned())]),
+        );
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        let rule_1_processed = result.rules.get("rule1").unwrap();
+        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert_eq!(
+            "zzz",
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+        );
+    }
+
+    #[test]
+    fn should_match_rule_against_inner_map() {
+        // Arrange
+        let mut rule_1 = new_rule(
+            "rule1",
+            0,
+            Operator::Equal {
+                first: "${event.payload.map.key0}".to_owned(),
+                second: "aaa".to_owned(),
+            },
+        );
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.map.key1}"),
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&vec![rule_1]).unwrap();
+
+        let mut payload = Payload::new();
+        let mut inner = Payload::new();
+        inner.insert("key0".to_owned(), Value::Text("aaa".to_owned()));
+        inner.insert("key1".to_owned(), Value::Text("zzz".to_owned()));
+        payload.insert("map".to_owned(), Value::Map(inner));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        let rule_1_processed = result.rules.get("rule1").unwrap();
+        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+        assert_eq!(
+            "zzz",
+            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+        );
+    }
+
     fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {
         test_root::start_context();
-        Matcher::new(rules)
+        Matcher::build(rules)
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-        let constraint = Constraint { where_operator: operator, with: HashMap::new() };
+        let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),

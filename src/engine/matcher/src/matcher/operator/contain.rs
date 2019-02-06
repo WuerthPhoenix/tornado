@@ -1,11 +1,12 @@
-use accessor::Accessor;
-use error::MatcherError;
-use matcher::operator::Operator;
-use model::ProcessedEvent;
+use crate::accessor::Accessor;
+use crate::error::MatcherError;
+use crate::matcher::operator::Operator;
+use crate::model::ProcessedEvent;
+use tornado_common_api::cow_to_str;
 
 const OPERATOR_NAME: &str = "contain";
 
-/// A matching matcher.operator that evaluates whether a string contains a substring
+/// A matching matcher.operator that evaluates whether a string contains a given substring
 #[derive(Debug)]
 pub struct Contain {
     text: Accessor,
@@ -24,11 +25,15 @@ impl Operator for Contain {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        match self.text.get(event) {
-            Some(text) => match self.substring.get(event) {
-                Some(substring) => (&text).contains(substring.as_ref()),
-                None => false,
-            },
+        let option_text = self.text.get(event);
+        match cow_to_str(&option_text) {
+            Some(text) => {
+                let option_substring = self.substring.get(event);
+                match cow_to_str(&option_substring) {
+                    Some(substring) => (&text).contains(substring),
+                    None => false,
+                }
+            }
             None => false,
         }
     }
@@ -38,9 +43,9 @@ impl Operator for Contain {
 mod test {
 
     use super::*;
-    use accessor::AccessorBuilder;
+    use crate::accessor::AccessorBuilder;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_return_the_operator_name() {
@@ -56,16 +61,13 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = ProcessedEvent::new(Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        });
+        let event = ProcessedEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.text.get(&event).unwrap());
-        assert_eq!("two", operator.substring.get(&event).unwrap());
+        assert_eq!("one", operator.text.get(&event).unwrap().as_ref());
+        assert_eq!("two", operator.substring.get(&event).unwrap().as_ref());
     }
 
     #[test]
@@ -73,9 +75,10 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -85,9 +88,10 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"two or one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -97,10 +101,10 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -110,10 +114,10 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -123,12 +127,13 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), "type".to_owned());
+        payload.insert("type".to_owned(), Value::Text("type".to_owned()));
 
-        let event = Event { payload, event_type: "event type".to_owned(), created_ts: 0 };
+        let event = Event::new_with_payload("test_type", payload);
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -138,9 +143,38 @@ mod test {
         let operator = Contain::build(
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_bool() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"t".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Bool(true));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_value_of_type_number() {
+        let operator = Contain::build(
+            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"9".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("value".to_owned(), Value::Number(999.99));
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }

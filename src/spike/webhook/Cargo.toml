@@ -1,0 +1,15 @@
+[package]
+name = "spike_webhook"
+version = "0.0.1"
+authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+actix = "0.7"
+actix-web = "0.7"
+jmespath = "0.2"
+rust-crypto = "0.2"
+serde = "1.0"
+serde_json = "1.0"
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }

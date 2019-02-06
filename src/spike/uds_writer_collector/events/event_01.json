@@ -1,0 +1,8 @@
+{
+  "type":"email",
+  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "payload":{
+    "subject":"First email",
+    "body":"Temperature is 12 Degrees. Humidity is 45%."
+  }
+}

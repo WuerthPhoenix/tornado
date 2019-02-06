@@ -1,7 +1,8 @@
 pub mod id;
 
-use config::Rule;
-use error::MatcherError;
+use crate::config::Rule;
+use crate::error::MatcherError;
+use log::*;
 use std::collections::HashMap;
 
 /// A validator for a Rule or array of Rules
@@ -15,10 +16,10 @@ impl RuleValidator {
         RuleValidator { id: id::IdValidator::new() }
     }
 
-    /// Validates that a rule:
+    /// Checks that a rule:
     /// - has a valid name
     /// - has valid extracted variable names
-    /// - has valid action ids
+    /// - has valid action IDs
     pub fn validate(&self, rule: &Rule) -> Result<(), MatcherError> {
         let rule_name = &rule.name;
 
@@ -38,7 +39,7 @@ impl RuleValidator {
 
     /// Validates a set of Rules.
     /// In addition to the checks performed by the validate(rule) method,
-    /// it validates that rule names and rule priorities are unique.
+    ///   it verifies that rule names and rule priorities are unique.
     pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
         info!("RuleValidator validate_all - validate all rules");
 
@@ -89,7 +90,7 @@ impl RuleValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
 
     #[test]
@@ -242,7 +243,7 @@ mod test {
     }
 
     fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-        let constraint = Constraint { where_operator: operator, with: HashMap::new() };
+        let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),

@@ -1,11 +1,11 @@
-use config;
-use error::MatcherError;
-use matcher::operator::{Operator, OperatorBuilder};
-use model::ProcessedEvent;
+use crate::config;
+use crate::error::MatcherError;
+use crate::matcher::operator::{Operator, OperatorBuilder};
+use crate::model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "and";
 
-/// A matching matcher.operator that evaluates whether a list of children operators are all verified.
+/// A matching matcher.operator that evaluates whether a list of child operators have all been verified
 #[derive(Debug)]
 pub struct And {
     operators: Vec<Box<Operator>>,
@@ -32,12 +32,7 @@ impl Operator for And {
     }
 
     fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        for operator in &self.operators {
-            if !operator.evaluate(event) {
-                return false;
-            }
-        }
-        true
+        self.operators.iter().all(|op| op.evaluate(event))
     }
 }
 
@@ -45,7 +40,6 @@ impl Operator for And {
 mod test {
 
     use super::*;
-    use std::collections::HashMap;
     use tornado_common_api::Event;
 
     #[test]
@@ -63,7 +57,8 @@ mod test {
                 second: "second_arg".to_owned(),
             }],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
         assert_eq!(1, operator.operators.len());
         assert_eq!("equal", operator.operators[0].name());
     }
@@ -101,7 +96,8 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
         assert_eq!("and", operator.name());
         assert_eq!(2, operator.operators.len());
@@ -111,7 +107,7 @@ mod test {
         println!("{:?}", operator.operators[1]);
 
         assert!(format!("{:?}", operator.operators[1]).contains(
-            r#"Equal { first_arg: Constant { value: "3" }, second_arg: Constant { value: "4" } }"#
+            r#"Equal { first_arg: Constant { value: Text("3") }, second_arg: Constant { value: Text("4") } }"#
         ))
     }
 
@@ -119,7 +115,7 @@ mod test {
     fn should_evaluate_to_true_if_no_children() {
         let operator = And::build("", &vec![], &OperatorBuilder::new()).unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -135,9 +131,10 @@ mod test {
                 config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -153,9 +150,10 @@ mod test {
                 config::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -176,9 +174,10 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -199,9 +198,10 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -225,9 +225,10 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -251,9 +252,10 @@ mod test {
                 },
             ],
             &OperatorBuilder::new(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }

@@ -1,6 +1,6 @@
 use criterion::Criterion;
 use std::collections::HashMap;
-use tornado_common_api::Event;
+use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::*;
 use tornado_engine_matcher::matcher::Matcher;
 
@@ -31,12 +31,12 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // Create Matcher
-    let matcher = Matcher::new(&vec![rule]).unwrap();
+    let matcher = Matcher::build(&vec![rule]).unwrap();
 
     // Create event
     let event = {
         let mut event = Event::new("email".to_owned());
-        event.payload.insert("body".to_owned(), "45 degrees".to_owned());
+        event.payload.insert("body".to_owned(), Value::Text("45 degrees".to_owned()));
         event
     };
 
@@ -46,7 +46,7 @@ pub fn bench(c: &mut Criterion) {
 }
 
 fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
-    let constraint = Constraint { where_operator: operator, with: HashMap::new() };
+    let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
     Rule {
         name: name.to_owned(),

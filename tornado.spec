@@ -1,9 +1,10 @@
 %global debug_package %{nil}
 %define release_target_dir target/release/
 %define deploy_dir /opt/tornado/
+%define conf_dir %{_sysconfdir}/tornado/
 
 Name:    tornado
-Version: 0.3.0
+Version: 0.4.0
 Release: 1
 Summary: Tornado Package
 
@@ -28,27 +29,44 @@ cd -
 
 %install
 mkdir -p %{buildroot}/%{deploy_dir}
-EXECUTABLES="tornado_spike_actix tornado_spike_tokio uds_writer_collector"
+# Install executables
+EXECUTABLES="tornado tornado_rsyslog_collector"
 for binary in $EXECUTABLES ; do
-    mkdir -p %{buildroot}/%{deploy_dir}/$binary
-    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/$binary/$binary
+    mkdir -p %{buildroot}/%{deploy_dir}/bin/
+    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
 done
-cp -rpv ./src/spike/tokio/config  %{buildroot}/%{deploy_dir}/tornado_spike_tokio/config
-cp -rpv ./src/spike/actix/config  %{buildroot}/%{deploy_dir}/tornado_spike_actix/config
-cp -prv ./src/spike/uds_writer_collector/config  %{buildroot}/%{deploy_dir}/uds_writer_collector/config
+
+# Install spikes
+mkdir -p %{buildroot}/%{deploy_dir}/bin/spikes
+find src/%{release_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{deploy_dir}/bin/spikes/ \;
+
+# Install config files
+mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 
 %files
 %defattr(0755, root, root, 0775)
-%{deploy_dir}/tornado_spike_actix/tornado_spike_actix
-%{deploy_dir}/tornado_spike_tokio/tornado_spike_tokio
-%{deploy_dir}/uds_writer_collector/uds_writer_collector
+%{deploy_dir}/bin/tornado
+%{deploy_dir}/bin/tornado_rsyslog_collector
+%{deploy_dir}/bin/spikes/*
 
-%defattr(0664, root, root, 0775)
-%{deploy_dir}/tornado_spike_actix/config
-%{deploy_dir}/tornado_spike_tokio/config
-%{deploy_dir}/uds_writer_collector/config
+%defattr(0660, root, root, 0770)
+%dir %{conf_dir}/rules.d/
 
 %changelog
+* Wed Feb 06 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
+ - New Feature: Rsyslog Collector & Rsyslog 'omprog' forwarder
+ - New Feature: Snmptrapd Collector & Embedded snmptrapd forwarder
+ - New Feature: Webhook Collector
+ - New Feature: Script Executor
+ - New Feature: Archive Executor
+ - Improvement: Tornado Executable with 3 Level Configuration
+ - Improvement: Nested Structures in Action Payload
+ - Improvement: Support List Structures ( Arrays ), and Key Value Structures (Hashes)
+ - Improvement: All dates are expected and parsed into ISO 8601
+ - Spikes are now deployed in spikes subdirectory
+ - Updated to Rust Edition 2018
+ - Added criterion benchmarks and integrated google cpuprofiler as baseline
+
 * Tue Nov 13 2018 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.3.0-1
  - New Feature: Contains Operation
  - Improvement: Additional Benchmark for performance tracking

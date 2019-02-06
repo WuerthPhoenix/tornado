@@ -1,7 +1,7 @@
-use accessor::{Accessor, AccessorBuilder};
-use config::Action as ConfigAction;
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::accessor::{Accessor, AccessorBuilder};
+use crate::config::Action as ConfigAction;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
 use std::collections::HashMap;
 use tornado_common_api::Action;
 
@@ -10,15 +10,15 @@ pub struct ActionResolverBuilder {
     accessor: AccessorBuilder,
 }
 
-/// ActionResolver builder
+/// The ActionResolver builder
 impl ActionResolverBuilder {
     pub fn new() -> ActionResolverBuilder {
         ActionResolverBuilder { accessor: AccessorBuilder::new() }
     }
 
-    /// Receives an array of Actions as defined in a Rule an returns an array of ActionResolver.
-    /// Each ActionResolver is linked to an input Action definition and contains the logic build the final
-    /// Action object ready to be sent to the executors.
+    /// Receives an array of Actions as defined in a Rule and returns an array of ActionResolver elements.
+    /// Each ActionResolver is linked to an input Action definition and contains the logic needed to build
+    /// the final Action object, ready to be sent to the executors.
     pub fn build(
         &self,
         rule_name: &str,
@@ -46,7 +46,7 @@ impl ActionResolverBuilder {
     }
 }
 
-/// An Action resolver creates Actions from a ProcessedEvent
+/// An Action resolver creates Actions from a ProcessedEvent.
 pub struct ActionResolver {
     rule_name: String,
     id: String,
@@ -54,21 +54,19 @@ pub struct ActionResolver {
 }
 
 impl ActionResolver {
-    /// Builds an Action extracting the required data from the ProcessedEvent.
+    /// Builds an Action by extracting the required data from the ProcessedEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn execute(&self, event: &ProcessedEvent) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, accessor) in &self.payload {
-            let value = match accessor.get(event) {
-                Some(value) => Ok(value),
-                None => Err(MatcherError::CreateActionError {
-                    action_id: self.id.to_owned(),
-                    rule_name: self.rule_name.to_owned(),
-                    cause: format!("Accessor [{:?}] returned empty value.", accessor),
-                }),
-            };
-            action.payload.insert(key.to_owned(), value?.to_string());
+            let value = accessor.get(event).ok_or(MatcherError::CreateActionError {
+                action_id: self.id.to_owned(),
+                rule_name: self.rule_name.to_owned(),
+                cause: format!("Accessor [{:?}] returned empty value.", accessor),
+            })?;
+
+            action.payload.insert(key.to_owned(), value.into_owned());
         }
 
         Ok(action)
@@ -78,9 +76,9 @@ impl ActionResolver {
 #[cfg(test)]
 mod test {
     use super::*;
-    use accessor::Accessor;
+    use crate::accessor::Accessor;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_build_a_matcher_action() {
@@ -101,7 +99,10 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-        assert_eq!(&Accessor::Constant { value }, action_payload.get("key").unwrap())
+        assert_eq!(
+            &Accessor::Constant { value: Value::Text(value) },
+            action_payload.get("key").unwrap()
+        )
     }
 
     #[test]
@@ -124,21 +125,22 @@ mod test {
         let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+
         let mut event = ProcessedEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: 123456,
-            payload: HashMap::new(),
+            created_ts: "123456".to_owned(),
+            payload,
         });
 
-        event.event.payload.insert("body".to_owned(), "body_value".to_owned());
-        event.event.payload.insert("subject".to_owned(), "subject_value".to_owned());
-
         event
             .extracted_vars
-            .insert("rule_for_test.test1".to_owned(), "var_test_1_value".to_owned());
+            .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
         event
             .extracted_vars
-            .insert("rule_for_test.test2".to_owned(), "var_test_2_value".to_owned());
+            .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
 
         // Act
         let result = matcher_action.execute(&event).unwrap();
@@ -154,4 +156,99 @@ mod test {
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
     }
 
+    #[test]
+    fn should_build_an_action_with_maps_in_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("payload_body".to_owned(), "${event.payload.body}".to_owned());
+        config_action
+            .payload
+            .insert("payload_body_inner".to_owned(), "${event.payload.body.inner}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut body = HashMap::new();
+        body.insert("inner".to_owned(), Value::Text("inner_body_value".to_owned()));
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Map(body.clone()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload,
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!("inner_body_value", result.payload.get("payload_body_inner").unwrap());
+        assert_eq!(&Value::Map(body.clone()), result.payload.get("payload_body").unwrap());
+    }
+
+    #[test]
+    fn should_put_the_whole_event_in_the_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("event".to_owned(), "${event}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload,
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+
+        let event_value: Value = event.event.clone().into();
+        assert_eq!(&event_value, result.payload.get("event").unwrap());
+    }
+
+    #[test]
+    fn should_put_the_whole_event_payload_in_the_action_payload() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("event_payload".to_owned(), "${event.payload}".to_owned());
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload: payload.clone(),
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!(&Value::Map(payload), result.payload.get("event_payload").unwrap());
+    }
 }

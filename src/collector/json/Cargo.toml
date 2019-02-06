@@ -4,6 +4,7 @@ version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
 ]
+edition = "2018"
 
 [dependencies]
 serde_json = "1.0"

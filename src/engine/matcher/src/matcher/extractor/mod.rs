@@ -1,30 +1,29 @@
-use accessor::{Accessor, AccessorBuilder};
-use config::Extractor;
-use error::MatcherError;
-use model::ProcessedEvent;
+use crate::accessor::{Accessor, AccessorBuilder};
+use crate::config::Extractor;
+use crate::error::MatcherError;
+use crate::model::ProcessedEvent;
+use log::*;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
+use tornado_common_api::Value;
 
-/// MatcherExtractor instance builder.
+/// The MatcherExtractor instance builder.
 #[derive(Default)]
 pub struct MatcherExtractorBuilder {
     accessor: AccessorBuilder,
 }
 
 impl MatcherExtractorBuilder {
-    /// Returns a new MatcherExtractorBuilder instance
+    /// Returns a new MatcherExtractorBuilder instance.
     pub fn new() -> MatcherExtractorBuilder {
         MatcherExtractorBuilder { accessor: AccessorBuilder::new() }
     }
 
-    /// Returns a specific MatcherExtractor instance based on the rule matcher.extractor configuration.
+    /// Returns a specific MatcherExtractor instance based on the matcher.extractor rule configuration.
     ///
     /// # Example
     ///
     /// ```rust
-    ///
-    ///    extern crate tornado_common_api;
-    ///    extern crate tornado_engine_matcher;
     ///
     ///    use tornado_common_api::Event;
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
@@ -46,14 +45,11 @@ impl MatcherExtractorBuilder {
     ///    );
     ///
     ///    // The matcher_extractor contains the logic to create the "extracted_temp" variable from the ${event.type}.
-    ///    // The value of the "extracted_temp" variable is obtained applying the regular expression "[0-9]+" to the event.type.
+    ///    // The value of the "extracted_temp" variable is obtained by applying the regular expression "[0-9]+" to
+    ///    // the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event = ProcessedEvent::new(Event {
-    ///        payload: HashMap::new(),
-    ///        event_type: "temp=44'C".to_owned(),
-    ///        created_ts: 0,
-    ///    });
+    ///    let event = ProcessedEvent::new(Event::new("temp=44'C"));
     ///
     ///    assert_eq!(
     ///        String::from("44"),
@@ -94,7 +90,7 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
-    /// Returns the value of the variable with name 'key' generated from the provided Event
+    /// Returns the value of the variable named 'key' generated from the provided Event.
     pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
         let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event));
         self.check_extracted(key, extracted)
@@ -102,12 +98,12 @@ impl MatcherExtractor {
 
     /// Fills the Event with the extracted variables defined in the rule and generated from the Event itself.
     /// Returns an Error if not all variables can be correctly extracted.
-    /// The variable key in the event.extracted_vars map is in the form:
+    /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
     pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
             let value = self.check_extracted(key, extractor.extract(event))?;
-            event.extracted_vars.insert(extractor.scoped_key.clone(), value);
+            event.extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
         }
         Ok(())
     }
@@ -156,8 +152,9 @@ impl VariableExtractor {
     }
 
     pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
-        let value = self.target.get(event)?;
-        let captures = self.regex.captures(&value)?;
+        let cow_value = self.target.get(event)?;
+        let value = cow_value.get_text()?;
+        let captures = self.regex.captures(value)?;
         let group_idx = self.group_match_idx;
         captures.get(group_idx as usize).map(|matched| matched.as_str().to_owned())
     }
@@ -166,8 +163,8 @@ impl VariableExtractor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use accessor::AccessorBuilder;
-    use config::ExtractorRegex;
+    use crate::accessor::AccessorBuilder;
+    use crate::config::ExtractorRegex;
     use std::collections::HashMap;
     use tornado_common_api::Event;
 
@@ -203,7 +200,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             0,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -218,7 +216,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             1,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -233,7 +232,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             2,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -248,7 +248,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
             AccessorBuilder::new().build("", "${event.type}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("http://stackoverflow.com/");
 
@@ -263,7 +264,8 @@ mod test {
             r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?",
             10000,
             AccessorBuilder::new().build("", "${event.payload.body}").unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let event = new_event("");
 
@@ -345,8 +347,8 @@ mod test {
         let vars = &event.extracted_vars;
 
         assert_eq!(2, vars.len());
-        assert_eq!(&String::from("44"), vars.get("rule.extracted_temp").unwrap());
-        assert_eq!(&String::from("temp"), vars.get("rule.extracted_text").unwrap());
+        assert_eq!("44", vars.get("rule.extracted_temp").unwrap());
+        assert_eq!("temp", vars.get("rule.extracted_text").unwrap());
     }
 
     #[test]
@@ -377,10 +379,6 @@ mod test {
     }
 
     fn new_event(event_type: &str) -> ProcessedEvent {
-        ProcessedEvent::new(Event {
-            payload: HashMap::new(),
-            event_type: event_type.to_owned(),
-            created_ts: 0,
-        })
+        ProcessedEvent::new(Event::new(event_type))
     }
 }

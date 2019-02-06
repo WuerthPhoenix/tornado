@@ -1,11 +1,11 @@
-use accessor::Accessor;
-use error::MatcherError;
-use matcher::operator::Operator;
-use model::ProcessedEvent;
+use crate::accessor::Accessor;
+use crate::error::MatcherError;
+use crate::matcher::operator::Operator;
+use crate::model::ProcessedEvent;
 
 const OPERATOR_NAME: &str = "equal";
 
-/// A matching matcher.operator that evaluates whether two strings are equal.
+/// A matching matcher.operator that checks whether two strings are equal
 #[derive(Debug)]
 pub struct Equal {
     first_arg: Accessor,
@@ -34,9 +34,9 @@ impl Operator for Equal {
 mod test {
 
     use super::*;
-    use accessor::AccessorBuilder;
+    use crate::accessor::AccessorBuilder;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::*;
 
     #[test]
     fn should_return_the_operator_name() {
@@ -52,16 +52,13 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = ProcessedEvent::new(Event {
-            payload: HashMap::new(),
-            event_type: "".to_owned(),
-            created_ts: 0,
-        });
+        let event = ProcessedEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.first_arg.get(&event).unwrap());
-        assert_eq!("two", operator.second_arg.get(&event).unwrap());
+        assert_eq!("one", operator.first_arg.get(&event).unwrap().as_ref());
+        assert_eq!("two", operator.second_arg.get(&event).unwrap().as_ref());
     }
 
     #[test]
@@ -69,9 +66,10 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -81,10 +79,10 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -94,10 +92,10 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event =
-            Event { payload: HashMap::new(), event_type: "test_type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -107,12 +105,13 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), "type".to_owned());
+        payload.insert("type".to_owned(), Value::Text("type".to_owned()));
 
-        let event = Event { payload, event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new_with_payload("type", payload);
 
         assert!(operator.evaluate(&ProcessedEvent::new(event)));
     }
@@ -122,11 +121,163 @@ mod test {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
 
-        let event = Event { payload: HashMap::new(), event_type: "type".to_owned(), created_ts: 0 };
+        let event = Event::new("test_type");
 
         assert!(!operator.evaluate(&ProcessedEvent::new(event)));
     }
 
+    #[test]
+    fn should_evaluate_to_true_if_equal_values_of_type_bool() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Bool(false));
+        event.payload.insert("two".to_owned(), Value::Bool(false));
+
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_values_of_type_bool_but_not_equal() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Bool(true));
+        event.payload.insert("two".to_owned(), Value::Bool(false));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_true_if_equal_values_of_type_number() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Number(1.1));
+        event.payload.insert("two".to_owned(), Value::Number(1.1));
+
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_values_of_type_number_but_not_equal() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Number(1.1));
+        event.payload.insert("two".to_owned(), Value::Number(1.2));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_true_if_equal_values_of_type_array() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event
+            .payload
+            .insert("one".to_owned(), Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]));
+        event
+            .payload
+            .insert("two".to_owned(), Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]));
+
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_values_of_type_array_but_different() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event
+            .payload
+            .insert("one".to_owned(), Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]));
+        event.payload.insert("two".to_owned(), Value::Array(vec![Value::Number(1.1)]));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_true_if_equal_values_of_type_map() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("one".to_owned(), Value::Number(1.1));
+        payload.insert("two".to_owned(), Value::Bool(true));
+        payload.insert("three".to_owned(), Value::Text("hello".to_owned()));
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Map(payload.clone()));
+        event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
+
+        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_true_if_values_of_type_map_but_different() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("one".to_owned(), Value::Number(1.1));
+        payload.insert("two".to_owned(), Value::Bool(true));
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Map(payload.clone()));
+
+        payload.insert("three".to_owned(), Value::Text("hello".to_owned()));
+        event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
+
+    #[test]
+    fn should_evaluate_to_false_if_values_of_different_type() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let mut event = Event::new("test_type");
+        event.payload.insert("one".to_owned(), Value::Text("1.2".to_owned()));
+        event.payload.insert("two".to_owned(), Value::Number(1.2));
+
+        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+    }
 }

@@ -1,59 +1,37 @@
-extern crate tornado_collector_common;
-extern crate tornado_collector_json;
-extern crate tornado_common_api;
-extern crate tornado_common_logger;
-extern crate tornado_engine_matcher;
-extern crate tornado_executor_common;
-extern crate tornado_executor_logger;
-extern crate tornado_network_common;
-extern crate tornado_network_simple;
-
-extern crate config as config_rs;
-#[macro_use]
-extern crate log;
-extern crate futures;
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate tokio;
-extern crate tokio_codec;
-extern crate tokio_uds;
-
 use futures::sync::mpsc;
+use log::*;
 use std::fs;
 use std::sync::Arc;
 use std::thread;
 use tokio::prelude::*;
 use tokio::runtime::Runtime;
 use tornado_collector_common::Collector;
-use tornado_collector_json::JsonCollector;
+use tornado_collector_json::JsonEventCollector;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_executor_common::Executor;
-use tornado_executor_logger::LoggerExecutor;
-use tornado_network_common::EventBus;
 use tornado_network_simple::SimpleEventBus;
 
 mod config;
-mod reader;
+mod io;
 
 fn main() {
-    let conf = config::Conf::new().expect("Should read the configuration");
+    let conf = config::Conf::build();
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.json_rules_path);
+    let config_rules = read_rules_from_config(&conf.io.rules_dir);
 
     // Start matcher & dispatcher
-    let matcher = Arc::new(Matcher::new(&config_rules).unwrap());
-    let collector = Arc::new(JsonCollector::new());
+    let matcher = Arc::new(Matcher::build(&config_rules).unwrap());
+    let collector = Arc::new(JsonEventCollector::new());
 
     // Configure action dispatcher
     let event_bus = {
-        let mut event_bus = SimpleEventBus::new();
+        let event_bus = SimpleEventBus::new();
 
+        /*
         let executor = LoggerExecutor::new();
         event_bus.subscribe_to_action(
             "Logger",
@@ -62,13 +40,13 @@ fn main() {
                 Err(e) => error!("Cannot log action: {}", e),
             }),
         );
-
+        */
         Arc::new(event_bus)
     };
 
     let mut runtime = Runtime::new().unwrap();
 
-    let (tx, rx) = mpsc::unbounded();
+    let (tx, rx) = mpsc::unbounded::<String>();
 
     runtime.spawn(rx.for_each(move |line| {
         debug!("Client - Thread {:?} - Received line {}", thread::current().name(), line);
@@ -83,9 +61,9 @@ fn main() {
                         thread::current().name()
                     );
                     let processed_event = matcher_clone.process(event);
-                    match Dispatcher::new(event_bus_clone)
+                    match Dispatcher::build(event_bus_clone)
                         .unwrap()
-                        .dispatch_actions(&processed_event)
+                        .dispatch_actions(processed_event)
                     {
                         Ok(_) => {}
                         Err(e) => error!("Cannot dispatch action: {}", e),
@@ -103,7 +81,7 @@ fn main() {
         Ok(())
     }));
 
-    let server = reader::uds::start_uds_socket(conf.io.uds_socket_path, tx);
+    let server = io::uds::start_uds_socket(conf.io.uds_path, tx);
     runtime
         .block_on(server.map_err(|e| panic!("err={:?}", e)))
         .expect("Tokio runtime should start");

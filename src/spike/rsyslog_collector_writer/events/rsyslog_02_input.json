@@ -1,0 +1,16 @@
+{
+  "@timestamp": "2018-11-01T23:59:59+01:00",
+  "host": "neteye02",
+  "hostgroups": [
+    "linux"
+  ],
+  "icinga_customfields": {
+    "snmpcommunity": "secret",
+    "os": "mac"
+  },
+  "severity": "ERROR",
+  "facility": "daemon",
+  "syslog-tag": "nfcapd[9999]",
+  "source": "nfcapd",
+  "message": "Something"
+}

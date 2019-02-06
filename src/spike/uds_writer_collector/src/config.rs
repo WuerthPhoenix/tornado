@@ -1,24 +1,33 @@
-use config_rs::{Config, ConfigError, Environment, File};
+use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
+#[structopt(rename_all = "kebab-case")]
 pub struct Io {
-    pub uds_socket_path: String,
+    /// The filesystem folder where Events are saved in JSON format
+    #[structopt(long, default_value = "./events")]
     pub json_events_path: String,
+
+    /// The Unix Socket path where outgoing events will be written
+    #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
+    pub uds_path: String,
+
+    /// How many times each event should be sent
+    #[structopt(long, default_value = "1000")]
     pub repeat_send: usize,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, StructOpt)]
 pub struct Conf {
+    #[structopt(flatten)]
     pub logger: LoggerConfig,
+
+    #[structopt(flatten)]
     pub io: Io,
 }
 
 impl Conf {
-    pub fn new() -> Result<Self, ConfigError> {
-        let mut s = Config::new();
-        s.merge(File::with_name("config/config"))?;
-        s.merge(Environment::with_prefix("engine"))?;
-        s.try_into()
+    pub fn build() -> Self {
+        Conf::from_args()
     }
 }

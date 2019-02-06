@@ -1,28 +1,38 @@
 # Common API
 
-The common API module contains the Trait definitions for cross-component communication.
+The *tornado_common_api* crate contains the API for cross-component communication.
 Three main components are currently defined: 
-- the Collectors 
-- the Tornado Engine 
-- the Executors
+- The Collectors 
+- The Tornado Engine 
+- The Executors
 
-The Tornado Engine receives Events from the collectors, processes them against a set of rules and triggers the Actions defined on the matching rules sending messages to the appropriate executors.
+The Tornado Engine receives Events from the Collectors, checks them against a set of Rules, and
+then triggers Actions defined on the Rules matched by sending messages to the appropriate executors.
+
+
 
 # Event
-An event has a simple structure, it is composed of:
 
-- __type__: the Event type identifier. Usually, a collector always sends Events of the same type;
-- __created_ts__: the Event creation timestamp in nanoseconds;
-- __payload__: a Map<String, String> with event specific data.
+An event has a simple structure, composed of:
 
-All fields are mandatory.
-The payload is required but it can be empty.
+- __type__:  The Event type identifier (a Collector usually sends Events of a single type)
+- __created_ts__:  The Event creation timestamp in ISO 8601 format
+- __payload__:  A Map<String, Value> with event-specific data
 
-Example of an Event in JSON format:
+where the payload __Value__ can be any valid JSON type:
+- A __string__
+- A __bool__ value (i.e., true or false)
+- A __number__ 
+- An __array__ of values
+- A __map__ of type Map<String, Value>
+
+All fields are mandatory, although the _payload_ can be an empty structure.
+
+Example Event in JSON format:
 ```json
 {
     "type": "email",
-    "created_ts": 12345678123123123, 
+    "created_ts": "2018-11-28T21:45:59.324310806+09:00", 
     "payload": {
         "subject" : "Doing something",
         "body": "everything's done"
@@ -30,16 +40,18 @@ Example of an Event in JSON format:
 }
 ```
 
+
+
 # Action
-As for the Event, the structure of an Action is really simple:
 
-- __id__: the Action type identifier. Usually, an executor always processed a single type of action;
-- __payload__: a Map<String, String> with action specific data.
+Like the Event structure, the structure of an Action is rather simple:
 
-All fields are mandatory. 
-The payload is required but it can be empty.
+- __id__:  The Action type identifier (an Executor usually processes a single Action type)
+- __payload__:  A Map<String, Value> with Action-specific data.
 
-Example of an Action in JSON format:
+All fields are mandatory, although again the _payload_ can be an empty structure.
+
+Example Action in JSON format:
 ```json
 {
     "id": "Monitoring",

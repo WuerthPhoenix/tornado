@@ -1,26 +1,26 @@
-use error::MatcherError;
-use model::{ProcessedEvent, ProcessedRuleStatus};
+use crate::error::MatcherError;
+use crate::model::{ProcessedEvent, ProcessedRuleStatus};
+use log::*;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
-// ToDo: the current implementation is temporary. This is going to change deeply when the network layer is defined.
 pub struct Dispatcher {
     event_bus: Arc<EventBus>,
 }
 
 impl Dispatcher {
-    pub fn new(event_bus: Arc<EventBus>) -> Result<Dispatcher, MatcherError> {
+    pub fn build(event_bus: Arc<EventBus>) -> Result<Dispatcher, MatcherError> {
         Ok(Dispatcher { event_bus })
     }
 
     /// Receives a fully processed ProcessedEvent and dispatches the actions linked to Rules whose status is Matched.
-    /// The actions resolution (i.e. resolving the extracted variables, filling the action payload, etc.) is supposed to be performed before this method execution.
-    pub fn dispatch_actions(&self, event: &ProcessedEvent) -> Result<(), MatcherError> {
-        for (rule_name, rule) in &event.rules {
+    /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
+    pub fn dispatch_actions(&self, event: ProcessedEvent) -> Result<(), MatcherError> {
+        for (rule_name, rule) in event.rules {
             match rule.status {
-                ProcessedRuleStatus::Matched => self.dispatch(&rule.actions)?,
+                ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
                 _ => {
                     trace!("Rule [{}] not matched, ignoring actions", rule_name);
                 }
@@ -29,10 +29,9 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn dispatch(&self, actions: &[Action]) -> Result<(), MatcherError> {
+    fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
         for action in actions {
-            // ToDo: avoid cloning. To be fixed when implementing the underlying network as the object could be serialized here.
-            self.event_bus.publish_action(&action)
+            self.event_bus.publish_action(action)
         }
         Ok(())
     }
@@ -41,7 +40,7 @@ impl Dispatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use model::ProcessedRule;
+    use crate::model::ProcessedRule;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use tornado_common_api::Event;
@@ -59,7 +58,7 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: &Action| {
+                Box::new(move |message: Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
                     value.push(message.clone())
@@ -67,7 +66,7 @@ mod test {
             );
         }
 
-        let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
+        let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
@@ -78,7 +77,7 @@ mod test {
         event.rules.insert("rule1".to_owned(), rule);
 
         // Act
-        dispatcher.dispatch_actions(&event).unwrap();
+        dispatcher.dispatch_actions(event).unwrap();
 
         // Assert
         assert_eq!(2, received.lock().unwrap().len());
@@ -96,7 +95,7 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: &Action| {
+                Box::new(move |message: Action| {
                     println!("received action of id: {}", message.id);
                     let mut value = clone.lock().unwrap();
                     value.push(message.clone())
@@ -104,7 +103,7 @@ mod test {
             );
         }
 
-        let dispatcher = Dispatcher::new(Arc::new(bus)).unwrap();
+        let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
@@ -113,7 +112,7 @@ mod test {
         event.rules.insert("rule1".to_owned(), rule);
 
         // Act
-        dispatcher.dispatch_actions(&event).unwrap();
+        dispatcher.dispatch_actions(event).unwrap();
 
         // Assert
         assert_eq!(0, received.lock().unwrap().len());

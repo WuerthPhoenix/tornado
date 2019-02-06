@@ -1,4 +1,5 @@
-use error::MatcherError;
+use crate::error::MatcherError;
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
 
@@ -25,7 +26,7 @@ impl Rule {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Constraint {
     #[serde(rename = "WHERE")]
-    pub where_operator: Operator,
+    pub where_operator: Option<Operator>,
     #[serde(rename = "WITH")]
     pub with: HashMap<String, Extractor>,
 }
@@ -84,7 +85,7 @@ mod test {
 
         assert_eq!("all_emails_and_syslogs", rule.name);
 
-        match rule.constraint.where_operator {
+        match rule.constraint.where_operator.unwrap() {
             Operator::And { operators } => {
                 assert_eq!(2, operators.len());
             }
@@ -93,6 +94,18 @@ mod test {
 
         assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
         assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
+    }
+
+    #[test]
+    fn should_deserialize_rule_without_where_from_json() {
+        // Arrange
+        let json = file_to_string("./test_resources/rules/rule_02_no_where.json");
+
+        // Act
+        let rule = Rule::from_json(&json).unwrap();
+
+        // Assert
+        assert!(rule.constraint.where_operator.is_none())
     }
 
     fn file_to_string(filename: &str) -> String {

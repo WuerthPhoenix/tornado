@@ -1,0 +1,17 @@
+{
+  "type": "GitHub",
+  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "payload": {
+    "ref": "refs/heads/master",
+    "repository_name": "webhook-test",
+    "inner_map": {
+      "map": {
+        "number": 123,
+        "boolean": true,
+        "text": "text_value",
+        "exp": false
+      },
+      "array": [99.9, false, "Francesco", 960885]
+    }
+  }
+}
