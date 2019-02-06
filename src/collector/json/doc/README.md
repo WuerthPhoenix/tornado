@@ -1,19 +1,21 @@
 # JSON Collectors
 
-Collectors that receive an input in JSON and unmarshall it into an internal Event struct.
+These are Collectors that receive an input in JSON and unmarshall it into an internal Event struct.
 
 There are currently two available implementations:
-1. the _JsonEventCollector_
-1. the _JsonPayloadCollector_
+1. The _JsonEventCollector_
+1. The _JsonPayloadCollector_
+
+
 
 ## JsonEventCollector
-The _JsonEventCollector_ expects to receive a valid JSON representation of a Tornado Event as input.
-It is used internally by Tornado to unmarshall Events received, for example, 
-from a TCP or UDS socket.
 
-The JSON input format should respect the Event structure.
+The _JsonEventCollector_ expects to receive a valid JSON representation of a Tornado Event as
+input.  It is used internally by Tornado to unmarshall Events received, for example, from a TCP or
+UDS socket.
 
-E.g.:
+The JSON input format should respect the Event structure, for example:
+
 ```json
 {
   "type": "email",
@@ -32,11 +34,12 @@ E.g.:
 ``` 
 
 
-## JsonPayloadCollector
-The _JsonPayloadCollector_ receives whatever valid JSON and creates a Tornado Event 
-whose payload is the received input.
 
-For example, the following input:
+## JsonPayloadCollector
+
+The _JsonPayloadCollector_ receives any valid JSON object and creates a Tornado Event whose
+payload is that input.  For example, the following input:
+
 ```json
 {
   "@timestamp": "2018-11-01T23:59:59+01:00",
@@ -58,7 +61,8 @@ For example, the following input:
 }
 ```
 
-Will generate the Event:
+will generate this Event:
+
 ```json
 {
   "type": "event_type_from_config",
@@ -84,4 +88,4 @@ Will generate the Event:
 }
 ```
 
-The Event "type" property has to be specified when the collector is instantiated. 
+The Event "type" property must be specified when the collector is instantiated.

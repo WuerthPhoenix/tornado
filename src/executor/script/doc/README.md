@@ -2,18 +2,19 @@
 
 An executor that runs custom shell scripts.
 
-## How it Works
 
-To be correctly processed by this executor, an Action should provide in its payload 
-two entries; first, a script path on the local filesystem of the executor process and, second, 
-all the parameters required to the resolve the script placeholders.
+
+## How It Works
+
+To be correctly processed by this executor, an Action should provide two entries in its payload:
+the path to a script on the local filesystem of the executor process, and all the parameters
+required to the resolve the script placeholders.
 
 The script path is identified by the payload key __script__; it is important to verify that the 
-executor has the rights to read and execute it.
+executor has read and execute rights at that path.  Additionally, if a script has placeholders,
+then the payload should contain a key and valid value for each one.
 
-Additionally, if the scripts has placeholders, then the payload should contain a key for each of them.
-
-For example, a valid Action is:
+An example of a valid Action is:
 ```json
 {
     "id": "script",
@@ -25,17 +26,15 @@ For example, a valid Action is:
 }
 ```
 
-In this case the executor will launch the script _my_script.sh_ replacing 
-_${arg_one}_ with "tornado" and _${arg_two}_ with "rust". Consequently, the resulting 
-command will be:
+In this case the executor will launch the script _my_script.sh_ replacing _${arg_one}_ with
+"tornado" and _${arg_two}_ with "rust".  Consequently, the resulting command executed will be:
 ```bash
 ./usr/script/my_script.sh tornado rust
 ```
 
-
 Other action examples are:
 
-- Non valid because missing "arg_two" entry in the payload: 
+- A non-valid action due to the missing "arg_two" entry in the payload: 
 ```json
 {
     "id": "script",
@@ -46,7 +45,7 @@ Other action examples are:
 }
 ```
 
-- Non valid because missing "script" entry in the payload: 
+- A non-valid action due to the missing "script" entry in the payload: 
 ```json
 {
     "id": "script",
@@ -56,7 +55,7 @@ Other action examples are:
 }
 ```
 
-- Valid because the script has not placeholders: 
+- An action that is valid as the script does not have placeholders: 
 ```json
 {
     "id": "script",

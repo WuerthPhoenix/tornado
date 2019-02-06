@@ -1,9 +1,11 @@
 # SNMP Trap Daemon Collector
 
-A collector that receives snmptrapd input messages formatted as JSON and generates 
-from them an internal Event struct. 
+This is a collector that receives *snmptrapd* input messages formatted as JSON and generates 
+an internal Event structure from them.
 
-## How it Works
+
+
+## How It Works
 
 The snmptrapd input should be in the form:
 ```json
@@ -30,7 +32,7 @@ The snmptrapd input should be in the form:
 }
 ```
 
-From that input, this collector will produce this Event:
+From that input, this collector will produce the following Event:
 ```json
 {
   "type": "snmptrapd",
@@ -54,5 +56,6 @@ From that input, this collector will produce this Event:
 
 The structure of the generated Event is not configurable.
 
-As a more dynamic and configurable alternative, the [jmespath collector](../jmespath/doc/README.md)
-can be used instead of this one.
+As a more dynamic and configurable alternative, you can use the
+[JMESPath collector](../jmespath/doc/README.md)
+instead of this one.

@@ -1,13 +1,13 @@
 # Archive Executor
 
-An executor that writes the Events from the received Actions to a file.
+The Archive Executor ia an executor that writes the Events from the received Actions to a file.
+
 
 
 ## Requirements and Limitations
 
-The archive executor can only write to locally mounted file systems.
-In addition, it needs read and write permissions on the folders and files specified in its
-configuration.
+The archive executor can only write to locally mounted file systems.  In addition, it needs read
+and write permissions on the folders and files specified in its configuration.
 
 
 
