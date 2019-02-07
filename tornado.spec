@@ -4,7 +4,7 @@
 %define conf_dir %{_sysconfdir}/tornado/
 
 Name:    tornado
-Version: 0.4.0
+Version: 0.5.0
 Release: 1
 Summary: Tornado Package
 
@@ -32,7 +32,7 @@ cd -
 %install
 mkdir -p %{buildroot}/%{deploy_dir}
 # Install executables
-EXECUTABLES="tornado tornado_rsyslog_collector"
+EXECUTABLES="tornado tornado_rsyslog_collector tornado_webhook_collector"
 for binary in $EXECUTABLES ; do
     mkdir -p %{buildroot}/%{deploy_dir}/bin/
     cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
@@ -48,17 +48,20 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 %files
 %defattr(0755, root, root, 0775)
 %{deploy_dir}/bin/tornado
-%{deploy_dir}/bin/tornado_rsyslog_collector
+%{deploy_dir}/bin/tornado_*_collector
 %{deploy_dir}/bin/spikes/*
 
 %defattr(0660, root, root, 0770)
 %dir %{conf_dir}/rules.d/
 
 %changelog
+* Thu Feb 07 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.5.0-1
+ - New Feature: Webhook Collector
+ - Spike Icinga2 Collector
+
 * Wed Feb 06 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.4.0-1
  - New Feature: Rsyslog Collector & Rsyslog 'omprog' forwarder
  - New Feature: Snmptrapd Collector & Embedded snmptrapd forwarder
- - New Feature: Webhook Collector
  - New Feature: Script Executor
  - New Feature: Archive Executor
  - Improvement: Tornado Executable with 3 Level Configuration
