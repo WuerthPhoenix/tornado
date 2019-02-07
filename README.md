@@ -164,22 +164,41 @@ can be processed separately.
 
 <!-- Should we include the NetEye instructions?  yum install tornado --enablerepo=neteye-extras -->
 
+
+### Prerequisites
+- Rust 1.32 or later should be installed, make sure you're using at least that version of Rust;
+- At the moment, a Unix-like OS is required; this is due to the fact that UDS sockets are used for the communication between the various Tornado components;
+- The openssl-dev library should be present in the build system.
+
+### Build process
+
 You can download and install the Tornado source for Linux by cloning from the .git repository.
+
 <!-- TODO:  Add exact instructions once the real GitHub repository is online. -->
 
-To build the source (assuming you have already installed Rust) and run Tornado, open a shell where
+To build the source, open a shell where
 you cloned the repository, change to the *src* directory, and type:
 ```
 $ cargo build
-$ systemctl start tornado.service
 ```
 
+This will build the entire project and produces a bunch of executable files in the *src/target/debug* folder.
+
+You can, alternatively, perform a release build with:
+```
+$ cargo build --release
+```
+This will produce smaller highly optimized executable in the *src/target/release* folder. If you intend to benchmark, assess or deploy Tornado in a production environment, this is the way you should built it.
+
+The issues of the Tornado build process can be grouped in three categories:
+- The spikes: All the executables with suffix _spike-_ are the TODO
 <!-- Does it print anything when running?  How can you tell it's working properly? -->
 <!-- Do we want to include a section on common build/install problems? -->
 <!-- Why are there more than one binary executables? -->
 <!-- Do we want to list external requirements and dependencies? -->
 
-
+### Run Tornado
+TO DO
 
 ## The Tornado Project
 
