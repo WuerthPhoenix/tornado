@@ -37,7 +37,7 @@ line parameters.
 
 The available startup parameters are:
 - __logger-stdout__:  Determines whether the Logger should print to standard output. 
-  Valid values are `true` and `false`, default to `false`.
+  Valid values are `true` and `false`, defaults to `false`.
 - __logger-file-path__:  A file path in the file system; if provided, the Logger will 
   append any output to it.
 - __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
