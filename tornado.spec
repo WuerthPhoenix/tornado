@@ -12,6 +12,8 @@ Group:   Applications/System
 License: GPLv3
 Source0: %{name}.tar.gz
 
+BuildRequires: openssl-devel
+Requires: openssl-libs
 %if 0%{?el7}
 BuildRequires: cargo
 %endif
