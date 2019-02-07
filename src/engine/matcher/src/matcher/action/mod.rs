@@ -1,4 +1,4 @@
-//! The action module contains the logic to build Rule's actions based on the
+//! The action module contains the logic to build a Rule's actions based on the
 //! Rule configuration.
 //!
 //! An *Action* is linked to the "actions" section of a Rule and determines the outcome
