@@ -8,9 +8,14 @@ Tornado is a high performance, scalable, and multi-tenant capable application ba
 communications secured with certificates.  It is intended to handle hundreds of thousands
 of events each second on standard server hardware.
 
-When Tornado receives an event, a dedicated collector for that specific event type converts
-it into a JSON structure which can be matched against user-defined, composable rules.  Collectors
-for new event types can be easily extended from existing types:
+<!-- Francesco:  I am not sure that we can describe it as “multi-tenant“. While it’s true that
+     there’s nothing that binds it to a specific customer, nevertheless, this is true because the
+     concept of “customer“ is not present at all. -->
+
+When Tornado receives an external event, it first arrives at a *Collector* specific to the type
+of event, is converted into an internal Tornado Event, and is forwarded to the Tornado engine
+where it is matched against user-defined, composable rules.  Collectors for new event types can
+be easily extended from existing types:
 * Monitoring events
 * Email messages
 * Telegram
@@ -20,7 +25,11 @@ for new event types can be easily extended from existing types:
 * Elastic Stack
 * SMS
 * SNMP
+* Webhooks
 * Operating system and authorization events
+
+<!-- Francesco:  The JSON reference below should be probably removed, let’s wait for @Thomas
+     Forrer input.  Anyway, I don’t understand exactly what kind of simplification is involved here.  -->
 
 Because all collectors and rules are defined with a standard format in JSON, the matching engine
 can be simplified.  Matched events can potentially trigger multiple rules, whose actions can
@@ -65,10 +74,6 @@ architecture greatly contributes to its speed.  The principal modules are:
   the event payload and the rule definition, then sending it to the appropriate Tornado Executor.
 * Action Executors:  Instantiates the variables into an action template and invokes that action.
 
-Tornado is implemented in Rust, so it is fully compiled and thus blazingly fast, is both
-thread-safe and memory safe, and has excellent error handling.  Because it uses Rust, Tornado
-can receive hundreds of thousands of events per second and match millions of rules per second.
-
 At the following links you can find more information about:
 * [Tornado's architecture](doc/architecture.md).
 * [Implementation details](doc/implementation.md)
@@ -86,8 +91,6 @@ Configuring Tornado requires the following steps:
 <!-- Is there a default configuration folder path? -->
 
 <!-- Should we mention how to configure Tornado within NetEye? -->
-
-Tornado monitors changes to its own configuration and will automatically reload it when this occurs.
 
 Before you can begin to use Tornado, you must configure it with one or more rules that match
 events and execute actions.  As an example, consider this rule below designed to find email
@@ -166,9 +169,13 @@ can be processed separately.
 
 
 ### Prerequisites
-- Rust 1.32 or later should be installed, make sure you're using at least that version of Rust;
-- At the moment, a Unix-like OS is required; this is due to the fact that UDS sockets are used for the communication between the various Tornado components;
-- The openssl-dev library should be present in the build system.
+
+- You must have Rust version 1.32 or later installed
+- At the moment, a Unix-like OS is required because Tornado uses UDS sockets for communication
+  between the various Tornado components
+- The *openssl-dev* library should be present in your build environment
+
+
 
 ### Build process
 
@@ -176,29 +183,42 @@ You can download and install the Tornado source for Linux by cloning from the .g
 
 <!-- TODO:  Add exact instructions once the real GitHub repository is online. -->
 
-To build the source, open a shell where
-you cloned the repository, change to the *src* directory, and type:
+To build the source, open a shell where you cloned the repository, change to the *src* directory,
+and type:
 ```
 $ cargo build
 ```
 
-This will build the entire project and produces a bunch of executable files in the *src/target/debug* folder.
+This will build the entire project and produces executable files in the *src/target/debug* folder.
 
-You can, alternatively, perform a release build with:
+Alternatively, you can perform a release build with:
 ```
 $ cargo build --release
 ```
-This will produce smaller highly optimized executable in the *src/target/release* folder. If you intend to benchmark, assess or deploy Tornado in a production environment, this is the way you should built it.
 
+This will produce a smaller, more highly optimized executable in the *src/target/release* folder.
+If you intend to run benchmarks, assess or deploy Tornado in a production environment, this is the
+way you should built it.
+
+<!--
 The issues of the Tornado build process can be grouped in three categories:
-- The spikes: All the executables with suffix _spike-_ are the TODO
+- The spikes: All the executables with suffix _spike-_ are the TO DO
+  -->
+
 <!-- Does it print anything when running?  How can you tell it's working properly? -->
 <!-- Do we want to include a section on common build/install problems? -->
 <!-- Why are there more than one binary executables? -->
 <!-- Do we want to list external requirements and dependencies? -->
 
-### Run Tornado
+
+
+<!--
+### How to Run Tornado
+
 TO DO
+-->
+
+
 
 ## The Tornado Project
 
@@ -211,9 +231,14 @@ remaining elements of the architecture.  Longer term, we plan to add additional 
 collectors and executors, and eventually create a graphical interface for rule configuration
 and integration.
 
+Tornado is implemented in Rust, so it is fully compiled and thus blazingly fast, is both
+thread-safe and memory safe, and has excellent error handling.  Because it uses Rust, Tornado
+can receive hundreds of thousands of events per second and match millions of rules per second.
+
 Tornado adheres to v2.0.0 of the [Semantic Versioning Initiative](http://semver.org/spec/v2.0.0.html).
-It is fully open source with the official repository on [GitHub](link.html),
-and available under the X license.
+It is fully open source.
+
+<!-- The official repository is on [GitHub](link.html), and it is available under the X license. -->
 
 <!-- Do we need to mention Support as some other projects do? -->
 
@@ -223,7 +248,7 @@ submitted it by searching the issue tracker on GitHub.
 
 <!-- Do we have a forum or other feedback channel?  If so, should we mention it? -->
 
-Tornado's crate docs are produced according to
+Tornado's crate docs are produced according to the
 [Rust documentation standards](https://doc.rust-lang.org/book/index.html).
 The shortcuts below, organized thematically, will take you to the documentation for each module.
 
