@@ -4,22 +4,16 @@ Tornado is a Complex Event Processor that receives reports of events from data s
 monitoring, email, and telegram, matches them against pre-configured rules, and executes the
 actions associated with those rules, which can include notifications, logging, and graphing.
 
-Tornado is a high performance and scalable application.
+Tornado is a high performance, scalable application.
 It is intended to handle millions of events each second on standard server hardware.
-
-
-When the system receives an external event, it first arrives at a *Collector* specific to the type
-of event where is converted into an internal Tornado Event; then, it is forwarded to the Tornado engine
-where it is matched against user-defined, composable rules. Finally, eventually generated action are 
-dispatched to a specific *Executor*.
 
 
 ## Tornado Architecture
 
 The three main components of the Tornado architecture are:
-* The *Tornado Collector*, or *Collector*
+* The *Tornado Collector(s)*, or *Collector(s)*
 * The *Tornado Engine*, or *Engine*
-* The *Tornado Executors*, or *Executor*
+* The *Tornado Executor(s)*, or *Executor(s)*
 
 The term *Tornado* refers to the whole project or to a deployed system that includes 
 all the components.
@@ -38,6 +32,11 @@ Along with the main components, these concepts are fundamental in the Tornado ar
 
 Architecturally, Tornado is organized as a processing pipeline, where input events move from
 collectors to the engine, to executors, without branching or returning.
+
+
+When the system receives an *External event*, it first arrives at a *Collector* where is converted into a *Tornado Event*; then, it is forwarded to the *Tornado Engine*
+where it is matched against user-defined, composable *Rules*. Finally,generated *Action* are dispatched to the *Executors*.
+
 
 The Tornado pipeline:
 
@@ -62,6 +61,8 @@ The Tornado pipeline:
 The purpose of a *Collector* is to receive and convert external events into the 
 internal Tornado Event structure and forward them to the Tornado Engine.
 
+*Collectors* are *Datasource*-specific. For each datasource, there is at least one collector that knows how to manipulate the datasource Events and generate Tornado Events.
+
 Out of the box, Torndato provides a bunch of Collectors for handling inputs 
 from SNMPTRAPD, Rsyslog and generic Webhooks.
 
@@ -80,15 +81,14 @@ can be easily added or extended from existing types for:
 ### Engine
 The *Engine* is the second step of the pipeline.
 It receives and processes the events produced by the *Collectors*.
-
-Its behaviour is defined by an ordered set of *Rules*, that define:
-* the conditions an event has to respect to match them
+The outcome of this processing is fully defined by an ordered set of *Rules*; each *Rule* in the set determines:
+* the conditions a *Tornado Event* has to respect to match it
 * the actions to be executed in case of matching
 
-These Rules are parsed at startup from a configuration folder where they are stored in JSON.
+These Rules are parsed at startup from a configuration folder where they are stored in JSON format.
 
 When an event matches one or more *Rules*, the Engine produces a set of *Actions* 
-and forward them to one or more *Executors*.
+and forwards them to one or more *Executors*.
 
 ### Executors
 The *Executors* are the last node of the Tornado pipeline.
@@ -102,13 +102,14 @@ For example it can include:
 * Archiving events using an application such as Elastic Stack
 * Invoking a custom shell script
 
+An *Executor* usually takes care of a single *Action* type.
 
 ## Compiling and Running Tornado
 
 ### Prerequisites
 
 - You must have Rust version 1.32 or later installed
-- The Tornado libraries are completely cross-platform; nevertheless, at the moment, 
+- Event if the Tornado libraries are completely cross-platform, at the moment, 
   a Unix-like OS is required to build the Tornado executables as they use UDS sockets for communication
   between the various components
 - To build the Tornado executables, the *openssl-dev* library should be present in your build environment
@@ -123,7 +124,7 @@ The way the Tornado executables are built is only one of the many possible appro
 
 Structure of the repository:
 
-    src # all the source code here
+    src
       |-- collector # The Collector libraries
       |     |-- common # Common code and traits for all collectors
       |     |-- ... 
@@ -162,20 +163,23 @@ Alternatively, you can perform a release build with:
 $ cargo build --release
 ```
 
-This will produce a smaller, highly optimized executables in the *src/target/release* folder.
+This will produce smaller, highly optimized executables in the *src/target/release* folder.
 If you intend to run benchmarks, assess or deploy Tornado in a production environment, this is the
 way you should built it.
 
 The issues of the Tornado build process can be grouped in three categories:
-- Tornado libraries: everything not in the the "spike" or "tornado" folder
+- Tornado libraries: everything not in the the "spike" or "tornado" folder. 
+These are common Rust libraries used by Tornado and 
+that can be imported by other projects as well.
 - Tornado executables: The crates on the "src/tornado" folder generate the Tornado executables. These are what
-  you need to run and deploy Tornado. All these executables are suffixed with _tornado-_
-- spikes: The crates on the "src/spike" folder generate executables suffixed with _spike-_. This are 
+  you need to run and deploy Tornado. All these executables are suffixed with *tornado_*
+- spikes: The crates on the "src/spike" folder generate executables suffixed with *spike_*. This are 
   experimental crates not part of the Tornado architecture.
 
 
 ### How to Run Tornado
-To run Tornado you need to configure each of the Tornado executables as described in the individual
+To run Tornado follow the configuration instructions 
+of the Tornado executables provided by the individual
 documentation pages:
 * [tornado_engine documentation](src/tornado/engine/doc/README.md)
 * [tornado_rsyslog_collector documentation](src/tornado/rsyslog_collector/doc/README.md)
@@ -191,34 +195,36 @@ documentation pages:
 <!-- Where is our changelog? -->
 
 Tornado is still in a beta phase, thus the next steps in its development are to finish the
-remaining elements of the architecture.  Longer term, we plan to add additional datasources,
+remaining elements of the architecture.  Longer term, we plan to add additional,
 collectors and executors, and eventually create a graphical interface for rule configuration
 and integration.
 
-Tornado is implemented in Rust, so it is fully compiled and thus blazingly fast, is both
-thread-safe and memory safe, and has excellent error handling.  Because it uses Rust, Tornado
-can receive hundreds of thousands of events per second and match millions of rules per second.
+Tornado is implemented in Rust and use no unsafe code. 
+It is blazingly fast, thread-safe, memory safe, and can process  millions of events per second.
 
 Tornado adheres to v2.0.0 of the [Semantic Versioning Initiative](http://semver.org/spec/v2.0.0.html).
 It is fully open source.
 
 <!-- The official repository is on [GitHub](link.html), and it is available under the X license. -->
 
+## Contributing
+
 <!-- Do we need to mention Support as some other projects do? -->
 
 You can contribute to Tornado by reporting bugs, requesting features, or contributing code
 on GitHub.  If you intend to submit a bug, please check first that someone else has not already
 submitted it by searching the issue tracker on GitHub.
+
 Check the ['contributing' documentation](CONTRIBUTING.md) for more details.
 
 <!-- Do we have a forum or other feedback channel?  If so, should we mention it? -->
 
+
+## Tornado crates documentation links
+
 Tornado's crate docs are produced according to the
 [Rust documentation standards](https://doc.rust-lang.org/book/index.html).
 The shortcuts below, organized thematically, will take you to the documentation for each module.
-
-
-## Tornado crates documentation links
 
 ### Common Traits and Code
 
