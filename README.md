@@ -55,10 +55,6 @@ The Tornado pipeline:
                   |
                   \-> Tornado Executors (execute the Actions)
 
-At the following links you can find more information about:
-* [Tornado's architecture](doc/architecture.md)
-* [Implementation details](doc/implementation.md)
-
 
 <!-- Add an architecture diagram? -->
 
@@ -107,108 +103,54 @@ For example it can include:
 * Invoking a custom shell script
 
 
-## Tornado Configuration and Rules
-
-Configuring Tornado requires the following steps:
-* Configuring the Unix Domain Sockets (UDS) between the datasources and collectors
-* Indicating the location for storing log files
-* Creating the main configuration folder
-* Configuring rules for your particular deployment
-
-<!-- Is there a default configuration folder path? -->
-
-<!-- Should we mention how to configure Tornado within NetEye? -->
-
-Before you can begin to use Tornado, you must configure it with one or more rules that match
-events and execute actions.  As an example, consider this rule below designed to find email
-messages containing temperature measurements and log them in a standard, compressed form that
-can easily be used by graphing software.  The rule contains the following fields:
-
-* __Name:__  A unique name to differentiate this rule from others
-* __Description:__  A human-readable description describing what the *constraint* and *actions* fields do
-* __Priority:__  A unique priority allowing the matcher to first match high priority rules
-* __Continue:__  Whether to keep matching additional rules if the current rule matches
-* __Active:__  Whether this rule is currently enabled or disabled
-* __Constraint:__  Consists of a single __WHERE__ clause to match the event, and a single __WITH__
-  clause that extracts values as named variables to be used in the rule's action.
-
-For a given rule to match, the evaluated WHERE expression (which can contain variables
-pre-calculated by the Collector) must return `true` and all variables in the WITH clause
-must return non-null values.  The WHERE expression can contain logical operators such as AND
-and OR.  The WITH clause allows you to create new variables using regular expression matches on
-the pre-calculated variables.
-
-<!-- Can we shorten/improve the following rule? -->
-
-Thus the following rule matches all email events (type "equal", second "email") where the
-regular expression "[0-9]+\\sDegrees" matches the body of the email.  The rule is made more
-efficient because events that are not of type "email" are discarded immediately before
-an attempt is made at finding a more time-consuming regex match.
-
-```json
-{
-    "name": "emails_with_temperature_measurements",
-    "description": "Matches all emails containing ",
-    "priority": 42,
-    "continue": true,
-    "active": true,
-    "constraint": {
-        "WHERE": {
-            "type": "AND",
-            "operators": [
-                {
-                    "type": "equal",
-                    "first": "${event.type}",
-                    "second": "email"
-                }
-            ]
-        },
-        "WITH": {
-            "temperature": {
-                "from": "${event.payload.body}",
-                "regex": {
-                    "match": "[0-9]+\\sDegrees",
-                    "group_match_idx": 0
-                }
-            }
-        }
-    },
-    "actions": [
-        "id": "Logger",
-        "payload": {
-            "type": "${event.type}",
-            "subject": "${eventl.payload.subject}",
-            "temperature": "${_variables.temperature}"
-        }
-    ]
-}
-```
-
-If a match is made, the action clause indicates an event of type "email" should be logged with the
-original subject line kept intact, and the extracted temperature stored as a numeric value that
-can be processed separately.
-
-
-
 ## Compiling and Running Tornado
 
 ### Prerequisites
 
 - You must have Rust version 1.32 or later installed
-- At the moment, a Unix-like OS is required because Tornado uses UDS sockets for communication
-  between the various Tornado components
-- The *openssl-dev* library should be present in your build environment
+- The Tornado libraries are completely cross-platform; nevertheless, at the moment, 
+  a Unix-like OS is required to build the Tornado executables as they use UDS sockets for communication
+  between the various components
+- To build the Tornado executables, the *openssl-dev* library should be present in your build environment
 
+### Repository structure
+The Tornado source code is modularized in a set of reusable, and mostly independent, libraries.
 
+This repository contains both the code of the libraries and the code of the Tornado executables
+that use them.
+
+The way the Tornado executables are built is only one of the many possible approaches.
+
+Structure of the repository:
+
+    src # all the source code here
+      |-- collector # The Collector libraries
+      |     |-- common # Common code and traits for all collectors
+      |     |-- ... 
+      |-- common # Common interfaces and message definitions
+      |     |-- api    # Global traits required by the engine, collectors and executors
+      |     |-- logger # The logger configuration
+      |-- executor # The Executor libraries
+      |     |-- common # Common code and traits for all collectors
+      |     |-- ...
+      |-- engine # The Engine libraries
+      |     |-- matcher # The core library of Tornado Engine. It contains the logic that evaluates whether 
+      |     |             an Internal Event matches a rule and to trigger the related Actions.
+      |-- network # An abstract service used by components to communicate with each other
+      |     |-- common # Common code and traits for the network
+      |     |-- ...
+      |-- scripts # command line utilities (not required by Tornado)
+      |-- spike # functional or technical experiment (not required by Tornado)
+      |-- tornado # Tornado executables
+      |     |-- common # Common code and traits for all executables
+      |     |-- engine # The Tornado Engine executable with embedded Tornado Executors
+      |     |-- rsyslog_collector # A Tornado Collector to handle rsyslog events
+      |     |-- webhook_collector # A Tornado Collector to handle generic webhook events
 
 ### Build process
 
-You can download and install the Tornado source for Linux by cloning from the .git repository.
-
-<!-- TODO:  Add exact instructions once the real GitHub repository is online. -->
-
 To build the source, open a shell where you cloned the repository, change to the *src* directory,
-and type:
+and launch:
 ```
 $ cargo build
 ```
@@ -220,27 +162,25 @@ Alternatively, you can perform a release build with:
 $ cargo build --release
 ```
 
-This will produce a smaller, more highly optimized executable in the *src/target/release* folder.
+This will produce a smaller, highly optimized executables in the *src/target/release* folder.
 If you intend to run benchmarks, assess or deploy Tornado in a production environment, this is the
 way you should built it.
 
-<!--
 The issues of the Tornado build process can be grouped in three categories:
-- The spikes: All the executables with suffix _spike-_ are the TO DO
-  -->
-
-<!-- Does it print anything when running?  How can you tell it's working properly? -->
-<!-- Do we want to include a section on common build/install problems? -->
-<!-- Why are there more than one binary executables? -->
-<!-- Do we want to list external requirements and dependencies? -->
+- Tornado libraries: everything not in the the "spike" or "tornado" folder
+- Tornado executables: The crates on the "src/tornado" folder generate the Tornado executables. These are what
+  you need to run and deploy Tornado. All these executables are suffixed with _tornado-_
+- spikes: The crates on the "src/spike" folder generate executables suffixed with _spike-_. This are 
+  experimental crates not part of the Tornado architecture.
 
 
-
-<!--
 ### How to Run Tornado
+To run Tornado you need to configure each of the Tornado executables as described in the individual
+documentation pages:
+* [tornado_engine documentation](src/tornado/engine/doc/README.md)
+* [tornado_rsyslog_collector documentation](src/tornado/rsyslog_collector/doc/README.md)
+* [tornado_web_collector documentation](src/tornado/webhook_collector/doc/README.md)
 
-TO DO
--->
 
 
 
@@ -269,6 +209,7 @@ It is fully open source.
 You can contribute to Tornado by reporting bugs, requesting features, or contributing code
 on GitHub.  If you intend to submit a bug, please check first that someone else has not already
 submitted it by searching the issue tracker on GitHub.
+Check the ['contributing' documentation](CONTRIBUTING.md) for more details.
 
 <!-- Do we have a forum or other feedback channel?  If so, should we mention it? -->
 
@@ -277,6 +218,7 @@ Tornado's crate docs are produced according to the
 The shortcuts below, organized thematically, will take you to the documentation for each module.
 
 
+## Tornado crates documentation links
 
 ### Common Traits and Code
 
@@ -346,24 +288,10 @@ Describes tests that dispatch Events and Actions on a single process without act
 - [tornado_network_simple](src/network/simple/doc/README.md)
 
 
-
-## Documentation for Tornado Executables
-
-
-
-### Common code
-
-This page describes common structures and error handling, especially for UDS code from third
-parties, such as Actix and Tokio.
-<!-- README.md not yet in a branch? -->
-- [tornado_common](src/tornado/common/doc/README.md)
-
-
-
 ### Executables
 
 Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
-- [tornado](src/tornado/tornado/doc/README.md)
+- [tornado_engine](src/tornado/engine/doc/README.md)
 
 The description of a binary executable that generates Tornado Events from rsyslog inputs.
 - [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
