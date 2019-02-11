@@ -3,12 +3,9 @@
 The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine.  It defines the logic to parse a
 Rule as well as for matching Events and Rules. 
 
-
-
 ## Structure of a rule
 
 A rule is composed of a set of properties, constraints and actions.
-
 
 
 ### Basic properties
@@ -88,3 +85,56 @@ The following accessors are valid:
 - `${event}`: Returns the entire event
  
 
+## Rule Examples
+
+An example of valid content for a Rule JSON file is:
+```json
+{
+  "name": "emails_with_temperature",
+  "description": "This matches all emails containing a temperature measurement.",
+  "priority": 2,
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "email"
+        }
+      ]
+    },
+    "WITH": {
+      "temperature": {
+        "from": "${event.payload.body}",
+        "regex": {
+          "match": "[0-9]+\\sDegrees",
+          "group_match_idx": 0
+        }
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "Logger",
+      "payload": {
+        "type": "${event.type}",
+        "subject": "${event.payload.subject}",
+        "temperature:": "${_variables.temperature}"
+      }
+    }
+  ]
+}
+```
+
+This creates a Rule with the following characteristics:
+- Its unique name is 'emails_with_temperature'.  There cannot be two rules with the same name.
+- Its priority is 2.  The priority defines the execution order of the rules:
+  '0' (zero) is the highest priority and denotes the first rule to be evaluated.
+- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and, 
+  as requested by the _WITH_ clause, it is possible to extract the "temperature" variable from
+  the "event.payload.body" with a non-null value.
+- If an Event meets the previously stated requirements, the matcher produces an Action 
+  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_. 

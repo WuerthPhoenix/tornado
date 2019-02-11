@@ -1,25 +1,22 @@
-# Tornado (binary)
+# Tornado Engine (executable)
 
-This crate contains the Tornado executable code.
-
-
+This crate contains the Tornado Engine executable code.
 
 ## How It Works
 
-The Tornado executable is a configuration of the matcher engine based on [actix](https://github.com/actix/actix) and 
+The Tornado Engine executable is a configuration of the engine based on [actix](https://github.com/actix/actix) and 
 built as a portable executable.
 
-It currently builds only on Linux-like operating systems since at runtime it uses two UDS sockets
+It currently builds only on Linux-like operating systems since, at runtime, it uses two UDS sockets
 for receiving inputs from external collectors.
 
 
+## Structure of Tornado Engine
 
-## Structure of Tornado
-
-This specific Tornado executable is composed of the following components:
+This specific Tornado Engine executable is composed of the following components:
 - The json collector 
 - The snmptrapd collector
-- The matching engine 
+- The engine 
 - The archive executor
 - The script executor
     
@@ -31,15 +28,15 @@ independent library allowing greater flexibility in deciding whether and how to 
 At the same time, there are no restrictions that force the use of the components into the same
 executable.  While this is the simplest way to assemble them into a working product, the
 collectors and executors could reside in their own executables and communicate with the Tornado
-engine via a remote call.  This can be achieved either through a direct TCP or HTTP call that
-uses an RPC technology (e.g., Protobuf, Flatbuffer, or CAP'n'proto), or with a message queue
+engine via a remote call.  This can be achieved either through a direct TCP or HTTP call, with
+an RPC technology (e.g., Protobuf, Flatbuffer, or CAP'n'proto), or with a message queue
 system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed system.
 
 
 
 ### Configuration
 
-The executable configuration is partially based on configuration files and partially based on
+The configuration is partially based on configuration files and partially based on
 command line parameters.
 
 The startup parameters are:
@@ -62,16 +59,16 @@ More information about the logger configuration is available [here](../../../com
 
 An example of a full startup command is:
 ```bash
-./tornado --logger-stdout --logger-level=debug \
-    --config-dir=./tornado/tornado/config \
+./tornado_engine --logger-stdout --logger-level=debug \
+    --config-dir=./tornado/engine/config \
     --uds-path=/tmp/tornado \
     --snmptrapd-uds-path=/tmp/tornado_snmptrapd
 ```
 
-In this case Tornado:
+In this case the Engine:
 - Logs to standard output at the _debug_ level
-- Reads the configuration from the _./tornado/tornado/config_ directory
-- Searches for Rules definitions in the _./tornado/tornado/config/rules.d_ directory
+- Reads the configuration from the _./tornado/engine/config_ directory
+- Searches for Rules definitions in the _./tornado/engine/config/rules.d_ directory
 - Creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
   respectively, the Event and Snmptrapd inputs  
 
@@ -115,8 +112,9 @@ The snmptrapd input documents should be in JSON format as described by the
 
 ### Structure and Configuration:  The Matching Engine
 
-The [matching engine](../../../engine/matcher/doc/README.md) receives Events from the collectors, 
-processes them with the configured Rules, and in case of a match, generates the Actions to be 
+The [matching engine](../../../engine/matcher/doc/README.md) is the core of the Tornado Engine.
+It receives Events from the collectors, 
+processes them with the configured Rules, and, in case of a match, generates the Actions to be 
 performed.  
 
 Two startup parameters determine the path to the Rules configuration:
@@ -128,7 +126,7 @@ Two startup parameters determine the path to the Rules configuration:
 For example, this command will run Tornado and load the Rules configuration from the 
 `/tornado/config/rules` directory:
 ```bash
-tornado --config-dir=/tornado/config --rules-dir=/rules
+tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```  
 
 Each Rule should be saved in a separate file in the configuration directory in JSON format.
@@ -143,61 +141,8 @@ E.g.:
 The alphabetical order determined by the filenames has no impact on the Rule configuration.
 Instead, the order of execution at runtime will depend exclusively on the _priority_ property.
 
-An example of valid content for a Rule JSON file is:
-```json
-{
-  "name": "emails_with_temperature",
-  "description": "This matches all emails containing a temperature measurement.",
-  "priority": 2,
-  "continue": true,
-  "active": true,
-  "constraint": {
-    "WHERE": {
-      "type": "AND",
-      "operators": [
-        {
-          "type": "equal",
-          "first": "${event.type}",
-          "second": "email"
-        }
-      ]
-    },
-    "WITH": {
-      "temperature": {
-        "from": "${event.payload.body}",
-        "regex": {
-          "match": "[0-9]+\\sDegrees",
-          "group_match_idx": 0
-        }
-      }
-    }
-  },
-  "actions": [
-    {
-      "id": "Logger",
-      "payload": {
-        "type": "${event.type}",
-        "subject": "${event.payload.subject}",
-        "temperature:": "${_variables.temperature}"
-      }
-    }
-  ]
-}
-```
-
-This creates a Rule with the following characteristics:
-- Its unique name is 'emails_with_temperature'.  There cannot be two rules with the same name.
-- Its priority is 2.  The priority defines the execution order of the rules:
-  '0' (zero) is the highest priority and denotes the first rule to be evaluated.
-- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and, 
-  as requested by the _WITH_ clause, it is possible to extract the "temperature" variable from
-  the "event.payload.body" with a non-null value.
-- If an Event meets the previously stated requirements, the matcher produces an Action 
-  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_. 
-
-More information about the Rule's properties and configuration can be found in the 
+More information and examples about the Rule's properties and configuration can be found in the 
 [matching engine documentation](../../../engine/matcher/doc/README.md) 
-
 
 
 ### Structure and Configuration:  The Archive Executor

@@ -1,8 +1,8 @@
-# Webhook Collector (binary) 
+# Tornado Webhook Collector (executable) 
 
 The Webhook Collector is a standalone HTTP server that listens for REST calls from a generic
-webhook, generates Tornado Events from the webhook JSON body, and publishes them on the Tornado
-UDS socket.
+webhook, generates Tornado Events from the webhook JSON body, and publishes them on the 
+Tornado Engine UDS socket.
 
 
 
@@ -15,7 +15,7 @@ On startup, it creates a dedicated REST endpoint for each configured webhook.  C
 an endpoint are processed by the embedded
 [jmespath collector](../../../collector/jmespath/doc/README.md)
 that uses them to produce Tornado Events.  In the final step, the Events are forwarded to the
-Tornado executable's UDS socket.
+Tornado Engine's UDS socket.
 
 For each webhook, you must provide three values in order to successfully create an endpoint:
 - _id_:  The webhook identifier.  This will determine the path of the endpoint; it must be
@@ -42,17 +42,18 @@ The available startup parameters are:
   append any output to it.
 - __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
   _error_, defaulting to _warn_.
-- __config-dir__:  The filesystem folder from which the Tornado configuration is read.
+- __config-dir__:  The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_webhook_collector/_.
 - __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format; 
   this folder is relative to the `config_dir`.  The default value is _/webhooks/_.
 - __uds-path__:  The Unix Socket path where outgoing events will be written. 
-  This should be the path where Tornado is listening for incoming events.
+  This should be the path where Tornado Engine is listening for incoming events.
   By default it is _/var/run/tornado/tornado.sock_.
 - __uds-mailbox-capacity__:  The in-memory buffer size for Events.  It makes the application
-  resilient to Tornado crashes or temporary unavailability.  When Tornado restarts, all messages
-  in the buffer will be sent.  When the buffer is full, the collector will start discarding old
-  messages.  The default buffer value is `10000`.
+  resilient to Tornado Engine crashes or temporary unavailability.  
+  When Tornado restarts, all messages in the buffer will be sent.  
+  When the buffer is full, the collector will start discarding old messages.  
+  The default buffer value is `10000`.
 - __bind-address__:  The IP to bind the HTTP server to.  The default value is `0.0.0.0`. 
 - __server-port__:  The port to be used by the HTTP Server.  The default value is `8080`.
 
