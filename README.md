@@ -4,18 +4,73 @@ Tornado is a Complex Event Processor that receives reports of events from data s
 monitoring, email, and telegram, matches them against pre-configured rules, and executes the
 actions associated with those rules, which can include notifications, logging, and graphing.
 
-Tornado is a high performance, scalable, and multi-tenant capable application based on
-communications secured with certificates.  It is intended to handle hundreds of thousands
-of events each second on standard server hardware.
+Tornado is a high performance and scalable application.
+It is intended to handle millions of events each second on standard server hardware.
 
-<!-- Francesco:  I am not sure that we can describe it as “multi-tenant“. While it’s true that
-     there’s nothing that binds it to a specific customer, nevertheless, this is true because the
-     concept of “customer“ is not present at all. -->
 
-When Tornado receives an external event, it first arrives at a *Collector* specific to the type
-of event, is converted into an internal Tornado Event, and is forwarded to the Tornado engine
-where it is matched against user-defined, composable rules.  Collectors for new event types can
-be easily extended from existing types:
+When the system receives an external event, it first arrives at a *Collector* specific to the type
+of event where is converted into an internal Tornado Event; then, it is forwarded to the Tornado engine
+where it is matched against user-defined, composable rules. Finally, eventually generated action are 
+dispatched to a specific *Executor*.
+
+
+## Tornado Architecture
+
+The three main components of the Tornado architecture are:
+* The *Tornado Collector*, or *Collector*
+* The *Tornado Engine*, or *Engine*
+* The *Tornado Executors*, or *Executor*
+
+The term *Tornado* refers to the whole project or to a deployed system that includes 
+all the components.
+
+Along with the main components, these concepts are fundamental in the Tornado architecture:
+* A *Datasource*: A system that sends *External Events* to Tornado;
+  or a system to which Tornado subscribes to receive *External Events*
+* An *External Event*: an input received from a datasource. Its format depends on its source. 
+  Examples of this are events from Rsyslog.
+* A *Tornado (or Internal) Event*: the Tornado specific Event format.
+* A *Rule*: a group of conditions that an Internal Event has to 
+  match to trigger a set of Actions
+* An *Action*: An operation performed by Tornado usually on an external system.
+  For example, writing to Elastic Search or setting a state 
+  in a monitoring system.
+
+Architecturally, Tornado is organized as a processing pipeline, where input events move from
+collectors to the engine, to executors, without branching or returning.
+
+The Tornado pipeline:
+
+    Datasources (e.g. Rsyslog)
+      |
+      | External Events
+      |
+      \-> Tornado Collectors 
+            |
+            | Tornado (or Internal) Events 
+            |
+            \-> Tornado Engine (matches based on Rules)
+                  |
+                  | Actions
+                  |
+                  \-> Tornado Executors (execute the Actions)
+
+At the following links you can find more information about:
+* [Tornado's architecture](doc/architecture.md)
+* [Implementation details](doc/implementation.md)
+
+
+<!-- Add an architecture diagram? -->
+
+### Collectors
+The purpose of a *Collector* is to receive and convert external events into the 
+internal Tornado Event structure and forward them to the Tornado Engine.
+
+Out of the box, Torndato provides a bunch of Collectors for handling inputs 
+from SNMPTRAPD, Rsyslog and generic Webhooks.
+
+Because all Collectors are defined with a simple format, Collectors for new event types 
+can be easily added or extended from existing types for:
 * Monitoring events
 * Email messages
 * Telegram
@@ -24,60 +79,32 @@ be easily extended from existing types:
 * Netflow
 * Elastic Stack
 * SMS
-* SNMP
-* Webhooks
 * Operating system and authorization events
 
-<!-- Francesco:  The JSON reference below should be probably removed, let’s wait for @Thomas
-     Forrer input.  Anyway, I don’t understand exactly what kind of simplification is involved here.  -->
+### Engine
+The *Engine* is the second step of the pipeline.
+It receives and processes the events produced by the *Collectors*.
 
-Because all collectors and rules are defined with a standard format in JSON, the matching engine
-can be simplified.  Matched events can potentially trigger multiple rules, whose actions can
-include:
+Its behaviour is defined by an ordered set of *Rules*, that define:
+* the conditions an event has to respect to match them
+* the actions to be executed in case of matching
+
+These Rules are parsed at startup from a configuration folder where they are stored in JSON.
+
+When an event matches one or more *Rules*, the Engine produces a set of *Actions* 
+and forward them to one or more *Executors*.
+
+### Executors
+The *Executors* are the last node of the Tornado pipeline.
+
+They receive the *Actions* produced from the *Engine* and trigger the associated process.
+
+An *Action* can be whatever command, process or operation.
+For example it can include:
 * Forwarding the events to a monitoring system
-* Logging events locally (e.g., as processed, discarded or matched)
+* Logging events locally (e.g., as processed, discarded or matched) or remotely
 * Archiving events using an application such as Elastic Stack
 * Invoking a custom shell script
-* Crafting a new event that will be sent to a collector
-
-
-
-## Tornado Architecture
-
-<!-- Add an architecture diagram? -->
-
-The principal data types of Tornado are:
-* Incoming Events
-* Rules, that have (as defined in next section):
-    * Matching conditions
-    * Definable variables 
-    * Actions to be executed
-
-On startup, Tornado's Configuration Parser reads stored rule configurations and converts them into
-internal rule objects.  Rules are composable, written in JSON, and are required to have unique
-names, unique priorities, and thus have a strong ordering.
-
-Architecturally, Tornado is organized as a processing pipeline, where input events move from
-collectors to the rule engine, to executors, without branching or returning.  This pipeline
-architecture greatly contributes to its speed.  The principal modules are:
-* Datasources:  Original sources of events, typically applications or hardware, where different
-    event types have different communication patterns.
-    * Channel subscriptions for streamed events (e.g., Syslog, SNMP traps, DNS) or via NATS (e.g., monitoring, or Telegram)
-    * Polling / Call (e.g., Email)
-    * Direct read (e.g., SMS)
-    * API call (e.g., AWS, Azure)
-* Event Collectors:  Listen for events from a datasource and rewrites them into a standard format
-  (called a *payload*) that can be used by the Matcher.
-* Rule Engine Matcher:  Compares the rewritten event against the pre-configured rule set in
-  priority order until it finds a matching rule.
-* Rule Engine Extractor/Dispatcher:  Once a matching rule is found, it creates variables from both
-  the event payload and the rule definition, then sending it to the appropriate Tornado Executor.
-* Action Executors:  Instantiates the variables into an action template and invokes that action.
-
-At the following links you can find more information about:
-* [Tornado's architecture](doc/architecture.md).
-* [Implementation details](doc/implementation.md)
-
 
 
 ## Tornado Configuration and Rules
@@ -164,9 +191,6 @@ can be processed separately.
 
 
 ## Compiling and Running Tornado
-
-<!-- Should we include the NetEye instructions?  yum install tornado --enablerepo=neteye-extras -->
-
 
 ### Prerequisites
 

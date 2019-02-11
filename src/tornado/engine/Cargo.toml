@@ -1,5 +1,5 @@
 [package]
-name = "tornado"
+name = "tornado_engine"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
