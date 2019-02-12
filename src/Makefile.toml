@@ -6,19 +6,19 @@
 # Starts the Tornado Engine.
 #
 # Execute with:
-# > cargo make run-tornado
-[tasks.run-tornado]
+# > cargo make run-engine
+[tasks.run-engine]
 workspace = false
 command = "cargo"
 args = [
     "run",
     "--bin",
-    "tornado",
+    "tornado_engine",
     "--",
     "--logger-stdout",
     "--logger-level=debug",
     "--uds-path=/tmp/tornado",
-    "--config-dir=./tornado/tornado/config",
+    "--config-dir=./tornado/engine/config",
     "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]
