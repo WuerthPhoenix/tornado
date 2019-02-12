@@ -3,6 +3,8 @@
 The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine.  It defines the logic to parse a
 Rule as well as for matching Events and Rules. 
 
+Matcher implementation details are [available here](./implementation.md)
+
 ## Structure of a rule
 
 A rule is composed of a set of properties, constraints and actions.

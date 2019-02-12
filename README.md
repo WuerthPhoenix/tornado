@@ -186,6 +186,8 @@ documentation pages:
 * [tornado_web_collector documentation](src/tornado/webhook_collector/doc/README.md)
 
 
+### How to Run Tornado locally with cargo-make
+To easily test Tornado locally, you can run it using cargo-make as [described here](./RUN_WITH_CARGO.md).
 
 
 ## The Tornado Project

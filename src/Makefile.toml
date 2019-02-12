@@ -3,7 +3,7 @@
 # > cargo install --force cargo-make
 
 
-# Starts the tornado engine.
+# Starts the Tornado Engine.
 #
 # Execute with:
 # > cargo make run-tornado
@@ -24,8 +24,12 @@ args = [
 dependencies = ["build"]
 
 
-# Starts the rsyslog-collector and the rsyslog_collector_writer.
-# Output from the rsyslog_collector_writer is piped into the rsyslog_collector.
+# Starts the rsyslog-collector and the spike_rsyslog_collector_writer.
+#
+# The spike_rsyslog_collector_writer will generate fake rsyslog events
+# and will piped them into the rsyslog_collector.
+# Consequently, the rsyslog_collector will process the events
+# and send Tornado Events to the Engine.
 #
 # Execute with:
 # > cargo make run-rsyslog-collector
@@ -38,7 +42,10 @@ script = [
 dependencies = ["build"]
 
 
-# Starts the snmptrapd-writer.
+# Starts the spike_snmptrapd_collector_writer.
+#
+# The spike_snmptrapd_collector_writer will generate fake snmptrapd
+# events and forward them to the Engine UDS socket.
 #
 # Execute with:
 # > cargo make run-snmptrapd-writer
