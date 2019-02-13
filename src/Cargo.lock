@@ -2309,6 +2309,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_executor_icinga2"
+version = "0.0.1"
+dependencies = [
+ "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tornado_common_api 0.0.1",
+ "tornado_executor_common 0.0.1",
+]
+
+[[package]]
 name = "tornado_executor_logger"
 version = "0.0.1"
 dependencies = [
