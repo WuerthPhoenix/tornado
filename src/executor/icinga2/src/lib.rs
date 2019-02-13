@@ -64,10 +64,14 @@ pub enum Icinga2Action {
 
 impl Icinga2Action {
     pub fn from_str(s: &str) -> Option<Icinga2Action> {
-        match s {
-            "ProcessCheckResult" => Some(Icinga2Action::ProcessCheckResult),
+        match s.to_lowercase().as_str() {
+            "process-check-result" => Some(Icinga2Action::ProcessCheckResult),
             _ => None,
         }
+    }
+
+    pub fn process() {
+
     }
 }
 
