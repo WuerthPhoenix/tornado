@@ -8,9 +8,13 @@ edition = "2018"
 
 [dependencies]
 actix = "0.7"
+actix-web = { version = "0.7", features=["ssl"] }
+base64 = "0.10"
 config_rs = { version = "0.9", package = "config" }
 failure = "0.1"
+failure_derive = "0.1"
 futures = "0.1"
+http = "0.1"
 log = "0.4"
 num_cpus = "1.8"
 serde = "1.0"
