@@ -2,13 +2,13 @@ use actix::Actor;
 use actix_web::client::{ClientConnector, ClientRequest};
 //use actix_web::http::Method;
 //use actix_web::{client, App, HttpMessage, HttpRequest, Json, Responder, Result};
+use actix_web::server::HttpServer;
 use futures::future::Future;
 use http::header;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use serde_derive::{Deserialize, Serialize};
 use std::io::{BufRead, BufReader};
 use std::time::Duration;
-use actix_web::server::HttpServer;
 
 fn main() {
     // this curl command works as expected:

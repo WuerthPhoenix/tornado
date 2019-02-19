@@ -8,28 +8,19 @@ pub const ICINGA2_ACTION_KEY: &str = "action";
 /// An executor that logs received actions at the 'info' level
 #[derive(Default)]
 pub struct Icinga2Executor<F: Fn() -> Result<(), ExecutorError>> {
-    icinga2_ip: String,
-    icinga2_port: u32,
-    icinga2_user: String,
-    icinga2_pass: String,
     callback: F,
 }
 
+impl<F: Fn() -> Result<(), ExecutorError>> std::fmt::Display for Icinga2Executor<F> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("Icinga2Executor")?;
+        Ok(())
+    }
+}
+
 impl<F: Fn() -> Result<(), ExecutorError>> Icinga2Executor<F> {
-    pub fn new<IP: Into<String>, U: Into<String>, P: Into<String>>(
-        icinga2_ip: IP,
-        icinga2_port: u32,
-        icinga2_user: U,
-        icinga2_pass: P,
-        callback: F,
-    ) -> Icinga2Executor<F> {
-        Icinga2Executor {
-            icinga2_ip: icinga2_ip.into(),
-            icinga2_port,
-            icinga2_user: icinga2_user.into(),
-            icinga2_pass: icinga2_pass.into(),
-            callback,
-        }
+    pub fn new(callback: F) -> Icinga2Executor<F> {
+        Icinga2Executor { callback }
     }
 }
 
@@ -84,10 +75,9 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let pass = "";
         let callback_called = Arc::new(Mutex::new(false));
 
-        let mut executor = Icinga2Executor::new("127.0.0.1", 5665, "root", pass, || {
+        let mut executor = Icinga2Executor::new(|| {
             let mut called = callback_called.lock().unwrap();
             *called = true;
             Ok(())
@@ -112,9 +102,8 @@ mod test {
     #[test]
     fn should_fail_if_action_is_unknown() {
         // Arrange
-        let pass = "";
         let callback_called = Arc::new(Mutex::new(false));
-        let mut executor = Icinga2Executor::new("127.0.0.1", 5665, "root", pass, || {
+        let mut executor = Icinga2Executor::new(|| {
             let mut called = callback_called.lock().unwrap();
             *called = true;
             Ok(())
@@ -142,9 +131,8 @@ mod test {
     #[test]
     fn should_call_the_callback_if_valid_action() {
         // Arrange
-        let pass = "";
         let callback_called = Arc::new(Mutex::new(false));
-        let mut executor = Icinga2Executor::new("127.0.0.1", 5665, "root", pass, || {
+        let mut executor = Icinga2Executor::new(|| {
             let mut called = callback_called.lock().unwrap();
             *called = true;
             Ok(())

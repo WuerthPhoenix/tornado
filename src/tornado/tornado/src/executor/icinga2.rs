@@ -5,6 +5,7 @@ use futures::future::Future;
 use http::header;
 use log::*;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 
 pub struct Icinga2ApiClientMessage {}
@@ -17,6 +18,21 @@ impl Message for Icinga2ApiClientMessage {
 pub enum Icinga2ApiClientActorError {
     #[fail(display = "ServerNotAvailableError: cannot connect to [{}]", message)]
     ServerNotAvailableError { message: String },
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Icinga2ClientConfig {
+    /// The complete URL of the Icinga2 APIs
+    pub server_api_url: String,
+
+    /// Username used to connect to the Icinga2 APIs
+    pub username: String,
+
+    /// Password used to connect to the Icinga2 APIs
+    pub password: String,
+
+    /// If true, the client will not verify the SSL certificate
+    pub disable_ssl_verification: bool,
 }
 
 pub struct Icinga2ApiClientActor {
@@ -34,29 +50,20 @@ impl Actor for Icinga2ApiClientActor {
 }
 
 impl Icinga2ApiClientActor {
-    pub fn start_new<
-        URL: Into<String> + 'static,
-        U: Into<String> + 'static,
-        P: Into<String> + 'static,
-    >(
-        icinga2_api_url: URL,
-        icinga2_user: U,
-        icinga2_pass: P,
-        ssl_verification: bool,
-    ) -> Addr<Self> {
+    pub fn start_new(config: Icinga2ClientConfig) -> Addr<Self> {
         Icinga2ApiClientActor::create(move |_ctx: &mut Context<Icinga2ApiClientActor>| {
-            let auth = format!("{}:{}", icinga2_user.into(), icinga2_pass.into());
+            let auth = format!("{}:{}", config.username, config.password);
             let http_auth_header = format!("Basic {}", base64::encode(&auth));
 
             let mut ssl_conn_builder = SslConnector::builder(SslMethod::tls()).unwrap();
-            if !ssl_verification {
+            if config.disable_ssl_verification {
                 ssl_conn_builder.set_verify(SslVerifyMode::NONE);
             }
             let ssl_connector = ssl_conn_builder.build();
             let client_connector = ClientConnector::with_connector(ssl_connector).start();
 
             Icinga2ApiClientActor {
-                icinga2_api_url: icinga2_api_url.into(),
+                icinga2_api_url: config.server_api_url,
                 http_auth_header,
                 client_connector,
             }
@@ -105,12 +112,13 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
 mod test {
     use crate::executor::icinga2::Icinga2ApiClientActor;
     use crate::executor::icinga2::Icinga2ApiClientMessage;
+    use crate::executor::icinga2::Icinga2ClientConfig;
     use actix::prelude::*;
     use actix_web::{server, App};
     use log::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
-//    use tornado_common_logger::{LoggerConfig, setup_logger};
+    //    use tornado_common_logger::{LoggerConfig, setup_logger};
 
     #[test]
     fn should_perform_a_post_request() {
@@ -140,7 +148,13 @@ mod test {
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
                 warn!("Client connecting to: {}", url);
 
-                let client_address = Icinga2ApiClientActor::start_new(url, "", "", false);
+                let config = Icinga2ClientConfig {
+                    server_api_url: url,
+                    disable_ssl_verification: true,
+                    password: "".to_owned(),
+                    username: "".to_owned(),
+                };
+                let client_address = Icinga2ApiClientActor::start_new(config);
 
                 client_address.do_send(Icinga2ApiClientMessage {});
 

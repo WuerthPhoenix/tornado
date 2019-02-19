@@ -19,6 +19,7 @@ log = "0.4"
 num_cpus = "1.8"
 openssl = "0.10"
 serde = "1.0"
+serde_derive = "1.0"
 structopt = "0.2"
 tokio = "0.1"
 tokio-codec = "0.1"
@@ -32,6 +33,7 @@ tornado_collector_snmptrapd = { path = "../../collector/snmptrapd", version = "0
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 tornado_executor_archive = { path = "../../executor/archive", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
+tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" }
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
