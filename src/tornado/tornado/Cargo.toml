@@ -17,6 +17,7 @@ futures = "0.1"
 http = "0.1"
 log = "0.4"
 num_cpus = "1.8"
+openssl = "0.10"
 serde = "1.0"
 structopt = "0.2"
 tokio = "0.1"
@@ -34,3 +35,5 @@ tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
+[dev-dependencies]
+lazy_static = "1.0"
