@@ -6,6 +6,7 @@ pub mod executor;
 
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::MatcherActor;
+use crate::executor::icinga2::Icinga2ApiClientMessage;
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 use actix::prelude::*;
@@ -54,12 +55,36 @@ fn main() -> Result<(), Box<std::error::Error>> {
             ExecutorActor { executor }
         });
 
+        // Start Icinga2 Client Actor
+        let icinga2_client_config_file_path =
+            format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
+        let icinga2_client_config = config::build_icinga2_client_config(
+            &icinga2_client_config_file_path,
+        )
+        .unwrap_or_else(|err| {
+            error!("Cannot build the Icinga2ApiClientActor configuration. Err: {}", err);
+            std::process::exit(1);
+        });
+        let icinga2_client_addr =
+            executor::icinga2::Icinga2ApiClientActor::start_new(icinga2_client_config);
+
+        // Start icinga2 executor actor
+        let icinga2_executor_addr = SyncArbiter::start(1, move || {
+            let icinga2_client_addr_clone = icinga2_client_addr.clone();
+            let executor = tornado_executor_icinga2::Icinga2Executor::new(move || {
+                icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage {});
+                Ok(())
+            });
+            ExecutorActor { executor }
+        });
+
         // Configure action dispatcher
         let event_bus = {
             let event_bus = ActixEventBus {
                 callback: move |action| {
                     match action.id.as_ref() {
                         "archive" => archive_executor_addr.do_send(ActionMessage { action }),
+                        "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
                         "script" => script_executor_addr.do_send(ActionMessage { action }),
                         _ => error!("There are not executors for action id [{}]", &action.id),
                     };

@@ -2,6 +2,7 @@ use actix::Actor;
 use actix_web::client::{ClientConnector, ClientRequest};
 //use actix_web::http::Method;
 //use actix_web::{client, App, HttpMessage, HttpRequest, Json, Responder, Result};
+use actix_web::server::HttpServer;
 use futures::future::Future;
 use http::header;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
