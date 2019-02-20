@@ -76,3 +76,23 @@ args = [
     "--config-dir=./tornado/webhook_collector/config"
 ]
 dependencies = ["build"]
+
+
+# Starts a tornado events generator that sends simulated events to the Engine.
+#
+# Execute with:
+# > cargo make run-tornado_events_generator
+[tasks.run-tornado_events_generator]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "spike_tornado_events_generator",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--uds-path=/tmp/tornado",
+    "--config-dir=./spike/tornado_events_generator/config"
+]
+dependencies = ["build"]
