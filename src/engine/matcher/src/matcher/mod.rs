@@ -306,7 +306,9 @@ mod test {
 
         let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
-        action.payload.insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
+        action
+            .payload
+            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&vec![rule_1]).unwrap();
@@ -401,8 +403,12 @@ mod test {
 
         let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
-        action.payload.insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
-        action.payload.insert("missing".to_owned(), Value::Text("${_variables.missing}".to_owned()));
+        action
+            .payload
+            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
+        action
+            .payload
+            .insert("missing".to_owned(), Value::Text("${_variables.missing}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&vec![rule_1]).unwrap();
