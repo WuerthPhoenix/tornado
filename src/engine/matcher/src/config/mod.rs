@@ -2,6 +2,7 @@ use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
+use tornado_common_api::Payload;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -62,7 +63,7 @@ pub enum Operator {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
-    pub payload: HashMap<String, String>,
+    pub payload: Payload,
 }
 
 #[cfg(test)]
