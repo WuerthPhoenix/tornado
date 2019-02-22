@@ -1,5 +1,5 @@
 {
-  "name": "icinga_process-check-result",
+  "name": "icinga_process_check_result",
   "description": "Set a process status in Icinga2",
   "priority": 97,
   "continue": true,
@@ -21,8 +21,8 @@
     {
       "id": "icinga2",
       "payload": {
-        "action": "process-check-result",
-        "action_payload": {
+        "icinga2_action_name": "process-check-result",
+        "icinga2_action_payload": {
           "exit_status": "${event.payload.exit_status}",
           "plugin_output": "${event.payload.plugin_output}",
           "filter": "host.name==\"example.localdomain\"",

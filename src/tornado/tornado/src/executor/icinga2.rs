@@ -81,9 +81,14 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         debug!("Icinga2ApiClientMessage - received new message");
 
         let connector = self.client_connector.clone();
+        let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
+
+        debug!("Icinga2ApiClientMessage - calling url: {}", url);
+        debug!("Icinga2ApiClientMessage - sending json payload: \n{:#?}", serde_json::to_string(&msg.message.payload).unwrap());
+
 
         actix::spawn(
-            ClientRequest::post(&format!("{}/{}", &self.icinga2_api_url, msg.message.name))
+            ClientRequest::post(url)
                 .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, self.http_auth_header.as_str())
