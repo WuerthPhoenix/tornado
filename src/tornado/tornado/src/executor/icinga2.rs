@@ -91,9 +91,13 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                 .json(msg.message.payload)
                 .unwrap()
                 .send()
-                .map_err(|err| panic!("Connection failed. Err: {}", err))
+                .map_err(|err| error!("Connection failed. Err: {}", err))
                 .and_then(|response| {
-                    info!("Response: {:?}", response);
+                    if !response.status().is_success() {
+                        error!("Icinga2 API returned an error. Response: \n{:?}.", response)
+                    } else {
+                        debug!("Icinga2 API request completed successfully.");
+                    }
                     /*
                                     response.body().map_err(|_| ()).map(|bytes| {
                                         println!("Body");
