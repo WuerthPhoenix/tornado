@@ -2175,6 +2175,7 @@ dependencies = [
  "http 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num_cpus 1.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "openssl 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2327,6 +2328,9 @@ name = "tornado_executor_icinga2"
 version = "0.0.1"
 dependencies = [
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "maplit 1.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde_derive 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_common_api 0.0.1",
  "tornado_executor_common 0.0.1",
 ]

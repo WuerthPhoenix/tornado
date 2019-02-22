@@ -78,6 +78,18 @@ impl Value {
             _ => None,
         }
     }
+    pub fn get_map(&self) -> Option<&HashMap<String, Value>> {
+        match self {
+            Value::Map(payload) => Some(payload),
+            _ => None,
+        }
+    }
+    pub fn get_array(&self) -> Option<&Vec<Value>> {
+        match self {
+            Value::Array(array) => Some(array),
+            _ => None,
+        }
+    }
     pub fn get_text(&self) -> Option<&str> {
         match self {
             Value::Text(value) => Some(value),

@@ -4,7 +4,7 @@ use log::*;
 use std::fs;
 use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
-use std::{time, thread};
+use std::{thread, time};
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
@@ -15,7 +15,7 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load events from fs
-    let events_path= format!("{}/{}", conf.io.config_dir, conf.io.events_dir);
+    let events_path = format!("{}/{}", conf.io.config_dir, conf.io.events_dir);
     let events = read_events_from_config(&events_path);
 
     // Create uds writer

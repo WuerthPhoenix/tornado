@@ -71,8 +71,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {
             let icinga2_client_addr_clone = icinga2_client_addr.clone();
-            let executor = tornado_executor_icinga2::Icinga2Executor::new(move || {
-                icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage {});
+            let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
+                icinga2_client_addr_clone
+                    .do_send(Icinga2ApiClientMessage { message: icinga2action });
                 Ok(())
             });
             ExecutorActor { executor }

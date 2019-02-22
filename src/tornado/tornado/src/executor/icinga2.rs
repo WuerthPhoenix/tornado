@@ -7,8 +7,11 @@ use log::*;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
+use tornado_executor_icinga2::Icinga2Action;
 
-pub struct Icinga2ApiClientMessage {}
+pub struct Icinga2ApiClientMessage {
+    pub message: Icinga2Action,
+}
 
 impl Message for Icinga2ApiClientMessage {
     type Result = Result<(), Icinga2ApiClientActorError>;
@@ -74,20 +77,18 @@ impl Icinga2ApiClientActor {
 impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
     type Result = Result<(), Icinga2ApiClientActorError>;
 
-    fn handle(&mut self, _msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("Icinga2ApiClientMessage - received new message");
-
-        let request_body = "";
 
         let connector = self.client_connector.clone();
 
         actix::spawn(
-            ClientRequest::post(&self.icinga2_api_url)
+            ClientRequest::post(&format!("{}/{}", &self.icinga2_api_url, msg.message.name))
                 .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, self.http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
-                .json(request_body)
+                .json(msg.message.payload)
                 .unwrap()
                 .send()
                 .map_err(|err| panic!("Connection failed. Err: {}", err))
@@ -114,28 +115,33 @@ mod test {
     use crate::executor::icinga2::Icinga2ApiClientMessage;
     use crate::executor::icinga2::Icinga2ClientConfig;
     use actix::prelude::*;
+    use actix_web::Json;
     use actix_web::{server, App};
     use log::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use maplit::*;
     use std::sync::Arc;
+    use std::sync::Mutex;
+    use tornado_common_api::Value;
+    use tornado_executor_icinga2::Icinga2Action;
     //    use tornado_common_logger::{LoggerConfig, setup_logger};
 
     #[test]
     fn should_perform_a_post_request() {
         // start_logger();
-        let count = Arc::new(AtomicUsize::new(0));
+        let received = Arc::new(Mutex::new(None));
 
-        let act_count = count.clone();
+        let act_received = received.clone();
         System::run(move || {
             let api = "/v1/events";
             let api_clone = api.clone();
 
             server::new(move || {
-                let app_count = act_count.clone();
-                App::new().resource(api, move |r| {
-                    r.f(move |_h| {
+                let app_received = act_received.clone();
+                App::new().resource(&format!("{}{}", api, "/icinga2-api-action"), move |r| {
+                    r.with(move |body: Json<Value>| {
                         info!("Server received a call");
-                        app_count.fetch_add(1, Ordering::Relaxed);
+                        let mut message = app_received.lock().unwrap();
+                        *message = Some(body.into_inner());
                         System::current().stop();
                         ""
                     })
@@ -156,7 +162,14 @@ mod test {
                 };
                 let client_address = Icinga2ApiClientActor::start_new(config);
 
-                client_address.do_send(Icinga2ApiClientMessage {});
+                client_address.do_send(Icinga2ApiClientMessage {
+                    message: Icinga2Action {
+                        name: "icinga2-api-action".to_owned(),
+                        payload: hashmap![
+                            "filter".to_owned() => Value::Text("my_service".to_owned())
+                        ],
+                    },
+                });
 
                 Ok(server)
             })
@@ -164,7 +177,12 @@ mod test {
             .start();
         });
 
-        assert_eq!(count.load(Ordering::Relaxed), 1);
+        assert_eq!(
+            Some(Value::Map(hashmap![
+                "filter".to_owned() => Value::Text("my_service".to_owned())
+            ])),
+            *received.lock().unwrap()
+        );
     }
     /*
     fn start_logger() {

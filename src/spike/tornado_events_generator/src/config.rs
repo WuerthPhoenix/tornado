@@ -4,7 +4,6 @@ use tornado_common_logger::LoggerConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
-
     /// The filesystem folder where the Tornado configuration is saved
     #[structopt(long, default_value = "/etc/tornado/tornado_events_generator")]
     pub config_dir: String,

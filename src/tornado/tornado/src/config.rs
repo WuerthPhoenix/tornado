@@ -106,7 +106,7 @@ mod test {
         let rules_config = read_rules_from_config(path).unwrap();
 
         // Assert
-        assert_eq!(3, rules_config.len());
+        assert_eq!(4, rules_config.len());
         assert_eq!(1, rules_config.iter().filter(|val| "all_emails".eq(&val.name)).count());
         assert_eq!(
             1,
