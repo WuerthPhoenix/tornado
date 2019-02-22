@@ -12,7 +12,8 @@ It is intended to handle millions of events each second on standard server hardw
 
 ## Tornado Architecture
 
-The three main components of the Tornado architecture are:
+Tornado is structured as a library, with three example binaries included that show how it can
+be used.  The three main components of the Tornado architecture are:
 * The *Tornado Collector(s)*, or just *Collector(s)*
 * The *Tornado Engine*, or *Engine*
 * The *Tornado Executor(s)*, or *Executor(s)*
@@ -53,9 +54,9 @@ The Tornado pipeline:
                   |
                   | Actions
                   |
+<!-- Add an architecture diagram? -->
                   \-> Tornado Executors (execute the Actions)
 
-<!-- Add an architecture diagram? -->
 
 
 
@@ -108,7 +109,7 @@ An *Action* can be any command, process or operation.
 For example it can include:
 * Forwarding the events to a monitoring system
 * Logging events locally (e.g., as processed, discarded or matched) or remotely
-* Archiving events using an application such as Elastic Stack
+* Archiving events using software such as the Elastic Stack
 * Invoking a custom shell script
 
 A single *Executor* usually takes care of a single *Action* type.
@@ -116,6 +117,14 @@ A single *Executor* usually takes care of a single *Action* type.
 
 
 ## Compiling and Running Tornado
+
+The Tornado project in its current form is mainly intended for developers who are interested in
+modifying it in order to address their specific needs.  Thus we assume that you already know how
+to use the external tools such as rsyslog and SNMP traps that you intend to connect to the
+Collector, and those that the Executors will send actions to.  We also do not yet provide
+user-friendly installable packages such as .rpm's.
+
+
 
 ### Prerequisites
 
@@ -209,6 +218,8 @@ their respective documentation pages:
 
 To test Tornado easily in a local environment, you can run it using cargo-make as
 [described here](./RUN_WITH_CARGO.md).
+
+<!-- Future section on running via yum?  Need list of explicit steps (currently there are errors with missing config files) -->
 
 
 
