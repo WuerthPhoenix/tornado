@@ -124,6 +124,6 @@ mod test {
         let config = build_icinga2_client_config(path).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/events", config.server_api_url)
+        assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
     }
 }
