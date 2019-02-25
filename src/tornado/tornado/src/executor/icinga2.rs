@@ -1,5 +1,6 @@
 use actix::prelude::*;
 use actix_web::client::{ClientConnector, ClientRequest};
+use actix_web::HttpMessage;
 use failure_derive::Fail;
 use futures::future::Future;
 use http::header;
@@ -39,6 +40,8 @@ pub struct Icinga2ClientConfig {
 }
 
 pub struct Icinga2ApiClientActor {
+    //username: String,
+    //password: String,
     icinga2_api_url: String,
     http_auth_header: String,
     client_connector: Addr<ClientConnector>,
@@ -66,6 +69,8 @@ impl Icinga2ApiClientActor {
             let client_connector = ClientConnector::with_connector(ssl_connector).start();
 
             Icinga2ApiClientActor {
+                //username: config.username,
+                //password: config.password,
                 icinga2_api_url: config.server_api_url,
                 http_auth_header,
                 client_connector,
@@ -84,8 +89,12 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
 
         debug!("Icinga2ApiClientMessage - calling url: {}", url);
-        debug!("Icinga2ApiClientMessage - sending json payload: \n{:#?}", serde_json::to_string(&msg.message.payload).unwrap());
+        debug!(
+            "Icinga2ApiClientMessage - sending json payload: \n{:#?}",
+            serde_json::to_string(&msg.message.payload).unwrap()
+        );
 
+        // self.send_with_reqwest(url, msg);
 
         actix::spawn(
             ClientRequest::post(url)
@@ -98,18 +107,13 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                 .send()
                 .map_err(|err| error!("Connection failed. Err: {}", err))
                 .and_then(|response| {
-                    if !response.status().is_success() {
-                        error!("Icinga2 API returned an error. Response: \n{:?}.", response)
-                    } else {
-                        debug!("Icinga2 API request completed successfully.");
-                    }
-                    /*
-                                    response.body().map_err(|_| ()).map(|bytes| {
-                                        println!("Body");
-                                        println!("{:?}", bytes);
-                                        ()
-                                    });
-                    */
+                    actix::spawn(response.body().map_err(|_| ()).map(move |bytes| {
+                        if !response.status().is_success() {
+                            error!("Icinga2 API returned an error. Response: \n{:#?}. Response body: {:#?}", response, bytes)
+                        } else {
+                            debug!("Icinga2 API request completed successfully. Response body: {:?}", bytes);
+                        }
+                    }));
                     Ok(())
                 }),
         );
