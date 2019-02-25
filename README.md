@@ -318,7 +318,6 @@ to the standard [log](https://crates.io/crates/log) at the _info_ level.
 - [tornado_executor_logger](src/executor/logger/doc/README.md)
 
 The Executor Script page defines how to configure Actions that launch shell scripts.
-<!-- Has not been checked for English yet. -->
 - [tornado_executor_script](src/executor/script/doc/README.md)
 
 

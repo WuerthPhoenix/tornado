@@ -1,6 +1,6 @@
 # Logger Executor
 
-A Executor that logs received Actions.
+An Executor that logs received Actions.
 
 ## How it Works
 
