@@ -25,7 +25,7 @@ members = [
    "spike/tornado_events_generator",
    "spike/webhook",
    "tornado/common",
-   "tornado/tornado",
+   "tornado/engine",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector"
 ]

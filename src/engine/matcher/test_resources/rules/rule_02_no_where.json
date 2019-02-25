@@ -1,11 +1,11 @@
 {
-    "name": "rule_without_where",
-    "description": "",
-    "priority": 4,
-    "continue": true,
-    "active": true,
-    "constraint": {
-      "WITH": {}
-    },
-    "actions": []
-  }
+  "name": "rule_without_where",
+  "description": "",
+  "priority": 4,
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WITH": {}
+  },
+  "actions": []
+}

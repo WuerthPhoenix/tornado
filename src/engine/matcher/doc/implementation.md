@@ -41,5 +41,5 @@ From a very high level point of view, when the matcher initializes, it follows t
       that contains all the required logic to process an event against all the defined rules.
       A matcher is stateless and thread-safe, thus a single instance can be used to serve the
       entire application load.
-- Listening (TO BE IMPLEMENTED):  Listen for incoming events and then matching them against
+- Listening:  Listen for incoming events and then matching them against
   the stored match/action rules.

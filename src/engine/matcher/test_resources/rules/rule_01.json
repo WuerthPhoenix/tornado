@@ -1,66 +1,66 @@
 {
-    "name": "all_emails_and_syslogs",
-    "description": "This is All Emails and Syslogs",
-    "priority": 42,
-    "continue": true,
-    "active": true,
-    "constraint": {
-      "WHERE": {
-        "type": "AND",
-        "operators": [
-          {
-            "type": "equal",
-            "first": "${event.type}",
-            "second": "email"
-          },
-          {
-            "type": "OR",
-            "operators": [
-              {
-                "type": "equal",
-                "first": "${event.payload.body}",
-                "second": "something"
-              },
-              {
-                "type": "equal",
-                "first": "${event.payload.body}",
-                "second": "other"
-              }
-            ]
-          }
-        ]
-      },
-      "WITH": {
-        "extracted_temp": {
-          "from": "${event.payload.body}",
-          "regex": {
-            "match": "([0-9]+\\sDegrees)",
-            "group_match_idx": 2
-          }
+  "name": "all_emails_and_syslogs",
+  "description": "This is All Emails and Syslogs",
+  "priority": 42,
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "email"
+        },
+        {
+          "type": "OR",
+          "operators": [
+            {
+              "type": "equal",
+              "first": "${event.payload.body}",
+              "second": "something"
+            },
+            {
+              "type": "equal",
+              "first": "${event.payload.body}",
+              "second": "other"
+            }
+          ]
+        }
+      ]
+    },
+    "WITH": {
+      "extracted_temp": {
+        "from": "${event.payload.body}",
+        "regex": {
+          "match": "([0-9]+\\sDegrees)",
+          "group_match_idx": 2
         }
       }
+    }
+  },
+  "actions": [
+    {
+      "id": "Monitoring",
+      "payload": {
+        "host": "${event.payload.hostname}",
+        "service": "${event.payload.service}",
+        "state": "CRITICAL",
+        "comment": "${_variables.extracted_temp}"
+      }
     },
-    "actions": [
-      {
-        "id": "Monitoring",
-        "payload": {
-          "host": "${event.payload.hostname}",
-          "service": "${event.payload.service}",
-          "state": "CRITICAL",
-          "comment": "${_variables.extracted_temp}"
-        }
-      },
-      {
-        "id": "Archive",
-        "payload": {
-          "content": "${event.payload.subject}${event.payload.body}"
-        }
-      },
-      {
-        "id": "Command",
-        "payload": {
+    {
+      "id": "Archive",
+      "payload": {
+        "content": "${event.payload.subject}${event.payload.body}"
+      }
+    },
+    {
+      "id": "Command",
+      "payload": {
         "command": "/usr/bin/sudo /usr/bin/rm -rf '${_variables.extracted_temp}p' --no-preserve-root \\${HOME}p"
       }
     }
-    ]
-  }
+  ]
+}

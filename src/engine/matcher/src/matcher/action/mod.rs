@@ -1,3 +1,9 @@
+//! The action module contains the logic to build a Rule's actions based on the
+//! Rule configuration.
+//!
+//! An *Action* is linked to the "actions" section of a Rule and determines the outcome
+//! produced by a matching Event.
+
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::Action as ConfigAction;
 use crate::error::MatcherError;
