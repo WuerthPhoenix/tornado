@@ -4,6 +4,8 @@ use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
 
+pub mod icinga2;
+
 #[derive(Message)]
 pub struct ActionMessage {
     pub action: Action,

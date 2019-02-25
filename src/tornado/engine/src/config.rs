@@ -1,3 +1,4 @@
+use crate::executor::icinga2::Icinga2ClientConfig;
 use config_rs::{Config, ConfigError, File};
 use log::{info, trace};
 use std::fs;
@@ -46,7 +47,14 @@ impl Conf {
 pub fn build_archive_config(config_file_path: &str) -> Result<ArchiveConfig, ConfigError> {
     let mut s = Config::new();
     s.merge(File::with_name(config_file_path))?;
-    // s.merge(Environment::with_prefix("TORNADO_RSYSLOG"))?;
+    s.try_into()
+}
+
+pub fn build_icinga2_client_config(
+    config_file_path: &str,
+) -> Result<Icinga2ClientConfig, ConfigError> {
+    let mut s = Config::new();
+    s.merge(File::with_name(config_file_path))?;
     s.try_into()
 }
 
@@ -105,5 +113,17 @@ mod test {
             rules_config.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
         );
         assert_eq!(1, rules_config.iter().filter(|val| "archive_all".eq(&val.name)).count());
+    }
+
+    #[test]
+    fn should_read_icinga2_client_configurations_from_file() {
+        // Arrange
+        let path = "./config/icinga2_client_executor.toml";
+
+        // Act
+        let config = build_icinga2_client_config(path).unwrap();
+
+        // Assert
+        assert_eq!("https://127.0.0.1:5665/v1/events", config.server_api_url)
     }
 }
