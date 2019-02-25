@@ -32,11 +32,12 @@ cd -
 %install
 mkdir -p %{buildroot}/%{deploy_dir}
 # Install executables
-EXECUTABLES="tornado tornado_rsyslog_collector tornado_webhook_collector"
+EXECUTABLES="tornado_rsyslog_collector tornado_webhook_collector"
 for binary in $EXECUTABLES ; do
     mkdir -p %{buildroot}/%{deploy_dir}/bin/
     cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
 done
+cp -pv src/%{release_target_dir}/tornado_engine %{buildroot}/%{deploy_dir}/bin/tornado
 
 # Install spikes
 mkdir -p %{buildroot}/%{deploy_dir}/bin/spikes
