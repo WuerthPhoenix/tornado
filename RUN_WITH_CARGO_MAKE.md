@@ -5,7 +5,7 @@ and configure sets of tasks and run them as a flow. In Tornado, it allows to sta
 environment, directly from the source code, for simple local testing.
 
 
-## Prerequisits
+## Prerequisites
 To proceed with this guide, you need to install cargo-make in your system. 
 
 In order to install it, just run the following command:
@@ -52,8 +52,8 @@ For each incoming webhook message, it will send a Tornado Event on the UDS path 
 
 ## Start Tornado Rsyslog Collector
 The [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
-should be managed by the 
-[omprog rsyslog module](https://www.rsyslog.com/doc/v8-stable/configuration/modules/omprog.html). 
+is be managed by the 
+[Rsyslog omprog module](https://www.rsyslog.com/doc/v8-stable/configuration/modules/omprog.html). 
 
 To simplify local testing, a spike that produces fake rsyslog events was developed 
 (see ./src/spike/rsyslog_collector_writer). This fake rsyslog starts the 

@@ -217,7 +217,7 @@ their respective documentation pages:
 ### How to Run Tornado Locally with *cargo-make*
 
 To test Tornado easily in a local environment, you can run it using cargo-make as
-[described here](./RUN_WITH_CARGO.md).
+[described here](./RUN_WITH_CARGO_MAKE.md).
 
 <!-- Future section on running via yum?  Need list of explicit steps (currently there are errors with missing config files) -->
 
