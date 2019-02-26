@@ -1,9 +1,9 @@
 # Common API
 
-The *tornado_common_api* crate contains the API for cross-component communication.  Three main
+The *tornado_common_api* crate contains the API for cross-component communication. Three main
 components are currently defined:
-- The Collectors 
-- The Tornado Engine 
+- The Collectors
+- The Tornado Engine
 - The Executors
 
 The Tornado Engine receives Events from the Collectors, checks them against a set of Rules, and
@@ -23,7 +23,7 @@ An Event has a simple structure, composed as follows:
 where the payload __Value__ can be any valid JSON type:
 - A __string__
 - A __bool__ value (i.e., true or false)
-- A __number__ 
+- A __number__
 - An __array__ of Values
 - A __map__ of type Map<String, Value>
 
@@ -33,7 +33,7 @@ Example Event in JSON format:
 ```json
 {
     "type": "email",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00", 
+    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
     "payload": {
         "subject" : "Doing something",
         "body": "everything's done"

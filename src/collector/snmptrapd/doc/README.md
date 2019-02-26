@@ -1,6 +1,6 @@
 # SNMP Trap Daemon Collector
 
-This is a collector that receives *snmptrapd* input messages formatted as JSON and generates 
+This is a collector that receives *snmptrapd* input messages formatted as JSON and generates
 an internal Event structure from them.
 
 
@@ -52,7 +52,7 @@ From that input, this collector will produce the following Event:
     }
   }
 }
-``` 
+```
 
 The structure of the generated Event is not configurable.
 

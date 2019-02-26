@@ -13,18 +13,18 @@ It is intended to handle millions of events each second on standard server hardw
 ## Tornado Architecture
 
 Tornado is structured as a library, with three example binaries included that show how it can
-be used.  The three main components of the Tornado architecture are:
+be used. The three main components of the Tornado architecture are:
 * The *Tornado Collector(s)*, or just *Collector(s)*
 * The *Tornado Engine*, or *Engine*
 * The *Tornado Executor(s)*, or *Executor(s)*
 
-The term *Tornado* refers to the whole project or to a deployed system that includes 
+The term *Tornado* refers to the whole project or to a deployed system that includes
 all three components.
 
 Along with the main components, the following concepts are fundamental to the Tornado architecture:
 * A *Datasource*: A system that sends *External Events* to Tornado,
   or a system to which Tornado subscribes to receive *External Events*.
-* An *External Event*: An input received from a datasource. Its format depends on its source. 
+* An *External Event*: An input received from a datasource. Its format depends on its source.
   An example of this is events from rsyslog.
 * A *Tornado (or Internal) Event*: The Tornado-specific Event format.
 * A *Rule*: A group of conditions that an Internal Event must match to trigger a set of Actions.
@@ -35,8 +35,8 @@ Architecturally, Tornado is organized as a processing pipeline, where input even
 collectors to the engine, to executors, without branching or returning.
 
 When the system receives an *External Event*, it first arrives at a *Collector* where it is
-converted into a *Tornado Event*.  Then it is forwarded to the *Tornado Engine* where it is
-matched against user-defined, composable *Rules*.  Finally, generated *Actions* are dispatched
+converted into a *Tornado Event*. Then it is forwarded to the *Tornado Engine* where it is
+matched against user-defined, composable *Rules*. Finally, generated *Actions* are dispatched
 to the *Executors*.
 
 
@@ -46,9 +46,9 @@ The Tornado pipeline:
       |
       | External Events
       |
-      \-> Tornado Collectors 
+      \-> Tornado Collectors
             |
-            | Tornado (or Internal) Events 
+            | Tornado (or Internal) Events
             |
             \-> Tornado Engine (matches based on Rules)
                   |
@@ -65,13 +65,13 @@ The Tornado pipeline:
 The purpose of a *Collector* is to receive and convert external events into the internal Tornado
 Event structure, and forward them to the Tornado Engine.
 
-*Collectors* are *Datasource*-specific.  For each datasource, there must be at least one
+*Collectors* are *Datasource*-specific. For each datasource, there must be at least one
 collector that knows how to manipulate the datasource's Events and generate Tornado Events.
 
 Out of the box, Tornado provides a number of Collectors for handling inputs from snmptrapd,
 rsyslog and generic Webhooks.
 
-Because all Collectors are defined with a simple format, Collectors for new event types 
+Because all Collectors are defined with a simple format, Collectors for new event types
 can easily be added or extended from existing types for:
 * Monitoring events
 * Email messages
@@ -87,22 +87,22 @@ can easily be added or extended from existing types for:
 
 ### Engine
 
-The *Engine* is the second step of the pipeline.  It receives and processes the events produced
-by the *Collectors*.  The outcome of this processing step is fully defined by an ordered set of
+The *Engine* is the second step of the pipeline. It receives and processes the events produced
+by the *Collectors*. The outcome of this processing step is fully defined by an ordered set of
 *Rules*, where each *Rule* in the set determines:
 * The conditions a *Tornado Event* has to respect to match it
 * The actions to be executed in case of a match
 
 These Rules are parsed at startup from a configuration folder where they are stored in JSON format.
 
-When an event matches one or more *Rules*, the Engine produces a set of *Actions* 
+When an event matches one or more *Rules*, the Engine produces a set of *Actions*
 and forwards them to one or more *Executors*.
 
 
 
 ### Executors
 
-The *Executors* are the last element in the Tornado pipeline.  They receive the *Actions*
+The *Executors* are the last element in the Tornado pipeline. They receive the *Actions*
 produced from the *Engine* and trigger the associated executable instructions.
 
 An *Action* can be any command, process or operation.
@@ -119,9 +119,9 @@ A single *Executor* usually takes care of a single *Action* type.
 ## Compiling and Running Tornado
 
 The Tornado project in its current form is mainly intended for developers who are interested in
-modifying it in order to address their specific needs.  Thus we assume that you already know how
+modifying it in order to address their specific needs. Thus we assume that you already know how
 to use the external tools such as rsyslog and SNMP traps that you intend to connect to the
-Collector, and those that the Executors will send actions to.  We also do not yet provide
+Collector, and those that the Executors will send actions to. We also do not yet provide
 user-friendly installable packages such as .rpm's.
 
 
@@ -195,11 +195,11 @@ If you intend to run benchmarks, or assess or deploy Tornado in a production env
 the way you should built it.
 
 The elements of the Tornado build process can be grouped into three categories:
-- Tornado libraries: Everything not in the the "spike" or "tornado" folder. 
+- Tornado libraries: Everything not in the the "spike" or "tornado" folder.
   These are common Rust libraries used by Tornado, and can be imported by other projects as well.
 - Tornado executables: The crates on the "src/tornado" folder generate the Tornado executables. These
   are what you need to run and deploy Tornado. All these executables are suffixed with *tornado_*.
-- Spikes: The crates on the "src/spike" folder generate executables suffixed with *spike_*. These are 
+- Spikes: The crates on the "src/spike" folder generate executables suffixed with *spike_*. These are
   experimental crates that are not part of the basic Tornado architecture.
 
 
@@ -230,11 +230,11 @@ To test Tornado easily in a local environment, you can run it using cargo-make a
 <!-- Where is our changelog? -->
 
 Tornado is still in a beta phase, thus the next steps in its development are to finish the
-remaining elements of the architecture.  In the longer term, we plan to add additional
+remaining elements of the architecture. In the longer term, we plan to add additional
 collectors and executors, and eventually create a graphical interface for rule configuration
 and integration.
 
-Tornado is implemented in Rust and uses no unsafe code. 
+Tornado is implemented in Rust and uses no unsafe code.
 It is blazingly fast, thread-safe, memory safe, and can process millions of events per second.
 
 Tornado adheres to v2.0.0 of the [Semantic Versioning Initiative](http://semver.org/spec/v2.0.0.html),
@@ -249,7 +249,7 @@ and is fully open source.
 <!-- Do we need to mention Support as some other projects do? -->
 
 You can contribute to Tornado by reporting bugs, requesting features, or contributing code
-on GitHub.  If you intend to submit a bug, please check first that someone else has not already
+on GitHub. If you intend to submit a bug, please check first that someone else has not already
 submitted it by searching with the issue tracker on GitHub.
 
 Check the ['contributing' documentation](CONTRIBUTING.md) for more details.
@@ -288,7 +288,7 @@ This page illustrates the Collector for JSON events using the JMESPath JSON quer
 Presents the standard JSON collector that deserializes an unstructured JSON string into an Event.
 - [tornado_collector_json](src/collector/json/doc/README.md)
 
-Describes an SNMP trap collector that receives *snmptrapd* messages formatted as JSON and generates 
+Describes an SNMP trap collector that receives *snmptrapd* messages formatted as JSON and generates
 an Event.
 - [tornado_collector_snmptrapd](src/collector/snmptrapd/doc/README.md)
 

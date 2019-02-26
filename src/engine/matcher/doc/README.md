@@ -1,7 +1,7 @@
 # Matcher Engine
 
-The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine.  It defines the logic to parse a
-Rule as well as for matching Events and Rules. 
+The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. It defines the logic to parse a
+Rule as well as for matching Events and Rules.
 
 Matcher implementation details are [available here](./implementation.md)
 
@@ -12,7 +12,7 @@ A rule is composed of a set of properties, constraints and actions.
 
 ### Basic properties
 
-- `rule name`:  A string value representing a unique rule identifier.  It can be composed only of
+- `rule name`:  A string value representing a unique rule identifier. It can be composed only of
   alphabetical characters, numbers and the "_" (underscore) character.
 - `description`:  A string value providing a high-level description of the rule.
 - `priority`:  A unique, positive integer that defines the execution order of the rules.
@@ -36,7 +36,7 @@ expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
 - __'contain'__: Evaluates whether a string contains a given substring.
-- __'equal'__:  Compares two values and returns whether or not they are equal.  If one or both of
+- __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
   the values do not exist, it returns `false`.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
@@ -47,19 +47,19 @@ The following operators are available in the __WHERE__ clause:
 We use the Rust Regex library (see its [github project here](https://github.com/rust-lang/regex) )
 to evaluate regular expressions provided by the _WITH_ clause and by the _regex_ operator.
 You can also refer to its [dedicated documentation](https://docs.rs/regex) for details about its
-features and limitations.  
+features and limitations.
 
 
 
 ### Actions
 
-An Action is an operation triggered when an Event matches a Rule.  
+An Action is an operation triggered when an Event matches a Rule.
 
 
 
 ### Reading Event fields
 
-A Rule can access Event fields through the "${" and "}" delimiters.  To do so, the following
+A Rule can access Event fields through the "${" and "}" delimiters. To do so, the following
 conventions are defined:
 - The '.' (dot) char is used to access inner fields.
 - Keys containing dots are escaped with leading and trailing double quotes.
@@ -85,11 +85,11 @@ The following accessors are valid:
 - `${event.payload.oids."key.with.dots"}`:  Returns "38:10:38:30.98"
 - `${event.payload}`:  Returns the entire payload
 - `${event}`: Returns the entire event
- 
+
 
 ## Rule Examples
 
-### The 'contain' operator 
+### The 'contain' operator
 The _contain_ operator is used to check if a string contains a substring.
 
 Rule example:
@@ -110,8 +110,8 @@ Rule example:
   },
   "actions": []
 }
-``` 
-An event matches this rule if in its payload it has 
+```
+An event matches this rule if in its payload it has
 an entry with key "hostname" and whose value is a string that contains
 "linux".
 
@@ -126,7 +126,7 @@ A matching Event is:
 }
 ```
 
-### The 'equal' operator 
+### The 'equal' operator
 The _equal_ operator is used to check if two values are the same.
 
 Example:
@@ -147,8 +147,8 @@ Example:
   },
   "actions": []
 }
-``` 
-An event matches this rule if its type is "email". 
+```
+An event matches this rule if its type is "email".
 
 A matching Event is:
 ```json
@@ -159,9 +159,9 @@ A matching Event is:
 }
 ```
 
-### The 'regex' operator 
+### The 'regex' operator
 The _regex_ operator is used to check if a string matches a regular expression.
-The evaluation is performed with the Rust Regex library 
+The evaluation is performed with the Rust Regex library
 (see its [github project here](https://github.com/rust-lang/regex) )
 
 
@@ -183,7 +183,7 @@ Rule example:
   },
   "actions": []
 }
-``` 
+```
 An event matches this rule if its type matches the regular expression [a-fA-F0-9].
 
 A matching Event is:
@@ -195,8 +195,8 @@ A matching Event is:
 }
 ```
 
-### The 'and' and 'or' operator 
-The _and_ and _or_ operators work on a set of operators. 
+### The 'and' and 'or' operator
+The _and_ and _or_ operators work on a set of operators.
 They can be nested recursively to define complex matching rules.
 
 As you should expect:
@@ -243,7 +243,7 @@ Example:
   "actions": []
 }
 
-``` 
+```
 An event matches this rule if:
 - in its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
 - __AND__ its type is "rsyslog"
@@ -339,7 +339,7 @@ Example:
   ]
 }
 
-``` 
+```
 
 This Rules matches only if its type is "trap" and it is possible to extract the two variables
 "sensor_description" and "sensor_room" defined by the _WITH_ clause.
@@ -421,11 +421,11 @@ Example of valid content for a Rule JSON file is:
 ```
 
 This creates a Rule with the following characteristics:
-- Its unique name is 'emails_with_temperature'.  There cannot be two rules with the same name.
-- Its priority is 2.  The priority defines the execution order of the rules:
+- Its unique name is 'emails_with_temperature'. There cannot be two rules with the same name.
+- Its priority is 2. The priority defines the execution order of the rules:
   '0' (zero) is the highest priority and denotes the first rule to be evaluated.
-- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and, 
+- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and,
   as requested by the _WITH_ clause, it is possible to extract the "temperature" variable from
   the "event.payload.body" with a non-null value.
-- If an Event meets the previously stated requirements, the matcher produces an Action 
-  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_. 
+- If an Event meets the previously stated requirements, the matcher produces an Action
+  with _id_ "Logger" and a _payload_ with the three entries _type_, _subject_ and _temperature_.

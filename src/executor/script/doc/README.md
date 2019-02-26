@@ -10,7 +10,7 @@ To be correctly processed by this executor, an Action should provide two entries
 the path to a script on the local filesystem of the executor process, and all the parameters
 required to the resolve the script placeholders.
 
-The script path is identified by the payload key __script__; it is important to verify that the 
+The script path is identified by the payload key __script__; it is important to verify that the
 executor has read and execute rights at that path. Additionally, if a script has placeholders,
 then the payload should contain a key and valid value for each one.
 
@@ -34,7 +34,7 @@ In this case the executor will launch the script _my_script.sh_, replacing _${ar
 
 Other action examples are:
 
-- An invalid action due to the missing "arg_two" entry in the payload: 
+- An invalid action due to the missing "arg_two" entry in the payload:
 ```json
 {
     "id": "script",
@@ -45,7 +45,7 @@ Other action examples are:
 }
 ```
 
-- An invalid action due to the missing "script" entry in the payload: 
+- An invalid action due to the missing "script" entry in the payload:
 ```json
 {
     "id": "script",
@@ -55,7 +55,7 @@ Other action examples are:
 }
 ```
 
-- An action that is valid since the script does not have placeholders: 
+- An action that is valid since the script does not have placeholders:
 ```json
 {
     "id": "script",
