@@ -18,6 +18,7 @@ This specific Tornado Engine executable is composed of the following components:
 - The snmptrapd collector
 - The engine
 - The archive executor
+- The Icinga2 executor
 - The script executor
 
 Each component is wrapped in a dedicated actix actor.
@@ -148,7 +149,7 @@ More information and examples about the Rule's properties and configuration can 
 ### Structure and Configuration:  The Archive Executor
 
 The [archive executor](../../../executor/archive/doc/README.md) processes and executes Actions
-of type "archive". This executor is configuration is specified in the `archive_executor.toml`
+of type "archive". This executor configuration is specified in the `archive_executor.toml`
 file into the Tornado config folder.
 
 For instance, if Tornado is started with the command:
@@ -172,6 +173,27 @@ More details about the meaning of each entry and the functioning of the
 archive executor can be found in the
 [executor documentation](../../../executor/archive/doc/README.md).
 
+
+### Structure and Configuration:  The Icinga2 Executor
+
+The [Icinga2 executor](../../../executor/icinga2/doc/README.md) processes and executes Actions
+of type "icinga2". The configuration for this executor is specified in the `icinga2_client_executor.toml`
+file into the Tornado config folder.
+
+For instance, if Tornado is started with the command:
+```bash
+tornado --config-dir=/tornado/config
+```
+then the configuration file's full path will be `/tornado/config/icinga2_client_executor.toml`.
+
+The icinga2_client_executor.toml has the following configuration options:
+- __server_api_url__: The complete URL of the Icinga2 APIs.
+- __username__: The username used to connect to the Icinga2 APIs.
+- __password__: The password used to connect to the Icinga2 APIs.
+- __disable_ssl_verification__: If true, the client will not verify the SSL certificate of the Icinga2 server.
+
+More details about the executor can be found in the
+[Icinga2 executor documentation](../../../executor/icinga2/doc/README.md).
 
 
 ### Structure and Configuration:  The Script Executor
