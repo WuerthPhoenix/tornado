@@ -22,7 +22,7 @@ members = [
    "spike/snmptrapd_collector_writer",
    "spike/stdin",
    "spike/tokio",
-   "spike/uds_writer_collector",
+   "spike/tornado_events_generator",
    "spike/webhook",
    "tornado/common",
    "tornado/engine",

@@ -4,6 +4,7 @@ use log::*;
 use std::fs;
 use std::io::prelude::*;
 use std::os::unix::net::UnixStream;
+use std::{thread, time};
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
@@ -14,15 +15,19 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load events from fs
-    let events = read_events_from_config(&conf.io.json_events_path);
+    let events_path = format!("{}/{}", conf.io.config_dir, conf.io.events_dir);
+    let events = read_events_from_config(&events_path);
 
     // Create uds writer
     let mut stream = UnixStream::connect(&conf.io.uds_path).expect("Should connect to socket");
 
     // Send events
+    let sleep_millis = time::Duration::from_millis(conf.io.repeat_sleep_ms);
+
     for _ in 0..conf.io.repeat_send {
         for event in &events {
             write_to_socket(&mut stream, event);
+            thread::sleep(sleep_millis);
         }
     }
 
