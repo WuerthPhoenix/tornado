@@ -25,7 +25,7 @@ members = [
    "spike/uds_writer_collector",
    "spike/webhook",
    "tornado/common",
-   "tornado/tornado",
+   "tornado/engine",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector"
 ]

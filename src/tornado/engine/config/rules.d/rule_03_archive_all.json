@@ -1,0 +1,23 @@
+{
+  "name": "archive_all",
+  "description": "This matches all event",
+  "priority": 99,
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": []
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "archive",
+      "payload": {
+        "event": "${event}",
+        "archive_type": "one"
+      }
+    }
+  ]
+}
