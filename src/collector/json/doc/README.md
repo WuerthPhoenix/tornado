@@ -11,7 +11,7 @@ There are currently two available implementations:
 ## JsonEventCollector
 
 The _JsonEventCollector_ expects to receive a valid JSON representation of a Tornado Event as
-input.  It is used internally by Tornado to unmarshall Events received, for example, from a TCP or
+input. It is used internally by Tornado to unmarshall Events received, for example, from a TCP or
 UDS socket.
 
 The JSON input format should respect the Event structure, for example:
@@ -31,14 +31,14 @@ The JSON input format should respect the Event structure, for example:
     }
   }
 }
-``` 
+```
 
 
 
 ## JsonPayloadCollector
 
 The _JsonPayloadCollector_ receives any valid JSON object and creates a Tornado Event whose
-payload is that input.  For example, the following input:
+payload is that input. For example, the following input:
 
 ```json
 {
