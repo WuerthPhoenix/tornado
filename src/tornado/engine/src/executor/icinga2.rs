@@ -89,12 +89,6 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
 
         debug!("Icinga2ApiClientMessage - calling url: {}", url);
-        debug!(
-            "Icinga2ApiClientMessage - sending json payload: \n{:#?}",
-            serde_json::to_string(&msg.message.payload).unwrap()
-        );
-
-        // self.send_with_reqwest(url, msg);
 
         actix::spawn(
             ClientRequest::post(url)
