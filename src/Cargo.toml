@@ -4,6 +4,7 @@ members = [
    "common/api",
    "common/logger",
    "collector/common",
+   "collector/icinga2",
    "collector/jmespath",
    "collector/json",
    "collector/snmptrapd",
@@ -26,6 +27,7 @@ members = [
    "spike/webhook",
    "tornado/common",
    "tornado/engine",
+   "tornado/icinga2_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector"
 ]
