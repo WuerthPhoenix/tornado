@@ -1,14 +1,18 @@
-# Tornado Engine (executable)
+# Tornado Engine (Executable)
 
 This crate contains the Tornado Engine executable code.
 
+
+
 ## How It Works
 
-The Tornado Engine executable is a configuration of the engine based on [actix](https://github.com/actix/actix) and
-built as a portable executable.
+The Tornado Engine executable is a configuration of the engine based on
+[actix](https://github.com/actix/actix)
+and built as a portable executable.
 
-It currently builds only on Linux-like operating systems since, at runtime, it uses two UDS sockets
-for receiving inputs from external collectors.
+It will currently build only on Linux-like operating systems since, at runtime, it uses two Unix
+Domain Sockets (UDSs) for receiving inputs from external collectors.
+
 
 
 ## Structure of Tornado Engine
@@ -23,8 +27,8 @@ This specific Tornado Engine executable is composed of the following components:
 
 Each component is wrapped in a dedicated actix actor.
 
-This configuration is only one of the many possible. Each component is, in fact, developed as an
-independent library allowing greater flexibility in deciding whether and how to use it.
+This configuration is only one of many possible configurations. Each component has been developed
+as an independent library, allowing for greater flexibility in deciding whether and how to use it.
 
 At the same time, there are no restrictions that force the use of the components into the same
 executable. While this is the simplest way to assemble them into a working product, the
@@ -37,8 +41,8 @@ system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed 
 
 ### Configuration
 
-The configuration is partially based on configuration files and partially based on
-command line parameters.
+The configuration is partly based on configuration files and partly based on command line
+parameters.
 
 The startup parameters are:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
@@ -146,11 +150,12 @@ More information and examples about the Rule's properties and configuration can 
 [matching engine documentation](../../../engine/matcher/doc/README.md)
 
 
+
 ### Structure and Configuration:  The Archive Executor
 
 The [archive executor](../../../executor/archive/doc/README.md) processes and executes Actions
 of type "archive". This executor configuration is specified in the `archive_executor.toml`
-file into the Tornado config folder.
+file in the Tornado config folder.
 
 For instance, if Tornado is started with the command:
 ```bash
@@ -169,9 +174,9 @@ file_cache_ttl_secs = 1
 "one" = "/one/file.log"
 ```
 
-More details about the meaning of each entry and the functioning of the
-archive executor can be found in the
-[executor documentation](../../../executor/archive/doc/README.md).
+More details about the meaning of each entry and how the archive executor functions can be found
+in the [executor documentation](../../../executor/archive/doc/README.md).
+
 
 
 ### Structure and Configuration:  The Icinga2 Executor
@@ -194,6 +199,7 @@ The icinga2_client_executor.toml has the following configuration options:
 
 More details about the executor can be found in the
 [Icinga2 executor documentation](../../../executor/icinga2/doc/README.md).
+
 
 
 ### Structure and Configuration:  The Script Executor
