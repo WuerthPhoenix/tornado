@@ -10,6 +10,7 @@ chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }
 failure = "0.1"
 failure_derive = "0.1"
+http = "0.1"
 log = "0.4"
 openssl = "0.10"
 reqwest = "0.9"

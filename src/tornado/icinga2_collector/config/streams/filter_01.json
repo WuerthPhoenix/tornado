@@ -4,11 +4,9 @@
     "queue": "icinga2_StateChange_queue"
   },
   "collector_config": {
-    "event_type": "${commits[0].committer.name}",
+    "event_type": "icinga2_StateChange",
     "payload": {
-      "source": "github",
-      "ref": "${ref}",
-      "repository_name": "${repository.name}"
+      "response": "${@}"
     }
   }
 }
