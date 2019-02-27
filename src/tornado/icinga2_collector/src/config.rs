@@ -1,4 +1,5 @@
 use log::{info, trace};
+use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use structopt::StructOpt;
@@ -42,6 +43,29 @@ impl Conf {
     pub fn build() -> Self {
         Conf::from_args()
     }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct Icinga2ClientConfig {
+    /// The complete URL of the Icinga2 Event Stream API
+    pub server_api_url: String,
+
+    /// Username used to connect to the Icinga2 APIs
+    pub username: String,
+
+    /// Password used to connect to the Icinga2 APIs
+    pub password: String,
+
+    /// If true, the client will not verify the SSL certificate
+    pub disable_ssl_verification: bool,
+}
+
+pub fn build_icinga2_client_config(
+    config_file_path: &str,
+) -> Result<Icinga2ClientConfig, ConfigError> {
+    let mut s = Config::new();
+    s.merge(File::with_name(config_file_path))?;
+    s.try_into()
 }
 
 pub fn read_streams_from_config(path: &str) -> Result<Vec<StreamConfig>, TornadoError> {
@@ -122,5 +146,17 @@ mod test {
 
         // Assert
         assert_eq!(1, streams_config.len());
+    }
+
+    #[test]
+    fn should_read_icinga2_config_from_file() {
+        // Arrange
+        let path = "./config/icinga2_collector.toml";
+
+        // Act
+        let config = build_icinga2_client_config(path).unwrap();
+
+        // Assert
+        assert_eq!("https://127.0.0.1:5665/v1/events", config.server_api_url)
     }
 }

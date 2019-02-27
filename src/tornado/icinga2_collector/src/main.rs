@@ -11,7 +11,7 @@ use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
 mod config;
-mod handler;
+mod actor;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
@@ -22,6 +22,9 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let streams_config =
         config::read_streams_from_config(&streams_dir).map_err(|err| err.compat())?;
 
+    let icinga2_config_path = format!("{}/{}", &config.io.config_dir, "icinga2_collector.toml");
+    let icinga2_config = config::build_icinga2_client_config(&icinga2_config_path)?;
+
     System::run(move || {
         info!("Starting Icinga2 Collector");
 
@@ -30,6 +33,19 @@ fn main() -> Result<(), Box<std::error::Error>> {
             config.io.uds_path.clone(),
             config.io.uds_mailbox_capacity,
         );
+
+        streams_config.iter().for_each(|config| {
+            let config = config.clone();
+            let icinga2_config = icinga2_config.clone();
+            SyncArbiter::start(1, move || {
+                actor::Icinga2StreamActor{
+                    icinga_config: icinga2_config.clone(),
+                    collector: JMESPathEventCollector::build(config.collector_config.clone())
+                        .expect(&format!("Not able to start JMESPath collector with configuration: \n{:#?}", config.collector_config.clone()) ),
+                    stream_config: config.stream.clone()
+                }
+            });
+        });
 
     });
     Ok(())
