@@ -57,6 +57,7 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 
 %changelog
 * Thu Feb 07 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.5.0-1
+ - New Feature: Icinga2 API Action Executor
  - New Feature: Webhook Collector
  - Improvement: Actions can now be generated with recursive payload
  - Spike Icinga2 Collector
