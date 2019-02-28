@@ -11,12 +11,12 @@ use tornado_common_logger::LoggerConfig;
 #[structopt(rename_all = "kebab-case")]
 pub struct Io {
     /// The filesystem folder where the Tornado Icinga2 Collector configuration is saved
-    #[structopt(long, default_value = "/etc/tornado_icinga2_collector/")]
+    #[structopt(long, default_value = "/etc/tornado_icinga2_collector")]
     pub config_dir: String,
 
     /// The folder where the Stream Configurations are saved in JSON format;
     ///   this folder is relative to the `config_dir`.
-    #[structopt(long, default_value = "/streams/")]
+    #[structopt(long, default_value = "/streams")]
     pub streams_dir: String,
 
     /// Set the size of the in-memory queue where messages will be stored before being written
@@ -110,9 +110,9 @@ pub struct StreamConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Stream {
-    types: Vec<EventType>,
-    queue: String,
-    filter: Option<String>,
+    pub types: Vec<EventType>,
+    pub queue: String,
+    pub filter: Option<String>,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize)]

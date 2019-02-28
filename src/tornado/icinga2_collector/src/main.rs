@@ -26,10 +26,8 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting Icinga2 Collector");
 
         // Start UdsWriter
-        let uds_writer_addr = UdsWriterActor::start_new(
-            config.io.uds_path.clone(),
-            config.io.uds_mailbox_capacity,
-        );
+        let uds_writer_addr =
+            UdsWriterActor::start_new(config.io.uds_path.clone(), config.io.uds_mailbox_capacity);
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
