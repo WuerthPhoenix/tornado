@@ -92,6 +92,7 @@ impl ActionResolverBuilder {
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
             Value::Number(number) => Ok(ActionValueProcessor::Number(*number)),
+            Value::Null => Ok(ActionValueProcessor::Null),
         }
     }
 }
@@ -123,6 +124,7 @@ impl ActionResolver {
 #[derive(Debug, PartialEq)]
 enum ActionValueProcessor {
     Accessor(Accessor),
+    Null,
     Bool(bool),
     Number(f64),
     //Text(String),
@@ -147,6 +149,7 @@ impl ActionValueProcessor {
                 })?
                 .into_owned()),
             //ActionValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
+            ActionValueProcessor::Null => Ok(Value::Null),
             ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ActionValueProcessor::Map(payload) => {
@@ -290,6 +293,35 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(&Value::Bool(true), result.payload.get("type").unwrap());
+    }
+
+    #[test]
+    fn should_build_an_action_with_null_type_in_config() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action.payload.insert("type".to_owned(), Value::Null);
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+
+        let event = ProcessedEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ts: "123456".to_owned(),
+            payload,
+        });
+
+        // Act
+        let result = matcher_action.execute(&event).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!(&Value::Null, result.payload.get("type").unwrap());
     }
 
     #[test]
@@ -448,6 +480,7 @@ mod test {
 
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("some_null".to_owned(), Value::Null);
 
         let event = ProcessedEvent::new(Event {
             event_type: "event_type_value".to_owned(),

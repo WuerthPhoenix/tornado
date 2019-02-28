@@ -3,6 +3,8 @@
   "created_ts": "2018-11-28T21:45:59.324310806+09:00",
   "payload": {
     "constant": "constant_value",
-    "expression": "secret"
+    "expression": "secret",
+    "with_null": null,
+    "another_null": null
   }
 }

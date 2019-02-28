@@ -79,6 +79,7 @@ impl EventProcessor {
             Value::Text(text) => EventProcessor::build_value_processor_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
             Value::Number(number) => Ok(ValueProcessor::Number(number)),
+            Value::Null => Ok(ValueProcessor::Null),
         }
     }
 
@@ -123,6 +124,7 @@ impl EventProcessor {
 #[derive(Debug, PartialEq)]
 enum ValueProcessor {
     Expression { exp: jmespath::Expression<'static> },
+    Null,
     Bool(bool),
     Number(f64),
     Text(String),
@@ -143,6 +145,7 @@ impl ValueProcessor {
                     })?;
                 variable_to_value(&search_result)
             }
+            ValueProcessor::Null => Ok(Value::Null),
             ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
             ValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
@@ -183,12 +186,8 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
             }
             Ok(Value::Array(payload))
         }
-        // ToDo: we could map Null to a Value::Null but this way the desired behavior that a missing node
-        // causes a failure will not be true any more. In fact, a missing node will return Null instead.
-        jmespath::Variable::Null => Err(CollectorError::EventCreationError {
-            message: "Cannot map jmespath::Variable::Null to the Event payload".to_owned(),
-        }),
-        // ToDo how to map Expref?
+        jmespath::Variable::Null => Ok(Value::Null),
+        // ToDo: how to map Expref?
         jmespath::Variable::Expref(_) => Err(CollectorError::EventCreationError {
             message: "Cannot map jmespath::Variable::Expref to the Event payload".to_owned(),
         }),
@@ -246,7 +245,7 @@ mod test {
     }
 
     #[test]
-    fn value_processor_expression_should_return_error_if_not_present() {
+    fn value_processor_expression_should_return_null_if_not_present() {
         // Arrange
         let exp = jmespath::compile("level_one.level_three").unwrap();
         let value_proc = ValueProcessor::Expression { exp };
@@ -263,11 +262,12 @@ mod test {
         let result = value_proc.process(&data);
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(Value::Null, result.unwrap());
     }
 
     #[test]
-    fn value_processor_expression_should_return_error_if_not_present_in_array() {
+    fn value_processor_expression_should_return_null_if_not_present_in_array() {
         // Arrange
         let exp = jmespath::compile("level_one.level_two[2]").unwrap();
         let value_proc = ValueProcessor::Expression { exp };
@@ -284,7 +284,8 @@ mod test {
         let result = value_proc.process(&data);
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_ok());
+        assert_eq!(Value::Null, result.unwrap());
     }
 
     #[test]

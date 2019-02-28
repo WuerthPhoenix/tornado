@@ -58,6 +58,7 @@ pub type Payload = HashMap<String, Value>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
+    Null,
     Text(String),
     Bool(bool),
     Number(f64),
@@ -331,6 +332,20 @@ mod test {
     fn should_parse_a_json_event_with_nested_payload() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json);
+
+        // Assert
+        assert!(event.is_ok());
+    }
+
+    #[test]
+    fn should_parse_a_json_event_with_a_null_value() {
+        // Arrange
+        let filename = "./test_resources/event_with_null_value.json";
         let event_json =
             fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
