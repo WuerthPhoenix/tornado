@@ -1,5 +1,5 @@
-use log::{info, trace};
 use config_rs::{Config, ConfigError, File};
+use log::{info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use structopt::StructOpt;
@@ -27,7 +27,6 @@ pub struct Io {
     /// The Unix Socket path where outgoing events will be written
     #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
     pub uds_path: String,
-
 }
 
 #[derive(Debug, StructOpt, Clone)]

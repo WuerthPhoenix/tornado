@@ -1,17 +1,14 @@
 use crate::actors::uds_writer::EventMessage;
-use crate::config::StreamConfig;
 use actix::prelude::*;
-use chrono::prelude::Local;
 use failure::Fail;
 use log::*;
-use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors;
-use tornado_common_api::Event;
+use tornado_common::actors::uds_writer::UdsWriterActor;
 use tornado_common_logger::setup_logger;
 
-mod config;
 mod actor;
+mod config;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
@@ -29,7 +26,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting Icinga2 Collector");
 
         // Start UdsWriter
-        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
+        let uds_writer_addr = UdsWriterActor::start_new(
             config.io.uds_path.clone(),
             config.io.uds_mailbox_capacity,
         );
@@ -37,20 +34,23 @@ fn main() -> Result<(), Box<std::error::Error>> {
         streams_config.iter().for_each(|config| {
             let config = config.clone();
             let icinga2_config = icinga2_config.clone();
+            let uds_writer_addr = uds_writer_addr.clone();
             SyncArbiter::start(1, move || {
-                actor::Icinga2StreamActor{
+                let uds_writer_addr = uds_writer_addr.clone();
+                actor::Icinga2StreamActor {
                     icinga_config: icinga2_config.clone(),
                     collector: JMESPathEventCollector::build(config.collector_config.clone())
-                        .expect(&format!("Not able to start JMESPath collector with configuration: \n{:#?}", config.collector_config.clone()) ),
-                    stream_config: config.stream.clone()
+                        .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:#?}. Err: {}", config.collector_config.clone(), e)),
+                    stream_config: config.stream.clone(),
+                    callback: move |event| {
+                        uds_writer_addr.do_send(EventMessage { event });
+                    },
                 }
             });
         });
-
     });
     Ok(())
 }
-
 
 #[cfg(test)]
 mod test {
