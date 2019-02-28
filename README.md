@@ -312,6 +312,10 @@ This page describes how the Archive executor writes to log files on locally moun
 with a focus on configuration.
 - [tornado_executor_archive](src/executor/archive/doc/README.md)
 
+The Icinga2 executor forwards Tornado Actions to the 
+[Icinga2 API](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api).
+- [tornado_executor_icinga2](src/executor/icinga2/doc/README.md)
+
 The Logger executor simply outputs the whole Action body
 to the standard [log](https://crates.io/crates/log) at the _info_ level.
 <!-- This page of doc. is very short. -->

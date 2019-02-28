@@ -1,6 +1,6 @@
 # Archive Executor
 
-The Archive Executor ia an executor that writes the Events from the received Actions to a file.
+The Archive Executor is an executor that writes the Events from the received Actions to a file.
 
 
 
