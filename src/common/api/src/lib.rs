@@ -58,8 +58,8 @@ pub type Payload = HashMap<String, Value>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Value {
-    Null,
     Text(String),
+    Null,
     Bool(bool),
     Number(f64),
     Map(Payload),
