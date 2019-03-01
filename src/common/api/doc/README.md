@@ -21,6 +21,7 @@ An Event has a simple structure, composed as follows:
 - __payload__:  A Map<String, Value> with event-specific data
 
 where the payload __Value__ can be any valid JSON type:
+- A __null__ value
 - A __string__
 - A __bool__ value (i.e., true or false)
 - A __number__
