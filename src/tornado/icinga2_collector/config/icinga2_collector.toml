@@ -3,7 +3,7 @@ server_api_url = "https://127.0.0.1:5665/v1/events"
 # Username used to connect to the Icinga2 APIs
 username = "root"
 # Password used to connect to the Icinga2 APIs
-password = "92ba1bfa1cc51111"
+password = ""
 # If true, the client will not verify the SSL certificate
 disable_ssl_verification = true
 # In case of connection failure, how many milliseconds to wait before a new connection attempt.
