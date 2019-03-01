@@ -9,6 +9,7 @@ use tornado_common_logger::setup_logger;
 
 mod actor;
 mod config;
+mod error;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();

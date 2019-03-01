@@ -57,6 +57,10 @@ pub struct Icinga2ClientConfig {
 
     /// If true, the client will not verify the SSL certificate
     pub disable_ssl_verification: bool,
+
+    /// In case of connection failure, how many milliseconds
+    /// to wait before a new connection attempt.
+    pub sleep_ms_between_connection_attempts: u64,
 }
 
 pub fn build_icinga2_client_config(
