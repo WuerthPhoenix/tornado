@@ -27,8 +27,8 @@ dependencies = ["build"]
 # Starts the rsyslog-collector and the spike_rsyslog_collector_writer.
 #
 # The spike_rsyslog_collector_writer will generate fake rsyslog events
-# and will piped them into the rsyslog_collector.
-# Consequently, the rsyslog_collector will process the events
+# and will pipe them to the rsyslog_collector.
+# Consequently, the rsyslog_collector will process the Events
 # and send Tornado Events to the Engine.
 #
 # Execute with:
@@ -45,7 +45,7 @@ dependencies = ["build"]
 # Starts the spike_snmptrapd_collector_writer.
 #
 # The spike_snmptrapd_collector_writer will generate fake snmptrapd
-# events and forward them to the Engine UDS socket.
+# events and forward them to the Engine's UDS socket.
 #
 # Execute with:
 # > cargo make run-snmptrapd-writer
@@ -106,7 +106,7 @@ args = [
 dependencies = ["build"]
 
 
-# Starts a tornado events generator that sends simulated events to the Engine.
+# Starts a Tornado Events generator that sends simulated Events to the Engine.
 #
 # Execute with:
 # > cargo make run-tornado_events_generator
