@@ -45,7 +45,6 @@ impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
             match reader.read_line(&mut line) {
                 Ok(len) => {
                     if len == 0 {
-                        // ToDo: to be investigated as part of TOR-56 (Resilience against downtime/restart of icinga2)
                         warn!("EOF received. Stopping Icinga2 collector.");
                         return Err(Icinga2CollectorError::UnexpectedEndOfHttpRequest);
                     } else {
@@ -119,7 +118,7 @@ mod test {
     #[test]
     fn should_perform_a_post_request() {
         //start_logger();
-        let received = Arc::new(Mutex::new(None));
+        let received = Arc::new(Mutex::new(vec![]));
 
         let act_received = received.clone();
         System::run(move || {
@@ -147,15 +146,17 @@ mod test {
                         disable_ssl_verification: true,
                         password: "".to_owned(),
                         username: "".to_owned(),
-                        sleep_ms_between_connection_attempts: 10,
+                        sleep_ms_between_connection_attempts: 0,
                     };
                     let app_received = act_received.clone();
                     Icinga2StreamActor {
                         callback: move |event| {
                             info!("Callback called with Event: {:?}", event);
                             let mut message = app_received.lock().unwrap();
-                            *message = Some(event);
-                            System::current().stop();
+                            message.push(event);
+                            if message.len() > 2 {
+                                System::current().stop();
+                            }
                         },
                         collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
                             event_type: "test".to_owned(),
@@ -179,19 +180,23 @@ mod test {
             .start();
         });
 
-        let event = received.lock().unwrap().clone().unwrap();
-        assert_eq!("test".to_owned(), event.event_type);
-        assert_eq!(
-            "queue_name".to_owned(),
-            event
-                .payload
-                .get("response")
-                .unwrap()
-                .get_from_map("queue")
-                .unwrap()
-                .get_text()
-                .unwrap()
-        );
+        let events = received.lock().unwrap().clone();
+        assert_eq!(3, events.len());
+
+        events.iter().for_each(|event| {
+            assert_eq!("test".to_owned(), event.event_type);
+            assert_eq!(
+                "queue_name".to_owned(),
+                event
+                    .payload
+                    .get("response")
+                    .unwrap()
+                    .get_from_map("queue")
+                    .unwrap()
+                    .get_text()
+                    .unwrap()
+            )
+        });
     }
 
     /*
