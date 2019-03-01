@@ -1,2 +1,0 @@
-# Icinga2 Collectors
-

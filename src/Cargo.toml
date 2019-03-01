@@ -4,7 +4,6 @@ members = [
    "common/api",
    "common/logger",
    "collector/common",
-   "collector/icinga2",
    "collector/jmespath",
    "collector/json",
    "collector/snmptrapd",
