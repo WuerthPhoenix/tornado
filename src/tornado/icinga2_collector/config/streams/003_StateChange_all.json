@@ -1,10 +1,10 @@
 {
   "stream": {
     "types": ["StateChange"],
-    "queue": "icinga2_StateChange_queue"
+    "queue": "icinga2_StateChange_all"
   },
   "collector_config": {
-    "event_type": "icinga2_StateChange",
+    "event_type": "icinga2_StateChange_all",
     "payload": {
       "response": "${@}"
     }

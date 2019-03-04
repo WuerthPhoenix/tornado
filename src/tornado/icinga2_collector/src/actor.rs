@@ -154,6 +154,10 @@ mod test {
                             info!("Callback called with Event: {:?}", event);
                             let mut message = app_received.lock().unwrap();
                             message.push(event);
+
+
+                            // Todo: explain the logic of the 3 calls
+
                             if message.len() > 2 {
                                 System::current().stop();
                             }

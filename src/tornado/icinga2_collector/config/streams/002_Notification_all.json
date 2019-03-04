@@ -1,0 +1,12 @@
+{
+  "stream": {
+    "types": ["Notification"],
+    "queue": "icinga2_Notification_all"
+  },
+  "collector_config": {
+    "event_type": "icinga2_Notification_all",
+    "payload": {
+      "response": "${@}"
+    }
+  }
+}
