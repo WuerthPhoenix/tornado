@@ -155,8 +155,11 @@ mod test {
                             let mut message = app_received.lock().unwrap();
                             message.push(event);
 
-
-                            // Todo: explain the logic of the 3 calls
+                            // The actor tries to establish a long polling connection to the server;
+                            // however, the server used in this test drops the connection after each response.
+                            // We check that we added three messages into the mutek, if this succeeds,
+                            // it means that the actor was successfully restarted after each connection drop, so the client
+                            // is correctly handling dropped connections.
 
                             if message.len() > 2 {
                                 System::current().stop();
