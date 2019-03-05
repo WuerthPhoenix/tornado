@@ -38,6 +38,19 @@ This builds and starts a Tornado Engine on the local machine configured to recei
 on the UDS path _/tmp/tornado_.
 
 
+## Start Tornado Icinga2 Collector
+To start the [tornado_icinga2_collector](src/tornado/icinga2_collector/doc/README.md),
+enter the _src_ folder and run:
+
+```bash
+cargo make run-icinga2-collector
+```
+
+This builds and starts the Tornado Icinga2 collector that, by default, connects to an Icinga2 server
+on the localhost at port 5665.
+For each incoming Icinga2 Event, it will send a Tornado Event on the UDS path _/tmp/tornado_.
+
+
 ## Start Tornado Webhook Collector
 To start the [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md),
 enter the _src_ folder and run:
@@ -76,8 +89,19 @@ A spike that produces fake snmptrapd events is available for local testing
 generates fake events and forwards them directly to the Engine
 on the UDS path _/tmp/tornado_snmptrapd_.
 
-To start the fake snmptrapd , enter the _src_ folder and run:
+To start the fake snmptrapd, enter the _src_ folder and run:
 
 ```bash
 cargo make run-snmptrapd-writer
+```
+
+
+## Start Tornado Events Generator
+A spike that reads Tornado events from json files
+and forwards them to the Engine on the UDS path _/tmp/tornado_.
+
+To start the Tornado Events Generator, enter the _src_ folder and run:
+
+```bash
+cargo make run-tornado_events_generator
 ```

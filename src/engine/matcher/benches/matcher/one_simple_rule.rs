@@ -25,7 +25,9 @@ pub fn bench(c: &mut Criterion) {
         // Add action
         let mut action = Action { id: "log".to_owned(), payload: HashMap::new() };
 
-        action.payload.insert("var".to_owned(), Value::Text("${_variables.extracted_var}".to_owned()));
+        action
+            .payload
+            .insert("var".to_owned(), Value::Text("${_variables.extracted_var}".to_owned()));
         rule.actions.push(action);
         rule
     };

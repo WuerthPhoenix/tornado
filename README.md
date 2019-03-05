@@ -343,6 +343,9 @@ Describes tests that dispatch Events and Actions on a single process without act
 Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
 - [tornado_engine](src/tornado/engine/doc/README.md)
 
+An executable that subscribes to Icinga2 Event Streams API and generates Tornado Events.
+- [tornado_icinga2_collector](src/tornado/icinga2_collector/doc/README.md)
+
 The description of a binary executable that generates Tornado Events from _rsyslog_ inputs.
 - [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
 

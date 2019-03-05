@@ -15,7 +15,6 @@ members = [
    "executor/script",
    "network/common",
    "network/simple",
-   "spike/icinga2_api",
    "spike/jmespath",
    "spike/rsyslog_collector",
    "spike/rsyslog_collector_writer",

@@ -1,10 +1,11 @@
-use crate::config::Icinga2ClientConfig;
-use crate::config::Stream;
-use actix::Actor;
-use actix::SyncContext;
+use crate::config::{Icinga2ClientConfig, Stream};
+use crate::error::Icinga2CollectorError;
+use actix::prelude::*;
 use http::header;
 use log::*;
+use reqwest::Client;
 use std::io::{BufRead, BufReader};
+use std::{thread, time};
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
@@ -14,6 +15,59 @@ pub struct Icinga2StreamActor<F: 'static + Fn(Event)> {
     pub collector: JMESPathEventCollector,
     pub stream_config: Stream,
     pub callback: F,
+}
+
+impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
+    fn start_polling(&mut self, client: &Client) -> Result<(), Icinga2CollectorError> {
+        info!("Starting Event Stream call to Icinga2");
+
+        let response = client
+            .post(&self.icinga_config.server_api_url)
+            .header(header::ACCEPT, "application/json")
+            .basic_auth(
+                self.icinga_config.username.clone(),
+                Some(self.icinga_config.password.clone()),
+            )
+            .json(&self.stream_config)
+            .send()
+            .map_err(|e| Icinga2CollectorError::CannotPerformHttpRequest {
+                message: format!(
+                    "Cannot perform POST request to {}. err: {}",
+                    self.icinga_config.server_api_url, e
+                ),
+            })?;
+
+        let mut reader = BufReader::new(response);
+
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match reader.read_line(&mut line) {
+                Ok(len) => {
+                    if len == 0 {
+                        warn!("EOF received. Stopping Icinga2 collector.");
+                        return Err(Icinga2CollectorError::UnexpectedEndOfHttpRequest);
+                    } else {
+                        debug!("Received line: {}", line);
+                        match self.collector.to_event(&line) {
+                            Ok(event) => (self.callback)(event),
+                            Err(e) => {
+                                error!("Error processing Icinga2 response: [{}], Err: {}", line, e)
+                            }
+                        }
+                    }
+                }
+                Err(e) => {
+                    return Err(Icinga2CollectorError::CannotPerformHttpRequest {
+                        message: format!(
+                            "Error reading response from Icinga at url {}, Err: {}",
+                            self.icinga_config.server_api_url, e
+                        ),
+                    });
+                }
+            }
+        }
+    }
 }
 
 impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
@@ -26,54 +80,23 @@ impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
             .danger_accept_invalid_certs(self.icinga_config.disable_ssl_verification)
             .timeout(None)
             .build()
-            // ToDo: to be investigated as part of TOR-56 (Resilience against downtime/restart of icinga2)
-            .expect("Cannot create reqwest ClientBuilder");
-
-        println!("Prepare request");
-
-        let response = client
-            .post(&self.icinga_config.server_api_url)
-            .header(header::ACCEPT, "application/json")
-            .basic_auth(
-                self.icinga_config.username.clone(),
-                Some(self.icinga_config.password.clone()),
-            )
-            .json(&self.stream_config)
-            .send()
-            // ToDo: to be investigated as part of TOR-56 (Resilience against downtime/restart of icinga2)
             .unwrap_or_else(|e| {
-                panic!(
-                    "Cannot perform POST request to {}. err: {}",
-                    self.icinga_config.server_api_url, e
-                )
+                System::current().stop();
+                panic!("Impossible to create a connection to the Icinga2 server. Err: {}", e)
             });
 
-        println!("Got a response");
-
-        let mut reader = BufReader::new(response);
-
-        let mut line = String::new();
         loop {
-            line.clear();
-            match reader.read_line(&mut line) {
-                Ok(len) => {
-                    if len == 0 {
-                        // ToDo: to be investigated as part of TOR-56 (Resilience against downtime/restart of icinga2)
-                        warn!("EOF received. Stopping Icinga2 collector.");
-                    } else {
-                        debug!("Received line: {}", line);
-                        match self.collector.to_event(&line) {
-                            Ok(event) => (self.callback)(event),
-                            Err(e) => {
-                                error!("Error processing Icinga2 response: [{}], Err: {}", line, e)
-                            }
-                        }
-                    }
-                }
-                Err(e) => error!(
-                    "Error reading response from Icinga at url {}, Err: {}",
-                    self.icinga_config.server_api_url, e
-                ),
+            if let Err(e) = self.start_polling(&client) {
+                warn!("Client connection to Icinga2 Server dropped. Err: {}", e);
+                info!(
+                    "Attempting a new connection in {} ms",
+                    self.icinga_config.sleep_ms_between_connection_attempts
+                );
+
+                let sleep_millis = time::Duration::from_millis(
+                    self.icinga_config.sleep_ms_between_connection_attempts,
+                );
+                thread::sleep(sleep_millis);
             }
         }
     }
@@ -83,7 +106,6 @@ impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
 mod test {
     use super::*;
     use crate::config::Icinga2ClientConfig;
-    use actix::prelude::*;
     use actix_web::Json;
     use actix_web::{server, App};
     use maplit::*;
@@ -96,7 +118,7 @@ mod test {
     #[test]
     fn should_perform_a_post_request() {
         //start_logger();
-        let received = Arc::new(Mutex::new(None));
+        let received = Arc::new(Mutex::new(vec![]));
 
         let act_received = received.clone();
         System::run(move || {
@@ -124,14 +146,24 @@ mod test {
                         disable_ssl_verification: true,
                         password: "".to_owned(),
                         username: "".to_owned(),
+                        sleep_ms_between_connection_attempts: 0,
                     };
                     let app_received = act_received.clone();
                     Icinga2StreamActor {
                         callback: move |event| {
                             info!("Callback called with Event: {:?}", event);
                             let mut message = app_received.lock().unwrap();
-                            *message = Some(event);
-                            System::current().stop();
+                            message.push(event);
+
+                            // The actor tries to establish a long polling connection to the server;
+                            // however, the server used in this test drops the connection after each response.
+                            // We check that we added three messages into the mutek, if this succeeds,
+                            // it means that the actor was successfully restarted after each connection drop, so the client
+                            // is correctly handling dropped connections.
+
+                            if message.len() > 2 {
+                                System::current().stop();
+                            }
                         },
                         collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
                             event_type: "test".to_owned(),
@@ -155,19 +187,23 @@ mod test {
             .start();
         });
 
-        let event = received.lock().unwrap().clone().unwrap();
-        assert_eq!("test".to_owned(), event.event_type);
-        assert_eq!(
-            "queue_name".to_owned(),
-            event
-                .payload
-                .get("response")
-                .unwrap()
-                .get_from_map("queue")
-                .unwrap()
-                .get_text()
-                .unwrap()
-        );
+        let events = received.lock().unwrap().clone();
+        assert_eq!(3, events.len());
+
+        events.iter().for_each(|event| {
+            assert_eq!("test".to_owned(), event.event_type);
+            assert_eq!(
+                "queue_name".to_owned(),
+                event
+                    .payload
+                    .get("response")
+                    .unwrap()
+                    .get_from_map("queue")
+                    .unwrap()
+                    .get_text()
+                    .unwrap()
+            )
+        });
     }
 
     /*
