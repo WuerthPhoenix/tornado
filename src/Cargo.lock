@@ -1713,25 +1713,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spike_icinga2_api"
-version = "0.0.1"
-dependencies = [
- "actix 0.7.9 (registry+https://github.com/rust-lang/crates.io-index)",
- "actix-web 0.7.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "base64 0.10.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
- "http 0.1.14 (registry+https://github.com/rust-lang/crates.io-index)",
- "jmespath 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "openssl 0.10.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest 0.9.5 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_derive 1.0.82 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.33 (registry+https://github.com/rust-lang/crates.io-index)",
- "tornado_common_api 0.0.1",
- "tornado_common_logger 0.0.1",
-]
-
-[[package]]
 name = "spike_jmespath"
 version = "0.0.1"
 dependencies = [

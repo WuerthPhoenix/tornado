@@ -57,6 +57,10 @@ pub struct Icinga2ClientConfig {
 
     /// If true, the client will not verify the SSL certificate
     pub disable_ssl_verification: bool,
+
+    /// In case of connection failure, how many milliseconds
+    /// to wait before a new connection attempt.
+    pub sleep_ms_between_connection_attempts: u64,
 }
 
 pub fn build_icinga2_client_config(
@@ -81,7 +85,20 @@ pub fn read_streams_from_config(path: &str) -> Result<Vec<StreamConfig>, Tornado
                 message: format!("Cannot get the filename. Err: {}", e),
             })?
             .path();
+
+        if let Some(name) = filename.to_str() {
+            if !name.ends_with(".json") {
+                info!("Configuration file [{}] is ignored.", filename.display());
+                continue;
+            }
+        } else {
+            return Err(TornadoError::ConfigurationError {
+                message: format!("Cannot process filename of [{}].", filename.display()),
+            });
+        }
+
         info!("Loading stream configuration from file: [{}]", filename.display());
+
         let stream_body =
             fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
                 message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
@@ -136,7 +153,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn should_read_stream_configurations_from_config() {
+    fn should_read_stream_configurations_from_config_json_files() {
         // Arrange
         let path = "./config/streams";
 
@@ -144,7 +161,7 @@ mod test {
         let streams_config = read_streams_from_config(path).unwrap();
 
         // Assert
-        assert_eq!(1, streams_config.len());
+        assert_eq!(3, streams_config.len());
     }
 
     #[test]
