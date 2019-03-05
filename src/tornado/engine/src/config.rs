@@ -57,8 +57,8 @@ pub fn build_icinga2_client_config(
 #[cfg(test)]
 mod test {
 
-    use tornado_engine_matcher::config::Rule;
     use super::*;
+    use tornado_engine_matcher::config::Rule;
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
