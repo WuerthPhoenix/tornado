@@ -1,16 +1,16 @@
 {
   "stream": {
     "types": ["CheckResult",
-                   "StateChange",
-                   "Notification",
-                   "AcknowledgementSet",
-                   "AcknowledgementCleared",
-                   "CommentAdded",
-                   "CommentRemoved",
-                   "DowntimeAdded",
-                   "DowntimeRemoved",
-                   "DowntimeStarted",
-                   "DowntimeTriggered"],
+              "StateChange",
+              "Notification",
+              "AcknowledgementSet",
+              "AcknowledgementCleared",
+              "CommentAdded",
+              "CommentRemoved",
+              "DowntimeAdded",
+              "DowntimeRemoved",
+              "DowntimeStarted",
+              "DowntimeTriggered"],
     "queue": "icinga2_AllEvents_all"
   },
   "collector_config": {
