@@ -86,14 +86,15 @@ pub fn read_streams_from_config(path: &str) -> Result<Vec<StreamConfig>, Tornado
             })?
             .path();
 
-        println!("Loading stream configuration from file: [{}]", filename.display());
         if let Some(name) = filename.to_str() {
             if !name.ends_with(".json") {
                 info!("Configuration file [{}] is ignored.", filename.display());
-                break;
+                continue;
             }
         } else {
-            break;
+            return Err(TornadoError::ConfigurationError {
+                message: format!("Cannot process filename of [{}].", filename.display()),
+            });
         }
 
         info!("Loading stream configuration from file: [{}]", filename.display());
