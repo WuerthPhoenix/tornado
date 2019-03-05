@@ -1,7 +1,6 @@
 {
   "name": "all_emails_and_syslogs",
   "description": "This is All Emails and Syslogs",
-  "priority": 42,
   "continue": true,
   "active": true,
   "constraint": {

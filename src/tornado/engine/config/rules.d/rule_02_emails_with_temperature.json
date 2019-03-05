@@ -1,7 +1,6 @@
 {
   "name": "emails_with_temperature",
   "description": "This matches all emails containing a temperature measurement.",
-  "priority": 42,
   "continue": true,
   "active": true,
   "constraint": {
