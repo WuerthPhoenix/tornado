@@ -1,7 +1,6 @@
 {
   "name": "motion_sensor_4",
   "description": "Motion Sensor port4: Motion Detection",
-  "priority": 9,
   "continue": true,
   "active": true,
   "constraint": {

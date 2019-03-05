@@ -1,7 +1,6 @@
 {
     "name": "no_match",
     "description": "Simple rule with no match on event type",
-    "priority": 9,
     "continue": true,
     "active": true,
     "constraint": {

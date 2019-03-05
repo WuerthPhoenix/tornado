@@ -38,7 +38,7 @@ impl RuleValidator {
 
     /// Validates a set of Rules.
     /// In addition to the checks performed by the validate(rule) method,
-    ///   it verifies that rule names and rule priorities are unique.
+    /// it verifies that rule names are unique.
     pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
         info!("RuleValidator validate_all - validate all rules");
 
