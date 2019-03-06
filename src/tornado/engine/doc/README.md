@@ -143,6 +143,8 @@ E.g.:
                  |- ...
 ```
 
+The rule files must use the _json_ extension; the system will ignore every other file type.
+
 The natural alphanumerical order of the filenames determines the Rules execution order at runtime.
 So, the file ordering corresponds to the processing order.
 
