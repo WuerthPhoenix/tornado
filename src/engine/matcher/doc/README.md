@@ -15,11 +15,8 @@ A rule is composed of a set of properties, constraints and actions.
 - `rule name`:  A string value representing a unique rule identifier. It can be composed only of
   alphabetical characters, numbers and the "_" (underscore) character.
 - `description`:  A string value providing a high-level description of the rule.
-- `priority`:  A unique, positive integer that defines the execution order of the rules.
-  '0' (zero) is the highest priority and denotes the first rule to be evaluated.
 - `continue`:  A boolean value indicating whether to proceed with the event matching process if the current rule matches.
 - `active`:  A boolean value; if `false`, the rule is ignored.
-
 
 
 ### Constraints
@@ -97,7 +94,6 @@ Rule example:
 {
   "name": "contain_operator",
   "description": "",
-  "priority": 0,
   "continue": true,
   "active": true,
   "constraint": {
@@ -134,7 +130,6 @@ Example:
 {
   "name": "equal_operator",
   "description": "",
-  "priority": 0,
   "continue": true,
   "active": true,
   "constraint": {
@@ -170,7 +165,6 @@ Rule example:
 {
   "name": "regex_operator",
   "description": "",
-  "priority": 0,
   "continue": true,
   "active": true,
   "constraint": {
@@ -209,7 +203,6 @@ Example:
 {
   "name": "complex_rule",
   "description": "",
-  "priority": 42,
   "continue": true,
   "active": true,
   "constraint": {
@@ -269,7 +262,6 @@ For example, this Rule generates an "archive" Action for each Event:
 {
     "name": "rule_without_where",
     "description": "",
-    "priority": 4,
     "continue": true,
     "active": true,
     "constraint": {
@@ -298,7 +290,6 @@ Example:
 {
   "name": "motion_sensor_4",
   "description": "",
-  "priority": 9,
   "continue": true,
   "active": true,
   "constraint": {
@@ -383,7 +374,6 @@ Example of valid content for a Rule JSON file is:
 {
   "name": "emails_with_temperature",
   "description": "This matches all emails containing a temperature measurement.",
-  "priority": 2,
   "continue": true,
   "active": true,
   "constraint": {
@@ -422,8 +412,6 @@ Example of valid content for a Rule JSON file is:
 
 This creates a Rule with the following characteristics:
 - Its unique name is 'emails_with_temperature'. There cannot be two rules with the same name.
-- Its priority is 2. The priority defines the execution order of the rules:
-  '0' (zero) is the highest priority and denotes the first rule to be evaluated.
 - An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and,
   as requested by the _WITH_ clause, it is possible to extract the "temperature" variable from
   the "event.payload.body" with a non-null value.

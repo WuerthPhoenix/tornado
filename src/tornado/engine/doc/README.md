@@ -138,13 +138,18 @@ Each Rule should be saved in a separate file in the configuration directory in J
 E.g.:
 ```
 /tornado/config/rules
-                 |- rule_01.json
-                 |- rule_02.json
+                 |- 0001_rule_one.json
+                 |- 0010_rule_two.json
                  |- ...
 ```
 
-The alphabetical order determined by the filenames has no impact on the Rule configuration.
-Instead, the order of execution at runtime will depend exclusively on the _priority_ property.
+The natural alphanumerical order of the filenames determines the Rules execution order at runtime.
+So, the file ordering corresponds to the processing order.
+
+Based on this, it is recommended to adopt a file naming strategy that permits easy reordering.
+A good approach is to always start the filename with a number 
+(e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
+progression as shown above.  
 
 More information and examples about the Rule's properties and configuration can be found in the
 [matching engine documentation](../../../engine/matcher/doc/README.md)

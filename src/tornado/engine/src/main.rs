@@ -15,6 +15,7 @@ use log::*;
 use std::sync::Arc;
 use tornado_common::actors::uds_reader::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
+use tornado_engine_matcher::config::Rule;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
@@ -24,9 +25,11 @@ fn main() -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
     // Load rules from fs
-    let config_rules =
-        config::read_rules_from_config(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
-            .map_err(|e| e.compat())?;
+    let config_rules = Rule::read_rules_from_dir_sorted_by_filename(&format!(
+        "{}/{}",
+        conf.io.config_dir, conf.io.rules_dir
+    ))
+    .map_err(|e| e.compat())?;
 
     // Start matcher
     let matcher = Arc::new(Matcher::build(&config_rules).map_err(|e| e.compat())?);

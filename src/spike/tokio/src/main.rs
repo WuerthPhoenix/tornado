@@ -1,6 +1,5 @@
 use futures::sync::mpsc;
 use log::*;
-use std::fs;
 use std::sync::Arc;
 use std::thread;
 use tokio::prelude::*;
@@ -21,7 +20,7 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = read_rules_from_config(&conf.io.rules_dir);
+    let config_rules = Rule::read_rules_from_dir_sorted_by_filename(&conf.io.rules_dir).unwrap();
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::build(&config_rules).unwrap());
@@ -85,22 +84,4 @@ fn main() {
     runtime
         .block_on(server.map_err(|e| panic!("err={:?}", e)))
         .expect("Tokio runtime should start");
-}
-
-fn read_rules_from_config(path: &str) -> Vec<Rule> {
-    let paths = fs::read_dir(path).unwrap();
-    let mut rules = vec![];
-
-    for path in paths {
-        let filename = path.unwrap().path();
-        info!("Loading rule from file: [{}]", filename.display());
-        let rule_body = fs::read_to_string(&filename)
-            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
-        trace!("Rule body: \n{}", rule_body);
-        rules.push(Rule::from_json(&rule_body).unwrap());
-    }
-
-    info!("Loaded {} rule(s) from [{}]", rules.len(), path);
-
-    rules
 }

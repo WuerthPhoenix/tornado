@@ -4,7 +4,7 @@
 
 ## Matcher Crate
 
-The Matcher contains the core logic of the Tornado Engine. It is in responsible for:
+The Matcher crate contains the core logic of the Tornado Engine. It is in charge of:
 - Receiving events from the collectors
 - Processing incoming events and detecting which rule they satisfy
 - Triggering the expected actions

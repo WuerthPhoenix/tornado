@@ -1,7 +1,6 @@
 {
     "name": "all_emails",
     "description": "This matches all emails",
-    "priority": 1,
     "continue": true,
     "active": true,
     "constraint": {

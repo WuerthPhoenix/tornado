@@ -1,7 +1,6 @@
 {
   "name": "archive_all",
   "description": "This matches all event",
-  "priority": 99,
   "continue": true,
   "active": true,
   "constraint": {

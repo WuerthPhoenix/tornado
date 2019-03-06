@@ -1,7 +1,6 @@
 {
   "name": "map_in_action_payload",
   "description": "",
-  "priority": 4,
   "continue": true,
   "active": true,
   "constraint": {

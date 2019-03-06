@@ -9,7 +9,6 @@ pub fn bench(c: &mut Criterion) {
     let rule = {
         let mut rule = new_rule(
             "rule_name",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -47,12 +46,11 @@ pub fn bench(c: &mut Criterion) {
     c.bench_function("One simple rule", move |b| b.iter(|| matcher.process(event.clone())));
 }
 
-fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
+fn new_rule(name: &str, operator: Operator) -> Rule {
     let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
     Rule {
         name: name.to_owned(),
-        priority,
         do_continue: true,
         active: true,
         actions: vec![],

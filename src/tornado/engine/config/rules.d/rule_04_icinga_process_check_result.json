@@ -1,7 +1,6 @@
 {
   "name": "icinga_process_check_result",
   "description": "Set a process status in Icinga2",
-  "priority": 97,
   "continue": true,
   "active": true,
   "constraint": {

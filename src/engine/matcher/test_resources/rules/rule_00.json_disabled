@@ -1,6 +1,6 @@
 {
-  "name": "rule_without_where",
-  "description": "",
+  "name": "this_should_be_ignored",
+  "description": "ignored",
   "continue": true,
   "active": true,
   "constraint": {
