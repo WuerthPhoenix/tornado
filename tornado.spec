@@ -1,10 +1,13 @@
 %global debug_package %{nil}
 
 %define tornado_dir /neteye/shared/tornado/
-%define bin_dir %{_libdir}/tornado/bin
+%define lib_dir %{_libdir}/tornado/
+%define bin_dir %{lib_dir}/bin
 %define conf_dir %{tornado_dir}/conf/
-#%define log_dir %{tornado_dir}/log/
+%define data_dir %{tornado_dir}/data/
+%define log_dir %{tornado_dir}/log/
 %define systemd_dir /usr/lib/systemd/system/
+%define systemd_plugin_dir /etc/systemd/system/
 
 %define build_target_dir target/release/
 
@@ -48,7 +51,6 @@ cd -
 %install
 mkdir -p %{buildroot}/%{bin_dir}
 mkdir -p %{buildroot}/%{conf_dir}
-#mkdir -p %{buildroot}/%{log_dir}
 mkdir -p %{buildroot}/%{_bindir}
 
 # Install executables
@@ -63,16 +65,49 @@ cp -pv src/%{build_target_dir}/tornado_*_collector %{buildroot}/%{bin_dir}
 # Install tornado daemon
 cp -pv src/%{build_target_dir}/tornado_engine %{buildroot}%{_bindir}/tornado
 
-# Install spikes
-mkdir -p %{buildroot}/%{bin_dir}/spikes
-find src/%{build_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{bin_dir}/bin/spikes/ \;
-
-# Install config files
-mkdir -p %{buildroot}/%{conf_dir}/rules.d/
+# Don't Install spikes
+#mkdir -p %{buildroot}/%{bin_dir}/spikes
+#find src/%{build_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{bin_dir}/bin/spikes/ \;
 
 # install systemd services
 mkdir -p %{buildroot}%{systemd_dir}
-cp conf/systemd/tornado.service %{buildroot}%{systemd_dir}
+mkdir -p %{buildroot}%{systemd_plugin_dir}
+cp -p conf/systemd/*.service %{buildroot}%{systemd_dir}
+cp -rp conf/systemd/*.d %{buildroot}%{systemd_plugin_dir}
+
+# Install data/work directories
+mkdir -p %{buildroot}/%{log_dir}
+mkdir -p %{buildroot}/%{data_dir}/archive/
+
+
+# Install rsyslog config file
+mkdir -p %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
+cp conf/rsyslog_collector/05_tornado.conf %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
+
+# Install config files
+mkdir -p %{buildroot}/%{conf_dir}/rules.d/
+mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
+mkdir -p %{buildroot}/%{conf_dir}/collectors/webhook/webhooks
+
+cp -p conf/tornado/*_executor.toml %{buildroot}/%{conf_dir}
+cp -p conf/icinga2_collector/icinga2_collector.toml %{buildroot}/%{conf_dir}/collectors/icinga2/
+
+# install example rules, streams, webhooks
+mkdir -p %{buildroot}%{lib_dir}/examples/rules/
+mkdir -p %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
+mkdir -p %{buildroot}%{lib_dir}/examples/webhook_collector_webhooks/
+
+cp -p src/tornado/engine/config/rules.d/* %{buildroot}%{lib_dir}/examples/rules/
+cp -p src/tornado/icinga2_collector/config/streams/* %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
+cp -p src/tornado/webhook_collector/config/webhooks/* %{buildroot}%{lib_dir}/examples/webhook_collector_webhooks/
+
+%post
+# Copy example rules, streams only on first installation to avoid rpmnew/save files
+if test "$1" == 1 ; then
+    cp -p %{lib_dir}/examples/rules/* %{conf_dir}/rules.d/
+    cp -p %{lib_dir}/examples/icinga2_collector_streams/* %{conf_dir}/collectors/icinga2/streams/
+    cp -p %{lib_dir}/examples/webhook_collector_webhooks/* %{conf_dir}/collectors/webhook/webhooks/
+fi
 
 %files
 %defattr(0755, root, root, 0775)
@@ -80,15 +115,32 @@ cp conf/systemd/tornado.service %{buildroot}%{systemd_dir}
 %{_bindir}/tornado
 
 %defattr(0660, root, root, 0770)
-%{conf_dir}
+%{data_dir}
+%dir %{log_dir}
+%dir %{lib_dir}
+%{lib_dir}/examples
+%dir %{conf_dir}
+%dir %{conf_dir}/rules.d/
+%dir %{conf_dir}/collectors/
+%dir %{conf_dir}/collectors/icinga2/
+%dir %{conf_dir}/collectors/icinga2/streams/
+%dir %{conf_dir}/collectors/webhook/
+%dir %{conf_dir}/collectors/webhook/webhooks/
+%config(noreplace) %{conf_dir}/*_executor.toml
+%config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
+%config(noreplace) /neteye/shared/rsyslog/conf/rsyslog.d/*
+
 %{systemd_dir}/*
-#%{log_dir}
+%{systemd_plugin_dir}/*
 
 %changelog
-* Thu Feb 07 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.5.0-1
+* Thu Mar 07 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.5.0-1
  - New Feature: Icinga2 API Action Executor
  - New Feature: Icinga2 Event Stream Collector
  - New Feature: Webhook Collector
+ - Improvement: Systemd Services
+ - Improvement: Preconfiguration on installation
+ - Improvement: Integration in neteye
  - Improvement: Actions can now be generated with recursive payload
  - Spike Icinga2 Collector
 
