@@ -132,6 +132,7 @@ fi
 
 %{systemd_dir}/*
 %{systemd_plugin_dir}/*
+%exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
 * Thu Mar 07 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.5.0-1
