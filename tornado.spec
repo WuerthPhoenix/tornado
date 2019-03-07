@@ -115,6 +115,7 @@ fi
 %{_bindir}/tornado
 
 %defattr(0660, root, root, 0770)
+%dir %{tornado_dir}
 %{data_dir}
 %dir %{log_dir}
 %dir %{lib_dir}
