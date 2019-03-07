@@ -1,7 +1,17 @@
 %global debug_package %{nil}
-%define release_target_dir target/release/
-%define deploy_dir /opt/tornado/
-%define conf_dir %{_sysconfdir}/tornado/
+
+%define tornado_dir /neteye/shared/tornado/
+%define bin_dir %{_libdir}/tornado/bin
+%define conf_dir %{tornado_dir}/conf/
+#%define log_dir %{tornado_dir}/log/
+%define systemd_dir /usr/lib/systemd/system/
+
+%define build_target_dir target/release/
+
+# --define 'debugbuild 1' will trigger a rustc debug build, not release
+%if 0%{?debugbuild:1}
+%define build_target_dir target/debug/
+%endif
 
 Name:    tornado
 Version: 0.5.0
@@ -26,34 +36,53 @@ Tornado Package
 
 %build
 cd src
+
+%if 0%{?debugbuild:1}
+cargo build
+%else
 cargo build --release
+%endif
+
 cd -
 
 %install
-mkdir -p %{buildroot}/%{deploy_dir}
+mkdir -p %{buildroot}/%{bin_dir}
+mkdir -p %{buildroot}/%{conf_dir}
+#mkdir -p %{buildroot}/%{log_dir}
+mkdir -p %{buildroot}/%{_bindir}
+
 # Install executables
-EXECUTABLES="tornado_rsyslog_collector tornado_webhook_collector"
-for binary in $EXECUTABLES ; do
-    mkdir -p %{buildroot}/%{deploy_dir}/bin/
-    cp -pv src/%{release_target_dir}/$binary %{buildroot}/%{deploy_dir}/bin/$binary
-done
-cp -pv src/%{release_target_dir}/tornado_engine %{buildroot}/%{deploy_dir}/bin/tornado
+cp -pv src/%{build_target_dir}/tornado_*_collector %{buildroot}/%{bin_dir}
+
+#EXECUTABLES="tornado_rsyslog_collector tornado_webhook_collector"
+#for binary in $EXECUTABLES ; do
+#    mkdir -p %{buildroot}/%{bin_dir}
+#    cp -pv src/%{build_target_dir}/$binary %{buildroot}/%{bin_dir}/$binary
+#done
+
+# Install tornado daemon
+cp -pv src/%{build_target_dir}/tornado_engine %{buildroot}%{_bindir}/tornado
 
 # Install spikes
-mkdir -p %{buildroot}/%{deploy_dir}/bin/spikes
-find src/%{release_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{deploy_dir}/bin/spikes/ \;
+mkdir -p %{buildroot}/%{bin_dir}/spikes
+find src/%{build_target_dir} -maxdepth 1 -type f -executable -name 'spike_*' -exec cp -prv {} %{buildroot}/%{bin_dir}/bin/spikes/ \;
 
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 
+# install systemd services
+mkdir -p %{buildroot}%{systemd_dir}
+cp conf/systemd/tornado.service %{buildroot}%{systemd_dir}
+
 %files
 %defattr(0755, root, root, 0775)
-%{deploy_dir}/bin/tornado
-%{deploy_dir}/bin/tornado_*_collector
-%{deploy_dir}/bin/spikes/*
+%{bin_dir}
+%{_bindir}/tornado
 
 %defattr(0660, root, root, 0770)
-%dir %{conf_dir}/rules.d/
+%{conf_dir}
+%{systemd_dir}/*
+#%{log_dir}
 
 %changelog
 * Thu Feb 07 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.5.0-1
