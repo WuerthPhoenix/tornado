@@ -3,7 +3,6 @@ pub mod id;
 use crate::config::Rule;
 use crate::error::MatcherError;
 use log::*;
-use std::collections::HashMap;
 
 /// A validator for a Rule or array of Rules
 #[derive(Default)]
@@ -39,18 +38,16 @@ impl RuleValidator {
 
     /// Validates a set of Rules.
     /// In addition to the checks performed by the validate(rule) method,
-    ///   it verifies that rule names and rule priorities are unique.
+    /// it verifies that rule names are unique.
     pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
         info!("RuleValidator validate_all - validate all rules");
 
         let mut rule_names = vec![];
-        let mut rules_by_priority = HashMap::new();
 
         for rule in rules {
             if rule.active {
                 self.validate(rule)?;
                 RuleValidator::check_unique_name(&mut rule_names, &rule.name)?;
-                RuleValidator::check_unique_priority(&mut rules_by_priority, &rule)?;
             }
         }
 
@@ -66,25 +63,6 @@ impl RuleValidator {
         rule_names.push(name_string);
         Ok(())
     }
-
-    fn check_unique_priority(
-        rules_by_priority: &mut HashMap<u16, String>,
-        rule: &Rule,
-    ) -> Result<(), MatcherError> {
-        debug!(
-            "RuleValidator - Validating uniqueness of priority for rule: [{}] with priority [{}]",
-            &rule.name, &rule.priority
-        );
-        if rules_by_priority.contains_key(&rule.priority) {
-            return Err(MatcherError::NotUniqueRulePriorityError {
-                first_rule_name: rules_by_priority[&rule.priority].to_owned(),
-                second_rule_name: rule.name.to_owned(),
-                priority: rule.priority,
-            });
-        }
-        rules_by_priority.insert(rule.priority, rule.name.to_owned());
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -98,7 +76,6 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            0,
             Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
@@ -114,13 +91,11 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule_name",
-            0,
             Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
         let rule_2 = new_rule(
             "rule_name_2",
-            1,
             Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
@@ -135,8 +110,8 @@ mod test {
     fn build_should_fail_if_not_unique_name() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule_name", 0, op.clone());
-        let rule_2 = new_rule("rule_name", 1, op.clone());
+        let rule_1 = new_rule("rule_name", op.clone());
+        let rule_2 = new_rule("rule_name", op.clone());
 
         // Act
         let matcher = RuleValidator::new().validate_all(&vec![rule_1, rule_2]);
@@ -151,37 +126,10 @@ mod test {
     }
 
     #[test]
-    fn build_should_fail_if_not_unique_priority() {
-        // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule_1", 1, op.clone());
-        let rule_2 = new_rule("rule_2", 1, op.clone());
-
-        // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1, rule_2]);
-
-        // Assert
-        assert!(matcher.is_err());
-
-        match matcher.err().unwrap() {
-            MatcherError::NotUniqueRulePriorityError {
-                first_rule_name,
-                second_rule_name,
-                priority,
-            } => {
-                assert_eq!("rule_1", first_rule_name);
-                assert_eq!("rule_2", second_rule_name);
-                assert_eq!(1, priority);
-            }
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
     fn build_should_fail_if_empty_spaces_in_rule_name() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule name", 0, op.clone());
+        let rule_1 = new_rule("rule name", op.clone());
 
         // Act
         let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
@@ -194,7 +142,7 @@ mod test {
     fn build_should_fail_if_not_correct_name() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule.name", 0, op.clone());
+        let rule_1 = new_rule("rule.name", op.clone());
 
         // Act
         let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
@@ -207,7 +155,7 @@ mod test {
     fn build_should_fail_if_not_correct_extracted_var_name() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let mut rule_1 = new_rule("rule_name", 0, op.clone());
+        let mut rule_1 = new_rule("rule_name", op.clone());
 
         rule_1.constraint.with.insert(
             "var.with.dot".to_owned(),
@@ -228,7 +176,7 @@ mod test {
     fn build_should_fail_if_not_correct_action_id() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let mut rule_1 = new_rule("rule_name", 0, op.clone());
+        let mut rule_1 = new_rule("rule_name", op.clone());
 
         rule_1.actions.push(Action {
             id: "id.with.dot.and.question.mark?".to_owned(),
@@ -242,12 +190,11 @@ mod test {
         assert!(matcher.is_err());
     }
 
-    fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
+    fn new_rule(name: &str, operator: Operator) -> Rule {
         let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),
-            priority,
             do_continue: true,
             active: true,
             actions: vec![],

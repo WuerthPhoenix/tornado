@@ -1,3 +1,9 @@
+//! The extractor module contains the logic to generate variables based on the
+//! Rule configuration.
+//!
+//! An *Extractor* is linked to the "WITH" clause of a Rule and determines the value
+//! of dynamically generated variables.
+
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::Extractor;
 use crate::error::MatcherError;

@@ -59,6 +59,7 @@ pub type Payload = HashMap<String, Value>;
 #[serde(untagged)]
 pub enum Value {
     Text(String),
+    Null,
     Bool(bool),
     Number(f64),
     Map(Payload),
@@ -75,6 +76,18 @@ impl Value {
     pub fn get_from_array(&self, index: usize) -> Option<&Value> {
         match self {
             Value::Array(array) => array.get(index),
+            _ => None,
+        }
+    }
+    pub fn get_map(&self) -> Option<&HashMap<String, Value>> {
+        match self {
+            Value::Map(payload) => Some(payload),
+            _ => None,
+        }
+    }
+    pub fn get_array(&self) -> Option<&Vec<Value>> {
+        match self {
+            Value::Array(array) => Some(array),
             _ => None,
         }
     }
@@ -319,6 +332,20 @@ mod test {
     fn should_parse_a_json_event_with_nested_payload() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json);
+
+        // Assert
+        assert!(event.is_ok());
+    }
+
+    #[test]
+    fn should_parse_a_json_event_with_a_null_value() {
+        // Arrange
+        let filename = "./test_resources/event_with_null_value.json";
         let event_json =
             fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 

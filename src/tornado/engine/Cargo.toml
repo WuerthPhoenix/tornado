@@ -1,0 +1,43 @@
+[package]
+name = "tornado_engine"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+edition = "2018"
+
+[dependencies]
+actix = "0.7"
+actix-web = { version = "0.7", features=["ssl"] }
+base64 = "0.10"
+config_rs = { version = "0.9", package = "config" }
+failure = "0.1"
+failure_derive = "0.1"
+futures = "0.1"
+http = "0.1"
+log = "0.4"
+num_cpus = "1.8"
+openssl = "0.10"
+serde = "1.0"
+serde_json = "1.0"
+serde_derive = "1.0"
+structopt = "0.2"
+tokio = "0.1"
+tokio-codec = "0.1"
+tokio-uds = "0.2"
+tornado_common = { path = "../common", version = "0.0.1" }
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
+tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
+tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
+tornado_collector_snmptrapd = { path = "../../collector/snmptrapd", version = "0.0.1" }
+tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
+tornado_executor_archive = { path = "../../executor/archive", version = "0.0.1" }
+tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
+tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" }
+tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
+tornado_network_common = { path = "../../network/common", version = "0.0.1" }
+
+[dev-dependencies]
+lazy_static = "1.0"
+maplit = "1.0"

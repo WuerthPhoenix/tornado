@@ -8,8 +8,12 @@ pub trait Executor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError>;
 }
 
-#[derive(Fail, Debug)]
+#[derive(Fail, Debug, PartialEq)]
 pub enum ExecutorError {
     #[fail(display = "ActionExecutionError: [{}]", message)]
     ActionExecutionError { message: String },
+    #[fail(display = "MissingArgumentError: [{}]", message)]
+    MissingArgumentError { message: String },
+    #[fail(display = "UnknownArgumentError: [{}]", message)]
+    UnknownArgumentError { message: String },
 }

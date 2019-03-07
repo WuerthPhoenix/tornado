@@ -14,5 +14,6 @@
   "facility": "daemon",
   "syslog-tag": "nfcapd[20747]:",
   "source": "nfcapd",
-  "message": " Process_v9: Found options flowset: template 259"
+  "message": " Process_v9: Found options flowset: template 259",
+  "some_null_value": null
 }

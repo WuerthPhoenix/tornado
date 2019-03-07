@@ -14,7 +14,6 @@ use tornado_common_api::Event;
 ///   from the config::Rule.
 struct MatcherRule {
     name: String,
-    priority: u16,
     do_continue: bool,
     operator: Box<operator::Operator>,
     extractor: MatcherExtractor,
@@ -46,7 +45,6 @@ impl Matcher {
 
             processed_rules.push(MatcherRule {
                 name: rule.name.to_owned(),
-                priority: rule.priority,
                 do_continue: rule.do_continue,
                 operator: operator_builder
                     .build_option(&rule.name, &rule.constraint.where_operator)?,
@@ -54,9 +52,6 @@ impl Matcher {
                 actions: action_builder.build(&rule.name, &rule.actions)?,
             })
         }
-
-        // Sort rules by priority
-        processed_rules.sort_by(|a, b| a.priority.cmp(&b.priority));
 
         info!("Matcher build completed");
 
@@ -150,7 +145,6 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            0,
             Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
@@ -166,8 +160,8 @@ mod test {
     fn build_should_fail_if_not_unique_name() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule_name", 0, op.clone());
-        let rule_2 = new_rule("rule_name", 1, op.clone());
+        let rule_1 = new_rule("rule_name", op.clone());
+        let rule_2 = new_rule("rule_name", op.clone());
 
         // Act
         let matcher = new_matcher(&vec![rule_1, rule_2]);
@@ -182,65 +176,38 @@ mod test {
     }
 
     #[test]
-    fn build_should_fail_if_not_unique_priority() {
+    fn should_sort_the_rules_based_on_input_order() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule_1", 1, op.clone());
-        let rule_2 = new_rule("rule_2", 1, op.clone());
-
-        // Act
-        let matcher = new_matcher(&vec![rule_1, rule_2]);
-
-        // Assert
-        assert!(matcher.is_err());
-
-        match matcher.err().unwrap() {
-            MatcherError::NotUniqueRulePriorityError {
-                first_rule_name,
-                second_rule_name,
-                priority,
-            } => {
-                assert_eq!("rule_1", first_rule_name);
-                assert_eq!("rule_2", second_rule_name);
-                assert_eq!(1, priority);
-            }
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
-    fn should_sort_the_rules_based_on_priority() {
-        // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let rule_1 = new_rule("rule1", 10, op.clone());
-        let rule_2 = new_rule("rule2", 1, op.clone());
-        let rule_3 = new_rule("rule3", 1000, op.clone());
-        let rule_4 = new_rule("rule4", 100, op.clone());
+        let rule_1 = new_rule("rule1", op.clone());
+        let rule_2 = new_rule("rule2", op.clone());
+        let rule_3 = new_rule("rule3", op.clone());
+        let rule_4 = new_rule("rule4", op.clone());
 
         // Act
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
 
         // Assert
         assert_eq!(4, matcher.rules.len());
-        assert_eq!("rule2", matcher.rules[0].name);
-        assert_eq!("rule1", matcher.rules[1].name);
-        assert_eq!("rule4", matcher.rules[2].name);
-        assert_eq!("rule3", matcher.rules[3].name);
+        assert_eq!("rule1", matcher.rules[0].name);
+        assert_eq!("rule2", matcher.rules[1].name);
+        assert_eq!("rule3", matcher.rules[2].name);
+        assert_eq!("rule4", matcher.rules[3].name);
     }
 
     #[test]
     fn should_ignore_non_active_rules() {
         // Arrange
         let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
-        let mut rule_1 = new_rule("rule1", 0, op.clone());
+        let mut rule_1 = new_rule("rule1", op.clone());
         rule_1.active = false;
 
-        let rule_2 = new_rule("rule2", 10, op.clone());
+        let rule_2 = new_rule("rule2", op.clone());
 
-        let mut rule_3 = new_rule("rule3", 20, op.clone());
+        let mut rule_3 = new_rule("rule3", op.clone());
         rule_3.active = false;
 
-        let rule_4 = new_rule("rule4", 30, op.clone());
+        let rule_4 = new_rule("rule4", op.clone());
 
         // Act
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
@@ -256,19 +223,16 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
         let rule_2 = new_rule(
             "rule2_sms",
-            1,
             Operator::Equal { first: "${event.type}".to_owned(), second: "sms".to_owned() },
         );
 
         let rule_3 = new_rule(
             "rule3_email",
-            2,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -292,7 +256,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -306,7 +269,9 @@ mod test {
 
         let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
-        action.payload.insert("temp".to_owned(), "${_variables.extracted_temp}".to_owned());
+        action
+            .payload
+            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&vec![rule_1]).unwrap();
@@ -332,7 +297,6 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -354,7 +318,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -387,7 +350,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -401,8 +363,12 @@ mod test {
 
         let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
-        action.payload.insert("temp".to_owned(), "${_variables.extracted_temp}".to_owned());
-        action.payload.insert("missing".to_owned(), "${_variables.missing}".to_owned());
+        action
+            .payload
+            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
+        action
+            .payload
+            .insert("missing".to_owned(), Value::Text("${_variables.missing}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&vec![rule_1]).unwrap();
@@ -429,12 +395,12 @@ mod test {
         // Arrange
         let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
 
-        let rule_1 = new_rule("rule1_email", 0, op.clone());
+        let rule_1 = new_rule("rule1_email", op.clone());
 
-        let mut rule_2 = new_rule("rule2_email", 1, op.clone());
+        let mut rule_2 = new_rule("rule2_email", op.clone());
         rule_2.do_continue = false;
 
-        let rule_3 = new_rule("rule3_email", 2, op.clone());
+        let rule_3 = new_rule("rule3_email", op.clone());
 
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
@@ -454,16 +420,15 @@ mod test {
         // Arrange
         let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
 
-        let rule_1 = new_rule("rule1_email", 0, op.clone());
+        let rule_1 = new_rule("rule1_email", op.clone());
 
         let mut rule_2 = new_rule(
             "rule2_sms",
-            1,
             Operator::Equal { first: "${event.type}".to_owned(), second: "sms".to_owned() },
         );
         rule_2.do_continue = false;
 
-        let rule_3 = new_rule("rule3_email", 2, op.clone());
+        let rule_3 = new_rule("rule3_email", op.clone());
 
         let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
 
@@ -485,7 +450,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -517,7 +481,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -531,7 +494,6 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            1,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -567,7 +529,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            0,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -581,7 +542,6 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            1,
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
@@ -616,7 +576,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1",
-            0,
             Operator::Equal {
                 first: "${event.payload.array[0]}".to_owned(),
                 second: "aaa".to_owned(),
@@ -656,7 +615,6 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1",
-            0,
             Operator::Equal {
                 first: "${event.payload.map.key0}".to_owned(),
                 second: "aaa".to_owned(),
@@ -696,12 +654,11 @@ mod test {
         Matcher::build(rules)
     }
 
-    fn new_rule(name: &str, priority: u16, operator: Operator) -> Rule {
+    fn new_rule(name: &str, operator: Operator) -> Rule {
         let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),
-            priority,
             do_continue: true,
             active: true,
             actions: vec![],

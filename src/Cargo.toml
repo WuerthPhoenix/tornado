@@ -10,6 +10,7 @@ members = [
    "engine/matcher",
    "executor/common",
    "executor/archive",
+   "executor/icinga2",
    "executor/logger",
    "executor/script",
    "network/common",
@@ -20,10 +21,11 @@ members = [
    "spike/snmptrapd_collector_writer",
    "spike/stdin",
    "spike/tokio",
-   "spike/uds_writer_collector",
+   "spike/tornado_events_generator",
    "spike/webhook",
    "tornado/common",
-   "tornado/tornado",
+   "tornado/engine",
+   "tornado/icinga2_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector"
 ]

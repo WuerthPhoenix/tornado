@@ -1,0 +1,8 @@
+{
+  "type":"icinga_process-check-result",
+  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "payload":{
+    "exit_status": 1,
+    "plugin_output": "host is unreachable!"
+  }
+}
