@@ -1,0 +1,15 @@
+[Unit]
+Description=Tornado - Event Processing Engine
+
+[Service]
+Type=simple
+
+#User=tornado
+RuntimeDirectory=tornado
+ExecStart=/usr/bin/tornado --config-dir /neteye/shared/tornado/conf --logger-level=info --logger-stdout
+Restart=on-failure
+RestartSec=3
+# Other Restart options: or always, on-abort, etc
+
+[Install]
+WantedBy=neteye.target

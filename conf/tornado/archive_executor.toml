@@ -1,0 +1,6 @@
+base_path =  "/neteye/shared/tornado/data/archive/"
+default_path = "/default/default.log"
+file_cache_size = 10
+file_cache_ttl_secs = 1
+
+[paths]
