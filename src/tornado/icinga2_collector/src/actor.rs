@@ -21,7 +21,7 @@ impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
     fn start_polling(&mut self, client: &Client) -> Result<(), Icinga2CollectorError> {
         info!("Starting Event Stream call to Icinga2");
 
-        let response = client
+        let mut response = client
             .post(&self.icinga_config.server_api_url)
             .header(header::ACCEPT, "application/json")
             .basic_auth(
@@ -36,6 +36,21 @@ impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
                     self.icinga_config.server_api_url, e
                 ),
             })?;
+
+        if !response.status().is_success() {
+            let body = match response.text() {
+                Ok(body) => body,
+                _ => "".to_owned(),
+            };
+
+            return Err(Icinga2CollectorError::CannotPerformHttpRequest {
+                message: format!(
+                    "Failed response returned from Icinga2, Response status: {:?} - body: {}",
+                    response.status(),
+                    body
+                ),
+            });
+        }
 
         let mut reader = BufReader::new(response);
 
@@ -87,7 +102,7 @@ impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
 
         loop {
             if let Err(e) = self.start_polling(&client) {
-                warn!("Client connection to Icinga2 Server dropped. Err: {}", e);
+                error!("Client connection to Icinga2 Server dropped. Err: {}", e);
                 info!(
                     "Attempting a new connection in {} ms",
                     self.icinga_config.sleep_ms_between_connection_attempts
