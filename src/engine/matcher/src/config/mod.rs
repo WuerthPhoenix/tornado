@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs;
 use tornado_common_api::Payload;
 
+pub mod filter;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
     pub name: String,
@@ -42,7 +44,7 @@ pub struct ExtractorRegex {
     pub group_match_idx: u16,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
 pub enum Operator {
     #[serde(rename = "AND")]
