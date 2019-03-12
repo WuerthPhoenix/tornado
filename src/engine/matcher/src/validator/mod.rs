@@ -1,6 +1,6 @@
 pub mod id;
 
-use crate::config::Rule;
+use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use log::*;
 
@@ -68,7 +68,7 @@ impl RuleValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use std::collections::HashMap;
 
     #[test]

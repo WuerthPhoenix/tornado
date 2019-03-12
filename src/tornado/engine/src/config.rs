@@ -58,7 +58,7 @@ pub fn build_icinga2_client_config(
 mod test {
 
     use super::*;
-    use tornado_engine_matcher::config::Rule;
+    use tornado_engine_matcher::config::Config;
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
@@ -66,7 +66,7 @@ mod test {
         let path = "./config/rules.d";
 
         // Act
-        let rules_config = Rule::read_rules_from_dir_sorted_by_filename(path).unwrap();
+        let rules_config = Config::read_rules_from_dir_sorted_by_filename(path).unwrap();
 
         // Assert
         assert_eq!(4, rules_config.len());

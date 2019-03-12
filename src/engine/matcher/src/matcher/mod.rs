@@ -2,7 +2,7 @@ pub mod action;
 pub mod extractor;
 pub mod operator;
 
-use crate::config::Rule;
+use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
@@ -135,7 +135,7 @@ impl Matcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use crate::test_root;
     use std::collections::HashMap;
     use tornado_common_api::*;

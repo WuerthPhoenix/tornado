@@ -5,7 +5,7 @@
 //! of dynamically generated variables.
 
 use crate::accessor::{Accessor, AccessorBuilder};
-use crate::config::Extractor;
+use crate::config::rule::Extractor;
 use crate::error::MatcherError;
 use crate::model::ProcessedEvent;
 use log::*;
@@ -33,7 +33,7 @@ impl MatcherExtractorBuilder {
     ///
     ///    use tornado_common_api::Event;
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
-    ///    use tornado_engine_matcher::config::{Extractor, ExtractorRegex};
+    ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
     ///    use tornado_engine_matcher::model::ProcessedEvent;
     ///    use std::collections::HashMap;
     ///
@@ -170,7 +170,7 @@ impl VariableExtractor {
 mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use crate::config::ExtractorRegex;
+    use crate::config::rule::ExtractorRegex;
     use std::collections::HashMap;
     use tornado_common_api::Event;
 

@@ -1,4 +1,4 @@
-use crate::config::Operator;
+use crate::config::rule::Operator;
 use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
 
@@ -26,15 +26,16 @@ mod test {
     #[test]
     fn should_deserialize_filter_from_json() {
         let filename = "./test_resources/filter/filter_01.json";
-        let json = fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
         let filter = Filter::from_json(&json).unwrap();
 
         assert_eq!("only_emails", filter.name);
 
-        assert_eq!(Some(Operator::Equal {
-            first: "${event.type}".to_owned(),
-            second: "email".to_owned()
-        }), filter.filter);
+        assert_eq!(
+            Some(Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() }),
+            filter.filter
+        );
     }
 }
