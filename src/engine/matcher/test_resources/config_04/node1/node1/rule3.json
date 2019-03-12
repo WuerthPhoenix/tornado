@@ -1,0 +1,10 @@
+{
+  "name": "rule3",
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WITH": {}
+  },
+  "actions": []
+}

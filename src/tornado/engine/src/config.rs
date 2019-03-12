@@ -70,7 +70,7 @@ mod test {
 
         // Assert
         match config {
-            MatcherConfig::Rules(rules) => {
+            MatcherConfig::Rules { rules } => {
                 assert_eq!(4, rules.len());
                 assert_eq!(1, rules.iter().filter(|val| "all_emails".eq(&val.name)).count());
                 assert_eq!(
@@ -78,8 +78,8 @@ mod test {
                     rules.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
                 );
                 assert_eq!(1, rules.iter().filter(|val| "archive_all".eq(&val.name)).count());
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 

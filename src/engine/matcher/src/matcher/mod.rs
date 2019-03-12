@@ -33,7 +33,7 @@ impl Matcher {
         info!("Matcher build start");
 
         match config {
-            MatcherConfig::Rules(rules) => {
+            MatcherConfig::Rules { rules } => {
                 RuleValidator::new().validate_all(rules)?;
 
                 let action_builder = action::ActionResolverBuilder::new();
@@ -58,10 +58,8 @@ impl Matcher {
                 info!("Matcher build completed");
 
                 Ok(Matcher::Rules(processed_rules))
-            },
-            MatcherConfig::Filter(_filter) => {
-                unimplemented!()
             }
+            MatcherConfig::Filter { .. } => unimplemented!(),
         }
     }
 
@@ -677,7 +675,7 @@ mod test {
 
     fn new_matcher(rules: Vec<Rule>) -> Result<Matcher, MatcherError> {
         test_root::start_context();
-        Matcher::build(&MatcherConfig::Rules(rules))
+        Matcher::build(&MatcherConfig::Rules { rules })
     }
 
     fn new_rule(name: &str, operator: Operator) -> Rule {

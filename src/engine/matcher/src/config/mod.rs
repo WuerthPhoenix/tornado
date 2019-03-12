@@ -4,34 +4,39 @@ use crate::error::MatcherError;
 use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
+use std::path::Path;
 
 pub mod filter;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MatcherConfig {
-    Filter(Filter),
-    Rules(Vec<Rule>),
+    Filter { filter: Filter, nodes: Vec<MatcherConfig> },
+    Rules { rules: Vec<Rule> },
 }
 
 impl MatcherConfig {
-    pub fn read_from_dir(dir: &str) -> Result<MatcherConfig, MatcherError> {
-        if MatcherConfig::is_filter_dir(dir)? {
-            return MatcherConfig::read_filter_from_dir(dir).and_then(|filter| Ok(MatcherConfig::Filter(filter)));
+    pub fn read_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
+        if MatcherConfig::is_filter_dir(dir.as_ref())? {
+            return MatcherConfig::read_filter_from_dir(dir.as_ref());
         }
-        MatcherConfig::read_rules_from_dir(dir).and_then(|rules| Ok(MatcherConfig::Rules(rules)))
+        MatcherConfig::read_rules_from_dir(dir.as_ref())
     }
 
     // Returns whether the directory contains a filter. Otherwise it contains rules.
-    // This checks are performed to determine the folder content:
-    // - It contains a filter if there is only one json file AND there are subdirectories. The result is true.
+    // These logic is used to determine the folder content:
+    // - It contains a filter if there is only one json file AND at least one subdirectory. The result is true.
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
-    fn is_filter_dir(dir: &str) -> Result<bool, MatcherError> {
-        let paths = fs::read_dir(dir)
+    fn is_filter_dir<P: AsRef<Path>>(dir: P) -> Result<bool, MatcherError> {
+        let paths = fs::read_dir(dir.as_ref())
             .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
             .map_err(|e| MatcherError::ConfigurationError {
-                message: format!("Error reading from config path [{}]: {}", dir, e),
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
             })?;
 
         let mut subdirectories_count = 0;
@@ -54,7 +59,9 @@ impl MatcherConfig {
         }
         debug!(
             "Path {} contains {} file(s) and {} directories",
-            dir, json_files_count, subdirectories_count
+            dir.as_ref().display(),
+            json_files_count,
+            subdirectories_count
         );
 
         if subdirectories_count > 0 {
@@ -62,17 +69,21 @@ impl MatcherConfig {
                 return Ok(true);
             }
             return Err(MatcherError::ConfigurationError {
-                message: format!("Path {} contains {} file(s) and {} directories. Expected exactly one json filter file to be present.", dir, json_files_count, subdirectories_count),
+                message: format!("Path {} contains {} file(s) and {} directories. Expected exactly one json filter file to be present.", dir.as_ref().display(), json_files_count, subdirectories_count),
             });
         }
         Ok(false)
     }
 
-    fn read_rules_from_dir(dir: &str) -> Result<Vec<Rule>, MatcherError> {
-        let mut paths = fs::read_dir(dir)
+    fn read_rules_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
+        let mut paths = fs::read_dir(dir.as_ref())
             .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
             .map_err(|e| MatcherError::ConfigurationError {
-                message: format!("Error reading from config path [{}]: {}", dir, e),
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
             })?;
 
         // Sort by filename
@@ -102,22 +113,33 @@ impl MatcherConfig {
             rules.push(Rule::from_json(&rule_body)?)
         }
 
-        info!("Loaded {} rule(s) from [{}]", rules.len(), dir);
+        info!("Loaded {} rule(s) from [{}]", rules.len(), dir.as_ref().display());
 
-        Ok(rules)
+        Ok(MatcherConfig::Rules { rules })
     }
 
-    fn read_filter_from_dir(dir: &str) -> Result<Filter, MatcherError> {
-        let paths = fs::read_dir(dir)
+    fn read_filter_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
+        let mut paths = fs::read_dir(dir.as_ref())
             .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
             .map_err(|e| MatcherError::ConfigurationError {
-                message: format!("Error reading from config path [{}]: {}", dir, e),
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
             })?;
+
+        // Sort by filename
+        paths.sort_by_key(|dir| dir.path());
+
+        let mut nodes = vec![];
+        let mut filters = vec![];
 
         for entry in paths {
             let path = entry.path();
 
-            if !path.is_file() {
+            if path.is_dir() {
+                nodes.push(MatcherConfig::read_from_dir(path.as_path())?);
                 continue;
             }
 
@@ -137,11 +159,17 @@ impl MatcherConfig {
                 })?;
 
             trace!("Filter body: \n{}", filter_body);
-            return Filter::from_json(&filter_body)
-        };
+            filters.push(Filter::from_json(&filter_body)?);
+        }
+
+        if filters.len() == 1 && !nodes.is_empty() {
+            let filter = filters.remove(0);
+            return Ok(MatcherConfig::Filter { filter, nodes });
+        }
 
         Err(MatcherError::ConfigurationError {
-            message: format!("Config path [{}] contains no json files. Expected exactly one json filter file.", dir),
+            message: format!("Config path [{}] contains {} json files and {} subdirectories. Expected exactly one json filter file and at least one subdirectory.",
+                             dir.as_ref().display(), filters.len(), nodes.len()),
         })
     }
 }
@@ -158,7 +186,7 @@ mod test {
         let config = MatcherConfig::read_from_dir(path).unwrap();
 
         match config {
-            MatcherConfig::Rules(rules) => {
+            MatcherConfig::Rules { rules } => {
                 assert_eq!(3, rules.len());
 
                 assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
@@ -175,7 +203,7 @@ mod test {
         let config = MatcherConfig::read_from_dir(path).unwrap();
 
         match config {
-            MatcherConfig::Rules(rules) => {
+            MatcherConfig::Rules { rules } => {
                 assert_eq!(0, rules.len());
             }
             _ => assert!(false),
@@ -187,11 +215,28 @@ mod test {
         let path = "./test_resources/config_01";
         let config = MatcherConfig::read_from_dir(path).unwrap();
 
+        assert!(is_filter(&config, "only_emails", 1));
+    }
+
+    fn is_filter(config: &MatcherConfig, name: &str, nodes_num: usize) -> bool {
         match config {
-            MatcherConfig::Filter(filter) => {
-                assert_eq!("only_emails", filter.name);
+            MatcherConfig::Filter { filter, nodes } => {
+                filter.name.eq(name) && nodes.len() == nodes_num
             }
-            _ => assert!(false),
+            _ => false,
+        }
+    }
+
+    fn is_ruleset(config: &MatcherConfig, rule_names: &[&str]) -> bool {
+        match config {
+            MatcherConfig::Rules { rules } => {
+                let mut result = rules.len() == rule_names.len();
+                for i in 0..rule_names.len() {
+                    result = result && rules[i].name.eq(rule_names[i]);
+                }
+                result
+            }
+            _ => false,
         }
     }
 
@@ -205,12 +250,30 @@ mod test {
 
     #[test]
     fn should_read_filter_from_folder_with_many_subfolders() {
-        let path = "./test_resources/config_01";
+        let path = "./test_resources/config_03";
         let config = MatcherConfig::read_from_dir(path).unwrap();
 
+        assert!(is_filter(&config, "only_emails", 2));
+    }
+
+    #[test]
+    fn should_read_config_from_folder_recursively() {
+        let path = "./test_resources/config_04";
+        let config = MatcherConfig::read_from_dir(path).unwrap();
+
+        assert!(is_filter(&config, "filter1", 2));
+
         match config {
-            MatcherConfig::Filter(filter) => {
-                assert_eq!("only_emails", filter.name);
+            MatcherConfig::Filter { filter: _, nodes } => {
+                assert!(is_filter(&nodes[0], "filter2", 1));
+                assert!(is_ruleset(&nodes[1], &vec!["rule1"]));
+
+                match &nodes[0] {
+                    MatcherConfig::Filter { filter: _, nodes: inner_nodes } => {
+                        assert!(is_ruleset(&inner_nodes[0], &vec!["rule2", "rule3"]));
+                    }
+                    _ => assert!(false),
+                }
             }
             _ => assert!(false),
         }
