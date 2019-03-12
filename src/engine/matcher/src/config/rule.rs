@@ -1,6 +1,6 @@
 //! The config module contains the *struct* definitions required for configuring the matcher.
-//! For example, it contains the definition of the Rule and Filter structs and theirs mapping to
-//! serialize/deserialize it to/from json format.
+//! For example, it contains the definition of the Rule and Filter structs and the mapping to
+//! serialize/deserialize them to/from json format.
 
 use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};

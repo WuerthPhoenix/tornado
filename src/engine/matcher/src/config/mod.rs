@@ -8,10 +8,12 @@ pub mod filter;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Config {}
+pub enum MatcherConfig {
+    Rules(Vec<Rule>),
+}
 
-impl Config {
-    pub fn read_rules_from_dir_sorted_by_filename(dir: &str) -> Result<Vec<Rule>, MatcherError> {
+impl MatcherConfig {
+    pub fn read_from_dir(dir: &str) -> Result<MatcherConfig, MatcherError> {
         let mut paths = fs::read_dir(dir)
             .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
             .map_err(|e| MatcherError::ConfigurationError {
@@ -47,7 +49,7 @@ impl Config {
 
         info!("Loaded {} rule(s) from [{}]", rules.len(), dir);
 
-        Ok(rules)
+        Ok(MatcherConfig::Rules(rules))
     }
 }
 
@@ -55,17 +57,21 @@ impl Config {
 mod test {
 
     use super::*;
-    use std::fs;
 
     #[test]
     fn should_read_from_folder_sorting_by_filename() {
         let path = "./test_resources/rules";
-        let rules = Config::read_rules_from_dir_sorted_by_filename(path).unwrap();
+        let config = MatcherConfig::read_from_dir(path).unwrap();
 
-        assert_eq!(3, rules.len());
+        match config {
+            MatcherConfig::Rules(rules) => {
+                assert_eq!(3, rules.len());
 
-        assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
-        assert_eq!("rule_without_where", rules.get(1).unwrap().name);
-        assert_eq!("map_in_action_payload", rules.get(2).unwrap().name);
+                assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
+                assert_eq!("rule_without_where", rules.get(1).unwrap().name);
+                assert_eq!("map_in_action_payload", rules.get(2).unwrap().name);
+            }
+            _ => assert!(false),
+        }
     }
 }
