@@ -1,0 +1,11 @@
+{
+  "name": "only_emails",
+  "description": "This filter allows only events with type email",
+  "active": true,
+  "filter": {
+    "type": "equal",
+    "first": "${event.type}",
+    "second": "email"
+  }
+}
+

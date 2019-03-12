@@ -58,6 +58,9 @@ impl Matcher {
                 info!("Matcher build completed");
 
                 Ok(Matcher::Rules(processed_rules))
+            },
+            MatcherConfig::Filter(_filter) => {
+                unimplemented!()
             }
         }
     }

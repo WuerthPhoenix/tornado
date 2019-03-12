@@ -78,7 +78,8 @@ mod test {
                     rules.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
                 );
                 assert_eq!(1, rules.iter().filter(|val| "archive_all".eq(&val.name)).count());
-            }
+            },
+            _ => assert!(false)
         }
     }
 
