@@ -1,6 +1,6 @@
 use failure_derive::Fail;
 
-#[derive(Fail, Debug)]
+#[derive(Fail, Debug, PartialEq)]
 pub enum MatcherError {
     #[fail(display = "ExtractorBuildFailError: [{}]\n cause: [{}]", message, cause)]
     ExtractorBuildFailError { message: String, cause: String },
