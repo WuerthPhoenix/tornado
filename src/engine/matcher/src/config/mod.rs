@@ -15,12 +15,18 @@ pub enum MatcherConfig {
     Rules { rules: Vec<Rule> },
 }
 
+#[derive(Debug, PartialEq)]
+pub enum DirType {
+    Filter,
+    Rules,
+}
+
 impl MatcherConfig {
     pub fn read_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        if MatcherConfig::is_filter_dir(dir.as_ref())? {
-            return MatcherConfig::read_filter_from_dir(dir.as_ref());
+        match MatcherConfig::detect_dir_type(dir.as_ref())? {
+            DirType::Filter => MatcherConfig::read_filter_from_dir(dir.as_ref()),
+            DirType::Rules => MatcherConfig::read_rules_from_dir(dir.as_ref()),
         }
-        MatcherConfig::read_rules_from_dir(dir.as_ref())
     }
 
     // Returns whether the directory contains a filter. Otherwise it contains rules.
@@ -28,7 +34,7 @@ impl MatcherConfig {
     // - It contains a filter if there is only one json file AND at least one subdirectory. The result is true.
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
-    fn is_filter_dir<P: AsRef<Path>>(dir: P) -> Result<bool, MatcherError> {
+    fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
         let paths = fs::read_dir(dir.as_ref())
             .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
             .map_err(|e| MatcherError::ConfigurationError {
@@ -66,13 +72,20 @@ impl MatcherConfig {
 
         if subdirectories_count > 0 {
             if json_files_count == 1 {
-                return Ok(true);
+                return Ok(DirType::Filter);
             }
             return Err(MatcherError::ConfigurationError {
-                message: format!("Path {} contains {} file(s) and {} directories. Expected exactly one json filter file to be present.", dir.as_ref().display(), json_files_count, subdirectories_count),
+                message: format!(
+                    r#"Path {} contains {} file(s) and {} directories. Expected:\n
+                 for a valid filter: one json file and at least one directory;\n
+                 for a valid rule set: zero or more json files and no directories."#,
+                    dir.as_ref().display(),
+                    json_files_count,
+                    subdirectories_count
+                ),
             });
         }
-        Ok(false)
+        Ok(DirType::Rules)
     }
 
     fn read_rules_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
@@ -139,6 +152,9 @@ impl MatcherConfig {
             let path = entry.path();
 
             if path.is_dir() {
+                // A filter contains a set of subdirectories that can recursively contain other filters
+                // or rule sets. We call MatcherConfig::read_from_dir recursively to build this nested tree
+                // of inner structures.
                 nodes.push(MatcherConfig::read_from_dir(path.as_path())?);
                 continue;
             }
@@ -280,7 +296,7 @@ mod test {
     }
 
     #[test]
-    fn is_filter_dir_should_return_true_if_one_file_and_one_subdir() {
+    fn should_return_dir_type_filter_if_one_file_and_one_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -289,14 +305,14 @@ mod test {
         fs::File::create(&format!("{}/file.json", dir)).unwrap();
 
         // Act
-        let result = MatcherConfig::is_filter_dir(&dir);
+        let result = MatcherConfig::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(true), result);
+        assert_eq!(Ok(DirType::Filter), result);
     }
 
     #[test]
-    fn is_filter_dir_should_return_false_if_one_file_and_no_subdir() {
+    fn should_return_dir_type_rules_if_one_file_and_no_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -304,14 +320,14 @@ mod test {
         fs::File::create(&format!("{}/file.json", dir)).unwrap();
 
         // Act
-        let result = MatcherConfig::is_filter_dir(&dir);
+        let result = MatcherConfig::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(false), result);
+        assert_eq!(Ok(DirType::Rules), result);
     }
 
     #[test]
-    fn is_filter_dir_should_return_false_if_many_files_and_no_subdir() {
+    fn should_return_dir_type_rules_if_many_files_and_no_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -321,10 +337,10 @@ mod test {
         fs::File::create(&format!("{}/file_03.json", dir)).unwrap();
 
         // Act
-        let result = MatcherConfig::is_filter_dir(&dir);
+        let result = MatcherConfig::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(false), result);
+        assert_eq!(Ok(DirType::Rules), result);
     }
 
     #[test]
@@ -339,12 +355,19 @@ mod test {
         fs::File::create(&format!("{}/file2.json", dir)).unwrap();
 
         // Act
-        let result = MatcherConfig::is_filter_dir(&dir);
+        let result = MatcherConfig::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Err(MatcherError::ConfigurationError {
-            message: format!("Path {} contains {} file(s) and {} directories. Expected exactly one json filter file to be present.", dir, 2, 2),
-        }), result);
+        assert!(result.is_err());
+        match result {
+            Err(e) => match e {
+                MatcherError::ConfigurationError { message } => assert!(message.contains(
+                    &format!("Path {} contains {} file(s) and {} directories.", dir, 2, 2)
+                )),
+                _ => assert!(false),
+            },
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -357,11 +380,18 @@ mod test {
         fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
 
         // Act
-        let result = MatcherConfig::is_filter_dir(&dir);
+        let result = MatcherConfig::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Err(MatcherError::ConfigurationError {
-            message: format!("Path {} contains {} file(s) and {} directories. Expected exactly one json filter file to be present.", dir, 0, 2),
-        }), result);
+        assert!(result.is_err());
+        match result {
+            Err(e) => match e {
+                MatcherError::ConfigurationError { message } => assert!(message.contains(
+                    &format!("Path {} contains {} file(s) and {} directories.", dir, 0, 2)
+                )),
+                _ => assert!(false),
+            },
+            _ => assert!(false),
+        }
     }
 }
