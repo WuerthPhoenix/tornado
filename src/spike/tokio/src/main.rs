@@ -7,7 +7,7 @@ use tokio::runtime::Runtime;
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_logger::setup_logger;
-use tornado_engine_matcher::config::Rule;
+use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_network_simple::SimpleEventBus;
@@ -20,7 +20,7 @@ fn main() {
     setup_logger(&conf.logger).unwrap();
 
     // Load rules from fs
-    let config_rules = Rule::read_rules_from_dir_sorted_by_filename(&conf.io.rules_dir).unwrap();
+    let config_rules = MatcherConfig::read_from_dir(&conf.io.rules_dir).unwrap();
 
     // Start matcher & dispatcher
     let matcher = Arc::new(Matcher::build(&config_rules).unwrap());

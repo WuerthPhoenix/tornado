@@ -5,7 +5,7 @@
 //! produced by a matching Event.
 
 use crate::accessor::{Accessor, AccessorBuilder};
-use crate::config::Action as ConfigAction;
+use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
 use crate::model::ProcessedEvent;
 use std::collections::HashMap;

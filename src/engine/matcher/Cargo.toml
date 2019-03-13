@@ -23,6 +23,7 @@ cpuprofiler = "0.0.3"
 criterion = "0.2"
 lazy_static = "1.0"
 maplit = "1.0"
+tempfile = "3"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
 

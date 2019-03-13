@@ -58,7 +58,7 @@ pub fn build_icinga2_client_config(
 mod test {
 
     use super::*;
-    use tornado_engine_matcher::config::Rule;
+    use tornado_engine_matcher::config::MatcherConfig;
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
@@ -66,16 +66,21 @@ mod test {
         let path = "./config/rules.d";
 
         // Act
-        let rules_config = Rule::read_rules_from_dir_sorted_by_filename(path).unwrap();
+        let config = MatcherConfig::read_from_dir(path).unwrap();
 
         // Assert
-        assert_eq!(4, rules_config.len());
-        assert_eq!(1, rules_config.iter().filter(|val| "all_emails".eq(&val.name)).count());
-        assert_eq!(
-            1,
-            rules_config.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
-        );
-        assert_eq!(1, rules_config.iter().filter(|val| "archive_all".eq(&val.name)).count());
+        match config {
+            MatcherConfig::Rules { rules } => {
+                assert_eq!(4, rules.len());
+                assert_eq!(1, rules.iter().filter(|val| "all_emails".eq(&val.name)).count());
+                assert_eq!(
+                    1,
+                    rules.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
+                );
+                assert_eq!(1, rules.iter().filter(|val| "archive_all".eq(&val.name)).count());
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]

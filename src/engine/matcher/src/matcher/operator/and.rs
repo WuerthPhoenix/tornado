@@ -14,7 +14,7 @@ pub struct And {
 impl And {
     pub fn build(
         rule_name: &str,
-        args: &[config::Operator],
+        args: &[config::rule::Operator],
         builder: &OperatorBuilder,
     ) -> Result<And, MatcherError> {
         let mut operators = vec![];
@@ -52,7 +52,7 @@ mod test {
     fn should_build_the_and_with_expected_arguments() {
         let operator = And::build(
             "",
-            &vec![config::Operator::Equal {
+            &vec![config::rule::Operator::Equal {
                 first: "first_arg=".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -73,7 +73,7 @@ mod test {
     fn build_should_fail_if_wrong_nested_operator() {
         let operator = And::build(
             "",
-            &vec![config::Operator::Equal {
+            &vec![config::rule::Operator::Equal {
                 first: "${NOT_EXISTING}".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -87,9 +87,9 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
-                config::Operator::Or {
-                    operators: vec![config::Operator::Equal {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Or {
+                    operators: vec![config::rule::Operator::Equal {
                         first: "3".to_owned(),
                         second: "4".to_owned(),
                     }],
@@ -125,10 +125,10 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
             ],
             &OperatorBuilder::new(),
         )
@@ -144,10 +144,10 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
             ],
             &OperatorBuilder::new(),
         )
@@ -163,13 +163,19 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal { first: "5".to_owned(), second: "5".to_owned() },
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
+                            first: "5".to_owned(),
+                            second: "5".to_owned(),
+                        },
                     ],
                 },
             ],
@@ -187,13 +193,19 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal { first: "5".to_owned(), second: "6".to_owned() },
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
+                            first: "5".to_owned(),
+                            second: "6".to_owned(),
+                        },
                     ],
                 },
             ],
@@ -211,13 +223,16 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal {
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type".to_owned(),
                         },
@@ -238,13 +253,16 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal {
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type1".to_owned(),
                         },
