@@ -11,7 +11,7 @@ use log::*;
 use tornado_common_api::Event;
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
-///   from the config::Rule.
+///   from the config::rule::Rule.
 pub struct MatcherRule {
     name: String,
     do_continue: bool,
@@ -20,20 +20,38 @@ pub struct MatcherRule {
     actions: Vec<action::ActionResolver>,
 }
 
+/// The Matcher's internal Filter representation, which contains the operators and executors built
+///   from the config::filter::Filter.
+pub struct MatcherFilter {
+    pub name: String,
+    pub filter: Box<operator::Operator>,
+}
+
+pub enum ProcessingNode {
+    DoNothing,
+    Rules(Vec<MatcherRule>),
+    Filter(MatcherFilter, Vec<ProcessingNode>),
+}
+
 /// The Matcher contains the core logic of the Tornado Engine.
 /// It matches incoming Events against the defined Rules.
 /// A Matcher instance is stateless and thread-safe; consequently, a single instance can serve the entire application.
-pub enum Matcher {
-    Rules(Vec<MatcherRule>),
+pub struct Matcher {
+    node: ProcessingNode,
 }
 
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
     pub fn build(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
+        Matcher::build_processing_tree(config).map(|node| Matcher { node })
+    }
 
+    fn build_processing_tree(config: &MatcherConfig) -> Result<ProcessingNode, MatcherError> {
         match config {
             MatcherConfig::Rules { rules } => {
+                info!("Start processing {} Matcher Config Rules", rules.len());
+
                 RuleValidator::new().validate_all(rules)?;
 
                 let action_builder = action::ActionResolverBuilder::new();
@@ -55,11 +73,32 @@ impl Matcher {
                     })
                 }
 
-                info!("Matcher build completed");
+                info!("Matcher Rules build completed");
 
-                Ok(Matcher::Rules(processed_rules))
+                Ok(ProcessingNode::Rules(processed_rules))
             }
-            MatcherConfig::Filter { .. } => unimplemented!(),
+            MatcherConfig::Filter { filter, nodes } => {
+                if !filter.active {
+                    info!("Matcher Filter [{}] is not active. Ignore it.", filter.name);
+                    return Ok(ProcessingNode::DoNothing);
+                }
+
+                info!("Start processing Matcher Filter [{}] Config", filter.name);
+                let operator_builder = operator::OperatorBuilder::new();
+
+                let matcher_filter = MatcherFilter {
+                    name: filter.name.to_owned(),
+                    filter: operator_builder.build_option(&filter.name, &filter.filter)?,
+                };
+
+                let matcher_nodes = nodes
+                    .iter()
+                    .map(Matcher::build_processing_tree)
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                info!("Matcher Filter [{}] build completed", filter.name);
+                Ok(ProcessingNode::Filter(matcher_filter, matcher_nodes))
+            }
         }
     }
 
@@ -67,14 +106,34 @@ impl Matcher {
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);
-
         let mut processed_event = ProcessedEvent::new(event);
-
-        match self {
-            Matcher::Rules(rules) => Matcher::process_rules(rules, &mut processed_event),
-        };
-
+        Matcher::process_node(&self.node, &mut processed_event);
         processed_event
+    }
+
+    fn process_node(node: &ProcessingNode, processed_event: &mut ProcessedEvent) {
+        match node {
+            ProcessingNode::Filter(filter, nodes) => {
+                Matcher::process_filter(filter, nodes, processed_event)
+            }
+            ProcessingNode::Rules(rules) => Matcher::process_rules(rules, processed_event),
+            ProcessingNode::DoNothing => {}
+        };
+    }
+
+    fn process_filter(
+        filter: &MatcherFilter,
+        nodes: &[ProcessingNode],
+        processed_event: &mut ProcessedEvent,
+    ) {
+        trace!("Matcher process - check matching of filter: [{}]", &filter.name);
+        if filter.filter.evaluate(&processed_event) {
+            trace!(
+                    "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
+                    &filter.name
+                );
+            nodes.iter().for_each(|node| Matcher::process_node(node, processed_event));
+        }
     }
 
     fn process_rules(rules: &[MatcherRule], mut processed_event: &mut ProcessedEvent) {
@@ -164,11 +223,12 @@ mod test {
         let matcher = new_matcher(vec![rule]).unwrap();
 
         // Assert
-        match matcher {
-            Matcher::Rules(rules) => {
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
                 assert_eq!(1, rules.len());
                 assert_eq!("rule_name", rules[0].name);
             }
+            _ => assert!(false),
         }
     }
 
@@ -204,14 +264,15 @@ mod test {
         let matcher = new_matcher(vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
 
         // Assert
-        match matcher {
-            Matcher::Rules(rules) => {
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
                 assert_eq!(4, rules.len());
                 assert_eq!("rule1", rules[0].name);
                 assert_eq!("rule2", rules[1].name);
                 assert_eq!("rule3", rules[2].name);
                 assert_eq!("rule4", rules[3].name);
             }
+            _ => assert!(false),
         }
     }
 
@@ -233,12 +294,13 @@ mod test {
         let matcher = new_matcher(vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
 
         // Assert
-        match matcher {
-            Matcher::Rules(rules) => {
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
                 assert_eq!(2, rules.len());
                 assert_eq!("rule2", rules[0].name);
                 assert_eq!("rule4", rules[1].name);
             }
+            _ => assert!(false),
         }
     }
 
