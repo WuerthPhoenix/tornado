@@ -5,7 +5,8 @@ use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::fs::DirEntry;
+use std::path::{Path, PathBuf};
 
 pub mod filter;
 pub mod rule;
@@ -36,15 +37,7 @@ impl MatcherConfig {
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
     fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
-        let paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         let mut subdirectories_count = 0;
         let mut json_files_count = 0;
@@ -55,10 +48,7 @@ impl MatcherConfig {
             if path.is_dir() {
                 subdirectories_count += 1;
             } else {
-                let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                    message: format!("Error processing filename of file: [{}]", path.display()),
-                })?;
-
+                let filename = MatcherConfig::filename(&path)?;
                 if filename.ends_with(".json") {
                     json_files_count += 1;
                 }
@@ -90,15 +80,7 @@ impl MatcherConfig {
     }
 
     fn read_rules_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let mut paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         // Sort by filename
         paths.sort_by_key(|dir| dir.path());
@@ -108,9 +90,7 @@ impl MatcherConfig {
         for entry in paths {
             let path = entry.path();
 
-            let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("Error processing filename of file: [{}]", path.display()),
-            })?;
+            let filename = MatcherConfig::filename(&path)?;
 
             if !filename.ends_with(".json") {
                 info!("Configuration file [{}] is ignored.", path.display());
@@ -133,15 +113,7 @@ impl MatcherConfig {
     }
 
     fn read_filter_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let mut paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         // Sort by filename
         paths.sort_by_key(|dir| dir.path());
@@ -152,29 +124,18 @@ impl MatcherConfig {
         for entry in paths {
             let path = entry.path();
 
-            if path.is_dir() {
-                let dir_name =
-                    path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
-                        MatcherError::ConfigurationError {
-                            message: format!(
-                                "Error processing directory name: [{}]",
-                                path.display()
-                            ),
-                        }
-                    })?;
+            let filename = MatcherConfig::filename(&path)?;
 
+            if path.is_dir() {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call MatcherConfig::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.insert(dir_name.to_owned(), MatcherConfig::read_from_dir(path.as_path())?);
+                nodes.insert(filename.to_owned(), MatcherConfig::read_from_dir(path.as_path())?);
                 continue;
             }
 
-            let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("Error processing filename of file: [{}]", path.display()),
-            })?;
-
-            if !filename.ends_with(".json") {
+            let extension = ".json";
+            if !filename.ends_with(extension) {
                 info!("Configuration file [{}] is ignored.", path.display());
                 continue;
             }
@@ -185,8 +146,10 @@ impl MatcherConfig {
                     message: format!("Unable to open the file [{}]. Err: {}", path.display(), e),
                 })?;
 
-            trace!("Filter body: \n{}", filter_body);
-            filters.push(Filter::from_json(&filter_body)?);
+            trace!("Filter [{}] body: \n{}", filename, filter_body);
+            let mut filter = Filter::from_json(&filter_body)?;
+            filter.name = MatcherConfig::truncate(filename, extension.len());
+            filters.push(filter);
         }
 
         if filters.len() == 1 && !nodes.is_empty() {
@@ -197,6 +160,32 @@ impl MatcherConfig {
         Err(MatcherError::ConfigurationError {
             message: format!("Config path [{}] contains {} json files and {} subdirectories. Expected exactly one json filter file and at least one subdirectory.",
                              dir.as_ref().display(), filters.len(), nodes.len()),
+        })
+    }
+
+    fn read_dirs<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+        fs::read_dir(dir.as_ref())
+            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
+            .map_err(|e| MatcherError::ConfigurationError {
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
+            })
+    }
+
+    fn truncate(name: &str, truncate: usize) -> String {
+        let mut name = name.to_owned();
+        name.truncate(name.len() - truncate);
+        name
+    }
+
+    fn filename(path: &PathBuf) -> Result<&str, MatcherError> {
+        path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Error processing path name: [{}]", path.display()),
+            }
         })
     }
 }
@@ -287,6 +276,8 @@ mod test {
     fn should_read_config_from_folder_recursively() {
         let path = "./test_resources/config_04";
         let config = MatcherConfig::read_from_dir(path).unwrap();
+
+        println!("{:?}", config);
 
         assert!(is_filter(&config, "filter1", 2));
 

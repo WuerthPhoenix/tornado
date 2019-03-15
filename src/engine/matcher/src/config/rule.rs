@@ -10,6 +10,7 @@ use tornado_common_api::Payload;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
+    #[serde(default)]
     pub name: String,
     pub description: String,
     #[serde(rename = "continue")]

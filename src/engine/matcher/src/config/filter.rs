@@ -4,6 +4,7 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Filter {
+    #[serde(default)]
     pub name: String,
     pub description: String,
     pub active: bool,
