@@ -1,5 +1,4 @@
 {
-  "name": "emails_with_temperature",
   "description": "This matches all emails containing a temperature measurement.",
   "continue": true,
   "active": true,

@@ -1,5 +1,4 @@
 {
-    "name": "emails_with_temperature",
     "description": "This matches all emails",
     "continue": true,
     "active": true,
@@ -14,23 +13,14 @@
           }
         ]
       },
-      "WITH": {
-        "temperature": {
-          "from": "${event.payload.body}",
-          "regex": {
-            "match": "[0-9]+\\sDegrees",
-            "group_match_idx": 0
-          }
-        }
-      }
+      "WITH": {}
     },
     "actions": [
       {
         "id": "Logger",
         "payload": {
           "type": "${event.type}",
-          "subject": "${event.payload.subject}",
-          "temperature:": "${_variables.temperature}"
+          "subject": "${event.payload.subject}"
         }
     }
     ]

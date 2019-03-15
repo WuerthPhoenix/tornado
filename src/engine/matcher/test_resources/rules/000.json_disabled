@@ -1,6 +1,5 @@
 {
-  "name": "rule_without_where",
-  "description": "",
+  "description": "this file should be ignored",
   "continue": true,
   "active": true,
   "constraint": {

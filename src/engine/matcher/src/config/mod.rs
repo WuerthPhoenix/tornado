@@ -91,8 +91,9 @@ impl MatcherConfig {
             let path = entry.path();
 
             let filename = MatcherConfig::filename(&path)?;
+            let extension = ".json";
 
-            if !filename.ends_with(".json") {
+            if !filename.ends_with(extension) {
                 info!("Configuration file [{}] is ignored.", path.display());
                 continue;
             }
@@ -104,7 +105,13 @@ impl MatcherConfig {
                 })?;
 
             trace!("Rule body: \n{}", rule_body);
-            rules.push(Rule::from_json(&rule_body)?)
+            let mut rule = Rule::from_json(&rule_body)?;
+            rule.name = MatcherConfig::rule_name_from_filename(&MatcherConfig::truncate(
+                filename,
+                extension.len(),
+            ))?
+            .to_owned();
+            rules.push(rule);
         }
 
         info!("Loaded {} rule(s) from [{}]", rules.len(), dir.as_ref().display());
@@ -187,6 +194,21 @@ impl MatcherConfig {
                 message: format!("Error processing path name: [{}]", path.display()),
             }
         })
+    }
+
+    fn rule_name_from_filename(filename: &str) -> Result<&str, MatcherError> {
+        let split_char = '_';
+        let mut splitter = filename.splitn(2, split_char);
+        let mut result = "";
+        for _ in 0..2 {
+            result = splitter.next().ok_or_else(|| MatcherError::ConfigurationError {
+                message: format!(
+                    "Error extracting rule name from filename [{}]. The filename must contain at least one '{}' char to separate the first part of the filename from the rule name.",
+                    filename, split_char,
+                ),
+            })?
+        }
+        Ok(result)
     }
 }
 
@@ -398,5 +420,29 @@ mod test {
             },
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn should_return_rule_name_from_file_name() {
+        // not valid names
+        assert!(MatcherConfig::rule_name_from_filename("").is_err());
+        assert!(MatcherConfig::rule_name_from_filename("1245345").is_err());
+        assert!(MatcherConfig::rule_name_from_filename("asfg.rulename").is_err());
+
+        // valid names
+        assert_eq!("rulename", MatcherConfig::rule_name_from_filename("_rulename").unwrap());
+        assert_eq!("rulename", MatcherConfig::rule_name_from_filename("12343_rulename").unwrap());
+        assert_eq!(
+            "rule_name_1",
+            MatcherConfig::rule_name_from_filename("ascfb5.46_rule_name_1").unwrap()
+        );
+        assert_eq!(
+            "__rule_name_1",
+            MatcherConfig::rule_name_from_filename("ascfb5.46___rule_name_1").unwrap()
+        );
+        assert_eq!(
+            "rule_name_1__._",
+            MatcherConfig::rule_name_from_filename("ascfb5.46_rule_name_1__._").unwrap()
+        );
     }
 }
