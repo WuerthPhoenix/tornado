@@ -93,7 +93,7 @@ impl Matcher {
 
                 let matcher_nodes = nodes
                     .iter()
-                    .map(Matcher::build_processing_tree)
+                    .map(|(_k, v)| Matcher::build_processing_tree(v))
                     .collect::<Result<Vec<_>, _>>()?;
 
                 info!("Matcher Filter [{}] build completed", filter.name);
@@ -208,7 +208,8 @@ mod test {
     use super::*;
     use crate::config::filter::Filter;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
-    use std::collections::HashMap;
+    use maplit::*;
+    use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::*;
 
     #[test]
@@ -241,7 +242,8 @@ mod test {
         );
 
         // Act
-        let matcher = new_matcher(&MatcherConfig::Filter { filter, nodes: vec![] }).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Filter { filter, nodes: BTreeMap::new() }).unwrap();
 
         // Assert
         match &matcher.node {
@@ -262,7 +264,7 @@ mod test {
         // Act
         let matcher = new_matcher(&MatcherConfig::Filter {
             filter,
-            nodes: vec![MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] }],
+            nodes: btreemap!["node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] }],
         })
         .unwrap();
 
@@ -283,12 +285,12 @@ mod test {
             Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
         );
 
-        let nodes = vec![
-            MatcherConfig::Filter {
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Filter {
                 filter: new_filter("filter2", None),
-                nodes: vec![MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
+                nodes: btreemap!["node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
             },
-            MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] },
         ];
 
         let config = MatcherConfig::Filter { filter, nodes };
@@ -847,9 +849,9 @@ mod test {
 
         let filter = new_filter("filter1", None);
 
-        let nodes = vec![
-            MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
-            MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
         ];
 
         let config = MatcherConfig::Filter { filter, nodes };
@@ -872,11 +874,11 @@ mod test {
 
         let filter = new_filter("filter1", op.clone());
 
-        let nodes = vec![
-            MatcherConfig::Rules {
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_a1", None), new_rule("rule_a2", op.clone())],
             },
-            MatcherConfig::Rules {
+            "node2".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
             },
         ];
@@ -910,12 +912,12 @@ mod test {
 
         let filter = new_filter("filter1", None);
 
-        let nodes = vec![
-            MatcherConfig::Filter {
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Filter {
                 filter: new_filter("filter2", op.clone()),
-                nodes: vec![MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
+                nodes: btreemap![ "node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
             },
-            MatcherConfig::Filter {
+            "node1".to_owned() => MatcherConfig::Filter {
                 filter: new_filter(
                     "filter3",
                     Operator::Equal {
@@ -923,12 +925,12 @@ mod test {
                         second: "trap".to_owned(),
                     },
                 ),
-                nodes: vec![MatcherConfig::Rules { rules: vec![new_rule("rule3", None)] }],
+                nodes: btreemap![ "node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule3", None)] }],
             },
-            MatcherConfig::Rules {
+            "node2".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_a1", None), new_rule("rule_a2", op.clone())],
             },
-            MatcherConfig::Rules {
+            "node3".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
             },
         ];
@@ -966,9 +968,9 @@ mod test {
         let mut filter = new_filter("filter1", None);
         filter.active = false;
 
-        let nodes = vec![
-            MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
-            MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
         ];
 
         let config = MatcherConfig::Filter { filter, nodes };
@@ -992,11 +994,11 @@ mod test {
             Operator::Equal { first: "${event.type}".to_owned(), second: "trapd".to_owned() },
         );
 
-        let nodes = vec![
-            MatcherConfig::Rules {
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_a1", op.clone()), new_rule("rule_a2", op.clone())],
             },
-            MatcherConfig::Rules {
+            "node1".to_owned() => MatcherConfig::Rules {
                 rules: vec![new_rule("rule_b1", op.clone()), new_rule("rule_b2", op.clone())],
             },
         ];
@@ -1028,10 +1030,10 @@ mod test {
         let mut rule_c1 = new_rule("rule_c1", None);
         rule_c1.do_continue = false;
 
-        let nodes = vec![
-            MatcherConfig::Rules { rules: vec![rule_a1, new_rule("rule_a2", op.clone())] },
-            MatcherConfig::Rules { rules: vec![rule_b1, new_rule("rule_b2", op.clone())] },
-            MatcherConfig::Rules { rules: vec![rule_c1, new_rule("rule_c2", op.clone())] },
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![rule_a1, new_rule("rule_a2", op.clone())] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![rule_b1, new_rule("rule_b2", op.clone())] },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![rule_c1, new_rule("rule_c2", op.clone())] },
         ];
 
         let config = MatcherConfig::Filter { filter, nodes };

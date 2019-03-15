@@ -3,6 +3,7 @@ use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
 
@@ -11,7 +12,7 @@ pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MatcherConfig {
-    Filter { filter: Filter, nodes: Vec<MatcherConfig> },
+    Filter { filter: Filter, nodes: BTreeMap<String, MatcherConfig> },
     Rules { rules: Vec<Rule> },
 }
 
@@ -145,17 +146,27 @@ impl MatcherConfig {
         // Sort by filename
         paths.sort_by_key(|dir| dir.path());
 
-        let mut nodes = vec![];
+        let mut nodes = BTreeMap::new();
         let mut filters = vec![];
 
         for entry in paths {
             let path = entry.path();
 
             if path.is_dir() {
+                let dir_name =
+                    path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+                        MatcherError::ConfigurationError {
+                            message: format!(
+                                "Error processing directory name: [{}]",
+                                path.display()
+                            ),
+                        }
+                    })?;
+
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call MatcherConfig::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.push(MatcherConfig::read_from_dir(path.as_path())?);
+                nodes.insert(dir_name.to_owned(), MatcherConfig::read_from_dir(path.as_path())?);
                 continue;
             }
 
@@ -281,12 +292,15 @@ mod test {
 
         match config {
             MatcherConfig::Filter { filter: _, nodes } => {
-                assert!(is_filter(&nodes[0], "filter2", 1));
-                assert!(is_ruleset(&nodes[1], &vec!["rule1"]));
+                assert!(nodes.contains_key("node1"));
+                assert!(nodes.contains_key("node2"));
+                assert!(is_filter(&nodes["node1"], "filter2", 1));
+                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
 
-                match &nodes[0] {
+                match &nodes["node1"] {
                     MatcherConfig::Filter { filter: _, nodes: inner_nodes } => {
-                        assert!(is_ruleset(&inner_nodes[0], &vec!["rule2", "rule3"]));
+                        assert!(inner_nodes.contains_key("inner_node1"));
+                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2", "rule3"]));
                     }
                     _ => assert!(false),
                 }
