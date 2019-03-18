@@ -53,7 +53,6 @@ impl Matcher {
             MatcherConfig::Rules { rules } => {
                 info!("Start processing {} Matcher Config Rules", rules.len());
 
-
                 let action_builder = action::ActionResolverBuilder::new();
                 let operator_builder = operator::OperatorBuilder::new();
                 let extractor_builder = MatcherExtractorBuilder::new();
@@ -347,6 +346,26 @@ mod test {
 
         match matcher.err().unwrap() {
             MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn build_should_fail_if_filter_has_wrong_name() {
+        // Arrange
+        let filter = new_filter("filter?!!", None);
+        let nodes = btreemap![];
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config);
+
+        // Act
+        assert!(matcher.is_err());
+
+        match matcher.err().unwrap() {
+            MatcherError::NotValidIdOrNameError { message } => {
+                assert!(message.contains("filter?!!"));
+            }
             _ => assert!(false),
         }
     }
