@@ -3,26 +3,69 @@ pub mod id;
 use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use log::*;
+use crate::config::MatcherConfig;
+use crate::config::filter::Filter;
+use std::collections::BTreeMap;
 
-/// A validator for a Rule or array of Rules
+/// A validator for a MatcherConfig
 #[derive(Default)]
-pub struct RuleValidator {
+pub struct MatcherConfigValidator {
     id: id::IdValidator,
 }
 
-impl RuleValidator {
-    pub fn new() -> RuleValidator {
-        RuleValidator { id: id::IdValidator::new() }
+impl MatcherConfigValidator {
+    pub fn new() -> MatcherConfigValidator {
+        MatcherConfigValidator { id: id::IdValidator::new() }
+    }
+
+    pub fn validate(&self, config: &MatcherConfig) -> Result<(), MatcherError> {
+        match config { 
+            MatcherConfig::Rules {rules} => self.validate_rules(rules),
+            MatcherConfig::Filter {filter, nodes} => self.validate_filter(filter, nodes) 
+        }
+    }
+
+    /// Validates that a Filter has a valid name and triggers the validation recursively
+    /// for all filter's nodes.
+    fn validate_filter(&self, filter: &Filter, nodes: &BTreeMap<String, MatcherConfig>) -> Result<(), MatcherError> {
+        info!("MatcherConfigValidator validate_filter - validate filter [{}]", filter.name);
+
+        self.id.validate_filter_name(&filter.name)?;
+
+        for (node_name, node_config) in nodes {
+            self.id.validate_node_name(node_name)?;
+            self.validate(node_config)?;
+        }
+
+        Ok(())
+    } 
+
+    /// Validates a set of Rules.
+    /// In addition to the checks performed by the validate(rule) method,
+    /// it verifies that rule names are unique.
+    fn validate_rules(&self, rules: &[Rule]) -> Result<(), MatcherError> {
+        info!("MatcherConfigValidator validate_all - validate all rules");
+
+        let mut rule_names = vec![];
+
+        for rule in rules {
+            if rule.active {
+                self.validate_rule(rule)?;
+                MatcherConfigValidator::check_unique_name(&mut rule_names, &rule.name)?;
+            }
+        }
+
+        Ok(())
     }
 
     /// Checks that a rule:
     /// - has a valid name
     /// - has valid extracted variable names
     /// - has valid action IDs
-    pub fn validate(&self, rule: &Rule) -> Result<(), MatcherError> {
+    fn validate_rule(&self, rule: &Rule) -> Result<(), MatcherError> {
         let rule_name = &rule.name;
 
-        info!("RuleValidator validate - Validating rule: [{}]", rule_name);
+        info!("MatcherConfigValidator validate - Validating rule: [{}]", rule_name);
         self.id.validate_rule_name(rule_name)?;
 
         for var_name in rule.constraint.with.keys() {
@@ -35,28 +78,10 @@ impl RuleValidator {
 
         Ok(())
     }
-
-    /// Validates a set of Rules.
-    /// In addition to the checks performed by the validate(rule) method,
-    /// it verifies that rule names are unique.
-    pub fn validate_all(&self, rules: &[Rule]) -> Result<(), MatcherError> {
-        info!("RuleValidator validate_all - validate all rules");
-
-        let mut rule_names = vec![];
-
-        for rule in rules {
-            if rule.active {
-                self.validate(rule)?;
-                RuleValidator::check_unique_name(&mut rule_names, &rule.name)?;
-            }
-        }
-
-        Ok(())
-    }
-
+    
     fn check_unique_name(rule_names: &mut Vec<String>, name: &str) -> Result<(), MatcherError> {
         let name_string = name.to_owned();
-        debug!("RuleValidator - Validating uniqueness of name for rule: [{}]", &name_string);
+        debug!("MatcherConfigValidator - Validating uniqueness of name for rule: [{}]", &name_string);
         if rule_names.contains(&name_string) {
             return Err(MatcherError::NotUniqueRuleNameError { name: name_string });
         }
@@ -69,6 +94,7 @@ impl RuleValidator {
 mod test {
     use super::*;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use maplit::*;
     use std::collections::HashMap;
 
     #[test]
@@ -80,7 +106,7 @@ mod test {
         );
 
         // Act
-        let result = RuleValidator::new().validate_all(&vec![rule]);
+        let result = MatcherConfigValidator::new().validate_rules(&vec![rule]);
 
         // Assert
         assert!(result.is_ok());
@@ -100,7 +126,7 @@ mod test {
         );
 
         // Act
-        let result = RuleValidator::new().validate_all(&vec![rule_1, rule_2]);
+        let result = MatcherConfigValidator::new().validate_rules(&vec![rule_1, rule_2]);
 
         // Assert
         assert!(result.is_ok());
@@ -114,7 +140,7 @@ mod test {
         let rule_2 = new_rule("rule_name", op.clone());
 
         // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1, rule_2]);
+        let matcher = MatcherConfigValidator::new().validate_rules(&vec![rule_1, rule_2]);
 
         // Assert
         assert!(matcher.is_err());
@@ -132,7 +158,7 @@ mod test {
         let rule_1 = new_rule("rule name", op.clone());
 
         // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_rules(&vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -145,7 +171,7 @@ mod test {
         let rule_1 = new_rule("rule.name", op.clone());
 
         // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_rules(&vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -166,7 +192,7 @@ mod test {
         );
 
         // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_rules(&vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -184,10 +210,44 @@ mod test {
         });
 
         // Act
-        let matcher = RuleValidator::new().validate_all(&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_rules(&vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn build_should_fail_if_wrong_filter_name() {
+        // Arrange
+        let filter = Filter{
+            filter: None,
+            name: "wrong.because.of.dots".to_owned(),
+            active: true,
+            description: "".to_owned()
+        };
+
+        // Act
+        let matcher = MatcherConfigValidator::new().validate_filter(& filter, &btreemap![]);
+
+        // Assert
+        assert!(matcher.is_err());
+    }
+
+    #[test]
+    fn should_validate_filter_name() {
+        // Arrange
+        let filter = Filter{
+            filter: None,
+            name: "good_name".to_owned(),
+            active: true,
+            description: "".to_owned()
+        };
+
+        // Act
+        let matcher = MatcherConfigValidator::new().validate_filter(& filter, &btreemap![]);
+
+        // Assert
+        assert!(matcher.is_ok());
     }
 
     fn new_rule(name: &str, operator: Operator) -> Rule {

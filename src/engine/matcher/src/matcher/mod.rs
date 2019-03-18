@@ -6,7 +6,7 @@ use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
-use crate::validator::RuleValidator;
+use crate::validator::MatcherConfigValidator;
 use log::*;
 use tornado_common_api::Event;
 
@@ -44,6 +44,7 @@ impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
     pub fn build(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
+        MatcherConfigValidator::new().validate(config)?;
         Matcher::build_processing_tree(config).map(|node| Matcher { node })
     }
 
@@ -52,7 +53,6 @@ impl Matcher {
             MatcherConfig::Rules { rules } => {
                 info!("Start processing {} Matcher Config Rules", rules.len());
 
-                RuleValidator::new().validate_all(rules)?;
 
                 let action_builder = action::ActionResolverBuilder::new();
                 let operator_builder = operator::OperatorBuilder::new();
