@@ -1,8 +1,9 @@
 use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::ProcessedEvent;
-use tornado_common_api::cow_to_str;
+use tornado_common_api::{cow_to_str, Value};
+use std::collections::HashMap;
+use crate::model::InternalEvent;
 
 const OPERATOR_NAME: &str = "contain";
 
@@ -24,11 +25,11 @@ impl Operator for Contain {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        let option_text = self.text.get(event);
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+        let option_text = self.text.get(event, extracted_vars);
         match cow_to_str(&option_text) {
             Some(text) => {
-                let option_substring = self.substring.get(event);
+                let option_substring = self.substring.get(event, extracted_vars);
                 match cow_to_str(&option_substring) {
                     Some(substring) => (&text).contains(substring),
                     None => false,

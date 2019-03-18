@@ -1,12 +1,13 @@
 //! The accessor module contains the logic to extract data from an incoming Event.
 
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
+use crate::model::{InternalEvent};
 use crate::validator::id::IdValidator;
 use log::*;
 use regex::Regex as RustRegex;
 use std::borrow::Cow;
 use tornado_common_api::Value;
+use std::collections::HashMap;
 
 pub struct AccessorBuilder {
     id_validator: IdValidator,
@@ -152,15 +153,15 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, Value>> {
+    pub fn get<'o>(&'o self, event: &'o InternalEvent, extracted_vars: Option<&'o HashMap<String, Value>>) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedTs {} => Some(Cow::Borrowed(&event.event.created_ts)),
+            Accessor::CreatedTs {} => Some(Cow::Borrowed(&event.created_ts)),
             Accessor::ExtractedVar { key } => {
-                event.extracted_vars.get(key.as_str()).map(|value| Cow::Borrowed(value))
+                extracted_vars.and_then(|vars| vars.get(key.as_str())).map(|value| Cow::Borrowed(value))
             }
             Accessor::Payload { keys } => {
-                let mut value = Some(&event.event.payload);
+                let mut value = Some(&event.payload);
 
                 let mut count = 0;
 
@@ -171,9 +172,9 @@ impl Accessor {
 
                 value.map(|value| Cow::Borrowed(value))
             }
-            Accessor::Type {} => Some(Cow::Borrowed(&event.event.event_type)),
+            Accessor::Type {} => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event {} => {
-                let event_value: Value = event.event.clone().into();
+                let event_value: Value = event.clone().into();
                 Some(Cow::Owned(event_value))
             }
         }

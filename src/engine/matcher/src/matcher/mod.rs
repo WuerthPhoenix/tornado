@@ -5,10 +5,11 @@ pub mod operator;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
+use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus, InternalEvent, ProcessedNode, ProcessedFilter, ProcessedFilterStatus, ProcessedRules};
 use crate::validator::MatcherConfigValidator;
 use log::*;
-use tornado_common_api::Event;
+use tornado_common_api::{Event, Value};
+use std::collections::{BTreeMap, HashMap};
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
 ///   from the config::rule::Rule.
@@ -24,13 +25,13 @@ pub struct MatcherRule {
 ///   from the config::filter::Filter.
 pub struct MatcherFilter {
     pub name: String,
+    pub active: bool,
     pub filter: Box<operator::Operator>,
 }
 
 pub enum ProcessingNode {
-    DoNothing,
     Rules(Vec<MatcherRule>),
-    Filter(MatcherFilter, Vec<ProcessingNode>),
+    Filter(MatcherFilter, BTreeMap<String, ProcessingNode>),
 }
 
 /// The Matcher contains the core logic of the Tornado Engine.
@@ -77,23 +78,20 @@ impl Matcher {
                 Ok(ProcessingNode::Rules(processed_rules))
             }
             MatcherConfig::Filter { filter, nodes } => {
-                if !filter.active {
-                    info!("Matcher Filter [{}] is not active. Ignore it.", filter.name);
-                    return Ok(ProcessingNode::DoNothing);
-                }
 
                 info!("Start processing Matcher Filter [{}] Config", filter.name);
                 let operator_builder = operator::OperatorBuilder::new();
 
                 let matcher_filter = MatcherFilter {
                     name: filter.name.to_owned(),
+                    active: filter.active,
                     filter: operator_builder.build_option(&filter.name, &filter.filter)?,
                 };
 
-                let matcher_nodes = nodes
-                    .iter()
-                    .map(|(_k, v)| Matcher::build_processing_tree(v))
-                    .collect::<Result<Vec<_>, _>>()?;
+                let mut matcher_nodes = BTreeMap::new();
+                for (k, v) in nodes {
+                    matcher_nodes.insert(k.clone(), Matcher::build_processing_tree(v)?);
+                };
 
                 info!("Matcher Filter [{}] build completed", filter.name);
                 Ok(ProcessingNode::Filter(matcher_filter, matcher_nodes))
@@ -105,37 +103,63 @@ impl Matcher {
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);
-        let mut processed_event = ProcessedEvent::new(event);
-        Matcher::process_node(&self.node, &mut processed_event);
-        processed_event
+        let internal_event: InternalEvent = event.into();
+        let result = Matcher::process_node(&self.node, &internal_event);
+        ProcessedEvent {
+            event: internal_event,
+            result
+        }
     }
 
-    fn process_node(node: &ProcessingNode, processed_event: &mut ProcessedEvent) {
+    fn process_node(node: &ProcessingNode, internal_event: &InternalEvent) -> ProcessedNode {
         match node {
             ProcessingNode::Filter(filter, nodes) => {
-                Matcher::process_filter(filter, nodes, processed_event)
+                Matcher::process_filter(filter, nodes, internal_event)
             }
-            ProcessingNode::Rules(rules) => Matcher::process_rules(rules, processed_event),
-            ProcessingNode::DoNothing => {}
-        };
+            ProcessingNode::Rules(rules) => Matcher::process_rules(rules, internal_event)
+        }
     }
 
     fn process_filter(
         filter: &MatcherFilter,
-        nodes: &[ProcessingNode],
-        processed_event: &mut ProcessedEvent,
-    ) {
+        nodes: &BTreeMap<String, ProcessingNode>,
+        internal_event: &InternalEvent,
+    ) -> ProcessedNode {
         trace!("Matcher process - check matching of filter: [{}]", &filter.name);
-        if filter.filter.evaluate(&processed_event) {
-            trace!(
-                    "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
-                    &filter.name
-                );
-            nodes.iter().for_each(|node| Matcher::process_node(node, processed_event));
+
+        let mut result_nodes = BTreeMap::new();
+
+        let filter_status = if filter.active {
+            if filter.filter.evaluate(&internal_event, None) {
+                trace!(
+                        "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
+                        &filter.name
+                    );
+                nodes.iter().for_each(|(name, node)| {
+                    result_nodes.insert(name.clone(), Matcher::process_node(node, internal_event));
+                });
+                ProcessedFilterStatus::Matched
+            } else {
+                ProcessedFilterStatus::NotMatched
+            }
+        } else {
+            ProcessedFilterStatus::Inactive
+        };
+
+        ProcessedNode::Filter {
+            filter: ProcessedFilter {
+                name: filter.name.clone(),
+                status: filter_status
+            },
+            nodes: result_nodes
         }
     }
 
-    fn process_rules(rules: &[MatcherRule], mut processed_event: &mut ProcessedEvent) {
+    fn process_rules(rules: &[MatcherRule], internal_event: &InternalEvent) -> ProcessedNode {
+
+        let mut extracted_vars = HashMap::new();
+        let mut processed_rules = HashMap::new();
+
         for rule in rules {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
@@ -146,25 +170,27 @@ impl Matcher {
                 message: None,
             };
 
-            if rule.operator.evaluate(&processed_event) {
+
+            if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
                 trace!(
                     "Matcher process - event matches rule: [{}]. Checking extracted variables.",
                     &rule.name
                 );
 
-                match rule.extractor.process_all(&mut processed_event) {
+                match rule.extractor.process_all(&internal_event, &mut extracted_vars) {
                     Ok(_) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
 
                         match Matcher::process_actions(
-                            &processed_event,
+                            internal_event,
+                            Some(&extracted_vars),
                             &mut processed_rule,
                             &rule.actions,
                         ) {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
-                                    processed_event.rules.insert(rule.name.clone(), processed_rule);
+                                    processed_rules.insert(rule.name.clone(), processed_rule);
                                     break;
                                 }
                             }
@@ -185,18 +211,27 @@ impl Matcher {
                 }
             }
 
-            processed_event.rules.insert(rule.name.clone(), processed_rule);
+            processed_rules.insert(rule.name.clone(), processed_rule);
         }
-        debug!("Matcher process - event processing result: [{:#?}]", &processed_event);
+
+        let result = ProcessedNode::Rules {
+            rules: ProcessedRules{
+                rules: processed_rules,
+                extracted_vars
+            }
+        };
+        debug!("Matcher process - event processing rules result: [{:#?}]", &result);
+        result
     }
 
     fn process_actions(
-        processed_event: &ProcessedEvent,
+        processed_event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
         for action in actions {
-            processed_rule.actions.push(action.execute(processed_event)?);
+            processed_rule.actions.push(action.execute(processed_event, extracted_vars)?);
         }
         Ok(())
     }

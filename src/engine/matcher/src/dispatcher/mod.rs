@@ -1,5 +1,5 @@
 use crate::error::MatcherError;
-use crate::model::{ProcessedEvent, ProcessedRuleStatus};
+use crate::model::{ProcessedRuleStatus, ProcessedNode};
 use log::*;
 use std::sync::Arc;
 use tornado_common_api::Action;
@@ -15,17 +15,26 @@ impl Dispatcher {
         Ok(Dispatcher { event_bus })
     }
 
-    /// Receives a fully processed ProcessedEvent and dispatches the actions linked to Rules whose status is Matched.
+    /// Receives a fully processed ProcessedNode and dispatches the actions linked to Rules whose status is Matched.
     /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
-    pub fn dispatch_actions(&self, event: ProcessedEvent) -> Result<(), MatcherError> {
-        for (rule_name, rule) in event.rules {
-            match rule.status {
-                ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
-                _ => {
-                    trace!("Rule [{}] not matched, ignoring actions", rule_name);
+    pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
+        match processed_node {
+            ProcessedNode::Rules{rules} => {
+                for (rule_name, rule) in rules.rules {
+                    match rule.status {
+                        ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
+                        _ => {
+                            trace!("Rule [{}] not matched, ignoring actions", rule_name);
+                        }
+                    }
+                }
+            },
+            ProcessedNode::Filter{filter: _ , nodes} => {
+                for (_, node) in nodes {
+                    self.dispatch_actions(node)?;
                 }
             }
-        }
+        };
         Ok(())
     }
 

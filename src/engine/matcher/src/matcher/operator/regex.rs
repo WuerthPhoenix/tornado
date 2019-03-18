@@ -1,9 +1,10 @@
 use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::ProcessedEvent;
+use crate::model::{InternalEvent};
 use regex::Regex as RustRegex;
-use tornado_common_api::cow_to_str;
+use tornado_common_api::{cow_to_str, Value};
+use std::collections::HashMap;
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -30,8 +31,8 @@ impl Operator for Regex {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        let cow_value = self.target.get(event);
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+        let cow_value = self.target.get(event, extracted_vars);
         cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }

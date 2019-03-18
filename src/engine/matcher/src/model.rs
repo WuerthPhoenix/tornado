@@ -38,10 +38,9 @@ pub struct ProcessedEvent {
 
 #[derive(Debug, Clone)]
 pub enum ProcessedNode {
-    Filter(ProcessedFilter, BTreeMap<String, ProcessedNode>),
-    Rules(ProcessedRules)
+    Filter{filter: ProcessedFilter, nodes: BTreeMap<String, ProcessedNode>},
+    Rules{rules: ProcessedRules}
 }
-
 
 #[derive(Debug, Clone)]
 pub struct ProcessedFilter {
@@ -52,7 +51,8 @@ pub struct ProcessedFilter {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProcessedFilterStatus {
     Matched,
-    NotMatched
+    NotMatched,
+    Inactive
 }
 #[derive(Debug, Clone)]
 pub struct ProcessedRules {

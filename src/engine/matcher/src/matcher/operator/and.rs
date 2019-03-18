@@ -1,7 +1,9 @@
 use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
-use crate::model::ProcessedEvent;
+use crate::model::{InternalEvent};
+use tornado_common_api::Value;
+use std::collections::HashMap;
 
 const OPERATOR_NAME: &str = "and";
 
@@ -31,8 +33,8 @@ impl Operator for And {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        self.operators.iter().all(|op| op.evaluate(event))
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+        self.operators.iter().all(|op| op.evaluate(event, extracted_vars))
     }
 }
 

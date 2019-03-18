@@ -7,7 +7,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Extractor;
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
+use crate::model::{InternalEvent};
 use log::*;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
@@ -34,8 +34,8 @@ impl MatcherExtractorBuilder {
     ///    use tornado_common_api::Event;
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
-    ///    use tornado_engine_matcher::model::ProcessedEvent;
-    ///    use std::collections::HashMap;
+    ///    use tornado_engine_matcher::model::{ProcessedEvent, InternalEvent};
+    ///    use std::collections::{HashMap, BTreeMap};
     ///
     ///    let mut extractor_config = HashMap::new();
     ///
@@ -55,11 +55,12 @@ impl MatcherExtractorBuilder {
     ///    // the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event = ProcessedEvent::new(Event::new("temp=44'C"));
+    ///    let event: InternalEvent = Event::new("temp=44'C").into();
+    ///    let extracted_vars = BTreeMap::new();
     ///
     ///    assert_eq!(
     ///        String::from("44"),
-    ///        matcher_extractor.extract("extracted_temp", &event).unwrap()
+    ///        matcher_extractor.extract("extracted_temp", &event, &Some(extracted_vars)).unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -96,20 +97,23 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
+    /*
     /// Returns the value of the variable named 'key' generated from the provided Event.
-    pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
-        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event));
+    fn extract(&self, key: &str, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Result<String, MatcherError> {
+        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event, extracted_vars));
         self.check_extracted(key, extracted)
     }
+    */
 
     /// Fills the Event with the extracted variables defined in the rule and generated from the Event itself.
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
-    pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
+    pub fn process_all(&self, event: &InternalEvent, extracted_vars: &mut HashMap<String, Value>) -> Result<(), MatcherError> {
+
         for (key, extractor) in &self.extractors {
-            let value = self.check_extracted(key, extractor.extract(event))?;
-            event.extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
+            let value = self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
+            extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
         }
         Ok(())
     }
@@ -157,8 +161,8 @@ impl VariableExtractor {
         })
     }
 
-    pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
-        let cow_value = self.target.get(event)?;
+    pub fn extract(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Option<String> {
+        let cow_value = self.target.get(event, extracted_vars)?;
         let value = cow_value.get_text()?;
         let captures = self.regex.captures(value)?;
         let group_idx = self.group_match_idx;

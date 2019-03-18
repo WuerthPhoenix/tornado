@@ -1,7 +1,9 @@
 use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::ProcessedEvent;
+use std::collections::HashMap;
+use tornado_common_api::Value;
+use crate::model::InternalEvent;
 
 const OPERATOR_NAME: &str = "equal";
 
@@ -23,9 +25,9 @@ impl Operator for Equal {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        let first = self.first_arg.get(event);
-        let second = self.second_arg.get(event);
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+        let first = self.first_arg.get(event, extracted_vars);
+        let second = self.second_arg.get(event, extracted_vars);
         first.is_some() && second.is_some() && (first == second)
     }
 }

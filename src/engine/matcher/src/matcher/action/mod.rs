@@ -7,8 +7,8 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
-use std::collections::HashMap;
+use crate::model::{InternalEvent};
+use std::collections::{HashMap};
 use tornado_common_api::Action;
 use tornado_common_api::Value;
 
@@ -107,13 +107,13 @@ pub struct ActionResolver {
 impl ActionResolver {
     /// Builds an Action by extracting the required data from the ProcessedEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
-    pub fn execute(&self, event: &ProcessedEvent) -> Result<Action, MatcherError> {
+    pub fn execute(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
                 key.to_owned(),
-                action_value_processor.process(&self.rule_name, &self.id, event)?,
+                action_value_processor.process(&self.rule_name, &self.id, event, extracted_vars)?,
             );
         }
 
@@ -137,11 +137,12 @@ impl ActionValueProcessor {
         &self,
         rule_name: &str,
         action_id: &str,
-        event: &ProcessedEvent,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
-                .get(event)
+                .get(event, extracted_vars)
                 .ok_or(MatcherError::CreateActionError {
                     action_id: action_id.to_owned(),
                     rule_name: rule_name.to_owned(),
@@ -156,14 +157,14 @@ impl ActionValueProcessor {
                 let mut processor_payload = HashMap::new();
                 for (key, value) in payload {
                     processor_payload
-                        .insert(key.to_owned(), value.process(rule_name, action_id, event)?);
+                        .insert(key.to_owned(), value.process(rule_name, action_id, event, extracted_vars)?);
                 }
                 Ok(Value::Map(processor_payload))
             }
             ActionValueProcessor::Array(values) => {
                 let mut processor_values = vec![];
                 for value in values {
-                    processor_values.push(value.process(rule_name, action_id, event)?)
+                    processor_values.push(value.process(rule_name, action_id, event, extracted_vars)?)
                 }
                 Ok(Value::Array(processor_values))
             }
