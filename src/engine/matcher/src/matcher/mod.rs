@@ -1331,6 +1331,78 @@ mod test {
         };
     }
 
+    #[test]
+    fn extracted_variables_should_be_independent_for_each_pipeline() {
+        // Arrange
+        let mut rule_0 = new_rule("rule", None);
+
+        rule_0.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let mut rule_1 = new_rule("rule", None);
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+            },
+        );
+
+        let filter = new_filter("filter", None);
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![rule_0] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![rule_1] },
+        ];
+
+        let matcher = new_matcher(&MatcherConfig::Filter { filter, nodes }).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(2, nodes.len());
+
+                match nodes.get("node0").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule").unwrap().status
+                        );
+                        assert_eq!("aaa", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule").unwrap().status
+                        );
+                        assert_eq!("999", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
+    }
+
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         //crate::test_root::start_context();
         Matcher::build(config)

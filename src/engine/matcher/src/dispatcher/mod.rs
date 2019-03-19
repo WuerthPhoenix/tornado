@@ -49,7 +49,7 @@ impl Dispatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::{ProcessedRule, ProcessedRules};
+    use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use maplit::*;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
@@ -133,6 +133,57 @@ mod test {
 
         // Assert
         assert_eq!(0, received.lock().unwrap().len());
+    }
+
+    #[test]
+    fn should_publish_actions_recursively() {
+        // Arrange
+        let mut bus = SimpleEventBus::new();
+        let received = Arc::new(Mutex::new(vec![]));
+
+        let action_id = String::from("action1");
+
+        {
+            let clone = received.clone();
+            bus.subscribe_to_action(
+                "action1",
+                Box::new(move |message: Action| {
+                    println!("received action of id: {}", message.id);
+                    let mut value = clone.lock().unwrap();
+                    value.push(message.clone())
+                }),
+            );
+        }
+
+        let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
+
+        let mut rule = ProcessedRule::new("rule1".to_owned());
+        rule.status = ProcessedRuleStatus::Matched;
+        rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
+
+        let node = ProcessedNode::Filter {
+            filter: ProcessedFilter { status: ProcessedFilterStatus::Matched, name: "".to_owned() },
+            nodes: btreemap!(
+                "node0".to_owned() => ProcessedNode::Rules {
+                    rules: ProcessedRules {
+                        rules: hashmap!("rule1".to_owned() => rule.clone()),
+                        extracted_vars: HashMap::new(),
+                    },
+                },
+                "node1".to_owned() => ProcessedNode::Rules {
+                    rules: ProcessedRules {
+                        rules: hashmap!("rule1".to_owned() => rule.clone()),
+                        extracted_vars: HashMap::new(),
+                    },
+                }
+            ),
+        };
+
+        // Act
+        dispatcher.dispatch_actions(node).unwrap();
+
+        // Assert
+        assert_eq!(2, received.lock().unwrap().len());
     }
 
 }
