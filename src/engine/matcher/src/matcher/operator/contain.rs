@@ -1,9 +1,9 @@
 use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use tornado_common_api::{cow_to_str, Value};
-use std::collections::HashMap;
 use crate::model::InternalEvent;
+use std::collections::HashMap;
+use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "contain";
 
@@ -25,7 +25,11 @@ impl Operator for Contain {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+    fn evaluate(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> bool {
         let option_text = self.text.get(event, extracted_vars);
         match cow_to_str(&option_text) {
             Some(text) => {
@@ -65,10 +69,10 @@ mod test {
         )
         .unwrap();
 
-        let event = ProcessedEvent::new(Event::new("test_type"));
+        let event = InternalEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.text.get(&event).unwrap().as_ref());
-        assert_eq!("two", operator.substring.get(&event).unwrap().as_ref());
+        assert_eq!("one", operator.text.get(&event, None).unwrap().as_ref());
+        assert_eq!("two", operator.substring.get(&event, None).unwrap().as_ref());
     }
 
     #[test]
@@ -81,7 +85,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -94,7 +98,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -107,7 +111,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -120,7 +124,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -136,7 +140,7 @@ mod test {
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -149,7 +153,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -163,7 +167,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -177,7 +181,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Number(999.99));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
 }

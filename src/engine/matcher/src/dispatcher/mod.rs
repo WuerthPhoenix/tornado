@@ -1,5 +1,5 @@
 use crate::error::MatcherError;
-use crate::model::{ProcessedRuleStatus, ProcessedNode};
+use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common_api::Action;
@@ -19,7 +19,7 @@ impl Dispatcher {
     /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
-            ProcessedNode::Rules{rules} => {
+            ProcessedNode::Rules { rules } => {
                 for (rule_name, rule) in rules.rules {
                     match rule.status {
                         ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
@@ -28,8 +28,8 @@ impl Dispatcher {
                         }
                     }
                 }
-            },
-            ProcessedNode::Filter{filter: _ , nodes} => {
+            }
+            ProcessedNode::Filter { nodes, .. } => {
                 for (_, node) in nodes {
                     self.dispatch_actions(node)?;
                 }
@@ -49,10 +49,10 @@ impl Dispatcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::model::ProcessedRule;
+    use crate::model::{ProcessedRule, ProcessedRules};
+    use maplit::*;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
-    use tornado_common_api::Event;
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -82,11 +82,15 @@ mod test {
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
-        let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1".to_owned(), rule);
+        let node = ProcessedNode::Rules {
+            rules: ProcessedRules {
+                rules: hashmap!("rule1".to_owned() => rule),
+                extracted_vars: HashMap::new(),
+            },
+        };
 
         // Act
-        dispatcher.dispatch_actions(event).unwrap();
+        dispatcher.dispatch_actions(node).unwrap();
 
         // Assert
         assert_eq!(2, received.lock().unwrap().len());
@@ -117,11 +121,15 @@ mod test {
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
-        let mut event = ProcessedEvent::new(Event::new("".to_owned()));
-        event.rules.insert("rule1".to_owned(), rule);
+        let node = ProcessedNode::Rules {
+            rules: ProcessedRules {
+                rules: hashmap!("rule1".to_owned() => rule),
+                extracted_vars: HashMap::new(),
+            },
+        };
 
         // Act
-        dispatcher.dispatch_actions(event).unwrap();
+        dispatcher.dispatch_actions(node).unwrap();
 
         // Assert
         assert_eq!(0, received.lock().unwrap().len());

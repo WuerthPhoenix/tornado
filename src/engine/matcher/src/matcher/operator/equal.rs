@@ -1,9 +1,9 @@
 use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
+use crate::model::InternalEvent;
 use std::collections::HashMap;
 use tornado_common_api::Value;
-use crate::model::InternalEvent;
 
 const OPERATOR_NAME: &str = "equal";
 
@@ -25,7 +25,11 @@ impl Operator for Equal {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> bool {
+    fn evaluate(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> bool {
         let first = self.first_arg.get(event, extracted_vars);
         let second = self.second_arg.get(event, extracted_vars);
         first.is_some() && second.is_some() && (first == second)
@@ -57,10 +61,10 @@ mod test {
         )
         .unwrap();
 
-        let event = ProcessedEvent::new(Event::new("test_type"));
+        let event = InternalEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.first_arg.get(&event).unwrap().as_ref());
-        assert_eq!("two", operator.second_arg.get(&event).unwrap().as_ref());
+        assert_eq!("one", operator.first_arg.get(&event, None).unwrap().as_ref());
+        assert_eq!("two", operator.second_arg.get(&event, None).unwrap().as_ref());
     }
 
     #[test]
@@ -73,7 +77,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -86,7 +90,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -99,7 +103,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -115,7 +119,7 @@ mod test {
 
         let event = Event::new_with_payload("type", payload);
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -128,7 +132,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -143,7 +147,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Bool(false));
         event.payload.insert("two".to_owned(), Value::Bool(false));
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -158,7 +162,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Bool(true));
         event.payload.insert("two".to_owned(), Value::Bool(false));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -173,7 +177,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Number(1.1));
         event.payload.insert("two".to_owned(), Value::Number(1.1));
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -188,7 +192,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Number(1.1));
         event.payload.insert("two".to_owned(), Value::Number(1.2));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -207,7 +211,7 @@ mod test {
             .payload
             .insert("two".to_owned(), Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]));
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -224,7 +228,7 @@ mod test {
             .insert("one".to_owned(), Value::Array(vec![Value::Number(1.1), Value::Number(2.2)]));
         event.payload.insert("two".to_owned(), Value::Array(vec![Value::Number(1.1)]));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -244,7 +248,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Map(payload.clone()));
         event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -265,7 +269,7 @@ mod test {
         payload.insert("three".to_owned(), Value::Text("hello".to_owned()));
         event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -280,6 +284,6 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Text("1.2".to_owned()));
         event.payload.insert("two".to_owned(), Value::Number(1.2));
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 }

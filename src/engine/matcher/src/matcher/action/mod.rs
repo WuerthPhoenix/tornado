@@ -7,8 +7,8 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
-use crate::model::{InternalEvent};
-use std::collections::{HashMap};
+use crate::model::InternalEvent;
+use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_common_api::Value;
 
@@ -97,7 +97,7 @@ impl ActionResolverBuilder {
     }
 }
 
-/// An Action resolver creates Actions from a ProcessedEvent.
+/// An Action resolver creates Actions from a InternalEvent.
 pub struct ActionResolver {
     rule_name: String,
     id: String,
@@ -105,9 +105,13 @@ pub struct ActionResolver {
 }
 
 impl ActionResolver {
-    /// Builds an Action by extracting the required data from the ProcessedEvent.
+    /// Builds an Action by extracting the required data from the InternalEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
-    pub fn execute(&self, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Result<Action, MatcherError> {
+    pub fn execute(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {
@@ -138,7 +142,7 @@ impl ActionValueProcessor {
         rule_name: &str,
         action_id: &str,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
@@ -156,15 +160,22 @@ impl ActionValueProcessor {
             ActionValueProcessor::Map(payload) => {
                 let mut processor_payload = HashMap::new();
                 for (key, value) in payload {
-                    processor_payload
-                        .insert(key.to_owned(), value.process(rule_name, action_id, event, extracted_vars)?);
+                    processor_payload.insert(
+                        key.to_owned(),
+                        value.process(rule_name, action_id, event, extracted_vars)?,
+                    );
                 }
                 Ok(Value::Map(processor_payload))
             }
             ActionValueProcessor::Array(values) => {
                 let mut processor_values = vec![];
                 for value in values {
-                    processor_values.push(value.process(rule_name, action_id, event, extracted_vars)?)
+                    processor_values.push(value.process(
+                        rule_name,
+                        action_id,
+                        event,
+                        extracted_vars,
+                    )?)
                 }
                 Ok(Value::Array(processor_values))
             }
@@ -240,21 +251,19 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let mut event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
-
-        event
-            .extracted_vars
+        let mut extracted_vars = HashMap::new();
+        extracted_vars
             .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
-        event
-            .extracted_vars
+        extracted_vars
             .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, Some(&extracted_vars)).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -282,14 +291,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -311,14 +320,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -340,14 +349,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -372,14 +381,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -410,14 +419,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -452,14 +461,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Map(body.clone()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -483,19 +492,19 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
         payload.insert("some_null".to_owned(), Value::Null);
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload,
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
 
-        let event_value: Value = event.event.clone().into();
+        let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.payload.get("event").unwrap());
     }
 
@@ -516,14 +525,14 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
 
-        let event = ProcessedEvent::new(Event {
+        let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
             created_ts: "123456".to_owned(),
             payload: payload.clone(),
         });
 
         // Act
-        let result = matcher_action.execute(&event).unwrap();
+        let result = matcher_action.execute(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
