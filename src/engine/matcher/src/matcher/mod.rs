@@ -360,7 +360,6 @@ mod test {
         }
     }
 
-    /*
         #[test]
         fn build_should_fail_if_not_unique_name() {
             // Arrange
@@ -482,13 +481,18 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(3, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-            assert!(result.rules.contains_key("rule2_sms"));
-            assert_eq!(ProcessedRuleStatus::NotMatched, result.rules.get("rule2_sms").unwrap().status);
-            assert!(result.rules.contains_key("rule3_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule3_email").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(3, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule1_email").unwrap().status);
+                    assert!(rules.rules.contains_key("rule2_sms"));
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get("rule2_sms").unwrap().status);
+                    assert!(rules.rules.contains_key("rule3_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule3_email").unwrap().status);
+                },
+                _ => assert!(false)
+            }
         }
 
         #[test]
@@ -520,16 +524,22 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(1, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(1, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
 
-            let processed_rule = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
-            assert_eq!(1, result.extracted_vars.len());
-            assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
-            assert_eq!(1, processed_rule.actions.len());
-            assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
-            assert!(processed_rule.message.is_none())
+                    let processed_rule = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
+                    assert_eq!(1, rules.extracted_vars.len());
+                    assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                    assert_eq!(1, processed_rule.actions.len());
+                    assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
+                    assert!(processed_rule.message.is_none())
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -546,11 +556,16 @@ mod test {
             let result = matcher.process(Event::new("sms"));
 
             // Assert
-            assert_eq!(1, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(1, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
 
-            let processed_rule = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
+                    let processed_rule = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -575,14 +590,19 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(1, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(1, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
 
-            let processed_rule = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+                    let processed_rule = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-            info!("Message: {:?}", processed_rule.message);
-            assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
+                    info!("Message: {:?}", processed_rule.message);
+                    assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -620,14 +640,19 @@ mod test {
             let result = matcher.process(Event::new_with_payload("email", event_payload));
 
             // Assert
-            assert_eq!(1, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(1, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
 
-            let processed_rule = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+                    let processed_rule = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-            info!("Message: {:?}", processed_rule.message);
-            assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
+                    info!("Message: {:?}", processed_rule.message);
+                    assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -649,11 +674,17 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(2, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-            assert!(result.rules.contains_key("rule2_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule2_email").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(2, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule1_email").unwrap().status);
+                    assert!(rules.rules.contains_key("rule2_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule2_email").unwrap().status);
+                },
+                _ => assert!(false)
+            };
+
         }
 
         #[test]
@@ -678,13 +709,18 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(3, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-            assert!(result.rules.contains_key("rule2_sms"));
-            assert_eq!(ProcessedRuleStatus::NotMatched, result.rules.get("rule2_sms").unwrap().status);
-            assert!(result.rules.contains_key("rule3_email"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule3_email").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(3, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule1_email").unwrap().status);
+                    assert!(rules.rules.contains_key("rule2_sms"));
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get("rule2_sms").unwrap().status);
+                    assert!(rules.rules.contains_key("rule3_email"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule3_email").unwrap().status);
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -709,13 +745,19 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(1, result.rules.len());
-            assert!(result.rules.contains_key("rule1_email"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(1, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule1_email"));
 
-            let rule_1_processed = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-            assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
-            assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                    let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                    assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                    assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -753,17 +795,23 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(2, result.rules.len());
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(2, rules.rules.len());
 
-            let rule_1_processed = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-            assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
-            assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                    let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                    assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                    assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
 
-            let rule_2_processed = result.rules.get("rule2_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-            assert!(result.extracted_vars.contains_key("rule2_email.extracted_temp"));
-            assert_eq!("em", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                    let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                    assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
+                    assert_eq!("em", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -801,16 +849,22 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(2, result.rules.len());
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(2, rules.rules.len());
 
-            let rule_1_processed = result.rules.get("rule1_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
-            assert!(!result.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                    let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
+                    assert!(!rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
 
-            let rule_2_processed = result.rules.get("rule2_email").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-            assert!(result.extracted_vars.contains_key("rule2_email.extracted_temp"));
-            assert_eq!("ai", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                    let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                    assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
+                    assert_eq!("ai", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -844,12 +898,18 @@ mod test {
             let result = matcher.process(Event::new_with_payload("email", payload));
 
             // Assert
-            let rule_1_processed = result.rules.get("rule1").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-            assert_eq!(
-                "zzz",
-                result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
-            );
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    let rule_1_processed = rules.rules.get("rule1").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                    assert_eq!(
+                        "zzz",
+                        rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                    );
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -883,12 +943,18 @@ mod test {
             let result = matcher.process(Event::new_with_payload("email", payload));
 
             // Assert
-            let rule_1_processed = result.rules.get("rule1").unwrap();
-            assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-            assert_eq!(
-                "zzz",
-                result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
-            );
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    let rule_1_processed = rules.rules.get("rule1").unwrap();
+                    assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                    assert_eq!(
+                        "zzz",
+                        rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                    );
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -911,9 +977,15 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(2, result.rules.len());
-            assert!(result.rules.contains_key("rule_a1"));
-            assert!(result.rules.contains_key("rule_b1"));
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(2, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule_a1"));
+                    assert!(rules.rules.contains_key("rule_b1"));
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -940,18 +1012,24 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(4, result.rules.len());
-            assert!(result.rules.contains_key("rule_a1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_a1").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(4, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule_a1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_a1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_a2"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_a2").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_a2"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_a2").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_b1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_b1").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_b1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_b1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_b2"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_b2").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_b2"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_b2").unwrap().status);
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -992,21 +1070,27 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(5, result.rules.len());
-            assert!(result.rules.contains_key("rule_a1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_a1").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(5, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule_a1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_a1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_a2"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_a2").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_a2"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_a2").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_b1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_b1").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_b1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_b1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_b2"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_b2").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_b2"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_b2").unwrap().status);
 
-            assert!(result.rules.contains_key("rule2"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule2").unwrap().status);
+                    assert!(rules.rules.contains_key("rule2"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule2").unwrap().status);
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -1030,7 +1114,13 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(0, result.rules.len());
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(0, rules.rules.len());
+
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -1060,7 +1150,12 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(0, result.rules.len());
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(0, rules.rules.len());
+                },
+                _ => assert!(false)
+            };
         }
 
         #[test]
@@ -1093,18 +1188,24 @@ mod test {
             let result = matcher.process(Event::new("email"));
 
             // Assert
-            assert_eq!(3, result.rules.len());
-            assert!(result.rules.contains_key("rule_a1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_a1").unwrap().status);
+            match result.result {
+                ProcessedNode::Rules {rules} => {
+                    assert_eq!(3, rules.rules.len());
+                    assert!(rules.rules.contains_key("rule_a1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_a1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_b1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_b1").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_b1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_b1").unwrap().status);
 
-            assert!(result.rules.contains_key("rule_c1"));
-            assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule_c1").unwrap().status);
+                    assert!(rules.rules.contains_key("rule_c1"));
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get("rule_c1").unwrap().status);
+
+                },
+                _ => assert!(false)
+            };
         }
 
-    */
+
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         //crate::test_root::start_context();
         Matcher::build(config)
