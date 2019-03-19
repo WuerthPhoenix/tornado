@@ -38,6 +38,6 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut SyncContext<Self>) -> Self::Result {
         debug!("DispatcherActor - received new processed event [{:?}]", &msg.event);
-        self.dispatcher.dispatch_actions(msg.event)
+        self.dispatcher.dispatch_actions(msg.event.result)
     }
 }
