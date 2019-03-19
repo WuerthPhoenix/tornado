@@ -7,7 +7,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Extractor;
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
+use crate::model::InternalEvent;
 use log::*;
 use regex::Regex as RustRegex;
 use std::collections::HashMap;
@@ -34,7 +34,7 @@ impl MatcherExtractorBuilder {
     ///    use tornado_common_api::Event;
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
-    ///    use tornado_engine_matcher::model::ProcessedEvent;
+    ///    use tornado_engine_matcher::model::InternalEvent;
     ///    use std::collections::HashMap;
     ///
     ///    let mut extractor_config = HashMap::new();
@@ -55,11 +55,16 @@ impl MatcherExtractorBuilder {
     ///    // the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event = ProcessedEvent::new(Event::new("temp=44'C"));
+    ///    let event: InternalEvent = Event::new("temp=44'C").into();
+    ///    let mut extracted_vars = HashMap::new();
     ///
+    ///    let result = matcher_extractor.process_all(&event, &mut extracted_vars);
+    ///
+    ///    assert!(result.is_ok());
+    ///    assert_eq!(1, extracted_vars.len());
     ///    assert_eq!(
-    ///        String::from("44"),
-    ///        matcher_extractor.extract("extracted_temp", &event).unwrap()
+    ///        "44",
+    ///        extracted_vars.get("rule_name.extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -96,20 +101,27 @@ pub struct MatcherExtractor {
 }
 
 impl MatcherExtractor {
+    /*
     /// Returns the value of the variable named 'key' generated from the provided Event.
-    pub fn extract(&self, key: &str, event: &ProcessedEvent) -> Result<String, MatcherError> {
-        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event));
+    fn extract(&self, key: &str, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Result<String, MatcherError> {
+        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event, extracted_vars));
         self.check_extracted(key, extracted)
     }
+    */
 
     /// Fills the Event with the extracted variables defined in the rule and generated from the Event itself.
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
-    pub fn process_all(&self, event: &mut ProcessedEvent) -> Result<(), MatcherError> {
+    pub fn process_all(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: &mut HashMap<String, Value>,
+    ) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
-            let value = self.check_extracted(key, extractor.extract(event))?;
-            event.extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
+            let value =
+                self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
+            extracted_vars.insert(extractor.scoped_key.clone(), Value::Text(value));
         }
         Ok(())
     }
@@ -157,8 +169,12 @@ impl VariableExtractor {
         })
     }
 
-    pub fn extract(&self, event: &ProcessedEvent) -> Option<String> {
-        let cow_value = self.target.get(event)?;
+    pub fn extract(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> Option<String> {
+        let cow_value = self.target.get(event, extracted_vars)?;
         let value = cow_value.get_text()?;
         let captures = self.regex.captures(value)?;
         let group_idx = self.group_match_idx;
@@ -211,7 +227,10 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!("http://stackoverflow.com/".to_owned(), extractor.extract(&event).unwrap());
+        assert_eq!(
+            "http://stackoverflow.com/".to_owned(),
+            extractor.extract(&event, None).unwrap()
+        );
     }
 
     #[test]
@@ -227,7 +246,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!("http".to_owned(), extractor.extract(&event).unwrap());
+        assert_eq!("http".to_owned(), extractor.extract(&event, None).unwrap());
     }
 
     #[test]
@@ -243,7 +262,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!("stackoverflow.com".to_owned(), extractor.extract(&event).unwrap());
+        assert_eq!("stackoverflow.com".to_owned(), extractor.extract(&event, None).unwrap());
     }
 
     #[test]
@@ -259,7 +278,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert!(extractor.extract(&event).is_none());
+        assert!(extractor.extract(&event, None).is_none());
     }
 
     #[test]
@@ -275,54 +294,7 @@ mod test {
 
         let event = new_event("");
 
-        assert!(extractor.extract(&event).is_none());
-    }
-
-    #[test]
-    fn should_use_variable_extractor_based_on_variable_name() {
-        let mut from_config = HashMap::new();
-
-        from_config.insert(
-            String::from("extracted_temp"),
-            Extractor {
-                from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
-            },
-        );
-
-        from_config.insert(
-            String::from("extracted_text"),
-            Extractor {
-                from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
-            },
-        );
-
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
-
-        let event = new_event("temp=44'C");
-
-        assert_eq!(String::from("44"), extractor.extract("extracted_temp", &event).unwrap());
-        assert_eq!(String::from("temp"), extractor.extract("extracted_text", &event).unwrap());
-    }
-
-    #[test]
-    fn should_return_none_if_unknown_variable_name() {
-        let mut from_config = HashMap::new();
-
-        from_config.insert(
-            String::from("extracted_temp"),
-            Extractor {
-                from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
-            },
-        );
-
-        let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
-
-        let event = new_event("temp=44'C");
-
-        assert!(extractor.extract("extracted_text", &event).is_err());
+        assert!(extractor.extract(&event, None).is_none());
     }
 
     #[test]
@@ -347,14 +319,14 @@ mod test {
 
         let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
 
-        let mut event = new_event("temp=44'C");
-        extractor.process_all(&mut event).unwrap();
+        let event = new_event("temp=44'C");
+        let mut extracted_vars = HashMap::new();
 
-        let vars = &event.extracted_vars;
+        extractor.process_all(&event, &mut extracted_vars).unwrap();
 
-        assert_eq!(2, vars.len());
-        assert_eq!("44", vars.get("rule.extracted_temp").unwrap());
-        assert_eq!("temp", vars.get("rule.extracted_text").unwrap());
+        assert_eq!(2, extracted_vars.len());
+        assert_eq!("44", extracted_vars.get("rule.extracted_temp").unwrap());
+        assert_eq!("temp", extracted_vars.get("rule.extracted_text").unwrap());
     }
 
     #[test]
@@ -380,11 +352,12 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let mut event = new_event("temp=44'C");
+        let mut extracted_vars = HashMap::new();
 
-        assert!(extractor.process_all(&mut event).is_err());
+        assert!(extractor.process_all(&mut event, &mut extracted_vars).is_err());
     }
 
-    fn new_event(event_type: &str) -> ProcessedEvent {
-        ProcessedEvent::new(Event::new(event_type))
+    fn new_event(event_type: &str) -> InternalEvent {
+        InternalEvent::new(Event::new(event_type))
     }
 }

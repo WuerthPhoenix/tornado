@@ -62,7 +62,7 @@ fn main() {
                     let processed_event = matcher_clone.process(event);
                     match Dispatcher::build(event_bus_clone)
                         .unwrap()
-                        .dispatch_actions(processed_event)
+                        .dispatch_actions(processed_event.result)
                     {
                         Ok(_) => {}
                         Err(e) => error!("Cannot dispatch action: {}", e),
