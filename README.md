@@ -54,10 +54,10 @@ The Tornado pipeline:
                   |
                   | Actions
                   |
-<!-- Add an architecture diagram? -->
                   \-> Tornado Executors (execute the Actions)
 
 
+<!-- Add an architecture diagram? -->
 
 
 ### Collectors
@@ -88,12 +88,17 @@ can easily be added or extended from existing types for:
 ### Engine
 
 The *Engine* is the second step of the pipeline. It receives and processes the events produced
-by the *Collectors*. The outcome of this processing step is fully defined by an ordered set of
-*Rules*, where each *Rule* in the set determines:
+by the *Collectors*. The outcome of this step is fully defined by a processing tree composed 
+of *Filters* and *Rule Sets*.
+
+A *Filter* is a processing node that defines the access condition to the children nodes.
+
+A *Rule Set* is a node that contains an ordered set of *Rules* where each *Rule* determines:
 * The conditions a *Tornado Event* has to respect to match it
 * The actions to be executed in case of a match
 
-These Rules are parsed at startup from a configuration folder where they are stored in JSON format.
+The processing tree is parsed at startup from a configuration folder 
+where the node definitions are stored in JSON format.
 
 When an event matches one or more *Rules*, the Engine produces a set of *Actions*
 and forwards them to one or more *Executors*.

@@ -73,7 +73,7 @@ An example of a full startup command is:
 In this case the Engine:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
-- Searches for Rules definitions in the _./tornado/engine/config/rules.d_ directory
+- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory to build the processing tree
 - Creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
   respectively, the Event and Snmptrapd inputs
 
@@ -122,30 +122,40 @@ It receives Events from the collectors,
 processes them with the configured Rules, and, in case of a match, generates the Actions to be
 performed.
 
-Two startup parameters determine the path to the Rules configuration:
+Two startup parameters determine the path to the processing tree configuration:
 - _config-dir_:  The filesystem folder where the Tornado configuration is saved;
   with a default value of _/etc/tornado_.
-- _rules-dir_:  A folder relative to the `config_dir` where the Rules are saved in JSON format;
+- _rules-dir_:  A folder relative to the `config_dir` where the Filters and Rules are saved in JSON format;
   the default value is _/rules.d/_.
 
-For example, this command will run Tornado and load the Rules configuration from the
-`/tornado/config/rules` directory:
-```bash
-tornado_engine --config-dir=/tornado/config --rules-dir=/rules
+For example, this command will run Tornado and load the configuration from the
+`/tornado/config` directory and the processing tree JSON files from the `/tornado/config/rules` directory:
+```
+bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```
 
-Each Rule should be saved in a separate file in the configuration directory in JSON format.
+The directories tree structure into the rules-dir reflecs the processing tree structure. Each sub directory can contain either:
+- A Filter and a set of sub directories
+- A set of Rules
+
+Each Rule and Filter composing the processing tree should be saved in a separate file in JSON format.
+
 E.g.:
 ```
 /tornado/config/rules
-                 |- 0001_rule_one.json
-                 |- 0010_rule_two.json
-                 |- ...
+                 |- node_0
+                 |    |- 0001_rule_one.json
+                 |    \- 0010_rule_two.json
+                 |- node_1
+                 |    |- inner_node
+                 |    |    \- 0001_rule_one.json
+                 |    \- filter_two.json
+                 \- filter_one.json
 ```
 
-The rule files must use the _json_ extension; the system will ignore every other file type.
+All files must use the _json_ extension; the system will ignore every other file type.
 
-The natural alphanumerical order of the filenames determines the Rules execution order at runtime.
+The natural alphanumerical order of the filenames determines the Rules execution order at runtime in each rule set.
 So, the file ordering corresponds to the processing order.
 
 Based on this, it is recommended to adopt a file naming strategy that permits easy reordering.
@@ -153,7 +163,7 @@ A good approach is to always start the filename with a number
 (e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
 progression as shown above.  
 
-More information and examples about the Rule's properties and configuration can be found in the
+More information and examples about the processing tree configuration can be found in the
 [matching engine documentation](../../../engine/matcher/doc/README.md)
 
 
