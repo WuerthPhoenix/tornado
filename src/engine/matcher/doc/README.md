@@ -1,40 +1,72 @@
 # Matcher Engine
 
-The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. It defines the logic to parse
-Rules and Filters as well as for matching Events.
+The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. 
+It defines the logic to parse Rules and Filters as well as for matching Events.
 
 Matcher implementation details are [available here](./implementation.md)
 
-## The Processing Tree (Todo)
-..
 
-...
+## The Processing Tree (Todo - Done 1 - Done 2)
+The engine logic is defined by a processing tree with two types of nodes:
+- __Filter__: a node that contains a filter definition and set of children nodes
+- __Rule set__: a leaf node that contains a set of __Rules__
 
-....
+A full example of a processing tree is:
+```
+root
+  |- node_0
+  |    |- rule_one
+  |    \- rule_two
+  |- node_1
+  |    |- inner_node
+  |    |    \- rule_one
+  |    \- filter_two
+  \- filter_one
+``` 
+All the identifiers of the processing tree (i.e. rule names, filter names, node names) 
+can be composed only of alphabetical characters, numbers and the "_" 
+(underscore) character.
 
-.....
+When the configuration of the processing tree is read from the file system,
+the filter and rule names are automatically inferred from the filename and 
+the node names from the directory names. 
 
+In the above tree, the root node is of type __Filter__. 
+It contains a filter named *filter_one* and has two children nodes called *node_0* 
+and *node_1*.
+ 
+When it receives an __Event__, the matcher will first check if it matches the *filter_one* condition;
+then, if the __Event__ matches it, the matcher will proceed evaluating the children nodes.  
+If, instead, the filter condition is not matched, the process stops and the children are ignored.
 
-## Structure of a Filter (Todo)
+The children of a node are all processed independently. So, *node_0* 
+and *node_1* will be processed in isolation and each of them is unaware of the existence 
+and of the outcome of the other one. This process logic is applied recursively to every node. 
 
-A __Filter__ contains a .
+In the above processing tree, *node_0* is a rule set, so, when the node is processed,  
+the matcher will evaluate an __Event__ against each rule to determine which one matches
+and what __Actions__ are generated.
 
+On the contrary, *node_1* is another __Filter__; in this case, 
+the matcher will check if the event verifies the filter
+condition before processing its internal nodes.
+    
 
-### Basic properties (Todo)
+## Structure of a Filter
 
-- `rule name`:  A string value representing a unique rule identifier. It can be composed only of
+A __Filter__ contains these properties:
+
+- `filter name`:  A string value representing a unique rule identifier. It can be composed only of
   alphabetical characters, numbers and the "_" (underscore) character.
-- `description`:  A string value providing a high-level description of the rule.
-- `continue`:  A boolean value indicating whether to proceed with the event matching process if the current rule matches.
-- `active`:  A boolean value; if `false`, the rule is ignored.
+- `description`:  A string value providing a high-level description of the filter.
+- `active`:  A boolean value; if `false`, the filter children will never be processed.
+- `filter`: an operator that, when applied to an event, returns `true` or `false`.
+  This operator determines whether an __Event__ matches the __Filter__; consequently, 
+  it determines whether an __Event__ will be processed by the inner nodes.
 
+When the configuration is read from the file system, 
+the filter name is automatically inferred from the filename removing the '.json' extension.
 
-### Constraints (Todo)
-
-The constraint section contains the tests that determine whether or not an event matches the rule.
-There are two types of constraints:
-
-- __WHERE__:  A set of operators that when applied to an event returns `true` or `false`.
 
 ## Structure of a Rule
 
@@ -48,6 +80,12 @@ A __Rule__ is composed of a set of properties, constraints and actions.
 - `description`:  A string value providing a high-level description of the rule.
 - `continue`:  A boolean value indicating whether to proceed with the event matching process if the current rule matches.
 - `active`:  A boolean value; if `false`, the rule is ignored.
+
+When the configuration is read from the file system, 
+the rule name is automatically inferred from the filename removing the extension and 
+everything that precedes the first '_' (underscore) symbol; for example:
+- _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
+- _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name 
 
 
 ### Constraints
@@ -114,6 +152,68 @@ The following accessors are valid:
 - `${event.payload}`:  Returns the entire payload
 - `${event}`: Returns the entire event
 
+
+## Filter Examples
+
+### Using a filter to create independent pipelines
+We can use __Filters__ to organize coherent set of __Rules__ in isolated pipelines.
+
+In this example we see how we can create two independent pipelines, 
+one that receives only events with type 'email'
+and the other only the ones with type 'trapd', 
+
+Our configuration directory will look like:
+```
+root
+  |- email
+  |    |- ruleset
+  |    |     |- ... (all rules about emails here)
+  |    \- only_email_filter.json
+  |- trapd
+  |    |- ruleset
+  |    |     |- ... (all rules about trapds here)
+  |    \- only_trapd_filter.json
+  \- filter_all.json
+``` 
+
+This processing tree has a root filter *filter_all* that matches every event. 
+We have also defined two inner filters; the first one, *only_email_filter*, matches only 
+events with type 'email', the other, *only_trapd_filter*, matches events
+with type 'trap'.    
+
+Content of *filter_all.json*:
+```json
+{
+  "description": "This filter allows every event",
+  "active": true
+}
+```
+
+Content of *only_email_filter.json*:
+```json
+{
+  "description": "This filter allows events with type 'email'",
+  "active": true,
+  "filter": {
+    "type": "equal",
+    "first": "${event.type}",
+    "second": "email"
+  }
+}
+```
+
+Content of *only_trapd_filter.json*:
+```json
+{
+  "description": "This filter allows events with type 'trapd'",
+  "active": true,
+  "filter": {
+    "type": "equal",
+    "first": "${event.type}",
+    "second": "trapd"
+  }
+}
+```
 
 ## Rule Examples
 

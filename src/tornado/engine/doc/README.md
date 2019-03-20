@@ -132,7 +132,7 @@ For example, this command will run Tornado and load the configuration from the
 bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```
 
-The directories tree structure into the _rules-dir_ reflecs the processing tree structure. Each sub directory can contain either:
+The directories tree structure into the _rules-dir_ reflects the processing tree structure. Each sub directory can contain either:
 - A Filter and a set of sub directories
 - A set of Rules
 
@@ -162,7 +162,9 @@ In the above example, the processing tree composition is the following:
 
 In a rule set, the natural alphanumerical order of the filenames determines the __Rules__ execution
 order, so, the file ordering corresponds to the processing order. 
-The rule JSON filename is composed of two parts separated by the first '_' (underscore) simbol. The first part determines the rule execution order, the second one is the rule name. For example:
+The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol. 
+The first part determines the rule execution order, the second one is the rule name. 
+For example:
 - _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
 - _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name
 
@@ -171,7 +173,7 @@ A good approach is to always start the filename with a number
 (e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
 progression as shown above.  
 
-Rule names must be unique in a rule set. The are no contraints on rule names on different rule sets.
+Rule names must be unique in a rule set. The are no constraints on rule names on different rule sets.
 
 A __Rule__ is uniquely identified by the full path in the processing tree. For example, the above tree defines the following rules:
 - root -> node_0 -> rule_one
