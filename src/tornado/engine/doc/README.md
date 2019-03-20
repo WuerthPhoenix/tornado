@@ -2,8 +2,6 @@
 
 This crate contains the Tornado Engine executable code.
 
-
-
 ## How It Works
 
 The Tornado Engine executable is a configuration of the engine based on
@@ -134,7 +132,7 @@ For example, this command will run Tornado and load the configuration from the
 bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```
 
-The directories tree structure into the rules-dir reflecs the processing tree structure. Each sub directory can contain either:
+The directories tree structure into the _rules-dir_ reflecs the processing tree structure. Each sub directory can contain either:
 - A Filter and a set of sub directories
 - A set of Rules
 
@@ -155,15 +153,39 @@ E.g.:
 
 All files must use the _json_ extension; the system will ignore every other file type.
 
-The natural alphanumerical order of the filenames determines the Rules execution order at runtime in each rule set.
-So, the file ordering corresponds to the processing order.
+In the above example, the processing tree composition is the following:
+- the root node is a filter named "filter_one". 
+- the filter "filter_one" has two children nodes: "node_0" and "node_1"
+- "node_0" is a rule set that contains two rules called "rule_one" and "rule_two"
+- "node_1" is a filter with a single child called "inner_node"
+- "inner_node" is a rule set with a single rule called "rule_one"
+
+In a rule set, the natural alphanumerical order of the filenames determines the __Rules__ execution
+order, so, the file ordering corresponds to the processing order. 
+The rule JSON filename is composed of two parts separated by the first '_' (underscore) simbol. The first part determines the rule execution order, the second one is the rule name. For example:
+- _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
+- _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name
 
 Based on this, it is recommended to adopt a file naming strategy that permits easy reordering.
 A good approach is to always start the filename with a number 
 (e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
 progression as shown above.  
 
-More information and examples about the processing tree configuration can be found in the
+Rule names must be unique in a rule set. The are no contraints on rule names on different rule sets.
+
+A __Rule__ is uniquely identified by the full path in the processing tree. For example, the above tree defines the following rules:
+- root -> node_0 -> rule_one
+- root -> node_0 -> rule_two
+- root -> node_1 -> inner_node -> rule_one
+
+Similarly to what happens for the __Rules__, __Filter__ names are also derived from the filenames.
+However, in this case, the entire filename corresponds to the __Filter__ name.
+
+In this example, the "filter_one" node is the entry point of the processing tree.
+When an __Event__ arrives, the matcher will evaluate wheter it matches the filter condition;
+if this happens, then the matcher process will pass the __Event__ to the filter's children, otherwise it will ignore them.
+
+More information and examples about the processing tree configuration and runtime behavior can be found in the
 [matching engine documentation](../../../engine/matcher/doc/README.md)
 
 

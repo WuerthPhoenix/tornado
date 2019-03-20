@@ -1,13 +1,44 @@
 # Matcher Engine
 
-The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. It defines the logic to parse a
-Rule as well as for matching Events and Rules.
+The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. It defines the logic to parse
+Rules and Filters as well as for matching Events.
 
 Matcher implementation details are [available here](./implementation.md)
 
-## Structure of a rule
+## The Processing Tree (Todo)
+..
 
-A rule is composed of a set of properties, constraints and actions.
+...
+
+....
+
+.....
+
+
+## Structure of a Filter (Todo)
+
+A __Filter__ contains a .
+
+
+### Basic properties (Todo)
+
+- `rule name`:  A string value representing a unique rule identifier. It can be composed only of
+  alphabetical characters, numbers and the "_" (underscore) character.
+- `description`:  A string value providing a high-level description of the rule.
+- `continue`:  A boolean value indicating whether to proceed with the event matching process if the current rule matches.
+- `active`:  A boolean value; if `false`, the rule is ignored.
+
+
+### Constraints (Todo)
+
+The constraint section contains the tests that determine whether or not an event matches the rule.
+There are two types of constraints:
+
+- __WHERE__:  A set of operators that when applied to an event returns `true` or `false`.
+
+## Structure of a Rule
+
+A __Rule__ is composed of a set of properties, constraints and actions.
 
 
 ### Basic properties
