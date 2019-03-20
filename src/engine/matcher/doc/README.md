@@ -6,9 +6,9 @@ It defines the logic to parse Rules and Filters as well as for matching Events.
 Matcher implementation details are [available here](./implementation.md)
 
 
-## The Processing Tree (Todo - Done 1 - Done 2)
+## The Processing Tree
 The engine logic is defined by a processing tree with two types of nodes:
-- __Filter__: a node that contains a filter definition and set of children nodes
+- __Filter__: a node that contains a filter definition and a set of children nodes
 - __Rule set__: a leaf node that contains a set of __Rules__
 
 A full example of a processing tree is:
@@ -23,7 +23,7 @@ root
   |    \- filter_two
   \- filter_one
 ``` 
-All the identifiers of the processing tree (i.e. rule names, filter names, node names) 
+All identifiers of the processing tree (i.e. rule names, filter names, node names) 
 can be composed only of alphabetical characters, numbers and the "_" 
 (underscore) character.
 
@@ -32,16 +32,17 @@ the filter and rule names are automatically inferred from the filename and
 the node names from the directory names. 
 
 In the above tree, the root node is of type __Filter__. 
-It contains a filter named *filter_one* and has two children nodes called *node_0* 
-and *node_1*.
+In fact, it contains the definition of a filter named *filter_one* 
+and it has two children nodes called *node_0* and *node_1*.
  
-When it receives an __Event__, the matcher will first check if it matches the *filter_one* condition;
+When the matcher receives an __Event__, it will first check if it matches the *filter_one* condition;
 then, if the __Event__ matches it, the matcher will proceed evaluating the children nodes.  
 If, instead, the filter condition is not matched, the process stops and the children are ignored.
 
-The children of a node are all processed independently. So, *node_0* 
-and *node_1* will be processed in isolation and each of them is unaware of the existence 
-and of the outcome of the other one. This process logic is applied recursively to every node. 
+The children of a node are processed independently. So, *node_0* 
+and *node_1* will be processed in isolation and each of them will be unaware of the existence 
+and of the outcome of the other one. 
+This process logic is applied recursively to every node. 
 
 In the above processing tree, *node_0* is a rule set, so, when the node is processed,  
 the matcher will evaluate an __Event__ against each rule to determine which one matches
@@ -49,14 +50,15 @@ and what __Actions__ are generated.
 
 On the contrary, *node_1* is another __Filter__; in this case, 
 the matcher will check if the event verifies the filter
-condition before processing its internal nodes.
+condition to decide whether to process its internal nodes.
     
 
 ## Structure of a Filter
 
 A __Filter__ contains these properties:
 
-- `filter name`:  A string value representing a unique rule identifier. It can be composed only of
+- `filter name`:  A string value representing a unique filter identifier. 
+  It can be composed only of
   alphabetical characters, numbers and the "_" (underscore) character.
 - `description`:  A string value providing a high-level description of the filter.
 - `active`:  A boolean value; if `false`, the filter children will never be processed.
@@ -158,13 +160,13 @@ The following accessors are valid:
 ### Using a filter to create independent pipelines
 We can use __Filters__ to organize coherent set of __Rules__ in isolated pipelines.
 
-In this example we see how we can create two independent pipelines, 
+In this example we see how to create two independent pipelines, 
 one that receives only events with type 'email'
-and the other only the ones with type 'trapd', 
+and, the other, only the ones with type 'trapd', 
 
 Our configuration directory will look like:
 ```
-root
+rules.d
   |- email
   |    |- ruleset
   |    |     |- ... (all rules about emails here)
@@ -179,7 +181,11 @@ root
 This processing tree has a root filter *filter_all* that matches every event. 
 We have also defined two inner filters; the first one, *only_email_filter*, matches only 
 events with type 'email', the other, *only_trapd_filter*, matches events
-with type 'trap'.    
+with type 'trap'.
+
+With this configuration, the rules defined in *email/ruleset* receive only email events while the ones in *trapd/ruleset* receive only trapd events.
+
+Below the content of our json filter files.
 
 Content of *filter_all.json*:
 ```json

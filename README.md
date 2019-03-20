@@ -91,7 +91,7 @@ The *Engine* is the second step of the pipeline. It receives and processes the e
 by the *Collectors*. The outcome of this step is fully defined by a processing tree composed 
 of *Filters* and *Rule Sets*.
 
-A *Filter* is a processing node that defines the access condition to the children nodes.
+A *Filter* is a processing node that defines an access condition to the children nodes.
 
 A *Rule Set* is a node that contains an ordered set of *Rules* where each *Rule* determines:
 * The conditions a *Tornado Event* has to respect to match it

@@ -11,7 +11,7 @@ pub struct Io {
     #[structopt(long, default_value = "/etc/tornado")]
     pub config_dir: String,
 
-    /// The folder where the Rules are saved in JSON format;
+    /// The folder where the processing tree configuration is saved in JSON format;
     ///   this folder is relative to the `config_dir`.
     #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
