@@ -1,10 +1,10 @@
+use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
 use futures::Stream;
 use log::*;
 use std::fs;
 use tokio_uds::*;
-use crate::actors::message::AsyncReadMessage;
 
 pub fn listen_to_uds_socket<
     P: Into<String>,
@@ -33,7 +33,7 @@ pub fn listen_to_uds_socket<
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
-                AsyncReadMessage{ stream }
+                AsyncReadMessage { stream }
             },
         ));
         UdsServerActor { path: path_string, callback }

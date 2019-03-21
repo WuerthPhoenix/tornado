@@ -5,7 +5,7 @@ pub mod engine;
 pub mod executor;
 
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
-use crate::engine::{MatcherActor, EventMessage};
+use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::Icinga2ApiClientMessage;
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
@@ -13,12 +13,12 @@ use actix::prelude::*;
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
-use tornado_common::actors::uds_server::listen_to_uds_socket;
+use tornado_common::actors::json_event_reader::JsonEventReaderActor;
+use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
@@ -111,21 +111,21 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
         // Start Event Json UDS listener
         let json_matcher_addr_clone = matcher_addr.clone();
-        listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
+        listen_to_tcp(conf.io.tcp_address.clone(), move |msg| {
             let json_matcher_addr_clone = json_matcher_addr_clone.clone();
             JsonEventReaderActor::start_new(msg, move |event| {
-                json_matcher_addr_clone.do_send(EventMessage{event})
+                json_matcher_addr_clone.do_send(EventMessage { event })
             });
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
-            error!("Cannot start uds socket reader on path [{}]. Err: {}", conf.io.uds_path, err);
+            error!("Cannot start TCP server at [{}]. Err: {}", conf.io.tcp_address, err);
             std::process::exit(1);
         });
 
         // Start snmptrapd Json UDS listener
         let snmptrapd_matcher_addr_clone = matcher_addr.clone();
-        listen_to_uds_socket(conf.io.snmptrapd_uds_path.clone(), move |msg| {
+        listen_to_tcp(conf.io.snmptrapd_tpc_address.clone(), move |msg| {
             collector::snmptrapd::SnmptrapdJsonReaderActor::start_new(
                 msg,
                 snmptrapd_matcher_addr_clone.clone(),
@@ -133,10 +133,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
-            error!(
-                "Cannot start uds socket reader on path [{}]. Err: {}",
-                conf.io.snmptrapd_uds_path, err
-            );
+            error!("Cannot start TCP server at [{}]. Err: {}", conf.io.snmptrapd_tpc_address, err);
             std::process::exit(1);
         });
     });

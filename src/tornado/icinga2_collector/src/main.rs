@@ -1,10 +1,10 @@
-use crate::actors::uds_client::EventMessage;
+use crate::actors::tcp_client::EventMessage;
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors;
-use tornado_common::actors::uds_client::UdsClientActor;
+use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common_logger::setup_logger;
 
 mod actor;
@@ -27,15 +27,17 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting Icinga2 Collector");
 
         // Start UdsWriter
-        let uds_writer_addr =
-            UdsClientActor::start_new(config.io.uds_path.clone(), config.io.uds_mailbox_capacity);
+        let tcp_client_addr = TcpClientActor::start_new(
+            config.io.tornado_tcp_address.clone(),
+            config.io.uds_mailbox_capacity,
+        );
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
             let icinga2_config = icinga2_config.clone();
-            let uds_writer_addr = uds_writer_addr.clone();
+            let tcp_client_addr = tcp_client_addr.clone();
             SyncArbiter::start(1, move || {
-                let uds_writer_addr = uds_writer_addr.clone();
+                let uds_writer_addr = tcp_client_addr.clone();
                 actor::Icinga2StreamActor {
                     icinga_config: icinga2_config.clone(),
                     collector: JMESPathEventCollector::build(config.collector_config.clone())

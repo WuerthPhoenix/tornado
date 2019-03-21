@@ -9,9 +9,9 @@ pub struct Io {
     #[structopt(long, default_value = "10000")]
     pub uds_mailbox_capacity: usize,
 
-    /// The Unix Socket path where outgoing events will be written
-    #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
-    pub uds_path: String,
+    /// The Tornado TCP address where outgoing events will be written
+    #[structopt(long, default_value = "127.0.0.1:4747")]
+    pub tornado_tcp_address: String,
 }
 
 #[derive(Debug, StructOpt)]

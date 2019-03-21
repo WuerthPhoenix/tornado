@@ -16,13 +16,13 @@ pub struct Io {
     #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
 
-    /// The Unix Socket path where we will listen for incoming events.
-    #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
-    pub uds_path: String,
+    /// The TCP address where we will listen for incoming events.
+    #[structopt(long, default_value = "0.0.0.0:4747")]
+    pub tcp_address: String,
 
-    /// The Unix Socket path where we will listen for incoming snmptrapd events.
-    #[structopt(long, default_value = "/var/run/tornado/tornado_snmptrapd.sock")]
-    pub snmptrapd_uds_path: String,
+    /// The TCP address where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "0.0.0.0:4748")]
+    pub snmptrapd_tpc_address: String,
 }
 
 #[derive(Debug, StructOpt)]

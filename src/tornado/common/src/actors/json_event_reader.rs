@@ -1,15 +1,14 @@
-use crate::actors::message::{StringMessage, AsyncReadMessage};
+use crate::actors::message::{AsyncReadMessage, StringMessage};
 
 use actix::prelude::*;
 use futures::Stream;
 use log::*;
 use std::io;
+use tokio::prelude::AsyncRead;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
-use tokio::prelude::AsyncRead;
-
 
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static> {
     pub json_collector: JsonEventCollector,

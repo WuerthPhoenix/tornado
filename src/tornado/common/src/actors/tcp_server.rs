@@ -1,3 +1,4 @@
+use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
 use futures::Stream;
@@ -5,7 +6,6 @@ use log::*;
 use std::net;
 use std::str::FromStr;
 use tokio_tcp::{TcpListener, TcpStream};
-use crate::actors::message::AsyncReadMessage;
 
 pub fn listen_to_tcp<
     P: 'static + Into<String>,
@@ -51,7 +51,7 @@ where
 
 impl<F> Handler<AsyncReadMessage<TcpStream>> for UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
     type Result = ();
 
