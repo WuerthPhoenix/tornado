@@ -15,8 +15,9 @@ tokio = "0.1"
 tokio-codec = "0.1"
 tokio-io = "0.1"
 tokio-tcp = "0.1"
+tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
+tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
-
 
 [target.'cfg(unix)'.dependencies]
 tokio-uds = "0.2"

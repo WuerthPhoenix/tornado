@@ -103,7 +103,9 @@ impl Handler<EventMessage> for UdsClientActor {
             None => {
                 warn!("Uds connection not available");
                 ctx.stop();
-                Err(UdsClientActorError::UdsSocketNotAvailableError { socket: self.socket_path.clone() })
+                Err(UdsClientActorError::UdsSocketNotAvailableError {
+                    socket: self.socket_path.clone(),
+                })
             }
         }
     }

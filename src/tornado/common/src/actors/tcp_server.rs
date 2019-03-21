@@ -4,9 +4,9 @@ use futures::Stream;
 use log::*;
 use std::net;
 use std::str::FromStr;
-use tokio_tcp::{TcpStream, TcpListener};
+use tokio_tcp::{TcpListener, TcpStream};
 
-pub fn listen_to_tcp_port<
+pub fn listen_to_tcp<
     P: 'static + Into<String>,
     F: 'static + FnMut(TcpConnectMessage) -> () + Sized,
 >(
@@ -15,10 +15,10 @@ pub fn listen_to_tcp_port<
 ) -> Result<(), TornadoError> {
     let address = address.into();
     let socket_address = net::SocketAddr::from_str(address.as_str()).unwrap();
-      let listener = TcpListener::bind(&socket_address)
-            .map_err(|err| TornadoError::ActorCreationError {
-                message: format!("Cannot start TCP server on [{}]: {}", address, err),
-            })?;
+    let listener =
+        TcpListener::bind(&socket_address).map_err(|err| TornadoError::ActorCreationError {
+            message: format!("Cannot start TCP server on [{}]: {}", address, err),
+        })?;
 
     UdsServerActor::create(|ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(

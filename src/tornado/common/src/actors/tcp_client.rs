@@ -4,8 +4,8 @@ use log::*;
 use serde_json;
 use std::io::Error;
 use std::net;
-use std::time;
 use std::str::FromStr;
+use std::time;
 use tokio::io::WriteHalf;
 use tokio::prelude::*;
 use tokio_codec::LinesCodec;
@@ -63,9 +63,7 @@ impl Actor for TcpClientActor {
 
         tokio::timer::Delay::new(delay_until)
             .map_err(|_| ())
-            .and_then(move |_| {
-                TcpStream::connect(&socket_address).map_err(|_| ())
-            })
+            .and_then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
             .into_actor(self)
             .map(move |stream, act, ctx| {
                 info!("TcpClientActor connected to server [{:?}]", &act.address);
