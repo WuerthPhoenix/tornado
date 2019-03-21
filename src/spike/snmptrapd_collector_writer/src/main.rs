@@ -3,7 +3,7 @@ pub mod config;
 use log::*;
 use std::fs;
 use std::io::Write;
-use std::os::unix::net::UnixStream;
+use std::net::TcpStream;
 use std::{thread, time};
 use tornado_common_api::{Payload, Value};
 use tornado_common_logger::setup_logger;
@@ -19,7 +19,7 @@ fn main() {
 
     // Create uds writer
     let mut stream =
-        UnixStream::connect(&conf.io.snmptrapd_uds_path).expect("Should connect to socket");
+        TcpStream::connect(&conf.io.snmptrapd_tornado_tpc_address).expect("Should connect to TCP");
 
     // Send events
     let sleep_millis = time::Duration::from_millis(conf.io.repeat_sleep_ms);
@@ -54,7 +54,7 @@ fn read_events_from_config(path: &str) -> Vec<Payload> {
     events
 }
 
-fn write(stream: &mut UnixStream, event: &Payload) {
+fn write(stream: &mut TcpStream, event: &Payload) {
     debug!("Sending event: \n{:?}", event);
     let event_bytes = serde_json::to_vec(event).unwrap();
     stream.write_all(&event_bytes).expect("should write event to socket");

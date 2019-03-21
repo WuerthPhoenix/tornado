@@ -1,5 +1,4 @@
 use actix::prelude::*;
-use std::net::TcpListener;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
@@ -15,7 +14,7 @@ fn should_perform_a_tcp_request() {
 
     let act_received = received.clone();
     System::run(move || {
-        let port = get_available_port().unwrap();
+        let port = port_check::free_local_port().unwrap();
         let address = format!("{}:{}", BASE_ADDRESS, port);
 
         println!("Creating server at: {}", address);
@@ -38,15 +37,4 @@ fn should_perform_a_tcp_request() {
     let event = received.lock().unwrap();
     assert!(event.is_some());
     assert_eq!("an_event", event.as_ref().unwrap().event_type);
-}
-
-fn port_is_available(port: u16) -> bool {
-    match TcpListener::bind((BASE_ADDRESS, port)) {
-        Ok(_) => true,
-        Err(_) => false,
-    }
-}
-
-fn get_available_port() -> Option<u16> {
-    (10000..65535).find(|port| port_is_available(*port))
 }

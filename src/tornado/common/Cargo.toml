@@ -21,3 +21,6 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [target.'cfg(unix)'.dependencies]
 tokio-uds = "0.2"
+
+[dev-dependencies]
+port_check = "0.1"
