@@ -16,42 +16,42 @@ pub struct EventMessage {
 }
 
 impl Message for EventMessage {
-    type Result = Result<(), UdsWriterActorError>;
+    type Result = Result<(), UdsClientActorError>;
 }
 
 #[derive(Fail, Debug)]
-pub enum UdsWriterActorError {
-    #[fail(display = "UdsSocketNotAvailable: cannot connect to [{}]", socket)]
-    UdsSocketNotAvailableError { socket: String },
+pub enum UdsClientActorError {
+    #[fail(display = "UdsSocketNotAvailable: cannot connect to [{:?}]", socket)]
+    UdsSocketNotAvailableError { socket: PathBuf },
     #[fail(display = "SerdeError: [{}]", message)]
     SerdeError { message: String },
 }
 
-pub struct UdsWriterActor {
+pub struct UdsClientActor {
     restarted: bool,
     socket_path: PathBuf,
     tx: Option<actix::io::FramedWrite<WriteHalf<UnixStream>, LinesCodec>>,
 }
 
-impl actix::io::WriteHandler<Error> for UdsWriterActor {}
+impl actix::io::WriteHandler<Error> for UdsClientActor {}
 
-impl UdsWriterActor {
+impl UdsClientActor {
     pub fn start_new<T: Into<PathBuf> + 'static>(
         socket_path: T,
         uds_socket_mailbox_capacity: usize,
-    ) -> Addr<UdsWriterActor> {
-        actix::Supervisor::start(move |ctx: &mut Context<UdsWriterActor>| {
+    ) -> Addr<UdsClientActor> {
+        actix::Supervisor::start(move |ctx: &mut Context<UdsClientActor>| {
             ctx.set_mailbox_capacity(uds_socket_mailbox_capacity);
-            UdsWriterActor { restarted: false, socket_path: socket_path.into(), tx: None }
+            UdsClientActor { restarted: false, socket_path: socket_path.into(), tx: None }
         })
     }
 }
 
-impl Actor for UdsWriterActor {
+impl Actor for UdsClientActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        info!("UdsWriterActor started. Attempt connection to socket [{:?}]", &self.socket_path);
+        info!("UdsClientActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
@@ -64,13 +64,13 @@ impl Actor for UdsWriterActor {
             .and_then(move |_| tokio_uds::UnixStream::connect(path).map_err(|_| ()))
             .into_actor(self)
             .map(move |stream, act, ctx| {
-                info!("UdsWriterActor connected to socket [{:?}]", &act.socket_path);
+                info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
                 let (_r, w) = stream.split();
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
             })
             .map_err(|err, act, ctx| {
                 warn!(
-                    "UdsWriterActor failed to connected to socket [{:?}]: {:?}",
+                    "UdsClientActor failed to connected to socket [{:?}]: {:?}",
                     &act.socket_path, err
                 );
                 ctx.stop();
@@ -79,23 +79,23 @@ impl Actor for UdsWriterActor {
     }
 }
 
-impl actix::Supervised for UdsWriterActor {
-    fn restarting(&mut self, _ctx: &mut Context<UdsWriterActor>) {
-        info!("Restarting UdsWriterActor");
+impl actix::Supervised for UdsClientActor {
+    fn restarting(&mut self, _ctx: &mut Context<UdsClientActor>) {
+        info!("Restarting UdsClientActor");
         self.restarted = true;
     }
 }
 
-impl Handler<EventMessage> for UdsWriterActor {
-    type Result = Result<(), UdsWriterActorError>;
+impl Handler<EventMessage> for UdsClientActor {
+    type Result = Result<(), UdsClientActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        trace!("UdsWriterActor - {:?} - received new event", &msg.event);
+        trace!("UdsClientActor - {:?} - received new event", &msg.event);
 
         match &mut self.tx {
             Some(stream) => {
                 let event = serde_json::to_string(&msg.event).map_err(|err| {
-                    UdsWriterActorError::SerdeError { message: format! {"{}", err} }
+                    UdsClientActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 stream.write(event);
                 Ok(())
@@ -103,7 +103,7 @@ impl Handler<EventMessage> for UdsWriterActor {
             None => {
                 warn!("Uds connection not available");
                 ctx.stop();
-                Err(UdsWriterActorError::UdsSocketNotAvailableError { socket: "".to_owned() })
+                Err(UdsClientActorError::UdsSocketNotAvailableError { socket: self.socket_path.clone() })
             }
         }
     }

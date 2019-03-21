@@ -5,11 +5,11 @@ use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
-use tornado_common::actors::uds_writer::{EventMessage, UdsWriterActor};
+use tornado_common::actors::uds_client::{EventMessage, UdsClientActor};
 
 pub struct RsyslogCollectorActor {
     pub collector: JsonPayloadCollector,
-    pub writer_addr: Addr<UdsWriterActor>,
+    pub writer_addr: Addr<UdsClientActor>,
 }
 
 #[derive(Message)]
@@ -18,7 +18,7 @@ pub struct RsyslogMessage {
 }
 
 impl RsyslogCollectorActor {
-    pub fn start_new<S>(source: S, writer_addr: Addr<UdsWriterActor>)
+    pub fn start_new<S>(source: S, writer_addr: Addr<UdsClientActor>)
     where
         S: AsyncRead + 'static,
     {

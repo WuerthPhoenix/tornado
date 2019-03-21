@@ -6,7 +6,7 @@ use std::io;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
-use tornado_common::actors::uds_reader::UdsConnectMessage;
+use tornado_common::actors::uds_server::UdsConnectMessage;
 
 #[derive(Message)]
 struct LineFeedMessage {

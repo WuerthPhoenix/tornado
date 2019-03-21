@@ -1,4 +1,4 @@
-use crate::actors::uds_writer::EventMessage;
+use crate::actors::uds_client::EventMessage;
 use crate::config::WebhookConfig;
 use actix::prelude::*;
 use actix_web::http::Method;
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting web server at port {}", port);
 
         // Start UdsWriter
-        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
+        let uds_writer_addr = actors::uds_client::UdsClientActor::start_new(
             config.io.uds_path.clone(),
             config.io.uds_mailbox_capacity,
         );

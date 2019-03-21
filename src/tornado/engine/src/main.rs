@@ -13,7 +13,7 @@ use actix::prelude::*;
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
-use tornado_common::actors::uds_reader::listen_to_uds_socket;
+use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::dispatcher::Dispatcher;

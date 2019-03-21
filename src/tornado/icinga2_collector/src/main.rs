@@ -1,10 +1,10 @@
-use crate::actors::uds_writer::EventMessage;
+use crate::actors::uds_client::EventMessage;
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors;
-use tornado_common::actors::uds_writer::UdsWriterActor;
+use tornado_common::actors::uds_client::UdsClientActor;
 use tornado_common_logger::setup_logger;
 
 mod actor;
@@ -28,7 +28,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
         // Start UdsWriter
         let uds_writer_addr =
-            UdsWriterActor::start_new(config.io.uds_path.clone(), config.io.uds_mailbox_capacity);
+            UdsClientActor::start_new(config.io.uds_path.clone(), config.io.uds_mailbox_capacity);
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
