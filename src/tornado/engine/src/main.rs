@@ -5,7 +5,7 @@ pub mod engine;
 pub mod executor;
 
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
-use crate::engine::MatcherActor;
+use crate::engine::{MatcherActor, EventMessage};
 use crate::executor::icinga2::Icinga2ApiClientMessage;
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
@@ -18,6 +18,7 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
+use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
@@ -111,7 +112,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start Event Json UDS listener
         let json_matcher_addr_clone = matcher_addr.clone();
         listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
-            collector::event::EventJsonReaderActor::start_new(msg, json_matcher_addr_clone.clone());
+            let json_matcher_addr_clone = json_matcher_addr_clone.clone();
+            JsonEventReaderActor::start_new(msg, move |event| {
+                json_matcher_addr_clone.do_send(EventMessage{event})
+            });
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {

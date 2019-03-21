@@ -1,4 +1,4 @@
-use crate::actors::tcp_server::TcpConnectMessage;
+use crate::actors::message::{StringMessage, AsyncReadMessage};
 
 use actix::prelude::*;
 use futures::Stream;
@@ -8,11 +8,8 @@ use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
+use tokio::prelude::AsyncRead;
 
-#[derive(Message)]
-struct LineFeedMessage {
-    pub msg: String,
-}
 
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static> {
     pub json_collector: JsonEventCollector,
@@ -20,13 +17,13 @@ pub struct JsonEventReaderActor<F: Fn(Event) + 'static> {
 }
 
 impl<F: Fn(Event) + 'static> JsonEventReaderActor<F> {
-    pub fn start_new(connect_msg: TcpConnectMessage, callback: F) {
+    pub fn start_new<R: AsyncRead + 'static>(connect_msg: AsyncReadMessage<R>, callback: F) {
         JsonEventReaderActor::create(move |ctx| {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
             let framed =
-                FramedRead::new(connect_msg.stream, codec).map(|msg| LineFeedMessage { msg });
+                FramedRead::new(connect_msg.stream, codec).map(|msg| StringMessage { msg });
             JsonEventReaderActor::add_stream(framed, ctx);
             JsonEventReaderActor { json_collector: JsonEventCollector::new(), callback }
         });
@@ -42,8 +39,8 @@ impl<F: Fn(Event) + 'static> Actor for JsonEventReaderActor<F> {
 }
 
 /// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
-impl<F: Fn(Event) + 'static> StreamHandler<LineFeedMessage, io::Error> for JsonEventReaderActor<F> {
-    fn handle(&mut self, msg: LineFeedMessage, _ctx: &mut Self::Context) {
+impl<F: Fn(Event) + 'static> StreamHandler<StringMessage, io::Error> for JsonEventReaderActor<F> {
+    fn handle(&mut self, msg: StringMessage, _ctx: &mut Self::Context) {
         debug!("JsonReaderActor - received msg: [{}]", &msg.msg);
 
         match self.json_collector.to_event(&msg.msg) {

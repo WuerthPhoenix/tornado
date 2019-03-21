@@ -5,10 +5,11 @@ use log::*;
 use std::net;
 use std::str::FromStr;
 use tokio_tcp::{TcpListener, TcpStream};
+use crate::actors::message::AsyncReadMessage;
 
 pub fn listen_to_tcp<
     P: 'static + Into<String>,
-    F: 'static + FnMut(TcpConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 >(
     address: P,
     callback: F,
@@ -24,7 +25,7 @@ pub fn listen_to_tcp<
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
-                TcpConnectMessage { stream }
+                AsyncReadMessage { stream }
             },
         ));
         UdsServerActor { address, callback }
@@ -35,7 +36,7 @@ pub fn listen_to_tcp<
 
 struct UdsServerActor<F>
 where
-    F: 'static + FnMut(TcpConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
     address: String,
     callback: F,
@@ -43,23 +44,18 @@ where
 
 impl<F> Actor for UdsServerActor<F>
 where
-    F: 'static + FnMut(TcpConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
     type Context = Context<Self>;
 }
 
-#[derive(Message)]
-pub struct TcpConnectMessage {
-    pub stream: TcpStream,
-}
-
-impl<F> Handler<TcpConnectMessage> for UdsServerActor<F>
+impl<F> Handler<AsyncReadMessage<TcpStream>> for UdsServerActor<F>
 where
-    F: 'static + FnMut(TcpConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized
 {
     type Result = ();
 
-    fn handle(&mut self, msg: TcpConnectMessage, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: AsyncReadMessage<TcpStream>, _: &mut Context<Self>) {
         info!("UdsServerActor - new client connected to [{}]", &self.address);
         (&mut self.callback)(msg);
     }
