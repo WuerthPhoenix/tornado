@@ -94,10 +94,74 @@ impl Executor for ScriptExecutor {
 
 #[cfg(test)]
 mod test {
+    use super::*;
+    use tornado_common_api::{Payload, Value};
+
+    #[test]
+    fn should_replace_placeholders() {
+        // Arrange
+        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
+
+        let first_content = "First_HelloRustyWorld!";
+        let second_content = "Second_HelloRustyWorld!";
+
+        let expected_final_script =
+            format!("{} {} {}", "./script.sh", first_content, second_content);
+
+        let mut payload = Payload::new();
+        payload.insert("first".to_owned(), Value::Text(first_content.to_owned()));
+        payload.insert("second".to_owned(), Value::Text(second_content.to_owned()));
+
+        let executor = ScriptExecutor::new();
+
+        // Act
+        let result = executor.replace_params(&script, &payload).unwrap();
+
+        // Assert
+        assert_eq!(expected_final_script, result);
+    }
+
+    #[test]
+    fn replace_placeholders_should_return_original_script_if_no_params() {
+        // Arrange
+        let script = format!("{} {} {}", "./script.sh", "first", "second");
+
+        let payload = Payload::new();
+
+        let executor = ScriptExecutor::new();
+
+        // Act
+        let result = executor.replace_params(&script, &payload).unwrap();
+
+        // Assert
+        assert_eq!(script, result);
+    }
+
+    #[test]
+    fn replace_placeholders_should_fail_if_missing_params() {
+        // Arrange
+        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
+
+        let mut payload = Payload::new();
+        payload.insert("first".to_owned(), Value::Text("value".to_owned()));
+
+        let executor = ScriptExecutor::new();
+
+        // Act
+        let result = executor.replace_params(&script, &payload);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+}
+
+#[cfg(all(test, unix))]
+mod test_unix {
 
     use super::*;
     use std::process::Command;
-    use tornado_common_api::{Payload, Value};
+    use tornado_common_api::Value;
 
     #[test]
     fn spike_command_script() {
@@ -183,63 +247,6 @@ mod test {
 
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
-    }
-
-    #[test]
-    fn should_replace_placeholders() {
-        // Arrange
-        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
-
-        let first_content = "First_HelloRustyWorld!";
-        let second_content = "Second_HelloRustyWorld!";
-
-        let expected_final_script =
-            format!("{} {} {}", "./script.sh", first_content, second_content);
-
-        let mut payload = Payload::new();
-        payload.insert("first".to_owned(), Value::Text(first_content.to_owned()));
-        payload.insert("second".to_owned(), Value::Text(second_content.to_owned()));
-
-        let executor = ScriptExecutor::new();
-
-        // Act
-        let result = executor.replace_params(&script, &payload).unwrap();
-
-        // Assert
-        assert_eq!(expected_final_script, result);
-    }
-
-    #[test]
-    fn replace_placeholders_should_return_original_script_if_no_params() {
-        // Arrange
-        let script = format!("{} {} {}", "./script.sh", "first", "second");
-
-        let payload = Payload::new();
-
-        let executor = ScriptExecutor::new();
-
-        // Act
-        let result = executor.replace_params(&script, &payload).unwrap();
-
-        // Assert
-        assert_eq!(script, result);
-    }
-
-    #[test]
-    fn replace_placeholders_should_fail_if_missing_params() {
-        // Arrange
-        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
-
-        let mut payload = Payload::new();
-        payload.insert("first".to_owned(), Value::Text("value".to_owned()));
-
-        let executor = ScriptExecutor::new();
-
-        // Act
-        let result = executor.replace_params(&script, &payload);
-
-        // Assert
-        assert!(result.is_err());
     }
 
     #[test]
