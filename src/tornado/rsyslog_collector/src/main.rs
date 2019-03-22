@@ -22,7 +22,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start UdsWriter
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
             conf.io.tornado_tcp_address.clone(),
-            conf.io.uds_mailbox_capacity,
+            conf.io.message_queue_size,
         );
 
         // Start Rsyslog collector

@@ -46,10 +46,10 @@ The available startup parameters are:
   The default path is _/etc/tornado_webhook_collector/_.
 - __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/webhooks/_.
-- __uds-path__:  The Unix Socket path where outgoing events will be written.
-  This should be the path where Tornado Engine is listening for incoming events.
-  By default it is _/var/run/tornado/tornado.sock_.
-- __uds-mailbox-capacity__:  The in-memory buffer size for Events. It makes the application
+- __tornado-tcp-address__:  The TCP address where outgoing events will be written.
+  This should be the address where Tornado Engine is listening for incoming events.
+  By default it is _127.0.0.1:4747_.
+- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.
   When the buffer is full, the collector will start discarding old messages.
@@ -67,7 +67,7 @@ An example of a full startup command is:
       --config-dir=/tornado-webhook-collector/config \
       --bind-address=127.0.0.1
       --server-port=1234
-      --uds-path=/tmp/tornado
+      --tornado-tcp-address=tornado_server_ip:4747
 ```
 
 In this example the Webhook Collector does the following:
@@ -76,7 +76,7 @@ In this example the Webhook Collector does the following:
 - Searches for webhook configurations in the _/tornado-webhook-collector/config/webhooks_ directory
 - Binds the HTTP server to the IP 127.0.0.1
 - Starts the HTTP server at port 1234
-- Writes outgoing Events to the UDS socket at _/tmp/tornado_
+- Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
 
 
 

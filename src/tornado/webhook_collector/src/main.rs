@@ -39,7 +39,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start UdsWriter
         let tpc_client_addr = TcpClientActor::start_new(
             config.io.tornado_tcp_address.clone(),
-            config.io.uds_mailbox_capacity,
+            config.io.message_queue_size,
         );
 
         server::new(move || {
