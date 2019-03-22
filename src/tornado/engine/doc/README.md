@@ -2,6 +2,8 @@
 
 This crate contains the Tornado Engine executable code.
 
+
+
 ## How It Works
 
 The Tornado Engine executable is a configuration of the engine based on
@@ -23,7 +25,7 @@ This specific Tornado Engine executable is composed of the following components:
 - The Icinga2 executor
 - The script executor
 
-Each component is wrapped in a dedicated actix actor.
+Each component is wrapped in a dedicated _actix_ actor.
 
 This configuration is only one of many possible configurations. Each component has been developed
 as an independent library, allowing for greater flexibility in deciding whether and how to use it.
@@ -55,10 +57,11 @@ The startup parameters are:
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
 - __uds-path__:  The Unix Socket path where Tornado will listen for incoming events.
   By default it is _/var/run/tornado/tornado.sock_.
-- __snmptrapd-uds-path__:  The Unix Socket path where Tornado will listen for incoming snmptrapd events.
-  By default it is _/var/run/tornado/tornado_snmptrapd.sock_.
+- __snmptrapd-uds-path__:  The Unix Socket path where Tornado will listen for incoming snmptrapd
+  events. By default it is _/var/run/tornado/tornado_snmptrapd.sock_.
 
-More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
+More information about the logger configuration is available
+[here](../../../common/logger/doc/README.md).
 
 An example of a full startup command is:
 ```bash
@@ -71,7 +74,8 @@ An example of a full startup command is:
 In this case the Engine:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
-- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory to build the processing tree
+- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
+  in order to build the processing tree
 - Creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
   respectively, the Event and Snmptrapd inputs
 
@@ -116,23 +120,23 @@ The snmptrapd input documents should be in JSON format as described by the
 ### Structure and Configuration:  The Matching Engine
 
 The [matching engine](../../../engine/matcher/doc/README.md) is the core of the Tornado Engine.
-It receives Events from the collectors,
-processes them with the configured Rules, and, in case of a match, generates the Actions to be
-performed.
+It receives Events from the collectors, processes them with the configured Rules, and, in case
+of a match, generates the Actions to be performed.
 
 Two startup parameters determine the path to the processing tree configuration:
 - _config-dir_:  The filesystem folder where the Tornado configuration is saved;
   with a default value of _/etc/tornado_.
-- _rules-dir_:  A folder relative to the `config_dir` where the Filters and Rules are saved in JSON format;
-  the default value is _/rules.d/_.
+- _rules-dir_:  A folder relative to the `config_dir` where the Filters and Rules are saved in
+  JSON format; the default value is _/rules.d/_.
 
-For example, this command will run Tornado and load the configuration from the
-`/tornado/config` directory and the processing tree JSON files from the `/tornado/config/rules` directory:
+For example, this command will run Tornado, load the configuration from the `/tornado/config`
+directory, and load the processing tree JSON files from the `/tornado/config/rules` directory:
 ```
 bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```
 
-The directories tree structure into the _rules-dir_ reflects the processing tree structure. Each sub directory can contain either:
+The directory structure in the _rules-dir_ reflects the processing tree structure. Each
+subdirectory can contain either:
 - A Filter and a set of sub directories
 - A set of Rules
 
@@ -151,44 +155,46 @@ E.g.:
                  \- filter_one.json
 ```
 
-All files must use the _json_ extension; the system will ignore every other file type.
+All files must use the _json_ extension; the system will ignore all other file types.
 
 In the above example, the processing tree composition is the following:
-- the root node is a filter named "filter_one". 
-- the filter "filter_one" has two children nodes: "node_0" and "node_1"
-- "node_0" is a rule set that contains two rules called "rule_one" and "rule_two"
-- "node_1" is a filter with a single child called "inner_node"
-- "inner_node" is a rule set with a single rule called "rule_one"
+- The root node is a filter named "filter_one". 
+- The filter "filter_one" has two children nodes: "node_0" and "node_1"
+- _node_0_ is a rule set that contains two rules called "rule_one" and "rule_two"
+- _node_1_ is a filter with a single child named "inner_node"
+- _inner_node_ is a rule set with a single rule called "rule_one"
 
-In a rule set, the natural alphanumerical order of the filenames determines the __Rules__ execution
-order, so, the file ordering corresponds to the processing order. 
-The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol. 
-The first part determines the rule execution order, the second one is the rule name. 
+In a rule set, the natural alphanumeric order of the filenames determines the execution
+order of the  __Rules__, so the file ordering corresponds to the processing order.
+The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol.
+The first part determines the rule execution order, and the second is the rule name.
 For example:
 - _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
 - _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name
 
-Based on this, it is recommended to adopt a file naming strategy that permits easy reordering.
-A good approach is to always start the filename with a number 
-(e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
-progression as shown above.  
+Because of this, we recommend that you adopt a file naming strategy that permits easy reordering.
+A good approach is to always start the filename with a number (e.g. _'number'_-*rule_name*.json)
+with some leading zeros and with breaks in the number progression as shown above.  
 
-Rule names must be unique in a rule set. The are no constraints on rule names on different rule sets.
+Rule names must be unique in a rule set. The are no constraints on rule names in different
+rule sets.
 
-A __Rule__ is uniquely identified by the full path in the processing tree. For example, the above tree defines the following rules:
+A __Rule__ is uniquely identified by the full path in the processing tree. For example, the tree
+above defines the following rules:
 - root -> node_0 -> rule_one
 - root -> node_0 -> rule_two
 - root -> node_1 -> inner_node -> rule_one
 
-Similarly to what happens for the __Rules__, __Filter__ names are also derived from the filenames.
+Similar to what happens for __Rules__, __Filter__ names are also derived from the filenames.
 However, in this case, the entire filename corresponds to the __Filter__ name.
 
-In this example, the "filter_one" node is the entry point of the processing tree.
-When an __Event__ arrives, the matcher will evaluate wheter it matches the filter condition;
-if this happens, then the matcher process will pass the __Event__ to the filter's children, otherwise it will ignore them.
+In this example, the "filter_one" node is the entry point of the processing tree. When an
+__Event__ arrives, the matcher will evaluate whether it matches the filter condition; if this
+happens, the matcher process will pass the __Event__ to the filter's children, otherwise it
+will ignore them.
 
-More information and examples about the processing tree configuration and runtime behavior can be found in the
-[matching engine documentation](../../../engine/matcher/doc/README.md)
+More information and examples about the processing tree configuration and runtime behavior can
+be found in the [matching engine documentation](../../../engine/matcher/doc/README.md)
 
 
 

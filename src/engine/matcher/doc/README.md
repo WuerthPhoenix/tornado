@@ -1,15 +1,16 @@
 # Matcher Engine
 
 The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. 
-It defines the logic to parse Rules and Filters as well as for matching Events.
+It defines the logic for parsing Rules and Filters as well as for matching Events.
 
-Matcher implementation details are [available here](./implementation.md)
+The Matcher implementation details are [available here](./implementation.md)
 
 
 ## The Processing Tree
+
 The engine logic is defined by a processing tree with two types of nodes:
-- __Filter__: a node that contains a filter definition and a set of children nodes
-- __Rule set__: a leaf node that contains a set of __Rules__
+- __Filter__:  A node that contains a filter definition and a set of child nodes
+- __Rule set__:  A leaf node that contains a set of __Rules__
 
 A full example of a processing tree is:
 ```
@@ -23,51 +24,46 @@ root
   |    \- filter_two
   \- filter_one
 ``` 
-All identifiers of the processing tree (i.e. rule names, filter names, node names) 
-can be composed only of alphabetical characters, numbers and the "_" 
-(underscore) character.
 
-When the configuration of the processing tree is read from the file system,
-the filter and rule names are automatically inferred from the filename and 
-the node names from the directory names. 
+All identifiers of the processing tree (i.e. rule names, filter names, and node names) can be
+composed only of letters, numbers and the "_" (underscore) character.
 
-In the above tree, the root node is of type __Filter__. 
-In fact, it contains the definition of a filter named *filter_one* 
-and it has two children nodes called *node_0* and *node_1*.
+When the configuration of the processing tree is read from the file system, the filter and rule
+names are automatically inferred from the filename and the node names from the directory names.
+
+In the tree above, the root node is of type __Filter__. In fact, it contains the definition of
+a filter named *filter_one* and has two child nodes called *node_0* and *node_1*.
  
 When the matcher receives an __Event__, it will first check if it matches the *filter_one* condition;
-then, if the __Event__ matches it, the matcher will proceed evaluating the children nodes.  
-If, instead, the filter condition is not matched, the process stops and the children are ignored.
+if it does, the matcher will proceed to evaluate its child nodes. If, instead, the filter condition
+does not match, the process stops and those children are ignored.
 
-The children of a node are processed independently. So, *node_0* 
-and *node_1* will be processed in isolation and each of them will be unaware of the existence 
-and of the outcome of the other one. 
+A node's children are processed independently. Thus *node_0* and *node_1* will be processed in
+isolation and each of them will be unaware of the existence and outcome of the other one.
 This process logic is applied recursively to every node. 
 
-In the above processing tree, *node_0* is a rule set, so, when the node is processed,  
-the matcher will evaluate an __Event__ against each rule to determine which one matches
-and what __Actions__ are generated.
+In the above processing tree, *node_0* is a rule set, so when the node is processed, the matcher
+will evaluate an __Event__ against each rule to determine which one matches and what __Actions__
+are generated.
 
-On the contrary, *node_1* is another __Filter__; in this case, 
-the matcher will check if the event verifies the filter
-condition to decide whether to process its internal nodes.
-    
+On the contrary, *node_1* is another __Filter__; in this case, the matcher will check if the
+event verifies the filter condition in order to decide whether to process its internal nodes.
+
 
 ## Structure of a Filter
 
 A __Filter__ contains these properties:
 
 - `filter name`:  A string value representing a unique filter identifier. 
-  It can be composed only of
-  alphabetical characters, numbers and the "_" (underscore) character.
+  It can be composed only of letters, numbers and the "_" (underscore) character.
 - `description`:  A string value providing a high-level description of the filter.
-- `active`:  A boolean value; if `false`, the filter children will never be processed.
-- `filter`: an operator that, when applied to an event, returns `true` or `false`.
+- `active`:  A boolean value; if `false`, the filter's children will be ignored.
+- `filter`:  An operator that, when applied to an event, returns `true` or `false`.
   This operator determines whether an __Event__ matches the __Filter__; consequently, 
-  it determines whether an __Event__ will be processed by the inner nodes.
+  it determines whether an __Event__ will be processed by the filter's inner nodes.
 
-When the configuration is read from the file system, 
-the filter name is automatically inferred from the filename removing the '.json' extension.
+When the configuration is read from the file system, the filter name is automatically inferred
+from the filename by removing its '.json' extension.
 
 
 ## Structure of a Rule
@@ -75,7 +71,7 @@ the filter name is automatically inferred from the filename removing the '.json'
 A __Rule__ is composed of a set of properties, constraints and actions.
 
 
-### Basic properties
+### Basic Properties
 
 - `rule name`:  A string value representing a unique rule identifier. It can be composed only of
   alphabetical characters, numbers and the "_" (underscore) character.
@@ -83,9 +79,9 @@ A __Rule__ is composed of a set of properties, constraints and actions.
 - `continue`:  A boolean value indicating whether to proceed with the event matching process if the current rule matches.
 - `active`:  A boolean value; if `false`, the rule is ignored.
 
-When the configuration is read from the file system, 
-the rule name is automatically inferred from the filename removing the extension and 
-everything that precedes the first '_' (underscore) symbol; for example:
+When the configuration is read from the file system, the rule name is automatically inferred
+from the filename by removing the extension and everything that precedes the first
+'_' (underscore) symbol. For example:
 - _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
 - _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name 
 
@@ -118,14 +114,12 @@ You can also refer to its [dedicated documentation](https://docs.rs/regex) for d
 features and limitations.
 
 
-
 ### Actions
 
 An Action is an operation triggered when an Event matches a Rule.
 
 
-
-### Reading Event fields
+### Reading Event Fields
 
 A Rule can access Event fields through the "${" and "}" delimiters. To do so, the following
 conventions are defined:
@@ -157,14 +151,15 @@ The following accessors are valid:
 
 ## Filter Examples
 
+
 ### Using a filter to create independent pipelines
-We can use __Filters__ to organize coherent set of __Rules__ in isolated pipelines.
 
-In this example we see how to create two independent pipelines, 
-one that receives only events with type 'email'
-and, the other, only the ones with type 'trapd', 
+We can use __Filters__ to organize coherent set of __Rules__ into isolated pipelines.
 
-Our configuration directory will look like:
+In this example we will see how to create two independent pipelines, one that receives only
+events with type 'email', and the other that receives only those with type 'trapd'. 
+
+Our configuration directory will look like this:
 ```
 rules.d
   |- email
@@ -178,14 +173,14 @@ rules.d
   \- filter_all.json
 ``` 
 
-This processing tree has a root filter *filter_all* that matches every event. 
-We have also defined two inner filters; the first one, *only_email_filter*, matches only 
-events with type 'email', the other, *only_trapd_filter*, matches events
-with type 'trap'.
+This processing tree has a root filter *filter_all* that matches all events. We have also defined
+two inner filters; the first, *only_email_filter*, only matches events of type 'email'. The other,
+*only_trapd_filter*, matches just events of type 'trap'.
 
-With this configuration, the rules defined in *email/ruleset* receive only email events while the ones in *trapd/ruleset* receive only trapd events.
+With this configuration, the rules defined in *email/ruleset* receive only email events, while
+those in *trapd/ruleset* receive only trapd events.
 
-Below the content of our json filter files.
+Below is the content of our JSON filter files.
 
 Content of *filter_all.json*:
 ```json
@@ -198,7 +193,7 @@ Content of *filter_all.json*:
 Content of *only_email_filter.json*:
 ```json
 {
-  "description": "This filter allows events with type 'email'",
+  "description": "This filter allows events of type 'email'",
   "active": true,
   "filter": {
     "type": "equal",
@@ -211,7 +206,7 @@ Content of *only_email_filter.json*:
 Content of *only_trapd_filter.json*:
 ```json
 {
-  "description": "This filter allows events with type 'trapd'",
+  "description": "This filter allows events of type 'trapd'",
   "active": true,
   "filter": {
     "type": "equal",
@@ -221,9 +216,12 @@ Content of *only_trapd_filter.json*:
 }
 ```
 
+
 ## Rule Examples
 
-### The 'contain' operator
+
+### The 'contain' Operator
+
 The _contain_ operator is used to check if a string contains a substring.
 
 Rule example:
@@ -259,7 +257,9 @@ A matching Event is:
 }
 ```
 
-### The 'equal' operator
+
+### The 'equal' Operator
+
 The _equal_ operator is used to check if two values are the same.
 
 Example:
@@ -291,7 +291,9 @@ A matching Event is:
 }
 ```
 
-### The 'regex' operator
+
+### The 'regex' Operator
+
 The _regex_ operator is used to check if a string matches a regular expression.
 The evaluation is performed with the Rust Regex library
 (see its [github project here](https://github.com/rust-lang/regex) )
@@ -326,11 +328,13 @@ A matching Event is:
 }
 ```
 
-### The 'and' and 'or' operator
+
+### The 'and' And 'or' Operator
+
 The _and_ and _or_ operators work on a set of operators.
 They can be nested recursively to define complex matching rules.
 
-As you should expect:
+As you would expect:
 - The _and_ operator evaluates to true if all inner operators match
 - The _or_ operator evaluates to true if at least an inner operator matches
 
@@ -390,7 +394,7 @@ A matching Event is:
 ```
 
 
-### A 'Match all Events' rule
+### A 'Match all Events' Rule
 
 If the _WHERE_ clause is not specified, the Rule evaluates to true for each incoming event.
 
@@ -416,7 +420,9 @@ For example, this Rule generates an "archive" Action for each Event:
 }
 ```
 
-### The 'WITH' clause
+
+### The 'WITH' Clause
+
 The _WITH_ clause generates variables extracted from the Event based on regular expressions.
 These variables can then be used to populate an Action payload.
 
@@ -469,8 +475,8 @@ Example:
 
 ```
 
-This Rules matches only if its type is "trap" and it is possible to extract the two variables
-"sensor_description" and "sensor_room" defined by the _WITH_ clause.
+This Rule matches only if its type is "trap" and it is possible to extract the two variables
+"sensor_description" and "sensor_room" defined in the _WITH_ clause.
 
 An Event that matches this Rule is:
 ```json
@@ -504,9 +510,10 @@ It will generate this Action:
     }
 ```
 
+
 ### Complete Rule Example 1
 
-Example of valid content for a Rule JSON file is:
+An example of valid content for a Rule JSON file is:
 ```json
 {
   "name": "emails_with_temperature",
@@ -549,7 +556,7 @@ Example of valid content for a Rule JSON file is:
 
 This creates a Rule with the following characteristics:
 - Its unique name is 'emails_with_temperature'. There cannot be two rules with the same name.
-- An Event matches this Rule if, as specified by the _WHERE_ clause, it has type "email", and,
+- An Event matches this Rule if, as specified in the _WHERE_ clause, it has type "email", and
   as requested by the _WITH_ clause, it is possible to extract the "temperature" variable from
   the "event.payload.body" with a non-null value.
 - If an Event meets the previously stated requirements, the matcher produces an Action
