@@ -117,6 +117,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 json_matcher_addr_clone.do_send(EventMessage { event })
             });
         })
+        .and_then(|_| {
+            info!("Started TCP server at [{}]. Listening for incoming events", conf.io.tcp_address);
+            Ok(())
+        })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
             error!("Cannot start TCP server at [{}]. Err: {}", conf.io.tcp_address, err);
@@ -130,6 +134,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 msg,
                 snmptrapd_matcher_addr_clone.clone(),
             );
+        })
+        .and_then(|_| {
+            info!("Started TCP server at [{}]. Listening for incoming SNMPTRAPD events", conf.io.snmptrapd_tpc_address);
+            Ok(())
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {

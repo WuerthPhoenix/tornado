@@ -48,7 +48,7 @@ impl OperatorBuilder {
             None => Ok(Box::new(crate::matcher::operator::true_operator::True {})),
         };
 
-        info!(
+        debug!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
@@ -104,7 +104,7 @@ impl OperatorBuilder {
             }
         };
 
-        info!(
+        debug!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
