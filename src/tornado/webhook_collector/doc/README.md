@@ -47,8 +47,8 @@ The available startup parameters are:
 - __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/webhooks/_.
 - __tornado-tcp-address__:  The TCP address where outgoing events will be written.
-  This should be the address where Tornado Engine is listening for incoming events.
-  By default it is _127.0.0.1:4747_.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _127.0.0.1:4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.

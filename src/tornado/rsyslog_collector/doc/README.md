@@ -70,8 +70,8 @@ This collector's configuration is based on the following command line parameters
 - __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
   _error_, defaulting to _warn_.
 - __tornado-tcp-address__:  The TCP address where outgoing events will be written.
-  This should be the address where Tornado Engine is listening for incoming events.
-  By default it is _127.0.0.1:4747_.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _127.0.0.1:4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.

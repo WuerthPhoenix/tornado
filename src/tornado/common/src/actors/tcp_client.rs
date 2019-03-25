@@ -52,7 +52,7 @@ impl Actor for TcpClientActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        info!("TcpClientActor started. Attempt connection to server [{:?}]", &self.address);
+        info!("TcpClientActor started. Attempting connection to server [{:?}]", &self.address);
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
@@ -72,7 +72,7 @@ impl Actor for TcpClientActor {
             })
             .map_err(|err, act, ctx| {
                 warn!(
-                    "TcpClientActor failed to connected to server [{:?}]: {:?}",
+                    "TcpClientActor failed to connect to server [{:?}]: {:?}",
                     &act.address, err
                 );
                 ctx.stop();

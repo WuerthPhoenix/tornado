@@ -53,9 +53,9 @@ The startup parameters are:
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
 - __tcp-address__:  The TCP address where Tornado will listen for incoming events.
-  By default it is _0.0.0.0:4747_.
+  The default address/port is _0.0.0.0:4747_.
 - __snmptrapd-tcp-adress__:  The TCP address where Tornado will listen for incoming snmptrapd events.
-  By default it is _0.0.0.0:4748_.
+  The default address/port is _0.0.0.0:4748_.
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -81,7 +81,7 @@ In this case the Engine:
 The [json collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
-The events to be delivered to the JSON collector are published to the TCP port
+The events to be delivered to the JSON collector are published on the TCP port
 configured by the _tcp-address_ command line parameter.
 
 Example:
@@ -97,7 +97,7 @@ If not specified, Tornado will use the default value `0.0.0.0:4747`.
 
 The [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap-specific
 inputs, transforms them into Tornado Events, and forwards them to the matcher engine. Snmptrapd
-events are published to the TCP address configured by the _snmptrapd-tcp-address_ command line
+events are published on the TCP address configured by the _snmptrapd-tcp-address_ command line
 parameter.
 
 Example:
