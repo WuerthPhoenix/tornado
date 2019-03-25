@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use tornado_common_api::{Action, Event, Payload, Value};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -28,23 +28,42 @@ impl Into<Value> for InternalEvent {
     }
 }
 
+impl InternalEvent {
+    pub fn new(event: Event) -> Self {
+        event.into()
+    }
+}
+
 /// A ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent {
     pub event: InternalEvent,
-    pub rules: HashMap<String, ProcessedRule>,
-    pub extracted_vars: HashMap<String, Value>,
+    pub result: ProcessedNode,
 }
 
-impl ProcessedEvent {
-    pub fn new(event: Event) -> ProcessedEvent {
-        ProcessedEvent {
-            event: event.into(),
-            rules: HashMap::new(),
-            extracted_vars: HashMap::new(),
-        }
-    }
+#[derive(Debug, Clone)]
+pub enum ProcessedNode {
+    Filter { filter: ProcessedFilter, nodes: BTreeMap<String, ProcessedNode> },
+    Rules { rules: ProcessedRules },
+}
+
+#[derive(Debug, Clone)]
+pub struct ProcessedFilter {
+    pub name: String,
+    pub status: ProcessedFilterStatus,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProcessedFilterStatus {
+    Matched,
+    NotMatched,
+    Inactive,
+}
+#[derive(Debug, Clone)]
+pub struct ProcessedRules {
+    pub rules: HashMap<String, ProcessedRule>,
+    pub extracted_vars: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone)]

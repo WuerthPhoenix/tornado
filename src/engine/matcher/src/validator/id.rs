@@ -21,7 +21,7 @@ impl IdValidator {
     }
 
     /// Validates a generic ID or name.
-    pub fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
+    fn validate(&self, id: &str, error_message: String) -> Result<(), MatcherError> {
         if !self.regex.is_match(id) {
             return Err(MatcherError::NotValidIdOrNameError { message: error_message });
         }
@@ -35,6 +35,24 @@ impl IdValidator {
             rule_name, ID_REGEX_PATTERN
         );
         self.validate(rule_name, error_message)
+    }
+
+    /// Validates a filter name.
+    pub fn validate_filter_name(&self, filter_name: &str) -> Result<(), MatcherError> {
+        let error_message = format!(
+            "Filter name [{}] is not valid. It should respect the pattern {}",
+            filter_name, ID_REGEX_PATTERN
+        );
+        self.validate(filter_name, error_message)
+    }
+
+    /// Validates a node name.
+    pub fn validate_node_name(&self, node_name: &str) -> Result<(), MatcherError> {
+        let error_message = format!(
+            "Node name [{}] is not valid. It should respect the pattern {}",
+            node_name, ID_REGEX_PATTERN
+        );
+        self.validate(node_name, error_message)
     }
 
     /// Validates an extracted variable name.

@@ -1,7 +1,8 @@
 use criterion::Criterion;
 use std::collections::HashMap;
 use tornado_common_api::{Event, Value};
-use tornado_engine_matcher::config::*;
+use tornado_engine_matcher::config::rule::*;
+use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::matcher::Matcher;
 
 pub fn bench(c: &mut Criterion) {
@@ -32,7 +33,7 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // Create Matcher
-    let matcher = Matcher::build(&vec![rule]).unwrap();
+    let matcher = Matcher::build(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
 
     // Create event
     let event = {

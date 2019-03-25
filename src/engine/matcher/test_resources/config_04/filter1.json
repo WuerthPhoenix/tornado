@@ -1,0 +1,5 @@
+{
+  "description": "This filter allows only events with type email",
+  "active": true
+}
+

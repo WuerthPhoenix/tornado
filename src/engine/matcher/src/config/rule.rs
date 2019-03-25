@@ -10,6 +10,7 @@ use tornado_common_api::Payload;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
+    #[serde(default)]
     pub name: String,
     pub description: String,
     #[serde(rename = "continue")]
@@ -84,10 +85,10 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json() {
-        let json = file_to_string("./test_resources/rules/rule_01.json");
+        let json = file_to_string("./test_resources/rules/001_all_emails_and_syslogs.json");
         let rule = Rule::from_json(&json).unwrap();
 
-        assert_eq!("all_emails_and_syslogs", rule.name);
+        assert_eq!("", rule.name);
 
         match rule.constraint.where_operator.unwrap() {
             Operator::And { operators } => {
@@ -103,7 +104,7 @@ mod test {
     #[test]
     fn should_deserialize_rule_without_where_from_json() {
         // Arrange
-        let json = file_to_string("./test_resources/rules/rule_02_no_where.json");
+        let json = file_to_string("./test_resources/rules/002_rule_without_where.json");
 
         // Act
         let rule = Rule::from_json(&json).unwrap();
@@ -118,10 +119,10 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json_with_map_in_action_payload() {
-        let json = file_to_string("./test_resources/rules/rule_03_map_in_action_payload.json");
+        let json = file_to_string("./test_resources/rules/003_map_in_action_payload.json");
         let rule = Rule::from_json(&json).unwrap();
 
-        assert_eq!("map_in_action_payload", rule.name);
+        assert_eq!("", rule.name);
 
         match rule.constraint.where_operator.unwrap() {
             Operator::And { operators } => {

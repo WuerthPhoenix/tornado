@@ -1,6 +1,5 @@
 {
-  "name": "this_should_be_ignored",
-  "description": "ignored",
+  "description": "",
   "continue": true,
   "active": true,
   "constraint": {

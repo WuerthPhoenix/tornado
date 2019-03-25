@@ -4,6 +4,7 @@ use tornado_common_api::Event;
 use tornado_engine_matcher::matcher::Matcher;
 
 use crate::utils;
+use tornado_engine_matcher::config::MatcherConfig;
 
 // Use case with a single rule and a single event that does not match the rule.
 // This benchmark represents the "best case" situation from a performance point of view.
@@ -15,7 +16,7 @@ pub fn bench(c: &mut Criterion) {
     let event = utils::read_event_from_file("./benches_resources/no_match/events/event_01.json");
 
     // Create Matcher
-    let matcher = Matcher::build(&vec![rule]).unwrap();
+    let matcher = Matcher::build(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
 
     // println!("result is : {:#?}", matcher.process(event.clone()));
     PROFILER.lock().unwrap().start("./target/no_match.profile").unwrap();

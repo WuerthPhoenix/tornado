@@ -1,6 +1,6 @@
 use std::fs;
 use tornado_common_api::Event;
-use tornado_engine_matcher::config::Rule;
+use tornado_engine_matcher::config::rule::Rule;
 
 pub fn read_event_from_file(path: &str) -> Event {
     let event_body =

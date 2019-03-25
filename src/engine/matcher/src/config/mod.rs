@@ -3,15 +3,17 @@ use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use log::{debug, info, trace};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
-use std::path::Path;
+use std::fs::DirEntry;
+use std::path::{Path, PathBuf};
 
 pub mod filter;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MatcherConfig {
-    Filter { filter: Filter, nodes: Vec<MatcherConfig> },
+    Filter { filter: Filter, nodes: BTreeMap<String, MatcherConfig> },
     Rules { rules: Vec<Rule> },
 }
 
@@ -35,15 +37,7 @@ impl MatcherConfig {
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
     fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
-        let paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         let mut subdirectories_count = 0;
         let mut json_files_count = 0;
@@ -54,10 +48,7 @@ impl MatcherConfig {
             if path.is_dir() {
                 subdirectories_count += 1;
             } else {
-                let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                    message: format!("Error processing filename of file: [{}]", path.display()),
-                })?;
-
+                let filename = MatcherConfig::filename(&path)?;
                 if filename.ends_with(".json") {
                     json_files_count += 1;
                 }
@@ -89,15 +80,7 @@ impl MatcherConfig {
     }
 
     fn read_rules_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let mut paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         // Sort by filename
         paths.sort_by_key(|dir| dir.path());
@@ -107,11 +90,10 @@ impl MatcherConfig {
         for entry in paths {
             let path = entry.path();
 
-            let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("Error processing filename of file: [{}]", path.display()),
-            })?;
+            let filename = MatcherConfig::filename(&path)?;
+            let extension = ".json";
 
-            if !filename.ends_with(".json") {
+            if !filename.ends_with(extension) {
                 info!("Configuration file [{}] is ignored.", path.display());
                 continue;
             }
@@ -123,7 +105,13 @@ impl MatcherConfig {
                 })?;
 
             trace!("Rule body: \n{}", rule_body);
-            rules.push(Rule::from_json(&rule_body)?)
+            let mut rule = Rule::from_json(&rule_body)?;
+            rule.name = MatcherConfig::rule_name_from_filename(&MatcherConfig::truncate(
+                filename,
+                extension.len(),
+            ))?
+            .to_owned();
+            rules.push(rule);
         }
 
         info!("Loaded {} rule(s) from [{}]", rules.len(), dir.as_ref().display());
@@ -132,38 +120,29 @@ impl MatcherConfig {
     }
 
     fn read_filter_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
-            .map_err(|e| MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            })?;
+        let mut paths = MatcherConfig::read_dirs(dir.as_ref())?;
 
         // Sort by filename
         paths.sort_by_key(|dir| dir.path());
 
-        let mut nodes = vec![];
+        let mut nodes = BTreeMap::new();
         let mut filters = vec![];
 
         for entry in paths {
             let path = entry.path();
 
+            let filename = MatcherConfig::filename(&path)?;
+
             if path.is_dir() {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call MatcherConfig::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.push(MatcherConfig::read_from_dir(path.as_path())?);
+                nodes.insert(filename.to_owned(), MatcherConfig::read_from_dir(path.as_path())?);
                 continue;
             }
 
-            let filename = path.to_str().ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("Error processing filename of file: [{}]", path.display()),
-            })?;
-
-            if !filename.ends_with(".json") {
+            let extension = ".json";
+            if !filename.ends_with(extension) {
                 info!("Configuration file [{}] is ignored.", path.display());
                 continue;
             }
@@ -174,8 +153,10 @@ impl MatcherConfig {
                     message: format!("Unable to open the file [{}]. Err: {}", path.display(), e),
                 })?;
 
-            trace!("Filter body: \n{}", filter_body);
-            filters.push(Filter::from_json(&filter_body)?);
+            trace!("Filter [{}] body: \n{}", filename, filter_body);
+            let mut filter = Filter::from_json(&filter_body)?;
+            filter.name = MatcherConfig::truncate(filename, extension.len());
+            filters.push(filter);
         }
 
         if filters.len() == 1 && !nodes.is_empty() {
@@ -187,6 +168,47 @@ impl MatcherConfig {
             message: format!("Config path [{}] contains {} json files and {} subdirectories. Expected exactly one json filter file and at least one subdirectory.",
                              dir.as_ref().display(), filters.len(), nodes.len()),
         })
+    }
+
+    fn read_dirs<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+        fs::read_dir(dir.as_ref())
+            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
+            .map_err(|e| MatcherError::ConfigurationError {
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
+            })
+    }
+
+    fn truncate(name: &str, truncate: usize) -> String {
+        let mut name = name.to_owned();
+        name.truncate(name.len() - truncate);
+        name
+    }
+
+    fn filename(path: &PathBuf) -> Result<&str, MatcherError> {
+        path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Error processing path name: [{}]", path.display()),
+            }
+        })
+    }
+
+    fn rule_name_from_filename(filename: &str) -> Result<&str, MatcherError> {
+        let split_char = '_';
+        let mut splitter = filename.splitn(2, split_char);
+        let mut result = "";
+        for _ in 0..2 {
+            result = splitter.next().ok_or_else(|| MatcherError::ConfigurationError {
+                message: format!(
+                    "Error extracting rule name from filename [{}]. The filename must contain at least one '{}' char to separate the first part of the filename from the rule name.",
+                    filename, split_char,
+                ),
+            })?
+        }
+        Ok(result)
     }
 }
 
@@ -277,16 +299,21 @@ mod test {
         let path = "./test_resources/config_04";
         let config = MatcherConfig::read_from_dir(path).unwrap();
 
+        println!("{:?}", config);
+
         assert!(is_filter(&config, "filter1", 2));
 
         match config {
             MatcherConfig::Filter { filter: _, nodes } => {
-                assert!(is_filter(&nodes[0], "filter2", 1));
-                assert!(is_ruleset(&nodes[1], &vec!["rule1"]));
+                assert!(nodes.contains_key("node1"));
+                assert!(nodes.contains_key("node2"));
+                assert!(is_filter(&nodes["node1"], "filter2", 1));
+                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
 
-                match &nodes[0] {
+                match &nodes["node1"] {
                     MatcherConfig::Filter { filter: _, nodes: inner_nodes } => {
-                        assert!(is_ruleset(&inner_nodes[0], &vec!["rule2", "rule3"]));
+                        assert!(inner_nodes.contains_key("inner_node1"));
+                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2", "rule3"]));
                     }
                     _ => assert!(false),
                 }
@@ -393,5 +420,29 @@ mod test {
             },
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn should_return_rule_name_from_file_name() {
+        // not valid names
+        assert!(MatcherConfig::rule_name_from_filename("").is_err());
+        assert!(MatcherConfig::rule_name_from_filename("1245345").is_err());
+        assert!(MatcherConfig::rule_name_from_filename("asfg.rulename").is_err());
+
+        // valid names
+        assert_eq!("rulename", MatcherConfig::rule_name_from_filename("_rulename").unwrap());
+        assert_eq!("rulename", MatcherConfig::rule_name_from_filename("12343_rulename").unwrap());
+        assert_eq!(
+            "rule_name_1",
+            MatcherConfig::rule_name_from_filename("ascfb5.46_rule_name_1").unwrap()
+        );
+        assert_eq!(
+            "__rule_name_1",
+            MatcherConfig::rule_name_from_filename("ascfb5.46___rule_name_1").unwrap()
+        );
+        assert_eq!(
+            "rule_name_1__._",
+            MatcherConfig::rule_name_from_filename("ascfb5.46_rule_name_1__._").unwrap()
+        );
     }
 }
