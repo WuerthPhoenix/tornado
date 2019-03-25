@@ -7,7 +7,7 @@ pub struct Io {
     /// Set the size of the in-memory queue where messages will be stored before being written
     /// to the output socket.
     #[structopt(long, default_value = "10000")]
-    pub uds_mailbox_capacity: usize,
+    pub message_queue_size: usize,
 
     /// The Tornado TCP address where outgoing events will be written
     #[structopt(long, default_value = "127.0.0.1:4747")]

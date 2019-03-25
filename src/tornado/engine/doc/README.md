@@ -10,9 +10,6 @@ The Tornado Engine executable is a configuration of the engine based on
 [actix](https://github.com/actix/actix)
 and built as a portable executable.
 
-It will currently build only on Linux-like operating systems since, at runtime, it uses two Unix
-Domain Sockets (UDSs) for receiving inputs from external collectors.
-
 
 
 ## Structure of Tornado Engine
@@ -55,10 +52,10 @@ The startup parameters are:
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
-- __uds-path__:  The Unix Socket path where Tornado will listen for incoming events.
-  By default it is _/var/run/tornado/tornado.sock_.
-- __snmptrapd-uds-path__:  The Unix Socket path where Tornado will listen for incoming snmptrapd events.
-  By default it is _/var/run/tornado/tornado_snmptrapd.sock_.
+- __tcp-address__:  The TCP address where Tornado will listen for incoming events.
+  The default address/port is _0.0.0.0:4747_.
+- __snmptrapd-tcp-adress__:  The TCP address where Tornado will listen for incoming snmptrapd events.
+  The default address/port is _0.0.0.0:4748_.
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -66,15 +63,15 @@ An example of a full startup command is:
 ```bash
 ./tornado_engine --logger-stdout --logger-level=debug \
     --config-dir=./tornado/engine/config \
-    --uds-path=/tmp/tornado \
-    --snmptrapd-uds-path=/tmp/tornado_snmptrapd
+    --tcp-address=0.0.0.0:12345 \
+    --snmptrapd-tcp-address=0.0.0.0:67890
 ```
 
 In this case the Engine:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
 - Searches for Rules definitions in the _./tornado/engine/config/rules.d_ directory
-- Creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
+- Opens two TCP ports at _0.0.0.0:12345_ and _0.0.0.0:67890_ for receiving,
   respectively, the Event and Snmptrapd inputs
 
 
@@ -84,15 +81,15 @@ In this case the Engine:
 The [json collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
-The events to be delivered to the JSON collector are published to the UDS socket
-configured by the _uds-path_ command line parameter.
+The events to be delivered to the JSON collector are published on the TCP port
+configured by the _tcp-address_ command line parameter.
 
 Example:
 ```bash
-tornado --uds-path=/my/custom/path
+tornado --tcp-address=127.0.0.1:4747
 ```
 
-If not specified, Tornado will use the default value `/var/run/tornado/tornado.sock`.
+If not specified, Tornado will use the default value `0.0.0.0:4747`.
 
 
 
@@ -100,15 +97,15 @@ If not specified, Tornado will use the default value `/var/run/tornado/tornado.s
 
 The [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap-specific
 inputs, transforms them into Tornado Events, and forwards them to the matcher engine. Snmptrapd
-events are published to the UDS socket configured by the _snmptrapd-uds-path_ command line
+events are published on the TCP address configured by the _snmptrapd-tcp-address_ command line
 parameter.
 
 Example:
 ```bash
-tornado --snmptrapd-uds-path=/my/custom/path
+tornado --snmptrapd-tcp-address=127.0.0.1:4748
 ```
 
-If not specified, Tornado will use the default value `/var/run/tornado/tornado_snmptrapd.sock`.
+If not specified, Tornado will use the default value `0.0.0.0:4748`.
 
 The snmptrapd input documents should be in JSON format as described by the
 [snmptrapd collector's documentation](../../../collector/snmptrapd/doc/README.md).

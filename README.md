@@ -130,9 +130,6 @@ user-friendly installable packages such as .rpm's.
 
 The following prerequisites must be met in order to compile and run Tornado:
 - You must have Rust version 1.32 or later installed.
-- Even though the Tornado libraries are completely cross-platform, at the moment a Unix-like OS
-  is required to build the Tornado executables because they use UDS sockets for communication
-  between the various components.
 - To build the Tornado executables, the *openssl-dev* library should be present in your build
   environment.
 
