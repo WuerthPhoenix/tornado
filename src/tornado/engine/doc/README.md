@@ -52,10 +52,14 @@ The startup parameters are:
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
-- __tcp-address__:  The TCP address where Tornado will listen for incoming events.
-  The default address/port is _0.0.0.0:4747_.
-- __snmptrapd-tcp-adress__:  The TCP address where Tornado will listen for incoming snmptrapd events.
-  The default address/port is _0.0.0.0:4748_.
+- __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
+  The default address is _127.0.0.1_.
+- __event-socket-port__:  The port where Tornado will listen for incoming events.
+  The default port is _4747_.
+- __snmptrapd-socket-ip__:  The IP address where Tornado will listen for incoming snmptrapd events.
+  The default address is _127.0.0.1_.
+- __snmptrapd-socket-port__:  The port where Tornado will listen for incoming snmptrapd events.
+  The default port is _4748_.
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -63,8 +67,10 @@ An example of a full startup command is:
 ```bash
 ./tornado_engine --logger-stdout --logger-level=debug \
     --config-dir=./tornado/engine/config \
-    --tcp-address=0.0.0.0:12345 \
-    --snmptrapd-tcp-address=0.0.0.0:67890
+    --event-socket-ip=0.0.0.0 \
+    --event-socket-port=12345 \
+    --snmptrapd-socket-ip=0.0.0.0 \
+    --snmptrapd-socket-port=67890
 ```
 
 In this case the Engine:
@@ -82,14 +88,14 @@ The [json collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
 The events to be delivered to the JSON collector are published on the TCP port
-configured by the _tcp-address_ command line parameter.
+configured by the command line parameters.
 
 Example:
 ```bash
-tornado --tcp-address=127.0.0.1:4747
+tornado engine --event-socket-ip=0.0.0.0 --event-socket-port=12345
 ```
 
-If not specified, Tornado will use the default value `0.0.0.0:4747`.
+If not specified, Tornado will use the default value `127.0.0.1:4747`.
 
 
 
@@ -97,15 +103,15 @@ If not specified, Tornado will use the default value `0.0.0.0:4747`.
 
 The [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap-specific
 inputs, transforms them into Tornado Events, and forwards them to the matcher engine. Snmptrapd
-events are published on the TCP address configured by the _snmptrapd-tcp-address_ command line
-parameter.
+events are published on the TCP address configured by the command line
+parameters.
 
 Example:
 ```bash
-tornado --snmptrapd-tcp-address=127.0.0.1:4748
+tornado --snmptrapd-socket-ip=0.0.0.0 --snmptrapd-socket-port=67890
 ```
 
-If not specified, Tornado will use the default value `0.0.0.0:4748`.
+If not specified, Tornado will use the default value `127.0.0.1:4748`.
 
 The snmptrapd input documents should be in JSON format as described by the
 [snmptrapd collector's documentation](../../../collector/snmptrapd/doc/README.md).

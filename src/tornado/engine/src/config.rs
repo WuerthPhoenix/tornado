@@ -16,13 +16,21 @@ pub struct Io {
     #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
 
-    /// The TCP address where we will listen for incoming events.
-    #[structopt(long, default_value = "0.0.0.0:4747")]
-    pub tcp_address: String,
+    /// The IP address where we will listen for incoming events.
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub event_socket_ip: String,
 
-    /// The TCP address where we will listen for incoming snmptrapd events.
-    #[structopt(long, default_value = "0.0.0.0:4748")]
-    pub snmptrapd_tpc_address: String,
+    /// The port where we will listen for incoming events.
+    #[structopt(long, default_value = "4747")]
+    pub event_socket_port: u16,
+
+    /// The IP address where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub snmptrapd_socket_ip: String,
+
+    /// The port where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "4748")]
+    pub snmptrapd_socket_port: u16,
 }
 
 #[derive(Debug, StructOpt)]

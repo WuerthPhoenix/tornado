@@ -26,25 +26,26 @@ fn main() -> Result<(), Box<std::error::Error>> {
     System::run(move || {
         info!("Starting Icinga2 Collector");
 
-        // Start UdsWriter
-        let tcp_client_addr = TcpClientActor::start_new(
-            config.io.tornado_tcp_address.clone(),
-            config.io.message_queue_size,
+        let tornado_tcp_address = format!(
+            "{}:{}",
+            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
         );
+        let tcp_client_addr =
+            TcpClientActor::start_new(tornado_tcp_address.clone(), config.io.message_queue_size);
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
             let icinga2_config = icinga2_config.clone();
             let tcp_client_addr = tcp_client_addr.clone();
             SyncArbiter::start(1, move || {
-                let uds_writer_addr = tcp_client_addr.clone();
+                let tcp_client_addr = tcp_client_addr.clone();
                 actor::Icinga2StreamActor {
                     icinga_config: icinga2_config.clone(),
                     collector: JMESPathEventCollector::build(config.collector_config.clone())
                         .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:#?}. Err: {}", config.collector_config.clone(), e)),
                     stream_config: config.stream.clone(),
                     callback: move |event| {
-                        uds_writer_addr.do_send(EventMessage { event });
+                        tcp_client_addr.do_send(EventMessage { event });
                     },
                 }
             });

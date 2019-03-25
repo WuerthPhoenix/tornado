@@ -71,10 +71,7 @@ impl Actor for TcpClientActor {
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
             })
             .map_err(|err, act, ctx| {
-                warn!(
-                    "TcpClientActor failed to connect to server [{:?}]: {:?}",
-                    &act.address, err
-                );
+                warn!("TcpClientActor failed to connect to server [{:?}]: {:?}", &act.address, err);
                 ctx.stop();
             })
             .wait(ctx);

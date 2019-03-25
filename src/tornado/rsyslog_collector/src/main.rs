@@ -20,8 +20,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
     // start system
     System::run(move || {
         // Start UdsWriter
+        let tornado_tcp_address =
+            format!("{}:{}", conf.io.tornado_event_socket_ip, conf.io.tornado_event_socket_port);
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
-            conf.io.tornado_tcp_address.clone(),
+            tornado_tcp_address.clone(),
             conf.io.message_queue_size,
         );
 

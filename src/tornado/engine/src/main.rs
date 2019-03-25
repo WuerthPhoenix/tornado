@@ -109,39 +109,45 @@ fn main() -> Result<(), Box<std::error::Error>> {
             dispatcher_addr: dispatcher_addr.clone(),
         });
 
-        // Start Event Json UDS listener
+        // Start Event Json TCP listener
+        let tcp_address = format!("{}:{}", conf.io.event_socket_ip, conf.io.event_socket_port);
         let json_matcher_addr_clone = matcher_addr.clone();
-        listen_to_tcp(conf.io.tcp_address.clone(), move |msg| {
+        listen_to_tcp(tcp_address.clone(), move |msg| {
             let json_matcher_addr_clone = json_matcher_addr_clone.clone();
             JsonEventReaderActor::start_new(msg, move |event| {
                 json_matcher_addr_clone.do_send(EventMessage { event })
             });
         })
         .and_then(|_| {
-            info!("Started TCP server at [{}]. Listening for incoming events", conf.io.tcp_address);
+            info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
             Ok(())
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
-            error!("Cannot start TCP server at [{}]. Err: {}", conf.io.tcp_address, err);
+            error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
             std::process::exit(1);
         });
 
         // Start snmptrapd Json UDS listener
+        let snmptrapd_tpc_address =
+            format!("{}:{}", conf.io.snmptrapd_socket_ip, conf.io.snmptrapd_socket_port);
         let snmptrapd_matcher_addr_clone = matcher_addr.clone();
-        listen_to_tcp(conf.io.snmptrapd_tpc_address.clone(), move |msg| {
+        listen_to_tcp(snmptrapd_tpc_address.clone(), move |msg| {
             collector::snmptrapd::SnmptrapdJsonReaderActor::start_new(
                 msg,
                 snmptrapd_matcher_addr_clone.clone(),
             );
         })
         .and_then(|_| {
-            info!("Started TCP server at [{}]. Listening for incoming SNMPTRAPD events", conf.io.snmptrapd_tpc_address);
+            info!(
+                "Started TCP server at [{}]. Listening for incoming SNMPTRAPD events",
+                snmptrapd_tpc_address
+            );
             Ok(())
         })
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
-            error!("Cannot start TCP server at [{}]. Err: {}", conf.io.snmptrapd_tpc_address, err);
+            error!("Cannot start TCP server at [{}]. Err: {}", snmptrapd_tpc_address, err);
             std::process::exit(1);
         });
     });

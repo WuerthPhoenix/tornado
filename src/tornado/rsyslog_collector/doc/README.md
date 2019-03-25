@@ -26,7 +26,7 @@ An example of a fully instantiated startup setup is:
 module(load="omprog")
 
 action(type="omprog"
-       binary="/path/to/rsyslog_collector --logger-file-path=/log/rsys-collector.log --logger-level=info --uds-path=/tmp/tornado")
+       binary="/path/to/rsyslog_collector --logger-file-path=/log/rsys-collector.log --logger-level=info --tornado-event-socket-ip=tornado_server_ip --tornado-event-socket-port=4747")
 ```
 
 <!-- This part may only be necessary for non-expert users. Hide until later? -->
@@ -38,12 +38,12 @@ place this configuration in a file in your rsyslog directory, for instance:
 
 In this example the collector will:
 - Log to the file _/log/rsys-collector.log_ at the _info_ logger level
-- Write outgoing Events to the UDS socket in _/tmp/tornado_  <!-- Isn't there more than one UDS socket there? -->
+- Write outgoing Events to the TCP socket at tornado_server_ip:4747
 
 The Collector will need to be run in parallel with the Tornado engine before any events will be
 processed, for example:  <!-- Link to the description of that executable -->
 ```
-/opt/tornado/bin/tornado --logger-file-path=/tmp/my-tornado.log --tornado-tcp-address tornado_server_ip:4747
+/opt/tornado/bin/tornado --logger-file-path=/tmp/my-tornado.log --tornado-event-socket-ip=tornado_server_ip
 ```
 
 <!-- Charles and Andrea had errors due to missing .toml files for the archive executor, which we assume will be fixed later. -->
@@ -69,9 +69,12 @@ This collector's configuration is based on the following command line parameters
   append any output to it.
 - __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
   _error_, defaulting to _warn_.
-- __tornado-tcp-address__:  The TCP address where outgoing events will be written.
+- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
   This should be the address where the Tornado Engine is listening for incoming events.
-  The default is _127.0.0.1:4747_.
+  The default is _127.0.0.1_.
+- __tornado-event-socket-port__:  The port where outgoing events will be written.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.

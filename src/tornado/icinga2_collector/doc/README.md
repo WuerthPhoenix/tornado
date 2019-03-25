@@ -47,9 +47,12 @@ The available startup parameters are:
   The default path is _/etc/tornado_icinga2_collector/_.
 - __streams_dir__:  The folder where the Stream configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/streams/_.
-- __tornado-tcp-address__:  The TCP address where outgoing events will be written.
+- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
   This should be the address where the Tornado Engine is listening for incoming events.
-  The default is _127.0.0.1:4747_.
+  The default is _127.0.0.1_.
+- __tornado-event-socket-port__:  The port where outgoing events will be written.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.
@@ -74,7 +77,8 @@ An example of a full startup command is:
 ./tornado_webhook_collector \
       --logger-stdout --logger-level=debug \
       --config-dir=/tornado-icinga2-collector/config \
-      --tornado-tcp-address=tornado_server_ip:4747
+      --tornado-event-socket-ip=tornado_server_ip \
+      --tornado-event-socket-port=4747
 ```
 
 In this example the Icinga2 Collector does the following:

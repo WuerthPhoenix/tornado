@@ -21,20 +21,20 @@ pub fn listen_to_tcp<
             message: format!("Cannot start TCP server on [{}]: {}", address, err),
         })?;
 
-    UdsServerActor::create(|ctx| {
+    TcpServerActor::create(|ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
                 AsyncReadMessage { stream }
             },
         ));
-        UdsServerActor { address, callback }
+        TcpServerActor { address, callback }
     });
 
     Ok(())
 }
 
-struct UdsServerActor<F>
+struct TcpServerActor<F>
 where
     F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
@@ -42,21 +42,21 @@ where
     callback: F,
 }
 
-impl<F> Actor for UdsServerActor<F>
+impl<F> Actor for TcpServerActor<F>
 where
     F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
     type Context = Context<Self>;
 }
 
-impl<F> Handler<AsyncReadMessage<TcpStream>> for UdsServerActor<F>
+impl<F> Handler<AsyncReadMessage<TcpStream>> for TcpServerActor<F>
 where
     F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
 {
     type Result = ();
 
     fn handle(&mut self, msg: AsyncReadMessage<TcpStream>, _: &mut Context<Self>) {
-        info!("UdsServerActor - new client connected to [{}]", &self.address);
+        info!("TcpServerActor - new client connected to [{}]", &self.address);
         (&mut self.callback)(msg);
     }
 }

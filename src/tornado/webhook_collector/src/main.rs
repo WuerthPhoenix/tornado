@@ -37,10 +37,12 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting web server at port {}", port);
 
         // Start UdsWriter
-        let tpc_client_addr = TcpClientActor::start_new(
-            config.io.tornado_tcp_address.clone(),
-            config.io.message_queue_size,
+        let tornado_tcp_address = format!(
+            "{}:{}",
+            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
         );
+        let tpc_client_addr =
+            TcpClientActor::start_new(tornado_tcp_address.clone(), config.io.message_queue_size);
 
         server::new(move || {
             create_app(webhooks_config.clone(), || {

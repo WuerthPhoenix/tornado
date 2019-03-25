@@ -9,9 +9,13 @@ pub struct Io {
     #[structopt(long, default_value = "10000")]
     pub message_queue_size: usize,
 
-    /// The Tornado TCP address where outgoing events will be written
-    #[structopt(long, default_value = "127.0.0.1:4747")]
-    pub tornado_tcp_address: String,
+    /// The Tornado IP address where outgoing events will be written
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub tornado_event_socket_ip: String,
+
+    /// The Tornado port where outgoing events will be written
+    #[structopt(long, default_value = "4747")]
+    pub tornado_event_socket_port: u16,
 }
 
 #[derive(Debug, StructOpt)]
