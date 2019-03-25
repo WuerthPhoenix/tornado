@@ -3,10 +3,11 @@ use actix::prelude::*;
 use futures::Stream;
 use log::*;
 use std::io;
+use tokio::net::TcpStream;
 use tokio_codec::{FramedRead, LinesCodec};
 use tornado_collector_common::Collector;
 use tornado_collector_snmptrapd::SnmptradpCollector;
-use tornado_common::actors::uds_reader::UdsConnectMessage;
+use tornado_common::actors::message::AsyncReadMessage;
 
 #[derive(Message)]
 struct LineFeedMessage {
@@ -19,7 +20,10 @@ pub struct SnmptrapdJsonReaderActor {
 }
 
 impl SnmptrapdJsonReaderActor {
-    pub fn start_new(uds_connect_msg: UdsConnectMessage, matcher_addr: Addr<MatcherActor>) {
+    pub fn start_new(
+        uds_connect_msg: AsyncReadMessage<TcpStream>,
+        matcher_addr: Addr<MatcherActor>,
+    ) {
         SnmptrapdJsonReaderActor::create(move |ctx| {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();

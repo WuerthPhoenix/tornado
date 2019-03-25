@@ -8,9 +8,9 @@ pub struct Io {
     #[structopt(long, default_value = "./events")]
     pub json_events_path: String,
 
-    /// The Unix Socket path where outgoing events will be written
-    #[structopt(long, default_value = "/var/run/tornado/tornado_snmptrapd.sock")]
-    pub snmptrapd_uds_path: String,
+    /// The TCP address where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "0.0.0.0:4748")]
+    pub snmptrapd_tornado_tpc_address: String,
 
     /// How many times each event should be sent
     #[structopt(long, default_value = "1000")]

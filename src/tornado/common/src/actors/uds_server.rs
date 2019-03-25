@@ -1,3 +1,4 @@
+use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
 use futures::Stream;
@@ -7,7 +8,7 @@ use tokio_uds::*;
 
 pub fn listen_to_uds_socket<
     P: Into<String>,
-    F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 >(
     path: P,
     callback: F,
@@ -32,7 +33,7 @@ pub fn listen_to_uds_socket<
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
-                UdsConnectMessage { stream }
+                AsyncReadMessage { stream }
             },
         ));
         UdsServerActor { path: path_string, callback }
@@ -43,7 +44,7 @@ pub fn listen_to_uds_socket<
 
 struct UdsServerActor<F>
 where
-    F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 {
     path: String,
     callback: F,
@@ -51,24 +52,19 @@ where
 
 impl<F> Actor for UdsServerActor<F>
 where
-    F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 {
     type Context = Context<Self>;
 }
 
-#[derive(Message)]
-pub struct UdsConnectMessage {
-    pub stream: UnixStream,
-}
-
 /// Handle a stream of UnixStream elements
-impl<F> Handler<UdsConnectMessage> for UdsServerActor<F>
+impl<F> Handler<AsyncReadMessage<UnixStream>> for UdsServerActor<F>
 where
-    F: 'static + FnMut(UdsConnectMessage) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 {
     type Result = ();
 
-    fn handle(&mut self, msg: UdsConnectMessage, _: &mut Context<Self>) {
+    fn handle(&mut self, msg: AsyncReadMessage<UnixStream>, _: &mut Context<Self>) {
         info!("UdsServerActor - new client connected to [{}]", &self.path);
         (&mut self.callback)(msg);
     }

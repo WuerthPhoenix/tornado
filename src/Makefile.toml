@@ -17,9 +17,7 @@ args = [
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=/tmp/tornado",
     "--config-dir=./tornado/engine/config",
-    "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]
 
@@ -37,7 +35,7 @@ dependencies = ["build"]
 workspace = false
 script = [
     "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
-    "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug --uds-path=/tmp/tornado"
+    "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug"
 ]
 dependencies = ["build"]
 
@@ -45,7 +43,7 @@ dependencies = ["build"]
 # Starts the spike_snmptrapd_collector_writer.
 #
 # The spike_snmptrapd_collector_writer will generate fake snmptrapd
-# events and forward them to the Engine's UDS socket.
+# events and forward them to the Engine's TCP socket.
 #
 # Execute with:
 # > cargo make run-snmptrapd-writer
@@ -60,7 +58,6 @@ args = [
     "--logger-stdout",
     "--logger-level=debug",
     "--json-events-path=./spike/snmptrapd_collector_writer/events",
-    "--snmptrapd-uds-path=/tmp/tornado_snmptrapd"
 ]
 dependencies = ["build"]
 
@@ -79,7 +76,6 @@ args = [
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=/tmp/tornado",
     "--config-dir=./tornado/icinga2_collector/config"
 ]
 dependencies = ["build"]
@@ -100,7 +96,6 @@ args = [
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=/tmp/tornado",
     "--config-dir=./tornado/webhook_collector/config"
 ]
 dependencies = ["build"]
@@ -120,7 +115,6 @@ args = [
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=/tmp/tornado",
     "--config-dir=./spike/tornado_events_generator/config"
 ]
 dependencies = ["build"]
