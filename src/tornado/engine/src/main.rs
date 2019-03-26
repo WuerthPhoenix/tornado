@@ -44,14 +44,12 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         info!("Available CPUs: {}", cpus);
 
         // Start archive executor actor
-        let archive_config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
+        let archive_config = config::build_archive_config(&conf)
+            .unwrap_or_else(|err| {
+                error!("Cannot build the ArchiveExecutor configuration. Err: {}", err);
+                std::process::exit(1);
+            });
         let archive_executor_addr = SyncArbiter::start(1, move || {
-            let archive_config = config::build_archive_config(&archive_config_file_path.clone())
-                .unwrap_or_else(|err| {
-                    error!("Cannot build the ArchiveExecutor configuration. Err: {}", err);
-                    std::process::exit(1);
-                });
-
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
         });
@@ -63,11 +61,7 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_config_file_path =
-            format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
-        let icinga2_client_config = config::build_icinga2_client_config(
-            &icinga2_client_config_file_path,
-        )
+        let icinga2_client_config = config::build_icinga2_client_config(&conf)
         .unwrap_or_else(|err| {
             error!("Cannot build the Icinga2ApiClientActor configuration. Err: {}", err);
             std::process::exit(1);

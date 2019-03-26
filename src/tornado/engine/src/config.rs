@@ -56,17 +56,20 @@ impl Conf {
     }
 }
 
-pub fn build_archive_config(config_file_path: &str) -> Result<ArchiveConfig, ConfigError> {
+pub fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
+    let config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
     let mut s = Config::new();
-    s.merge(File::with_name(config_file_path))?;
+    s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
 pub fn build_icinga2_client_config(
-    config_file_path: &str,
+    conf: &Conf,
 ) -> Result<Icinga2ClientConfig, ConfigError> {
+    let config_file_path =
+        format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
     let mut s = Config::new();
-    s.merge(File::with_name(config_file_path))?;
+    s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
