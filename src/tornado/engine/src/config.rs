@@ -1,8 +1,13 @@
+use self::command::Command;
 use crate::executor::icinga2::Icinga2ClientConfig;
 use config_rs::{Config, ConfigError, File};
 use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
+use tornado_engine_matcher::config::MatcherConfig;
+use tornado_engine_matcher::error::MatcherError;
 use tornado_executor_archive::config::ArchiveConfig;
+
+mod command;
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -40,6 +45,9 @@ pub struct Conf {
 
     #[structopt(flatten)]
     pub io: Io,
+
+    #[structopt(subcommand)]
+    pub command: Option<Command>,
 }
 
 impl Conf {
@@ -60,6 +68,10 @@ pub fn build_icinga2_client_config(
     let mut s = Config::new();
     s.merge(File::with_name(config_file_path))?;
     s.try_into()
+}
+
+pub fn load_rules(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
+    MatcherConfig::read_from_dir(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
 }
 
 #[cfg(test)]

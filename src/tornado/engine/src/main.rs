@@ -16,19 +16,24 @@ use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
-use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
 
+    if let Some(command) = &conf.command {
+        return command.execute(&conf);
+    }
+
+    start_tornado(conf)
+}
+
+fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
     // Load rules from fs
-    let config_rules =
-        MatcherConfig::read_from_dir(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
-            .map_err(|e| e.compat())?;
+    let config_rules = config::load_rules(&conf).map_err(|e| e.compat())?;
 
     // Start matcher
     let matcher = Arc::new(Matcher::build(&config_rules).map_err(|e| e.compat())?);
