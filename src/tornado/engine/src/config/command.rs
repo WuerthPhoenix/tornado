@@ -1,5 +1,6 @@
-use structopt::StructOpt;
 use failure::Fail;
+use structopt::StructOpt;
+use tornado_engine_matcher::matcher::Matcher;
 
 #[derive(StructOpt, Debug)]
 pub enum Command {
@@ -13,9 +14,8 @@ impl Command {
         match self {
             Command::Check => {
                 println!("Check Tornado configuration");
-                let _config_rules = super::load_rules(&conf).map_err(|e| e.compat())?;
-                let _icinga2_client_config = super::build_icinga2_client_config(&conf)?;
-                let _archive_config = super::build_archive_config(&conf)?;
+                let (matcher_config, _, _) = super::parse_config_files(&conf)?;
+                let _matcher = Matcher::build(&matcher_config).map_err(|e| e.compat())?;
                 println!("The configuration is correct.");
                 Ok(())
             }

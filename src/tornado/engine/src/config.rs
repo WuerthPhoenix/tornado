@@ -1,6 +1,7 @@
 use self::command::Command;
 use crate::executor::icinga2::Icinga2ClientConfig;
 use config_rs::{Config, ConfigError, File};
+use failure::Fail;
 use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::MatcherConfig;
@@ -56,24 +57,30 @@ impl Conf {
     }
 }
 
-pub fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
+pub fn parse_config_files(
+    conf: &Conf,
+) -> Result<(MatcherConfig, ArchiveConfig, Icinga2ClientConfig), Box<std::error::Error>> {
+    let matcher_config = load_rules(&conf).map_err(|e| e.compat())?;
+    let archive_config = build_archive_config(&conf)?;
+    let icinga2_client_config = build_icinga2_client_config(&conf)?;
+    Ok((matcher_config, archive_config, icinga2_client_config))
+}
+
+fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
     let config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
-pub fn build_icinga2_client_config(
-    conf: &Conf,
-) -> Result<Icinga2ClientConfig, ConfigError> {
-    let config_file_path =
-        format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
+fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, ConfigError> {
+    let config_file_path = format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
-pub fn load_rules(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
+fn load_rules(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
     MatcherConfig::read_from_dir(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
 }
 

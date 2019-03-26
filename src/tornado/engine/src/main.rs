@@ -32,8 +32,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
 fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
-    // Load rules from fs
-    let config_rules = config::load_rules(&conf).map_err(|e| e.compat())?;
+    let (config_rules, archive_config, icinga2_client_config) = config::parse_config_files(&conf)?;
 
     // Start matcher
     let matcher = Arc::new(Matcher::build(&config_rules).map_err(|e| e.compat())?);
@@ -44,11 +43,6 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         info!("Available CPUs: {}", cpus);
 
         // Start archive executor actor
-        let archive_config = config::build_archive_config(&conf)
-            .unwrap_or_else(|err| {
-                error!("Cannot build the ArchiveExecutor configuration. Err: {}", err);
-                std::process::exit(1);
-            });
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -61,11 +55,6 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_config = config::build_icinga2_client_config(&conf)
-        .unwrap_or_else(|err| {
-            error!("Cannot build the Icinga2ApiClientActor configuration. Err: {}", err);
-            std::process::exit(1);
-        });
         let icinga2_client_addr =
             executor::icinga2::Icinga2ApiClientActor::start_new(icinga2_client_config);
 
