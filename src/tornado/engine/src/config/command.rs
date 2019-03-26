@@ -14,8 +14,8 @@ impl Command {
         match self {
             Command::Check => {
                 println!("Check Tornado configuration");
-                let (matcher_config, _, _) = super::parse_config_files(&conf)?;
-                let _matcher = Matcher::build(&matcher_config).map_err(|e| e.compat())?;
+                let configs = super::parse_config_files(&conf)?;
+                let _matcher = Matcher::build(&configs.matcher).map_err(|e| e.compat())?;
                 println!("The configuration is correct.");
                 Ok(())
             }

@@ -32,10 +32,10 @@ fn main() -> Result<(), Box<std::error::Error>> {
 fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
-    let (config_rules, archive_config, icinga2_client_config) = config::parse_config_files(&conf)?;
+    let configs = config::parse_config_files(&conf)?;
 
     // Start matcher
-    let matcher = Arc::new(Matcher::build(&config_rules).map_err(|e| e.compat())?);
+    let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(|e| e.compat())?);
 
     // start system
     System::run(move || {
@@ -43,6 +43,7 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         info!("Available CPUs: {}", cpus);
 
         // Start archive executor actor
+        let archive_config = configs.archive.clone();
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -56,7 +57,7 @@ fn start_tornado(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
 
         // Start Icinga2 Client Actor
         let icinga2_client_addr =
-            executor::icinga2::Icinga2ApiClientActor::start_new(icinga2_client_config);
+            executor::icinga2::Icinga2ApiClientActor::start_new(configs.icinga2_client);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {

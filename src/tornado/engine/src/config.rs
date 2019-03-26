@@ -57,13 +57,18 @@ impl Conf {
     }
 }
 
-pub fn parse_config_files(
-    conf: &Conf,
-) -> Result<(MatcherConfig, ArchiveConfig, Icinga2ClientConfig), Box<std::error::Error>> {
-    let matcher_config = load_rules(&conf).map_err(|e| e.compat())?;
-    let archive_config = build_archive_config(&conf)?;
-    let icinga2_client_config = build_icinga2_client_config(&conf)?;
-    Ok((matcher_config, archive_config, icinga2_client_config))
+pub struct ComponentsConfig {
+    pub matcher: MatcherConfig,
+    pub archive: ArchiveConfig,
+    pub icinga2_client: Icinga2ClientConfig,
+}
+
+// Todo: use a struct
+pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
+    let matcher = build_matcher_config(&conf).map_err(|e| e.compat())?;
+    let archive = build_archive_config(&conf)?;
+    let icinga2_client = build_icinga2_client_config(&conf)?;
+    Ok(ComponentsConfig { matcher, archive, icinga2_client })
 }
 
 fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
@@ -80,7 +85,7 @@ fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, Confi
     s.try_into()
 }
 
-fn load_rules(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
+fn build_matcher_config(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
     MatcherConfig::read_from_dir(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
 }
 
