@@ -12,7 +12,10 @@ mod command;
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct Io {
+pub struct Conf {
+    #[structopt(flatten)]
+    pub logger: LoggerConfig,
+
     /// The filesystem folder where the Tornado configuration is saved
     #[structopt(long, default_value = "/etc/tornado")]
     pub config_dir: String,
@@ -21,31 +24,6 @@ pub struct Io {
     ///   this folder is relative to the `config_dir`.
     #[structopt(long, default_value = "/rules.d/")]
     pub rules_dir: String,
-
-    /// The IP address where we will listen for incoming events.
-    #[structopt(long, default_value = "127.0.0.1")]
-    pub event_socket_ip: String,
-
-    /// The port where we will listen for incoming events.
-    #[structopt(long, default_value = "4747")]
-    pub event_socket_port: u16,
-
-    /// The IP address where we will listen for incoming snmptrapd events.
-    #[structopt(long, default_value = "127.0.0.1")]
-    pub snmptrapd_socket_ip: String,
-
-    /// The port where we will listen for incoming snmptrapd events.
-    #[structopt(long, default_value = "4748")]
-    pub snmptrapd_socket_port: u16,
-}
-
-#[derive(Debug, StructOpt)]
-pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
-    #[structopt(flatten)]
-    pub io: Io,
 
     #[structopt(subcommand)]
     pub command: Command,
@@ -63,7 +41,6 @@ pub struct ComponentsConfig {
     pub icinga2_client: Icinga2ClientConfig,
 }
 
-// Todo: use a struct
 pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
     let matcher = build_matcher_config(&conf).map_err(|e| e.compat())?;
     let archive = build_archive_config(&conf)?;
@@ -72,21 +49,21 @@ pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::erro
 }
 
 fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
-    let config_file_path = format!("{}/archive_executor.toml", conf.io.config_dir);
+    let config_file_path = format!("{}/archive_executor.toml", conf.config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
 fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, ConfigError> {
-    let config_file_path = format!("{}/icinga2_client_executor.toml", conf.io.config_dir);
+    let config_file_path = format!("{}/icinga2_client_executor.toml", conf.config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
 fn build_matcher_config(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
-    MatcherConfig::read_from_dir(&format!("{}/{}", conf.io.config_dir, conf.io.rules_dir))
+    MatcherConfig::read_from_dir(&format!("{}/{}", conf.config_dir, conf.rules_dir))
 }
 
 #[cfg(test)]
@@ -121,10 +98,15 @@ mod test {
     #[test]
     fn should_read_icinga2_client_configurations_from_file() {
         // Arrange
-        let path = "./config/icinga2_client_executor.toml";
+        let conf = Conf {
+            logger: Default::default(),
+            config_dir: "./config".to_owned(),
+            rules_dir: "/rules.d".to_owned(),
+            command: Command::Check,
+        };
 
         // Act
-        let config = build_icinga2_client_config(path).unwrap();
+        let config = build_icinga2_client_config(&conf).unwrap();
 
         // Assert
         assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)

@@ -1,6 +1,6 @@
-use tornado_engine_matcher::matcher::Matcher;
-use failure::Fail;
 use crate::config::{parse_config_files, Conf};
+use failure::Fail;
+use tornado_engine_matcher::matcher::Matcher;
 
 pub fn check(conf: Conf) -> Result<(), Box<std::error::Error>> {
     println!("Check Tornado configuration");

@@ -9,5 +9,3 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let command = conf.command.clone();
     command.execute(conf)
 }
-
-

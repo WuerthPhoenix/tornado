@@ -1,10 +1,12 @@
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
-use crate::executor::icinga2::{Icinga2ApiClientMessage, Icinga2ApiClientActor};
+use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
+use crate::collector::snmptrapd::SnmptrapdJsonReaderActor;
+use crate::config::command::DaemonCommandConfig;
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
@@ -14,9 +16,11 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use crate::collector::snmptrapd::SnmptrapdJsonReaderActor;
 
-pub fn daemon(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
+pub fn daemon(
+    conf: config::Conf,
+    daemon_config: DaemonCommandConfig,
+) -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
     let configs = config::parse_config_files(&conf)?;
@@ -43,8 +47,7 @@ pub fn daemon(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_addr =
-            Icinga2ApiClientActor::start_new(configs.icinga2_client);
+        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_client);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {
@@ -86,7 +89,8 @@ pub fn daemon(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
         });
 
         // Start Event Json TCP listener
-        let tcp_address = format!("{}:{}", conf.io.event_socket_ip, conf.io.event_socket_port);
+        let tcp_address =
+            format!("{}:{}", daemon_config.event_socket_ip, daemon_config.event_socket_port);
         let json_matcher_addr_clone = matcher_addr.clone();
         listen_to_tcp(tcp_address.clone(), move |msg| {
             let json_matcher_addr_clone = json_matcher_addr_clone.clone();
@@ -94,38 +98,37 @@ pub fn daemon(conf: config::Conf) -> Result<(), Box<std::error::Error>> {
                 json_matcher_addr_clone.do_send(EventMessage { event })
             });
         })
-            .and_then(|_| {
-                info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
-                Ok(())
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
-                std::process::exit(1);
-            });
+        .and_then(|_| {
+            info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
+            Ok(())
+        })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
+            std::process::exit(1);
+        });
 
         // Start snmptrapd Json UDS listener
-        let snmptrapd_tpc_address =
-            format!("{}:{}", conf.io.snmptrapd_socket_ip, conf.io.snmptrapd_socket_port);
+        let snmptrapd_tpc_address = format!(
+            "{}:{}",
+            daemon_config.snmptrapd_socket_ip, daemon_config.snmptrapd_socket_port
+        );
         let snmptrapd_matcher_addr_clone = matcher_addr.clone();
         listen_to_tcp(snmptrapd_tpc_address.clone(), move |msg| {
-            SnmptrapdJsonReaderActor::start_new(
-                msg,
-                snmptrapd_matcher_addr_clone.clone(),
-            );
+            SnmptrapdJsonReaderActor::start_new(msg, snmptrapd_matcher_addr_clone.clone());
         })
-            .and_then(|_| {
-                info!(
-                    "Started TCP server at [{}]. Listening for incoming SNMPTRAPD events",
-                    snmptrapd_tpc_address
-                );
-                Ok(())
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot start TCP server at [{}]. Err: {}", snmptrapd_tpc_address, err);
-                std::process::exit(1);
-            });
+        .and_then(|_| {
+            info!(
+                "Started TCP server at [{}]. Listening for incoming SNMPTRAPD events",
+                snmptrapd_tpc_address
+            );
+            Ok(())
+        })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Cannot start TCP server at [{}]. Err: {}", snmptrapd_tpc_address, err);
+            std::process::exit(1);
+        });
     });
 
     Ok(())

@@ -105,9 +105,14 @@ impl MatcherConfig {
                 })?;
 
             trace!("Rule body: \n{}", rule_body);
-            let mut rule = Rule::from_json(&rule_body).map_err(|e| MatcherError::ConfigurationError {
-                message: format!("Error building Rule from file [{}]. Err: {}", path.display(), e),
-            })?;
+            let mut rule =
+                Rule::from_json(&rule_body).map_err(|e| MatcherError::ConfigurationError {
+                    message: format!(
+                        "Error building Rule from file [{}]. Err: {}",
+                        path.display(),
+                        e
+                    ),
+                })?;
             rule.name = MatcherConfig::rule_name_from_filename(&MatcherConfig::truncate(
                 filename,
                 extension.len(),
@@ -156,9 +161,14 @@ impl MatcherConfig {
                 })?;
 
             trace!("Filter [{}] body: \n{}", filename, filter_body);
-            let mut filter = Filter::from_json(&filter_body).map_err(|e| MatcherError::ConfigurationError {
-                message: format!("Error building Filter from file [{}]. Err: {}", path.display(), e),
-            })?;
+            let mut filter =
+                Filter::from_json(&filter_body).map_err(|e| MatcherError::ConfigurationError {
+                    message: format!(
+                        "Error building Filter from file [{}]. Err: {}",
+                        path.display(),
+                        e
+                    ),
+                })?;
             filter.name = MatcherConfig::truncate(filename, extension.len());
             filters.push(filter);
         }
