@@ -48,7 +48,7 @@ pub struct Conf {
     pub io: Io,
 
     #[structopt(subcommand)]
-    pub command: Option<Command>,
+    pub command: Command,
 }
 
 impl Conf {

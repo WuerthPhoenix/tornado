@@ -1,24 +1,23 @@
-use failure::Fail;
 use structopt::StructOpt;
-use tornado_engine_matcher::matcher::Matcher;
 
-#[derive(StructOpt, Debug)]
+mod check;
+mod daemon;
+
+#[derive(StructOpt, Debug, Clone)]
 pub enum Command {
     #[structopt(name = "check")]
     /// Checks that the configuration is valid.
     Check,
+    #[structopt(name = "daemon")]
+    /// Starts the Tornado daemon
+    Daemon
 }
 
 impl Command {
-    pub fn execute(&self, conf: &super::Conf) -> Result<(), Box<std::error::Error>> {
+    pub fn execute(&self, conf: super::Conf) -> Result<(), Box<std::error::Error>> {
         match self {
-            Command::Check => {
-                println!("Check Tornado configuration");
-                let configs = super::parse_config_files(&conf)?;
-                let _matcher = Matcher::build(&configs.matcher).map_err(|e| e.compat())?;
-                println!("The configuration is correct.");
-                Ok(())
-            }
+            Command::Check => check::check(conf),
+            Command::Daemon => daemon::daemon(conf),
         }
     }
 }
