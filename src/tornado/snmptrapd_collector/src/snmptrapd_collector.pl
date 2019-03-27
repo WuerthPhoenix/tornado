@@ -12,8 +12,8 @@ sub my_receiver {
     my $PDUInfo = $_[0];
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
-    if (!$socket) {
-        print "CREATING NEW SOCKET!";
+    if (!isSocketConnected()) {
+        print "Open TCP socket connection!\n";
         $socket = IO::Socket::INET->new (
             PeerHost => '127.0.0.1',
             PeerPort => '4748',
@@ -42,13 +42,15 @@ sub my_receiver {
     return 1;
 }
 
+sub isSocketConnected {
+    return unless defined $socket;
+    return unless $socket->connected;
+    return 1;
+}
+
 my $counter = 1;
 ## create a connecting socket
-my $socket = IO::Socket::INET->new (
-    PeerHost => '127.0.0.1',
-    PeerPort => '4748',
-    Proto => 'tcp',
-);
+my $socket;
 
 #die "cannot connect to the server $!\n" unless $socket;
 print "connected to the server\n";
