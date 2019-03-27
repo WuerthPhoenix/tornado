@@ -38,24 +38,25 @@ system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed 
 
 ### CLI Commands and Configuration
 
-Tornado CLI has commands that allow you to use the functionality provided.
+The Tornado CLI has commands that allow you to use the functionality provided.
 Running the Tornado executable without any argument returns a list of all available
 commands and global options that apply to every command.
 
-Tornado subcommands:
+Tornado commands:
 - __check__ : Checks that the configuration is valid.
 - __daemon__ : Starts the Tornado daemon.
-- __help__ : Prints the general help page or the specific help of the given subcommand.
+- __help__ : Prints the general help page or the specific help of the given command.
 
-Each CLI command provides its own help and usage information, you can print them using the `help` subcommand.
+Each CLI command provides its own help and usage information, you can print them using the `help` command.
 
-For example, with this instruction, you can print the help and options of the `daemon` command:
+For example, with this instruction, you can print the help and options of `daemon`:
 ```bash
 ./tornado_engine help daemon
 ```
 
 The Tornado configuration is partly based on configuration files and partly based on command line
-parameters. 
+parameters. The position of the configuration files on the file system is determined at startup
+based on the provided CLI options.
 
 Tornado global option:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
