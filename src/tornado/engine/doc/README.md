@@ -36,12 +36,28 @@ system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed 
 
 
 
-### Configuration
+### CLI Commands and Configuration
 
-The configuration is partly based on configuration files and partly based on command line
-parameters.
+Tornado CLI has commands that allow you to use the functionality provided.
+Running the Tornado executable without any argument returns a list of all available
+commands and global options that apply to every command.
 
-The startup parameters are:
+Tornado subcommands:
+- __check__ : Checks that the configuration is valid.
+- __daemon__ : Starts the Tornado daemon.
+- __help__ : Prints the general help page or the specific help of the given subcommand.
+
+Each CLI command provides its own help and usage information, you can print them using the `help` subcommand.
+
+For example, with this instruction, you can print the help and options of the `daemon` command:
+```bash
+./tornado_engine help daemon
+```
+
+The Tornado configuration is partly based on configuration files and partly based on command line
+parameters. 
+
+Tornado global option:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
   Valid values are `true` and `false`, with `false` the default.
 - __logger-file-path__:  A file path in the file system; if provided, the Logger will
@@ -52,6 +68,11 @@ The startup parameters are:
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
+
+
+The __check__ command does not have specific options.
+
+The __daemon__ command has the following options:
 - __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
   The default address is _127.0.0.1_.
 - __event-socket-port__:  The port where Tornado will listen for incoming events.
@@ -63,19 +84,23 @@ The startup parameters are:
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
+The command specific options should always be used after the command name; on the contrary, the global ones
+always precede it. 
 An example of a full startup command is:
 ```bash
 ./tornado_engine --logger-stdout --logger-level=debug \
     --config-dir=./tornado/engine/config \
+    daemon \
     --event-socket-ip=0.0.0.0 \
     --event-socket-port=12345 \
     --snmptrapd-socket-ip=0.0.0.0 \
     --snmptrapd-socket-port=67890
 ```
 
-In this case the Engine:
+In this case the CLI:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
+- Executes the __daemon__ command that starts the Engine
 - Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
   in order to build the processing tree
 - Opens two TCP ports at _0.0.0.0:12345_ and _0.0.0.0:67890_ for receiving,
