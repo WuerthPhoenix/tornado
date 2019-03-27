@@ -39,26 +39,26 @@ system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed 
 ### CLI Commands and Configuration
 
 The Tornado CLI has commands that allow you to use the functionality provided.
-Running the Tornado executable without any argument returns a list of all available
+Running the Tornado executable without any arguments returns a list of all available
 commands and global options that apply to every command.
 
 Tornado commands:
 - __check__ : Checks that the configuration is valid.
 - __daemon__ : Starts the Tornado daemon.
-- __help__ : Prints the general help page or the specific help of the given command.
+- __help__ : Prints the general help page, or the specific help of the given command.
 
-Each CLI command provides its own help and usage information, you can print them using the `help` command.
+Each CLI command provides its own help and usage information, you can display using the `help` command.
 
-For example, with this instruction, you can print the help and options of `daemon`:
+For example, with this command you can show the help page and options of `daemon`:
 ```bash
 ./tornado_engine help daemon
 ```
 
 The Tornado configuration is partly based on configuration files and partly based on command line
-parameters. The position of the configuration files on the file system is determined at startup
-based on the provided CLI options.
+parameters. The location of configuration files in the file system is determined at startup based
+on the provided CLI options.
 
-Tornado global option:
+Tornado global options:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
   Valid values are `true` and `false`, with `false` the default.
 - __logger-file-path__:  A file path in the file system; if provided, the Logger will
@@ -71,7 +71,7 @@ Tornado global option:
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
 
 
-The __check__ command does not have specific options.
+The __check__ command does not have any specific options.
 
 The __daemon__ command has the following options:
 - __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
@@ -85,9 +85,8 @@ The __daemon__ command has the following options:
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
-The command specific options should always be used after the command name; on the contrary, the global ones
-always precede it. 
-An example of a full startup command is:
+The command-specific options should always be used after the command name, while the global ones
+always precede it.  An example of a full startup command is:
 ```bash
 ./tornado_engine --logger-stdout --logger-level=debug \
     --config-dir=./tornado/engine/config \
@@ -98,7 +97,7 @@ An example of a full startup command is:
     --snmptrapd-socket-port=67890
 ```
 
-In this case the CLI:
+In this case, the CLI:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
 - Executes the __daemon__ command that starts the Engine
