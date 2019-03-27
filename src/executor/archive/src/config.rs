@@ -1,7 +1,7 @@
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct ArchiveConfig {
     /// The base path where the archive executor writes into.
     /// All other paths are relative to this one.

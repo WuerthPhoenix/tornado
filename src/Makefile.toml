@@ -18,6 +18,7 @@ args = [
     "--logger-stdout",
     "--logger-level=debug",
     "--config-dir=./tornado/engine/config",
+    "daemon",
 ]
 dependencies = ["build"]
 
