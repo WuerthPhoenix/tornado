@@ -1,4 +1,3 @@
-use self::command::Command;
 use crate::executor::icinga2::Icinga2ClientConfig;
 use config_rs::{Config, ConfigError, File};
 use failure::Fail;
@@ -7,8 +6,6 @@ use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::error::MatcherError;
 use tornado_executor_archive::config::ArchiveConfig;
-
-mod command;
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -27,6 +24,39 @@ pub struct Conf {
 
     #[structopt(subcommand)]
     pub command: Command,
+}
+
+#[derive(StructOpt, Debug, Clone)]
+pub enum Command {
+    #[structopt(name = "check")]
+    /// Checks that the configuration is valid.
+    Check,
+    #[structopt(name = "daemon")]
+    /// Starts the Tornado daemon
+    Daemon {
+        #[structopt(flatten)]
+        daemon_config: DaemonCommandConfig,
+    },
+}
+
+#[derive(Debug, StructOpt, Clone)]
+#[structopt(rename_all = "kebab-case")]
+pub struct DaemonCommandConfig {
+    /// The IP address where we will listen for incoming events.
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub event_socket_ip: String,
+
+    /// The port where we will listen for incoming events.
+    #[structopt(long, default_value = "4747")]
+    pub event_socket_port: u16,
+
+    /// The IP address where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub snmptrapd_socket_ip: String,
+
+    /// The port where we will listen for incoming snmptrapd events.
+    #[structopt(long, default_value = "4748")]
+    pub snmptrapd_socket_port: u16,
 }
 
 impl Conf {

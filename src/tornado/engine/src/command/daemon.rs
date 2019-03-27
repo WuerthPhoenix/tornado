@@ -1,3 +1,4 @@
+use crate::collector::snmptrapd::SnmptrapdJsonReaderActor;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
@@ -5,8 +6,6 @@ use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
-use crate::collector::snmptrapd::SnmptrapdJsonReaderActor;
-use crate::config::command::DaemonCommandConfig;
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
@@ -18,12 +17,12 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
 pub fn daemon(
-    conf: config::Conf,
-    daemon_config: DaemonCommandConfig,
+    conf: &config::Conf,
+    daemon_config: config::DaemonCommandConfig,
 ) -> Result<(), Box<std::error::Error>> {
     setup_logger(&conf.logger).map_err(|e| e.compat())?;
 
-    let configs = config::parse_config_files(&conf)?;
+    let configs = config::parse_config_files(conf)?;
 
     // Start matcher
     let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(|e| e.compat())?);
