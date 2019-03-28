@@ -18,6 +18,8 @@ sub my_receiver {
     my $PDUInfo = $_[0];
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
+    printTrapInfo($PDUInfo, $VarBinds);
+
     if (!isSocketConnected()) {
         print "Open TCP socket connection to Tornado server\n";
         $socket = IO::Socket::INET->new (
@@ -82,6 +84,27 @@ sub getCurrentDate {
     my $now = DateTime->now()->iso8601().'Z';
     # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
     return $now;
+}
+
+sub printTrapInfo {
+    my ( $PDUInfo, $VarBinds ) = @_;
+    
+    # print the PDU info (a hash reference)
+    print "PDU INFO:\n";
+    foreach my $k(keys(%{$PDUInfo})) {
+      if ($k eq "securityEngineID" || $k eq "contextEngineID") {
+        printf "  %-30s 0x%s\n", $k, unpack('h*', $PDUInfo->{$k});
+      }
+      else {
+        printf "  %-30s %s\n", $k, $PDUInfo->{$k};
+      }
+    }
+ 
+    # print the variable bindings:
+    print "VARBINDS:\n";
+    foreach my $x (@{$VarBinds}) { 
+        printf "  %-30s type=%-2d value=%s\n", $x->[0], $x->[2], $x->[1]; 
+    }
 }
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||

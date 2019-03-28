@@ -1,4 +1,3 @@
-use crate::collector::snmptrapd::SnmptrapdJsonReaderActor;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
@@ -104,28 +103,6 @@ pub fn daemon(
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
         .unwrap_or_else(|err| {
             error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
-            std::process::exit(1);
-        });
-
-        // Start snmptrapd Json UDS listener
-        let snmptrapd_tpc_address = format!(
-            "{}:{}",
-            daemon_config.snmptrapd_socket_ip, daemon_config.snmptrapd_socket_port
-        );
-        let snmptrapd_matcher_addr_clone = matcher_addr.clone();
-        listen_to_tcp(snmptrapd_tpc_address.clone(), move |msg| {
-            SnmptrapdJsonReaderActor::start_new(msg, snmptrapd_matcher_addr_clone.clone());
-        })
-        .and_then(|_| {
-            info!(
-                "Started TCP server at [{}]. Listening for incoming SNMPTRAPD events",
-                snmptrapd_tpc_address
-            );
-            Ok(())
-        })
-        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-        .unwrap_or_else(|err| {
-            error!("Cannot start TCP server at [{}]. Err: {}", snmptrapd_tpc_address, err);
             std::process::exit(1);
         });
     });

@@ -1,6 +1,5 @@
 use crate::config::Command;
 
-pub mod collector;
 mod command;
 pub mod config;
 pub mod dispatcher;

@@ -41,28 +41,6 @@ script = [
 dependencies = ["build"]
 
 
-# Starts the spike_snmptrapd_collector_writer.
-#
-# The spike_snmptrapd_collector_writer will generate fake snmptrapd
-# events and forward them to the Engine's TCP socket.
-#
-# Execute with:
-# > cargo make run-snmptrapd-writer
-[tasks.run-snmptrapd-writer]
-workspace = false
-command = "cargo"
-args = [
-    "run",
-    "--bin",
-    "spike_snmptrapd_collector_writer",
-    "--",
-    "--logger-stdout",
-    "--logger-level=debug",
-    "--json-events-path=./spike/snmptrapd_collector_writer/events",
-]
-dependencies = ["build"]
-
-
 # Starts the tornado_icinga2_collector.
 #
 # Execute with:
