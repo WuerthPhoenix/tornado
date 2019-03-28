@@ -1,4 +1,7 @@
 #!/usr/bin/perl
+use warnings;
+use strict;
+
 use Data::Dumper;
 use DateTime;
 use JSON;
@@ -7,6 +10,8 @@ use IO::Socket::INET;
 
 # auto-flush on socket
 $| = 1;
+
+my $socket;
 
 sub my_receiver {
     print "********** Snmptrapd_collector received a notification:\n";
@@ -27,10 +32,28 @@ sub my_receiver {
         $VarBindData{sprintf("%s",$_->[0])} = sprintf("%s", $_->[2]);
     }
 
-    my $data = {
+    my $protocol;
+    my $src_ip;
+    my $src_port;
+    my $dest_ip;
+    my $receivedfrom = $PDUInfo->{receivedfrom};
+    # print "Notification received from: $receivedfrom\n";
+    if ($receivedfrom =~ m/^([^:]+):\s\[([^\]]+)\]:([0-9]+)->\[([^\]]+)\]/) {
+        $protocol = $1;
+        $src_ip = $2;
+        $src_port = $3;
+        $dest_ip = $4;
+        # print "from regex: $protocol - $src_ip - $src_port - $dest_ip\n";
+    };
+
+    my $data = { 
         "type" => "snmptrapd",
         "created_ts" => getCurrentDate(),
         "payload" => {
+            "protocol" => $protocol,
+            "src_ip" => $src_ip,
+            "src_port" => $src_port,
+            "dest_ip" => $dest_ip,
             "PDUInfo" => $PDUInfo,
             "VarBinds" => \%VarBindData,
         },
@@ -57,9 +80,6 @@ sub getCurrentDate {
     # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
     return $now;
 }
-
-## create a connecting socket
-my $socket;
 
 #die "cannot connect to the server $!\n" unless $socket;
 
