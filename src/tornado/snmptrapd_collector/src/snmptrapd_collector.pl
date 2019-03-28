@@ -21,10 +21,13 @@ sub my_receiver {
     # printTrapInfo($PDUInfo, $VarBinds);
 
     if (!isSocketConnected()) {
-        print "Open TCP socket connection to Tornado server\n";
+        my $ip = getEnvOrDefault("TORNADO_ADDR", "127.0.0.1");
+        my $port = getEnvOrDefault("TORNADO_PORT", "4747");
+
+        print "Open TCP socket connection to Tornado server at $ip:$port\n";
         $socket = IO::Socket::INET->new (
-            PeerHost => '127.0.0.1',
-            PeerPort => '4747',
+            PeerHost => $ip,
+            PeerPort => $port,
             Proto => 'tcp',
         );
     }
@@ -85,6 +88,17 @@ sub getCurrentDate {
     # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
     return $now;
 }
+
+sub getEnvOrDefault {
+    my ( $key, $default ) = @_;
+    my $envValue = $ENV{$key};
+    # print "KEY is $key - VALUE is $envValue\n";
+    if ($envValue) {
+        return $envValue;
+    }
+    return $default;
+}
+
 
 sub printTrapInfo {
     my ( $PDUInfo, $VarBinds ) = @_;
