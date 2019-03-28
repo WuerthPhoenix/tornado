@@ -1,5 +1,6 @@
 #!/usr/bin/perl
 use Data::Dumper;
+use DateTime;
 use JSON;
 use JSON::XS;
 use IO::Socket::INET;
@@ -8,15 +9,15 @@ use IO::Socket::INET;
 $| = 1;
 
 sub my_receiver {
-    print "********** SNMPTRAPD_COLLECTOR RECEIVED A NOTIFICATION $counter:\n";
+    print "********** Snmptrapd_collector received a notification:\n";
     my $PDUInfo = $_[0];
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
     if (!isSocketConnected()) {
-        print "Open TCP socket connection!\n";
+        print "Open TCP socket connection to Tornado server\n";
         $socket = IO::Socket::INET->new (
             PeerHost => '127.0.0.1',
-            PeerPort => '4748',
+            PeerPort => '4747',
             Proto => 'tcp',
         );
     }
@@ -27,9 +28,12 @@ sub my_receiver {
     }
 
     my $data = {
-        "counter" => $counter++,
-        "PDUInfo" => $PDUInfo,
-        "VarBinds" => \%VarBindData,
+        "type" => "snmptrapd",
+        "created_ts" => getCurrentDate(),
+        "payload" => {
+            "PDUInfo" => $PDUInfo,
+            "VarBinds" => \%VarBindData,
+        },
     };
 
     my $json = encode_json($data) . "\n";
@@ -48,15 +52,18 @@ sub isSocketConnected {
     return 1;
 }
 
-my $counter = 1;
+sub getCurrentDate {
+    my $now = DateTime->now()->iso8601().'Z';
+    # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
+    return $now;
+}
+
 ## create a connecting socket
 my $socket;
 
 #die "cannot connect to the server $!\n" unless $socket;
-print "connected to the server\n";
-
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
-  warn "failed to register the perl perl snmptrapd_collector\n";
+  warn "Failed to register the perl snmptrapd_collector\n";
 
 print STDERR "Loaded the perl snmptrapd_collector\n";

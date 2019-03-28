@@ -5,14 +5,15 @@ sudo apt install snmp snmptrapd
 
 #Requirements:
 
-- Perl 5
+- Perl 5.16
 - Perl packages:
+-- DateTime
 -- JSON
 -- NetSNMP
 
 To install perl packages:
 - Ubuntu:
-> sudo apt install libjson-perl libsnmp-perl
+> sudo apt install libdatetime-perl libjson-perl libsnmp-perl
 
 To check that libs are available:
 > perl -e 'use JSON;' && perl -e 'use NetSNMP::TrapReceiver;'
