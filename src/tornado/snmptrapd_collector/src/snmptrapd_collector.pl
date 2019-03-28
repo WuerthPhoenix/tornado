@@ -55,7 +55,7 @@ sub my_receiver {
             "src_port" => $src_port,
             "dest_ip" => $dest_ip,
             "PDUInfo" => $PDUInfo,
-            "VarBinds" => \%VarBindData,
+            "oids" => \%VarBindData,
         },
     };
 
@@ -66,6 +66,9 @@ sub my_receiver {
         eval{$socket->send($json);};
         print $@ if $@;
     }
+
+    # We should return NETSNMPTRAPD_HANDLER_OK but this does not work in strict mode.
+    # return NETSNMPTRAPD_HANDLER_OK;
     return 1;
 }
 
@@ -80,8 +83,6 @@ sub getCurrentDate {
     # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
     return $now;
 }
-
-#die "cannot connect to the server $!\n" unless $socket;
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
   warn "Failed to register the perl snmptrapd_collector\n";
