@@ -58,15 +58,19 @@ this entry in the logs or in the daemon standard error:
 The snmptrapd_collector was loaded successfully.
 ```
 
+### Configuration options
+The address of the Tornado Engine TCP instance to which the events are forwarded 
+is configured with the following environment variables:
+- __TORNADO_ADDR__: the IP address of Tornado Engine. If not specified, 
+it will use the default value _127.0.0.1_
+- __TORNADO_PORT__: the port of the TCP socket of Tornado Engine. If not specified, 
+it will use the default value _4747_
+
 
 ## How It Works
 
 The snmptrapd_collector receives snmptrapd messages, parses them, generates Tornado Events
 and, finally, sends them to the Tornado TCP events socket.
-
-The current version, will always use these hardcoded values to find the Tornado engine:
-- Tornado engine IP address: _127.0.0.1_
-- Tornado engine port: _4747_ 
 
 The perl script should automatically reconnect in case the Tornado engine is  
 temporarily not available.
