@@ -18,7 +18,7 @@ sub my_receiver {
     my $PDUInfo = $_[0];
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
-    printTrapInfo($PDUInfo, $VarBinds);
+    # printTrapInfo($PDUInfo, $VarBinds);
 
     if (!isSocketConnected()) {
         print "Open TCP socket connection to Tornado server\n";
@@ -110,4 +110,4 @@ sub printTrapInfo {
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
   warn "Failed to register the perl snmptrapd_collector\n";
 
-print STDERR "Loaded the perl snmptrapd_collector\n";
+print STDERR "The snmptrapd_collector was loaded successfully.\n";
