@@ -6,6 +6,11 @@ it receives snmptrap-specific inputs,
 transforms them into Tornado Events, and forwards them to the TCP address 
 of the Tornado engine.
 
+The implementation relies on the Perl 
+[NetSNMP::TrapReceiver](https://metacpan.org/pod/NetSNMP::TrapReceiver)
+package. You can refer to its [documentation](https://metacpan.org/pod/NetSNMP::TrapReceiver)
+for generic configuration examples and advices. 
+
 ## Configuration
 
 ### Prerequisites
@@ -63,11 +68,11 @@ The current version, will always use these hardcoded values to find the Tornado 
 - Tornado engine IP address: _127.0.0.1_
 - Tornado engine port: _4747_ 
 
-The perl script should automatically reconnect in case the Tornado engine is not 
+The perl script should automatically reconnect in case the Tornado engine is  
 temporarily not available.
 
  
-Given a snmptrapd messages that contains the following information:
+Consider a snmptrapd messages that contains the following information:
 ```
 PDU INFO:
   version                        1
@@ -85,7 +90,7 @@ VARBINDS:
   iso.3.6.1.4.1.8072.2.3.2.1     type=2  value=INTEGER: 123456
 ```
 
-this collector will produce this Tornado Event:
+the collector will produce this Tornado Event:
 ```json
 {
    "type":"snmptrapd",
@@ -119,8 +124,8 @@ The structure of the generated Event is not configurable.
 
 # Testing
 
-To test the collector on a machine, verify that snmptrapd is installed and
-follow the above collector configuration instructions.
+To test the collector, verify that snmptrapd is installed on the machine and
+follow collector configuration instructions reported above.
 
 As a prerequisite, the Tornado Engine should be up and running on the same machine 
 ([See the dedicated Tornado engine documentation](../../engine/doc/README.md)). 
@@ -142,7 +147,13 @@ And send fake messages with the command:
 > snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 i 123456
 ```
 
-If everything is configured correctly, you should a the message in the snmptrapd stardard error
+If everything is configured correctly, you should see a the message in the snmptrapd stardard error
 and an Event of type _'snmptrapd'_ received by Tornado Engine. 
+
+In case or authorization errors and **_only for testing purpose_**, 
+you can fix them by adding this line in the snmprapd.conf file:
+```
+disableAuthorization yes
+```
 
 
