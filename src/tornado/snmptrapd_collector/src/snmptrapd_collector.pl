@@ -15,11 +15,10 @@ $| = 1;
 
 my $socket;
 
-my $sleep_second_between_connection_attempts = 5;
+my $sleep_seconds_between_connection_attempts = 5;
 
-my $events_queue_size = 10000;
+my $max_events_queue_size = 10000;
 my $events_queue = Thread::Queue->new();
-$events_queue->limit = $events_queue_size;
 
 my $tornado_writer = async {
 	eval {
@@ -27,7 +26,7 @@ my $tornado_writer = async {
 		my $json_event;
 		while ($json_event = $events_queue->dequeue()) {
 
-		    print "[tornado_writer] received event:\n$json_event\n";
+		    # print "[tornado_writer] received event:\n$json_event\n";
 		    if (!isSocketConnected()) {
                 my $ip = getEnvOrDefault("TORNADO_ADDR", "127.0.0.1");
                 my $port = getEnvOrDefault("TORNADO_PORT", "4747");
@@ -49,9 +48,9 @@ my $tornado_writer = async {
                     $failed = 1;
                 }
                 if ($failed) {
-                    print "[tornado_writer] cannot send Event to Tornado Server! Attempt a new connection in $sleep_second_between_connection_attempts seconds\n";
-                    $events_queue->enqueue($json_event);
-                    sleep($sleep_second_between_connection_attempts);
+                    print "[tornado_writer] cannot send Event to Tornado Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
+                    enqueue($json_event);
+                    sleep($sleep_seconds_between_connection_attempts);
                 }
             }
 
@@ -86,7 +85,7 @@ sub my_receiver {
         $src_ip = $2;
         $src_port = $3;
         $dest_ip = $4;
-        print "from regex: $protocol - $src_ip - $src_port - $dest_ip\n";
+        # print "from regex: $protocol - $src_ip - $src_port - $dest_ip\n";
     };
 
     my $data = {
@@ -103,13 +102,21 @@ sub my_receiver {
     };
 
     my $json = encode_json($data) . "\n";
-    print $json;
+    # print $json;
     # push it in the queue
-    $events_queue->enqueue($json);
+    enqueue($json);
 
-    # We should return NETSNMPTRAPD_HANDLER_OK but this does not work in strict mode.
-    # return NETSNMPTRAPD_HANDLER_OK;
+    # We should return NETSNMPTRAPD_HANDLER_OK but it does not work in strict mode.
     return 1;
+}
+
+sub enqueue {
+    my ( $data ) = @_;
+    if ($events_queue->pending() < $max_events_queue_size ) {
+        $events_queue->enqueue($data);
+    } else {
+        print "WARN: The event buffer is full (max allowed: $max_events_queue_size events). New messages will be discarded!!"
+    }
 }
 
 sub isSocketConnected {
