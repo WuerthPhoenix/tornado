@@ -4,14 +4,57 @@ use strict;
 
 use Data::Dumper;
 use DateTime;
-use JSON;
-use JSON::XS;
+use Cpanel::JSON::XS;
 use IO::Socket::INET;
+use threads;
+use threads::shared;
+use Thread::Queue;
 
 # auto-flush on socket
 $| = 1;
 
 my $socket;
+my $eventsQueue = Thread::Queue->new();
+
+my $tornado_writer = async {
+	eval {
+		print "[tornado_writer] started\n";
+		my $json_event;
+		while ($json_event = $eventsQueue->dequeue()) {
+
+		    print "[tornado_writer] received event:\n$json_event\n";
+		    if (!isSocketConnected()) {
+                my $ip = getEnvOrDefault("TORNADO_ADDR", "127.0.0.1");
+                my $port = getEnvOrDefault("TORNADO_PORT", "4747");
+
+                print "Open TCP socket connection to Tornado server at $ip:$port\n";
+                $socket = IO::Socket::INET->new (
+                    PeerHost => $ip,
+                    PeerPort => $port,
+                    Proto => 'tcp',
+                );
+            }
+
+		    {
+                local $@;
+                eval{$socket->send($json_event);};
+                my $failed = !isSocketConnected();
+                if ($@) {
+                    # print "[tornado_writer] cannot send Event to Tornado Server: $@\n";
+                    $failed = 1;
+                }
+                if ($failed) {
+                    print "[tornado_writer] cannot send Event to Tornado Server!\n";
+                }
+            }
+
+		}
+		print "[tornado_writer] stopped\n";
+	};
+	if ($@) {
+		print "[tornado_writer] FATAL: $@\n";
+	}
+};
 
 sub my_receiver {
     print "********** Snmptrapd_collector received a notification:\n";
@@ -19,18 +62,6 @@ sub my_receiver {
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
     # printTrapInfo($PDUInfo, $VarBinds);
-
-    if (!isSocketConnected()) {
-        my $ip = getEnvOrDefault("TORNADO_ADDR", "127.0.0.1");
-        my $port = getEnvOrDefault("TORNADO_PORT", "4747");
-
-        print "Open TCP socket connection to Tornado server at $ip:$port\n";
-        $socket = IO::Socket::INET->new (
-            PeerHost => $ip,
-            PeerPort => $port,
-            Proto => 'tcp',
-        );
-    }
 
     my %VarBindData;
     for (@{$VarBinds}) {
@@ -48,10 +79,10 @@ sub my_receiver {
         $src_ip = $2;
         $src_port = $3;
         $dest_ip = $4;
-        # print "from regex: $protocol - $src_ip - $src_port - $dest_ip\n";
+        print "from regex: $protocol - $src_ip - $src_port - $dest_ip\n";
     };
 
-    my $data = { 
+    my $data = {
         "type" => "snmptrapd",
         "created_ts" => getCurrentDate(),
         "payload" => {
@@ -66,11 +97,8 @@ sub my_receiver {
 
     my $json = encode_json($data) . "\n";
     print $json;
-    {
-        local $@;
-        eval{$socket->send($json);};
-        print $@ if $@;
-    }
+    # push it in the queue
+    $eventsQueue->enqueue($json);
 
     # We should return NETSNMPTRAPD_HANDLER_OK but this does not work in strict mode.
     # return NETSNMPTRAPD_HANDLER_OK;
@@ -78,8 +106,8 @@ sub my_receiver {
 }
 
 sub isSocketConnected {
-    return unless defined $socket;
-    return unless $socket->connected;
+    return 0 unless defined $socket;
+    return 0 unless $socket->connected;
     return 1;
 }
 
