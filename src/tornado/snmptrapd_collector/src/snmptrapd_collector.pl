@@ -14,13 +14,18 @@ use Thread::Queue;
 $| = 1;
 
 my $socket;
-my $eventsQueue = Thread::Queue->new();
+
+my $sleep_second_between_connection_attempts = 5;
+
+my $events_queue_size = 10000;
+my $events_queue = Thread::Queue->new();
+$events_queue->limit = $events_queue_size;
 
 my $tornado_writer = async {
 	eval {
 		print "[tornado_writer] started\n";
 		my $json_event;
-		while ($json_event = $eventsQueue->dequeue()) {
+		while ($json_event = $events_queue->dequeue()) {
 
 		    print "[tornado_writer] received event:\n$json_event\n";
 		    if (!isSocketConnected()) {
@@ -44,7 +49,9 @@ my $tornado_writer = async {
                     $failed = 1;
                 }
                 if ($failed) {
-                    print "[tornado_writer] cannot send Event to Tornado Server!\n";
+                    print "[tornado_writer] cannot send Event to Tornado Server! Attempt a new connection in $sleep_second_between_connection_attempts seconds\n";
+                    $events_queue->enqueue($json_event);
+                    sleep($sleep_second_between_connection_attempts);
                 }
             }
 
@@ -98,7 +105,7 @@ sub my_receiver {
     my $json = encode_json($data) . "\n";
     print $json;
     # push it in the queue
-    $eventsQueue->enqueue($json);
+    $events_queue->enqueue($json);
 
     # We should return NETSNMPTRAPD_HANDLER_OK but this does not work in strict mode.
     # return NETSNMPTRAPD_HANDLER_OK;
