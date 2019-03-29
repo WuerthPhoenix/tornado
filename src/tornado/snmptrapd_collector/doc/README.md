@@ -72,8 +72,11 @@ it will use the default value _4747_
 The snmptrapd_collector receives snmptrapd messages, parses them, generates Tornado Events
 and, finally, sends them to the Tornado TCP events socket.
 
-The perl script should automatically reconnect in case the Tornado engine is  
-temporarily not available.
+The received messages are kept in an in memory non-persistent buffer that makes the application
+resilient to Tornado Engine crashes or temporary unavailability.
+When Tornado restarts, all messages in the buffer will be sent.
+When the buffer is full, the collector will start discarding old messages.
+The buffer max size is set to `10000` messages. 
 
  
 Consider a snmptrapd messages that contains the following information:
