@@ -15,7 +15,7 @@ and built as a portable executable.
 ## Structure of Tornado Engine
 
 This specific Tornado Engine executable is composed of the following components:
-- A json collector
+- A JSON collector
 - The engine
 - The archive executor
 - The Icinga2 executor
@@ -97,13 +97,13 @@ In this case, the CLI:
 - Executes the __daemon__ command that starts the Engine
 - Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
   in order to build the processing tree
-- Opens a TCP port at _0.0.0.0:12345_ for receiving the Events
+- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
 
 
 
 ### Structure and Configuration: The JSON Collector
 
-The [json collector](../../../collector/json/doc/README.md)
+The [JSON collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
 The events to be delivered to the JSON collector are published on the TCP port
@@ -115,6 +115,7 @@ tornado engine --event-socket-ip=0.0.0.0 --event-socket-port=12345
 ```
 
 If not specified, Tornado will use the default value `127.0.0.1:4747`.
+
 
 
 ### Structure and Configuration:  The Matching Engine
