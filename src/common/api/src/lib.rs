@@ -10,9 +10,11 @@ use std::collections::HashMap;
 pub struct Event {
     #[serde(rename = "type")]
     pub event_type: String,
-    pub created_ts: String,
+    pub created_ts: u128,
     pub payload: Payload,
 }
+
+use std::time::{SystemTime, UNIX_EPOCH};
 
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
@@ -21,6 +23,14 @@ impl Event {
 
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
+
+        dt.
+        let start = SystemTime::now();
+        let since_the_epoch = start.duration_since(UNIX_EPOCH)
+            .expect("Time went backwards");
+        println!("{:?}", since_the_epoch);
+        println!("nanosec since epoch {}", since_the_epoch.as_millis());
+
         let created_ts: String = dt.to_rfc3339();
         Event { event_type: event_type.into(), created_ts, payload }
     }
