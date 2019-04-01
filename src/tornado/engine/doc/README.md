@@ -15,8 +15,7 @@ and built as a portable executable.
 ## Structure of Tornado Engine
 
 This specific Tornado Engine executable is composed of the following components:
-- The json collector
-- The snmptrapd collector
+- A JSON collector
 - The engine
 - The archive executor
 - The Icinga2 executor
@@ -78,10 +77,7 @@ The __daemon__ command has the following options:
   The default address is _127.0.0.1_.
 - __event-socket-port__:  The port where Tornado will listen for incoming events.
   The default port is _4747_.
-- __snmptrapd-socket-ip__:  The IP address where Tornado will listen for incoming snmptrapd events.
-  The default address is _127.0.0.1_.
-- __snmptrapd-socket-port__:  The port where Tornado will listen for incoming snmptrapd events.
-  The default port is _4748_.
+
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -92,9 +88,7 @@ always precede it.  An example of a full startup command is:
     --config-dir=./tornado/engine/config \
     daemon \
     --event-socket-ip=0.0.0.0 \
-    --event-socket-port=12345 \
-    --snmptrapd-socket-ip=0.0.0.0 \
-    --snmptrapd-socket-port=67890
+    --event-socket-port=12345
 ```
 
 In this case, the CLI:
@@ -103,14 +97,13 @@ In this case, the CLI:
 - Executes the __daemon__ command that starts the Engine
 - Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
   in order to build the processing tree
-- Opens two TCP ports at _0.0.0.0:12345_ and _0.0.0.0:67890_ for receiving,
-  respectively, the Event and Snmptrapd inputs
+- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
 
 
 
 ### Structure and Configuration: The JSON Collector
 
-The [json collector](../../../collector/json/doc/README.md)
+The [JSON collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
 The events to be delivered to the JSON collector are published on the TCP port
@@ -122,25 +115,6 @@ tornado engine --event-socket-ip=0.0.0.0 --event-socket-port=12345
 ```
 
 If not specified, Tornado will use the default value `127.0.0.1:4747`.
-
-
-
-### Structure and Configuration:  The snmptrapd Collector
-
-The [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap-specific
-inputs, transforms them into Tornado Events, and forwards them to the matcher engine. Snmptrapd
-events are published on the TCP address configured by the command line
-parameters.
-
-Example:
-```bash
-tornado --snmptrapd-socket-ip=0.0.0.0 --snmptrapd-socket-port=67890
-```
-
-If not specified, Tornado will use the default value `127.0.0.1:4748`.
-
-The snmptrapd input documents should be in JSON format as described by the
-[snmptrapd collector's documentation](../../../collector/snmptrapd/doc/README.md).
 
 
 
