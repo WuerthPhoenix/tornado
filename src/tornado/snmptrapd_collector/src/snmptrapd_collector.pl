@@ -6,6 +6,7 @@ use Data::Dumper;
 use DateTime;
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
+use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
 use threads;
 use threads::shared;
 use Thread::Queue;
@@ -42,11 +43,19 @@ my $tornado_writer = async {
 		    {
                 local $@;
                 eval{$socket->send($json_event);};
+
+                # The $socket->send($json_event) executes transparently even if the event is not sent because the connection to Tornado is dropped.
+                # The only way we found to check whether the send was performed correctly, is to verify that the socket is still connected after a send.
+                # In fact, it will return 0 in case of issues during the send.
                 my $failed = !isSocketConnected();
+
+                # This 'if' condition is true when the $socket variable is undefined.
+                # This happens when the socket cannot be created because Tornado is not available.
                 if ($@) {
                     # print "[tornado_writer] cannot send Event to Tornado Server: $@\n";
                     $failed = 1;
                 }
+
                 if ($failed) {
                     print "[tornado_writer] cannot send Event to Tornado Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
                     enqueue($json_event);
@@ -63,7 +72,7 @@ my $tornado_writer = async {
 };
 
 sub my_receiver {
-    print "********** Snmptrapd_collector received a notification:\n";
+    # print "********** Snmptrapd_collector received a notification:\n";
     my $PDUInfo = $_[0];
     my $VarBinds = $_[1]; # Array of NetSNMP::OID
 
@@ -106,8 +115,7 @@ sub my_receiver {
     # push it in the queue
     enqueue($json);
 
-    # We should return NETSNMPTRAPD_HANDLER_OK but it does not work in strict mode.
-    return 1;
+    return NETSNMPTRAPD_HANDLER_OK;
 }
 
 sub enqueue {
