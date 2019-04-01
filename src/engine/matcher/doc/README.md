@@ -131,7 +131,7 @@ For example, given the incoming event:
 ```json
 {
     "type": "trap",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "protocol": "UDP",
         "oids": {
@@ -250,7 +250,7 @@ A matching Event is:
 ```json
 {
     "type": "trap",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "hostname": "linux-server-01"
     }
@@ -286,7 +286,7 @@ A matching Event is:
 ```json
 {
     "type": "email",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{}
 }
 ```
@@ -323,7 +323,7 @@ A matching Event is:
 ```json
 {
     "type": "trap0",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{}
 }
 ```
@@ -386,7 +386,7 @@ A matching Event is:
 ```json
 {
     "type": "rsyslog",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "body": "other"
     }
@@ -482,7 +482,7 @@ An Event that matches this Rule is:
 ```json
 {
   "type": "trap",
-  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload":{
     "host_ip": "10.65.5.31",
     "line_1":  "netsensor-outside-serverroom.wp.lan",

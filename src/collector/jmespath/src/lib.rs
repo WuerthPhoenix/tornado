@@ -539,7 +539,7 @@ mod test {
         assert!(result.is_ok());
 
         let result_event = result.unwrap();
-        expected_event.created_ts = result_event.created_ts.clone();
+        expected_event.created_ms = result_event.created_ms.clone();
 
         assert_eq!(expected_event, result_event);
     }

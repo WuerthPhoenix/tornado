@@ -17,8 +17,8 @@ mod handler;
 
 fn pong(_req: &HttpRequest) -> impl Responder {
     let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
-    let created_ts: String = dt.to_rfc3339();
-    format!("pong - {}", created_ts)
+    let created_ms: String = dt.to_rfc3339();
+    format!("pong - {}", created_ms)
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {

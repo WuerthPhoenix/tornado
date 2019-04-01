@@ -234,7 +234,7 @@ mod test {
             .insert("constant".to_owned(), Value::Text("constant value".to_owned()));
         config_action
             .payload
-            .insert("created_ts".to_owned(), Value::Text("${event.created_ts}".to_owned()));
+            .insert("created_ms".to_owned(), Value::Text("${event.created_ms}".to_owned()));
         config_action
             .payload
             .insert("var_test_1".to_owned(), Value::Text("${_variables.test1}".to_owned()));
@@ -253,7 +253,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 1554130814854,
             payload,
         });
         let mut extracted_vars = HashMap::new();
@@ -271,7 +271,7 @@ mod test {
         assert_eq!(&"body_value", &result.payload.get("payload_body").unwrap());
         assert_eq!(&"subject_value", &result.payload.get("payload_subject").unwrap());
         assert_eq!(&"constant value", &result.payload.get("constant").unwrap());
-        assert_eq!(&"123456", &result.payload.get("created_ts").unwrap());
+        assert_eq!(&"123456", &result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
     }
@@ -293,7 +293,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -322,7 +322,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -351,7 +351,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -383,7 +383,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -421,7 +421,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -463,7 +463,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -494,7 +494,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -527,7 +527,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload: payload.clone(),
         });
 

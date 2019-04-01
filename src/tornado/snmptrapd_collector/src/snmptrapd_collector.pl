@@ -99,7 +99,7 @@ sub my_receiver {
 
     my $data = {
         "type" => "snmptrapd",
-        "created_ts" => getCurrentDate(),
+        "created_ms" => getCurrentDate(),
         "payload" => {
             "protocol" => $protocol,
             "src_ip" => $src_ip,

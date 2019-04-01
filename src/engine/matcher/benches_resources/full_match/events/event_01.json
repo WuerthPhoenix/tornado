@@ -1,6 +1,6 @@
 {
   "type": "trap",
-  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload":{
     "host_ip": "10.65.5.31",
     "line_1":  "netsensor-outside-serverroom.wp.lan",

@@ -17,7 +17,7 @@ executors.
 An Event has a simple structure, composed as follows:
 
 - __type__:  The Event type identifier (a given Collector usually sends Events of only a single type)
-- __created_ts__:  The Event creation timestamp in ISO 8601 format
+- __created_ms__:  The Event creation timestamp milliseconds since January 1, 1970 UTC
 - __payload__:  A Map<String, Value> with event-specific data
 
 where the payload __Value__ can be any valid JSON type:
@@ -34,7 +34,7 @@ Example Event in JSON format:
 ```json
 {
     "type": "email",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload": {
         "subject" : "Doing something",
         "body": "everything's done"
