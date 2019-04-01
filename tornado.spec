@@ -139,6 +139,8 @@ fi
 * Wed Mar 27 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.6.0-1
  - New Feature: Processing Tree and Pipelines
  - New Feature: Command check-config
+ - Improvement: Snmptrapd Collector now is resilient against connection loss
+ - Improvement: Snmptrapd now buffers metrics on connection loss
  - Improvement: Pipelines are completely parellelized and independent
  - Change: Rules are now ordered by name of the containing file
  - Change: UNIX Sockets have been deprecated in favour of more general TCP sockets
