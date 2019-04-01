@@ -10,16 +10,12 @@ The Tornado Engine executable is a configuration of the engine based on
 [actix](https://github.com/actix/actix)
 and built as a portable executable.
 
-It will currently build only on Linux-like operating systems since, at runtime, it uses two Unix
-Domain Sockets (UDSs) for receiving inputs from external collectors.
-
 
 
 ## Structure of Tornado Engine
 
 This specific Tornado Engine executable is composed of the following components:
-- The json collector
-- The snmptrapd collector
+- A JSON collector
 - The engine
 - The archive executor
 - The Icinga2 executor
@@ -39,12 +35,29 @@ system (e.g., Nats.io or Kafka) in the middle for deploying it as a distributed 
 
 
 
-### Configuration
+### CLI Commands and Configuration
 
-The configuration is partly based on configuration files and partly based on command line
-parameters.
+The Tornado CLI has commands that allow you to use the functionality provided.
+Running the Tornado executable without any arguments returns a list of all available
+commands and global options that apply to every command.
 
-The startup parameters are:
+Tornado commands:
+- __check__ : Checks that the configuration is valid.
+- __daemon__ : Starts the Tornado daemon.
+- __help__ : Prints the general help page, or the specific help of the given command.
+
+Each CLI command provides its own help and usage information, you can display using the `help` command.
+
+For example, with this command you can show the help page and options of `daemon`:
+```bash
+./tornado_engine help daemon
+```
+
+The Tornado configuration is partly based on configuration files and partly based on command line
+parameters. The location of configuration files in the file system is determined at startup based
+on the provided CLI options.
+
+Tornado global options:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
   Valid values are `true` and `false`, with `false` the default.
 - __logger-file-path__:  A file path in the file system; if provided, the Logger will
@@ -55,106 +68,132 @@ The startup parameters are:
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
-- __uds-path__:  The Unix Socket path where Tornado will listen for incoming events.
-  By default it is _/var/run/tornado/tornado.sock_.
-- __snmptrapd-uds-path__:  The Unix Socket path where Tornado will listen for incoming snmptrapd events.
-  By default it is _/var/run/tornado/tornado_snmptrapd.sock_.
+
+The __check__ command does not have any specific options.
+
+The __daemon__ command has the following options:
+- __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
+  The default address is _127.0.0.1_.
+- __event-socket-port__:  The port where Tornado will listen for incoming events.
+  The default port is _4747_.
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
-An example of a full startup command is:
+The command-specific options should always be used after the command name, while the global ones
+always precede it.  An example of a full startup command is:
 ```bash
 ./tornado_engine --logger-stdout --logger-level=debug \
     --config-dir=./tornado/engine/config \
-    --uds-path=/tmp/tornado \
-    --snmptrapd-uds-path=/tmp/tornado_snmptrapd
+    daemon \
+    --event-socket-ip=0.0.0.0 \
+    --event-socket-port=12345
 ```
 
-In this case the Engine:
+In this case, the CLI:
 - Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
-- Searches for Rules definitions in the _./tornado/engine/config/rules.d_ directory
-- Creates two UDS sockets at _/tmp/tornado_ and _/tmp/tornado_snmptrapd_ for receiving,
-  respectively, the Event and Snmptrapd inputs
+- Executes the __daemon__ command that starts the Engine
+- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
+  in order to build the processing tree
+- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
 
 
 
 ### Structure and Configuration: The JSON Collector
 
-The [json collector](../../../collector/json/doc/README.md)
+The [JSON collector](../../../collector/json/doc/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
-The events to be delivered to the JSON collector are published to the UDS socket
-configured by the _uds-path_ command line parameter.
+The events to be delivered to the JSON collector are published on the TCP port
+configured by the command line parameters.
 
 Example:
 ```bash
-tornado --uds-path=/my/custom/path
+tornado engine --event-socket-ip=0.0.0.0 --event-socket-port=12345
 ```
 
-If not specified, Tornado will use the default value `/var/run/tornado/tornado.sock`.
-
-
-
-### Structure and Configuration:  The snmptrapd Collector
-
-The [snmptrapd collector](../../../collector/snmptrapd/doc/README.md) receives snmptrap-specific
-inputs, transforms them into Tornado Events, and forwards them to the matcher engine. Snmptrapd
-events are published to the UDS socket configured by the _snmptrapd-uds-path_ command line
-parameter.
-
-Example:
-```bash
-tornado --snmptrapd-uds-path=/my/custom/path
-```
-
-If not specified, Tornado will use the default value `/var/run/tornado/tornado_snmptrapd.sock`.
-
-The snmptrapd input documents should be in JSON format as described by the
-[snmptrapd collector's documentation](../../../collector/snmptrapd/doc/README.md).
+If not specified, Tornado will use the default value `127.0.0.1:4747`.
 
 
 
 ### Structure and Configuration:  The Matching Engine
 
 The [matching engine](../../../engine/matcher/doc/README.md) is the core of the Tornado Engine.
-It receives Events from the collectors,
-processes them with the configured Rules, and, in case of a match, generates the Actions to be
-performed.
+It receives Events from the collectors, processes them with the configured Rules, and, in case
+of a match, generates the Actions to be performed.
 
-Two startup parameters determine the path to the Rules configuration:
+Two startup parameters determine the path to the processing tree configuration:
 - _config-dir_:  The filesystem folder where the Tornado configuration is saved;
   with a default value of _/etc/tornado_.
-- _rules-dir_:  A folder relative to the `config_dir` where the Rules are saved in JSON format;
-  the default value is _/rules.d/_.
+- _rules-dir_:  A folder relative to the `config_dir` where the Filters and Rules are saved in
+  JSON format; the default value is _/rules.d/_.
 
-For example, this command will run Tornado and load the Rules configuration from the
-`/tornado/config/rules` directory:
-```bash
-tornado_engine --config-dir=/tornado/config --rules-dir=/rules
+For example, this command will run Tornado, load the configuration from the `/tornado/config`
+directory, and load the processing tree JSON files from the `/tornado/config/rules` directory:
+```
+bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 ```
 
-Each Rule should be saved in a separate file in the configuration directory in JSON format.
+The directory structure in the _rules-dir_ reflects the processing tree structure. Each
+subdirectory can contain either:
+- A Filter and a set of sub directories
+- A set of Rules
+
+Each Rule and Filter composing the processing tree should be saved in a separate file in JSON format.
+
 E.g.:
 ```
 /tornado/config/rules
-                 |- 0001_rule_one.json
-                 |- 0010_rule_two.json
-                 |- ...
+                 |- node_0
+                 |    |- 0001_rule_one.json
+                 |    \- 0010_rule_two.json
+                 |- node_1
+                 |    |- inner_node
+                 |    |    \- 0001_rule_one.json
+                 |    \- filter_two.json
+                 \- filter_one.json
 ```
 
-The rule files must use the _json_ extension; the system will ignore every other file type.
+All files must use the _json_ extension; the system will ignore all other file types.
 
-The natural alphanumerical order of the filenames determines the Rules execution order at runtime.
-So, the file ordering corresponds to the processing order.
+In the above example, the processing tree composition is the following:
+- The root node is a filter named "filter_one". 
+- The filter "filter_one" has two children nodes: "node_0" and "node_1"
+- _node_0_ is a rule set that contains two rules called "rule_one" and "rule_two"
+- _node_1_ is a filter with a single child named "inner_node"
+- _inner_node_ is a rule set with a single rule called "rule_one"
 
-Based on this, it is recommended to adopt a file naming strategy that permits easy reordering.
-A good approach is to always start the filename with a number 
-(e.g. _'number'_-*rule_name*.json) with some leading zeros and with holes in the number
-progression as shown above.  
+In a rule set, the natural alphanumeric order of the filenames determines the execution
+order of the  __Rules__, so the file ordering corresponds to the processing order.
+The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol.
+The first part determines the rule execution order, and the second is the rule name.
+For example:
+- _0001_rule_one.json_ -> 0001 determines the execution order, "rule_one" is the rule name
+- _0010_rule_two.json_ -> 0010 determines the execution order, "rule_two" is the rule name
 
-More information and examples about the Rule's properties and configuration can be found in the
-[matching engine documentation](../../../engine/matcher/doc/README.md)
+Because of this, we recommend that you adopt a file naming strategy that permits easy reordering.
+A good approach is to always start the filename with a number (e.g. _'number'_-*rule_name*.json)
+with some leading zeros and with breaks in the number progression as shown above.  
+
+Rule names must be unique in a rule set. The are no constraints on rule names in different
+rule sets.
+
+A __Rule__ is uniquely identified by the full path in the processing tree. For example, the tree
+above defines the following rules:
+- root -> node_0 -> rule_one
+- root -> node_0 -> rule_two
+- root -> node_1 -> inner_node -> rule_one
+
+Similar to what happens for __Rules__, __Filter__ names are also derived from the filenames.
+However, in this case, the entire filename corresponds to the __Filter__ name.
+
+In this example, the "filter_one" node is the entry point of the processing tree. When an
+__Event__ arrives, the matcher will evaluate whether it matches the filter condition; if this
+happens, the matcher process will pass the __Event__ to the filter's children, otherwise it
+will ignore them.
+
+More information and examples about the processing tree configuration and runtime behavior can
+be found in the [matching engine documentation](../../../engine/matcher/doc/README.md)
 
 
 

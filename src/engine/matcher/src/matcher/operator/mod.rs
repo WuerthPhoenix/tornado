@@ -5,11 +5,13 @@
 //! is matched by an Event.
 
 use crate::accessor::AccessorBuilder;
-use crate::config;
+use crate::config::rule;
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
+use crate::model::InternalEvent;
 use log::*;
+use std::collections::HashMap;
 use std::fmt;
+use tornado_common_api::Value;
 
 pub mod and;
 pub mod contain;
@@ -24,7 +26,11 @@ pub trait Operator: fmt::Debug + Send + Sync {
     fn name(&self) -> &str;
 
     /// Executes the current matcher.operator on a target Event and returns whether the Event matches it.
-    fn evaluate(&self, event: &ProcessedEvent) -> bool;
+    fn evaluate(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> bool;
 }
 
 /// The Operator instance builder
@@ -41,14 +47,14 @@ impl OperatorBuilder {
     pub fn build_option(
         &self,
         rule_name: &str,
-        config: &Option<config::Operator>,
+        config: &Option<rule::Operator>,
     ) -> Result<Box<Operator>, MatcherError> {
         let result: Result<Box<Operator>, MatcherError> = match config {
             Some(operator) => self.build(rule_name, operator),
             None => Ok(Box::new(crate::matcher::operator::true_operator::True {})),
         };
 
-        info!(
+        debug!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
@@ -62,9 +68,9 @@ impl OperatorBuilder {
     /// ```rust
     ///
     /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
-    /// use tornado_engine_matcher::config;
+    /// use tornado_engine_matcher::config::rule;
     ///
-    /// let ops = config::Operator::Equal {
+    /// let ops = rule::Operator::Equal {
     ///              first: "${event.type}".to_owned(),
     ///              second: "email".to_owned(),
     ///           };
@@ -75,28 +81,28 @@ impl OperatorBuilder {
     pub fn build(
         &self,
         rule_name: &str,
-        config: &config::Operator,
+        config: &rule::Operator,
     ) -> Result<Box<Operator>, MatcherError> {
         let result: Result<Box<Operator>, MatcherError> = match config {
-            config::Operator::And { operators } => {
+            rule::Operator::And { operators } => {
                 Ok(Box::new(crate::matcher::operator::and::And::build("", &operators, self)?))
             }
-            config::Operator::Or { operators } => {
+            rule::Operator::Or { operators } => {
                 Ok(Box::new(crate::matcher::operator::or::Or::build("", &operators, self)?))
             }
-            config::Operator::Equal { first, second } => {
+            rule::Operator::Equal { first, second } => {
                 Ok(Box::new(crate::matcher::operator::equal::Equal::build(
                     self.accessor.build(rule_name, first)?,
                     self.accessor.build(rule_name, second)?,
                 )?))
             }
-            config::Operator::Contain { text, substring } => {
+            rule::Operator::Contain { text, substring } => {
                 Ok(Box::new(crate::matcher::operator::contain::Contain::build(
                     self.accessor.build(rule_name, text)?,
                     self.accessor.build(rule_name, substring)?,
                 )?))
             }
-            config::Operator::Regex { regex, target } => {
+            rule::Operator::Regex { regex, target } => {
                 Ok(Box::new(crate::matcher::operator::regex::Regex::build(
                     regex,
                     self.accessor.build(rule_name, target)?,
@@ -104,7 +110,7 @@ impl OperatorBuilder {
             }
         };
 
-        info!(
+        debug!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
             &result, config
         );
@@ -119,7 +125,7 @@ mod test {
 
     #[test]
     fn build_should_return_error_if_wrong_operator() {
-        let ops = config::Operator::Equal {
+        let ops = rule::Operator::Equal {
             first: "${WRONG_ARG}".to_owned(),
             second: "second_arg".to_owned(),
         };
@@ -130,7 +136,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_equal_operator() {
-        let ops = config::Operator::Equal {
+        let ops = rule::Operator::Equal {
             first: "first_arg=".to_owned(),
             second: "second_arg".to_owned(),
         };
@@ -143,7 +149,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_contain_operator() {
-        let ops = config::Operator::Contain {
+        let ops = rule::Operator::Contain {
             text: "first_arg=".to_owned(),
             substring: "second_arg".to_owned(),
         };
@@ -156,10 +162,8 @@ mod test {
 
     #[test]
     fn build_should_return_the_regex_operator() {
-        let ops = config::Operator::Regex {
-            regex: "[a-fA-F0-9]".to_owned(),
-            target: "target".to_owned(),
-        };
+        let ops =
+            rule::Operator::Regex { regex: "[a-fA-F0-9]".to_owned(), target: "target".to_owned() };
 
         let builder = OperatorBuilder::new();
         let operator = builder.build_option("", &Some(ops)).unwrap();
@@ -169,8 +173,8 @@ mod test {
 
     #[test]
     fn build_should_return_the_and_operator() {
-        let ops = config::Operator::And {
-            operators: vec![config::Operator::Equal {
+        let ops = rule::Operator::And {
+            operators: vec![rule::Operator::Equal {
                 first: "first_arg".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -184,7 +188,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_or_operator() {
-        let ops = config::Operator::Or { operators: vec![] };
+        let ops = rule::Operator::Or { operators: vec![] };
 
         let builder = OperatorBuilder::new();
         let operator = builder.build_option("", &Some(ops)).unwrap();

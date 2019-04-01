@@ -1,11 +1,12 @@
 //! The accessor module contains the logic to extract data from an incoming Event.
 
 use crate::error::MatcherError;
-use crate::model::ProcessedEvent;
+use crate::model::InternalEvent;
 use crate::validator::id::IdValidator;
 use log::*;
 use regex::Regex as RustRegex;
 use std::borrow::Cow;
+use std::collections::HashMap;
 use tornado_common_api::Value;
 
 pub struct AccessorBuilder {
@@ -52,7 +53,7 @@ impl AccessorBuilder {
     /// - "${event.payload.body}": returns an instance of Accessor::Payload that returns the value of the entry with the key "body" from the event payload
     /// - "event.type": returns an instance of Accessor::Constant that always returns the String "event.type"
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
-        info!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
+        debug!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
         let result = match input.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -83,7 +84,7 @@ impl AccessorBuilder {
             _value => Ok(Accessor::Constant { value: Value::Text(input.to_owned()) }),
         };
 
-        info!(
+        debug!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
             &result, input
         );
@@ -152,15 +153,19 @@ pub enum Accessor {
 }
 
 impl Accessor {
-    pub fn get<'o>(&'o self, event: &'o ProcessedEvent) -> Option<Cow<'o, Value>> {
+    pub fn get<'o>(
+        &'o self,
+        event: &'o InternalEvent,
+        extracted_vars: Option<&'o HashMap<String, Value>>,
+    ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedTs {} => Some(Cow::Borrowed(&event.event.created_ts)),
-            Accessor::ExtractedVar { key } => {
-                event.extracted_vars.get(key.as_str()).map(|value| Cow::Borrowed(value))
-            }
+            Accessor::CreatedTs {} => Some(Cow::Borrowed(&event.created_ts)),
+            Accessor::ExtractedVar { key } => extracted_vars
+                .and_then(|vars| vars.get(key.as_str()))
+                .map(|value| Cow::Borrowed(value)),
             Accessor::Payload { keys } => {
-                let mut value = Some(&event.event.payload);
+                let mut value = Some(&event.payload);
 
                 let mut count = 0;
 
@@ -171,9 +176,9 @@ impl Accessor {
 
                 value.map(|value| Cow::Borrowed(value))
             }
-            Accessor::Type {} => Some(Cow::Borrowed(&event.event.event_type)),
+            Accessor::Type {} => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event {} => {
-                let event_value: Value = event.event.clone().into();
+                let event_value: Value = event.clone().into();
                 Some(Cow::Owned(event_value))
             }
         }
@@ -219,9 +224,9 @@ mod test {
     fn should_return_a_constant_value() {
         let accessor = Accessor::Constant { value: Value::Text("constant_value".to_owned()) };
 
-        let event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("constant_value", result.as_ref());
     }
@@ -230,9 +235,9 @@ mod test {
     fn should_not_trigger_a_constant_value() {
         let accessor = Accessor::Constant { value: Value::Text("  constant_value  ".to_owned()) };
 
-        let event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("  constant_value  ", result.as_ref());
     }
@@ -241,9 +246,9 @@ mod test {
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("event_type_string", result.as_ref());
     }
@@ -252,9 +257,9 @@ mod test {
     fn should_return_the_event_created_ts() {
         let accessor = Accessor::CreatedTs {};
 
-        let event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event, None);
 
         assert!(DateTime::parse_from_rfc3339(cow_to_str(&result).unwrap()).is_ok());
     }
@@ -267,9 +272,9 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("body_value", result.as_ref());
     }
@@ -283,10 +288,10 @@ mod test {
         payload.insert("bool_true".to_owned(), Value::Bool(true));
         payload.insert("bool_false".to_owned(), Value::Bool(false));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!(&true, result.as_ref());
@@ -300,10 +305,10 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("num_555".to_owned(), Value::Number(555.0));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!(&555.0, result.as_ref());
@@ -323,10 +328,10 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Map(body_payload));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!(&Value::Map(body_clone), result.as_ref());
@@ -344,10 +349,10 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Map(body_payload));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!("body_first_value", result.as_ref());
@@ -367,10 +372,10 @@ mod test {
             ]),
         );
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
@@ -389,10 +394,10 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Map(body_payload));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
@@ -406,8 +411,8 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
-        let result = accessor.get(&event);
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let result = accessor.get(&event, None);
 
         assert!(result.is_none());
     }
@@ -420,10 +425,10 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
-        let result = accessor.get(&event).unwrap();
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let result = accessor.get(&event, None).unwrap();
 
-        let event_value: Value = event.event.clone().into();
+        let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
     }
 
@@ -435,24 +440,22 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
-        let result = accessor.get(&event).unwrap();
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let result = accessor.get(&event, None).unwrap();
 
-        assert_eq!(&event.event.payload, result.as_ref());
+        assert_eq!(&event.payload, result.as_ref());
     }
 
     #[test]
     fn should_return_value_from_extracted_var() {
         let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
-        let mut event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars = HashMap::new();
+        extracted_vars.insert("rule1.body".to_owned(), Value::Text("body_value".to_owned()));
+        extracted_vars.insert("rule1.subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        event.extracted_vars.insert("rule1.body".to_owned(), Value::Text("body_value".to_owned()));
-        event
-            .extracted_vars
-            .insert("rule1.subject".to_owned(), Value::Text("subject_value".to_owned()));
-
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
         assert_eq!("body_value", result.as_ref());
     }
@@ -461,9 +464,9 @@ mod test {
     fn should_return_none_if_no_match() {
         let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
-        let event = ProcessedEvent::new(Event::new("event_type_string"));
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        let result = accessor.get(&event);
+        let result = accessor.get(&event, None);
 
         assert!(result.is_none());
     }
@@ -553,11 +556,11 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
-        let event_value: Value = event.event.clone().into();
+        let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
         assert_eq!(Accessor::Event {}, accessor)
     }
@@ -573,9 +576,9 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = ProcessedEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event).unwrap();
+        let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("body_value", result.as_ref());
     }

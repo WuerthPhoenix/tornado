@@ -3,7 +3,7 @@
 The Icinga2 Collector subscribes to the 
 [Icinga2 API event streams](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-streams),
 generates Tornado Events from the 
-Icinga2 Events, and publishes them on the Tornado Engine UDS socket.
+Icinga2 Events, and publishes them on the Tornado Engine TCP address.
 
 
 ## How It Works
@@ -15,7 +15,7 @@ On startup, it connects to an existing [Icinga2 Server API](https://icinga.com/d
 Each Icinga2 Event published on the stream, is processed by the embedded
 [jmespath collector](../../../collector/jmespath/doc/README.md)
 that uses them to produce Tornado Events which are, finally, forwarded to the
-Tornado Engine's UDS socket.
+Tornado Engine's TCP address.
 
 More than one stream subscription can be defined.
 For each stream, you must provide two values in order to successfully create a subscription:
@@ -47,10 +47,13 @@ The available startup parameters are:
   The default path is _/etc/tornado_icinga2_collector/_.
 - __streams_dir__:  The folder where the Stream configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/streams/_.
-- __uds-path__:  The Unix Socket path where outgoing events will be written.
-  This should be the path where Tornado Engine is listening for incoming events.
-  By default it is _/var/run/tornado/tornado.sock_.
-- __uds-mailbox-capacity__:  The in-memory buffer size for Events. It makes the application
+- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _127.0.0.1_.
+- __tornado-event-socket-port__:  The port where outgoing events will be written.
+  This should be the address where the Tornado Engine is listening for incoming events.
+  The default is _4747_.
+- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.
   When the buffer is full, the collector will start discarding old messages.
@@ -74,14 +77,15 @@ An example of a full startup command is:
 ./tornado_webhook_collector \
       --logger-stdout --logger-level=debug \
       --config-dir=/tornado-icinga2-collector/config \
-      --uds-path=/tmp/tornado
+      --tornado-event-socket-ip=tornado_server_ip \
+      --tornado-event-socket-port=4747
 ```
 
 In this example the Icinga2 Collector does the following:
 - Logs to standard output at the *debug* level
 - Reads the configuration from the _/tornado-icinga2-collector/config_ directory
 - Searches for stream configurations in the _/tornado-icinga2-collector/config/streams_ directory
-- Writes outgoing Events to the UDS socket at _/tmp/tornado_
+- Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
 
 
 

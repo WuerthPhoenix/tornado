@@ -6,6 +6,7 @@ use failure::Fail;
 use log::*;
 use std::io::{stdin, BufRead};
 use std::thread;
+use tornado_common::actors::message::StringMessage;
 use tornado_common_logger::setup_logger;
 
 fn main() -> Result<(), Box<std::error::Error>> {
@@ -19,17 +20,19 @@ fn main() -> Result<(), Box<std::error::Error>> {
     // start system
     System::run(move || {
         // Start UdsWriter
-        let uds_writer_addr = tornado_common::actors::uds_writer::UdsWriterActor::start_new(
-            conf.io.uds_path.clone(),
-            conf.io.uds_mailbox_capacity,
+        let tornado_tcp_address =
+            format!("{}:{}", conf.io.tornado_event_socket_ip, conf.io.tornado_event_socket_port);
+        let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
+            tornado_tcp_address.clone(),
+            conf.io.message_queue_size,
         );
 
         // Start Rsyslog collector
-        // actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), uds_writer_addr.clone());
+        // actors::collector::RsyslogCollectorActor::start_new(tokio::io::stdin(), tpc_client_addr.clone());
 
         // Start Rsyslog collector
         let rsyslog_addr = SyncArbiter::start(1, move || {
-            actors::sync_collector::RsyslogCollectorActor::new(uds_writer_addr.clone())
+            actors::sync_collector::RsyslogCollectorActor::new(tpc_client_addr.clone())
         });
 
         let system = System::current();
@@ -46,8 +49,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                             system.stop();
                         } else {
                             debug!("Received line: {}", input);
-                            rsyslog_addr
-                                .do_send(actors::sync_collector::RsyslogMessage { json: input });
+                            rsyslog_addr.do_send(StringMessage { msg: input });
                         }
                     }
                     Err(error) => {

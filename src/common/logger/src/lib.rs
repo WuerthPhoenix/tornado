@@ -23,6 +23,12 @@ pub struct LoggerConfig {
     // pub module_level: HashMap<String, String>,
 }
 
+impl Default for LoggerConfig {
+    fn default() -> Self {
+        LoggerConfig { level: "info".to_owned(), stdout_output: false, file_output_path: None }
+    }
+}
+
 #[derive(Fail, Debug)]
 pub enum LoggerError {
     #[fail(display = "LoggerConfigurationError: [{}]", message)]

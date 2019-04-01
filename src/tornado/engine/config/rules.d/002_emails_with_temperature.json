@@ -1,0 +1,36 @@
+{
+  "description": "This matches all emails containing a temperature measurement.",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "email"
+        }
+      ]
+    },
+    "WITH": {
+      "temperature": {
+        "from": "${event.payload.body}",
+        "regex": {
+          "match": "[0-9]+\\sDegrees",
+          "group_match_idx": 0
+        }
+      }
+    }
+  },
+  "actions": [
+    {
+      "id": "Logger",
+      "payload": {
+        "type": "${event.type}",
+        "subject": "${event.payload.subject}",
+        "temperature:": "${_variables.temperature}"
+      }
+    }
+  ]
+}

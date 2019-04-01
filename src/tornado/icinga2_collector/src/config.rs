@@ -22,11 +22,15 @@ pub struct Io {
     /// Set the size of the in-memory queue where messages will be stored before being written
     /// to the output socket.
     #[structopt(long, default_value = "10000")]
-    pub uds_mailbox_capacity: usize,
+    pub message_queue_size: usize,
 
-    /// The Unix Socket path where outgoing events will be written
-    #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
-    pub uds_path: String,
+    /// The Tornado IP address where outgoing events will be written
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub tornado_event_socket_ip: String,
+
+    /// The Tornado port where outgoing events will be written
+    #[structopt(long, default_value = "4747")]
+    pub tornado_event_socket_port: u16,
 }
 
 #[derive(Debug, StructOpt, Clone)]

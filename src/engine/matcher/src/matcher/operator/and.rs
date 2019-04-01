@@ -1,7 +1,9 @@
 use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
-use crate::model::ProcessedEvent;
+use crate::model::InternalEvent;
+use std::collections::HashMap;
+use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "and";
 
@@ -14,7 +16,7 @@ pub struct And {
 impl And {
     pub fn build(
         rule_name: &str,
-        args: &[config::Operator],
+        args: &[config::rule::Operator],
         builder: &OperatorBuilder,
     ) -> Result<And, MatcherError> {
         let mut operators = vec![];
@@ -31,8 +33,12 @@ impl Operator for And {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &ProcessedEvent) -> bool {
-        self.operators.iter().all(|op| op.evaluate(event))
+    fn evaluate(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
+    ) -> bool {
+        self.operators.iter().all(|op| op.evaluate(event, extracted_vars))
     }
 }
 
@@ -52,7 +58,7 @@ mod test {
     fn should_build_the_and_with_expected_arguments() {
         let operator = And::build(
             "",
-            &vec![config::Operator::Equal {
+            &vec![config::rule::Operator::Equal {
                 first: "first_arg=".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -73,7 +79,7 @@ mod test {
     fn build_should_fail_if_wrong_nested_operator() {
         let operator = And::build(
             "",
-            &vec![config::Operator::Equal {
+            &vec![config::rule::Operator::Equal {
                 first: "${NOT_EXISTING}".to_owned(),
                 second: "second_arg".to_owned(),
             }],
@@ -87,9 +93,9 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
-                config::Operator::Or {
-                    operators: vec![config::Operator::Equal {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Or {
+                    operators: vec![config::rule::Operator::Equal {
                         first: "3".to_owned(),
                         second: "4".to_owned(),
                     }],
@@ -117,7 +123,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -125,10 +131,10 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
             ],
             &OperatorBuilder::new(),
         )
@@ -136,7 +142,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -144,10 +150,10 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::Equal { first: "4".to_owned(), second: "1".to_owned() },
             ],
             &OperatorBuilder::new(),
         )
@@ -155,7 +161,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -163,13 +169,19 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal { first: "5".to_owned(), second: "5".to_owned() },
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
+                            first: "5".to_owned(),
+                            second: "5".to_owned(),
+                        },
                     ],
                 },
             ],
@@ -179,7 +191,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -187,13 +199,19 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal { first: "5".to_owned(), second: "6".to_owned() },
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
+                            first: "5".to_owned(),
+                            second: "6".to_owned(),
+                        },
                     ],
                 },
             ],
@@ -203,7 +221,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -211,13 +229,16 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal {
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type".to_owned(),
                         },
@@ -230,7 +251,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
 
     #[test]
@@ -238,13 +259,16 @@ mod test {
         let operator = And::build(
             "",
             &vec![
-                config::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::Operator::And {
+                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
+                config::rule::Operator::And {
                     operators: vec![
-                        config::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
-                        config::Operator::Equal {
+                        config::rule::Operator::Equal {
+                            first: "4".to_owned(),
+                            second: "4".to_owned(),
+                        },
+                        config::rule::Operator::Equal {
                             first: "${event.type}".to_owned(),
                             second: "type1".to_owned(),
                         },
@@ -257,7 +281,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&ProcessedEvent::new(event)));
+        assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
 
 }

@@ -2,17 +2,21 @@ pub mod action;
 pub mod extractor;
 pub mod operator;
 
-use crate::config::Rule;
+use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use crate::model::{ProcessedEvent, ProcessedRule, ProcessedRuleStatus};
-use crate::validator::RuleValidator;
+use crate::model::{
+    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
+    ProcessedRule, ProcessedRuleStatus, ProcessedRules,
+};
+use crate::validator::MatcherConfigValidator;
 use log::*;
-use tornado_common_api::Event;
+use std::collections::{BTreeMap, HashMap};
+use tornado_common_api::{Event, Value};
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
-///   from the config::Rule.
-struct MatcherRule {
+///   from the config::rule::Rule.
+pub struct MatcherRule {
     name: String,
     do_continue: bool,
     operator: Box<operator::Operator>,
@@ -20,52 +24,140 @@ struct MatcherRule {
     actions: Vec<action::ActionResolver>,
 }
 
+/// The Matcher's internal Filter representation, which contains the operators and executors built
+///   from the config::filter::Filter.
+pub struct MatcherFilter {
+    pub name: String,
+    pub active: bool,
+    pub filter: Box<operator::Operator>,
+}
+
+pub enum ProcessingNode {
+    Rules(Vec<MatcherRule>),
+    Filter(MatcherFilter, BTreeMap<String, ProcessingNode>),
+}
+
 /// The Matcher contains the core logic of the Tornado Engine.
 /// It matches incoming Events against the defined Rules.
 /// A Matcher instance is stateless and thread-safe; consequently, a single instance can serve the entire application.
 pub struct Matcher {
-    rules: Vec<MatcherRule>,
+    node: ProcessingNode,
 }
 
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
-    pub fn build(rules: &[Rule]) -> Result<Matcher, MatcherError> {
+    pub fn build(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         info!("Matcher build start");
+        MatcherConfigValidator::new().validate(config)?;
+        Matcher::build_processing_tree(config).map(|node| Matcher { node })
+    }
 
-        RuleValidator::new().validate_all(rules)?;
+    fn build_processing_tree(config: &MatcherConfig) -> Result<ProcessingNode, MatcherError> {
+        match config {
+            MatcherConfig::Rules { rules } => {
+                info!("Start processing {} Matcher Config Rules", rules.len());
 
-        let action_builder = action::ActionResolverBuilder::new();
-        let operator_builder = operator::OperatorBuilder::new();
-        let extractor_builder = MatcherExtractorBuilder::new();
-        let mut processed_rules = vec![];
+                let action_builder = action::ActionResolverBuilder::new();
+                let operator_builder = operator::OperatorBuilder::new();
+                let extractor_builder = MatcherExtractorBuilder::new();
+                let mut processed_rules = vec![];
 
-        for rule in rules.iter().filter(|rule| rule.active) {
-            info!("Matcher build - Processing rule: [{}]", &rule.name);
-            debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
+                for rule in rules.iter().filter(|rule| rule.active) {
+                    info!("Matcher build - Processing rule: [{}]", &rule.name);
+                    debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
 
-            processed_rules.push(MatcherRule {
-                name: rule.name.to_owned(),
-                do_continue: rule.do_continue,
-                operator: operator_builder
-                    .build_option(&rule.name, &rule.constraint.where_operator)?,
-                extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                actions: action_builder.build(&rule.name, &rule.actions)?,
-            })
+                    processed_rules.push(MatcherRule {
+                        name: rule.name.to_owned(),
+                        do_continue: rule.do_continue,
+                        operator: operator_builder
+                            .build_option(&rule.name, &rule.constraint.where_operator)?,
+                        extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
+                        actions: action_builder.build(&rule.name, &rule.actions)?,
+                    })
+                }
+
+                info!("Matcher Rules build completed");
+
+                Ok(ProcessingNode::Rules(processed_rules))
+            }
+            MatcherConfig::Filter { filter, nodes } => {
+                info!("Start processing Matcher Filter [{}] Config", filter.name);
+                let operator_builder = operator::OperatorBuilder::new();
+
+                let matcher_filter = MatcherFilter {
+                    name: filter.name.to_owned(),
+                    active: filter.active,
+                    filter: operator_builder.build_option(&filter.name, &filter.filter)?,
+                };
+
+                let mut matcher_nodes = BTreeMap::new();
+                if matcher_filter.active {
+                    for (k, v) in nodes {
+                        matcher_nodes.insert(k.clone(), Matcher::build_processing_tree(v)?);
+                    }
+                };
+
+                info!("Matcher Filter [{}] build completed", filter.name);
+                Ok(ProcessingNode::Filter(matcher_filter, matcher_nodes))
+            }
         }
-
-        info!("Matcher build completed");
-
-        Ok(Matcher { rules: processed_rules })
     }
 
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
         debug!("Matcher process - processing event: [{:#?}]", &event);
+        let internal_event: InternalEvent = event.into();
+        let result = Matcher::process_node(&self.node, &internal_event);
+        ProcessedEvent { event: internal_event, result }
+    }
 
-        let mut processed_event = ProcessedEvent::new(event);
+    fn process_node(node: &ProcessingNode, internal_event: &InternalEvent) -> ProcessedNode {
+        match node {
+            ProcessingNode::Filter(filter, nodes) => {
+                Matcher::process_filter(filter, nodes, internal_event)
+            }
+            ProcessingNode::Rules(rules) => Matcher::process_rules(rules, internal_event),
+        }
+    }
 
-        for rule in &self.rules {
+    fn process_filter(
+        filter: &MatcherFilter,
+        nodes: &BTreeMap<String, ProcessingNode>,
+        internal_event: &InternalEvent,
+    ) -> ProcessedNode {
+        trace!("Matcher process - check matching of filter: [{}]", &filter.name);
+
+        let mut result_nodes = BTreeMap::new();
+
+        let filter_status = if filter.active {
+            if filter.filter.evaluate(&internal_event, None) {
+                trace!(
+                        "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
+                        &filter.name
+                    );
+                nodes.iter().for_each(|(name, node)| {
+                    result_nodes.insert(name.clone(), Matcher::process_node(node, internal_event));
+                });
+                ProcessedFilterStatus::Matched
+            } else {
+                ProcessedFilterStatus::NotMatched
+            }
+        } else {
+            ProcessedFilterStatus::Inactive
+        };
+
+        ProcessedNode::Filter {
+            filter: ProcessedFilter { name: filter.name.clone(), status: filter_status },
+            nodes: result_nodes,
+        }
+    }
+
+    fn process_rules(rules: &[MatcherRule], internal_event: &InternalEvent) -> ProcessedNode {
+        let mut extracted_vars = HashMap::new();
+        let mut processed_rules = HashMap::new();
+
+        for rule in rules {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
@@ -75,25 +167,26 @@ impl Matcher {
                 message: None,
             };
 
-            if rule.operator.evaluate(&processed_event) {
+            if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
                 trace!(
                     "Matcher process - event matches rule: [{}]. Checking extracted variables.",
                     &rule.name
                 );
 
-                match rule.extractor.process_all(&mut processed_event) {
+                match rule.extractor.process_all(&internal_event, &mut extracted_vars) {
                     Ok(_) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
 
                         match Matcher::process_actions(
-                            &processed_event,
+                            internal_event,
+                            Some(&extracted_vars),
                             &mut processed_rule,
                             &rule.actions,
                         ) {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
-                                    processed_event.rules.insert(rule.name.clone(), processed_rule);
+                                    processed_rules.insert(rule.name.clone(), processed_rule);
                                     break;
                                 }
                             }
@@ -114,19 +207,24 @@ impl Matcher {
                 }
             }
 
-            processed_event.rules.insert(rule.name.clone(), processed_rule);
+            processed_rules.insert(rule.name.clone(), processed_rule);
         }
-        debug!("Matcher process - event processing result: [{:#?}]", &processed_event);
-        processed_event
+
+        let result = ProcessedNode::Rules {
+            rules: ProcessedRules { rules: processed_rules, extracted_vars },
+        };
+        debug!("Matcher process - event processing rules result: [{:#?}]", &result);
+        result
     }
 
     fn process_actions(
-        processed_event: &ProcessedEvent,
+        processed_event: &InternalEvent,
+        extracted_vars: Option<&HashMap<String, Value>>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
         for action in actions {
-            processed_rule.actions.push(action.execute(processed_event)?);
+            processed_rule.actions.push(action.execute(processed_event, extracted_vars)?);
         }
         Ok(())
     }
@@ -135,13 +233,14 @@ impl Matcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::{Action, Constraint, Extractor, ExtractorRegex, Operator};
-    use crate::test_root;
-    use std::collections::HashMap;
+    use crate::config::filter::Filter;
+    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
+    use maplit::*;
+    use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::*;
 
     #[test]
-    fn should_build_the_matcher() {
+    fn should_build_the_matcher_with_a_rule_set() {
         // Arrange
         let rule = new_rule(
             "rule_name",
@@ -149,11 +248,116 @@ mod test {
         );
 
         // Act
-        let matcher = new_matcher(&vec![rule]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
 
         // Assert
-        assert_eq!(1, matcher.rules.len());
-        assert_eq!("rule_name", matcher.rules[0].name);
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
+                assert_eq!(1, rules.len());
+                assert_eq!("rule_name", rules[0].name);
+            }
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_build_the_matcher_with_a_filter() {
+        // Arrange
+        let filter = new_filter(
+            "filter_name",
+            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+        );
+
+        // Act
+        let matcher =
+            new_matcher(&MatcherConfig::Filter { filter, nodes: BTreeMap::new() }).unwrap();
+
+        // Assert
+        match &matcher.node {
+            ProcessingNode::Filter(filter, nodes) => {
+                assert_eq!(0, nodes.len());
+                assert_eq!("filter_name", filter.name);
+            }
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_not_build_inner_nodes_if_filter_is_inactive() {
+        // Arrange
+        let mut filter = new_filter("filter_name", None);
+        filter.active = false;
+
+        // Act
+        let matcher = new_matcher(&MatcherConfig::Filter {
+            filter,
+            nodes: btreemap!["node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] }],
+        })
+        .unwrap();
+
+        // Assert
+        match &matcher.node {
+            ProcessingNode::Filter(filter1, nodes1) => {
+                assert_eq!(0, nodes1.len());
+                assert_eq!("filter_name", filter1.name)
+            }
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_build_the_matcher_with_a_filter_recursively() {
+        // Arrange
+        let filter = new_filter(
+            "filter1",
+            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+        );
+
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Filter {
+                filter: new_filter("filter2", None),
+                nodes: btreemap!["node3".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
+            },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule1", None)] },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        // Act
+        let matcher = new_matcher(&config).unwrap();
+
+        // Assert
+        match &matcher.node {
+            ProcessingNode::Filter(filter1, nodes1) => {
+                assert_eq!(2, nodes1.len());
+                assert_eq!("filter1", filter1.name);
+
+                match &nodes1.get("node1").unwrap() {
+                    ProcessingNode::Filter(filter2, nodes2) => {
+                        assert_eq!(1, nodes2.len());
+                        assert_eq!("filter2", filter2.name);
+
+                        match &nodes2.get("node3").unwrap() {
+                            ProcessingNode::Rules(rules2) => {
+                                assert_eq!(1, rules2.len());
+                                assert_eq!("rule2", rules2.get(0).unwrap().name);
+                            }
+                            _ => assert!(false),
+                        }
+                    }
+                    _ => assert!(false),
+                }
+
+                match &nodes1.get("node2").unwrap() {
+                    ProcessingNode::Rules(rules1) => {
+                        assert_eq!(1, rules1.len());
+                        assert_eq!("rule1", rules1.get(0).unwrap().name);
+                    }
+                    _ => assert!(false),
+                }
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -164,13 +368,33 @@ mod test {
         let rule_2 = new_rule("rule_name", op.clone());
 
         // Act
-        let matcher = new_matcher(&vec![rule_1, rule_2]);
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2] });
 
         // Assert
         assert!(matcher.is_err());
 
         match matcher.err().unwrap() {
             MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn build_should_fail_if_filter_has_wrong_name() {
+        // Arrange
+        let filter = new_filter("filter?!!", None);
+        let nodes = btreemap![];
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config);
+
+        // Act
+        assert!(matcher.is_err());
+
+        match matcher.err().unwrap() {
+            MatcherError::NotValidIdOrNameError { message } => {
+                assert!(message.contains("filter?!!"));
+            }
             _ => assert!(false),
         }
     }
@@ -185,14 +409,21 @@ mod test {
         let rule_4 = new_rule("rule4", op.clone());
 
         // Act
-        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2, rule_3, rule_4] })
+                .unwrap();
 
         // Assert
-        assert_eq!(4, matcher.rules.len());
-        assert_eq!("rule1", matcher.rules[0].name);
-        assert_eq!("rule2", matcher.rules[1].name);
-        assert_eq!("rule3", matcher.rules[2].name);
-        assert_eq!("rule4", matcher.rules[3].name);
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
+                assert_eq!(4, rules.len());
+                assert_eq!("rule1", rules[0].name);
+                assert_eq!("rule2", rules[1].name);
+                assert_eq!("rule3", rules[2].name);
+                assert_eq!("rule4", rules[3].name);
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -210,12 +441,19 @@ mod test {
         let rule_4 = new_rule("rule4", op.clone());
 
         // Act
-        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3, rule_4]).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2, rule_3, rule_4] })
+                .unwrap();
 
         // Assert
-        assert_eq!(2, matcher.rules.len());
-        assert_eq!("rule2", matcher.rules[0].name);
-        assert_eq!("rule4", matcher.rules[1].name);
+        match &matcher.node {
+            ProcessingNode::Rules(rules) => {
+                assert_eq!(2, rules.len());
+                assert_eq!("rule2", rules[0].name);
+                assert_eq!("rule4", rules[1].name);
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -236,19 +474,34 @@ mod test {
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
-        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2, rule_3] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(3, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-        assert!(result.rules.contains_key("rule2_sms"));
-        assert_eq!(ProcessedRuleStatus::NotMatched, result.rules.get("rule2_sms").unwrap().status);
-        assert!(result.rules.contains_key("rule3_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule3_email").unwrap().status);
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(3, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule1_email").unwrap().status
+                );
+                assert!(rules.rules.contains_key("rule2_sms"));
+                assert_eq!(
+                    ProcessedRuleStatus::NotMatched,
+                    rules.rules.get("rule2_sms").unwrap().status
+                );
+                assert!(rules.rules.contains_key("rule3_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule3_email").unwrap().status
+                );
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -274,22 +527,27 @@ mod test {
             .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
         rule_1.actions.push(action);
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(1, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(1, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
 
-        let processed_rule = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
-        assert_eq!(1, result.extracted_vars.len());
-        assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
-        assert_eq!(1, processed_rule.actions.len());
-        assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
-        assert!(processed_rule.message.is_none())
+                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
+                assert_eq!(1, rules.extracted_vars.len());
+                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                assert_eq!(1, processed_rule.actions.len());
+                assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
+                assert!(processed_rule.message.is_none())
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -300,17 +558,22 @@ mod test {
             Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
         );
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("sms"));
 
         // Assert
-        assert_eq!(1, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(1, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
 
-        let processed_rule = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
+                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -329,20 +592,25 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(1, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(1, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
 
-        let processed_rule = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-        info!("Message: {:?}", processed_rule.message);
-        assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
+                info!("Message: {:?}", processed_rule.message);
+                assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -371,7 +639,7 @@ mod test {
             .insert("missing".to_owned(), Value::Text("${_variables.missing}".to_owned()));
         rule_1.actions.push(action);
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         let mut event_payload = HashMap::new();
         event_payload.insert(String::from("temp"), Value::Text(String::from("temp_value")));
@@ -380,14 +648,19 @@ mod test {
         let result = matcher.process(Event::new_with_payload("email", event_payload));
 
         // Assert
-        assert_eq!(1, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(1, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
 
-        let processed_rule = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
+                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-        info!("Message: {:?}", processed_rule.message);
-        assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
+                info!("Message: {:?}", processed_rule.message);
+                assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -402,17 +675,29 @@ mod test {
 
         let rule_3 = new_rule("rule3_email", op.clone());
 
-        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2, rule_3] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(2, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-        assert!(result.rules.contains_key("rule2_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule2_email").unwrap().status);
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(2, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule1_email").unwrap().status
+                );
+                assert!(rules.rules.contains_key("rule2_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule2_email").unwrap().status
+                );
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -430,19 +715,34 @@ mod test {
 
         let rule_3 = new_rule("rule3_email", op.clone());
 
-        let matcher = new_matcher(&vec![rule_1, rule_2, rule_3]).unwrap();
+        let matcher =
+            new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2, rule_3] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(3, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule1_email").unwrap().status);
-        assert!(result.rules.contains_key("rule2_sms"));
-        assert_eq!(ProcessedRuleStatus::NotMatched, result.rules.get("rule2_sms").unwrap().status);
-        assert!(result.rules.contains_key("rule3_email"));
-        assert_eq!(ProcessedRuleStatus::Matched, result.rules.get("rule3_email").unwrap().status);
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(3, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule1_email").unwrap().status
+                );
+                assert!(rules.rules.contains_key("rule2_sms"));
+                assert_eq!(
+                    ProcessedRuleStatus::NotMatched,
+                    rules.rules.get("rule2_sms").unwrap().status
+                );
+                assert!(rules.rules.contains_key("rule3_email"));
+                assert_eq!(
+                    ProcessedRuleStatus::Matched,
+                    rules.rules.get("rule3_email").unwrap().status
+                );
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -461,19 +761,24 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(1, result.rules.len());
-        assert!(result.rules.contains_key("rule1_email"));
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(1, rules.rules.len());
+                assert!(rules.rules.contains_key("rule1_email"));
 
-        let rule_1_processed = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-        assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
-        assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -505,23 +810,28 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(2, result.rules.len());
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(2, rules.rules.len());
 
-        let rule_1_processed = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-        assert!(result.extracted_vars.contains_key("rule1_email.extracted_temp"));
-        assert_eq!("ai", result.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
 
-        let rule_2_processed = result.rules.get("rule2_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-        assert!(result.extracted_vars.contains_key("rule2_email.extracted_temp"));
-        assert_eq!("em", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
+                assert_eq!("em", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -553,22 +863,27 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1, rule_2]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2] }).unwrap();
 
         // Act
         let result = matcher.process(Event::new("email"));
 
         // Assert
-        assert_eq!(2, result.rules.len());
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(2, rules.rules.len());
 
-        let rule_1_processed = result.rules.get("rule1_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
-        assert!(!result.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
+                assert!(!rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
 
-        let rule_2_processed = result.rules.get("rule2_email").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-        assert!(result.extracted_vars.contains_key("rule2_email.extracted_temp"));
-        assert_eq!("ai", result.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
+                assert_eq!("ai", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -590,7 +905,7 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         let mut payload = Payload::new();
         payload.insert(
@@ -602,12 +917,17 @@ mod test {
         let result = matcher.process(Event::new_with_payload("email", payload));
 
         // Assert
-        let rule_1_processed = result.rules.get("rule1").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-        assert_eq!(
-            "zzz",
-            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
-        );
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                let rule_1_processed = rules.rules.get("rule1").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                assert_eq!(
+                    "zzz",
+                    rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                );
+            }
+            _ => assert!(false),
+        };
     }
 
     #[test]
@@ -629,7 +949,7 @@ mod test {
             },
         );
 
-        let matcher = new_matcher(&vec![rule_1]).unwrap();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
 
         let mut payload = Payload::new();
         let mut inner = Payload::new();
@@ -641,21 +961,455 @@ mod test {
         let result = matcher.process(Event::new_with_payload("email", payload));
 
         // Assert
-        let rule_1_processed = result.rules.get("rule1").unwrap();
-        assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-        assert_eq!(
-            "zzz",
-            result.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                let rule_1_processed = rules.rules.get("rule1").unwrap();
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+                assert_eq!(
+                    "zzz",
+                    rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_process_rulesets_if_filter_has_no_operator() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let filter = new_filter("filter1", None);
+
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(2, nodes.len());
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert!(rules.rules.contains_key("rule_a1"));
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node2").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert!(rules.rules.contains_key("rule_b1"));
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_process_all_filter_rulesets() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let filter = new_filter("filter1", op.clone());
+
+        let nodes = btreemap![
+            "node1".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_a1", None), new_rule("rule_a2", op.clone())],
+            },
+            "node2".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
+            },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(2, nodes.len());
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(2, rules.rules.len());
+
+                        assert!(rules.rules.contains_key("rule_a1"));
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_a1").unwrap().status
+                        );
+
+                        assert!(rules.rules.contains_key("rule_a2"));
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_a2").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node2").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(2, rules.rules.len());
+
+                        assert!(rules.rules.contains_key("rule_b1"));
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_b1").unwrap().status
+                        );
+
+                        assert!(rules.rules.contains_key("rule_b2"));
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_b2").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_process_filter_rulesets_recursively() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let filter = new_filter("filter1", None);
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Filter {
+                filter: new_filter("filter2", op.clone()),
+                nodes: btreemap![ "node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule2", None)] }],
+            },
+            "node1".to_owned() => MatcherConfig::Filter {
+                filter: new_filter(
+                    "filter3",
+                    Operator::Equal {
+                        first: "${event.type}".to_owned(),
+                        second: "trap".to_owned(),
+                    },
+                ),
+                nodes: btreemap![ "node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule3", None)] }],
+            },
+            "node2".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_a1", None), new_rule("rule_a2", op.clone())],
+            },
+            "node3".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
+            },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(4, nodes.len());
+
+                match nodes.get("node0").unwrap() {
+                    ProcessedNode::Filter { filter, nodes } => {
+                        assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                        assert_eq!(1, nodes.len());
+
+                        match nodes.get("node").unwrap() {
+                            ProcessedNode::Rules { rules } => {
+                                assert_eq!(1, rules.rules.len());
+                                assert_eq!(
+                                    ProcessedRuleStatus::Matched,
+                                    rules.rules.get("rule2").unwrap().status
+                                );
+                            }
+                            _ => assert!(false),
+                        };
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Filter { filter, nodes } => {
+                        assert_eq!(ProcessedFilterStatus::NotMatched, filter.status);
+                        assert_eq!(0, nodes.len());
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node2").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(2, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_a1").unwrap().status
+                        );
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_a2").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node3").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(2, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_b1").unwrap().status
+                        );
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_b2").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_process_no_rulesets_if_filter_is_inactive() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let mut filter = new_filter("filter1", None);
+        filter.active = false;
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_a1", op.clone())] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule_b1", op.clone())] },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Inactive, filter.status);
+                assert_eq!(0, nodes.len());
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_process_no_rulesets_if_filter_does_not_match() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let filter = new_filter(
+            "filter1",
+            Operator::Equal { first: "${event.type}".to_owned(), second: "trapd".to_owned() },
         );
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_a1", op.clone()), new_rule("rule_a2", op.clone())],
+            },
+            "node1".to_owned() => MatcherConfig::Rules {
+                rules: vec![new_rule("rule_b1", op.clone()), new_rule("rule_b2", op.clone())],
+            },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::NotMatched, filter.status);
+                assert_eq!(0, nodes.len());
+            }
+            _ => assert!(false),
+        };
     }
 
-    fn new_matcher(rules: &[Rule]) -> Result<Matcher, MatcherError> {
-        test_root::start_context();
-        Matcher::build(rules)
+    #[test]
+    fn should_process_rulesets_independently() {
+        // Arrange
+        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+
+        let filter = new_filter("filter1", op.clone());
+
+        let mut rule_a1 = new_rule("rule_a1", None);
+        rule_a1.do_continue = false;
+
+        let mut rule_b1 = new_rule("rule_b1", None);
+        rule_b1.do_continue = false;
+
+        let mut rule_c1 = new_rule("rule_c1", None);
+        rule_c1.do_continue = false;
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![rule_a1, new_rule("rule_a2", op.clone())] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![rule_b1, new_rule("rule_b2", op.clone())] },
+            "node2".to_owned() => MatcherConfig::Rules { rules: vec![rule_c1, new_rule("rule_c2", op.clone())] },
+        ];
+
+        let config = MatcherConfig::Filter { filter, nodes };
+
+        let matcher = new_matcher(&config).unwrap();
+
+        // Act
+        let result = matcher.process(Event::new("email"));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(3, nodes.len());
+
+                match nodes.get("node0").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_a1").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_b1").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node2").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule_c1").unwrap().status
+                        );
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
     }
 
-    fn new_rule(name: &str, operator: Operator) -> Rule {
-        let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
+    #[test]
+    fn extracted_variables_should_be_independent_for_each_pipeline() {
+        // Arrange
+        let mut rule_0 = new_rule("rule", None);
+
+        rule_0.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let mut rule_1 = new_rule("rule", None);
+
+        rule_1.constraint.with.insert(
+            String::from("extracted_temp"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+            },
+        );
+
+        let filter = new_filter("filter", None);
+
+        let nodes = btreemap![
+            "node0".to_owned() => MatcherConfig::Rules { rules: vec![rule_0] },
+            "node1".to_owned() => MatcherConfig::Rules { rules: vec![rule_1] },
+        ];
+
+        let matcher = new_matcher(&MatcherConfig::Filter { filter, nodes }).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Filter { filter, nodes } => {
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(2, nodes.len());
+
+                match nodes.get("node0").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule").unwrap().status
+                        );
+                        assert_eq!("aaa", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                    }
+                    _ => assert!(false),
+                };
+
+                match nodes.get("node1").unwrap() {
+                    ProcessedNode::Rules { rules } => {
+                        assert_eq!(1, rules.rules.len());
+                        assert_eq!(
+                            ProcessedRuleStatus::Matched,
+                            rules.rules.get("rule").unwrap().status
+                        );
+                        assert_eq!("999", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                    }
+                    _ => assert!(false),
+                };
+            }
+            _ => assert!(false),
+        };
+    }
+
+    fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
+        //crate::test_root::start_context();
+        Matcher::build(config)
+    }
+
+    fn new_rule<O: Into<Option<Operator>>>(name: &str, operator: O) -> Rule {
+        let constraint = Constraint { where_operator: operator.into(), with: HashMap::new() };
 
         Rule {
             name: name.to_owned(),
@@ -667,4 +1421,12 @@ mod test {
         }
     }
 
+    fn new_filter<O: Into<Option<Operator>>>(name: &str, filter: O) -> Filter {
+        Filter {
+            name: name.to_owned(),
+            active: true,
+            description: "".to_owned(),
+            filter: filter.into(),
+        }
+    }
 }

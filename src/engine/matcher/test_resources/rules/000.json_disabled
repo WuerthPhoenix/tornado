@@ -1,0 +1,9 @@
+{
+  "description": "this file should be ignored",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WITH": {}
+  },
+  "actions": []
+}

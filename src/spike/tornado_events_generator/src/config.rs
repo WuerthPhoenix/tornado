@@ -13,9 +13,9 @@ pub struct Io {
     #[structopt(long, default_value = "/events")]
     pub events_dir: String,
 
-    /// The Unix Socket path where outgoing events will be written
-    #[structopt(long, default_value = "/var/run/tornado/tornado.sock")]
-    pub uds_path: String,
+    /// The Tornado TCP address where outgoing events will be written
+    #[structopt(long, default_value = "127.0.0.1:4747")]
+    pub tornado_tcp_address: String,
 
     /// How many times each event should be sent
     #[structopt(long, default_value = "1000")]

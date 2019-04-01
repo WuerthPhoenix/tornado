@@ -1,4 +1,3 @@
-use crate::actors::uds_writer::EventMessage;
 use crate::config::WebhookConfig;
 use actix::prelude::*;
 use actix_web::http::Method;
@@ -8,7 +7,7 @@ use failure::Fail;
 use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
-use tornado_common::actors;
+use tornado_common::actors::tcp_client::{EventMessage, TcpClientActor};
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 use url::percent_encoding::{utf8_percent_encode, DEFAULT_ENCODE_SET};
@@ -38,14 +37,16 @@ fn main() -> Result<(), Box<std::error::Error>> {
         info!("Starting web server at port {}", port);
 
         // Start UdsWriter
-        let uds_writer_addr = actors::uds_writer::UdsWriterActor::start_new(
-            config.io.uds_path.clone(),
-            config.io.uds_mailbox_capacity,
+        let tornado_tcp_address = format!(
+            "{}:{}",
+            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
         );
+        let tpc_client_addr =
+            TcpClientActor::start_new(tornado_tcp_address.clone(), config.io.message_queue_size);
 
         server::new(move || {
             create_app(webhooks_config.clone(), || {
-                let clone = uds_writer_addr.clone();
+                let clone = tpc_client_addr.clone();
                 move |event| clone.do_send(EventMessage { event })
             })
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
