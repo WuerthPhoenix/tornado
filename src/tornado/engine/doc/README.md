@@ -69,7 +69,6 @@ Tornado global options:
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
   this folder is relative to `config_dir`. The default value is _/rules.d/_.
 
-
 The __check__ command does not have any specific options.
 
 The __daemon__ command has the following options:
@@ -77,7 +76,6 @@ The __daemon__ command has the following options:
   The default address is _127.0.0.1_.
 - __event-socket-port__:  The port where Tornado will listen for incoming events.
   The default port is _4747_.
-
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
