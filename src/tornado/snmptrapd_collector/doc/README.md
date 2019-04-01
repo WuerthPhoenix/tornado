@@ -62,7 +62,6 @@ The snmptrapd_collector was loaded successfully.
 ```
 
 
-
 ### Configuration options
 
 The address of the Tornado Engine TCP instance to which the events are forwarded 
@@ -76,7 +75,7 @@ is configured with the following environment variables:
 
 ## How It Works
 
-The _snmptrapd_collector_ receives _snmptrapd_ messages, parses them, generates Tornado Events
+The _snmptrapd_collector_ receives snmptrapd messages, parses them, generates Tornado Events
 and, finally, sends them to the Tornado TCP events socket.
 
 The received messages are kept in an in-memory non-persistent buffer that makes the application
@@ -84,7 +83,7 @@ resilient to Tornado Engine crashes or temporary unavailability.  When Tornado r
 messages in the buffer will be sent.  When the buffer is full, the collector will start
 discarding old messages.  The buffer max size is set to `10000` messages. 
  
-Consider an _snmptrapd_ message that contains the following information:
+Consider a snmptrapd message that contains the following information:
 ```
 PDU INFO:
   version                        1

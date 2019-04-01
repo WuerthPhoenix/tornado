@@ -95,7 +95,7 @@ In this case, the CLI:
 - Executes the __daemon__ command that starts the Engine
 - Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
   in order to build the processing tree
-- Opens a TCP port at _0.0.0.0:12345_ for receiving the Events
+- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
 
 
 
