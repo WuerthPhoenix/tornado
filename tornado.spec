@@ -17,7 +17,7 @@
 %endif
 
 Name:    tornado
-Version: 0.5.0
+Version: 0.7.0
 Release: 1
 Summary: Tornado Package
 
@@ -141,6 +141,9 @@ fi
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
+* Tue Apr 02 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.7.0-1
+ - Change: Created timestamp format changed from ISO8601 to unix epoch in milliseconds
+
 * Wed Mar 27 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.6.0-1
  - New Feature: Processing Tree and Pipelines
  - New Feature: Command check-config
