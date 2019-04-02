@@ -17,7 +17,7 @@ executors.
 An Event has a simple structure, composed as follows:
 
 - __type__:  The Event type identifier (a given Collector usually sends Events of only a single type)
-- __created_ms__:  The Event creation timestamp milliseconds since January 1, 1970 UTC
+- __created_ms__:  The Event creation timestamp in milliseconds since January 1, 1970 UTC
 - __payload__:  A Map<String, Value> with event-specific data
 
 where the payload __Value__ can be any valid JSON type:
