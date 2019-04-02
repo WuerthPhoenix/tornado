@@ -110,7 +110,7 @@ sub my_receiver {
     };
 
     my $json = encode_json($data) . "\n";
-    print $json;
+    # print $json;
     # push it in the queue
     enqueue($json);
 

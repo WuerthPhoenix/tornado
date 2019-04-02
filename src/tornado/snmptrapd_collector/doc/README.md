@@ -103,7 +103,7 @@ The collector will produce this Tornado Event:
 ```json
 {
    "type":"snmptrapd",
-   "created_ms":"2019-03-28T09:38:10Z",
+   "created_ms":"1553765890000",
    "payload":{
       "protocol":"UDP",
       "src_ip":"127.0.1.1",
