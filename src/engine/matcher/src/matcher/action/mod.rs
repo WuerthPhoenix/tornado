@@ -9,8 +9,8 @@ use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use std::collections::HashMap;
-use tornado_common_api::Action;
 use tornado_common_api::Value;
+use tornado_common_api::{Action, Number};
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -130,7 +130,7 @@ enum ActionValueProcessor {
     Accessor(Accessor),
     Null,
     Bool(bool),
-    Number(f64),
+    Number(Number),
     //Text(String),
     Array(Vec<ActionValueProcessor>),
     Map(HashMap<String, ActionValueProcessor>),
@@ -234,7 +234,7 @@ mod test {
             .insert("constant".to_owned(), Value::Text("constant value".to_owned()));
         config_action
             .payload
-            .insert("created_ts".to_owned(), Value::Text("${event.created_ts}".to_owned()));
+            .insert("created_ms".to_owned(), Value::Text("${event.created_ms}".to_owned()));
         config_action
             .payload
             .insert("var_test_1".to_owned(), Value::Text("${_variables.test1}".to_owned()));
@@ -253,7 +253,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 1554130814854,
             payload,
         });
         let mut extracted_vars = HashMap::new();
@@ -271,7 +271,7 @@ mod test {
         assert_eq!(&"body_value", &result.payload.get("payload_body").unwrap());
         assert_eq!(&"subject_value", &result.payload.get("payload_subject").unwrap());
         assert_eq!(&"constant value", &result.payload.get("constant").unwrap());
-        assert_eq!(&"123456", &result.payload.get("created_ts").unwrap());
+        assert_eq!(&event.created_ms, result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
     }
@@ -293,7 +293,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -322,7 +322,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -339,7 +339,7 @@ mod test {
         // Arrange
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("type".to_owned(), Value::Number(123456.0));
+        config_action.payload.insert("type".to_owned(), Value::Number(Number::PosInt(123456)));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -351,7 +351,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -360,7 +360,7 @@ mod test {
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&Value::Number(123456.0), result.payload.get("type").unwrap());
+        assert_eq!(&Value::Number(Number::PosInt(123456)), result.payload.get("type").unwrap());
     }
 
     #[test]
@@ -370,7 +370,10 @@ mod test {
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action.payload.insert(
             "type".to_owned(),
-            Value::Array(vec![Value::Number(123456.0), Value::Text("${event.type}".to_owned())]),
+            Value::Array(vec![
+                Value::Number(Number::Float(123456.0)),
+                Value::Text("${event.type}".to_owned()),
+            ]),
         );
 
         let rule_name = "rule_for_test";
@@ -383,7 +386,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -394,7 +397,7 @@ mod test {
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
             &Value::Array(vec![
-                Value::Number(123456.0),
+                Value::Number(Number::Float(123456.0)),
                 Value::Text("event_type_value".to_owned())
             ]),
             result.payload.get("type").unwrap()
@@ -407,7 +410,7 @@ mod test {
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action.payload.insert("type".to_owned(),
-                                     Value::Map(hashmap!["one".to_owned() => Value::Number(123456.0),
+                                     Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
                                             "two".to_owned() => Value::Text("${event.type}".to_owned())]
                                      ));
 
@@ -421,7 +424,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -431,7 +434,7 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Map(hashmap!["one".to_owned() => Value::Number(123456.0),
+            &Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
                                             "two".to_owned() => Value::Text("event_type_value".to_owned())]),
             result.payload.get("type").unwrap()
         );
@@ -463,7 +466,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -494,7 +497,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload,
         });
 
@@ -527,7 +530,7 @@ mod test {
 
         let event = InternalEvent::new(Event {
             event_type: "event_type_value".to_owned(),
-            created_ts: "123456".to_owned(),
+            created_ms: 123456,
             payload: payload.clone(),
         });
 

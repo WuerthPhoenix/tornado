@@ -2,7 +2,7 @@ use criterion::Criterion;
 use std::fs;
 use tornado_common_api::Event;
 use tornado_engine_matcher::accessor::AccessorBuilder;
-use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_matcher::model::InternalEvent;
 
 pub fn bench_jmespath(c: &mut Criterion) {
     let filename = "./test_resources/event_nested_01.json";
@@ -30,12 +30,12 @@ pub fn bench_accessor(c: &mut Criterion) {
     let value = r#"${event.payload.first_level."second_level_text"}"#.to_owned();
     let accessor = builder.build("", &value).unwrap();
     let event = serde_json::from_str::<Event>(&event_json).unwrap();
-    let processed_event = ProcessedEvent::new(event);
+    let internal_event = InternalEvent::new(event);
 
     c.bench_function("Extract from map - accessor", move |b| {
         b.iter(|| {
-            let processed_event_clone = processed_event.clone();
-            let result = accessor.get(&processed_event_clone);
+            let internal_event_clone = internal_event.clone();
+            let result = accessor.get(&internal_event_clone, None);
             // Assert
             assert_eq!("some text", result.unwrap().as_ref().get_text().unwrap());
         })

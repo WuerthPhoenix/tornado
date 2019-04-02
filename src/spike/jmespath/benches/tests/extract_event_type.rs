@@ -2,7 +2,7 @@ use criterion::Criterion;
 use std::fs;
 use tornado_common_api::Event;
 use tornado_engine_matcher::accessor::AccessorBuilder;
-use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_matcher::model::InternalEvent;
 
 pub fn bench_jmespath_1(c: &mut Criterion) {
     let filename = "./test_resources/event_nested_01.json";
@@ -47,12 +47,12 @@ pub fn bench_accessor_1(c: &mut Criterion) {
     let value = "${event.type}".to_owned();
     let accessor = builder.build("", &value).unwrap();
     let event = serde_json::from_str::<Event>(&event_json).unwrap();
-    let processed_event = ProcessedEvent::new(event);
+    let internal_event = InternalEvent::new(event);
 
     c.bench_function("Extract type - accessor", move |b| {
         b.iter(|| {
-            let processed_event_clone = processed_event.clone();
-            let result = accessor.get(&processed_event_clone);
+            let internal_event_clone = internal_event.clone();
+            let result = accessor.get(&internal_event_clone, None);
             // Assert
             assert_eq!("email", result.unwrap().as_ref().get_text().unwrap());
         })
@@ -71,9 +71,9 @@ pub fn bench_accessor_2(c: &mut Criterion) {
     c.bench_function("Extract type including deserialization - accessor", move |b| {
         b.iter(|| {
             let event = serde_json::from_str::<Event>(&event_json).unwrap();
-            let processed_event = ProcessedEvent::new(event);
+            let internal_event = InternalEvent::new(event);
 
-            let result = accessor.get(&processed_event);
+            let result = accessor.get(&internal_event, None);
 
             // Assert
             assert_eq!("email", result.unwrap().as_ref().get_text().unwrap());

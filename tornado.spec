@@ -27,8 +27,13 @@ Source0: %{name}.tar.gz
 
 BuildRequires: openssl-devel
 Requires: openssl-libs
+
+# Requirements for build on NetEye 4 Machine
 %if 0%{?el7}
 BuildRequires: cargo
+# Additionl Perl Modules for snmptrapd collector
+Requires: perl(Cpanel::JSON::XS)
+Requires: perl(NetSNMP::TrapReceiver)
 %endif
 
 %description

@@ -179,7 +179,7 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert("value".to_owned(), Value::Number(999.99));
+        event.payload.insert("value".to_owned(), Value::Number(Number::Float(999.99)));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }

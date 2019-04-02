@@ -19,7 +19,7 @@ The JSON input format should respect the Event structure, for example:
 ```json
 {
   "type": "email",
-  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload":{
     "subject": "Email subject",
     "body": "Email body",
@@ -66,7 +66,7 @@ will generate this Event:
 ```json
 {
   "type": "event_type_from_config",
-  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload": {
     "@timestamp": "2018-11-01T23:59:59+01:00",
     "host": "neteye01",

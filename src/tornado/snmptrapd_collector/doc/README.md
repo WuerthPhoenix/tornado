@@ -21,14 +21,12 @@ This collector has the following runtime requirements:
 - Perl 5.16 or greater
 - Perl packages required:
   - Cpanel::JSON::XS
-  - DateTime
   - NetSNMP::TrapReceiver
 
 You can verify that the Perl packages are available with the command:
 ```bash
 $ perl -e 'use Cpanel::JSON::XS;' && \
-  perl -e 'use NetSNMP::TrapReceiver;' && \
-  perl -e 'use DateTime;'
+  perl -e 'use NetSNMP::TrapReceiver;'
 ```
 
 If no messages are displayed in the console, then everything is okay; otherwise, 
@@ -38,7 +36,7 @@ In case of missing dependencies, use your system's package manager to install th
 
 For example, the required Perl packages can be installed on an Ubuntu system with:
 ```bash
-$ sudo apt install libcpanel-json-xs-perl libdatetime-perl libsnmp-perl
+$ sudo apt install libcpanel-json-xs-perl libsnmp-perl
 ```
 
 
@@ -105,7 +103,7 @@ The collector will produce this Tornado Event:
 ```json
 {
    "type":"snmptrapd",
-   "created_ts":"2019-03-28T09:38:10Z",
+   "created_ms":"1553765890000",
    "payload":{
       "protocol":"UDP",
       "src_ip":"127.0.1.1",
