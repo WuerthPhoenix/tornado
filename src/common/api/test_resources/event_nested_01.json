@@ -10,6 +10,9 @@
       "second_level_bool": true,
       "second_level_number": 123456.789,
       "second_level_map": {}
-    }
+    },
+    "number_f64": 123456.789,
+    "number_i64": -111,
+    "number_u64": 222
   }
 }

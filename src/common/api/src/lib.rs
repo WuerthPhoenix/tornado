@@ -226,6 +226,24 @@ impl PartialEq<Value> for bool {
     }
 }
 
+// Allows Number == Value
+impl PartialEq<Number> for Value {
+    fn eq(&self, other: &Number) -> bool {
+        let option_number = self.get_number();
+        match option_number {
+            Some(number) => number == other,
+            None => false,
+        }
+    }
+}
+
+// Allows Value == Number
+impl PartialEq<Value> for Number {
+    fn eq(&self, other: &Value) -> bool {
+        other == self
+    }
+}
+
 // Allows f64 == Value
 impl PartialEq<f64> for Value {
     fn eq(&self, other: &f64) -> bool {
@@ -494,6 +512,48 @@ mod test {
 
         // Assert
         assert!(event.is_ok());
+    }
+
+    #[test]
+    fn should_parse_numbers_as_float() {
+        // Arrange
+        let filename = "./test_resources/event_nested_01.json";
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json).unwrap();
+
+        // Assert
+        assert_eq!(&Number::Float(123456.789), event.payload.get("number_f64").unwrap());
+    }
+
+    #[test]
+    fn should_parse_numbers_as_neg_in() {
+        // Arrange
+        let filename = "./test_resources/event_nested_01.json";
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json).unwrap();
+
+        // Assert
+        assert_eq!(&Number::NegInt(-111), event.payload.get("number_i64").unwrap());
+    }
+
+    #[test]
+    fn should_parse_numbers_as_pos_int() {
+        // Arrange
+        let filename = "./test_resources/event_nested_01.json";
+        let event_json =
+            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+
+        // Act
+        let event = serde_json::from_str::<Event>(&event_json).unwrap();
+
+        // Assert
+        assert_eq!(&Number::PosInt(222), event.payload.get("number_u64").unwrap());
     }
 
     #[test]

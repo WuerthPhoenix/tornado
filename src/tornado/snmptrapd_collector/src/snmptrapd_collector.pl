@@ -2,7 +2,6 @@
 use warnings;
 use strict;
 
-use Data::Dumper;
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
 use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
