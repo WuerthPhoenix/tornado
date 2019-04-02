@@ -6,12 +6,12 @@
     "repository_name": "webhook-test",
     "inner_map": {
       "map": {
-        "number": 123,
+        "number": 123.0,
         "boolean": true,
         "text": "text_value",
         "exp": false
       },
-      "array": [99.9, false, "Francesco", 960885]
+      "array": [99.9, false, "Francesco", 960885.0]
     }
   }
 }

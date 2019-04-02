@@ -1,9 +1,9 @@
 use jmespath::Rcvar;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::Event;
 use tornado_common_api::Payload;
 use tornado_common_api::Value;
+use tornado_common_api::{Event, Number};
 
 pub mod config;
 
@@ -78,7 +78,7 @@ impl EventProcessor {
             }
             Value::Text(text) => EventProcessor::build_value_processor_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
-            Value::Number(number) => Ok(ValueProcessor::Number(number)),
+            Value::Number(number) => Ok(ValueProcessor::Number(number.as_f64())),
             Value::Null => Ok(ValueProcessor::Null),
         }
     }
@@ -147,7 +147,7 @@ impl ValueProcessor {
             }
             ValueProcessor::Null => Ok(Value::Null),
             ValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
-            ValueProcessor::Number(number) => Ok(Value::Number(*number)),
+            ValueProcessor::Number(number) => Ok(Value::Number(Number::Float(*number))),
             ValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ValueProcessor::Map(payload) => {
                 let mut processor_payload = HashMap::new();
@@ -171,7 +171,7 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
     match var.as_ref() {
         jmespath::Variable::String(s) => Ok(Value::Text(s.to_owned())),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
-        jmespath::Variable::Number(n) => Ok(Value::Number(*n)),
+        jmespath::Variable::Number(n) => Ok(Value::Number(Number::Float(*n))),
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
             for (key, value) in values {
@@ -325,7 +325,7 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(Value::Number(99.66), result.unwrap());
+        assert_eq!(Value::Number(Number::Float(99.66)), result.unwrap());
     }
 
     #[test]
@@ -349,7 +349,7 @@ mod test {
             Value::Array(vec![
                 Value::Text("one".to_owned()),
                 Value::Bool(true),
-                Value::Number(13 as f64)
+                Value::Number(Number::Float(13 as f64))
             ]),
             result.unwrap()
         );
@@ -378,7 +378,7 @@ mod test {
 
         let mut payload = HashMap::new();
         payload.insert("one".to_owned(), Value::Bool(true));
-        payload.insert("two".to_owned(), Value::Number(13 as f64));
+        payload.insert("two".to_owned(), Value::Number(Number::Float(13 as f64)));
 
         assert_eq!(Value::Map(payload), result.unwrap());
     }

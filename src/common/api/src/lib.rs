@@ -77,74 +77,72 @@ pub enum Number {
 }
 
 impl Number {
-
     #[inline]
     pub fn is_i64(&self) -> bool {
-            match self {
-                Number::PosInt(v) => v <= &(i64::max_value() as u64),
-                Number::NegInt(_) => true,
-                Number::Float(_) => false,
+        match self {
+            Number::PosInt(v) => (i64::max_value() as u64) >= *v,
+            Number::NegInt(_) => true,
+            Number::Float(_) => false,
         }
     }
 
     #[inline]
     pub fn is_u64(&self) -> bool {
-            match self {
-                Number::PosInt(_) => true,
-                Number::NegInt(_) | Number::Float(_) => false,
+        match self {
+            Number::PosInt(_) => true,
+            Number::NegInt(_) | Number::Float(_) => false,
         }
     }
 
     #[inline]
     pub fn is_f64(&self) -> bool {
-            match self {
-                Number::Float(_) => true,
-                Number::PosInt(_) | Number::NegInt(_) => false,
+        match self {
+            Number::Float(_) => true,
+            Number::PosInt(_) | Number::NegInt(_) => false,
         }
     }
 
     #[inline]
     pub fn as_i64(&self) -> Option<i64> {
-            match self {
-                Number::PosInt(n) => {
-                    let n = *n;
+        match self {
+            Number::PosInt(n) => {
+                let n = *n;
                 if n <= i64::max_value() as u64 {
                     Some(n as i64)
                 } else {
                     None
                 }
             }
-                Number::NegInt(n) => Some(*n),
-                Number::Float(_) => None,
+            Number::NegInt(n) => Some(*n),
+            Number::Float(_) => None,
         }
     }
 
     #[inline]
     pub fn as_u64(&self) -> Option<u64> {
-            match self {
-                Number::PosInt(n) => Some(*n),
-                Number::NegInt(_) | Number::Float(_) => None,
+        match self {
+            Number::PosInt(n) => Some(*n),
+            Number::NegInt(_) | Number::Float(_) => None,
         }
     }
 
     #[inline]
-    pub fn as_f64(&self) -> Option<f64> {
-            match self {
-                Number::PosInt(n) => Some(*n as f64),
-                Number::NegInt(n) => Some(*n as f64),
-                Number::Float(n) => Some(*n),
+    pub fn as_f64(&self) -> f64 {
+        match self {
+            Number::PosInt(n) => *n as f64,
+            Number::NegInt(n) => *n as f64,
+            Number::Float(n) => *n,
         }
     }
 
     #[inline]
     pub fn from_f64(f: f64) -> Option<Number> {
         if f.is_finite() {
-            Some( Number::Float(f))
+            Some(Number::Float(f))
         } else {
             None
         }
     }
-
 }
 
 impl Value {
@@ -233,7 +231,7 @@ impl PartialEq<f64> for Value {
     fn eq(&self, other: &f64) -> bool {
         let option_number = self.get_number();
         match option_number {
-            Some(value) => value.as_f64() == Some(*other),
+            Some(value) => value.as_f64() == *other,
             None => false,
         }
     }
@@ -361,7 +359,7 @@ mod test {
 
         // Assert
         assert!(number.is_some());
-        assert_eq!(64.0, number.unwrap().as_f64().unwrap());
+        assert_eq!(64.0, number.unwrap().as_f64());
     }
 
     #[test]

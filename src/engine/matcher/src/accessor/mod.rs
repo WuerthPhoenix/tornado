@@ -31,7 +31,7 @@ impl Default for AccessorBuilder {
 const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
 const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
-const EVENT_created_ms_KEY: &str = "event.created_ms";
+const EVENT_CREATED_MS_KEY: &str = "event.created_ms";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
 const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
@@ -64,7 +64,7 @@ impl AccessorBuilder {
                 match path.trim() {
                     EVENT_KEY => Ok(Accessor::Event {}),
                     EVENT_TYPE_KEY => Ok(Accessor::Type {}),
-                    EVENT_created_ms_KEY => Ok(Accessor::CreatedMs {}),
+                    EVENT_CREATED_MS_KEY => Ok(Accessor::CreatedMs {}),
                     val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_SUFFIX))
                         || val.eq(EVENT_PAYLOAD_SUFFIX)) =>
                     {
@@ -216,7 +216,6 @@ impl Into<ValueGetter> for usize {
 mod test {
 
     use super::*;
-    use chrono::prelude::DateTime;
     use std::collections::HashMap;
     use tornado_common_api::*;
 
@@ -261,7 +260,9 @@ mod test {
 
         let result = accessor.get(&event, None);
 
-        assert!(DateTime::parse_from_rfc3339(cow_to_str(&result).unwrap()).is_ok());
+        let created_ms = result.unwrap().get_number().unwrap().clone();
+        assert!(created_ms.is_u64());
+        assert!(created_ms.as_u64().unwrap() > 0);
     }
 
     #[test]
@@ -303,7 +304,7 @@ mod test {
         let accessor = Accessor::Payload { keys: vec!["num_555".into()] };
 
         let mut payload = HashMap::new();
-        payload.insert("num_555".to_owned(), Value::Number(555.0));
+        payload.insert("num_555".to_owned(), Value::Number(Number::Float(555.0)));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -311,7 +312,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         // Assert
-        assert_eq!(&555.0, result.as_ref());
+        assert_eq!(555.0, result.as_ref().get_number().unwrap().as_f64());
     }
 
     #[test]

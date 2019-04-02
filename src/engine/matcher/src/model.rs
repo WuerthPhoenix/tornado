@@ -1,5 +1,5 @@
 use std::collections::{BTreeMap, HashMap};
-use tornado_common_api::{Action, Event, Payload, Value, Number};
+use tornado_common_api::{Action, Event, Number, Payload, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InternalEvent {
