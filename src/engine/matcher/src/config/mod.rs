@@ -33,7 +33,7 @@ impl MatcherConfig {
 
     // Returns whether the directory contains a filter. Otherwise it contains rules.
     // These logic is used to determine the folder content:
-    // - It contains a filter if there is only one json file AND at least one subdirectory. The result is true.
+    // - It contains a filter if there max one json file AND at least one subdirectory. The result is true.
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
     fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
@@ -62,13 +62,13 @@ impl MatcherConfig {
         );
 
         if subdirectories_count > 0 {
-            if json_files_count == 1 {
+            if json_files_count <= 1 {
                 return Ok(DirType::Filter);
             }
             return Err(MatcherError::ConfigurationError {
                 message: format!(
                     r#"Path {} contains {} file(s) and {} directories. Expected:\n
-                 for a valid filter: one json file and at least one directory;\n
+                 for a valid filter: max one json file and at least one directory;\n
                  for a valid rule set: zero or more json files and no directories."#,
                     dir.as_ref().display(),
                     json_files_count,
@@ -171,6 +171,16 @@ impl MatcherConfig {
                 })?;
             filter.name = MatcherConfig::truncate(filename, extension.len());
             filters.push(filter);
+        }
+
+        if filters.is_empty() && !nodes.is_empty() {
+            let filter = Filter {
+                active: true,
+                name: "implicit_filter".to_owned(),
+                description: "An implicit filter that allows all events".to_owned(),
+                filter: None,
+            };
+            return Ok(MatcherConfig::Filter { filter, nodes });
         }
 
         if filters.len() == 1 && !nodes.is_empty() {
@@ -337,6 +347,35 @@ mod test {
     }
 
     #[test]
+    fn should_create_implicit_filter_recursively() {
+        let path = "./test_resources/config_implicit_filter";
+        let config = MatcherConfig::read_from_dir(path).unwrap();
+        println!("{:?}", config);
+
+        assert!(is_filter(&config, "implicit_filter", 2));
+
+        match config {
+            MatcherConfig::Filter { filter: root_filter, nodes } => {
+                assert!(root_filter.filter.is_none());
+                assert!(nodes.contains_key("node1"));
+                assert!(nodes.contains_key("node2"));
+                assert!(is_filter(&nodes["node1"], "implicit_filter", 1));
+                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
+
+                match &nodes["node1"] {
+                    MatcherConfig::Filter { filter: inner_filter, nodes: inner_nodes } => {
+                        assert!(inner_filter.filter.is_none());
+                        assert!(inner_nodes.contains_key("inner_node1"));
+                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2"]));
+                    }
+                    _ => assert!(false),
+                }
+            }
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
     fn should_return_dir_type_filter_if_one_file_and_one_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
@@ -385,6 +424,22 @@ mod test {
     }
 
     #[test]
+    fn should_return_dir_type_filter_if_no_files_but_subdirs() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let dir = tempdir.path().to_str().unwrap().to_owned();
+
+        fs::create_dir_all(&format!("{}/subdir1", dir)).unwrap();
+        fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
+
+        // Act
+        let result = MatcherConfig::detect_dir_type(&dir);
+
+        // Assert
+        assert_eq!(Ok(DirType::Filter), result);
+    }
+
+    #[test]
     fn is_filter_dir_should_return_error_if_many_files_and_subdirs() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
@@ -404,31 +459,6 @@ mod test {
             Err(e) => match e {
                 MatcherError::ConfigurationError { message } => assert!(message.contains(
                     &format!("Path {} contains {} file(s) and {} directories.", dir, 2, 2)
-                )),
-                _ => assert!(false),
-            },
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
-    fn is_filter_dir_should_return_error_if_no_files_but_subdirs() {
-        // Arrange
-        let tempdir = tempfile::tempdir().unwrap();
-        let dir = tempdir.path().to_str().unwrap().to_owned();
-
-        fs::create_dir_all(&format!("{}/subdir1", dir)).unwrap();
-        fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
-
-        // Act
-        let result = MatcherConfig::detect_dir_type(&dir);
-
-        // Assert
-        assert!(result.is_err());
-        match result {
-            Err(e) => match e {
-                MatcherError::ConfigurationError { message } => assert!(message.contains(
-                    &format!("Path {} contains {} file(s) and {} directories.", dir, 0, 2)
                 )),
                 _ => assert!(false),
             },

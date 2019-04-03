@@ -65,6 +65,39 @@ A __Filter__ contains these properties:
 When the configuration is read from the file system, the filter name is automatically inferred
 from the filename by removing its '.json' extension.
 
+### Implicit Filters
+
+If a __Filter__ is omitted, the system will automatically infer an implicit filter 
+that allows all __Events__. 
+
+This feature permits less boiler-plate code when a filter is only required to blindly forward all 
+__Events__ to the internal rule sets.
+  
+For example, if *filter_one.json* is a __Filter__ that allows all __Events__ to pass, 
+then this processing tree:
+```
+root
+  |- node_0
+  |    |- ...
+  |- node_1
+  |    |- ...
+  \- filter_one.json
+``` 
+
+is equivalent to:
+```
+root
+  |- node_0
+  |    |- ...
+  \- node_1
+       |- ...
+``` 
+
+Note that in the second structure we removed the *filter_one.json* file; in this case, the system 
+will automatically generate an implicit filter for the *root* node and all incoming __Events__ 
+will be dispatched to each child node. 
+
+
 
 ## Structure of a Rule
 
@@ -180,9 +213,24 @@ two inner filters; the first, *only_email_filter*, only matches events of type '
 With this configuration, the rules defined in *email/ruleset* receive only email events, while
 those in *trapd/ruleset* receive only trapd events.
 
+This configuration can be further simplified by removing the *filter_all.json* file:
+```
+rules.d
+  |- email
+  |    |- ruleset
+  |    |     |- ... (all rules about emails here)
+  |    \- only_email_filter.json
+  \- trapd
+       |- ruleset
+       |     |- ... (all rules about trapds here)
+       \- only_trapd_filter.json
+``` 
+In this case, in fact, Tornado will generate an implicit filter for the root node and the
+runtime behavior will not change.   
+
 Below is the content of our JSON filter files.
 
-Content of *filter_all.json*:
+Content of *filter_all.json* (if provided):
 ```json
 {
   "description": "This filter allows every event",
