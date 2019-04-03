@@ -176,7 +176,7 @@ impl MatcherConfig {
         if filters.is_empty() && !nodes.is_empty() {
             let filter = Filter {
                 active: true,
-                name: "implicit_filter".to_owned(),
+                name: "implicit_forward".to_owned(),
                 description: "An implicit filter that allows all events".to_owned(),
                 filter: None,
             };
@@ -352,14 +352,14 @@ mod test {
         let config = MatcherConfig::read_from_dir(path).unwrap();
         println!("{:?}", config);
 
-        assert!(is_filter(&config, "implicit_filter", 2));
+        assert!(is_filter(&config, "implicit_forward", 2));
 
         match config {
             MatcherConfig::Filter { filter: root_filter, nodes } => {
                 assert!(root_filter.filter.is_none());
                 assert!(nodes.contains_key("node1"));
                 assert!(nodes.contains_key("node2"));
-                assert!(is_filter(&nodes["node1"], "implicit_filter", 1));
+                assert!(is_filter(&nodes["node1"], "implicit_forward", 1));
                 assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
 
                 match &nodes["node1"] {
