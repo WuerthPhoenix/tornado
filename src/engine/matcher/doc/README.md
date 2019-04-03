@@ -65,15 +65,14 @@ A __Filter__ contains these properties:
 When the configuration is read from the file system, the filter name is automatically inferred
 from the filename by removing its '.json' extension.
 
+
 ### Implicit Filters
 
-If a __Filter__ is omitted, the system will automatically infer an implicit filter 
-that allows all __Events__. 
-
-This feature permits less boiler-plate code when a filter is only required to blindly forward all 
-__Events__ to the internal rule sets.
+If a __Filter__ is omitted, Tornado will automatically infer an implicit filter that passes
+through all __Events__. This feature allows for less boiler-plate code when a filter is only
+required to blindly forward all __Events__ to the internal rule sets.
   
-For example, if *filter_one.json* is a __Filter__ that allows all __Events__ to pass, 
+For example, if *filter_one.json* is a __Filter__ that allows all __Events__ to pass through,
 then this processing tree:
 ```
 root
@@ -93,9 +92,9 @@ root
        |- ...
 ``` 
 
-Note that in the second structure we removed the *filter_one.json* file; in this case, the system 
-will automatically generate an implicit filter for the *root* node and all incoming __Events__ 
-will be dispatched to each child node. 
+Note that in the second tree we removed the *filter_one.json* file. In this case, Tornado will 
+automatically generate an implicit filter for the *root* node, and all incoming __Events__ 
+will be dispatched to each child node.
 
 
 
@@ -185,7 +184,7 @@ The following accessors are valid:
 ## Filter Examples
 
 
-### Using a filter to create independent pipelines
+### Using a Filter to Create Independent Pipelines
 
 We can use __Filters__ to organize coherent set of __Rules__ into isolated pipelines.
 
