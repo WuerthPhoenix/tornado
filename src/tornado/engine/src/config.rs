@@ -49,6 +49,14 @@ pub struct DaemonCommandConfig {
     /// The port where we will listen for incoming events.
     #[structopt(long, default_value = "4747")]
     pub event_socket_port: u16,
+
+    /// The IP address of the Tornado web server.
+    #[structopt(long, default_value = "127.0.0.1")]
+    pub web_server_ip: String,
+
+    /// The port of the Tornado web server.
+    #[structopt(long, default_value = "4748")]
+    pub web_server_port: u16,
 }
 
 impl Conf {
