@@ -111,7 +111,7 @@ pub fn daemon(
         let web_server_ip = daemon_config.web_server_ip.clone();
         let web_server_port = daemon_config.web_server_port;
         // Start monitoring endpoint
-        server::new(move || monitoring_app())
+        server::new(monitoring_app)
             .bind(format!("{}:{}", web_server_ip, web_server_port))
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {
