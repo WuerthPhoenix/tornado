@@ -6,6 +6,7 @@
 %define conf_dir %{tornado_dir}/conf/
 %define data_dir %{tornado_dir}/data/
 %define log_dir %{tornado_dir}/log/
+%define script_dir %{_datadir}/neteye/tornado/scripts/
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
@@ -89,6 +90,13 @@ mkdir -p %{buildroot}/%{data_dir}/archive/
 mkdir -p %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
 cp conf/rsyslog_collector/05_tornado.conf %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
 
+# Install snmptrapd script & config file
+mkdir -p %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
+mkdir -p %{buildroot}%{script_dir}
+cp src/tornado/snmptrapd_collector/src/snmptrapd_collector.pl %{buildroot}%{script_dir}
+cp conf/snmptrapd_collector/tornado.conf %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
+
+
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
@@ -117,6 +125,7 @@ fi
 %files
 %defattr(0755, root, root, 0775)
 %{bin_dir}
+%{script_dir}
 %{_bindir}/tornado
 
 %defattr(0660, root, root, 0770)
