@@ -264,14 +264,17 @@ contained in the Action itself as described in the
 [executor documentation](../../../executor/script/doc/README.md)
 
 
-## Monitoring
 
-The monitoring endpoints allow monitoring the health of Tornado.
-On the long run, they will provide information about status, activities, logs and metrics
+## Self-Monitoring
+
+The monitoring endpoints allow you to monitor the health of Tornado.
+In the long run, they will provide information about the status, activities, logs and metrics
 of a running Tornado instance. Specifically, they will return statistics about
-latency, traffic, and errors for requests and responses.
+latency, traffic, and errors.
 
-As of now, only a simple _ping_ endpoint is available.
+At this time, only a simple _ping_ endpoint is available.
+
+
 
 ### Ping endpoint 
 
