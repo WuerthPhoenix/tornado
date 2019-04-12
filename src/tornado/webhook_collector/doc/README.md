@@ -171,7 +171,7 @@ then the resulting Event will be:
 ```json
 {
   "type": "GitHub",
-  "created_ts": "2018-12-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload": {
     "source": "github",
     "ref": "refs/heads/master",

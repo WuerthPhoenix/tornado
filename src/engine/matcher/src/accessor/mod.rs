@@ -31,7 +31,7 @@ impl Default for AccessorBuilder {
 const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
 const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
-const EVENT_CREATED_TS_KEY: &str = "event.created_ts";
+const EVENT_CREATED_MS_KEY: &str = "event.created_ms";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
 const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
@@ -48,7 +48,7 @@ impl AccessorBuilder {
     /// E.g.:
     /// - "${event}": returns the entire Event instance
     /// - "${event.type}": returns an instance of Accessor::Type
-    /// - "${event.created_ts}": returns an instance of Accessor::CreatedTs
+    /// - "${event.created_ms}": returns an instance of Accessor::CreatedTs
     /// - "${event.payload}": returns the entire Payload of the Event
     /// - "${event.payload.body}": returns an instance of Accessor::Payload that returns the value of the entry with the key "body" from the event payload
     /// - "event.type": returns an instance of Accessor::Constant that always returns the String "event.type"
@@ -64,7 +64,7 @@ impl AccessorBuilder {
                 match path.trim() {
                     EVENT_KEY => Ok(Accessor::Event {}),
                     EVENT_TYPE_KEY => Ok(Accessor::Type {}),
-                    EVENT_CREATED_TS_KEY => Ok(Accessor::CreatedTs {}),
+                    EVENT_CREATED_MS_KEY => Ok(Accessor::CreatedMs {}),
                     val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_SUFFIX))
                         || val.eq(EVENT_PAYLOAD_SUFFIX)) =>
                     {
@@ -137,7 +137,7 @@ impl AccessorBuilder {
 /// An Accessor returns the value of a specific field of an Event.
 /// The following Accessors are defined:
 /// - Constant: returns a constant value regardless of the Event;
-/// - CreatedTs: returns the value of the "created_ts" field of an Event
+/// - CreatedTs: returns the value of the "created_ms" field of an Event
 /// - ExtractedVar: returns the value of one extracted variable
 /// - Payload: returns the value of an entry in the payload of an Event
 /// - Type: returns the value of the "type" field of an Event
@@ -145,7 +145,7 @@ impl AccessorBuilder {
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: Value },
-    CreatedTs {},
+    CreatedMs {},
     ExtractedVar { key: String },
     Payload { keys: Vec<ValueGetter> },
     Type {},
@@ -160,7 +160,7 @@ impl Accessor {
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedTs {} => Some(Cow::Borrowed(&event.created_ts)),
+            Accessor::CreatedMs {} => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { key } => extracted_vars
                 .and_then(|vars| vars.get(key.as_str()))
                 .map(|value| Cow::Borrowed(value)),
@@ -216,7 +216,6 @@ impl Into<ValueGetter> for usize {
 mod test {
 
     use super::*;
-    use chrono::prelude::DateTime;
     use std::collections::HashMap;
     use tornado_common_api::*;
 
@@ -254,14 +253,16 @@ mod test {
     }
 
     #[test]
-    fn should_return_the_event_created_ts() {
-        let accessor = Accessor::CreatedTs {};
+    fn should_return_the_event_created_ms() {
+        let accessor = Accessor::CreatedMs {};
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None);
 
-        assert!(DateTime::parse_from_rfc3339(cow_to_str(&result).unwrap()).is_ok());
+        let created_ms = result.unwrap().get_number().unwrap().clone();
+        assert!(created_ms.is_u64());
+        assert!(created_ms.as_u64().unwrap() > 0);
     }
 
     #[test]
@@ -303,7 +304,7 @@ mod test {
         let accessor = Accessor::Payload { keys: vec!["num_555".into()] };
 
         let mut payload = HashMap::new();
-        payload.insert("num_555".to_owned(), Value::Number(555.0));
+        payload.insert("num_555".to_owned(), Value::Number(Number::Float(555.0)));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -311,7 +312,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         // Assert
-        assert_eq!(&555.0, result.as_ref());
+        assert_eq!(555.0, result.as_ref().get_number().unwrap().as_f64());
     }
 
     #[test]
@@ -492,13 +493,13 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_event_accessor_for_created_ts() {
+    fn builder_should_return_event_accessor_for_created_ms() {
         let builder = AccessorBuilder::new();
-        let value = "${event.created_ts}".to_owned();
+        let value = "${event.created_ms}".to_owned();
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::CreatedTs {}, accessor)
+        assert_eq!(Accessor::CreatedMs {}, accessor)
     }
 
     #[test]

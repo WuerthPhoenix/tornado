@@ -66,6 +66,38 @@ When the configuration is read from the file system, the filter name is automati
 from the filename by removing its '.json' extension.
 
 
+### Implicit Filters
+
+If a __Filter__ is omitted, Tornado will automatically infer an implicit filter that passes
+through all __Events__. This feature allows for less boiler-plate code when a filter is only
+required to blindly forward all __Events__ to the internal rule sets.
+  
+For example, if *filter_one.json* is a __Filter__ that allows all __Events__ to pass through,
+then this processing tree:
+```
+root
+  |- node_0
+  |    |- ...
+  |- node_1
+  |    |- ...
+  \- filter_one.json
+``` 
+
+is equivalent to:
+```
+root
+  |- node_0
+  |    |- ...
+  \- node_1
+       |- ...
+``` 
+
+Note that in the second tree we removed the *filter_one.json* file. In this case, Tornado will 
+automatically generate an implicit filter for the *root* node, and all incoming __Events__ 
+will be dispatched to each child node.
+
+
+
 ## Structure of a Rule
 
 A __Rule__ is composed of a set of properties, constraints and actions.
@@ -131,7 +163,7 @@ For example, given the incoming event:
 ```json
 {
     "type": "trap",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "protocol": "UDP",
         "oids": {
@@ -152,7 +184,7 @@ The following accessors are valid:
 ## Filter Examples
 
 
-### Using a filter to create independent pipelines
+### Using a Filter to Create Independent Pipelines
 
 We can use __Filters__ to organize coherent set of __Rules__ into isolated pipelines.
 
@@ -180,9 +212,24 @@ two inner filters; the first, *only_email_filter*, only matches events of type '
 With this configuration, the rules defined in *email/ruleset* receive only email events, while
 those in *trapd/ruleset* receive only trapd events.
 
+This configuration can be further simplified by removing the *filter_all.json* file:
+```
+rules.d
+  |- email
+  |    |- ruleset
+  |    |     |- ... (all rules about emails here)
+  |    \- only_email_filter.json
+  \- trapd
+       |- ruleset
+       |     |- ... (all rules about trapds here)
+       \- only_trapd_filter.json
+``` 
+In this case, in fact, Tornado will generate an implicit filter for the root node and the
+runtime behavior will not change.   
+
 Below is the content of our JSON filter files.
 
-Content of *filter_all.json*:
+Content of *filter_all.json* (if provided):
 ```json
 {
   "description": "This filter allows every event",
@@ -250,7 +297,7 @@ A matching Event is:
 ```json
 {
     "type": "trap",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "hostname": "linux-server-01"
     }
@@ -286,7 +333,7 @@ A matching Event is:
 ```json
 {
     "type": "email",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{}
 }
 ```
@@ -323,7 +370,7 @@ A matching Event is:
 ```json
 {
     "type": "trap0",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{}
 }
 ```
@@ -386,7 +433,7 @@ A matching Event is:
 ```json
 {
     "type": "rsyslog",
-    "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+    "created_ms": 1554130814854,
     "payload":{
         "body": "other"
     }
@@ -482,7 +529,7 @@ An Event that matches this Rule is:
 ```json
 {
   "type": "trap",
-  "created_ts": "2018-11-28T21:45:59.324310806+09:00",
+  "created_ms": 1554130814854,
   "payload":{
     "host_ip": "10.65.5.31",
     "line_1":  "netsensor-outside-serverroom.wp.lan",

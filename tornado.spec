@@ -6,6 +6,7 @@
 %define conf_dir %{tornado_dir}/conf/
 %define data_dir %{tornado_dir}/data/
 %define log_dir %{tornado_dir}/log/
+%define script_dir %{_datadir}/neteye/tornado/scripts/
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
@@ -17,7 +18,7 @@
 %endif
 
 Name:    tornado
-Version: 0.5.0
+Version: 0.7.0
 Release: 1
 Summary: Tornado Package
 
@@ -27,8 +28,13 @@ Source0: %{name}.tar.gz
 
 BuildRequires: openssl-devel
 Requires: openssl-libs
+
+# Requirements for build on NetEye 4 Machine
 %if 0%{?el7}
 BuildRequires: cargo
+# Additionl Perl Modules for snmptrapd collector
+Requires: perl(Cpanel::JSON::XS)
+Requires: perl(NetSNMP::TrapReceiver)
 %endif
 
 %description
@@ -84,6 +90,13 @@ mkdir -p %{buildroot}/%{data_dir}/archive/
 mkdir -p %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
 cp conf/rsyslog_collector/05_tornado.conf %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
 
+# Install snmptrapd script & config file
+mkdir -p %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
+mkdir -p %{buildroot}%{script_dir}
+cp src/tornado/snmptrapd_collector/src/snmptrapd_collector.pl %{buildroot}%{script_dir}
+cp conf/snmptrapd_collector/tornado.conf %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
+
+
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
@@ -112,6 +125,7 @@ fi
 %files
 %defattr(0755, root, root, 0775)
 %{bin_dir}
+%{script_dir}
 %{_bindir}/tornado
 
 %defattr(0660, root, root, 0770)
@@ -130,12 +144,17 @@ fi
 %config(noreplace) %{conf_dir}/*_executor.toml
 %config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
 %config(noreplace) /neteye/shared/rsyslog/conf/rsyslog.d/*
+%config(noreplace) /neteye/shared/snmptrapd/conf/conf.d/*
 
 %{systemd_dir}/*
 %{systemd_plugin_dir}/*
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
+* Fri Apr 12 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.7.0-1
+ - Change: Created timestamp format changed from ISO8601 to unix epoch in milliseconds
+ - Fixed: Provide Snmptrapd integration without user interaction
+
 * Wed Mar 27 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.6.0-1
  - New Feature: Processing Tree and Pipelines
  - New Feature: Command check-config

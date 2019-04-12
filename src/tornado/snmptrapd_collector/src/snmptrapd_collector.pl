@@ -2,11 +2,10 @@
 use warnings;
 use strict;
 
-use Data::Dumper;
-use DateTime;
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
 use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
+use Time::HiRes qw/gettimeofday/;
 use threads;
 use threads::shared;
 use Thread::Queue;
@@ -99,7 +98,7 @@ sub my_receiver {
 
     my $data = {
         "type" => "snmptrapd",
-        "created_ts" => getCurrentDate(),
+        "created_ms" => getCurrentEpochMs(),
         "payload" => {
             "protocol" => $protocol,
             "src_ip" => $src_ip,
@@ -133,9 +132,8 @@ sub isSocketConnected {
     return 1;
 }
 
-sub getCurrentDate {
-    my $now = DateTime->now()->iso8601().'Z';
-    # my $now = DateTime->now()->format_cldr("yyyy-MM-dd'T'HH:mm:ssZ");
+sub getCurrentEpochMs {
+    my $now = int (gettimeofday * 1000);
     return $now;
 }
 

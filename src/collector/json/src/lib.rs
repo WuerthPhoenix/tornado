@@ -56,7 +56,7 @@ mod test {
 
         // Assert
         assert_eq!(event.event_type, from_json.event_type);
-        assert_eq!(event.created_ts, from_json.created_ts);
+        assert_eq!(event.created_ms, from_json.created_ms);
     }
 
     #[test]
@@ -94,7 +94,7 @@ mod test {
         assert_eq!("syslog", &event.event_type);
         assert_eq!("2018-11-01T23:59:59+01:00", event.payload.get("@timestamp").unwrap());
 
-        expected_event.created_ts = event.created_ts.clone();
+        expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
     }
 

@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, HashMap};
-use tornado_common_api::{Action, Event, Payload, Value};
+use tornado_common_api::{Action, Event, Number, Payload, Value};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InternalEvent {
     pub event_type: Value,
-    pub created_ts: Value,
+    pub created_ms: Value,
     pub payload: Value,
 }
 
@@ -12,7 +12,7 @@ impl Into<InternalEvent> for Event {
     fn into(self) -> InternalEvent {
         InternalEvent {
             event_type: Value::Text(self.event_type),
-            created_ts: Value::Text(self.created_ts),
+            created_ms: Value::Number(Number::PosInt(self.created_ms)),
             payload: Value::Map(self.payload),
         }
     }
@@ -22,7 +22,7 @@ impl Into<Value> for InternalEvent {
     fn into(self) -> Value {
         let mut payload = Payload::new();
         payload.insert("type".to_owned(), self.event_type);
-        payload.insert("created_ts".to_owned(), self.created_ts);
+        payload.insert("created_ms".to_owned(), self.created_ms);
         payload.insert("payload".to_owned(), self.payload);
         Value::Map(payload)
     }
