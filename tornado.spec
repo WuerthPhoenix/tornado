@@ -144,14 +144,16 @@ fi
 %config(noreplace) %{conf_dir}/*_executor.toml
 %config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
 %config(noreplace) /neteye/shared/rsyslog/conf/rsyslog.d/*
+%config(noreplace) /neteye/shared/snmptrapd/conf/conf.d/*
 
 %{systemd_dir}/*
 %{systemd_plugin_dir}/*
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
-* Tue Apr 02 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.7.0-1
+* Fri Apr 12 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.7.0-1
  - Change: Created timestamp format changed from ISO8601 to unix epoch in milliseconds
+ - Fixed: Provide Snmptrapd integration without user interaction
 
 * Wed Mar 27 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.6.0-1
  - New Feature: Processing Tree and Pipelines
