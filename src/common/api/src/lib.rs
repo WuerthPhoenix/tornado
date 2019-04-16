@@ -6,7 +6,7 @@ use std::collections::HashMap;
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
     #[serde(rename = "type")]
     pub event_type: String,
