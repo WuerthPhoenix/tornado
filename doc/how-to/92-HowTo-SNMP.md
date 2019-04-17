@@ -29,8 +29,13 @@ The configuration is correct.
 
 ## <a id="tornado-howto-snmp-collector-step2"></a>  Step #2:  Verify that the SNMP Trap Daemon is Working Properly
 
-To test that the SNMP Trap daemon is running, you should see output like this when running the
-following command (especially the "loaded successfully" line):
+Restart the SNMP Trap service to be certain it has loaded the latest configuration:
+```
+# systemctl restart snmptrapd.service
+```
+
+To test that the SNMP Trap daemon started correctly, you should see output like this when
+running the following command (especially the "loaded successfully" line):
 ```bash
 # journalctl -u snmptrapd
 Apr 16 11:00:22 tornadotest systemd[1]: Starting Simple Network Management Protocol (SNMP) Trap Daemon....
