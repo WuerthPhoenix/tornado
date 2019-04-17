@@ -1,14 +1,13 @@
-# How To Use the SNMP Trap Daemon Collector
+# <a id="tornado-howto-snmp-collector"></a> How To Use the SNMP Trap Daemon Collector
 
-<!-- [SNMP Trap Daemon Collector]((src/tornado/snmptrapd_collector/doc/SNMP-HowTo.md)) -->
-This How To is intended to help you configure, use and test the
-SNMP Trap Daemon Collector
+<!-- Future link:  [SNMP Trap Daemon Collector]((src/tornado/snmptrapd_collector/doc/SNMP-HowTo.md)) -->
+This How To is intended to help you configure, use and test the SNMP Trap Daemon Collector
 in your existing NetEye Tornado installation.
 It is assumed that you are using a shell environment rather than the Tornado GUI.
 
 
 
-## Step #1:  Prerequisites
+## <a id="tornado-howto-snmp-collector-step1"></a> Step #1:  Prerequisites
 
 If you have not already installed Tornado on NetEye 4, do so now:
 ```bash
@@ -18,6 +17,7 @@ If you have not already installed Tornado on NetEye 4, do so now:
 As a preliminary test, make sure that the Tornado service is up, and run a check on the default
 Tornado configuration directory.  You should see the following output:
 ```bash
+# systemctl start tornado
 # systemctl status tornado
 ...
 # tornado --config-dir=/neteye/shared/tornado/conf check
@@ -27,10 +27,10 @@ The configuration is correct.
 
 
 
-## Step #2:  Verify that the SNMP Trap Daemon is Working Properly
+## <a id="tornado-howto-snmp-collector-step2"></a>  Step #2:  Verify that the SNMP Trap Daemon is Working Properly
 
 To test that the SNMP Trap daemon is running, you should see output like this when running the
-following command:
+following command (especially the "loaded successfully" line):
 ```bash
 # journalctl -u snmptrapd
 Apr 16 11:00:22 tornadotest systemd[1]: Starting Simple Network Management Protocol (SNMP) Trap Daemon....
@@ -43,8 +43,8 @@ with the command:
 # snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 i 123456
 ```
 
-Now run the command *journalctl -u snmptrapd*.  You should see output similar to this at the end of
-the file (press Shift-G):
+Now run the command *journalctl -u snmptrapd* again.  You should see that output similar to this
+has been appended to the end of the file:
 ```
 Apr 16 11:08:31 tornadotest snmptrapd[14924]: localhost [UDP: [127.0.0.1]:60889->[127.0.0.1]:162]: Trap , DISMAN-EVENT-MIB::sysUpTimeInstance = Timeticks: (6558389) 18:13:03.89, SNMPv2-MIB::snmpTrapOID.0 = OID: NET-SNMP-EXAMPLES-
 Apr 16 11:08:31 tornadotest snmptrapd[14924]:  perl callback function 0x557bffdca698 returns 1
@@ -52,9 +52,12 @@ Apr 16 11:08:31 tornadotest snmptrapd[14924]:  perl callback function 0x557bfff4
 Apr 16 11:08:31 tornadotest snmptrapd[14924]: ACK
 ```
 
+If you do not see these lines, or the "loaded successfully" message above, there is a problem with
+your SNMP Trap Collector that must be addressed before continuing with this How To.
 
 
-## Step #3:  The SNMP Trap Collector
+
+## <a id="tornado-howto-snmp-collector-step3"></a> Step #3:  Configuring SNMP Trap Collector Rules
 
 Unlike other collectors, the SNMP Trap Collector does not reside in its own process, but as inline
 Perl code within the *snmptrapd* service.  For reference, you can find it here:
@@ -112,7 +115,7 @@ Since we want to match any SNMP event, let's adapt the matching part of the rule
 *archive* executor, let's adapt the action part of the rule found in
 */usr/lib64/tornado/examples/rules/010_archive_all.json*.
 
-Here's our new rule:
+Here's our new rule containing both parts:
 ```
 {
     "name": "all_snmptraps",
@@ -163,12 +166,12 @@ there are no syntactic errors in your new rule:
 
 
 
-## Step #4:  Configure the Archive Executor
+## <a id="tornado-howto-snmp-collector-step4"></a> Step #4:  Configure the Archive Executor
 
 <!-- We could use a link to the description of Archive Event. -->
 
 If you look at the file */neteye/shared/tornado/conf/archive_executor.toml*, which is the
-configuration file for the **Archive Executor**, you can see that the default base archive path
+configuration file for the **Archive Executor**, you will see that the default base archive path
 is set to */neteye/shared/tornado/data/archive/*.  Let's keep the first part, but under
 "[paths]" let's add a specific directory (relative to the base directory given for "base_path".
 This will use the keyword "trap", which matches the "archive_type" in the "action" part of our
@@ -186,7 +189,7 @@ file_cache_ttl_secs = 1
 ```
 
 Combining the base and specific paths yields the full path where the log file will be saved
-(automatically creating directories if necessary), with the "source" variable instantiated.
+(automatically creating directories if necessary), with our "source" variable instantiated.
 So if the source IP was 127.0.0.1, the log file's name will be:
 ```
 /neteye/shared/tornado/data/archive/trap/127.0.0.1/all.log
@@ -197,17 +200,16 @@ file.  Since we have only specifed "event", the entire event will be saved to th
 
 
 
-## Step #5:  Watch Tornado "in Action"
+## <a id="tornado-howto-snmp-collector-step5"></a> Step #5:  Watch Tornado "in Action"
 
 Let's observe how our newly configured SNMP Trap Collector works using a bash shell.  If you want
-to see the various steps of processing the event, open two separate shells to:
+to see what happens when an event is processed, open two separate shells to:
 * Show internal activity in the matcher engine 
 * Send SNMP events manually, and display the results
 
-In the first shell, run the following command to see rules match (press Shift-G interactively
-to view new lines added to the journal log):
+In the first shell, run the following command to see the result of rule matches in real-time:
 ```bash
-# journalctl -u snmptrapd.service
+# journalctl -f -u snmptrapd
 ```
 
 In the second shell, we will manually initiate simulated SNMP Trap events like this:
@@ -226,11 +228,13 @@ And now you should see the full event written into the file we specified during 
 ```
 
 
-## Step #6:  Wrapping Up
 
-That's it!
+## <a id="tornado-howto-snmp-collector-wrapup"></a> Wrapping Up
 
-You can also send SNMP Trap events straight to Icinga 2 where you can see the events in a NetEye
-dashboard.  The
+That's it!  You've successfully configured Tornado to respond to SNMP trap events by logging
+them in a directory specific to each network device.
+
+You can also use different executors, such as the **Icinga 2 Executor**, to send SNMP Trap events
+as monitoring events straight to Icinga 2 where you can see the events in a NetEye dashboard.  The
 [Icinga documentation](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#actions)
-shows you what the executor must do to achieve this.
+shows you which commands the executor must implement to achieve this.
