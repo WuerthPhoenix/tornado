@@ -18,7 +18,7 @@ fn index(_req: &HttpRequest) -> HttpResponse {
                 <li><a href="/monitoring/ping">Ping</a></li>
             </ul>
         </div>
-        "##
+        "##,
     )
 }
 

@@ -1,0 +1,15 @@
+[package]
+name = "backend"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+edition = "2018"
+
+[dependencies]
+actix-web = "0.7"
+dto = { path = "../dto", version = "0.0.1" }
+serde = "1.0"
+serde_json = "1.0"
+tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }

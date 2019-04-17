@@ -22,7 +22,9 @@ members = [
    "tornado/engine",
    "tornado/icinga2_collector",
    "tornado/rsyslog_collector",
-   "tornado/webhook_collector"
+   "tornado/webhook_collector",
+   "ui/dto",
+   "ui/backend",
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
