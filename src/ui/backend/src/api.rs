@@ -3,6 +3,7 @@ use actix_web::{App, HttpRequest, Json, Result};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
+pub mod matcher;
 
 pub fn new_app<T: ApiHandler + 'static>(api_handler: T) -> App {
 
