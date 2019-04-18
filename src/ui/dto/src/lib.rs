@@ -6,6 +6,8 @@ use serde_json::Value;
 use std::collections::HashMap;
 use typescript_definitions::TypescriptDefinition;
 
+pub mod config;
+
 // This static string will be injected into the TypeScript definition file.
 #[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(typescript_custom_section)]
