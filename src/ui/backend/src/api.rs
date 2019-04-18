@@ -44,7 +44,15 @@ impl<T: ApiHandler> HttpHandler<T> {
     }
 
     fn get_config(&self, _req: &HttpRequest) -> Result<Json<dto::config::MatcherConfig>> {
-        Ok(Json(dto::config::MatcherConfig::Rules {rules: vec![]}))
+
+        let matcher_config = self.api_handler.read()
+            .map_err(failure::Fail::compat)?;
+
+        // TOdo: use rust into() to convert for having compile time type safety
+        // Workaround: As they have the same structure, we can use serde to convert between the matcher_config and the dto
+        let dto: dto::config::MatcherConfig = serde_json::from_value(serde_json::to_value(&matcher_config)?)?;
+
+        Ok(Json(dto))
     }
 
 }
