@@ -3,7 +3,8 @@ use config_rs::{Config, ConfigError, File};
 use failure::Fail;
 use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
-use tornado_engine_matcher::config::MatcherConfig;
+use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_executor_archive::config::ArchiveConfig;
 
@@ -73,7 +74,7 @@ pub struct ComponentsConfig {
 }
 
 pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
-    let matcher = build_matcher_config(&conf).map_err(|e| e.compat())?;
+    let matcher = build_matcher_config(&conf).map_err(Fail::compat)?;
     let archive = build_archive_config(&conf)?;
     let icinga2_client = build_icinga2_client_config(&conf)?;
     Ok(ComponentsConfig { matcher, archive, icinga2_client })
@@ -94,14 +95,14 @@ fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, Confi
 }
 
 fn build_matcher_config(conf: &Conf) -> Result<MatcherConfig, MatcherError> {
-    MatcherConfig::read_from_dir(&format!("{}/{}", conf.config_dir, conf.rules_dir))
+    FsMatcherConfigManager::new(format!("{}/{}", conf.config_dir, conf.rules_dir)).read()
 }
 
 #[cfg(test)]
 mod test {
 
     use super::*;
-    use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
@@ -109,7 +110,7 @@ mod test {
         let path = "./config/rules.d";
 
         // Act
-        let config = MatcherConfig::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::new(path).read().unwrap();
 
         // Assert
         match config {

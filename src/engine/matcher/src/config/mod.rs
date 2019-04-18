@@ -4,8 +4,8 @@ use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::btree_map::BTreeMap;
 
-pub mod fs;
 pub mod filter;
+pub mod fs;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -17,4 +17,3 @@ pub enum MatcherConfig {
 pub trait MatcherConfigManager {
     fn read(&self) -> Result<MatcherConfig, MatcherError>;
 }
-

@@ -21,12 +21,12 @@ pub fn daemon(
     conf: &config::Conf,
     daemon_config: config::DaemonCommandConfig,
 ) -> Result<(), Box<std::error::Error>> {
-    setup_logger(&conf.logger).map_err(|e| e.compat())?;
+    setup_logger(&conf.logger).map_err(Fail::compat)?;
 
     let configs = config::parse_config_files(conf)?;
 
     // Start matcher
-    let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(|e| e.compat())?);
+    let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(Fail::compat)?);
 
     // start system
     System::run(move || {

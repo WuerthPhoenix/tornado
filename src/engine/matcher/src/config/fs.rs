@@ -1,22 +1,21 @@
+use crate::config::filter::Filter;
+use crate::config::rule::Rule;
+use crate::config::{MatcherConfig, MatcherConfigManager};
 use crate::error::MatcherError;
 use log::{debug, info, trace};
 use std::collections::BTreeMap;
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use crate::config::rule::Rule;
-use crate::config::filter::Filter;
-use crate::config::{MatcherConfig, MatcherConfigManager};
+use std::ffi::OsStr;
 
-pub struct FsMatcherConfigManager{
-    root_path: String
+pub struct FsMatcherConfigManager {
+    root_path: String,
 }
 
 impl FsMatcherConfigManager {
     pub fn new<P: Into<String>>(root_path: P) -> FsMatcherConfigManager {
-        FsMatcherConfigManager{
-            root_path: root_path.into()
-        }
+        FsMatcherConfigManager { root_path: root_path.into() }
     }
 }
 
@@ -92,7 +91,7 @@ impl FsMatcherConfigManager {
         let mut paths = FsMatcherConfigManager::read_dirs(dir.as_ref())?;
 
         // Sort by filename
-        paths.sort_by_key(|dir| dir.path());
+        paths.sort_by_key(DirEntry::path);
 
         let mut rules = vec![];
 
@@ -122,11 +121,10 @@ impl FsMatcherConfigManager {
                         e
                     ),
                 })?;
-            rule.name = FsMatcherConfigManager::rule_name_from_filename(&FsMatcherConfigManager::truncate(
-                filename,
-                extension.len(),
-            ))?
-                .to_owned();
+            rule.name = FsMatcherConfigManager::rule_name_from_filename(
+                &FsMatcherConfigManager::truncate(filename, extension.len()),
+            )?
+            .to_owned();
             rules.push(rule);
         }
 
@@ -139,7 +137,7 @@ impl FsMatcherConfigManager {
         let mut paths = FsMatcherConfigManager::read_dirs(dir.as_ref())?;
 
         // Sort by filename
-        paths.sort_by_key(|dir| dir.path());
+        paths.sort_by_key(DirEntry::path);
 
         let mut nodes = BTreeMap::new();
         let mut filters = vec![];
@@ -153,7 +151,10 @@ impl FsMatcherConfigManager {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call FsMatcherConfigManager::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.insert(filename.to_owned(), FsMatcherConfigManager::read_from_dir(path.as_path())?);
+                nodes.insert(
+                    filename.to_owned(),
+                    FsMatcherConfigManager::read_from_dir(path.as_path())?,
+                );
                 continue;
             }
 
@@ -205,7 +206,7 @@ impl FsMatcherConfigManager {
 
     fn read_dirs<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
         fs::read_dir(dir.as_ref())
-            .and_then(|entry_set| entry_set.collect::<Result<Vec<_>, _>>())
+            .and_then(Iterator::collect)
             .map_err(|e| MatcherError::ConfigurationError {
                 message: format!(
                     "Error reading from config path [{}]: {}",
@@ -222,7 +223,7 @@ impl FsMatcherConfigManager {
     }
 
     fn filename(path: &PathBuf) -> Result<&str, MatcherError> {
-        path.file_name().and_then(|name| name.to_str()).ok_or_else(|| {
+        path.file_name().and_then(OsStr::to_str).ok_or_else(|| {
             MatcherError::ConfigurationError {
                 message: format!("Error processing path name: [{}]", path.display()),
             }
@@ -244,7 +245,6 @@ impl FsMatcherConfigManager {
         Ok(result)
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -484,8 +484,14 @@ mod test {
         assert!(FsMatcherConfigManager::rule_name_from_filename("asfg.rulename").is_err());
 
         // valid names
-        assert_eq!("rulename", FsMatcherConfigManager::rule_name_from_filename("_rulename").unwrap());
-        assert_eq!("rulename", FsMatcherConfigManager::rule_name_from_filename("12343_rulename").unwrap());
+        assert_eq!(
+            "rulename",
+            FsMatcherConfigManager::rule_name_from_filename("_rulename").unwrap()
+        );
+        assert_eq!(
+            "rulename",
+            FsMatcherConfigManager::rule_name_from_filename("12343_rulename").unwrap()
+        );
         assert_eq!(
             "rule_name_1",
             FsMatcherConfigManager::rule_name_from_filename("ascfb5.46_rule_name_1").unwrap()
