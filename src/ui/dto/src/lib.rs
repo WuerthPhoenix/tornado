@@ -16,14 +16,9 @@ export type Value = any;
 "#;
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Event {
+pub struct EventDto {
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
     pub payload: HashMap<String, Value>,
-}
-
-#[derive(Deserialize, Serialize, TypescriptDefinition, Default, Clone)]
-pub struct EventDto {
-    pub event: Event,
 }

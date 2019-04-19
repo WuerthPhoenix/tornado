@@ -1,6 +1,6 @@
+use crate::convert::matcher_config_to_dto;
 use actix_web::http::Method;
 use actix_web::{App, HttpRequest, Json, Result};
-use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::error::MatcherError;
@@ -13,11 +13,6 @@ pub fn new_app<T: ApiHandler + 'static>(api_handler: T) -> App {
     let mut app = App::new();
 
     let http_clone = http.clone();
-    app = app.resource("/api/ping", |resource| {
-        resource.method(Method::GET).f(move |req| http_clone.pong(req))
-    });
-
-    let http_clone = http.clone();
     app = app.resource("/api/config", |resource| {
         resource.method(Method::GET).f(move |req| http_clone.get_config(req))
     });
@@ -26,12 +21,7 @@ pub fn new_app<T: ApiHandler + 'static>(api_handler: T) -> App {
 }
 
 pub trait ApiHandler {
-    fn pong(&self) -> PongResponse {
-        PongResponse { message: format!("pong") }
-    }
-
     fn read(&self) -> Result<MatcherConfig, MatcherError>;
-
 }
 
 struct HttpHandler<T: ApiHandler> {
@@ -39,27 +29,11 @@ struct HttpHandler<T: ApiHandler> {
 }
 
 impl<T: ApiHandler> HttpHandler<T> {
-    fn pong(&self, _req: &HttpRequest) -> Result<Json<PongResponse>> {
-        Ok(Json(self.api_handler.pong()))
+    fn get_config(&self, _req: &HttpRequest) -> Result<Json<dto::config::MatcherConfigDto>> {
+        let matcher_config = self.api_handler.read().map_err(failure::Fail::compat)?;
+
+        Ok(Json(matcher_config_to_dto(matcher_config)?))
     }
-
-    fn get_config(&self, _req: &HttpRequest) -> Result<Json<dto::config::MatcherConfig>> {
-
-        let matcher_config = self.api_handler.read()
-            .map_err(failure::Fail::compat)?;
-
-        // TOdo: use rust into() to convert for having compile time type safety
-        // Workaround: As they have the same structure, we can use serde to convert between the matcher_config and the dto
-        let dto: dto::config::MatcherConfig = serde_json::from_value(serde_json::to_value(&matcher_config)?)?;
-
-        Ok(Json(dto))
-    }
-
-}
-
-#[derive(Serialize, Deserialize)]
-pub struct PongResponse {
-    pub message: String,
 }
 
 #[cfg(test)]
@@ -74,24 +48,8 @@ mod test {
 
     impl ApiHandler for TestApiHandler {
         fn read(&self) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Rules {rules: vec![]})
+            Ok(MatcherConfig::Rules { rules: vec![] })
         }
-    }
-
-    #[test]
-    fn ping_should_return_pong() {
-        // Arrange
-        let mut srv = TestServer::with_factory(|| new_app(TestApiHandler {}));
-
-        // Act
-        let request = srv.client(http::Method::GET, "/api/ping").finish().unwrap();
-        let response: ClientResponse = srv.execute(request.send()).unwrap();
-
-        // Assert
-        assert!(response.status().is_success());
-
-        let pong: PongResponse = body_to_json(&mut srv, &response).unwrap();
-        assert!(pong.message.eq("pong"));
     }
 
     #[test]
@@ -106,8 +64,8 @@ mod test {
         // Assert
         assert!(response.status().is_success());
 
-        let dto: dto::config::MatcherConfig = body_to_json(&mut srv, &response).unwrap();
-        assert_eq!(dto::config::MatcherConfig::Rules {rules: vec![]}, dto);
+        let dto: dto::config::MatcherConfigDto = body_to_json(&mut srv, &response).unwrap();
+        assert_eq!(dto::config::MatcherConfigDto::Rules { rules: vec![] }, dto);
     }
 
     fn body_to_string(srv: &mut TestServer, response: &ClientResponse) -> String {

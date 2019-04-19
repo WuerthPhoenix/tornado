@@ -4,10 +4,10 @@ use crate::config::{MatcherConfig, MatcherConfigManager};
 use crate::error::MatcherError;
 use log::{debug, info, trace};
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
-use std::ffi::OsStr;
 
 pub struct FsMatcherConfigManager {
     root_path: String,
@@ -205,15 +205,15 @@ impl FsMatcherConfigManager {
     }
 
     fn read_dirs<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
-        fs::read_dir(dir.as_ref())
-            .and_then(Iterator::collect)
-            .map_err(|e| MatcherError::ConfigurationError {
+        fs::read_dir(dir.as_ref()).and_then(Iterator::collect).map_err(|e| {
+            MatcherError::ConfigurationError {
                 message: format!(
                     "Error reading from config path [{}]: {}",
                     dir.as_ref().display(),
                     e
                 ),
-            })
+            }
+        })
     }
 
     fn truncate(name: &str, truncate: usize) -> String {
@@ -223,10 +223,8 @@ impl FsMatcherConfigManager {
     }
 
     fn filename(path: &PathBuf) -> Result<&str, MatcherError> {
-        path.file_name().and_then(OsStr::to_str).ok_or_else(|| {
-            MatcherError::ConfigurationError {
-                message: format!("Error processing path name: [{}]", path.display()),
-            }
+        path.file_name().and_then(OsStr::to_str).ok_or_else(|| MatcherError::ConfigurationError {
+            message: format!("Error processing path name: [{}]", path.display()),
         })
     }
 

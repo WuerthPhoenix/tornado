@@ -3,38 +3,38 @@ use wasm_bindgen::prelude::*;
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use std::collections::btree_map::BTreeMap;
+use std::collections::HashMap;
 use typescript_definitions::TypescriptDefinition;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Rule {
+pub struct RuleDto {
     #[serde(default)]
     pub name: String,
     pub description: String,
     #[serde(rename = "continue")]
     pub do_continue: bool,
     pub active: bool,
-    pub constraint: Constraint,
-    pub actions: Vec<Action>,
+    pub constraint: ConstraintDto,
+    pub actions: Vec<ActionDto>,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Constraint {
+pub struct ConstraintDto {
     #[serde(rename = "WHERE")]
-    pub where_operator: Option<Operator>,
+    pub where_operator: Option<OperatorDto>,
     #[serde(rename = "WITH")]
-    pub with: HashMap<String, Extractor>,
+    pub with: HashMap<String, ExtractorDto>,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Extractor {
+pub struct ExtractorDto {
     pub from: String,
-    pub regex: ExtractorRegex,
+    pub regex: ExtractorRegexDto,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct ExtractorRegex {
+pub struct ExtractorRegexDto {
     #[serde(rename = "match")]
     pub regex: String,
     pub group_match_idx: u16,
@@ -42,11 +42,11 @@ pub struct ExtractorRegex {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 #[serde(tag = "type")]
-pub enum Operator {
+pub enum OperatorDto {
     #[serde(rename = "AND")]
-    And { operators: Vec<Operator> },
+    And { operators: Vec<OperatorDto> },
     #[serde(rename = "OR")]
-    Or { operators: Vec<Operator> },
+    Or { operators: Vec<OperatorDto> },
     #[serde(rename = "contain")]
     Contain { text: String, substring: String },
     #[serde(rename = "equal")]
@@ -56,22 +56,22 @@ pub enum Operator {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Action {
+pub struct ActionDto {
     pub id: String,
     pub payload: Value,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
-pub struct Filter {
+pub struct FilterDto {
     #[serde(default)]
     pub name: String,
     pub description: String,
     pub active: bool,
-    pub filter: Option<Operator>,
+    pub filter: Option<OperatorDto>,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
-pub enum MatcherConfig {
-    Filter { filter: Filter, nodes: BTreeMap<String, MatcherConfig> },
-    Rules { rules: Vec<Rule> },
+pub enum MatcherConfigDto {
+    Filter { filter: FilterDto, nodes: BTreeMap<String, MatcherConfigDto> },
+    Rules { rules: Vec<RuleDto> },
 }
