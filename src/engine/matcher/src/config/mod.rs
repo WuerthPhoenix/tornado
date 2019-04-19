@@ -14,6 +14,6 @@ pub enum MatcherConfig {
     Rules { rules: Vec<Rule> },
 }
 
-pub trait MatcherConfigManager {
+pub trait MatcherConfigManager: Sync + Send {
     fn read(&self) -> Result<MatcherConfig, MatcherError>;
 }

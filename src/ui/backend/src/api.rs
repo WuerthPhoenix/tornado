@@ -7,8 +7,8 @@ use tornado_engine_matcher::error::MatcherError;
 
 pub mod matcher;
 
-pub fn new_app<T: ApiHandler + 'static>(api_handler: T) -> App {
-    let http = Arc::new(HttpHandler { api_handler });
+pub fn new_app<T: ApiHandler + 'static>(api_handler: Arc<T>) -> App {
+    let http = HttpHandler { api_handler };
 
     let mut app = App::new();
 
@@ -25,7 +25,13 @@ pub trait ApiHandler {
 }
 
 struct HttpHandler<T: ApiHandler> {
-    api_handler: T,
+    api_handler: Arc<T>,
+}
+
+impl<T: ApiHandler> Clone for HttpHandler<T> {
+    fn clone(&self) -> Self {
+        HttpHandler { api_handler: self.api_handler.clone() }
+    }
 }
 
 impl<T: ApiHandler> HttpHandler<T> {
@@ -55,7 +61,7 @@ mod test {
     #[test]
     fn should_return_the_matcher_config() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| new_app(TestApiHandler {}));
+        let mut srv = TestServer::with_factory(|| new_app(Arc::new(TestApiHandler {})));
 
         // Act
         let request = srv.client(http::Method::GET, "/api/config").finish().unwrap();

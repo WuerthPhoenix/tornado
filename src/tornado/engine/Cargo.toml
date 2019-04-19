@@ -39,6 +39,8 @@ tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" 
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
+backend = { path = "../../ui/backend", version = "0.0.1" }
+
 [dev-dependencies]
 lazy_static = "1.0"
 maplit = "1.0"
