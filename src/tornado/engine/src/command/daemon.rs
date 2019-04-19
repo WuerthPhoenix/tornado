@@ -7,7 +7,7 @@ use crate::executor::ExecutorActor;
 
 use crate::monitoring::monitoring_app;
 use actix::prelude::*;
-use actix_web::server;
+use actix_web::{server, App};
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -122,15 +122,19 @@ pub fn daemon(
             Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
 
         // Start monitoring endpoint
-        server::new(move || vec![monitoring_app(), backend::api::new_app(api_handler.clone())])
-            .bind(format!("{}:{}", web_server_ip, web_server_port))
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
-                //System::current().stop_with_code(1);
-                std::process::exit(1);
-            })
-            .start();
+        server::new(move || {
+            App::new()
+                .scope("/monitoring", monitoring_app)
+                .scope("/api", |scope| backend::api::new_app(scope, api_handler.clone()))
+        })
+        .bind(format!("{}:{}", web_server_ip, web_server_port))
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
+            //System::current().stop_with_code(1);
+            std::process::exit(1);
+        })
+        .start();
     });
 
     Ok(())

@@ -1,23 +1,21 @@
 use crate::convert::matcher_config_to_dto;
 use actix_web::http::Method;
-use actix_web::{App, HttpRequest, Json, Result};
+use actix_web::{HttpRequest, Json, Result, Scope};
 use std::sync::Arc;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::error::MatcherError;
 
 pub mod matcher;
 
-pub fn new_app<T: ApiHandler + 'static>(api_handler: Arc<T>) -> App {
+pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope<()>, api_handler: Arc<T>) -> Scope<()> {
     let http = HttpHandler { api_handler };
 
-    let mut app = App::new();
-
     let http_clone = http.clone();
-    app = app.resource("/api/config", |resource| {
+    scope = scope.resource("/config", |resource| {
         resource.method(Method::GET).f(move |req| http_clone.get_config(req))
     });
 
-    app
+    scope
 }
 
 pub trait ApiHandler {
@@ -47,7 +45,7 @@ mod test {
     use super::*;
     use actix_web::client::ClientResponse;
     use actix_web::test::TestServer;
-    use actix_web::{http, HttpMessage};
+    use actix_web::{http, HttpMessage, App};
     use serde::de::DeserializeOwned;
 
     struct TestApiHandler {}
@@ -61,7 +59,9 @@ mod test {
     #[test]
     fn should_return_the_matcher_config() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| new_app(Arc::new(TestApiHandler {})));
+        let mut srv = TestServer::with_factory(|| {
+            App::new().scope("/api", |scope| new_app(scope, Arc::new(TestApiHandler {})))
+        });
 
         // Act
         let request = srv.client(http::Method::GET, "/api/config").finish().unwrap();
