@@ -18,7 +18,7 @@
 %endif
 
 Name:    tornado
-Version: 0.7.0
+Version: 0.8.0
 Release: 1
 Summary: Tornado Package
 
