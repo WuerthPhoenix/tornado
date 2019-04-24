@@ -71,6 +71,7 @@ pub struct FilterDto {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[serde(tag = "type")]
 pub enum MatcherConfigDto {
     Filter { filter: FilterDto, nodes: BTreeMap<String, MatcherConfigDto> },
     Rules { rules: Vec<RuleDto> },

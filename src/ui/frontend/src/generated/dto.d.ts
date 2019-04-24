@@ -19,8 +19,8 @@ export type ActionDto = { id: string; payload: Value };
 export type FilterDto = { name: string; description: string; active: boolean; filter: OperatorDto | null };
 
 export type MatcherConfigDto = 
- | { Filter: { filter: FilterDto; nodes: { [ key: string ]: MatcherConfigDto } } } 
- | { Rules: { rules: RuleDto[] } };
+ | { type: "Filter"; filter: FilterDto; nodes: { [ key: string ]: MatcherConfigDto } } 
+ | { type: "Rules"; rules: RuleDto[] };
 
 
 export type Value = any;

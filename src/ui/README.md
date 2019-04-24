@@ -12,6 +12,7 @@ Built with [vue cli 3](https://cli.vuejs.org).
 Built time dependencies:
 - node 10.x 
 - vue cli 3 globally installed
+- chrome is required for unit and e2e tests execution
 
 Install vue cli:
 > npm install -g @vue/cli
@@ -29,6 +30,8 @@ the build.sh file perform the frontend build. The process involves 4 steps:
 
 At runtime, only the content of the dist folder is required.
 
+### install dependencies
+> npm install
 
 ### serve the frontend locally
 > npm run serve
