@@ -14,7 +14,7 @@ export default new Router({
     {
       path: '/tornado',
       name: 'tornado',
-      component: () => import(/* webpackChunkName: "tornado" */ './views/Tornado.vue'),
+      component: () => import('@/views/Tornado.vue'),
     },
   ],
 });

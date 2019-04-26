@@ -7,6 +7,6 @@ module.exports = {
           changeOrigin: true
         }
       }
-    }
+    },
+    transpileDependencies: ['vuex-module-decorators']
   }
-  
