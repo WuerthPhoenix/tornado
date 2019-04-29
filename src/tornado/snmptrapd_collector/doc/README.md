@@ -60,6 +60,7 @@ The snmptrapd_collector was loaded successfully.
 ```
 
 
+
 ### Configuration options
 
 The address of the Tornado Engine TCP instance to which the events are forwarded 
@@ -150,7 +151,7 @@ sudo apt install snmp snmptrapd
 
 You can now start snmptrapd (as root) in a terminal:
 ```bash
-$ snmptrapd -f -Le
+# snmptrapd -f -Le
 ```
 
 And send fake messages with the command:
@@ -158,11 +159,11 @@ And send fake messages with the command:
 $ snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 i 123456
 ```
 
-If everything is configured correctly, you should see a message in the snmptrapd stardard error
-and an Event of type _'snmptrapd'_ received by Tornado Engine. 
+If everything is configured correctly, you should see a message in the snmptrapd standard error
+and an Event of type _'snmptrapd'_ received by the Tornado Engine. 
 
 In the event of authorization errors, and **_only for testing purposes_**, 
-you can fix them by adding this line to the snmptrapd.conf file:
+you can fix them by adding this line to the _snmptrapd.conf_ file:
 ```
 disableAuthorization yes
 ```
