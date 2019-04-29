@@ -5,7 +5,9 @@ use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
+use crate::monitoring::monitoring_app;
 use actix::prelude::*;
+use actix_web::server;
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -105,6 +107,19 @@ pub fn daemon(
             error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
             std::process::exit(1);
         });
+
+        let web_server_ip = daemon_config.web_server_ip.clone();
+        let web_server_port = daemon_config.web_server_port;
+        // Start monitoring endpoint
+        server::new(monitoring_app)
+            .bind(format!("{}:{}", web_server_ip, web_server_port))
+            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+            .unwrap_or_else(|err| {
+                error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
+                //System::current().stop_with_code(1);
+                std::process::exit(1);
+            })
+            .start();
     });
 
     Ok(())

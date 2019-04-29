@@ -5,6 +5,7 @@ pub mod config;
 pub mod dispatcher;
 pub mod engine;
 pub mod executor;
+mod monitoring;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();

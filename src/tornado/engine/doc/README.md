@@ -76,6 +76,12 @@ The __daemon__ command has the following options:
   The default address is _127.0.0.1_.
 - __event-socket-port__:  The port where Tornado will listen for incoming events.
   The default port is _4747_.
+- __web-server-ip__: The IP address where the Tornado Web Server will listen for HTTP requests.
+  This is used, for example, by the monitoring endpoints.
+  The default address is _127.0.0.1_.
+- __web-server-port__:  The port where the Tornado Web Server will listen for HTTP requests.
+  The default port is _4748_.  
+
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -256,3 +262,31 @@ of type "script".
 This executor has no specific configuration, since everything required for script execution is
 contained in the Action itself as described in the
 [executor documentation](../../../executor/script/doc/README.md)
+
+
+
+## Self-Monitoring
+
+The monitoring endpoints allow you to monitor the health of Tornado.
+In the long run, they will provide information about the status, activities, logs and metrics
+of a running Tornado instance. Specifically, they will return statistics about
+latency, traffic, and errors.
+
+At this time, only a simple _ping_ endpoint is available.
+
+
+
+### Ping endpoint 
+
+This endpoint returns a simple message "pong - " followed by the current date in ISO 8601 format.
+
+Details:
+- name : __ping__
+- path : __/monitoring/ping__
+- response type: __JSON__ 
+- response example:
+  ```json
+  {
+    "message": "pong - 2019-04-12T10:11:31.300075398+02:00",
+  }
+  ```

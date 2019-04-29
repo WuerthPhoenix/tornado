@@ -18,7 +18,7 @@
 %endif
 
 Name:    tornado
-Version: 0.7.0
+Version: 0.9.0
 Release: 1
 Summary: Tornado Package
 
@@ -151,6 +151,12 @@ fi
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
+* Mon Apr 29 2019 Angelo Rosace <angelo.rosace@wuerth-phoenix.com> - 0.9.0-1
+ - New Feature: Write how-to guide for configuring an SNMP Trap Daemon Collector
+
+* Mon Apr 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.8.0-1
+ - New Feature: Simple Monitoring Endpoint on port 4748
+
 * Fri Apr 12 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.7.0-1
  - Change: Created timestamp format changed from ISO8601 to unix epoch in milliseconds
  - Fixed: Provide Snmptrapd integration without user interaction

@@ -5,7 +5,6 @@ use failure_derive::Fail;
 use futures::future::Future;
 use http::header;
 use log::*;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 use tornado_executor_icinga2::Icinga2Action;
@@ -61,12 +60,16 @@ impl Icinga2ApiClientActor {
             let auth = format!("{}:{}", config.username, config.password);
             let http_auth_header = format!("Basic {}", base64::encode(&auth));
 
-            let mut ssl_conn_builder = SslConnector::builder(SslMethod::tls()).unwrap();
+            let mut ssl_conn_builder = native_tls::TlsConnector::builder();
+
             if config.disable_ssl_verification {
-                ssl_conn_builder.set_verify(SslVerifyMode::NONE);
+                ssl_conn_builder.danger_accept_invalid_certs(true);
             }
-            let ssl_connector = ssl_conn_builder.build();
-            let client_connector = ClientConnector::with_connector(ssl_connector).start();
+            let ssl_connector = ssl_conn_builder.build().unwrap();
+
+            let client_connector =
+                ClientConnector::with_connector(tokio_tls::TlsConnector::from(ssl_connector))
+                    .start();
 
             Icinga2ApiClientActor {
                 //username: config.username,
