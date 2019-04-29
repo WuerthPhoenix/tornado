@@ -73,8 +73,8 @@ Now we'll have to restart the Tornado service with our new parameters:
 # systemctl restart tornado
 ```
 
-Finally, if we want our endpoint to be visible from the outside, we'll need to open up the port
-we declared in the firewall:
+Finally, if we want our endpoint to be visible externally, we'll need to open up the port
+we just declared in the firewall:
 ```
 # firewall-cmd --zone=public --add-port=4748/tcp --permanent
 # firewall-cmd --reload
