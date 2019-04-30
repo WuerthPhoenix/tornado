@@ -82,15 +82,9 @@ Now we'll have to restart the Tornado service with our new parameters:
 # systemctl restart tornado
 ```
 
-<!-- Need to fix the firewall/zone part -->
-Finally, if we want our REST API to be visible externally, we'll need to open up the port
-we just declared in the firewall:
-```
-# firewall-cmd --zone=public --add-port=4748/tcp --permanent
-# firewall-cmd --reload
-```
-
-<!-- Should we mention 0.0.0.0?  If so, what specifically about it? -->
+Finally, if we want our REST API to be visible externally, we'll need to either open up the port
+we just declared in the firewall, or use the reverse proxy described above.  Otherwise, connection
+requests to the API server will be refused.
 
 
 
