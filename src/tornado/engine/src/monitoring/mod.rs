@@ -38,7 +38,7 @@ mod test {
     use super::*;
     use actix_web::client::ClientResponse;
     use actix_web::test::TestServer;
-    use actix_web::{http, HttpMessage, App};
+    use actix_web::{http, App, HttpMessage};
     use chrono::DateTime;
     use serde::de::DeserializeOwned;
 

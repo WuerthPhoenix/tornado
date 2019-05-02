@@ -1,16 +1,18 @@
-use crate::convert::matcher_config_to_dto;
+use self::handler::ApiHandler;
+use self::http::HttpHandler;
 use actix_web::http::Method;
-use actix_web::{HttpRequest, Json, Result, Scope};
+use actix_web::Scope;
 use std::sync::Arc;
-use tornado_engine_matcher::config::MatcherConfig;
-use tornado_engine_matcher::error::MatcherError;
 
+mod handler;
+mod http;
 pub mod matcher;
 
 pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope<()>, api_handler: Arc<T>) -> Scope<()> {
     let http = HttpHandler { api_handler };
 
     let http_clone = http.clone();
+
     scope = scope.resource("/config", |resource| {
         resource.method(Method::GET).f(move |req| http_clone.get_config(req))
     });
@@ -18,35 +20,15 @@ pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope<()>, api_handler: Arc<T
     scope
 }
 
-pub trait ApiHandler {
-    fn read(&self) -> Result<MatcherConfig, MatcherError>;
-}
-
-struct HttpHandler<T: ApiHandler> {
-    api_handler: Arc<T>,
-}
-
-impl<T: ApiHandler> Clone for HttpHandler<T> {
-    fn clone(&self) -> Self {
-        HttpHandler { api_handler: self.api_handler.clone() }
-    }
-}
-
-impl<T: ApiHandler> HttpHandler<T> {
-    fn get_config(&self, _req: &HttpRequest) -> Result<Json<dto::config::MatcherConfigDto>> {
-        let matcher_config = self.api_handler.read().map_err(failure::Fail::compat)?;
-
-        Ok(Json(matcher_config_to_dto(matcher_config)?))
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
     use actix_web::client::ClientResponse;
     use actix_web::test::TestServer;
-    use actix_web::{http, HttpMessage, App};
+    use actix_web::{http, App, HttpMessage};
     use serde::de::DeserializeOwned;
+    use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::error::MatcherError;
 
     struct TestApiHandler {}
 

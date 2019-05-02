@@ -121,7 +121,7 @@ pub fn daemon(
         let api_handler =
             Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
 
-        // Start monitoring endpoint
+        // Start API and monitoring endpoint
         server::new(move || {
             App::new()
                 .scope("/monitoring", monitoring_app)
