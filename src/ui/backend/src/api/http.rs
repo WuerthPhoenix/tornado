@@ -3,6 +3,8 @@ use crate::convert::matcher_config_to_dto;
 use actix_web::{HttpRequest, Json, Result};
 use std::sync::Arc;
 
+/// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
+/// and handling the DTOs conversions.
 pub struct HttpHandler<T: ApiHandler> {
     pub api_handler: Arc<T>,
 }

@@ -14,6 +14,8 @@ pub enum MatcherConfig {
     Rules { rules: Vec<Rule> },
 }
 
+/// A MatcherConfigManager permits to read and manipulate the Tornado Configuration
+/// from a configuration source.
 pub trait MatcherConfigManager: Sync + Send {
     fn read(&self) -> Result<MatcherConfig, MatcherError>;
 }
