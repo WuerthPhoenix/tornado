@@ -2,7 +2,7 @@ use actix_web::http::Method;
 use actix_web::{HttpRequest, HttpResponse, Json, Result, Scope};
 use chrono::prelude::Local;
 use serde_derive::{Deserialize, Serialize};
-
+/*
 pub fn monitoring_app(scope: Scope<()>) -> Scope<()> {
     scope
         .resource("", |r| r.method(Method::GET).f(index))
@@ -94,3 +94,4 @@ mod test {
         serde_json::from_str(&body_to_string(srv, response))
     }
 }
+*/
