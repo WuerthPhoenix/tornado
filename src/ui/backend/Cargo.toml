@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix-web = "0.7"
+actix-web = "1.0.0-beta.2"
 dto = { path = "../dto", version = "0.0.1" }
 failure = "0.1"
 serde = { version = "1.0" }

@@ -1,21 +1,28 @@
 use self::handler::ApiHandler;
 use self::http::HttpHandler;
-use actix_web::http::Method;
-use actix_web::Scope;
+use actix_web::{web, Scope};
 use std::sync::Arc;
 
 mod handler;
 mod http;
 pub mod matcher;
 
-pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope<()>, api_handler: Arc<T>) -> Scope<()> {
+pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -> Scope {
     let http = HttpHandler { api_handler };
 
     let http_clone = http.clone();
-
+/*
     scope = scope.resource("/config", |resource| {
         resource.method(Method::GET).f(move |req| http_clone.get_config(req))
     });
+*/
+
+    scope = scope.service(
+        web::resource("/config").route(
+            web::get()
+                .to(move |req| http_clone.get_config(req))
+        ),
+    );
 
     scope
 }
@@ -42,7 +49,12 @@ mod test {
     fn should_return_the_matcher_config() {
         // Arrange
         let mut srv = TestServer::with_factory(|| {
-            App::new().scope("/api", |scope| new_app(scope, Arc::new(TestApiHandler {})))
+
+            App::new().service(
+                new_app(web::scope("/api"), Arc::new(TestApiHandler {}))
+            )
+
+            //App::new().scope("/api", |scope| new_app(scope, Arc::new(TestApiHandler {})))
         });
 
         // Act
