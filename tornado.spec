@@ -18,7 +18,7 @@
 %endif
 
 Name:    tornado
-Version: 0.9.0
+Version: 0.10.0
 Release: 1
 Summary: Tornado Package
 
@@ -151,8 +151,11 @@ fi
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
+* Mon May 06 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
+ - Added How-To for using tie Monitoring Endpoint
+
 * Mon Apr 29 2019 Angelo Rosace <angelo.rosace@wuerth-phoenix.com> - 0.9.0-1
- - New Feature: Write how-to guide for configuring an SNMP Trap Daemon Collector
+ - Added How-To for configuring an Snmptrapd Collector
 
 * Mon Apr 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.8.0-1
  - New Feature: Simple Monitoring Endpoint on port 4748
