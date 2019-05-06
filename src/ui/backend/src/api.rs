@@ -21,17 +21,14 @@ pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -
 
     scope
 }
-/*
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use actix_http_test::{TestServer, TestServerRuntime};
-    use actix_web::client::ClientResponse;
-    use actix_web::{http, App};
-    use serde::de::DeserializeOwned;
+    use actix_service::Service;
+    use actix_web::{http::{StatusCode}, App, test};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::error::MatcherError;
-    use actix_http::HttpService;
 
     struct TestApiHandler {}
 
@@ -42,35 +39,46 @@ mod test {
     }
 
     #[test]
-    fn should_return_the_matcher_config() {
+    fn should_return_status_code_ok() {
         // Arrange
-        let mut srv = TestServer::new(|| {
-            HttpService::new(App::new().service(
+        let mut srv = test::init_service(
+            App::new().service(
                 new_app(web::scope("/api"), Arc::new(TestApiHandler {}))
-            ))
-        });
+            )
+        );
 
         // Act
-        let request = srv.get("/api/config");
-        let mut response = srv.block_on(request.send()).unwrap();
+        let request = test::TestRequest::get()
+            .uri("/api/config")
+            //.header(header::CONTENT_TYPE, "application/json")
+            //.set_payload(payload)
+            .to_request();
+
+        let response = test::block_on(srv.call(request)).unwrap();
 
         // Assert
-        assert!(response.status().is_success());
+        assert_eq!(response.status(), StatusCode::OK);
+    }
 
-        let dto: dto::config::MatcherConfigDto = body_to_json(&mut srv, &mut response).unwrap();
+    #[test]
+    fn should_return_the_matcher_config() {
+        // Arrange
+        let mut srv = test::init_service(
+            App::new().service(
+                new_app(web::scope("/api"), Arc::new(TestApiHandler {}))
+            )
+        );
+
+        // Act
+        let request = test::TestRequest::get()
+            .uri("/api/config")
+            //.header(header::CONTENT_TYPE, "application/json")
+            //.set_payload(payload)
+            .to_request();
+
+        // Assert
+        let dto: dto::config::MatcherConfigDto = test::read_response_json(&mut srv, request);
         assert_eq!(dto::config::MatcherConfigDto::Rules { rules: vec![] }, dto);
     }
 
-    fn body_to_string(srv: &mut TestServerRuntime, response: &mut ClientResponse) -> String {
-        let bytes = &srv.execute(response.body()).unwrap();
-        std::str::from_utf8(bytes).unwrap().to_owned()
-    }
-
-    fn body_to_json<T: DeserializeOwned>(
-        srv: &mut TestServerRuntime,
-        response: &mut ClientResponse,
-    ) -> serde_json::error::Result<T> {
-        serde_json::from_str(&body_to_string(srv, response))
-    }
 }
-*/

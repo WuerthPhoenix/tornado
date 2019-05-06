@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.7"
-actix-web = { version = "1.0.0-beta.2", features=["rust-tls"] }
+actix-web = { version = "1.0.0-beta.3", features=["rust-tls"] }
 base64 = "0.10"
 chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }
