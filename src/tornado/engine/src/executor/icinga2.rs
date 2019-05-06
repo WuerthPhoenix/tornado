@@ -118,7 +118,7 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         Ok(())
     }
 }
-/*
+
 #[cfg(test)]
 mod test {
     use crate::executor::icinga2::Icinga2ApiClientActor;
@@ -207,4 +207,3 @@ mod test {
     }
     */
 }
-*/

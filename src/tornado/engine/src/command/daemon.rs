@@ -1,13 +1,13 @@
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
-//use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
+use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
-// use crate::monitoring::monitoring_app;
+use crate::monitoring::monitoring_app;
 use actix::prelude::*;
-use actix_web::{App};
+use actix_web::{server, App};
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -52,7 +52,6 @@ pub fn daemon(
             ExecutorActor { executor }
         });
 
-        /*
         // Start Icinga2 Client Actor
         let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_client);
 
@@ -66,14 +65,14 @@ pub fn daemon(
             });
             ExecutorActor { executor }
         });
-*/
+
         // Configure action dispatcher
         let event_bus = {
             let event_bus = ActixEventBus {
                 callback: move |action| {
                     match action.id.as_ref() {
                         "archive" => archive_executor_addr.do_send(ActionMessage { action }),
-                        //"icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
+                        "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
                         "script" => script_executor_addr.do_send(ActionMessage { action }),
                         _ => error!("There are not executors for action id [{}]", &action.id),
                     };
@@ -125,7 +124,7 @@ pub fn daemon(
         // Start API and monitoring endpoint
         server::new(move || {
             App::new()
-                //.scope("/monitoring", monitoring_app)
+                .scope("/monitoring", monitoring_app)
                 .scope("/api", |scope| backend::api::new_app(scope, api_handler.clone()))
         })
         .bind(format!("{}:{}", web_server_ip, web_server_port))
