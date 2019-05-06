@@ -1,6 +1,5 @@
 use crate::actors::tcp_client::EventMessage;
 use actix::prelude::*;
-use failure::Fail;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors;
@@ -14,11 +13,11 @@ mod error;
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
 
-    setup_logger(&config.logger).map_err(|err| err.compat())?;
+    setup_logger(&config.logger).map_err(failure::Fail::compat)?;
 
     let streams_dir = format!("{}/{}", &config.io.config_dir, &config.io.streams_dir);
     let streams_config =
-        config::read_streams_from_config(&streams_dir).map_err(|err| err.compat())?;
+        config::read_streams_from_config(&streams_dir).map_err(failure::Fail::compat)?;
 
     let icinga2_config_path = format!("{}/{}", &config.io.config_dir, "icinga2_collector.toml");
     let icinga2_config = config::build_icinga2_client_config(&icinga2_config_path)?;
@@ -52,5 +51,4 @@ fn main() -> Result<(), Box<std::error::Error>> {
         });
     })?;
     Ok(())
-
 }

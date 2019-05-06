@@ -5,6 +5,7 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+actix-rt = "0.2"
 actix = "0.8"
 chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }
