@@ -5,8 +5,8 @@ import store from './store';
 
 Vue.config.productionTip = false;
 
-new Vue({
+const tornadoApp = new Vue({
   router,
   store,
   render: (h) => h(App),
-}).$mount('#app');
+}).$mount('#tornado-app');
