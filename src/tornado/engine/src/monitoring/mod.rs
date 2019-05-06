@@ -1,12 +1,12 @@
 use actix_web::http::Method;
-use actix_web::{App, HttpRequest, HttpResponse, Json, Result};
+use actix_web::{HttpRequest, HttpResponse, Json, Result, Scope};
 use chrono::prelude::Local;
 use serde_derive::{Deserialize, Serialize};
 
-pub fn monitoring_app() -> App {
-    App::new()
-        .resource("/monitoring", |r| r.method(Method::GET).f(index))
-        .resource("/monitoring/ping", |r| r.method(Method::GET).f(pong))
+pub fn monitoring_app(scope: Scope<()>) -> Scope<()> {
+    scope
+        .resource("", |r| r.method(Method::GET).f(index))
+        .resource("/ping", |r| r.method(Method::GET).f(pong))
 }
 
 fn index(_req: &HttpRequest) -> HttpResponse {
@@ -38,14 +38,16 @@ mod test {
     use super::*;
     use actix_web::client::ClientResponse;
     use actix_web::test::TestServer;
-    use actix_web::{http, HttpMessage};
+    use actix_web::{http, App, HttpMessage};
     use chrono::DateTime;
     use serde::de::DeserializeOwned;
 
     #[test]
     fn index_should_have_links_to_the_endpoints() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| monitoring_app());
+        let mut srv = TestServer::with_factory(|| {
+            App::new().scope("/monitoring", |scope| monitoring_app(scope))
+        });
 
         // Act
         let request = srv.client(http::Method::GET, "/monitoring").finish().unwrap();
@@ -61,7 +63,9 @@ mod test {
     #[test]
     fn ping_should_return_pong() {
         // Arrange
-        let mut srv = TestServer::with_factory(|| monitoring_app());
+        let mut srv = TestServer::with_factory(|| {
+            App::new().scope("/monitoring", |scope| monitoring_app(scope))
+        });
 
         // Act
         let request = srv.client(http::Method::GET, "/monitoring/ping").finish().unwrap();

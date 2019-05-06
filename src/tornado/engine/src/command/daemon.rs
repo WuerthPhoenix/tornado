@@ -7,7 +7,7 @@ use crate::executor::ExecutorActor;
 
 use crate::monitoring::monitoring_app;
 use actix::prelude::*;
-use actix_web::server;
+use actix_web::{server, App};
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -21,12 +21,18 @@ pub fn daemon(
     conf: &config::Conf,
     daemon_config: config::DaemonCommandConfig,
 ) -> Result<(), Box<std::error::Error>> {
-    setup_logger(&conf.logger).map_err(|e| e.compat())?;
+    setup_logger(&conf.logger).map_err(Fail::compat)?;
 
     let configs = config::parse_config_files(conf)?;
 
     // Start matcher
-    let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(|e| e.compat())?);
+    let matcher = Arc::new(
+        configs
+            .matcher_config
+            .read()
+            .and_then(|config| Matcher::build(&config))
+            .map_err(Fail::compat)?,
+    );
 
     // start system
     System::run(move || {
@@ -110,16 +116,25 @@ pub fn daemon(
 
         let web_server_ip = daemon_config.web_server_ip.clone();
         let web_server_port = daemon_config.web_server_port;
-        // Start monitoring endpoint
-        server::new(monitoring_app)
-            .bind(format!("{}:{}", web_server_ip, web_server_port))
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
-                //System::current().stop_with_code(1);
-                std::process::exit(1);
-            })
-            .start();
+        let matcher_config = configs.matcher_config;
+
+        let api_handler =
+            Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
+
+        // Start API and monitoring endpoint
+        server::new(move || {
+            App::new()
+                .scope("/monitoring", monitoring_app)
+                .scope("/api", |scope| backend::api::new_app(scope, api_handler.clone()))
+        })
+        .bind(format!("{}:{}", web_server_ip, web_server_port))
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
+            //System::current().stop_with_code(1);
+            std::process::exit(1);
+        })
+        .start();
     });
 
     Ok(())
