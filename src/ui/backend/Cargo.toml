@@ -7,7 +7,6 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix-service = "0.3"
 actix-web = "1.0.0-beta.3"
 dto = { path = "../dto", version = "0.0.1" }
 failure = "0.1"
@@ -15,3 +14,6 @@ serde = { version = "1.0" }
 serde_json = "1.0"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
+
+[dev-dependencies]
+actix-service = "0.3"

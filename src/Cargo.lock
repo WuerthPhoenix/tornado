@@ -2714,6 +2714,7 @@ name = "tornado_webhook_collector"
 version = "0.0.1"
 dependencies = [
  "actix 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "actix-service 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 1.0.0-beta.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "chrono 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2728,7 +2729,6 @@ dependencies = [
  "tornado_common 0.0.1",
  "tornado_common_api 0.0.1",
  "tornado_common_logger 0.0.1",
- "url 1.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
