@@ -50,6 +50,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
                 }
             });
         });
-    });
+    })?;
     Ok(())
+
 }

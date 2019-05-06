@@ -20,9 +20,9 @@ members = [
    "spike/tornado_events_generator",
    "tornado/common",
    "tornado/engine",
-   # "tornado/icinga2_collector",
+   "tornado/icinga2_collector",
    "tornado/rsyslog_collector",
-   # "tornado/webhook_collector",
+   "tornado/webhook_collector",
    "ui/dto",
    "ui/backend",
 ]
