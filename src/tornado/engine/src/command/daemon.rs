@@ -5,9 +5,9 @@ use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
-use crate::monitoring::monitoring_app;
+use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
-use actix_web::{server, App};
+use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -122,10 +122,10 @@ pub fn daemon(
             Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
 
         // Start API and monitoring endpoint
-        server::new(move || {
+        HttpServer::new(move || {
             App::new()
-                .scope("/monitoring", monitoring_app)
-                .scope("/api", |scope| backend::api::new_app(scope, api_handler.clone()))
+                .service(monitoring_endpoints(web::scope("/monitoring")))
+                .service(backend::api::new_endpoints(web::scope("/api"), api_handler.clone()))
         })
         .bind(format!("{}:{}", web_server_ip, web_server_port))
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
@@ -135,7 +135,7 @@ pub fn daemon(
             std::process::exit(1);
         })
         .start();
-    });
+    })?;
 
     Ok(())
 }

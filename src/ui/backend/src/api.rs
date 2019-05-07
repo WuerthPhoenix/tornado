@@ -7,16 +7,13 @@ mod handler;
 mod http;
 pub mod matcher;
 
-pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -> Scope {
+pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -> Scope {
     let http = HttpHandler { api_handler };
 
     let http_clone = http.clone();
 
     scope = scope.service(
-        web::resource("/config").route(
-            web::get()
-                .to(move |req| http_clone.get_config(req))
-        ),
+        web::resource("/config").route(web::get().to(move |req| http_clone.get_config(req))),
     );
 
     scope
@@ -26,7 +23,7 @@ pub fn new_app<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -
 mod test {
     use super::*;
     use actix_service::Service;
-    use actix_web::{http::{StatusCode}, App, test};
+    use actix_web::{http::StatusCode, test, App};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::error::MatcherError;
 
@@ -42,9 +39,7 @@ mod test {
     fn should_return_status_code_ok() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(
-                new_app(web::scope("/api"), Arc::new(TestApiHandler {}))
-            )
+            App::new().service(new_endpoints(web::scope("/api"), Arc::new(TestApiHandler {}))),
         );
 
         // Act
@@ -64,9 +59,7 @@ mod test {
     fn should_return_the_matcher_config() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(
-                new_app(web::scope("/api"), Arc::new(TestApiHandler {}))
-            )
+            App::new().service(new_endpoints(web::scope("/api"), Arc::new(TestApiHandler {}))),
         );
 
         // Act
