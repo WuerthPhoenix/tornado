@@ -1,5 +1,5 @@
 use actix::prelude::*;
-use actix_web::client::{Client, ClientRequest, Connector};
+use actix_web::client::{Client, ClientBuilder, Connector};
 use failure_derive::Fail;
 use futures::future::Future;
 use http::header;
@@ -43,7 +43,7 @@ pub struct Icinga2ApiClientActor {
     //password: String,
     icinga2_api_url: String,
     http_auth_header: String,
-    //client_connector: Connector<(), ()>,
+    client: Client,
 }
 
 impl Actor for Icinga2ApiClientActor {
@@ -85,12 +85,14 @@ impl Icinga2ApiClientActor {
                 Connector::new().ssl(ssl_connector).finish()
             };
 
+            let client = ClientBuilder::new().connector(client_connector).finish();
+
             Icinga2ApiClientActor {
                 //username: config.username,
                 //password: config.password,
                 icinga2_api_url: config.server_api_url,
                 http_auth_header,
-                //client_connector,
+                client,
             }
         })
     }
@@ -108,7 +110,7 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         debug!("Icinga2ApiClientMessage - calling url: {}", url);
 
         actix::spawn(
-            Client::new().post(url)
+            self.client.post(url)
 //                .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, self.http_auth_header.as_str())
