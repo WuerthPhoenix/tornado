@@ -16,6 +16,7 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
+use actix_web::middleware::cors::Cors;
 
 pub fn daemon(
     conf: &config::Conf,
@@ -124,8 +125,11 @@ pub fn daemon(
         // Start API and monitoring endpoint
         HttpServer::new(move || {
             App::new()
+                .wrap(Cors::new().max_age(3600))
+                .service({
+                    backend::api::new_endpoints(web::scope("/api"), api_handler.clone())
+                })
                 .service(monitoring_endpoints(web::scope("/monitoring")))
-                .service(backend::api::new_endpoints(web::scope("/api"), api_handler.clone()))
         })
         .bind(format!("{}:{}", web_server_ip, web_server_port))
         // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
