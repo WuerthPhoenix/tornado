@@ -7,7 +7,7 @@
     </p>
     <div class="columns">
       <div class="column">
-        <button class="button" @click="loadConfig()">Load config</button>
+        <button class="button" @click="loadConfig()">Load config from Tornado</button>
       </div>
     </div>
     <div class="columns">

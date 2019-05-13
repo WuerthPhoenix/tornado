@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.7"
+actix = "0.8"
 failure = "0.1"
 failure_derive = "0.1"
 futures = "0.1"

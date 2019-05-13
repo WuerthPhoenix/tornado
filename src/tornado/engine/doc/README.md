@@ -264,8 +264,14 @@ contained in the Action itself as described in the
 [executor documentation](../../../executor/script/doc/README.md)
 
 
+## Tornado API
+The Tornado API endpoints allow to interact with a Tornado instance.
 
-## Self-Monitoring
+More details about the API can be found in the
+[Tornado backend documentation](../../../ui/backend/doc/README.md).
+
+
+## Self-Monitoring API
 
 The monitoring endpoints allow you to monitor the health of Tornado.
 In the long run, they will provide information about the status, activities, logs and metrics

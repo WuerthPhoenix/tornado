@@ -121,8 +121,8 @@ impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
 mod test {
     use super::*;
     use crate::config::Icinga2ClientConfig;
-    use actix_web::Json;
-    use actix_web::{server, App};
+    use actix_web::web::Json;
+    use actix_web::{web, App, HttpServer};
     use maplit::*;
     use std::sync::Arc;
     use std::sync::Mutex;
@@ -136,71 +136,82 @@ mod test {
         let received = Arc::new(Mutex::new(vec![]));
 
         let act_received = received.clone();
-        System::run(move || {
-            let api = "/v1/events";
-            let api_clone = api.clone();
 
-            server::new(move || {
-                App::new().resource(api, move |r| {
-                    r.with(move |body: Json<Stream>| {
-                        info!("Server received a call with Stream: \n{:#?}", body.clone());
-                        body
-                    })
+        let sys = actix_rt::System::new("basic-example");
+
+        let api = "/v1/events";
+        let api_clone = api.clone();
+
+        HttpServer::new(move || {
+            App::new().service(web::resource(api).route(web::post().to(
+                move |body: Json<Stream>| {
+                    info!("Server received a call with Stream: \n{:#?}", body.clone());
+                    body
+                },
+            )))
+            /*
+            App::new().resource(api, move |r| {
+                r.with(move |body: Json<Stream>| {
+                    info!("Server received a call with Stream: \n{:#?}", body.clone());
+                    body
                 })
             })
-            .bind("127.0.0.1:0")
-            .and_then(|server| {
-                let server_port = server.addrs()[0].port();
+            */
+        })
+        .bind("127.0.0.1:0")
+        .and_then(|server| {
+            let server_port = server.addrs()[0].port();
 
-                let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
-                warn!("Client connecting to: {}", url);
+            let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
+            warn!("Client connecting to: {}", url);
 
-                SyncArbiter::start(1, move || {
-                    let icinga_config = Icinga2ClientConfig {
-                        server_api_url: url.clone(),
-                        disable_ssl_verification: true,
-                        password: "".to_owned(),
-                        username: "".to_owned(),
-                        sleep_ms_between_connection_attempts: 0,
-                    };
-                    let app_received = act_received.clone();
-                    Icinga2StreamActor {
-                        callback: move |event| {
-                            info!("Callback called with Event: {:?}", event);
-                            let mut message = app_received.lock().unwrap();
-                            message.push(event);
+            SyncArbiter::start(1, move || {
+                let icinga_config = Icinga2ClientConfig {
+                    server_api_url: url.clone(),
+                    disable_ssl_verification: true,
+                    password: "".to_owned(),
+                    username: "".to_owned(),
+                    sleep_ms_between_connection_attempts: 0,
+                };
+                let app_received = act_received.clone();
+                Icinga2StreamActor {
+                    callback: move |event| {
+                        info!("Callback called with Event: {:?}", event);
+                        let mut message = app_received.lock().unwrap();
+                        message.push(event);
 
-                            // The actor tries to establish a long polling connection to the server;
-                            // however, the server used in this test drops the connection after each response.
-                            // We check that we added three messages into the mutek, if this succeeds,
-                            // it means that the actor was successfully restarted after each connection drop, so the client
-                            // is correctly handling dropped connections.
+                        // The actor tries to establish a long polling connection to the server;
+                        // however, the server used in this test drops the connection after each response.
+                        // We check that we added three messages into the mutek, if this succeeds,
+                        // it means that the actor was successfully restarted after each connection drop, so the client
+                        // is correctly handling dropped connections.
 
-                            if message.len() > 2 {
-                                System::current().stop();
-                            }
-                        },
-                        collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
-                            event_type: "test".to_owned(),
-                            payload: hashmap![
-                                "response".to_owned() => Value::Text("${@}".to_owned())
-                            ],
-                        })
-                        .unwrap(),
-                        icinga_config,
-                        stream_config: Stream {
-                            filter: Some("filter".to_owned()),
-                            queue: "queue_name".to_owned(),
-                            types: vec![],
-                        },
-                    }
-                });
+                        if message.len() > 2 {
+                            System::current().stop();
+                        }
+                    },
+                    collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
+                        event_type: "test".to_owned(),
+                        payload: hashmap![
+                            "response".to_owned() => Value::Text("${@}".to_owned())
+                        ],
+                    })
+                    .unwrap(),
+                    icinga_config,
+                    stream_config: Stream {
+                        filter: Some("filter".to_owned()),
+                        queue: "queue_name".to_owned(),
+                        types: vec![],
+                    },
+                }
+            });
 
-                Ok(server)
-            })
-            .expect("Can not bind to port 0")
-            .start();
-        });
+            Ok(server)
+        })
+        .expect("Can not bind to port 0")
+        .start();
+
+        sys.run().unwrap();
 
         let events = received.lock().unwrap().clone();
         assert_eq!(3, events.len());
