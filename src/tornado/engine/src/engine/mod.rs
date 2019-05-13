@@ -3,17 +3,17 @@ use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
 use tornado_common_api;
-use tornado_engine_matcher::{error, matcher};
 use tornado_engine_matcher::model::ProcessedEvent;
-
+use tornado_engine_matcher::{error, matcher};
 
 pub enum ProcessType {
-    Full, SkipActions
+    Full,
+    SkipActions,
 }
 
 pub struct EventMessageWithReply {
     pub event: tornado_common_api::Event,
-    pub process_type : ProcessType,
+    pub process_type: ProcessType,
 }
 
 impl Message for EventMessageWithReply {
@@ -59,7 +59,9 @@ impl Handler<EventMessageWithReply> for MatcherActor {
         let processed_event = self.matcher.process(msg.event);
 
         match msg.process_type {
-            ProcessType::Full => self.dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event.clone() }),
+            ProcessType::Full => self
+                .dispatcher_addr
+                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
             ProcessType::SkipActions => {}
         }
 

@@ -17,7 +17,7 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
     let http_clone = http.clone();
     scope = scope.service(
         // ToDo to be removed and/or implemented properly in TOR-89
-        web::resource("/test").route(web::get().to(move |req| http_clone.test(req))),
+        web::resource("/test").route(web::get().to_async(move |req| http_clone.test(req))),
     );
 
     scope
@@ -28,8 +28,12 @@ mod test {
     use super::*;
     use actix_service::Service;
     use actix_web::{http::StatusCode, test, App};
+    use tornado_common_api::Event;
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::error::MatcherError;
+    use tornado_engine_matcher::model::ProcessedEvent;
+    use crate::error::ApiError;
+    use futures::Future;
 
     struct TestApiHandler {}
 
@@ -38,7 +42,7 @@ mod test {
             Ok(MatcherConfig::Rules { rules: vec![] })
         }
 
-        fn send_event(&self, event: Event) -> Result<ProcessedEvent, MatcherError> {
+        fn send_event(&self, _event: Event) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
             unimplemented!()
         }
     }
