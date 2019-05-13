@@ -17,6 +17,7 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 use actix_web::middleware::cors::Cors;
+use crate::api::MatcherApiHandler;
 
 pub fn daemon(
     conf: &config::Conf,
@@ -120,7 +121,7 @@ pub fn daemon(
         let matcher_config = configs.matcher_config;
 
         let api_handler =
-            Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
+            Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr.clone()));
 
         // Start API and monitoring endpoint
         HttpServer::new(move || {

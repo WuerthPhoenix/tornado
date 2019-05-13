@@ -3,17 +3,21 @@ use self::http::HttpHandler;
 use actix_web::{web, Scope};
 use std::sync::Arc;
 
-mod handler;
+pub mod handler;
 mod http;
-pub mod matcher;
 
 pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -> Scope {
     let http = HttpHandler { api_handler };
 
     let http_clone = http.clone();
-
     scope = scope.service(
         web::resource("/config").route(web::get().to(move |req| http_clone.get_config(req))),
+    );
+
+    let http_clone = http.clone();
+    scope = scope.service(
+        // ToDo to be removed and/or implemented properly in TOR-89
+        web::resource("/test").route(web::get().to(move |req| http_clone.test(req))),
     );
 
     scope
@@ -32,6 +36,10 @@ mod test {
     impl ApiHandler for TestApiHandler {
         fn read(&self) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Rules { rules: vec![] })
+        }
+
+        fn send_event(&self, event: Event) -> Result<ProcessedEvent, MatcherError> {
+            unimplemented!()
         }
     }
 
