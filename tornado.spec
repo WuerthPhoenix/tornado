@@ -18,7 +18,7 @@
 %endif
 
 Name:    tornado
-Version: 0.7.0
+Version: 0.11.0
 Release: 1
 Summary: Tornado Package
 
@@ -151,6 +151,11 @@ fi
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
+* Mon May 06 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
+ - New Feature: Tornado Frontend
+ - New Feature: API for Tornado Frontend
+ - Spike for Integration of Frontend into Icingaweb2
+
 * Mon Apr 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.8.0-1
  - New Feature: Simple Monitoring Endpoint on port 4748
 
