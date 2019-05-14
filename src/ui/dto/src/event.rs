@@ -66,5 +66,5 @@ pub enum ProcessedRuleStatusDto {
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct ActionDto {
     pub id: String,
-    pub payload: HashMap<String, Value>,
+    pub payload: Value,
 }

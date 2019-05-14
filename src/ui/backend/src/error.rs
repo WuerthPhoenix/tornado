@@ -27,8 +27,8 @@ impl From<MailboxError> for ApiError {
 impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match *self {
-            ApiError::MatcherError { cause: _ } => HttpResponse::BadRequest().finish(),
-            ApiError::ActixMailboxError { cause: _ } => {
+            ApiError::MatcherError { .. } => HttpResponse::BadRequest().finish(),
+            ApiError::ActixMailboxError { .. } => {
                 HttpResponse::InternalServerError().finish()
             }
         }
