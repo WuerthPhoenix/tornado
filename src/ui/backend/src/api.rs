@@ -11,7 +11,7 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
 
     let http_clone = http.clone();
     scope = scope.service(
-        web::resource("/config").route(web::get().to(move |req| http_clone.get_config(req))),
+        web::resource("/config").route(web::get().to_async(move |req| http_clone.get_config(req))),
     );
 
     let http_clone = http.clone();
@@ -30,16 +30,15 @@ mod test {
     use actix_web::{http::StatusCode, test, App};
     use tornado_common_api::Event;
     use tornado_engine_matcher::config::MatcherConfig;
-    use tornado_engine_matcher::error::MatcherError;
     use tornado_engine_matcher::model::ProcessedEvent;
     use crate::error::ApiError;
-    use futures::Future;
+    use futures::{Future, future::FutureResult};
 
     struct TestApiHandler {}
 
     impl ApiHandler for TestApiHandler {
-        fn read(&self) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Rules { rules: vec![] })
+        fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>> {
+            Box::new(FutureResult::from(Ok(MatcherConfig::Rules { rules: vec![] })))
         }
 
         fn send_event(&self, _event: Event) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {

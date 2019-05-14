@@ -4,6 +4,7 @@ use actix_web::{Error as AWError, HttpRequest, HttpResponse};
 use futures::Future;
 use std::sync::Arc;
 use tornado_common_api::Event;
+use log::*;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
@@ -18,16 +19,23 @@ impl<T: ApiHandler> Clone for HttpHandler<T> {
 }
 
 impl<T: ApiHandler> HttpHandler<T> {
-    pub fn get_config(&self, _req: HttpRequest) -> HttpResponse {
 
-        // ToDo: remove "unwrap()". Could be investigated in TOR-89
-
-        let matcher_config = self.api_handler.read().map_err(failure::Fail::compat).unwrap();
-        HttpResponse::Ok().json(matcher_config_to_dto(matcher_config).unwrap())
+    pub fn get_config(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
+        debug!("API - received get_config request");
+        self.api_handler.get_config().map_err(AWError::from).and_then(|matcher_config| {
+            match matcher_config_to_dto(matcher_config) {
+                Ok(dto) => HttpResponse::Ok().json(dto),
+                Err(err) => {
+                    error!("Cannot convert the MatcherConfig into a DTO. Err: {}", err);
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        })
     }
 
     // ToDo: to be implemented in TOR-89
     pub fn test(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
+        debug!("API - received test_event request");
         let event = Event::new("fake_event");
 
         self.api_handler.send_event(event).map_err(AWError::from).and_then(|processed_event| {

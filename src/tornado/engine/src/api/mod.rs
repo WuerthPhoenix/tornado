@@ -2,10 +2,9 @@ use crate::engine::{EventMessageWithReply, MatcherActor, ProcessType};
 use actix::Addr;
 use backend::api::handler::ApiHandler;
 use backend::error::ApiError;
-use futures::future::Future;
+use futures::future::{Future, FutureResult};
 use tornado_common_api::Event;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
-use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::model::ProcessedEvent;
 
 pub struct MatcherApiHandler {
@@ -14,8 +13,9 @@ pub struct MatcherApiHandler {
 }
 
 impl ApiHandler for MatcherApiHandler {
-    fn read(&self) -> Result<MatcherConfig, MatcherError> {
-        self.config_manager.read()
+
+    fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>> {
+        Box::new(FutureResult::from(self.config_manager.read().map_err(ApiError::from)))
     }
 
     fn send_event(&self, event: Event) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
