@@ -7,11 +7,6 @@ pub fn monitoring_endpoints(scope: Scope) -> Scope {
     scope
         .service(web::resource("").route(web::get().to(index)))
         .service(web::resource("/ping").route(web::get().to(pong)))
-    /*
-    scope
-        .resource("", |r| r.method(Method::GET).f(index))
-        .resource("/ping", |r| r.method(Method::GET).f(pong))
-        */
 }
 
 fn index(_req: HttpRequest) -> HttpResponse {

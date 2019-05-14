@@ -5,8 +5,10 @@ use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
+use crate::api::MatcherApiHandler;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
+use actix_web::middleware::cors::Cors;
 use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;
@@ -16,7 +18,6 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use actix_web::middleware::cors::Cors;
 
 pub fn daemon(
     conf: &config::Conf,
@@ -119,16 +120,13 @@ pub fn daemon(
         let web_server_port = daemon_config.web_server_port;
         let matcher_config = configs.matcher_config;
 
-        let api_handler =
-            Arc::new(backend::api::matcher::MatcherApiHandler { config_manager: matcher_config });
+        let api_handler = Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr.clone()));
 
         // Start API and monitoring endpoint
         HttpServer::new(move || {
             App::new()
                 .wrap(Cors::new().max_age(3600))
-                .service({
-                    backend::api::new_endpoints(web::scope("/api"), api_handler.clone())
-                })
+                .service({ backend::api::new_endpoints(web::scope("/api"), api_handler.clone()) })
                 .service(monitoring_endpoints(web::scope("/monitoring")))
         })
         .bind(format!("{}:{}", web_server_ip, web_server_port))

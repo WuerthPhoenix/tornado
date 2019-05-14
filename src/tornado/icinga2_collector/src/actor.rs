@@ -149,14 +149,6 @@ mod test {
                     body
                 },
             )))
-            /*
-            App::new().resource(api, move |r| {
-                r.with(move |body: Json<Stream>| {
-                    info!("Server received a call with Stream: \n{:#?}", body.clone());
-                    body
-                })
-            })
-            */
         })
         .bind("127.0.0.1:0")
         .and_then(|server| {

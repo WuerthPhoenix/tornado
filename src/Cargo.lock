@@ -333,10 +333,13 @@ dependencies = [
 name = "backend"
 version = "0.0.1"
 dependencies = [
+ "actix 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-service 0.3.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "actix-web 1.0.0-beta.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "dto 0.0.1",
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "failure_derive 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures 0.1.26 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde 1.0.90 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_common_api 0.0.1",
