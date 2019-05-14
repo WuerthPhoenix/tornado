@@ -1,11 +1,11 @@
 use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
+use backend::api::handler::ProcessType;
 use log::*;
 use std::sync::Arc;
 use tornado_common_api;
 use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
-use backend::api::handler::ProcessType;
 
 pub struct EventMessageWithReply {
     pub event: tornado_common_api::Event,

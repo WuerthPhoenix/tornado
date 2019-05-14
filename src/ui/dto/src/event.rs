@@ -1,16 +1,16 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-use std::collections::HashMap;
-use serde_json::Value;
 use serde::{Deserialize, Serialize};
-use typescript_definitions::TypescriptDefinition;
+use serde_json::Value;
 use std::collections::btree_map::BTreeMap;
+use std::collections::HashMap;
+use typescript_definitions::TypescriptDefinition;
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct SendEventRequestDto {
     pub process_type: ProcessType,
-    pub event: EventDto
+    pub event: EventDto,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
