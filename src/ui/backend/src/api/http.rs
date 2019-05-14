@@ -1,5 +1,5 @@
 use crate::api::handler::ApiHandler;
-use crate::convert::matcher_config_to_dto;
+use crate::convert::config::matcher_config_to_dto;
 use actix_web::{Error as AWError, HttpRequest, HttpResponse};
 use futures::Future;
 use std::sync::Arc;
