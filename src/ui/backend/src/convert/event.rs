@@ -1,9 +1,21 @@
-use dto::event::{ProcessedEventDto, EventDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRulesDto, ProcessedRuleStatusDto, ActionDto, ProcessedFilterDto, ProcessedFilterStatusDto};
+use dto::event::{ProcessedEventDto, EventDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRulesDto, ProcessedRuleStatusDto, ActionDto, ProcessedFilterDto, ProcessedFilterStatusDto, SendEventRequestDto, ProcessType};
 use serde_json::Error;
 use tornado_engine_matcher::model::{ProcessedEvent, InternalEvent, ProcessedNode, ProcessedRules, ProcessedRule, ProcessedRuleStatus, ProcessedFilter, ProcessedFilterStatus};
 use tornado_common_api::Action;
 use std::collections::HashMap;
 use std::collections::btree_map::BTreeMap;
+use crate::api::handler::SendEventRequest;
+
+
+pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
+    Ok(SendEventRequest{
+        process_type: match dto.process_type {
+            ProcessType::Full => crate::api::handler::ProcessType::Full,
+            ProcessType::SkipActions => crate::api::handler::ProcessType::SkipActions
+        },
+        event: serde_json::from_value(serde_json::to_value(dto.event)?)?
+    })
+}
 
 pub fn processed_event_into_dto(processed_event: ProcessedEvent) -> Result<ProcessedEventDto, Error> {
     Ok(ProcessedEventDto{

@@ -8,6 +8,18 @@ use typescript_definitions::TypescriptDefinition;
 use std::collections::btree_map::BTreeMap;
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+pub struct SendEventRequestDto {
+    pub process_type: ProcessType,
+    pub event: EventDto
+}
+
+#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+pub enum ProcessType {
+    Full,
+    SkipActions,
+}
+
+#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct EventDto {
     #[serde(rename = "type")]
     pub event_type: String,

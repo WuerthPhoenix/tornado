@@ -9,5 +9,15 @@ use tornado_engine_matcher::model::ProcessedEvent;
 /// It permits to decouple the backend from a specific implementation.
 pub trait ApiHandler {
     fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>>;
-    fn send_event(&self, event: Event) -> Box<Future<Item = ProcessedEvent, Error = ApiError>>;
+    fn send_event(&self, event: SendEventRequest) -> Box<Future<Item = ProcessedEvent, Error = ApiError>>;
+}
+
+pub struct SendEventRequest{
+    pub event: Event,
+    pub process_type: ProcessType
+}
+
+pub enum ProcessType {
+    Full,
+    SkipActions,
 }

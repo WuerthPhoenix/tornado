@@ -5,11 +5,7 @@ use std::sync::Arc;
 use tornado_common_api;
 use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
-
-pub enum ProcessType {
-    Full,
-    SkipActions,
-}
+use backend::api::handler::ProcessType;
 
 pub struct EventMessageWithReply {
     pub event: tornado_common_api::Event,

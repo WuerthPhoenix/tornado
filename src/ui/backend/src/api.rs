@@ -16,8 +16,7 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
 
     let http_clone = http.clone();
     scope = scope.service(
-        // ToDo to be removed and/or implemented properly in TOR-89
-        web::resource("/test").route(web::get().to_async(move |req| http_clone.send_event(req))),
+        web::resource("/send_event").route(web::post().to_async(move |req, body| http_clone.send_event(req, body))),
     );
 
     scope

@@ -5,7 +5,9 @@ use futures::Future;
 use std::sync::Arc;
 use tornado_common_api::Event;
 use log::*;
-use crate::convert::event::processed_event_into_dto;
+use crate::convert::event::{processed_event_into_dto, dto_into_send_event_request};
+use actix_web::web::Json;
+use dto::event::SendEventRequestDto;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
@@ -34,11 +36,11 @@ impl<T: ApiHandler> HttpHandler<T> {
         })
     }
 
-    pub fn send_event(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
+    pub fn send_event(&self, _req: HttpRequest, body: Json<SendEventRequestDto>) -> impl Future<Item = HttpResponse, Error = AWError> {
         debug!("API - received send_event request");
-        let event = Event::new("fake_event");
+        //let event = Event::new("fake_event");
 
-        self.api_handler.send_event(event).map_err(AWError::from).and_then(|processed_event| {
+        self.api_handler.send_event(dto_into_send_event_request(body.into_inner())?).map_err(AWError::from).and_then(|processed_event| {
             match processed_event_into_dto(processed_event) {
                 Ok(dto) => HttpResponse::Ok().json(dto),
                 Err(err) => {
