@@ -34,8 +34,8 @@ impl<T: ApiHandler> HttpHandler<T> {
     }
 
     // ToDo: to be implemented in TOR-89
-    pub fn test(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
-        debug!("API - received test_event request");
+    pub fn send_event(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
+        debug!("API - received send_event request");
         let event = Event::new("fake_event");
 
         self.api_handler.send_event(event).map_err(AWError::from).and_then(|processed_event| {

@@ -7,7 +7,7 @@ use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use typescript_definitions::TypescriptDefinition;
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct RuleDto {
     #[serde(default)]
     pub name: String,
@@ -19,7 +19,7 @@ pub struct RuleDto {
     pub actions: Vec<ActionDto>,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct ConstraintDto {
     #[serde(rename = "WHERE")]
     pub where_operator: Option<OperatorDto>,
@@ -27,13 +27,13 @@ pub struct ConstraintDto {
     pub with: HashMap<String, ExtractorDto>,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct ExtractorDto {
     pub from: String,
     pub regex: ExtractorRegexDto,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct ExtractorRegexDto {
     #[serde(rename = "match")]
     pub regex: String,
@@ -55,13 +55,13 @@ pub enum OperatorDto {
     Regex { regex: String, target: String },
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct ActionDto {
     pub id: String,
     pub payload: Value,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition, Default)]
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct FilterDto {
     #[serde(default)]
     pub name: String,
