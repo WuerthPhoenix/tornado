@@ -48,6 +48,9 @@ impl<T: ApiHandler> HttpHandler<T> {
 
         let api_handler = self.api_handler.clone();
 
+        // Futures chaining.
+        // The chain starts with a Result (returned by dto_into_send_event_request(body.into_inner()))
+        // converted into a Future and the chained to the api_handler call.
         FutureResult::from(dto_into_send_event_request(body.into_inner()))
             .map_err(ApiError::from)
             .and_then(move |send_event_request| api_handler.send_event(send_event_request))

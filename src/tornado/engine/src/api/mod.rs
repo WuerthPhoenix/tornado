@@ -24,6 +24,11 @@ impl ApiHandler for MatcherApiHandler {
             .matcher
             .send(EventMessageWithReply { event: event.event, process_type: event.process_type });
 
+        // The last closure:
+        // |res| Ok(res?)
+        // is a Rust trick to let the compiler convert automatically the error from the one of the 'res' variable (MatcherError)
+        // to the one expected for the response (ApiError).
+        // This works because the ApiError implements From<MatcherError>
         let response = request.map_err(ApiError::from).and_then(|res| Ok(res?));
 
         Box::new(response)
