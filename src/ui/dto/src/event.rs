@@ -6,6 +6,7 @@ use serde_json::Value;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use typescript_definitions::TypescriptDefinition;
+use crate::config::ActionDto;
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct SendEventRequestDto {
@@ -73,10 +74,4 @@ pub enum ProcessedRuleStatusDto {
     PartiallyMatched,
     NotMatched,
     NotProcessed,
-}
-
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
-pub struct ActionDto {
-    pub id: String,
-    pub payload: Value,
 }

@@ -1,6 +1,6 @@
 use crate::api::handler::SendEventRequest;
 use dto::event::{
-    ActionDto, EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto,
+    EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto,
     ProcessedFilterStatusDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto,
     ProcessedRulesDto, SendEventRequestDto,
 };
@@ -12,6 +12,7 @@ use tornado_engine_matcher::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
+use dto::config::ActionDto;
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {

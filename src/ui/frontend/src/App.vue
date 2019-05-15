@@ -2,7 +2,8 @@
   <div id="app">
     <div id="nav">
       <router-link to="/">Home</router-link> |
-      <router-link to="/tornado">Tornado</router-link>
+      <router-link to="/tornado">Tornado</router-link> |
+      <router-link to="/tornado_test_event">Test Event</router-link>
     </div>
     <div class="section">
       <div class="container">

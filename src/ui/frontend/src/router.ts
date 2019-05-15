@@ -16,5 +16,10 @@ export default new Router({
       name: 'tornado',
       component: () => import('@/views/Tornado.vue'),
     },
+    {
+      path: '/tornado_test_event',
+      name: 'tornado_test_event',
+      component: () => import('@/views/TornadoTestEvent.vue'),
+    },
   ],
 });
