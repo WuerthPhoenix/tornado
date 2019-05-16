@@ -9,6 +9,8 @@ pub enum ApiError {
     MatcherError { cause: MatcherError },
     #[fail(display = "ActixMailboxError: [{}]", cause)]
     ActixMailboxError { cause: String },
+    #[fail(display = "JsonError: [{}]", cause)]
+    JsonError { cause: String },
 }
 
 impl From<MatcherError> for ApiError {
@@ -23,14 +25,19 @@ impl From<MailboxError> for ApiError {
     }
 }
 
+impl From<serde_json::Error> for ApiError {
+    fn from(err: serde_json::Error) -> Self {
+        ApiError::JsonError { cause: format!("{}", err) }
+    }
+}
+
 // Use default implementation for `error_response()` method.
 impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match *self {
-            ApiError::MatcherError { cause: _ } => HttpResponse::BadRequest().finish(),
-            ApiError::ActixMailboxError { cause: _ } => {
-                HttpResponse::InternalServerError().finish()
-            }
+            ApiError::MatcherError { .. } => HttpResponse::BadRequest().finish(),
+            ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
         }
     }
 }

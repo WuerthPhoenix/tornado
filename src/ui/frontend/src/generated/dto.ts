@@ -26,5 +26,25 @@ export type MatcherConfigDto =
 export type Value = any;
 
 
+export type SendEventRequestDto = { process_type: ProcessType; event: EventDto };
+
+export enum ProcessType { Full = "Full" , SkipActions = "SkipActions" };
+
 export type EventDto = { type: string; created_ms: number; payload: { [ key: string ]: Value } };
+
+export type ProcessedEventDto = { event: EventDto; result: ProcessedNodeDto };
+
+export type ProcessedNodeDto = 
+ | { type: "Filter"; filter: ProcessedFilterDto; nodes: { [ key: string ]: ProcessedNodeDto } } 
+ | { type: "Rules"; rules: ProcessedRulesDto };
+
+export type ProcessedFilterDto = { name: string; status: ProcessedFilterStatusDto };
+
+export enum ProcessedFilterStatusDto { Matched = "Matched" , NotMatched = "NotMatched" , Inactive = "Inactive" };
+
+export type ProcessedRulesDto = { rules: { [ key: string ]: ProcessedRuleDto }; extracted_vars: { [ key: string ]: Value } };
+
+export type ProcessedRuleDto = { rule_name: string; status: ProcessedRuleStatusDto; actions: ActionDto[]; message: string | null };
+
+export enum ProcessedRuleStatusDto { Matched = "Matched" , PartiallyMatched = "PartiallyMatched" , NotMatched = "NotMatched" , NotProcessed = "NotProcessed" };
 

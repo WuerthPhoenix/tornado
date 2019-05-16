@@ -1,11 +1,9 @@
-use crate::engine::{EventMessageWithReply, MatcherActor, ProcessType};
+use crate::engine::{EventMessageWithReply, MatcherActor};
 use actix::Addr;
-use backend::api::handler::ApiHandler;
+use backend::api::handler::{ApiHandler, SendEventRequest};
 use backend::error::ApiError;
-use futures::future::Future;
-use tornado_common_api::Event;
+use futures::future::{Future, FutureResult};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
-use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::model::ProcessedEvent;
 
 pub struct MatcherApiHandler {
@@ -14,15 +12,23 @@ pub struct MatcherApiHandler {
 }
 
 impl ApiHandler for MatcherApiHandler {
-    fn read(&self) -> Result<MatcherConfig, MatcherError> {
-        self.config_manager.read()
+    fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>> {
+        Box::new(FutureResult::from(self.config_manager.read().map_err(ApiError::from)))
     }
 
-    fn send_event(&self, event: Event) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
+    fn send_event(
+        &self,
+        event: SendEventRequest,
+    ) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
         let request = self
             .matcher
-            .send(EventMessageWithReply { event, process_type: ProcessType::SkipActions });
+            .send(EventMessageWithReply { event: event.event, process_type: event.process_type });
 
+        // The last closure:
+        // |res| Ok(res?)
+        // is a Rust trick to let the compiler convert automatically the error from the one of the 'res' variable (MatcherError)
+        // to the one expected for the response (ApiError).
+        // This works because the ApiError implements From<MatcherError>
         let response = request.map_err(ApiError::from).and_then(|res| Ok(res?));
 
         Box::new(response)
@@ -43,7 +49,9 @@ mod test {
     use super::*;
     use crate::dispatcher::{ActixEventBus, DispatcherActor};
     use actix::{Arbiter, SyncArbiter, System};
+    use backend::api::handler::ProcessType;
     use std::sync::Arc;
+    use tornado_common_api::Event;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::dispatcher::Dispatcher;
     use tornado_engine_matcher::matcher::Matcher;
@@ -70,9 +78,14 @@ mod test {
 
             let api = MatcherApiHandler { matcher: matcher_addr, config_manager: Box::new(config) };
 
+            let send_event_request = SendEventRequest {
+                process_type: ProcessType::SkipActions,
+                event: Event::new("test-type"),
+            };
+
             // Act
             Arbiter::spawn({
-                api.send_event(Event::new("test-type")).then(|res| {
+                api.send_event(send_event_request).then(|res| {
                     // Verify
                     assert!(res.is_ok());
                     assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());

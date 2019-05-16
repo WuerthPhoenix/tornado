@@ -1,9 +1,14 @@
 use crate::api::handler::ApiHandler;
-use crate::convert::matcher_config_to_dto;
+use crate::convert::config::matcher_config_into_dto;
+use crate::convert::event::{dto_into_send_event_request, processed_event_into_dto};
+use crate::error::ApiError;
+use actix_web::web::Json;
 use actix_web::{Error as AWError, HttpRequest, HttpResponse};
+use dto::event::SendEventRequestDto;
+use futures::future::FutureResult;
 use futures::Future;
+use log::*;
 use std::sync::Arc;
-use tornado_common_api::Event;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
@@ -18,22 +23,44 @@ impl<T: ApiHandler> Clone for HttpHandler<T> {
 }
 
 impl<T: ApiHandler> HttpHandler<T> {
-    pub fn get_config(&self, _req: HttpRequest) -> HttpResponse {
-
-        // ToDo: remove "unwrap()". Could be investigated in TOR-89
-
-        let matcher_config = self.api_handler.read().map_err(failure::Fail::compat).unwrap();
-        HttpResponse::Ok().json(matcher_config_to_dto(matcher_config).unwrap())
+    pub fn get_config(
+        &self,
+        _req: HttpRequest,
+    ) -> impl Future<Item = HttpResponse, Error = AWError> {
+        debug!("API - received get_config request");
+        self.api_handler.get_config().map_err(AWError::from).and_then(|matcher_config| {
+            match matcher_config_into_dto(matcher_config) {
+                Ok(dto) => HttpResponse::Ok().json(dto),
+                Err(err) => {
+                    error!("Cannot convert the MatcherConfig into a DTO. Err: {}", err);
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        })
     }
 
-    // ToDo: to be implemented in TOR-89
-    pub fn test(&self, _req: HttpRequest) -> impl Future<Item = HttpResponse, Error = AWError> {
-        let event = Event::new("fake_event");
+    pub fn send_event(
+        &self,
+        _req: HttpRequest,
+        body: Json<SendEventRequestDto>,
+    ) -> impl Future<Item = HttpResponse, Error = AWError> {
+        debug!("API - received send_event request");
 
-        self.api_handler.send_event(event).map_err(AWError::from).and_then(|processed_event| {
-            println!("Processed event: \n{:?}", processed_event);
-            HttpResponse::Ok().finish()
-        })
+        let api_handler = self.api_handler.clone();
 
+        // Futures chaining.
+        // The chain starts with a Result (returned by dto_into_send_event_request(body.into_inner()))
+        // converted into a Future and the chained to the api_handler call.
+        FutureResult::from(dto_into_send_event_request(body.into_inner()))
+            .map_err(ApiError::from)
+            .and_then(move |send_event_request| api_handler.send_event(send_event_request))
+            .map_err(AWError::from)
+            .and_then(|processed_event| match processed_event_into_dto(processed_event) {
+                Ok(dto) => HttpResponse::Ok().json(dto),
+                Err(err) => {
+                    error!("Cannot convert the processed_event into a DTO. Err: {}", err);
+                    HttpResponse::InternalServerError().finish()
+                }
+            })
     }
 }

@@ -25,7 +25,7 @@
 import { Component, Vue } from 'vue-property-decorator';
 import NodeDetails from '@/components/NodeDetails.vue';
 import ProcessingTree from '@/components/ProcessingTree.vue';
-import { MatcherConfigDto } from '../generated/dto';
+import { MatcherConfigDto } from '@/generated/dto';
 import configModule from '@/store/module/config';
 
 @Component({
@@ -41,7 +41,6 @@ export default class Tornado extends Vue {
   }
 
   public loadConfig() {
-    // console.log("click for loading config")
     configModule.getConfig();
   }
 

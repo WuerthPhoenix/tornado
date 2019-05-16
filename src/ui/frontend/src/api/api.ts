@@ -1,8 +1,16 @@
-// import axios from 'axios';
-import { MatcherConfigDto } from '@/generated/dto';
+import axios from 'axios';
+import { MatcherConfigDto, SendEventRequestDto, ProcessedEventDto } from '@/generated/dto';
+
+const axiosInstance = axios.create({
+    baseURL: 'http://127.0.0.1:4748',
+});
 
 export async function getConfig(): Promise<MatcherConfigDto> {
-    // const response = await fetch('/api/config');
-    const response = await fetch('http://127.0.0.1:4748/api/config');
-    return response.json();
+    const response = await axiosInstance.get<MatcherConfigDto>('/api/config');
+    return response.data;
+}
+
+export async function postSendEvent(request: SendEventRequestDto): Promise<ProcessedEventDto> {
+    const response = await axiosInstance.post<ProcessedEventDto>('/api/send_event', request);
+    return response.data;
 }
