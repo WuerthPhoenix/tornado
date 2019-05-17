@@ -151,7 +151,10 @@ fi
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
 %changelog
-* Mon May 06 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
+* Fri May 17 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
+ - New Feature: API for Tornado Frontend
+ - Tech. Spike: Integration of Frontend into Icingaweb2
+ - Preview: Tornado Frontend
  - Added How-To for using tie Monitoring Endpoint
 
 * Mon Apr 29 2019 Angelo Rosace <angelo.rosace@wuerth-phoenix.com> - 0.9.0-1

@@ -1,9 +1,20 @@
 use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
+use backend::api::handler::ProcessType;
 use log::*;
 use std::sync::Arc;
 use tornado_common_api;
+use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
+
+pub struct EventMessageWithReply {
+    pub event: tornado_common_api::Event,
+    pub process_type: ProcessType,
+}
+
+impl Message for EventMessageWithReply {
+    type Result = Result<ProcessedEvent, error::MatcherError>;
+}
 
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
@@ -29,9 +40,27 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("MatcherActor - received new event [{:?}]", &msg.event);
+        debug!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
         let processed_event = self.matcher.process(msg.event);
         self.dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event });
         Ok(())
+    }
+}
+
+impl Handler<EventMessageWithReply> for MatcherActor {
+    type Result = Result<ProcessedEvent, error::MatcherError>;
+
+    fn handle(&mut self, msg: EventMessageWithReply, _: &mut SyncContext<Self>) -> Self::Result {
+        debug!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+        let processed_event = self.matcher.process(msg.event);
+
+        match msg.process_type {
+            ProcessType::Full => self
+                .dispatcher_addr
+                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
+            ProcessType::SkipActions => {}
+        }
+
+        Ok(processed_event)
     }
 }

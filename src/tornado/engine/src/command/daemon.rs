@@ -5,9 +5,11 @@ use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
 
-use crate::monitoring::monitoring_app;
+use crate::api::MatcherApiHandler;
+use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
-use actix_web::server;
+use actix_web::middleware::cors::Cors;
+use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;
 use std::sync::Arc;
@@ -21,12 +23,18 @@ pub fn daemon(
     conf: &config::Conf,
     daemon_config: config::DaemonCommandConfig,
 ) -> Result<(), Box<std::error::Error>> {
-    setup_logger(&conf.logger).map_err(|e| e.compat())?;
+    setup_logger(&conf.logger).map_err(Fail::compat)?;
 
     let configs = config::parse_config_files(conf)?;
 
     // Start matcher
-    let matcher = Arc::new(Matcher::build(&configs.matcher).map_err(|e| e.compat())?);
+    let matcher = Arc::new(
+        configs
+            .matcher_config
+            .read()
+            .and_then(|config| Matcher::build(&config))
+            .map_err(Fail::compat)?,
+    );
 
     // start system
     System::run(move || {
@@ -110,17 +118,26 @@ pub fn daemon(
 
         let web_server_ip = daemon_config.web_server_ip.clone();
         let web_server_port = daemon_config.web_server_port;
-        // Start monitoring endpoint
-        server::new(monitoring_app)
-            .bind(format!("{}:{}", web_server_ip, web_server_port))
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
-                //System::current().stop_with_code(1);
-                std::process::exit(1);
-            })
-            .start();
-    });
+        let matcher_config = configs.matcher_config;
+
+        let api_handler = Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr.clone()));
+
+        // Start API and monitoring endpoint
+        HttpServer::new(move || {
+            App::new()
+                .wrap(Cors::new().max_age(3600))
+                .service({ backend::api::new_endpoints(web::scope("/api"), api_handler.clone()) })
+                .service(monitoring_endpoints(web::scope("/monitoring")))
+        })
+        .bind(format!("{}:{}", web_server_ip, web_server_port))
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
+            //System::current().stop_with_code(1);
+            std::process::exit(1);
+        })
+        .start();
+    })?;
 
     Ok(())
 }
