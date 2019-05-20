@@ -1,4 +1,5 @@
-use actix_web::{error, http, HttpRequest, HttpResponse, Query};
+use actix_web::web::Query;
+use actix_web::{error, http, HttpRequest, HttpResponse};
 use failure::Fail;
 use log::{debug, error};
 use serde_derive::Deserialize;

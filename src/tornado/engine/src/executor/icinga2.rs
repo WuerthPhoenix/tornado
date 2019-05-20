@@ -1,10 +1,10 @@
 use actix::prelude::*;
-use actix_web::client::{ClientConnector, ClientRequest};
-use actix_web::HttpMessage;
+use actix_web::client::{Client, ClientBuilder, Connector};
 use failure_derive::Fail;
 use futures::future::Future;
 use http::header;
 use log::*;
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
 use tornado_executor_icinga2::Icinga2Action;
@@ -43,7 +43,7 @@ pub struct Icinga2ApiClientActor {
     //password: String,
     icinga2_api_url: String,
     http_auth_header: String,
-    client_connector: Addr<ClientConnector>,
+    client: Client,
 }
 
 impl Actor for Icinga2ApiClientActor {
@@ -60,23 +60,39 @@ impl Icinga2ApiClientActor {
             let auth = format!("{}:{}", config.username, config.password);
             let http_auth_header = format!("Basic {}", base64::encode(&auth));
 
-            let mut ssl_conn_builder = native_tls::TlsConnector::builder();
+            // Build client connector with native-tls
+            // Simpler cross platform build, but currently not supported by actix-web 1.0
+            /*
+            let client_connector = {
+                let mut ssl_conn_builder = native_tls::TlsConnector::builder();
 
-            if config.disable_ssl_verification {
-                ssl_conn_builder.danger_accept_invalid_certs(true);
-            }
-            let ssl_connector = ssl_conn_builder.build().unwrap();
+                if config.disable_ssl_verification {
+                    ssl_conn_builder.danger_accept_invalid_certs(true);
+                }
+                let ssl_connector = ssl_conn_builder.build().unwrap();
 
-            let client_connector =
-                ClientConnector::with_connector(tokio_tls::TlsConnector::from(ssl_connector))
-                    .start();
+                ClientConnector::with_connector(tokio_tls::TlsConnector::from(ssl_connector)).start()
+            };
+            */
+
+            // Build client connector with OpenSSL
+            let client_connector = {
+                let mut ssl_conn_builder = SslConnector::builder(SslMethod::tls()).unwrap();
+                if config.disable_ssl_verification {
+                    ssl_conn_builder.set_verify(SslVerifyMode::NONE);
+                }
+                let ssl_connector = ssl_conn_builder.build();
+                Connector::new().ssl(ssl_connector).finish()
+            };
+
+            let client = ClientBuilder::new().connector(client_connector).finish();
 
             Icinga2ApiClientActor {
                 //username: config.username,
                 //password: config.password,
                 icinga2_api_url: config.server_api_url,
                 http_auth_header,
-                client_connector,
+                client,
             }
         })
     }
@@ -88,22 +104,20 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
     fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("Icinga2ApiClientMessage - received new message");
 
-        let connector = self.client_connector.clone();
+        //      let connector = self.client_connector.clone();
         let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
 
         debug!("Icinga2ApiClientMessage - calling url: {}", url);
 
         actix::spawn(
-            ClientRequest::post(url)
-                .with_connector(connector)
+            self.client.post(url)
+//                .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, self.http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
-                .json(msg.message.payload)
-                .unwrap()
-                .send()
+                .send_json(&msg.message.payload)
                 .map_err(|err| error!("Connection failed. Err: {}", err))
-                .and_then(|response| {
+                .and_then(|mut response| {
                     actix::spawn(response.body().map_err(|_| ()).map(move |bytes| {
                         if !response.status().is_success() {
                             error!("Icinga2 API returned an error. Response: \n{:#?}. Response body: {:#?}", response, bytes)
@@ -125,8 +139,8 @@ mod test {
     use crate::executor::icinga2::Icinga2ApiClientMessage;
     use crate::executor::icinga2::Icinga2ClientConfig;
     use actix::prelude::*;
-    use actix_web::Json;
-    use actix_web::{server, App};
+    use actix_web::web::Json;
+    use actix_web::{web, App, HttpServer};
     use log::*;
     use maplit::*;
     use std::sync::Arc;
@@ -145,17 +159,19 @@ mod test {
             let api = "/v1/events";
             let api_clone = api.clone();
 
-            server::new(move || {
+            HttpServer::new(move || {
                 let app_received = act_received.clone();
-                App::new().resource(&format!("{}{}", api, "/icinga2-api-action"), move |r| {
-                    r.with(move |body: Json<Value>| {
+                let url = format!("{}{}", api, "/icinga2-api-action");
+
+                App::new().service(web::resource(&url).route(web::post().to(
+                    move |body: Json<Value>| {
                         info!("Server received a call");
                         let mut message = app_received.lock().unwrap();
                         *message = Some(body.into_inner());
                         System::current().stop();
                         ""
-                    })
-                })
+                    },
+                )))
             })
             .bind("127.0.0.1:0")
             .and_then(|server| {
@@ -185,7 +201,8 @@ mod test {
             })
             .expect("Can not bind to port 0")
             .start();
-        });
+        })
+        .unwrap();
 
         assert_eq!(
             Some(Value::Map(hashmap![
