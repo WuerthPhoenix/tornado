@@ -99,3 +99,22 @@ args = [
     "--config-dir=./spike/tornado_events_generator/config"
 ]
 dependencies = ["build"]
+
+
+# Starts the tornado_procmail_collector.
+#
+# Execute with:
+# > cargo make run-procmail-collector
+[tasks.run-procmail-collector]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado_procmail_collector",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--uds-path=/tmp/tornado-procmail.sock"
+]
+dependencies = ["build"]

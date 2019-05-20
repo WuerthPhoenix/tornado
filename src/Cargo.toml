@@ -21,6 +21,7 @@ members = [
    "tornado/common",
    "tornado/engine",
    "tornado/icinga2_collector",
+   "tornado/procmail_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
    "ui/dto",

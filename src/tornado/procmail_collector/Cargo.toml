@@ -1,5 +1,5 @@
 [package]
-name = "tornado_rsyslog_collector"
+name = "tornado_procmail_collector"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
@@ -17,6 +17,7 @@ structopt = "0.2"
 tokio = "0.1"
 tokio-codec = "0.1"
 tokio-io = "0.1"
+tokio-uds = "0.2"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
