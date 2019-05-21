@@ -1,7 +1,9 @@
 use log::warn;
-use mailparse::{dateparse, parse_mail, DispositionType, MailHeaderMap, MailParseError};
+use mailparse::{
+    dateparse, parse_mail, DispositionType, MailHeaderMap, MailParseError, ParsedMail,
+};
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::{Event, Number, Value};
+use tornado_common_api::{Event, Number, Payload, Value};
 
 /// The Email Collector receives a MIME email message as input, parses it and produces a Tornado Event.
 #[derive(Default)]
@@ -17,46 +19,31 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
     fn to_event(&self, input: &'a [u8]) -> Result<Event, CollectorError> {
         let email = parse_mail(input).map_err(into_err)?;
 
-        let subject = email
-            .headers
-            .get_first_value("Subject")
-            .map_err(into_err)?
-            .unwrap_or_else(|| "".to_owned());
-        let date = dateparse(
-            email
-                .headers
-                .get_first_value("Date")
-                .map_err(into_err)?
-                .unwrap_or_else(|| "".to_owned())
-                .as_str(),
-        )
-        .map_err(|err| CollectorError::EventCreationError { message: err.to_string() })?;
+        let subject = get_first_header_value_or_empty(&email, "Subject")?;
+        let from = get_first_header_value_or_empty(&email, "From")?;
+        let to = get_first_header_value_or_empty(&email, "To")?;
+        let cc = get_first_header_value_or_empty(&email, "Cc")?;
+
+        let date = dateparse(get_first_header_value_or_empty(&email, "Date")?.as_str())
+            .map_err(|err| CollectorError::EventCreationError { message: err.to_string() })?;
 
         let mut bodies = vec![];
+        let mut attachments = vec![];
+
+        extract_body_and_attachments(&email, &mut bodies, &mut attachments)?;
 
         for subpart in email.subparts {
-            let content_disposition = subpart.get_content_disposition().map_err(into_err)?;
-            match content_disposition.disposition {
-                DispositionType::Inline => {
-                    if subpart.ctype.mimetype.contains("text") {
-                        bodies.push(Value::Text(subpart.get_body().map_err(into_err)?))
-                    }
-                }
-                DispositionType::Attachment => {}
-                _ => {
-                    warn!(
-                        "Ignore email subpart with DispositionType: {:?}",
-                        content_disposition.disposition
-                    );
-                }
-            }
+            extract_body_and_attachments(&subpart, &mut bodies, &mut attachments)?;
         }
-        //let body = email.subparts[0].get_body().map_err(into_err)?;
 
         let mut event = Event::new("email");
         event.payload.insert("date".to_owned(), Value::Number(Number::PosInt(date as u64)));
         event.payload.insert("subject".to_owned(), Value::Text(subject));
+        event.payload.insert("from".to_owned(), Value::Text(from));
+        event.payload.insert("to".to_owned(), Value::Text(to));
+        event.payload.insert("cc".to_owned(), Value::Text(cc));
         event.payload.insert("body".to_owned(), Value::Array(bodies));
+        event.payload.insert("attachments".to_owned(), Value::Array(attachments));
 
         Ok(event)
     }
@@ -64,6 +51,57 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
 
 fn into_err(err: MailParseError) -> CollectorError {
     CollectorError::EventCreationError { message: format!("{}", err) }
+}
+
+fn get_first_header_value_or_empty(
+    email: &ParsedMail,
+    header: &str,
+) -> Result<String, CollectorError> {
+    Ok(email.headers.get_first_value(header).map_err(into_err)?.unwrap_or_else(|| "".to_owned()))
+}
+
+fn extract_body_and_attachments(
+    email: &ParsedMail,
+    bodies: &mut Vec<Value>,
+    attachments: &mut Vec<Value>,
+) -> Result<(), CollectorError> {
+    let content_disposition = email.get_content_disposition().map_err(into_err)?;
+    match content_disposition.disposition {
+        DispositionType::Inline => {
+            if email.ctype.mimetype.contains("text") {
+                bodies.push(Value::Text(email.get_body().map_err(into_err)?))
+            }
+        }
+        DispositionType::Attachment => {
+            let mut attachment = Payload::new();
+            attachment.insert(
+                "filename".to_owned(),
+                Value::Text(
+                    content_disposition
+                        .params
+                        .get("filename")
+                        .map(std::borrow::ToOwned::to_owned)
+                        .unwrap_or_else(|| "".to_owned()),
+                ),
+            );
+            attachment.insert("mimetype".to_owned(), Value::Text(email.ctype.mimetype.clone()));
+
+            if email.ctype.mimetype.contains("text") {
+                attachment
+                    .insert("content".to_owned(), Value::Text(email.get_body().map_err(into_err)?));
+                attachments.push(Value::Map(attachment))
+            } else {
+
+            }
+        }
+        _ => {
+            warn!(
+                "Ignore email subpart with DispositionType: {:?}",
+                content_disposition.disposition
+            );
+        }
+    };
+    Ok(())
 }
 
 #[cfg(test)]
@@ -86,6 +124,75 @@ mod test {
         // Assert
         expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
+    }
+
+    #[test]
+    fn should_should_parse_sender_and_recipients() {
+        // Arrange
+        let email = get_email("./test_resources/email_02_input.txt");
+        let collector = EmailEventCollector::new();
+
+        // Act
+        let event = collector.to_event(email.as_bytes()).unwrap();
+
+        // Assert
+        assert_eq!(
+            r#""Mr.Francesco.Cina" <mr.francesco.cina@gmail.com>"#,
+            event.payload.get("from").unwrap()
+        );
+        assert_eq!(r#""Groeber, Benjamin" <Benjamin.Groeber@wuerth-phoenix.com>, francesco cina <mr.francesco.cina@gmail.com>"#, event.payload.get("to").unwrap());
+        assert_eq!(
+            r#"Thomas.Forrer@wuerth-phoenix.com, mr.francesco.cina@gmail.com"#,
+            event.payload.get("cc").unwrap()
+        );
+    }
+
+    #[test]
+    fn should_should_parse_body_and_subject() {
+        // Arrange
+        let email = get_email("./test_resources/email_02_input.txt");
+        let collector = EmailEventCollector::new();
+
+        // Act
+        let event = collector.to_event(email.as_bytes()).unwrap();
+
+        // Assert
+        assert_eq!("Test for Mail collector", event.payload.get("subject").unwrap());
+        assert!(event.payload.get("body").unwrap().get_array().unwrap()[0]
+            .get_text()
+            .unwrap()
+            .contains("<b>Test for Mail collector</b>"));
+    }
+
+    #[test]
+    fn should_should_parse_text_attachments() {
+        // Arrange
+        let email = get_email("./test_resources/email_03_input.txt");
+        let collector = EmailEventCollector::new();
+
+        // Act
+        let event = collector.to_event(email.as_bytes()).unwrap();
+
+        // Assert
+        assert_eq!(
+            "Test for Mail collector - with attachments",
+            event.payload.get("subject").unwrap()
+        );
+        assert!(event.payload.get("body").unwrap().get_array().unwrap()[0]
+            .get_text()
+            .unwrap()
+            .contains("<b>Test for Mail collector with attachments</b>"));
+
+        let attachments = event.payload.get("attachments").unwrap().get_array().unwrap();
+        assert_eq!(1, attachments.len());
+
+        let attachment_0 = attachments[0].get_map().unwrap();
+        assert_eq!("sample.txt", attachment_0.get("filename").unwrap());
+        assert_eq!("text/plain", attachment_0.get("mimetype").unwrap());
+        assert_eq!(
+            "txt file context for email collector\n1234567890987654321\n",
+            attachment_0.get("content").unwrap()
+        );
     }
 
     fn get_email(path: &str) -> String {
