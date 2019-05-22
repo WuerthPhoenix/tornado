@@ -20,7 +20,7 @@
 %endif
 
 Name:    tornado
-Version: 0.10.0
+Version: 0.10.1
 Release: 1
 Summary: Tornado Package
 
@@ -130,6 +130,7 @@ if test "$1" == 1 ; then
 fi
 
 %files
+
 %defattr(0755, root, root, 0775)
 %{bin_dir}
 %{script_dir}
@@ -162,6 +163,10 @@ fi
 %{userguide_dir}/*
 
 %changelog
+* Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.1-1
+ - Fix broken default config of archive executor
+ - Deploy How To documentation to User Guide
+
 * Fri May 17 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
  - New Feature: API for Tornado Frontend
  - Tech. Spike: Integration of Frontend into Icingaweb2
