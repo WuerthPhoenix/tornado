@@ -4,29 +4,12 @@ This How To is intended to help you learn how to simulate incoming events (such 
 events, network events, email or SMS messages) in order to test that the rules you configure
 will properly match those events and correctly invoke the chosen actions.
 
-
-
-## <a id="tornado-howto-simulate-step1"></a> Step #1:  Prerequisites
-
-We assume here that you are using a shell environment rather than the Tornado GUI.  If Tornado
-is not already installed, you can install it as follows (the minimum Tornado version is 0.10.0):
-```
-# yum install tornado --enablerepo=neteye-extras
-```
-
-As a preliminary test, make sure that the Tornado service is up, and run a check on the default
-Tornado configuration directory.  You should see the following output:
-```
-# systemctl status tornado
-... Active: active (running) ...
-# tornado --config-dir=/neteye/shared/tornado/conf check
-Check Tornado configuration
-The configuration is correct.
-```
+Before continuing, you should first check the
+[prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
 
 
 
-## <a id="tornado-howto-simulate-step2"></a> Step #2:  Checking for Rule Matches
+## <a id="tornado-howto-simulate-step1"></a> Step #1:  Checking for Rule Matches
 
 First let's test whether we can correctly match a rule.  To do this, we will purposefully not
 execute any actions should a rule match.  This capability is designed into Tornado's Event
@@ -129,7 +112,7 @@ event, while the remaining rules have *status* **NotMatched** with empty *action
 
 
 
-## <a id="tornado-howto-simulate-step3"></a> Step #3:  Actions after Matches
+## <a id="tornado-howto-simulate-step2"></a> Step #2:  Actions after Matches
 
 If we repeat the same command as above, but with *process_type* set to **Full**, then that
 *Archive* action will be executed.  We won't repeat that command here because on a production
