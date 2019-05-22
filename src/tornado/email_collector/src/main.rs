@@ -1,11 +1,11 @@
+#![cfg(unix)]
+
 pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
-use std::io::{stdin, BufRead};
-use std::thread;
 use tornado_common::actors::message::StringMessage;
 use tornado_common_logger::setup_logger;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     // Setup logger
     setup_logger(&conf.logger).map_err(|err| err.compat())?;
 
-    info!("Procmail collector started");
+    info!("Email collector started");
 
     // start system
     System::run(move || {
@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             conf.io.message_queue_size,
         );
 
-        // Start Procmail collector
+        // Start Email collector
         /*
         let rsyslog_addr = SyncArbiter::start(1, move || {
             actors::sync_collector::ProcmailCollectorActor::new(tpc_client_addr.clone())

@@ -101,20 +101,20 @@ args = [
 dependencies = ["build"]
 
 
-# Starts the tornado_procmail_collector.
+# Starts the tornado_email_collector.
 #
 # Execute with:
-# > cargo make run-procmail-collector
-[tasks.run-procmail-collector]
+# > cargo make run-email-collector
+[tasks.run-email-collector]
 workspace = false
 command = "cargo"
 args = [
     "run",
     "--bin",
-    "tornado_procmail_collector",
+    "tornado_email_collector",
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=/tmp/tornado-procmail.sock"
+    "--uds-path=/home/ufo/workspaces/wuerth_phoenix/docker/local/tornado-email.sock"
 ]
 dependencies = ["build"]
