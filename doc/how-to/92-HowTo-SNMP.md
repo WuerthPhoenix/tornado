@@ -3,31 +3,13 @@
 <!-- Future link:  [SNMP Trap Daemon Collector]((src/tornado/snmptrapd_collector/doc/SNMP-HowTo.md)) -->
 This How To is intended to help you configure, use and test the SNMP Trap Daemon Collector
 in your existing NetEye Tornado installation.
-It is assumed that you are using a shell environment rather than the Tornado GUI.
+
+Before continuing, you should first check the
+[prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
 
 
 
-## <a id="tornado-howto-snmp-collector-step1"></a> Step #1:  Prerequisites
-
-If you have not already installed Tornado on NetEye 4, do so now:
-```bash
-# yum install tornado --enablerepo=neteye-extras
-```
-
-As a preliminary test, make sure that the Tornado service is up, and run a check on the default
-Tornado configuration directory.  You should see the following output:
-```bash
-# systemctl start tornado
-# systemctl status tornado
-...
-# tornado --config-dir=/neteye/shared/tornado/conf check
-Check Tornado configuration
-The configuration is correct.
-```
-
-
-
-## <a id="tornado-howto-snmp-collector-step2"></a>  Step #2:  Verify that the SNMP Trap Daemon is Working Properly
+## <a id="tornado-howto-snmp-collector-step1"></a>  Step #1:  Verify that the SNMP Trap Daemon is Working Properly
 
 Restart the SNMP Trap service to be certain it has loaded the latest configuration:
 ```
@@ -36,7 +18,7 @@ Restart the SNMP Trap service to be certain it has loaded the latest configurati
 
 To test that the SNMP Trap daemon started correctly, you should see output like this when
 running the following command (especially the "loaded successfully" line):
-```bash
+```
 # journalctl -u snmptrapd
 Apr 16 11:00:22 tornadotest systemd[1]: Starting Simple Network Management Protocol (SNMP) Trap Daemon....
 Apr 16 11:00:23 tornadotest snmptrapd[14872]: The snmptrapd_collector was loaded successfully.
@@ -44,7 +26,7 @@ Apr 16 11:00:23 tornadotest snmptrapd[14872]: The snmptrapd_collector was loaded
 
 Then test that the SNMP Trap daemon is receiving SNMP events properly by sending a fake SNMP message
 with the command:
-```bash
+```
 # snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 i 123456
 ```
 
@@ -62,7 +44,7 @@ your SNMP Trap Collector that must be addressed before continuing with this How 
 
 
 
-## <a id="tornado-howto-snmp-collector-step3"></a> Step #3:  Configuring SNMP Trap Collector Rules
+## <a id="tornado-howto-snmp-collector-step2"></a> Step #2:  Configuring SNMP Trap Collector Rules
 
 Unlike other collectors, the SNMP Trap Collector does not reside in its own process, but as inline
 Perl code within the *snmptrapd* service.  For reference, you can find it here:
@@ -74,7 +56,7 @@ To start, let's create a rule that matches all incoming SNMP Trap events, extrac
 field, and uses the **Archive Executor** to write the entire event into a log file in a directory
 named for the source IP (this would allow us to keep events from different network devices in
 different log directories).   The SNMP Trap Collector produces a JSON structure, which we will
-serialize to write into the file defined in Step #4.
+serialize to write into the file defined in Step #3.
 <!-- Try to link to the SNMP Trap Collector documentation -->
 
 A JSON structure representing an incoming SNMP Trap Event looks like this:
@@ -155,7 +137,7 @@ Here's our new rule containing both parts:
 
 Changing the "second" field of the WHERE constraint as above will cause the rule to match with any
 SNMP event.  In the "actions" section, we add the "source" field which will extract the source IP,
-and change the archive type to "trap".  We'll see why in Step #4.
+and change the archive type to "trap".  We'll see why in Step #3.
 
 Remember to save our new rule where Tornado will look for active rules, which in the default
 configuration is */neteye/shared/tornado/conf/rules.d/*.  Let's give it a name like
@@ -171,7 +153,7 @@ there are no syntactic errors in your new rule:
 
 
 
-## <a id="tornado-howto-snmp-collector-step4"></a> Step #4:  Configure the Archive Executor
+## <a id="tornado-howto-snmp-collector-step3"></a> Step #3:  Configure the Archive Executor
 
 <!-- We could use a link to the description of Archive Event. -->
 
@@ -205,7 +187,7 @@ file.  Since we have only specifed "event", the entire event will be saved to th
 
 
 
-## <a id="tornado-howto-snmp-collector-step5"></a> Step #5:  Watch Tornado "in Action"
+## <a id="tornado-howto-snmp-collector-step4"></a> Step #4:  Watch Tornado "in Action"
 
 Let's observe how our newly configured SNMP Trap Collector works using a bash shell.  If you want
 to see what happens when an event is processed, open two separate shells to:
@@ -213,12 +195,12 @@ to see what happens when an event is processed, open two separate shells to:
 * Send SNMP events manually, and display the results
 
 In the first shell, run the following command to see the result of rule matches in real-time:
-```bash
+```
 # journalctl -f -u snmptrapd
 ```
 
 In the second shell, we will manually initiate simulated SNMP Trap events like this:
-```bash 
+```
 # snmptrap -v 2c -c public localhost '' 1.3.6.1.4.1.8072.2.3.0.1 1.3.6.1.4.1.8072.2.3.2.1 i 123456
 ```
 
@@ -227,7 +209,7 @@ in the first shell, indicating that the event has been successfully matched.  In
 can now look at the result of the match by looking at the log file configured by the *archive*
 executor.
 
-And now you should see the full event written into the file we specified during Step #4:
+There you should see the full event written into the file we specified during Step #3:
 ```
 /neteye/shared/tornado/data/archive/trap/127.0.0.1/all.log
 ```

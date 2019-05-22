@@ -1,4 +1,4 @@
-# Tornado backend
+# Tornado Backend
 
 This crate contains the Tornado backend code.
 
@@ -6,12 +6,13 @@ This crate contains the Tornado backend code.
 ## How It Works
 
 The Tornado backend contains endpoints that allow you to interact with Tornado.
-In the long run, it will provide services to inspect and alter the configuration
-of Tornado and to trigger custom events.
+In the long run it will provide services to inspect, and let you alter the configuration
+of Tornado and trigger custom events.
 
-## Tornado backend API
 
-### Get configuration endpoint 
+## Tornado Backend API
+
+### Get Configuration Endpoint 
 
 This endpoint returns the current Tornado configuration.
 
@@ -20,7 +21,7 @@ Details:
 - path : __/api/config__
 - response type: __JSON__ 
 - response example:
-   ```json
+  ```json
    {
      "type": "Rules",
      "rules": [
@@ -54,12 +55,13 @@ Details:
        }
      ]
    }
-   ```
+  ```
 
-### Send Test Event endpoint 
 
-This endpoint receives an _Event_, processes it and returns the Tornado Engine 
-process outcome.
+### Send Test Event Endpoint 
+
+This endpoint receives an _Event_, processes it, and returns the result of the Tornado Engine 
+processing that event.
 
 Details:
 - HTTP Method: __POST__
@@ -79,13 +81,14 @@ Details:
       "process_type": "SkipActions"
   }
   ```
-  Where:
+
+  Where the event has the following structure:
   - __type__:  The Event type identifier
   - __created_ms__:  The Event creation timestamp in milliseconds since January 1, 1970 UTC
   - __payload__:  A Map<String, Value> with event-specific data
-  - __process_type__: Can be _Full_ or _SkipActions_:
-    - _Full_: the event is processed and linked actions are executed.
-    - _SkipActions_: the event is processed but actions are not executed.
+  - __process_type__:  Can be _Full_ or _SkipActions_:
+    - _Full_:  The event is processed and linked actions are executed
+    - _SkipActions_:  The event is processed but actions are not executed
 - response type: __JSON__ 
 - response example:
    ```json

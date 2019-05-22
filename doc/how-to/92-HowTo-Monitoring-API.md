@@ -1,7 +1,9 @@
 # <a id="tornado-howto-api"></a> How To Use the Tornado Self-Monitoring API
 
 This How To is intended to help you quickly configure the Tornado self-monitoring API server.
-It is assumed that you are using a shell environment rather than the Tornado GUI.
+
+Before continuing, you should first check the
+[prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
 
 The self-monitoring API server is created as part of the standard Tornado installation within
 NetEye 4.  You can check it is functioning properly via *curl*:
@@ -36,7 +38,7 @@ need to configure the server to make it more useful.
 
 
 
-## <a id="tornado-howto-api-configuration"></a> Step #1:  Setting Up the Self-Monitoring API Server
+## <a id="tornado-howto-api-step1"></a> Step #1:  Setting Up the Self-Monitoring API Server
 
 During installation, NetEye 4 automatically configures the Tornado self-monitoring API server
 to start up with the following defaults:
@@ -88,7 +90,7 @@ requests to the API server will be refused.
 
 
 
-## <a id="tornado-howto-api-testing"></a>  Step #2:  Testing the Self-Monitoring API
+## <a id="tornado-howto-api-step2"></a>  Step #2:  Testing the Self-Monitoring API
 
 You can now test your REST API in a shell, both on the server itself as well as from other,
 external clients:
