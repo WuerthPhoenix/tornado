@@ -7,10 +7,7 @@
     "to": "",
     "from": "",
     "cc": "",
-    "body": [
-      "This is the plaintext version, in utf-8. Proof by Euro: €",
-      "<html><body>This is the <b>HTML</b> version, in us-ascii. Proof by Euro: &euro;</body></html>\n"
-    ],
+    "body": "This is the plaintext version, in utf-8. Proof by Euro: €",
     "attachments": []
   }
 }

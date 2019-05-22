@@ -27,13 +27,13 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
         let date = dateparse(get_first_header_value_or_empty(&email, "Date")?.as_str())
             .map_err(|err| CollectorError::EventCreationError { message: err.to_string() })?;
 
-        let mut bodies = vec![];
+        let mut body = None;
         let mut attachments = vec![];
 
-        extract_body_and_attachments(&email, &mut bodies, &mut attachments)?;
+        extract_body_and_attachments(&email, &mut body, &mut attachments)?;
 
         for subpart in email.subparts {
-            extract_body_and_attachments(&subpart, &mut bodies, &mut attachments)?;
+            extract_body_and_attachments(&subpart, &mut body, &mut attachments)?;
         }
 
         let mut event = Event::new("email");
@@ -42,7 +42,7 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
         event.payload.insert("from".to_owned(), Value::Text(from));
         event.payload.insert("to".to_owned(), Value::Text(to));
         event.payload.insert("cc".to_owned(), Value::Text(cc));
-        event.payload.insert("body".to_owned(), Value::Array(bodies));
+        event.payload.insert("body".to_owned(), body.unwrap_or_else(|| Value::Text("".to_owned())));
         event.payload.insert("attachments".to_owned(), Value::Array(attachments));
 
         Ok(event)
@@ -62,14 +62,22 @@ fn get_first_header_value_or_empty(
 
 fn extract_body_and_attachments(
     email: &ParsedMail,
-    bodies: &mut Vec<Value>,
+    body: &mut Option<Value>,
     attachments: &mut Vec<Value>,
 ) -> Result<(), CollectorError> {
     let content_disposition = email.get_content_disposition().map_err(into_err)?;
     match content_disposition.disposition {
         DispositionType::Inline => {
             if email.ctype.mimetype.contains("text") {
-                bodies.push(Value::Text(email.get_body().map_err(into_err)?))
+                *body = match body.take() {
+                    None => Some(Value::Text(email.get_body().map_err(into_err)?)),
+                    opt => {
+                        warn!("Found more than one body. Only the first one will be used.");
+                        opt
+                    }
+                };
+            } else {
+                warn!("Found inline attachment not of type text. It will be ignored.");
             }
         }
         DispositionType::Attachment => {
@@ -161,7 +169,10 @@ mod test {
 
         // Assert
         assert_eq!("Test for Mail collector", event.payload.get("subject").unwrap());
-        assert!(event.payload.get("body").unwrap().get_array().unwrap()[0]
+        assert!(event
+            .payload
+            .get("body")
+            .unwrap()
             .get_text()
             .unwrap()
             .contains("<b>Test for Mail collector</b>"));
@@ -181,7 +192,10 @@ mod test {
             "Test for Mail collector - with attachments",
             event.payload.get("subject").unwrap()
         );
-        assert!(event.payload.get("body").unwrap().get_array().unwrap()[0]
+        assert!(event
+            .payload
+            .get("body")
+            .unwrap()
             .get_text()
             .unwrap()
             .contains("<b>Test for Mail collector with attachments</b>"));
