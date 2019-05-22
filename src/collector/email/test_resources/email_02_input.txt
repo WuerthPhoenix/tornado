@@ -1,0 +1,30 @@
+Return-Path: <mr.francesco.cina@gmail.com>
+Received: from [192.168.1.90] ([62.170.2.253])
+        by smtp.gmail.com with ESMTPSA id f81sm2421822wmf.10.2019.05.21.02.16.07
+        (version=TLS1_2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
+        Tue, 21 May 2019 02:16:08 -0700 (PDT)
+To: "Groeber, Benjamin" <Benjamin.Groeber@wuerth-phoenix.com>,
+ francesco cina <mr.francesco.cina@gmail.com>
+Cc: Thomas.Forrer@wuerth-phoenix.com, mr.francesco.cina@gmail.com
+From: "Mr.Francesco.Cina" <mr.francesco.cina@gmail.com>
+Subject: Test for Mail collector
+Message-ID: <efb3e2ff-8c1e-4699-81f9-55826dd8e972@gmail.com>
+Date: Tue, 21 May 2019 11:16:06 +0200
+User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:60.0) Gecko/20100101
+ Thunderbird/60.6.1
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+Content-Language: en-US
+Content-Transfer-Encoding: 7bit
+
+<html>
+  <head>
+
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  </head>
+  <body text="#000000" bgcolor="#FFFFFF">
+    <p>Ignore it - <b>Test for Mail collector</b></p>
+    <p><b></b><br>
+    </p>
+  </body>
+</html>

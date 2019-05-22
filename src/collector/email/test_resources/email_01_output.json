@@ -4,6 +4,10 @@
   "payload": {
     "date": 1475417182,
     "subject": "This is a test email",
-    "body": "This is the plaintext version, in utf-8. Proof by Euro: €"
+    "to": "",
+    "from": "",
+    "cc": "",
+    "body": "This is the plaintext version, in utf-8. Proof by Euro: €",
+    "attachments": []
   }
 }
