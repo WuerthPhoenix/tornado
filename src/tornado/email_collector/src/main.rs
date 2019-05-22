@@ -1,15 +1,14 @@
 #![cfg(unix)]
 
-pub mod actors;
+pub mod actor;
 pub mod config;
 
+use crate::actor::EmailReaderActor;
 use actix::prelude::*;
 use failure::Fail;
 use log::*;
-use tornado_common::actors::message::StringMessage;
-use tornado_common_logger::setup_logger;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
-use crate::actors::email_reader::EmailReaderActor;
+use tornado_common_logger::setup_logger;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
@@ -21,7 +20,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
     // start system
     System::run(move || {
-
         // Start TcpWriter
         let tornado_tcp_address =
             format!("{}:{}", conf.io.tornado_event_socket_ip, conf.io.tornado_event_socket_port);
@@ -38,15 +36,17 @@ fn main() -> Result<(), Box<std::error::Error>> {
             debug!("Received message on the socket");
             email_addr.do_send(msg);
         })
-            .and_then(|_| {
-                info!("Started UDS server at [{}]. Listening for incoming events", conf.io.uds_path.clone());
-                Ok(())
-            })
-            .unwrap_or_else(|err| {
-                error!("Cannot start UDS server at [{}]. Err: {}", conf.io.uds_path.clone(), err);
-                std::process::exit(1);
-            });
-
+        .and_then(|_| {
+            info!(
+                "Started UDS server at [{}]. Listening for incoming events",
+                conf.io.uds_path.clone()
+            );
+            Ok(())
+        })
+        .unwrap_or_else(|err| {
+            error!("Cannot start UDS server at [{}]. Err: {}", conf.io.uds_path.clone(), err);
+            std::process::exit(1);
+        });
     })?;
 
     Ok(())
