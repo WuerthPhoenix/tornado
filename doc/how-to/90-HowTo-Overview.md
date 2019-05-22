@@ -16,20 +16,20 @@ If you do not see any of the Tornado services in the list, then Tornado is not p
 # systemctl daemon-reload
 ```
 
-If instead the Tornado services are there, but marked DOWN, you will need to restart them.
+If instead the Tornado services are there, but marked DOWN, you will need to start them.
 ```
 DOWN [3] tornado.service
 DOWN [3] tornado_icinga2_collector.service
 DOWN [3] tornado_webhook_collector.service
 ```
 
-In either event, you should then restart NetEye services and check that they are running:
+In either event, you should then start all NetEye services and check that they are running:
 ```
 # neteye start
 # neteye status
 ```
 
-Alternatively, you can restart Tornado by itself:
+Alternatively, you can check the status of the Tornado service by itself:
 ```
 # systemctl status tornado
 ... Active: active (running) ...
