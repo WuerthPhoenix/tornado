@@ -20,7 +20,7 @@
 %endif
 
 Name:    tornado
-Version: 0.10.1
+Version: 0.11.0
 Release: 1
 Summary: Tornado Package
 
@@ -163,6 +163,10 @@ fi
 %{userguide_dir}/*
 
 %changelog
+* Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
+ - Add General Section for How To Articles
+ - Add How To for the Event Simulation API Endpoint
+
 * Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.1-1
  - Fix broken default config of archive executor
  - Deploy How To documentation to User Guide
