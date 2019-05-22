@@ -8,9 +8,8 @@ will properly match those events and correctly invoke the chosen actions.
 
 ## <a id="tornado-howto-simulate-step1"></a> Step #1:  Prerequisites
 
-We assume here that you are using a shell environment rather than the Tornado GUI.
-If you have not already installed Tornado on NetEye 4, do so now (the minimum Tornado version
-is 0.10.0):
+We assume here that you are using a shell environment rather than the Tornado GUI.  If Tornado
+is not already installed, you can install it as follows (the minimum Tornado version is 0.10.0):
 ```
 # yum install tornado --enablerepo=neteye-extras
 ```
@@ -31,7 +30,8 @@ The configuration is correct.
 
 First let's test whether we can correctly match a rule.  To do this, we will purposefully not
 execute any actions should a rule match.  This capability is designed into Tornado's Event
-Simulator by setting the *process_type* to **SkipActions**.  The two possible values are:
+Simulator by setting the *process_type* to **SkipActions**.  The possible values for
+*process_type* are:
 * **Full:** the event is processed and linked actions are executed
 * **SkipActions:** the event is processed but actions are not executed
 
@@ -131,22 +131,17 @@ event, while the remaining rules have *status* **NotMatched** with empty *action
 
 ## <a id="tornado-howto-simulate-step3"></a> Step #3:  Actions after Matches
 
+If we repeat the same command as above, but with *process_type* set to **Full**, then that
+*Archive* action will be executed.  We won't repeat that command here because on a production
+system, it can be dangerous to execute an action unless you know what you are doing.  The effects
+of poorly configured actions can include shutting down your entire monitoring server, or crashing
+the server or VM.
 
-<!--
-Charles:  Is it dangerous to include an example with process_type Full instead of SkipActions?
-
-Benjamin  Yes    One could shut down the entire monitoring    or even make the server explode
-
-Charles:  So I shouldn't include it?  :wink:
-
-Benjamin  You can state what it does, but don't enable to copy-paste something with it
-
-Charles:  Right.  Can I say it's dangerous, don't do it without thinking first, and that's why we
-          don't include an example?  Or should I just say it's dangerous, don't do it carelessly?
-
-Benjamin  It's dangerous, because you can't be sure which actions are triggered, the first time you run an event
-
-Charles:  OK.  Can I include what the output would look like were the user to do it, so that they can compare it against skip actions?
-
-Benjamin  Sure, i don't think there will change that much
--->
+If you have configured your *Archive Executor*, we can now check the results of running that
+command.  This executor is relatively safe, as it just writes the input event into a log file.
+So for instance if we configured the executor to save data in */test/all.log*, we should be
+able to see the output immediately:
+```
+# cat /neteye/shared/tornado/data/archive/test/all.log
+{"type":"something","payload":{},"created_ms":111}
+```
