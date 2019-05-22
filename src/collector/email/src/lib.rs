@@ -87,12 +87,15 @@ fn extract_body_and_attachments(
             attachment.insert("mimetype".to_owned(), Value::Text(email.ctype.mimetype.clone()));
 
             if email.ctype.mimetype.contains("text") {
+                attachment.insert("encoding".to_owned(), Value::Text("plaintext".to_owned()));
                 attachment
                     .insert("content".to_owned(), Value::Text(email.get_body().map_err(into_err)?));
-                attachments.push(Value::Map(attachment))
             } else {
-
+                attachment.insert("encoding".to_owned(), Value::Text("base64".to_owned()));
+                let base64_content = base64::encode(&email.get_body_raw().map_err(into_err)?);
+                attachment.insert("content".to_owned(), Value::Text(base64_content));
             }
+            attachments.push(Value::Map(attachment))
         }
         _ => {
             warn!(
@@ -184,14 +187,24 @@ mod test {
             .contains("<b>Test for Mail collector with attachments</b>"));
 
         let attachments = event.payload.get("attachments").unwrap().get_array().unwrap();
-        assert_eq!(1, attachments.len());
+        assert_eq!(2, attachments.len());
 
         let attachment_0 = attachments[0].get_map().unwrap();
-        assert_eq!("sample.txt", attachment_0.get("filename").unwrap());
-        assert_eq!("text/plain", attachment_0.get("mimetype").unwrap());
+        assert_eq!("sample.pdf", attachment_0.get("filename").unwrap());
+        assert_eq!("application/pdf", attachment_0.get("mimetype").unwrap());
+        assert_eq!("base64", attachment_0.get("encoding").unwrap());
+        assert!(attachment_0.get("content").unwrap().get_text().unwrap().starts_with(
+            "JVBERi0xLjMNCiXi48/TDQoNCjEgMCBvYmoNCjw8DQovVHlwZSAvQ2F0YWxvZw0KL091dGxp"
+        ));
+        assert!(attachment_0.get("content").unwrap().get_text().unwrap().ends_with("T0YNCg=="));
+
+        let attachment_1 = attachments[1].get_map().unwrap();
+        assert_eq!("sample.txt", attachment_1.get("filename").unwrap());
+        assert_eq!("text/plain", attachment_1.get("mimetype").unwrap());
+        assert_eq!("plaintext", attachment_1.get("encoding").unwrap());
         assert_eq!(
             "txt file context for email collector\n1234567890987654321\n",
-            attachment_0.get("content").unwrap()
+            attachment_1.get("content").unwrap()
         );
     }
 
