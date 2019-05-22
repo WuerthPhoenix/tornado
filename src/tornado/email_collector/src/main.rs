@@ -9,6 +9,7 @@ use log::*;
 use tornado_common::actors::message::StringMessage;
 use tornado_common_logger::setup_logger;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
+use crate::actors::email_reader::EmailReaderActor;
 
 fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
@@ -30,15 +31,12 @@ fn main() -> Result<(), Box<std::error::Error>> {
         );
 
         // Start Email collector
-        /*
-        let rsyslog_addr = SyncArbiter::start(1, move || {
-            actors::sync_collector::ProcmailCollectorActor::new(tpc_client_addr.clone())
-        });
-        */
+        let email_addr = EmailReaderActor::start_new(tpc_client_addr.clone());
 
         // Open UDS socket
         listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
-            info!("Received message on the socket")
+            debug!("Received message on the socket");
+            email_addr.do_send(msg);
         })
             .and_then(|_| {
                 info!("Started UDS server at [{}]. Listening for incoming events", conf.io.uds_path.clone());

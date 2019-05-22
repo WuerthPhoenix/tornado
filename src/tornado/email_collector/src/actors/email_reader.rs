@@ -8,16 +8,19 @@ use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common_api::Event;
 use tornado_common::actors::message::{AsyncReadMessage, StringMessage};
+use std::sync::Arc;
+use tornado_common::actors::tcp_client::TcpClientActor;
 
 pub struct EmailReaderActor {
-    pub email_collector: EmailEventCollector
+    pub tpc_client_addr: Addr<TcpClientActor>,
+    pub email_collector: Arc<EmailEventCollector>,
 }
 
 impl EmailReaderActor {
-    pub fn start_new() -> EmailReaderActor {
-        EmailReaderActor::create(move |ctx| {
-            EmailReaderActor { email_collector: EmailEventCollector::new()}
-        });
+    pub fn start_new(tpc_client_addr: Addr<TcpClientActor>) -> Addr<EmailReaderActor> {
+        EmailReaderActor::create(move |_ctx| {
+            EmailReaderActor { email_collector: Arc::new(EmailEventCollector::new()), tpc_client_addr}
+        })
     }
 }
 
@@ -29,14 +32,22 @@ impl Actor for EmailReaderActor {
     }
 }
 
-impl<F: Fn(Event) + 'static> StreamHandler<StringMessage, io::Error> for EmailReaderActor<F> {
-    tokio::io::read_to_end()
-    fn handle(&mut self, msg: StringMessage, _ctx: &mut Self::Context) {
-        debug!("JsonReaderActor - received msg: [{}]", &msg.msg);
+impl<R: AsyncRead + 'static> Handler<AsyncReadMessage<R>> for EmailReaderActor {
+    type Result = ();
 
-        match self.email_collector.to_event(&msg.msg) {
-            Ok(event) => (self.callback)(event),
-            Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
-        };
+    fn handle(&mut self, msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
+        debug!("EmailReaderActor - received new email");
+
+        let collector = self.email_collector.clone();
+        let buf = Vec::new();
+        let reader = tokio::io::read_to_end(msg.stream, buf).map(move |(_, buf)| {
+            info!("incoming: {:?}", std::str::from_utf8(&buf).unwrap());
+            let event = collector.to_event(&buf);
+            info!("produced event: {:?}", event.unwrap());
+        }).then(|_| Ok(()));
+
+        actix::spawn(reader);
+
+        ()
     }
 }
