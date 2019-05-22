@@ -10,6 +10,8 @@
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
+%define userguide_dir /usr/share/icingaweb2/modules/%{name}/doc
+
 %define build_target_dir target/release/
 
 # --define 'debugbuild 1' will trigger a rustc debug build, not release
@@ -114,6 +116,11 @@ cp -p src/tornado/engine/config/rules.d/* %{buildroot}%{lib_dir}/examples/rules/
 cp -p src/tornado/icinga2_collector/config/streams/* %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
 cp -p src/tornado/webhook_collector/config/webhooks/* %{buildroot}%{lib_dir}/examples/webhook_collector_webhooks/
 
+#install userguide
+
+mkdir -p %{buildroot}%{userguide_dir}/
+cp -p doc/how-to/* %{buildroot}%{userguide_dir}/
+
 %post
 # Copy example rules, streams only on first installation to avoid rpmnew/save files
 if test "$1" == 1 ; then
@@ -149,6 +156,10 @@ fi
 %{systemd_dir}/*
 %{systemd_plugin_dir}/*
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
+
+#Userguide
+%defattr(0644, root, root, 0755)
+%{userguide_dir}/*
 
 %changelog
 * Fri May 17 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
