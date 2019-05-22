@@ -92,7 +92,7 @@ fn extract_body_and_attachments(
                         .unwrap_or_else(|| "".to_owned()),
                 ),
             );
-            attachment.insert("mimetype".to_owned(), Value::Text(email.ctype.mimetype.clone()));
+            attachment.insert("mime_type".to_owned(), Value::Text(email.ctype.mimetype.clone()));
 
             if email.ctype.mimetype.contains("text") {
                 attachment.insert("encoding".to_owned(), Value::Text("plaintext".to_owned()));
@@ -100,6 +100,10 @@ fn extract_body_and_attachments(
                     .insert("content".to_owned(), Value::Text(email.get_body().map_err(into_err)?));
             } else {
                 attachment.insert("encoding".to_owned(), Value::Text("base64".to_owned()));
+
+                // Even if the content is already in base64, I need to encode it again because the get_body_raw()
+                // decodes it.
+                // See: https://github.com/staktrace/mailparse/issues/38
                 let base64_content = base64::encode(&email.get_body_raw().map_err(into_err)?);
                 attachment.insert("content".to_owned(), Value::Text(base64_content));
             }
@@ -205,7 +209,7 @@ mod test {
 
         let attachment_0 = attachments[0].get_map().unwrap();
         assert_eq!("sample.pdf", attachment_0.get("filename").unwrap());
-        assert_eq!("application/pdf", attachment_0.get("mimetype").unwrap());
+        assert_eq!("application/pdf", attachment_0.get("mime_type").unwrap());
         assert_eq!("base64", attachment_0.get("encoding").unwrap());
         assert!(attachment_0.get("content").unwrap().get_text().unwrap().starts_with(
             "JVBERi0xLjMNCiXi48/TDQoNCjEgMCBvYmoNCjw8DQovVHlwZSAvQ2F0YWxvZw0KL091dGxp"
@@ -214,7 +218,7 @@ mod test {
 
         let attachment_1 = attachments[1].get_map().unwrap();
         assert_eq!("sample.txt", attachment_1.get("filename").unwrap());
-        assert_eq!("text/plain", attachment_1.get("mimetype").unwrap());
+        assert_eq!("text/plain", attachment_1.get("mime_type").unwrap());
         assert_eq!("plaintext", attachment_1.get("encoding").unwrap());
         assert_eq!(
             "txt file context for email collector\n1234567890987654321\n",
