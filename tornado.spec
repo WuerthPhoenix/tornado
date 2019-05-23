@@ -20,7 +20,7 @@
 %endif
 
 Name:    tornado
-Version: 0.11.0
+Version: 0.12.0
 Release: 1
 Summary: Tornado Package
 
@@ -163,6 +163,9 @@ fi
 %{userguide_dir}/*
 
 %changelog
+* Thu May 23 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.12.0-1
+ - New Collector: Procmail
+
 * Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
  - Add General Section for How To Articles
  - Add How To for the Event Simulation API Endpoint
