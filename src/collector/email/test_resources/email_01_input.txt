@@ -1,0 +1,16 @@
+Subject: This is a test email
+Content-Type: multipart/alternative; boundary=foobar
+Date: Sun, 02 Oct 2016 07:06:22 -0700 (PDT)
+
+--foobar
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
+
+This is the plaintext version, in utf-8. Proof by Euro: =E2=82=AC
+--foobar
+Content-Type: text/html
+Content-Transfer-Encoding: base64
+
+PGh0bWw+PGJvZHk+VGhpcyBpcyB0aGUgPGI+SFRNTDwvYj4gdmVyc2lvbiwgaW4g 
+dXMtYXNjaWkuIFByb29mIGJ5IEV1cm86ICZldXJvOzwvYm9keT48L2h0bWw+Cg== 
+--foobar--

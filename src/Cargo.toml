@@ -4,6 +4,7 @@ members = [
    "common/api",
    "common/logger",
    "collector/common",
+   "collector/email",
    "collector/jmespath",
    "collector/json",
    "engine/matcher",
