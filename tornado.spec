@@ -10,6 +10,8 @@
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
+%define userguide_dir /usr/share/icingaweb2/modules/%{name}/doc
+
 %define build_target_dir target/release/
 
 # --define 'debugbuild 1' will trigger a rustc debug build, not release
@@ -114,6 +116,11 @@ cp -p src/tornado/engine/config/rules.d/* %{buildroot}%{lib_dir}/examples/rules/
 cp -p src/tornado/icinga2_collector/config/streams/* %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
 cp -p src/tornado/webhook_collector/config/webhooks/* %{buildroot}%{lib_dir}/examples/webhook_collector_webhooks/
 
+#install userguide
+
+mkdir -p %{buildroot}%{userguide_dir}/
+cp -p doc/how-to/* %{buildroot}%{userguide_dir}/
+
 %post
 # Copy example rules, streams only on first installation to avoid rpmnew/save files
 if test "$1" == 1 ; then
@@ -123,6 +130,7 @@ if test "$1" == 1 ; then
 fi
 
 %files
+
 %defattr(0755, root, root, 0775)
 %{bin_dir}
 %{script_dir}
@@ -150,11 +158,27 @@ fi
 %{systemd_plugin_dir}/*
 %exclude %dir %{systemd_plugin_dir}/neteye.target.d
 
+#Userguide
+%defattr(0644, root, root, 0755)
+%{userguide_dir}/*
+
 %changelog
-* Mon May 06 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
- - New Feature: Tornado Frontend
+* Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
+ - Add General Section for How To Articles
+ - Add How To for the Event Simulation API Endpoint
+
+* Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.1-1
+ - Fix broken default config of archive executor
+ - Deploy How To documentation to User Guide
+
+* Fri May 17 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.10.0-1
  - New Feature: API for Tornado Frontend
- - Spike for Integration of Frontend into Icingaweb2
+ - Tech. Spike: Integration of Frontend into Icingaweb2
+ - Preview: Tornado Frontend
+ - Added How-To for using tie Monitoring Endpoint
+
+* Mon Apr 29 2019 Angelo Rosace <angelo.rosace@wuerth-phoenix.com> - 0.9.0-1
+ - Added How-To for configuring an Snmptrapd Collector
 
 * Mon Apr 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.8.0-1
  - New Feature: Simple Monitoring Endpoint on port 4748
