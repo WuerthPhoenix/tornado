@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.8"
-actix-web = "1.0.0-beta.3"
+actix-web = "1.0.0-rc"
 dto = { path = "../dto", version = "0.0.1" }
 failure = "0.1"
 failure_derive = "0.1"
@@ -20,4 +20,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 
 [dev-dependencies]
-actix-service = "0.3"
+

@@ -28,7 +28,7 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Icinga2Executor<F> {
     }
 
     fn get_payload(&self, payload: &Payload) -> HashMap<String, Value> {
-        match payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(|value| value.get_map()) {
+        match payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map) {
             Some(icinga2_payload) => icinga2_payload.clone(),
             None => HashMap::new(),
         }
@@ -39,7 +39,11 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Exec
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         debug!("Icinga2Executor - received action: \n[{:#?}]", action);
 
-        match action.payload.get(ICINGA2_ACTION_NAME_KEY).and_then(|value| value.get_text()) {
+        match action
+            .payload
+            .get(ICINGA2_ACTION_NAME_KEY)
+            .and_then(tornado_common_api::Value::get_text)
+        {
             Some(icinga2_action) => {
                 info!("Icinga2Executor - perform Icinga2Action: \n[{:#?}]", icinga2_action);
 
