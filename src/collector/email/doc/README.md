@@ -1,10 +1,10 @@
 # Email Collector
 
 The _Email Collector_ receives a [MIME email message](https://en.wikipedia.org/wiki/MIME) as
-input, parses it and produces a Tornado Event.
+input, parses it, and produces a Tornado Event.
 
 
-## How it works
+## How It Works
 
 When the _Email Collector_ receives a valid [MIME email message](https://en.wikipedia.org/wiki/MIME) 
 as input, it parses it and produces a Tornado Event with the extracted data.
@@ -47,16 +47,16 @@ it will generate this Event:
 }
 ```
 
-In case of attachments, if the attachment is a text file, it will be included in the produced
-Event in plain text, otherwise, it will be encoded in base64. 
+If there are attachments, then attachments that are text files will be in plain text, otherwise
+they will be encoded in base64.
 
-For example, from this email with attachments:
+For example, passing this email with attachments:
 ```mime
-From: "Mr.Francesco.Cina" <mr.francesco.cina@gmail.com>
+From: "Francesco" <francesco@example.com>
 Subject: Test for Mail collector - with attachments
-To: "Groeber, Benjamin" <Benjamin.Groeber@wuerth-phoenix.com>,
- francesco cina <mr.francesco.cina@gmail.com>
-Cc: Thomas.Forrer@wuerth-phoenix.com, mr.francesco.cina@gmail.com
+To: "Benjamin" <benjamin@example.com>,
+ francesco <francesco@example.com>
+Cc: thomas@example.com, francesco@example.com
 Date: Sun, 02 Oct 2016 07:06:22 -0700 (PDT)
 MIME-Version: 1.0
 Content-Type: multipart/mixed;
@@ -92,7 +92,7 @@ MjEK
 
 ```
 
-it will generated this Event:
+will generate this Event:
 ```json
 {
   "type": "email",
@@ -100,9 +100,9 @@ it will generated this Event:
   "payload": {
     "date": 1475417182,
     "subject": "Test for Mail collector - with attachments",
-    "to": "\"Groeber, Benjamin\" <Benjamin.Groeber@wuerth-phoenix.com>, francesco cina <mr.francesco.cina@gmail.com>",
-    "from": "\"Mr.Francesco.Cina\" <mr.francesco.cina@gmail.com>",
-    "cc": "Thomas.Forrer@wuerth-phoenix.com, mr.francesco.cina@gmail.com",
+    "to": "\"Benjamin\" <benjamin@example.com>, francesco <francesco@example.com>",
+    "from": "\"Francesco\" <francesco@example.com>",
+    "cc": "thomas@example.com, francesco@example.com",
     "body": "<html>Test for Mail collector with attachments</html>",
     "attachments": [
       {
@@ -122,19 +122,19 @@ it will generated this Event:
 }
 ```
 
-In the Tornado Event, the _filename_ and *mime_type* properties of each attachment 
+Within the Tornado Event, the _filename_ and *mime_type* properties of each attachment 
 are the values extracted from the incoming email. 
 
 Instead, the _encoding_ property refers to how the _content_ is encoded in the Event itself.
-It can be of two types:
-- __plaintext__: the content is included in plain text
-- __base64__: the content is encoded in base64
+It can be one of two types:
+- __plaintext__:  The content is included in plain text
+- __base64__:  The content is encoded in base64
 
 ## Particular cases
 The email collector follows these rules to generate the Tornado Event: 
-- if more than a body is present in the email or its subparts, 
-  the first usable body found is used, the others will be ignored
+- If more than one body is present in the email or its subparts, 
+  the first valid body found is used, while the others will be ignored
 - Content Dispositions different from _Inline_ and _Attachment_ are ignored
 - Content Dispositions of type _Inline_ are processed only if the content type is _text/*_
-- The email subparts are not scanned recursively; this involves that only the subparts at
+- The email subparts are not scanned recursively, thus only the subparts at
   the root level are evaluated
