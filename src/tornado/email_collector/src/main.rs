@@ -5,7 +5,6 @@ pub mod config;
 
 use crate::actor::EmailReaderActor;
 use actix::prelude::*;
-use failure::Fail;
 use log::*;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
@@ -14,7 +13,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
 
     // Setup logger
-    setup_logger(&conf.logger).map_err(|err| err.compat())?;
+    setup_logger(&conf.logger).map_err(failure::Fail::compat)?;
 
     info!("Email collector started");
 

@@ -2,7 +2,6 @@ pub mod actors;
 pub mod config;
 
 use actix::prelude::*;
-use failure::Fail;
 use log::*;
 use std::io::{stdin, BufRead};
 use std::thread;
@@ -13,7 +12,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
     let conf = config::Conf::build();
 
     // Setup logger
-    setup_logger(&conf.logger).map_err(|err| err.compat())?;
+    setup_logger(&conf.logger).map_err(failure::Fail::compat)?;
 
     info!("Rsyslog collector started");
 
