@@ -1,8 +1,7 @@
-# Tornado Email Collector (executable)
+# Tornado Email Collector (Executable)
 
 The _Email Collector Executable_ binary is an executable that generates Tornado Events from
 [MIME](https://en.wikipedia.org/wiki/MIME) email inputs.
-
 
 
 ## How It Works
@@ -11,44 +10,49 @@ The Email Collector Executable is built on
 [actix](https://github.com/actix/actix).
 
 On startup, it creates a [UDS](https://en.wikipedia.org/wiki/Unix_domain_socket) 
-socket where it will listen for incoming emails. 
-Each email published on the socket, is processed by the embedded
+socket where it listens for incoming email messages. 
+Each email published on the socket is processed by the embedded
 [email collector](../../../collector/email/doc/README.md)
 to produce Tornado Events which are, finally, forwarded to the
 Tornado Engine's TCP address.
 
-Each client that needs to write an email on the socket, should close the connection
-as soon as it completes its action; in fact, the Email collector will start
-processing the email only when it receives the [EOF](https://en.wikipedia.org/wiki/End-of-file)
+Each client that needs to write an email message to the socket should close the connection
+as soon as it completes its action. In fact, the Email Collector Executable will not even start
+processing that email until it receives an [EOF](https://en.wikipedia.org/wiki/End-of-file)
 signal. Only one email per connection is allowed.
 
-This client behavior can be obtained, for example, 
-using [procmail](https://en.wikipedia.org/wiki/Procmail) 
+
+### Procmail Example
+
+This client behavior can be obtained, for instance, by using
+[procmail](https://en.wikipedia.org/wiki/Procmail) 
 with the following configuration:
 ```
-## .procmailrc file 
-MAILDIR=$HOME/Mail                 #you'd better make sure it exists
-LOGFILE=$MAILDIR/procmail.log      
+## .procmailrc file
+MAILDIR=$HOME/Mail                 # You should make sure this exists
+LOGFILE=$MAILDIR/procmail.log
 
-# This is where we ask procmail to write to our UDS socket. 
+# This is where we ask procmail to write to our UDS socket.
 SHELL=/bin/sh
 :0
 | /usr/bin/socat - /var/run/tornado/email.sock 2>&1
 ```
 
-A precondition for procmail to work is that the mail server in use is properly
-configured to notify procmail whenever it receives a new email. 
+A precondition for procmail to work is that the mail server in use must be properly
+configured to notify procmail whenever it receives new email.
 
-For additional information about how the incoming email is processed and
-the structure of the generated Event, check the specific documentation of the 
+For additional information about how incoming email is processed and
+the structure of the generated Event, check the documentation specific to the 
 embedded 
-[email collector](../../../collector/email/doc/README.md) 
+[email collector](../../../collector/email/doc/README.md).
+
+Note that the Email Collector will support any email client that works with the
+MIME format and UDS sockets.
 
 
 ## Configuration
 
-The executable configuration is based on the following command
-line parameters:
+The executable configuration is based on the following command-line parameters:
 - __logger-stdout__:  Determines whether the Logger should print to standard output.
   Valid values are `true` and `false`, defaults to `false`.
 - __logger-file-path__:  A file path in the file system; if provided, the Logger will
@@ -59,14 +63,14 @@ line parameters:
   This should be the address where the Tornado Engine is listening for incoming events.
   The default is _127.0.0.1_.
 - __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
+  This should be the port where the Tornado Engine is listening for incoming events.
   The default is _4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding old messages.
-  The default buffer value is `10000`.
-- __uds-path__: The Unix Socket path where the collector we will listen for incoming emails.
+  When the buffer is full, the collector will start discarding older messages first.
+  The default buffer size is `10000` messages.
+- __uds-path__: The Unix Socket path on which the collector will listen for incoming emails.
     The default is: _/var/run/tornado/email.sock_
     
 More information about the logger configuration
