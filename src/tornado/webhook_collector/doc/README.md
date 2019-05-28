@@ -50,13 +50,13 @@ The available startup parameters are:
   This should be the address where the Tornado Engine is listening for incoming events.
   The default is _127.0.0.1_.
 - __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
+  This should be the port where the Tornado Engine is listening for incoming events.
   The default is _4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
   When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding old messages.
-  The default buffer value is `10000`.
+  When the buffer is full, the collector will start discarding older messages first.
+  The default buffer size is `10000` messages.
 - __bind-address__:  The IP to bind the HTTP server to. The default value is `0.0.0.0`.
 - __server-port__:  The port to be used by the HTTP Server. The default value is `8080`.
 

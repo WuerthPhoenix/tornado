@@ -99,3 +99,22 @@ args = [
     "--config-dir=./spike/tornado_events_generator/config"
 ]
 dependencies = ["build"]
+
+
+# Starts the tornado_email_collector.
+#
+# Execute with:
+# > cargo make run-email-collector
+[tasks.run-email-collector]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado_email_collector",
+    "--",
+    "--logger-stdout",
+    "--logger-level=debug",
+    "--uds-path=./tornado-email.sock"
+]
+dependencies = ["build"]

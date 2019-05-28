@@ -20,6 +20,7 @@ members = [
    "spike/stdin",
    "spike/tornado_events_generator",
    "tornado/common",
+   "tornado/email_collector",
    "tornado/engine",
    "tornado/icinga2_collector",
    "tornado/rsyslog_collector",

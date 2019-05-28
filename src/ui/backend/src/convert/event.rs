@@ -1,8 +1,9 @@
 use crate::api::handler::SendEventRequest;
+use dto::config::ActionDto;
 use dto::event::{
-    EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto,
-    ProcessedFilterStatusDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto,
-    ProcessedRulesDto, SendEventRequestDto,
+    EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
+    ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto,
+    SendEventRequestDto,
 };
 use serde_json::Error;
 use std::collections::btree_map::BTreeMap;
@@ -12,7 +13,6 @@ use tornado_engine_matcher::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
-use dto::config::ActionDto;
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {

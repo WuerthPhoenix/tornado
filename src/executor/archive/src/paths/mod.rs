@@ -54,8 +54,10 @@ impl PathMatcher {
     pub fn build_path(&self, payload: &Payload) -> Result<String, ExecutorError> {
         let mut path = self.path.clone();
         for param in self.parameters.iter() {
-            let var_value =
-                payload.get(&param.simple).and_then(|val| val.get_text()).ok_or_else(|| {
+            let var_value = payload
+                .get(&param.simple)
+                .and_then(tornado_common_api::Value::get_text)
+                .ok_or_else(|| {
                     let message = format!(
                         "Cannot resolve path parameter [{}] for path [{}]",
                         &param.simple, self.path

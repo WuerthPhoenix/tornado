@@ -171,7 +171,10 @@ The repository structure is shown here:
       |-- tornado # Tornado executables (example uses of the Tornado libraries)
       |     |-- common # Common code and traits for all executables
       |     |-- engine # The Tornado Engine executable with embedded Tornado Executors
+      |     |-- email_collector # A Tornado Collector to handle MIME emails
+      |     |-- icinga2_collector # A Tornado Collector to subscribe to the Icinga2 API event streams
       |     |-- rsyslog_collector # A Tornado Collector to handle rsyslog events
+      |     |-- snmptrapd_collector # A Tornado Collector written in Perl to handle snmptrapd events
       |     |-- webhook_collector # A Tornado Collector to handle generic Webhook events
 
 
@@ -284,16 +287,14 @@ This crate describes the commonalities of all Collector types.
 <!-- This page of doc. is very short. -->
 - [tornado_collector_common](src/collector/common/doc/README.md)
 
+Describes a collector that receives a MIME email message and generates an Event.
+- [tornado_collector_email](src/collector/email/doc/README.md)
+
 This page illustrates the Collector for JSON events using the JMESPath JSON query language.
 - [tornado_collector_jmespath](src/collector/jmespath/doc/README.md)
 
 Presents the standard JSON collector that deserializes an unstructured JSON string into an Event.
 - [tornado_collector_json](src/collector/json/doc/README.md)
-
-Describes an SNMP trap collector that receives *snmptrapd* messages formatted as JSON and generates
-an Event.
-- [tornado_collector_snmptrapd](src/collector/snmptrapd/doc/README.md)
-
 
 
 ### Engine
@@ -345,11 +346,17 @@ Describes tests that dispatch Events and Actions on a single process without act
 Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
 - [tornado_engine](src/tornado/engine/doc/README.md)
 
+An executable that processes incoming emails and generates Tornado Events.
+- [tornado_email_collector](src/tornado/email_collector/doc/README.md)
+
 An executable that subscribes to Icinga2 Event Streams API and generates Tornado Events.
 - [tornado_icinga2_collector](src/tornado/icinga2_collector/doc/README.md)
 
 The description of a binary executable that generates Tornado Events from _rsyslog_ inputs.
 - [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
+
+A Perl trap handler for Net-SNMP's to subscribe to snmptrapd events.
+- [tornado_snmptrapd_collector](src/tornado/snmptrapd_collector/doc/README.md)
 
 A standalone HTTP server binary executable that listens for REST calls from a generic Webhook.
 - [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md)
