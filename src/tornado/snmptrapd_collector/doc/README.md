@@ -134,7 +134,7 @@ The structure of the generated Event is not configurable.
 
 
 
-# Testing
+## Testing
 
 To test the collector, verify that snmptrapd is installed on the machine and
 follow the collector configuration instructions above.
@@ -167,3 +167,35 @@ you can fix them by adding this line to the _snmptrapd.conf_ file:
 ```
 disableAuthorization yes
 ```
+
+
+
+## Extending MIBs
+
+SNMP relies on MIB (Management Information Base) definition files, but the *net-snmp* toolkit
+used in NetEye does not come with a complete set for all network devices.  You may thus find
+it necessary to add new definitions when configuring Tornado in your environment.
+
+If you have not previously set up *net-snmp* tools, you can enable the principle command as
+follows:
+```
+yum install /usr/bin/snmptranslate
+```
+
+If your device is already in the system, this command will return its OID, or else an error:
+```
+# snmptranslate -IR -On snmpTrapOID
+.1.3.6.1.6.3.1.1.4.1
+# snmptranslate -IR -On ciscoLS1010ChassisFanLed
+Unknown object identifier: ciscoLS1010ChassisFanLed
+```
+
+If your device is not known, you can download its MIB file (e.g., from
+[Cisco](ftp://ftp.cisco.com/pub/mibs/v2/)) and place it in the default NetEye directory:
+```
+/usr/share/snmp/mibs
+```
+
+You will then need to make *net-snmp* aware of the new configuration and ensure it is reloaded
+automatically on reboot.  More information can be found at the
+[official Net-SNMP website](http://net-snmp.sourceforge.net/wiki/index.php/TUT:Using_and_loading_MIBS).
