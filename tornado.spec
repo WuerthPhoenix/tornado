@@ -165,6 +165,7 @@ fi
 %changelog
 * Thu May 23 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
+ - Added User Guide for additional MIBs
 
 * Wed May 22 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.11.0-1
  - Add General Section for How To Articles
