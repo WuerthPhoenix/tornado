@@ -1,4 +1,5 @@
 use log::warn;
+use mailparse::body::Body;
 use mailparse::{
     dateparse, parse_mail, DispositionType, MailHeaderMap, MailParseError, ParsedMail,
 };
@@ -101,10 +102,21 @@ fn extract_body_and_attachments(
             } else {
                 attachment.insert("encoding".to_owned(), Value::Text("base64".to_owned()));
 
-                // Even if the content is already in base64, I need to encode it again because the get_body_raw()
-                // decodes it.
-                // See: https://github.com/staktrace/mailparse/issues/38
-                let base64_content = base64::encode(&email.get_body_raw().map_err(into_err)?);
+                let base64_content = match &email.get_body_encoded().map_err(into_err)? {
+                    Body::Base64(body) | Body::QuotedPrintable(body) => String::from_utf8(
+                        body.get_raw()
+                            .iter()
+                            .filter(|c| !c.is_ascii_whitespace())
+                            .cloned()
+                            .collect(),
+                    )
+                    .map_err(|err| CollectorError::EventCreationError {
+                        message: format!("{}", err),
+                    })?,
+                    Body::SevenBit(body) | Body::EightBit(body) => base64::encode(body.get_raw()),
+                    Body::Binary(body) => base64::encode(body.get_raw()),
+                };
+
                 attachment.insert("content".to_owned(), Value::Text(base64_content));
             }
             attachments.push(Value::Map(attachment))
