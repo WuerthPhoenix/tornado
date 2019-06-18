@@ -1,8 +1,9 @@
 //! The `tornado_engine_matcher` crate contains the event processing logic.
-//!
+
 pub mod accessor;
 pub mod config;
 pub mod dispatcher;
+pub mod interpolator;
 pub mod error;
 pub mod matcher;
 pub mod model;
