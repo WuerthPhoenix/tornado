@@ -66,7 +66,9 @@ impl StringInterpolator {
         for (start, end) in matches.iter() {
             // copy from previous argument end till current argument start
             if let Some(last_end) = prev_end {
-                parts.push(&template[last_end..*start])
+                if last_end != *start {
+                    parts.push(&template[last_end..*start])
+                }
             }
 
             // argument name with braces
@@ -171,5 +173,47 @@ mod test {
         assert_eq!("${_variables.test12}", parts[5]);
         assert_eq!("</span></${}div>", parts[6]);
 
+    }
+
+    #[test]
+    fn should_split_with_no_expressions_delimiters() {
+        // Arrange
+        let template = "constant string";
+
+        // Act
+        let parts = StringInterpolator::split(template).unwrap();
+
+        // Assert
+        assert_eq!(1, parts.len());
+        assert_eq!("constant string", parts[0]);
+    }
+
+    #[test]
+    fn should_split_with_single_expression() {
+        // Arrange
+        let template = "${event.type}";
+
+        // Act
+        let parts = StringInterpolator::split(template).unwrap();
+
+        // Assert
+        assert_eq!(1, parts.len());
+        assert_eq!("${event.type}", parts[0]);
+    }
+
+    #[test]
+    fn should_split_with_only_expressions() {
+        // Arrange
+        let template = "${event.type}${event.time_stamp}${event.type}";
+
+        // Act
+        let parts = StringInterpolator::split(template).unwrap();
+
+        // Assert
+        println!("{:#?}", parts);
+        assert_eq!(3, parts.len());
+        assert_eq!("${event.type}", parts[0]);
+        assert_eq!("${event.time_stamp}", parts[1]);
+        assert_eq!("${event.type}", parts[2]);
     }
 }
