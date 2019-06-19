@@ -25,7 +25,13 @@ lazy_static! {
 pub struct StringInterpolator {
     template: String,
     rule_name: String,
-    accessors: Vec<Accessor>,
+    accessors: Vec<BoundedAccessor>,
+}
+
+struct BoundedAccessor {
+    start: usize,
+    end: usize,
+    accessor: Accessor,
 }
 
 impl StringInterpolator {
@@ -35,9 +41,15 @@ impl StringInterpolator {
         rule_name: &str,
         accessor_builder: &AccessorBuilder,
     ) -> Result<Self, MatcherError> {
-        let accessors = StringInterpolator::split(template)
-            .iter()
-            .map(|part| accessor_builder.build(rule_name, part))
+        let accessors = RE
+            .find_iter(template)
+            .map(|m| {
+                accessor_builder.build(rule_name, m.as_str()).map(|accessor| BoundedAccessor {
+                    start: m.start(),
+                    end: m.end(),
+                    accessor,
+                })
+            })
             .collect::<Result<Vec<_>, MatcherError>>()?;
 
         Ok(StringInterpolator {
@@ -53,6 +65,8 @@ impl StringInterpolator {
     /// and a dynamic part (e.g. placeholders to be resolved at runtime)
     pub fn is_interpolation_required(&self) -> bool {
         self.accessors.len() > 1
+            || (self.accessors.len() == 1
+                && !(self.accessors[0].start == 0 && self.accessors[0].end == self.template.len()))
     }
 
     /// Render
@@ -63,7 +77,16 @@ impl StringInterpolator {
     ) -> Result<Value, MatcherError> {
         let mut render = String::new();
 
-        for accessor in &self.accessors {
+        // keeps the index of the previous argument end
+        let mut prev_end = 0;
+
+        for bounded_accessor in &self.accessors {
+            if prev_end != bounded_accessor.start {
+                render.push_str(&self.template[prev_end..bounded_accessor.start])
+            }
+
+            let accessor = &bounded_accessor.accessor;
+
             let value = accessor.get(event, extracted_vars).ok_or(
                 MatcherError::InterpolatorRenderError {
                     template: self.template.to_owned(),
@@ -91,42 +114,19 @@ impl StringInterpolator {
                     cause: format!("Accessor [{:?}] returned an Array. Expected text, number, boolean or null.", accessor),
                 }),
             }
+
+            prev_end = bounded_accessor.end;
         }
 
-        Ok(Value::Text(render))
-    }
-
-    fn split(template: &str) -> Vec<&str> {
-        let matches: Vec<(usize, usize)> =
-            RE.find_iter(template).map(|m| (m.start(), m.end())).collect();
-
-        let mut parts = vec![];
-
-        // keeps the index of the previous argument end
-        let mut prev_end = 0;
-
-        // loop all matches
-        for (start, end) in matches.iter() {
-            // copy from previous argument end till current argument start
-            if prev_end != *start {
-                parts.push(&template[prev_end..*start])
-            }
-
-            // argument name with braces
-            parts.push(&template[*start..*end]);
-
-            prev_end = *end;
-        }
-
-        let template_len = template.len();
+        let template_len = self.template.len();
 
         // if last arg end index isn't the end of the string then copy
         // from last arg end till end of template
         if prev_end < template_len {
-            parts.push(&template[prev_end..template_len])
+            render.push_str(&self.template[prev_end..template_len])
         }
 
-        parts
+        Ok(Value::Text(render))
     }
 }
 
@@ -157,61 +157,28 @@ mod test {
             StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
         // Assert
-        assert_eq!(7, interpolator.accessors.len());
+        assert_eq!(3, interpolator.accessors.len());
 
-        match &interpolator.accessors[0] {
-            Accessor::Constant { value } => assert_eq!("<div><span>", value),
-            _ => assert!(false),
-        }
-
-        match &interpolator.accessors[1] {
+        assert_eq!(&11, &interpolator.accessors[0].start);
+        assert_eq!(&32, &interpolator.accessors[0].end);
+        match &interpolator.accessors[0].accessor {
             Accessor::Payload { keys } => assert_eq!(1, keys.len()),
             _ => assert!(false),
         }
 
-        match &interpolator.accessors[2] {
-            Accessor::Constant { value } => assert_eq!("</sp", value),
-            _ => assert!(false),
-        }
-
-        match &interpolator.accessors[3] {
+        assert_eq!(&36, &interpolator.accessors[1].start);
+        assert_eq!(&49, &interpolator.accessors[1].end);
+        match &interpolator.accessors[1].accessor {
             Accessor::Type => assert!(true),
             _ => assert!(false),
         }
 
-        match &interpolator.accessors[4] {
-            Accessor::Constant { value } => assert_eq!("an><span>", value),
-            _ => assert!(false),
-        }
-
-        match &interpolator.accessors[5] {
+        assert_eq!(&58, &interpolator.accessors[2].start);
+        assert_eq!(&78, &interpolator.accessors[2].end);
+        match &interpolator.accessors[2].accessor {
             Accessor::ExtractedVar { key } => assert_eq!("rule.test12", key),
             _ => assert!(false),
         }
-
-        match &interpolator.accessors[6] {
-            Accessor::Constant { value } => assert_eq!("</span></${}div>", value),
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
-    fn should_split_based_on_expressions_delimiters() {
-        // Arrange
-        let template = "<div><span>${event.payload.test}</sp${event.type}an><span>${_variables.test12}</span></${}div>";
-
-        // Act
-        let parts = StringInterpolator::split(template);
-
-        // Assert
-        assert_eq!(7, parts.len());
-        assert_eq!("<div><span>", parts[0]);
-        assert_eq!("${event.payload.test}", parts[1]);
-        assert_eq!("</sp", parts[2]);
-        assert_eq!("${event.type}", parts[3]);
-        assert_eq!("an><span>", parts[4]);
-        assert_eq!("${_variables.test12}", parts[5]);
-        assert_eq!("</span></${}div>", parts[6]);
     }
 
     #[test]
@@ -220,11 +187,11 @@ mod test {
         let template = "constant string";
 
         // Act
-        let parts = StringInterpolator::split(template);
+        let interpolator =
+            StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
         // Assert
-        assert_eq!(1, parts.len());
-        assert_eq!("constant string", parts[0]);
+        assert_eq!(0, interpolator.accessors.len());
     }
 
     #[test]
@@ -233,27 +200,61 @@ mod test {
         let template = "${event.type}";
 
         // Act
-        let parts = StringInterpolator::split(template);
+        let interpolator =
+            StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
         // Assert
-        assert_eq!(1, parts.len());
-        assert_eq!("${event.type}", parts[0]);
+        assert_eq!(1, interpolator.accessors.len());
+
+        assert_eq!(&0, &interpolator.accessors[0].start);
+        assert_eq!(&13, &interpolator.accessors[0].end);
     }
 
     #[test]
     fn should_split_with_only_expressions() {
         // Arrange
-        let template = "${event.type}${event.time_stamp}${event.type}";
+        let template = "${event.type}${event.created_ms}${event.type}";
 
         // Act
-        let parts = StringInterpolator::split(template);
+        let interpolator =
+            StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
         // Assert
-        println!("{:#?}", parts);
-        assert_eq!(3, parts.len());
-        assert_eq!("${event.type}", parts[0]);
-        assert_eq!("${event.time_stamp}", parts[1]);
-        assert_eq!("${event.type}", parts[2]);
+        assert_eq!(3, interpolator.accessors.len());
+
+        assert_eq!(&0, &interpolator.accessors[0].start);
+        assert_eq!(&13, &interpolator.accessors[0].end);
+
+        assert_eq!(&13, &interpolator.accessors[1].start);
+        assert_eq!(&32, &interpolator.accessors[1].end);
+
+        assert_eq!(&32, &interpolator.accessors[2].start);
+        assert_eq!(&45, &interpolator.accessors[2].end);
+    }
+
+    #[test]
+    fn should_render_a_constant_string() {
+        // Arrange
+        let payload = Payload::new();
+
+        let event = InternalEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ms: 1554130814854,
+            payload,
+        });
+
+        let template = "constant string";
+
+        // Act
+        let interpolator =
+            StringInterpolator::build(template, "rule", &Default::default()).unwrap();
+        let result = interpolator.render(&event, None);
+
+        // Assert
+        assert!(result.is_ok());
+        let render = result.unwrap();
+
+        assert_eq!("constant string", &render);
     }
 
     #[test]

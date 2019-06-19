@@ -2,11 +2,10 @@ use cpuprofiler::PROFILER;
 use criterion::Criterion;
 use tornado_common_api::{Event, Payload, Value};
 
-use tornado_engine_matcher::model::InternalEvent;
 use tornado_engine_matcher::interpolator::StringInterpolator;
+use tornado_engine_matcher::model::InternalEvent;
 
 pub fn bench(c: &mut Criterion) {
-
     let mut payload = Payload::new();
     payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
     payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
@@ -19,12 +18,12 @@ pub fn bench(c: &mut Criterion) {
 
     let template = "type: ${event.type} - body: ${event.payload.body}";
 
-    let interpolator =
-        StringInterpolator::build(template, "rule", &Default::default()).unwrap();
+    let interpolator = StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
-    // println!("result is : {:#?}", matcher.process(event.clone()));
-    PROFILER.lock().unwrap().start("./target/full_match.profile").unwrap();
-    c.bench_function("String interpolator V1", move |b| b.iter(|| execute_test(&interpolator, &event)));
+    PROFILER.lock().unwrap().start("./target/interpolator.profile").unwrap();
+    c.bench_function("String interpolator", move |b| {
+        b.iter(|| execute_test(&interpolator, &event))
+    });
     PROFILER.lock().unwrap().stop().unwrap();
 }
 
