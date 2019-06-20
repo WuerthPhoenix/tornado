@@ -7,6 +7,7 @@
 %define data_dir %{tornado_dir}/data/
 %define log_dir %{tornado_dir}/log/
 %define script_dir %{_datadir}/neteye/tornado/scripts/
+%define ne_secure_install_dir %{_datadir}/neteye/secure_install/
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
@@ -116,10 +117,13 @@ cp -p src/tornado/engine/config/rules.d/* %{buildroot}%{lib_dir}/examples/rules/
 cp -p src/tornado/icinga2_collector/config/streams/* %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
 cp -p src/tornado/webhook_collector/config/webhooks/* %{buildroot}%{lib_dir}/examples/webhook_collector_webhooks/
 
-#install userguide
-
+# install userguide
 mkdir -p %{buildroot}%{userguide_dir}/
 cp -p doc/how-to/* %{buildroot}%{userguide_dir}/
+
+# install autosetup
+%{__mkdir_p} %{buildroot}/%{ne_secure_install_dir}/
+%{__cp} src/scripts/510_tornado_eventgw_procmail_config.sh %{buildroot}/%{ne_secure_install_dir}
 
 %post
 # Copy example rules, streams only on first installation to avoid rpmnew/save files
@@ -161,6 +165,21 @@ fi
 #Userguide
 %defattr(0644, root, root, 0755)
 %{userguide_dir}/*
+
+#-------------------------------------------------------------------------------
+#| Autosetup package |
+#-------------------------------------------------------------------------------
+%package autosetup
+Group:    Applications/System
+Summary:  Files for NetEye Icingaweb2 Update Module AutoSetup
+Requires: %{name} = %{version}-%{release}
+
+%description autosetup
+Files for neteye_secure_install %{name} autosetup
+
+%files autosetup
+%attr(0744, root, root) %{ne_secure_install_dir}/*
+
 
 %changelog
 * Thu May 23 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.12.0-1
