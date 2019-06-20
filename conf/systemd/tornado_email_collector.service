@@ -1,0 +1,15 @@
+[Unit]
+Description=Tornado Email Collector - Data Collector for procmail
+
+[Service]
+Type=simple
+
+#User=tornado
+RuntimeDirectory=tornado_email_collector
+ExecStart=/usr/lib64/tornado/bin/tornado_email_collector --logger-level=info --logger-stdout
+Restart=on-failure
+RestartSec=3
+# Other Restart options: or always, on-abort, etc
+
+[Install]
+WantedBy=neteye.target
