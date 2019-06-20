@@ -145,11 +145,11 @@ impl AccessorBuilder {
 #[derive(PartialEq, Debug)]
 pub enum Accessor {
     Constant { value: Value },
-    CreatedMs {},
+    CreatedMs,
     ExtractedVar { key: String },
     Payload { keys: Vec<ValueGetter> },
-    Type {},
-    Event {},
+    Type,
+    Event,
 }
 
 impl Accessor {
@@ -160,7 +160,7 @@ impl Accessor {
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
-            Accessor::CreatedMs {} => Some(Cow::Borrowed(&event.created_ms)),
+            Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { key } => extracted_vars
                 .and_then(|vars| vars.get(key.as_str()))
                 .map(|value| Cow::Borrowed(value)),
@@ -176,8 +176,8 @@ impl Accessor {
 
                 value.map(|value| Cow::Borrowed(value))
             }
-            Accessor::Type {} => Some(Cow::Borrowed(&event.event_type)),
-            Accessor::Event {} => {
+            Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
+            Accessor::Event => {
                 let event_value: Value = event.clone().into();
                 Some(Cow::Owned(event_value))
             }

@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 log = "0.4"
-regex = "1.0"
+regex = "1.1"
 lru_time_cache = "0.8"
 serde = "1.0"
 serde_derive = "1.0"
