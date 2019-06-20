@@ -18,9 +18,30 @@ lazy_static! {
 }
 
 /// A StringInterpolator allows the dynamic substitution of placeholders in a string
-/// with values extracted from an incoming event.
+/// with values extracted from an incoming event or from the extracted variables.
 /// E.g.:
 /// ```rust
+///
+/// use tornado_common_api::{Payload, Value, Event};
+/// use tornado_engine_matcher::model::InternalEvent;
+/// use tornado_engine_matcher::interpolator::StringInterpolator;
+///
+/// let mut payload = Payload::new();
+/// payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+///
+/// let event = InternalEvent::new(Event {
+///     event_type: "event_type_value".to_owned(),
+///     created_ms: 1554130814854,
+///     payload,
+/// });
+///
+/// let template = "type: ${event.type} - body: ${event.payload.body}";
+///
+/// let interpolator = StringInterpolator::build(template, "rule", &Default::default()).unwrap();
+/// let render = interpolator.render(&event, None).unwrap();
+///
+/// assert_eq!("type: event_type_value - body: body_value", &render);
+///
 /// ```
 pub struct StringInterpolator {
     template: String,
@@ -36,40 +57,45 @@ struct BoundedAccessor {
 
 impl StringInterpolator {
     /// Creates a new StringInterpolator
-    pub fn build(
-        template: &str,
-        rule_name: &str,
+    pub fn build<T: Into<String>, R: Into<String>>(
+        template: T,
+        rule_name: R,
         accessor_builder: &AccessorBuilder,
     ) -> Result<Self, MatcherError> {
+        let template_string = template.into();
+        let rule_name_string = rule_name.into();
+
         let accessors = RE
-            .find_iter(template)
+            .find_iter(&template_string)
             .map(|m| {
-                accessor_builder.build(rule_name, m.as_str()).map(|accessor| BoundedAccessor {
-                    start: m.start(),
-                    end: m.end(),
-                    accessor,
-                })
+                accessor_builder
+                    .build(&rule_name_string, m.as_str())
+                    .map(|accessor| BoundedAccessor { start: m.start(), end: m.end(), accessor })
             })
             .collect::<Result<Vec<_>, MatcherError>>()?;
 
-        Ok(StringInterpolator {
-            template: template.to_owned(),
-            rule_name: rule_name.to_owned(),
-            accessors,
-        })
+        Ok(StringInterpolator { template: template_string, rule_name: rule_name_string, accessors })
     }
 
     /// Returns whether the template used to create this StringInterpolator
     /// requires interpolation.
-    /// This is true only if the template contains at least a static (e.g. constant text)
-    /// and a dynamic part (e.g. placeholders to be resolved at runtime)
+    /// This is true only if the template contains at least both a static part (e.g. constant text)
+    /// and a dynamic part (e.g. placeholders to be resolved at runtime).
+    /// When the interpolator is not required, it can be replaced by a simpler Accessor.
     pub fn is_interpolation_required(&self) -> bool {
         self.accessors.len() > 1
             || (self.accessors.len() == 1
                 && !(self.accessors[0].start == 0 && self.accessors[0].end == self.template.len()))
     }
 
-    /// Render
+    /// Performs the placeholders substitution on the internal template and return the
+    /// resulting string.
+    /// The placeholders are replaced with values extracted from the passed event and extracted_vars.
+    /// Only values of type String, Number, Boolean and null are accepted; consequently, this method
+    /// will return an error if:
+    /// - the placeholder cannot be resolved
+    /// - the value associated with the placeholder is of type Array
+    /// - the value associated with the placeholder is of type Map
     pub fn render(
         &self,
         event: &InternalEvent,
@@ -494,6 +520,40 @@ mod test {
 
         // Assert
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn interpolator_demo() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("payload content".to_owned()));
+
+        let event = InternalEvent::new(Event {
+            event_type: "email".to_owned(),
+            created_ms: 1554130814854,
+            payload,
+        });
+
+        let template = r#"
+            Received event with type: ${event.type}
+            timestamp: ${event.created_ms}
+            body content: ${event.payload.body}
+         "#;
+
+        // Act
+
+        let interpolator =
+            StringInterpolator::build(template, "rule", &Default::default()).unwrap();
+        let result = interpolator.render(&event, None);
+
+        // Assert
+        assert!(result.is_ok());
+
+        println!("---------------------------");
+        println!("Event: \n{:#?}", event);
+        println!("Template: \n{}", template);
+        println!("Rendered template: \n{}", result.unwrap().get_text().unwrap());
+        println!("---------------------------");
     }
 
     #[test]
