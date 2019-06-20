@@ -43,12 +43,14 @@ lazy_static! {
 /// assert_eq!("type: event_type_value - body: body_value", &render);
 ///
 /// ```
+#[derive(Debug, PartialEq)]
 pub struct StringInterpolator {
     template: String,
     rule_name: String,
     accessors: Vec<BoundedAccessor>,
 }
 
+#[derive(Debug, PartialEq)]
 struct BoundedAccessor {
     start: usize,
     end: usize,
@@ -100,7 +102,7 @@ impl StringInterpolator {
         &self,
         event: &InternalEvent,
         extracted_vars: Option<&HashMap<String, Value>>,
-    ) -> Result<Value, MatcherError> {
+    ) -> Result<String, MatcherError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -152,7 +154,7 @@ impl StringInterpolator {
             render.push_str(&self.template[prev_end..template_len])
         }
 
-        Ok(Value::Text(render))
+        Ok(render)
     }
 }
 
@@ -552,7 +554,7 @@ mod test {
         println!("---------------------------");
         println!("Event: \n{:#?}", event);
         println!("Template: \n{}", template);
-        println!("Rendered template: \n{}", result.unwrap().get_text().unwrap());
+        println!("Rendered template: \n{}", result.unwrap());
         println!("---------------------------");
     }
 
