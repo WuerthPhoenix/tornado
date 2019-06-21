@@ -280,7 +280,7 @@ mod test_unix {
     }
 
     #[test]
-    fn should_execute_script_write_file() {
+    fn should_execute_script_without_placeholders() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
