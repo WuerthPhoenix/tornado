@@ -13,7 +13,10 @@ Before continuing, you should first check the
 
 ## <a id="tornado-howto-email-collector-step1"></a> Step #1:  Email and Package Configuration
 
-* For testing purposes we will use **mailx** to send mails on the local machine.
+* For testing purposes we will use **mailx** to locally send mails to the **eventgw** mailbox
+  on NetEye via postfix. In a production environment you or your Administrator will need to
+  configure the mail infrastructure such that the **eventgw** mailbox on NetEye is integrated
+  your companys mail infrastructure.
 * If you just upgraded your tornado installation run *neteye-secure-install* and
 * Make sure the Email Collector service is running:
   ```
