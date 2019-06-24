@@ -12,17 +12,8 @@ Before continuing, you should first check the
 
 ## <a id="tornado-howto-email-collector-step1"></a> Step #1:  Email and Package Configuration
 
-* Install a mail program like **mailx**  <!-- Installed by default on NetEye? -->
-* Set up the gateway by sending an empty email:   <!-- What does this do?  -->
-  ```
-  # mail -s MySubject eventgw@localhost
-  ```
-* Set permissions for the Unix Socket  <!-- This is a temporary step due to a bug -->
-  ```
-  chmod 0777 /var/run/tornado/email.sock
-  ```
-* Ensure that *tornado-autosetup* is installed  <!-- Also a temporary step?  It's in neteye-alpha -->
-* Run *neteye-secure-install*
+* For testing purposes we will use **mailx** to send mails on the local machine.
+* If you just upgraded your tornado installation run *neteye-secure-install* and
 * Make sure the Email Collector service is running:
   ```
   ● tornado_email_collector.service - Tornado Email Collector - Data Collector for procmail
@@ -31,17 +22,16 @@ Before continuing, you should first check the
            └─neteye.conf
    Active: active (running) since Thu 2019-06-20 19:08:53 CEST; 20h ago
   ```
-
+* Send an email to the dedicated **eventgw** user which will then be processed by tornado
+  ```
+  # echo "TestContent" | mail -s TestSubject eventgw@localhost
+  ```
 * Now test that a sent email makes it to Tornado (the timestamp reported by journalctl should be
-  just a second or two after you send the email):
+  at most a second or two after you send the email):
   ```
-  # echo "Example content" | mail -s MySubject eventgw@localhost
   # journalctl -u tornado_email_collector.service
-  Jun 21 15:11:59 charles47b.wp.lan tornado_email_collector[12240]: [2019-06-21][15:11:59][tornado_common::actors::uds_server][INFO] UdsServerActor - new client connected to [/var/run/tornado/email.sock]
+  Jun 21 15:11:59 host.example.com tornado_email_collector[12240]: [2019-06-21][15:11:59][tornado_common::actors::uds_server][INFO] UdsServerActor - new client connected to [/var/run/tornado/email.sock]
   ```
-
-<!-- Assuming we don't have to fix /etc/postfix/main.cf since we didn't see any strange errors -->
-
 
 
 ## <a id="tornado-howto-email-collector-step2"></a> Step #2:  Service and Rule Configuration
@@ -49,26 +39,7 @@ Before continuing, you should first check the
 Now let's configure a simple rule that just archives the subject and sender of an email
 into a log file.
 
-<!-- The following is just copied from the HowTo-SNMP.md file. -->
-
-If you look at the file */neteye/shared/tornado/conf/archive_executor.toml*, which is the
-configuration file for the **Archive Executor**, you will see that the default base archive path
-is set to */neteye/shared/tornado/data/archive/*.  Let's keep the first part, but under
-"[paths]" let's add a specific directory (relative to the base directory given for "base_path".
-This will use the keyword "trap", which matches the "archive_type" in the "action" part of our
-rule from Section #3, and will include our "source" field, which extracted the source IP from
-the original event's payload:
-
 ```
-base_path =  "/neteye/shared/tornado/data/archive/"
-default_path = "/default/default.log"
-file_cache_size = 10
-file_cache_ttl_secs = 1
-
-[paths]
-"trap" = "/trap/${source}/all.log"
-```
-
 Here is an example of an Event created by the Email Collector:
 <!-- See the doc at src/collector/email/doc/README.md -->
 
@@ -89,8 +60,8 @@ Here is an example of an Event created by the Email Collector:
 ```
 
 Our rule needs to match incoming events of type *email*, and when one matches, extract the
-**subject** field and the **from** field (sender)  from the **payload** array.  Although the
-rules used when Tornado is running are found in */neteye/shared/tornado/conf/rules.d/*, we'll
+**subject** field and the **from** field (sender)  from the **payload** object.  Rules used
+when Tornado is running are found in */neteye/shared/tornado/conf/rules.d/*, but we'll
 model our rule based on one of the example rules found here:
 ```
 /usr/lib64/tornado/examples/rules/
@@ -127,7 +98,7 @@ Here's our new rule containing both parts:
         "payload": {
           "sender": "${event.payload.from}",
           "subject": "${event.payload.subject}",
-          "archive_type": "my_email_type"
+          "archive_type": "archive_mail"
         }
       }
     ]
@@ -161,7 +132,7 @@ If you look at the file */neteye/shared/tornado/conf/archive_executor.toml*, whi
 configuration file for the **Archive Executor**, you will see that the default base archive path
 is set to */neteye/shared/tornado/data/archive/*.  Let's keep the first part, but under
 "[paths]" let's add a specific directory (relative to the base directory given for "base_path".
-This will use the keyword "trap", which matches the "archive_type" in the "action" part of our
+This will use the keyword "arhchive_mail", which matches the "archive_type" in the "action" part of our
 rule from Section #3, and will include our "source" field, which extracted the source IP from
 the original event's payload:
 
@@ -172,7 +143,7 @@ file_cache_size = 10
 file_cache_ttl_secs = 1
 
 [paths]
-"my_email_type" = "/email/${sender}/extracted.log"
+"archive_mail" = "/email/${sender}/extracted.log"
 ```
 
 Combining the base and specific paths yields the full path where the log file will be saved
@@ -191,9 +162,9 @@ file.  Since we have only specified "event", the entire event will be saved to t
 
 Let's see how our newly configured Email Collector works using a bash shell.
 
-First we will manually send an email to be intercepted by Tornado like this:
+First we will again manually send an email to be intercepted by Tornado like this:
 ```
-# echo "The email body." | mail -s MySubject eventgw@localhost
+# echo "The email body." | mail -s "Test Subject" eventgw@localhost
 ```
 
 Event processing should be almost immediate, so you can now look at the result of the match by
@@ -203,9 +174,5 @@ subject written into the file as we specified during Step #3:
 /neteye/shared/tornado/data/archive/trap/127.0.0.1/all.log
 ```
 
-Here you can see the content written out to that log file:
-```
-```
-
-And that's it!  You've successfully configured Tornado to respond to email messages by logging
-the subject and sender into a directory specific to the network device.
+And that's it!  You've successfully configured Tornado to process emails and logging the subject
+and sender to a dynamic directory per sender.
