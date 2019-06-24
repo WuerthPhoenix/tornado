@@ -105,7 +105,6 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
 mod test {
 
     use super::*;
-    use actix_service::Service;
     use actix_web::{http, test};
     use std::collections::HashMap;
     use std::sync::Mutex;
@@ -205,14 +204,14 @@ mod test {
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response_1 = test::block_on(srv.call(request_1)).unwrap();
+        let response_1 = test::call_service(&mut srv, request_1);
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=WRONG_TOKEN")
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response_2 = test::block_on(srv.call(request_2)).unwrap();
+        let response_2 = test::call_service(&mut srv, request_2);
 
         // Assert
         assert!(response_1.status().is_success());
@@ -295,7 +294,7 @@ mod test {
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response = test::block_on(srv.call(request)).unwrap();
+        let response = test::call_service(&mut srv, request);;
 
         // Assert
         assert_eq!(http::StatusCode::NOT_FOUND, response.status());
@@ -324,7 +323,7 @@ mod test {
             .uri("/event/hook_1?token=hook_1_token")
             .header(http::header::CONTENT_TYPE, "application/json")
             .to_request();
-        let response = test::block_on(srv.call(request)).unwrap();
+        let response = test::call_service(&mut srv, request);;
 
         // Assert
         assert_eq!(http::StatusCode::METHOD_NOT_ALLOWED, response.status());
@@ -354,7 +353,7 @@ mod test {
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response = test::block_on(srv.call(request)).unwrap();
+        let response = test::call_service(&mut srv, request);;
 
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());

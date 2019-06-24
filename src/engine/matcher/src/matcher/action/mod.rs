@@ -7,6 +7,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
+use crate::interpolator::StringInterpolator;
 use crate::model::InternalEvent;
 use std::collections::HashMap;
 use tornado_common_api::Value;
@@ -88,7 +89,12 @@ impl ActionResolverBuilder {
                 Ok(ActionValueProcessor::Array(processor_values))
             }
             Value::Text(text) => {
-                Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
+                let interpolator = StringInterpolator::build(text.as_str(), rule_name, accessor)?;
+                if interpolator.is_interpolation_required() {
+                    Ok(ActionValueProcessor::Interpolator(interpolator))
+                } else {
+                    Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
+                }
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
             Value::Number(number) => Ok(ActionValueProcessor::Number(*number)),
@@ -131,7 +137,7 @@ enum ActionValueProcessor {
     Null,
     Bool(bool),
     Number(Number),
-    //Text(String),
+    Interpolator(StringInterpolator),
     Array(Vec<ActionValueProcessor>),
     Map(HashMap<String, ActionValueProcessor>),
 }
@@ -153,7 +159,9 @@ impl ActionValueProcessor {
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 })?
                 .into_owned()),
-            //ActionValueProcessor::Text(text) => Ok(Value::Text(text.to_owned())),
+            ActionValueProcessor::Interpolator(interpolator) => {
+                interpolator.render(event, extracted_vars).map(Value::Text)
+            }
             ActionValueProcessor::Null => Ok(Value::Null),
             ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
@@ -217,6 +225,45 @@ mod test {
     }
 
     #[test]
+    fn action_resolver_builder_should_identify_whether_interpolation_is_required() {
+        // Arrange
+        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+
+        action.payload.insert("constant".to_owned(), Value::Text("constant value".to_owned()));
+        action.payload.insert("expression".to_owned(), Value::Text("${event.type}".to_owned()));
+        action.payload.insert(
+            "interpolation".to_owned(),
+            Value::Text("event type: ${event.type}".to_owned()),
+        );
+
+        let config = vec![action];
+
+        // Act
+        let actions = ActionResolverBuilder::new().build("", &config).unwrap();
+
+        // Assert
+        assert_eq!(1, actions.len());
+        assert_eq!("an_action_id", &actions.get(0).unwrap().id);
+
+        let action_payload = &actions.get(0).unwrap().payload;
+        assert_eq!(3, action_payload.len());
+
+        assert_eq!(
+            &ActionValueProcessor::Accessor(Accessor::Constant {
+                value: Value::Text("constant value".to_owned())
+            }),
+            &action_payload["constant"]
+        );
+
+        assert_eq!(&ActionValueProcessor::Accessor(Accessor::Type), &action_payload["expression"]);
+
+        match &action_payload["interpolation"] {
+            ActionValueProcessor::Interpolator(..) => assert!(true),
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
     fn should_build_an_action() {
         // Arrange
         let mut config_action =
@@ -274,6 +321,40 @@ mod test {
         assert_eq!(&event.created_ms, result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
+    }
+
+    #[test]
+    fn should_build_an_action_with_text_to_be_interpolated_in_config() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action
+            .payload
+            .insert("type".to_owned(), Value::Text("The event type is: ${event.type}".to_owned()));
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+
+        let event = InternalEvent::new(Event {
+            event_type: "an_event_type_full_of_imagination".to_owned(),
+            created_ms: 123456,
+            payload,
+        });
+
+        // Act
+        let result = matcher_action.execute(&event, None).unwrap();
+
+        // Assert
+        assert_eq!(&"an_action_id", &result.id);
+        assert_eq!(
+            &Value::Text("The event type is: an_event_type_full_of_imagination".to_owned()),
+            result.payload.get("type").unwrap()
+        );
     }
 
     #[test]
@@ -373,6 +454,7 @@ mod test {
             Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
                 Value::Text("${event.type}".to_owned()),
+                Value::Text("Event created on ${event.created_ms}".to_owned()),
             ]),
         );
 
@@ -398,7 +480,8 @@ mod test {
         assert_eq!(
             &Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
-                Value::Text("event_type_value".to_owned())
+                Value::Text("event_type_value".to_owned()),
+                Value::Text("Event created on 123456".to_owned())
             ]),
             result.payload.get("type").unwrap()
         );

@@ -1,12 +1,12 @@
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+use crate::config::ActionDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use typescript_definitions::TypescriptDefinition;
-use crate::config::ActionDto;
 
 #[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
 pub struct SendEventRequestDto {

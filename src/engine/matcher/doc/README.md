@@ -180,6 +180,30 @@ The following accessors are valid:
 - `${event.payload}`:  Returns the entire payload
 - `${event}`: Returns the entire event
 
+### String interpolation
+
+An action payload can also contain
+text with placeholders that Tornado will replace at runtime. 
+The values to be used for the substitution are extracted
+from the incoming _Events_ following the accessor rules 
+aforementioned.
+
+For example, if the Event is the one of the previous paragraph, 
+this definition in the action payload:
+ 
+`Received a ${event.type} with protocol ${event.payload.protocol}`
+ 
+produces:
+ 
+*Received a trap with protocol UDP*
+
+Only values of type _String_, _Number_, _Boolean_ and _null_ are valid.
+Consequently, the interpolation will fail, and the action
+will not be executed, if the value associated with the placeholder 
+extracted from the Event is:
+- _undefined_
+- an _Array_
+- a _Map_
 
 ## Filter Examples
 
@@ -594,7 +618,7 @@ An example of valid content for a Rule JSON file is:
       "payload": {
         "type": "${event.type}",
         "subject": "${event.payload.subject}",
-        "temperature:": "${_variables.temperature}"
+        "temperature:": "The temperature is: ${_variables.temperature} degrees"
       }
     }
   ]

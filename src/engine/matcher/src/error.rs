@@ -52,4 +52,10 @@ pub enum MatcherError {
         action_id, rule_name, cause
     )]
     CreateActionError { action_id: String, rule_name: String, cause: String },
+
+    #[fail(
+        display = "StringInterpolatorRenderError: Cannot resolve placeholders in template [{}] for rule [{}]\n cause: [{}]",
+        template, rule_name, cause
+    )]
+    InterpolatorRenderError { template: String, rule_name: String, cause: String },
 }

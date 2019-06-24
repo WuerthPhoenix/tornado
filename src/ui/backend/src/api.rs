@@ -28,7 +28,6 @@ mod test {
     use super::*;
     use crate::api::handler::SendEventRequest;
     use crate::error::ApiError;
-    use actix_service::Service;
     use actix_web::{
         http::{header, StatusCode},
         test, App,
@@ -73,7 +72,7 @@ mod test {
             //.set_payload(payload)
             .to_request();
 
-        let response = test::block_on(srv.call(request)).unwrap();
+        let response = test::call_service(&mut srv, request);
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
