@@ -186,6 +186,7 @@ Files for neteye_secure_install %{name} autosetup
  - New Collector: Email collector via Procmail
  - New Feature: String Interpolation in Action Payload
  - Change: Script executor accepts arguments with interpolated strings
+ - Added How To for Email Collector
  - Added Autosetup for Procmail
  - Added User Guide for additional MIBs
 
