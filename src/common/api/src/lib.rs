@@ -1,7 +1,9 @@
 use chrono::prelude::Local;
+use num_cmp::NumCmp;
 use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::cmp::Ordering;
 
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.
@@ -143,6 +145,29 @@ impl Number {
             None
         }
     }
+
+}
+
+impl PartialOrd for Number {
+    fn partial_cmp(&self, other: &Number) -> Option<Ordering> {
+        match self {
+            Number::PosInt(first) => match other {
+                Number::PosInt(second) => first.partial_cmp(second),
+                Number::NegInt(second) => NumCmp::num_cmp(*first, *second),
+                Number::Float(second) => NumCmp::num_cmp(*first, *second),
+            },
+            Number::NegInt(first) => match other {
+                Number::PosInt(second) => NumCmp::num_cmp(*first, *second),
+                Number::NegInt(second) => first.partial_cmp(second),
+                Number::Float(second) => NumCmp::num_cmp(*first, *second),
+            },
+            Number::Float(first) => match other {
+                Number::PosInt(second) => NumCmp::num_cmp(*first, *second),
+                Number::NegInt(second) => NumCmp::num_cmp(*first, *second),
+                Number::Float(second) => first.partial_cmp(second),
+            },
+        }
+    }
 }
 
 impl Value {
@@ -188,6 +213,7 @@ impl Value {
             _ => None,
         }
     }
+
 }
 
 // Allows str == Value
@@ -295,6 +321,34 @@ impl PartialEq<i64> for Value {
 impl PartialEq<Value> for i64 {
     fn eq(&self, other: &Value) -> bool {
         other == self
+    }
+}
+
+impl PartialOrd for Value {
+    fn partial_cmp(&self, other: &Value) -> Option<Ordering> {
+        match self {
+            Value::Number(first) => match other {
+                Value::Number(second) => first.partial_cmp(second),
+                _ => None
+            },
+            Value::Text(first) => match other {
+                Value::Text(second) => first.partial_cmp(second),
+                _ => None
+            },
+            Value::Bool(first) => match other {
+                Value::Bool(second) => first.partial_cmp(&second),
+                _ => None
+            },
+            Value::Null => match other {
+                Value::Null => Some(Ordering::Equal),
+                _ => None
+            },
+            Value::Array(first) => match other {
+                Value::Array(second) => first.partial_cmp(&second),
+                _ => None
+            },
+            Value::Map(first) => None,
+        }
     }
 }
 

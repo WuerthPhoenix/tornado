@@ -16,6 +16,7 @@ use tornado_common_api::Value;
 pub mod and;
 pub mod contain;
 pub mod equal;
+pub mod gt;
 pub mod or;
 pub mod regex;
 pub mod true_operator;
