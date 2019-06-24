@@ -185,6 +185,7 @@ Files for neteye_secure_install %{name} autosetup
 * Thu May 23 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
  - New Feature: String Interpolation in Action Payload
+ - Change: Script executor accepts arguments with interpolated strings
  - Added Autosetup for Procmail
  - Added User Guide for additional MIBs
 
