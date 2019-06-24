@@ -1,52 +1,56 @@
 use log::*;
-use regex::Regex;
 use std::fmt;
 use std::process::Command;
-use tornado_common_api::{Action, Payload};
+use tornado_common_api::{Action, Number, Value};
 use tornado_executor_common::{Executor, ExecutorError};
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
-const PARAMS_REGEX: &str = r"\$\{[^\}]+\}";
+pub const SCRIPT_ARGS_KEY: &str = "args";
+
 const SHELL: [&str; 2] = ["sh", "-c"];
 
-pub struct ScriptExecutor {
-    params_regex: Regex,
-}
-
-impl Default for ScriptExecutor {
-    fn default() -> Self {
-        ScriptExecutor {
-            params_regex: Regex::new(PARAMS_REGEX).expect("ScriptExecutor regex should be valid"),
-        }
-    }
-}
+#[derive(Default)]
+pub struct ScriptExecutor {}
 
 impl ScriptExecutor {
     pub fn new() -> ScriptExecutor {
         Default::default()
     }
 
-    fn replace_params(&self, script: &str, payload: &Payload) -> Result<String, ExecutorError> {
-        let mut script_final = script.to_owned();
-        for capture in self.params_regex.captures_iter(script) {
-            if let Some(value) = capture.get(0) {
-                let group = value.as_str();
-                let param = &group[2..group.len() - 1];
-
-                let param_value = payload
-                    .get(param)
-                    .and_then(tornado_common_api::Value::get_text)
-                    .ok_or_else(|| ExecutorError::ActionExecutionError {
-                        message: format!(
-                            "Cannot find entry [{}] in the action payload for script [{}].",
-                            &param, script
-                        ),
-                    })?;
-
-                script_final = script_final.replace(group, param_value);
+    fn append_params(script: &mut String, value: &Value) -> Result<(), ExecutorError> {
+        match value {
+            Value::Text(args) => {
+                script.push_str(" ");
+                script.push_str(args)
             }
-        }
-        Ok(script_final)
+            Value::Bool(arg) => {
+                script.push_str(" ");
+                script.push_str(&arg.to_string())
+            }
+            Value::Number(arg) => {
+                script.push_str(" ");
+                match arg {
+                    Number::NegInt(num) => script.push_str(&num.to_string()),
+                    Number::PosInt(num) => script.push_str(&num.to_string()),
+                    Number::Float(num) => script.push_str(&num.to_string()),
+                }
+            }
+            Value::Array(args) => {
+                for value in args {
+                    ScriptExecutor::append_params(script, value)?;
+                }
+            }
+            Value::Map(args) => {
+                for (key, value) in args {
+                    script.push_str(" --");
+                    script.push_str(key);
+                    ScriptExecutor::append_params(script, value)?;
+                }
+            }
+            Value::Null => warn!("Args in payload is null. Ignore it."),
+        };
+
+        Ok(())
     }
 }
 
@@ -60,31 +64,37 @@ impl Executor for ScriptExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         debug!("ScriptExecutor - received action: \n{:#?}", action);
 
-        let script = action
+        let mut script = action
             .payload
             .get(SCRIPT_TYPE_KEY)
             .and_then(tornado_common_api::Value::get_text)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
+            })?
+            .to_owned();
+
+        if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
+            ScriptExecutor::append_params(&mut script, &value)?;
+        } else {
+            debug!("No args found in payload")
+        };
+
+        let output =
+            Command::new(SHELL[0]).args(&SHELL[1..]).arg(&script).output().map_err(|err| {
+                ExecutorError::ActionExecutionError {
+                    message: format!("Cannot execute script [{}]: {}", &script, err),
+                }
             })?;
-
-        let final_script = self.replace_params(script, &action.payload)?;
-
-        let output = Command::new(SHELL[0]).args(&SHELL[1..]).arg(&final_script).output().map_err(
-            |err| ExecutorError::ActionExecutionError {
-                message: format!("Cannot execute script [{}]: {}", &final_script, err),
-            },
-        )?;
 
         if output.status.success() {
             debug!(
                 "ScriptExecutor - Script completed successfully with status: [{}] - script: [{}]",
-                &final_script, output.status
+                &script, output.status
             );
         } else {
             error!(
                 "ScriptExecutor - Script returned error status: [{}] - script: [{}]",
-                &final_script, output.status
+                &script, output.status
             );
         }
 
@@ -95,63 +105,106 @@ impl Executor for ScriptExecutor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use tornado_common_api::{Payload, Value};
+    use std::collections::HashMap;
+    use tornado_common_api::Value;
 
     #[test]
-    fn should_replace_placeholders() {
+    fn should_append_text_placeholders() {
         // Arrange
-        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
+        let mut script = "./script.sh".to_owned();
+
+        let first_content = "First_HelloRustyWorld!";
+        let second_content = "Second_HelloRustyWorld!";
+
+        let expected_final_script = "./script.sh First_HelloRustyWorld! Second_HelloRustyWorld!";
+
+        let args = Value::Text(format!("{} {}", first_content, second_content));
+
+        // Act
+        ScriptExecutor::append_params(&mut script, &args).unwrap();
+
+        // Assert
+        assert_eq!(expected_final_script, script);
+    }
+
+    #[test]
+    fn should_append_array_placeholders() {
+        // Arrange
+        let mut script = "./script.sh".to_owned();
 
         let first_content = "First_HelloRustyWorld!";
         let second_content = "Second_HelloRustyWorld!";
 
         let expected_final_script =
-            format!("{} {} {}", "./script.sh", first_content, second_content);
+            "./script.sh First_HelloRustyWorld! Second_HelloRustyWorld! true 1123";
 
-        let mut payload = Payload::new();
-        payload.insert("first".to_owned(), Value::Text(first_content.to_owned()));
-        payload.insert("second".to_owned(), Value::Text(second_content.to_owned()));
-
-        let executor = ScriptExecutor::new();
+        let args = Value::Array(vec![
+            Value::Text(first_content.to_owned()),
+            Value::Text(second_content.to_owned()),
+            Value::Bool(true),
+            Value::Number(Number::PosInt(1123)),
+        ]);
 
         // Act
-        let result = executor.replace_params(&script, &payload).unwrap();
+        ScriptExecutor::append_params(&mut script, &args).unwrap();
 
         // Assert
-        assert_eq!(expected_final_script, result);
+        assert_eq!(expected_final_script, script);
     }
 
     #[test]
-    fn replace_placeholders_should_return_original_script_if_no_params() {
+    fn should_append_map_placeholders() {
         // Arrange
-        let script = format!("{} {} {}", "./script.sh", "first", "second");
+        let mut script = "./script.sh".to_owned();
 
-        let payload = Payload::new();
+        let first_content = "First_HelloRustyWorld!";
+        let second_content = "Second_HelloRustyWorld!";
 
-        let executor = ScriptExecutor::new();
+        let mut args = HashMap::new();
+        args.insert("first".to_owned(), Value::Text(first_content.to_owned()));
+        args.insert("second".to_owned(), Value::Text(second_content.to_owned()));
+
+        let mut expected_final_script = "./script.sh".to_owned();
+
+        args.iter().for_each(|(key, value)| {
+            expected_final_script.push_str(" --");
+            expected_final_script.push_str(key);
+            expected_final_script.push_str(" ");
+            expected_final_script.push_str(value.get_text().unwrap());
+        });
+
+        let args = Value::Map(args);
 
         // Act
-        let result = executor.replace_params(&script, &payload).unwrap();
+        ScriptExecutor::append_params(&mut script, &args).unwrap();
 
         // Assert
-        assert_eq!(script, result);
+        assert_eq!(expected_final_script, script);
+        assert!(script.contains(" --first First_HelloRustyWorld!"));
+        assert!(script.contains(" --second Second_HelloRustyWorld!"));
     }
 
     #[test]
-    fn replace_placeholders_should_fail_if_missing_params() {
+    fn should_ignore_null_placeholders() {
         // Arrange
-        let script = format!("{} {} {}", "./script.sh", "${first}", "${second}");
+        let mut script = "./script.sh".to_owned();
 
-        let mut payload = Payload::new();
-        payload.insert("first".to_owned(), Value::Text("value".to_owned()));
+        let first_content = "--something good";
 
-        let executor = ScriptExecutor::new();
+        let expected_final_script = "./script.sh --something good";
+
+        let args = Value::Array(vec![
+            Value::Null,
+            Value::Text(first_content.to_owned()),
+            Value::Null,
+            Value::Null,
+        ]);
 
         // Act
-        let result = executor.replace_params(&script, &payload);
+        ScriptExecutor::append_params(&mut script, &args).unwrap();
 
         // Assert
-        assert!(result.is_err());
+        assert_eq!(expected_final_script, script);
     }
 
 }
@@ -227,7 +280,7 @@ mod test_unix {
     }
 
     #[test]
-    fn should_execute_script_write_file() {
+    fn should_execute_script_without_placeholders() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
@@ -255,11 +308,11 @@ mod test_unix {
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
         let content = "HelloRustyWorld!";
-        let script = format!("{} {} {}", "./test_resources/write_file.sh", &filename, "${content}");
+        let script = format!("{} {}", "./test_resources/write_file.sh", &filename);
 
         let mut action = Action::new("script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
-        action.payload.insert("content".to_owned(), Value::Text(content.to_owned()));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
 
         let mut executor = ScriptExecutor::new();
 

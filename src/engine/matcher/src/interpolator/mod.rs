@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use tornado_common_api::{Number, Value};
 
 lazy_static! {
-    static ref RE: Regex = Regex::new(r"(\$\{[^}]+})").unwrap();
+    static ref RE: Regex = Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
 }
 
 /// A StringInterpolator allows the dynamic substitution of placeholders in a string

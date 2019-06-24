@@ -454,6 +454,7 @@ mod test {
             Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
                 Value::Text("${event.type}".to_owned()),
+                Value::Text("Event created on ${event.created_ms}".to_owned()),
             ]),
         );
 
@@ -479,7 +480,8 @@ mod test {
         assert_eq!(
             &Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
-                Value::Text("event_type_value".to_owned())
+                Value::Text("event_type_value".to_owned()),
+                Value::Text("Event created on 123456".to_owned())
             ]),
             result.payload.get("type").unwrap()
         );
