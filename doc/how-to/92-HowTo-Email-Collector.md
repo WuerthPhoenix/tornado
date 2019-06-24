@@ -1,7 +1,8 @@
 # <a id="tornado-howto-email-collector"></a> How To Use the Email Collector
 
 This How To is intended to help you configure, use and test the Email Collector
-in your existing NetEye Tornado installation.
+in your existing NetEye Tornado installation. We will configure a rule, such that
+we log all incoming mail subjects in a log file per *from* email.
 
 Before continuing, you should first check the
 [prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
