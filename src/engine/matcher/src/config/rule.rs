@@ -143,4 +143,11 @@ mod test {
         assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
     }
 
+    #[test]
+    fn should_deserialize_rule_from_json_with_cmp_operators() {
+        let json = file_to_string("./test_resources/rules/004_cmp_operators.json");
+        let rule = Rule::from_json(&json);
+
+        assert!(rule.is_ok());
+    }
 }
