@@ -31,10 +31,9 @@ impl Operator for GreaterThan {
         event: &InternalEvent,
         extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool {
-        let cmp = partial_cmp_option_cow_value(
-            &self.first.get(event, extracted_vars),
-            &self.second.get(event, extracted_vars),
-        );
+        let cmp = partial_cmp_option_cow_value(&self.first.get(event, extracted_vars), || {
+            self.second.get(event, extracted_vars)
+        });
         cmp == Some(Ordering::Greater)
     }
 }

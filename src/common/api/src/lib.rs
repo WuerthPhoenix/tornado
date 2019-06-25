@@ -357,12 +357,12 @@ pub fn cow_to_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
     }
 }
 
-pub fn partial_cmp_option_cow_value<'o>(
+pub fn partial_cmp_option_cow_value<'o, F: FnOnce() -> Option<Cow<'o, Value>>>(
     first: &'o Option<Cow<'o, Value>>,
-    second: &'o Option<Cow<'o, Value>>,
+    second: F,
 ) -> Option<Ordering> {
     if let Some(first_value) = first {
-        if let Some(second_value) = second {
+        if let Some(second_value) = second() {
             first_value.as_ref().partial_cmp(second_value.as_ref())
         } else {
             None
