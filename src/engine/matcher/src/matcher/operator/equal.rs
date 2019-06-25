@@ -31,8 +31,12 @@ impl Operator for Equal {
         extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool {
         let first = self.first_arg.get(event, extracted_vars);
-        let second = self.second_arg.get(event, extracted_vars);
-        first.is_some() && second.is_some() && (first == second)
+        if first.is_some() {
+            let second = self.second_arg.get(event, extracted_vars);
+            second.is_some() && (first == second)
+        } else {
+            false
+        }
     }
 }
 
