@@ -134,6 +134,14 @@ The following operators are available in the __WHERE__ clause:
 - __'contain'__: Evaluates whether a string contains a given substring.
 - __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
   the values do not exist, it returns `false`.
+- __'ge'__:  Compares two values and returns whether or not the first value is greater than or equal 
+  to the second one. If one or both of the values do not exist, it returns `false`.
+- __'gt'__:  Compares two values and returns whether or not the first value is greater 
+  than the second one. If one or both of the values do not exist, it returns `false`.
+- __'le'__:  Compares two values and returns whether or not the first value is less than or equal 
+  to the second one. If one or both of the values do not exist, it returns `false`.
+- __'lt'__:  Compares two values and returns whether or not the first value is less 
+  than the second one. If one or both of the values do not exist, it returns `false`.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
