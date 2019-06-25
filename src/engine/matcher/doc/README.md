@@ -134,13 +134,13 @@ The following operators are available in the __WHERE__ clause:
 - __'contain'__: Evaluates whether a string contains a given substring.
 - __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
   the values do not exist, it returns `false`.
-- __'ge'__:  Compares two values and returns whether or not the first value is greater than or equal 
+- __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
-- __'gt'__:  Compares two values and returns whether or not the first value is greater 
+- __'gt'__:  Compares two values and returns whether the first value is greater 
   than the second one. If one or both of the values do not exist, it returns `false`.
-- __'le'__:  Compares two values and returns whether or not the first value is less than or equal 
+- __'le'__:  Compares two values and returns whether the first value is less than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
-- __'lt'__:  Compares two values and returns whether or not the first value is less 
+- __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
@@ -306,7 +306,6 @@ The _contain_ operator is used to check if a string contains a substring.
 Rule example:
 ```json
 {
-  "name": "contain_operator",
   "description": "",
   "continue": true,
   "active": true,
@@ -336,40 +335,79 @@ A matching Event is:
 }
 ```
 
+### The 'equal', 'ge', 'gt', 'le' and 'lt' Operators
 
-### The 'equal' Operator
+The _equal_, _ge_, _gt_, _le_, _lt_ operators are used to compare two values.
 
-The _equal_ operator is used to check if two values are the same.
+All these operators can work with values of type Number, String, Bool, null and Array. 
+
+Please be extremely careful when using these operators with numbers of type float. In fact,
+the representation of a float, which is often slightly imprecise, can lead to surprising results
+(for example, see: https://www.floating-point-gui.de/errors/comparison/ ).
 
 Example:
 ```json
 {
-  "name": "equal_operator",
   "description": "",
   "continue": true,
   "active": true,
   "constraint": {
-    "WHERE": {
-      "type": "equal",
-      "first": "${event.type}",
-      "second": "email"
+      "WHERE": {
+      "type": "OR",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.payload.value}",
+          "second": 1000
+        },
+        {
+          "type": "AND",
+          "operators": [
+            {
+              "type": "ge",
+              "first": "${event.payload.value}",
+              "second": 100
+            },
+            {
+              "type": "le",
+              "first": "${event.payload.value}",
+              "second": 200
+            }
+          ]
+        },
+        {
+          "type": "lt",
+          "first": "${event.payload.value}",
+          "second": 0
+        },
+        {
+          "type": "gt",
+          "first": "${event.payload.value}",
+          "second": 2000
+        }
+      ]
     },
     "WITH": {}
   },
   "actions": []
 }
 ```
-An event matches this rule if its type is "email".
+An event matches this rule if _event.payload.value_ exists and:
+- it is equal to _1000_
+- or, it is between _100_ (included) and _200_ (included)
+- or, it is less than _0_ (excluded)
+- or, it is greater than _2000_ (excluded)
 
 A matching Event is:
 ```json
 {
     "type": "email",
     "created_ms": 1554130814854,
-    "payload":{}
+    "payload":{
+      "value": 150
+    }
 }
 ```
-
 
 ### The 'regex' Operator
 
@@ -381,7 +419,6 @@ The evaluation is performed with the Rust Regex library
 Rule example:
 ```json
 {
-  "name": "regex_operator",
   "description": "",
   "continue": true,
   "active": true,
@@ -421,7 +458,6 @@ As you would expect:
 Example:
 ```json
 {
-  "name": "complex_rule",
   "description": "",
   "continue": true,
   "active": true,
@@ -480,7 +516,6 @@ If the _WHERE_ clause is not specified, the Rule evaluates to true for each inco
 For example, this Rule generates an "archive" Action for each Event:
 ```json
 {
-    "name": "rule_without_where",
     "description": "",
     "continue": true,
     "active": true,
@@ -510,7 +545,6 @@ All variables declared by a Rule should be resolved, otherwise the Rule will not
 Example:
 ```json
 {
-  "name": "motion_sensor_4",
   "description": "",
   "continue": true,
   "active": true,
@@ -595,7 +629,6 @@ It will generate this Action:
 An example of valid content for a Rule JSON file is:
 ```json
 {
-  "name": "emails_with_temperature",
   "description": "This matches all emails containing a temperature measurement.",
   "continue": true,
   "active": true,
