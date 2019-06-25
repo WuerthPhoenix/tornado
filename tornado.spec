@@ -132,6 +132,7 @@ fi
 %{bin_dir}
 %{script_dir}
 %{_bindir}/tornado
+%{_bindir}/tornado-send-event
 
 %defattr(0660, root, root, 0770)
 %dir %{tornado_dir}
