@@ -2,8 +2,8 @@ use chrono::prelude::Local;
 use num_cmp::NumCmp;
 use serde_derive::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.
@@ -145,7 +145,6 @@ impl Number {
             None
         }
     }
-
 }
 
 impl PartialOrd for Number {
@@ -213,7 +212,6 @@ impl Value {
             _ => None,
         }
     }
-
 }
 
 // Allows str == Value
@@ -329,23 +327,23 @@ impl PartialOrd for Value {
         match self {
             Value::Number(first) => match other {
                 Value::Number(second) => first.partial_cmp(second),
-                _ => None
+                _ => None,
             },
             Value::Text(first) => match other {
                 Value::Text(second) => first.partial_cmp(second),
-                _ => None
+                _ => None,
             },
             Value::Bool(first) => match other {
                 Value::Bool(second) => first.partial_cmp(&second),
-                _ => None
+                _ => None,
             },
             Value::Null => match other {
                 Value::Null => Some(Ordering::Equal),
-                _ => None
+                _ => None,
             },
             Value::Array(first) => match other {
                 Value::Array(second) => first.partial_cmp(&second),
-                _ => None
+                _ => None,
             },
             Value::Map(..) => None,
         }
@@ -356,6 +354,21 @@ pub fn cow_to_str<'o>(value: &'o Option<Cow<'o, Value>>) -> Option<&'o str> {
     match value {
         Some(cow) => cow.as_ref().get_text(),
         None => None,
+    }
+}
+
+pub fn partial_cmp_option_cow_value<'o>(
+    first: &'o Option<Cow<'o, Value>>,
+    second: &'o Option<Cow<'o, Value>>,
+) -> Option<Ordering> {
+    if let Some(first_value) = first {
+        if let Some(second_value) = second {
+            first_value.as_ref().partial_cmp(second_value.as_ref())
+        } else {
+            None
+        }
+    } else {
+        None
     }
 }
 
@@ -678,11 +691,19 @@ mod test {
 
     #[test]
     fn should_partially_cmp_values() {
-
         // Text
-        assert_eq!(Some(Ordering::Equal), Value::Text("one".to_owned()).partial_cmp(&Value::Text("one".to_owned())));
-        assert_eq!(Some(Ordering::Greater), Value::Text("two".to_owned()).partial_cmp(&Value::Text("one".to_owned())));
-        assert_eq!(Some(Ordering::Less), Value::Text("one".to_owned()).partial_cmp(&Value::Text("two".to_owned())));
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Text("one".to_owned()).partial_cmp(&Value::Text("one".to_owned()))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Value::Text("two".to_owned()).partial_cmp(&Value::Text("one".to_owned()))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Value::Text("one".to_owned()).partial_cmp(&Value::Text("two".to_owned()))
+        );
         assert_eq!(None, Value::Text("one".to_owned()).partial_cmp(&Value::Bool(true)));
 
         // Bool
@@ -693,27 +714,70 @@ mod test {
         assert_eq!(None, Value::Bool(true).partial_cmp(&Value::Array(vec![])));
 
         // Num
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::PosInt(64)).partial_cmp(&Value::Number(Number::PosInt(64))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::PosInt(64)).partial_cmp(&Value::Number(Number::NegInt(64))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::NegInt(64)).partial_cmp(&Value::Number(Number::PosInt(64))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::NegInt(64)).partial_cmp(&Value::Number(Number::NegInt(64))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::Float(64.0)).partial_cmp(&Value::Number(Number::Float(64.0))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(0))));
-        assert_eq!(Some(Ordering::Equal), Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::PosInt(0))));
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::PosInt(64)).partial_cmp(&Value::Number(Number::PosInt(64)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::PosInt(64)).partial_cmp(&Value::Number(Number::NegInt(64)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::NegInt(64)).partial_cmp(&Value::Number(Number::PosInt(64)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::NegInt(64)).partial_cmp(&Value::Number(Number::NegInt(64)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::Float(64.0)).partial_cmp(&Value::Number(Number::Float(64.0)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(0)))
+        );
+        assert_eq!(
+            Some(Ordering::Equal),
+            Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::PosInt(0)))
+        );
 
-        assert_eq!(Some(Ordering::Greater), Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(-1000))));
-        assert_eq!(Some(Ordering::Greater), Value::Number(Number::PosInt(0)).partial_cmp(&Value::Number(Number::NegInt(-1000))));
-        assert_eq!(Some(Ordering::Greater), Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::Float(-100000.0))));
+        assert_eq!(
+            Some(Ordering::Greater),
+            Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(-1000)))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Value::Number(Number::PosInt(0)).partial_cmp(&Value::Number(Number::NegInt(-1000)))
+        );
+        assert_eq!(
+            Some(Ordering::Greater),
+            Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::Float(-100000.0)))
+        );
 
-        assert_eq!(Some(Ordering::Less), Value::Number(Number::PosInt(10)).partial_cmp(&Value::Number(Number::PosInt(1000))));
-        assert_eq!(Some(Ordering::Less), Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(1000))));
+        assert_eq!(
+            Some(Ordering::Less),
+            Value::Number(Number::PosInt(10)).partial_cmp(&Value::Number(Number::PosInt(1000)))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Value::Number(Number::Float(0.0)).partial_cmp(&Value::Number(Number::NegInt(1000)))
+        );
 
         assert_eq!(None, Value::Number(Number::PosInt(0)).partial_cmp(&Value::Bool(false)));
 
         // Array
         assert_eq!(Some(Ordering::Equal), Value::Array(vec![]).partial_cmp(&Value::Array(vec![])));
-        assert_eq!(Some(Ordering::Greater), Value::Array(vec![Value::Bool(true)]).partial_cmp(&Value::Array(vec![Value::Bool(false)])));
-        assert_eq!(Some(Ordering::Less), Value::Array(vec![Value::Bool(true), Value::Bool(false)]).partial_cmp(&Value::Array(vec![Value::Bool(true), Value::Bool(true)])));
-
+        assert_eq!(
+            Some(Ordering::Greater),
+            Value::Array(vec![Value::Bool(true)])
+                .partial_cmp(&Value::Array(vec![Value::Bool(false)]))
+        );
+        assert_eq!(
+            Some(Ordering::Less),
+            Value::Array(vec![Value::Bool(true), Value::Bool(false)])
+                .partial_cmp(&Value::Array(vec![Value::Bool(true), Value::Bool(true)]))
+        );
     }
 }
