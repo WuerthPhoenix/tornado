@@ -100,6 +100,30 @@ impl OperatorBuilder {
                     self.accessor.build(rule_name, second)?,
                 )?))
             }
+            rule::Operator::GreaterEqualThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::ge::GreaterEqualThan::build(
+                    self.accessor.build(rule_name, first)?,
+                    self.accessor.build(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::GreaterThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::gt::GreaterThan::build(
+                    self.accessor.build(rule_name, first)?,
+                    self.accessor.build(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::LessEqualThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::le::LessEqualThan::build(
+                    self.accessor.build(rule_name, first)?,
+                    self.accessor.build(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::LessThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::lt::LessThan::build(
+                    self.accessor.build(rule_name, first)?,
+                    self.accessor.build(rule_name, second)?,
+                )?))
+            }
             rule::Operator::Contain { text, substring } => {
                 Ok(Box::new(crate::matcher::operator::contain::Contain::build(
                     self.accessor.build(rule_name, text)?,
@@ -149,6 +173,58 @@ mod test {
         let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("equal", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_greater_equal_operator() {
+        let ops = rule::Operator::GreaterEqualThan {
+            first: "first_arg=".to_owned(),
+            second: "second_arg".to_owned(),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("ge", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_greater_operator() {
+        let ops = rule::Operator::GreaterThan {
+            first: "first_arg=".to_owned(),
+            second: "second_arg".to_owned(),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("gt", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_less_equal_operator() {
+        let ops = rule::Operator::LessEqualThan {
+            first: "first_arg=".to_owned(),
+            second: "second_arg".to_owned(),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("le", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_less_operator() {
+        let ops = rule::Operator::LessThan {
+            first: "first_arg=".to_owned(),
+            second: "second_arg".to_owned(),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("lt", operator.name());
     }
 
     #[test]
