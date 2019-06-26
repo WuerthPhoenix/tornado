@@ -178,6 +178,7 @@ Files for neteye_secure_install %{name} autosetup
 %changelog
 * Tue Jun 25 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.13.0-1
 - New Feature: tornado-send-event script to easily send events to tornado
+- Added How To for String Interpolation
 
 * Thu May 23 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
