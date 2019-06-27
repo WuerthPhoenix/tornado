@@ -103,13 +103,17 @@ mod test {
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use maplit::*;
     use std::collections::HashMap;
+    use tornado_common_api::Value;
 
     #[test]
     fn should_validate_correct_rule() {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         // Act
@@ -124,12 +128,18 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule_name",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         let rule_2 = new_rule(
             "rule_name_2",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         // Act
@@ -142,8 +152,13 @@ mod test {
     #[test]
     fn should_fail_validation_if_empty_name() {
         // Arrange
-        let rule_1 =
-            new_rule("", Operator::Equal { first: "1".to_owned(), second: "1".to_owned() });
+        let rule_1 = new_rule(
+            "",
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
+        );
 
         // Act
         let result = MatcherConfigValidator::new().validate_rules(&vec![rule_1]);
@@ -155,7 +170,10 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_name() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let rule_1 = new_rule("rule_name", op.clone());
         let rule_2 = new_rule("rule_name", op.clone());
 
@@ -174,7 +192,10 @@ mod test {
     #[test]
     fn build_should_fail_if_empty_spaces_in_rule_name() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let rule_1 = new_rule("rule name", op.clone());
 
         // Act
@@ -187,7 +208,10 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_name() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let rule_1 = new_rule("rule.name", op.clone());
 
         // Act
@@ -200,7 +224,10 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_extracted_var_name() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let mut rule_1 = new_rule("rule_name", op.clone());
 
         rule_1.constraint.with.insert(
@@ -221,7 +248,10 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_action_id() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let mut rule_1 = new_rule("rule_name", op.clone());
 
         rule_1.actions.push(Action {

@@ -6,7 +6,7 @@ use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use tornado_common_api::Payload;
+use tornado_common_api::{Payload, Value};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -51,15 +51,15 @@ pub enum Operator {
     #[serde(rename = "contain")]
     Contain { text: String, substring: String },
     #[serde(rename = "equal")]
-    Equal { first: String, second: String },
+    Equal { first: Value, second: Value },
     #[serde(rename = "ge")]
-    GreaterEqualThan { first: String, second: String },
+    GreaterEqualThan { first: Value, second: Value },
     #[serde(rename = "gt")]
-    GreaterThan { first: String, second: String },
+    GreaterThan { first: Value, second: Value },
     #[serde(rename = "le")]
-    LessEqualThan { first: String, second: String },
+    LessEqualThan { first: Value, second: Value },
     #[serde(rename = "lt")]
-    LessThan { first: String, second: String },
+    LessThan { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }
