@@ -125,7 +125,7 @@ impl OperatorBuilder {
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
-            rule::Operator::Contain { first, second} => {
+            rule::Operator::Contain { first, second } => {
                 Ok(Box::new(crate::matcher::operator::contain::Contain::build(
                     self.accessor.build_from_value(rule_name, first)?,
                     self.accessor.build_from_value(rule_name, second)?,
