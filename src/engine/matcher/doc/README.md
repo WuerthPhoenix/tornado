@@ -131,7 +131,7 @@ An event matches a rule if and only if the WHERE clause evaluates to `true` and 
 expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
-- __'contain'__: Evaluates whether a string contains a given substring.
+- __'contain'__: Evaluates whether a the first argument contains the second one.
 - __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
   the values do not exist, it returns `false`.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
@@ -301,7 +301,15 @@ Content of *only_trapd_filter.json*:
 
 ### The 'contain' Operator
 
-The _contain_ operator is used to check if a string contains a substring.
+The _contain_ operator is used to check whether the first argument contains the second one.
+
+It applies to three different situations:
+- The arguments are both strings: returns true if the second string is a substring of the first one
+- The first argument is an array: returns true if the second argument is contained in the array
+- The first argument is an map and the second one is a string: 
+  returns true if the second argument is a existing key in the map
+
+In any other case, it will return false.
 
 Rule example:
 ```json
@@ -312,8 +320,8 @@ Rule example:
   "constraint": {
     "WHERE": {
       "type": "contain",
-      "text": "${event.payload.hostname}",
-      "substring": "linux"
+      "first": "${event.payload.hostname}",
+      "second": "linux"
     },
     "WITH": {}
   },
