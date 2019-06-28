@@ -7,16 +7,16 @@ use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "contain";
 
-/// A matching matcher.operator that evaluates whether a string contains a given substring
+/// A matching matcher.operator that evaluates whether the first argument contains a the second
 #[derive(Debug)]
 pub struct Contain {
-    text: Accessor,
-    substring: Accessor,
+    first: Accessor,
+    second: Accessor,
 }
 
 impl Contain {
     pub fn build(text: Accessor, substring: Accessor) -> Result<Contain, MatcherError> {
-        Ok(Contain { text, substring })
+        Ok(Contain { first: text, second: substring })
     }
 }
 
@@ -30,10 +30,10 @@ impl Operator for Contain {
         event: &InternalEvent,
         extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool {
-        let option_text = self.text.get(event, extracted_vars);
+        let option_text = self.first.get(event, extracted_vars);
         match cow_to_str(&option_text) {
             Some(text) => {
-                let option_substring = self.substring.get(event, extracted_vars);
+                let option_substring = self.second.get(event, extracted_vars);
                 match cow_to_str(&option_substring) {
                     Some(substring) => (&text).contains(substring),
                     None => false,
@@ -55,8 +55,8 @@ mod test {
     #[test]
     fn should_return_the_operator_name() {
         let operator = Contain {
-            text: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
-            substring: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
+            first: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
+            second: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
         };
         assert_eq!(OPERATOR_NAME, operator.name());
     }
@@ -71,8 +71,8 @@ mod test {
 
         let event = InternalEvent::new(Event::new("test_type"));
 
-        assert_eq!("one", operator.text.get(&event, None).unwrap().as_ref());
-        assert_eq!("two", operator.substring.get(&event, None).unwrap().as_ref());
+        assert_eq!("one", operator.first.get(&event, None).unwrap().as_ref());
+        assert_eq!("two", operator.second.get(&event, None).unwrap().as_ref());
     }
 
     #[test]
