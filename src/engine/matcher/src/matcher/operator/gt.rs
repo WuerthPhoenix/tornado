@@ -147,7 +147,7 @@ mod test {
 
         let mut event = Event::new("test_type");
         event.payload.insert("one".to_owned(), Value::Bool(false));
-        event.payload.insert("two".to_owned(), Value::Bool(false));
+        event.payload.insert("two".to_owned(), Value::Bool(true));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
