@@ -417,6 +417,18 @@ A matching Event is:
 }
 ```
 
+
+Here some examples of how these operators behave:
+- `[{"id":557}, {"one":"two"}]` _lt_ `3`: _false_, 
+  cannot compare different types (e.g. arrays and numbers)
+- `[["id",557], ["one"]]` _gt_ `[["id",555], ["two"]]`: _true_, 
+  elements in the array are compared recursively
+- `[["id",557]]` _gt_ `[["id",555], ["two"]]`: _true_, 
+  elements are compared even if the length of the arrays is not the same
+- `{id: "one"}` _lt_ `{id: "two"}`: _false_, maps are not comparable
+- `true` _gt_ `false`: _true_. The value 'true' is evaluated as 1, and the value
+  'false' as 0; consequently, the expression is equivalent to "1 gt 0" which is true. 
+
 ### The 'regex' Operator
 
 The _regex_ operator is used to check if a string matches a regular expression.
