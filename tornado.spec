@@ -180,6 +180,7 @@ Files for neteye_secure_install %{name} autosetup
 - New Feature: tornado-send-event script to easily send events to tornado
 - Added How To for String Interpolation
 - Added ge, gt, le and lt operators
+- Rule operator accept every valid JSON type
 
 * Thu May 23 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
