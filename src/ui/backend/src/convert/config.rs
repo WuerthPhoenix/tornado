@@ -73,6 +73,12 @@ pub fn operator_into_dto(operator: Operator) -> OperatorDto {
         }
         Operator::Contain { text, substring } => OperatorDto::Contain { text, substring },
         Operator::Equal { first, second } => OperatorDto::Equal { first, second },
+        Operator::GreaterEqualThan { first, second } => {
+            OperatorDto::GreaterEqualThan { first, second }
+        }
+        Operator::GreaterThan { first, second } => OperatorDto::GreaterThan { first, second },
+        Operator::LessEqualThan { first, second } => OperatorDto::LessEqualThan { first, second },
+        Operator::LessThan { first, second } => OperatorDto::LessThan { first, second },
         Operator::Regex { regex, target } => OperatorDto::Regex { regex, target },
     }
 }

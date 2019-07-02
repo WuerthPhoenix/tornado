@@ -51,6 +51,14 @@ pub enum OperatorDto {
     Contain { text: String, substring: String },
     #[serde(rename = "equal")]
     Equal { first: String, second: String },
+    #[serde(rename = "ge")]
+    GreaterEqualThan { first: String, second: String },
+    #[serde(rename = "gt")]
+    GreaterThan { first: String, second: String },
+    #[serde(rename = "le")]
+    LessEqualThan { first: String, second: String },
+    #[serde(rename = "lt")]
+    LessThan { first: String, second: String },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }

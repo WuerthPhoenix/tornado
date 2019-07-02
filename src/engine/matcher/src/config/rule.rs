@@ -52,6 +52,14 @@ pub enum Operator {
     Contain { text: String, substring: String },
     #[serde(rename = "equal")]
     Equal { first: String, second: String },
+    #[serde(rename = "ge")]
+    GreaterEqualThan { first: String, second: String },
+    #[serde(rename = "gt")]
+    GreaterThan { first: String, second: String },
+    #[serde(rename = "le")]
+    LessEqualThan { first: String, second: String },
+    #[serde(rename = "lt")]
+    LessThan { first: String, second: String },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }
@@ -135,4 +143,14 @@ mod test {
         assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
     }
 
+    // ToDo: this will be fixed by TOR-109
+    /*
+    #[test]
+    fn should_deserialize_rule_from_json_with_cmp_operators() {
+        let json = file_to_string("./test_resources/rules/004_cmp_operators.json");
+        let rule = Rule::from_json(&json);
+
+        assert!(rule.is_ok());
+    }
+    */
 }
