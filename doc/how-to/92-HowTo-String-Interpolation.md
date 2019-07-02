@@ -10,10 +10,11 @@ Before continuing, you should first check the
 [prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
 
 
+
 ## <a id="tornado-howto-string-interpolation-step1"></a> Step #1:  Prerequisites
 
 **Tornado:**
-* For testing purposes we will manually send an event to Tornado via CLI. In a production
+* For testing purposes we will manually send an event to Tornado via the shell. In a production
   environment, Tornado can accept events from any collector and even via an HTTP POST request
   with a JSON payload.
 * Make sure that the username and password are properly set to your dedicated Tornado user in icinga2:
@@ -30,6 +31,7 @@ Before continuing, you should first check the
 * Create a **service** called *my_dummy* on the host *host.example.com* that imports the
   previously created service template
 * Deploy this configuration to Icinga 2
+
 
 
 ## <a id="tornado-howto-string-interpolation-step2"></a> Step #2:  Service and Rule Configuration
@@ -163,6 +165,7 @@ the body of the generated action will no longer contain any of the
 original placeholders ${event.payload.*}. 
 In fact, they are replaced by the actual values extracted from the event.
 If one or more placeholders cannot be resolved, the entire action will fail.
+
 
 
 ## <a id="tornado-howto-string-interpolation-step3"></a> Step #3:  Send the Event and Set the Status
