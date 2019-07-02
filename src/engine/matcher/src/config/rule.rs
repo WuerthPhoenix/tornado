@@ -6,7 +6,7 @@ use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::collections::HashMap;
-use tornado_common_api::Payload;
+use tornado_common_api::{Payload, Value};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Rule {
@@ -51,15 +51,15 @@ pub enum Operator {
     #[serde(rename = "contain")]
     Contain { text: String, substring: String },
     #[serde(rename = "equal")]
-    Equal { first: String, second: String },
+    Equal { first: Value, second: Value },
     #[serde(rename = "ge")]
-    GreaterEqualThan { first: String, second: String },
+    GreaterEqualThan { first: Value, second: Value },
     #[serde(rename = "gt")]
-    GreaterThan { first: String, second: String },
+    GreaterThan { first: Value, second: Value },
     #[serde(rename = "le")]
-    LessEqualThan { first: String, second: String },
+    LessEqualThan { first: Value, second: Value },
     #[serde(rename = "lt")]
-    LessThan { first: String, second: String },
+    LessThan { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }
@@ -143,8 +143,6 @@ mod test {
         assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
     }
 
-    // ToDo: this will be fixed by TOR-109
-    /*
     #[test]
     fn should_deserialize_rule_from_json_with_cmp_operators() {
         let json = file_to_string("./test_resources/rules/004_cmp_operators.json");
@@ -152,5 +150,5 @@ mod test {
 
         assert!(rule.is_ok());
     }
-    */
+
 }

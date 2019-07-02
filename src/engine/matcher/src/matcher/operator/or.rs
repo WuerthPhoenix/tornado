@@ -59,8 +59,8 @@ mod test {
         let operator = Or::build(
             "",
             &vec![config::rule::Operator::Equal {
-                first: "first_arg=".to_owned(),
-                second: "second_arg".to_owned(),
+                first: Value::Text("first_arg=".to_owned()),
+                second: Value::Text("second_arg".to_owned()),
             }],
             &OperatorBuilder::new(),
         )
@@ -81,8 +81,8 @@ mod test {
         let operator = Or::build(
             "",
             &vec![config::rule::Operator::Equal {
-                first: "${NOT_EXISTING}".to_owned(),
-                second: "second_arg".to_owned(),
+                first: Value::Text("${NOT_EXISTING}".to_owned()),
+                second: Value::Text("second_arg".to_owned()),
             }],
             &OperatorBuilder::new(),
         );
@@ -93,11 +93,14 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "2".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("2".to_owned()),
+                },
                 config::rule::Operator::And {
                     operators: vec![config::rule::Operator::Equal {
-                        first: "3".to_owned(),
-                        second: "4".to_owned(),
+                        first: Value::Text("3".to_owned()),
+                        second: Value::Text("4".to_owned()),
                     }],
                 },
             ],
@@ -131,10 +134,22 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "2".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "3".to_owned() },
-                config::rule::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("1".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("2".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("3".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("4".to_owned()),
+                    second: Value::Text("4".to_owned()),
+                },
             ],
             &OperatorBuilder::new(),
         )
@@ -150,10 +165,22 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "4".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "4".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "4".to_owned() },
-                config::rule::Operator::Equal { first: "4".to_owned(), second: "4".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("4".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("4".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("4".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("4".to_owned()),
+                    second: Value::Text("4".to_owned()),
+                },
             ],
             &OperatorBuilder::new(),
         )
@@ -169,10 +196,22 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "4".to_owned(), second: "5".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("4".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
             ],
             &OperatorBuilder::new(),
         )
@@ -188,18 +227,27 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "5".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "5".to_owned(),
+                            first: Value::Text("4".to_owned()),
+                            second: Value::Text("5".to_owned()),
                         },
                         config::rule::Operator::Equal {
-                            first: "5".to_owned(),
-                            second: "5".to_owned(),
+                            first: Value::Text("5".to_owned()),
+                            second: Value::Text("5".to_owned()),
                         },
                     ],
                 },
@@ -218,18 +266,27 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "6".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "6".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "6".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("6".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("6".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("6".to_owned()),
+                },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "6".to_owned(),
+                            first: Value::Text("4".to_owned()),
+                            second: Value::Text("6".to_owned()),
                         },
                         config::rule::Operator::Equal {
-                            first: "5".to_owned(),
-                            second: "6".to_owned(),
+                            first: Value::Text("5".to_owned()),
+                            second: Value::Text("6".to_owned()),
                         },
                     ],
                 },
@@ -248,18 +305,27 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "5".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "5".to_owned(),
+                            first: Value::Text("4".to_owned()),
+                            second: Value::Text("5".to_owned()),
                         },
                         config::rule::Operator::Equal {
-                            first: "type".to_owned(),
-                            second: "${event.type}".to_owned(),
+                            first: Value::Text("type".to_owned()),
+                            second: Value::Text("${event.type}".to_owned()),
                         },
                     ],
                 },
@@ -278,18 +344,27 @@ mod test {
         let operator = Or::build(
             "",
             &vec![
-                config::rule::Operator::Equal { first: "1".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "2".to_owned(), second: "5".to_owned() },
-                config::rule::Operator::Equal { first: "3".to_owned(), second: "5".to_owned() },
+                config::rule::Operator::Equal {
+                    first: Value::Text("1".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("2".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
+                config::rule::Operator::Equal {
+                    first: Value::Text("3".to_owned()),
+                    second: Value::Text("5".to_owned()),
+                },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equal {
-                            first: "4".to_owned(),
-                            second: "5".to_owned(),
+                            first: Value::Text("4".to_owned()),
+                            second: Value::Text("5".to_owned()),
                         },
                         config::rule::Operator::Equal {
-                            first: "type1".to_owned(),
-                            second: "${event.type}".to_owned(),
+                            first: Value::Text("type1".to_owned()),
+                            second: Value::Text("${event.type}".to_owned()),
                         },
                     ],
                 },

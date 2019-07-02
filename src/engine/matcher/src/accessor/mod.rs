@@ -44,6 +44,17 @@ impl AccessorBuilder {
         Default::default()
     }
 
+    pub fn build_from_value(
+        &self,
+        rule_name: &str,
+        input: &Value,
+    ) -> Result<Accessor, MatcherError> {
+        match input {
+            Value::Text(text) => self.build(rule_name, text),
+            _ => Ok(Accessor::Constant { value: input.clone() }),
+        }
+    }
+
     /// Returns an Accessor instance based on its string definition.
     /// E.g.:
     /// - "${event}": returns the entire Event instance
