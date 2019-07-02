@@ -1,10 +1,10 @@
 # <a id="tornado-howto-string-interpolation"></a> How To Use the Icinga2 Executor with String Interpolation
 
 This advanced How To is intended to help you configure, use and test the **Icinga2 Executor**
-in combination with the **String Interpolation** feature, creating a **passive check only**
-monitoring service result with dynamic generation of the check **result content**. The general
-approach, however, can be used to execute icinga2 actions ( or any other action )
-dynamically based on the event content.
+in combination with the **String Interpolation** feature, creating a **passive check-only**
+monitoring service result with dynamic generation of the check's **resulting content**. The
+general approach however can be used to dynamically execute Icinga 2 actions (or any other action)
+based on the content of the event.
 
 Before continuing, you should first check the
 [prerequisites for Tornado](/neteye/doc/module/tornado/chapter/tornado-howto-overview).
@@ -13,10 +13,10 @@ Before continuing, you should first check the
 ## <a id="tornado-howto-string-interpolation-step1"></a> Step #1:  Prerequisites
 
 **Tornado:**
-* For testing purposes, we will manually send an event to tornado via CLI. In a production
-  environment, tornado can accept events from any collector and even via an HTTP POST request
-  with JSON payload.
-* Make sure that the username and password are properly set to your dedicated tornado user in icinga2
+* For testing purposes we will manually send an event to Tornado via CLI. In a production
+  environment, Tornado can accept events from any collector and even via an HTTP POST request
+  with a JSON payload.
+* Make sure that the username and password are properly set to your dedicated Tornado user in icinga2:
   ```
   /neteye/shared/tornado/conf/icinga2_client_executor.toml
   ```
@@ -27,13 +27,16 @@ Before continuing, you should first check the
     * Check command: *dummy*
     * Execute active checks: *No*
     * Accept passive checks: *Yes*
-* Create a **service** called *my_dummy* on the host *host.example.com* importing the
+* Create a **service** called *my_dummy* on the host *host.example.com* that imports the
   previously created service template
-* Deploy this configuration to icinga2
+* Deploy this configuration to Icinga 2
+
 
 ## <a id="tornado-howto-string-interpolation-step2"></a> Step #2:  Service and Rule Configuration
 
-This is an example of an event, which we'll use later on, sending it to tornado. For now, keep it in handy while reading the next section, as the rules are based on this specific format:
+Below is an example of an event that we will use throughout this How To, including sending it to
+Tornado. For now, keep it handy as you read the next section, since the rules we will configure
+are based on this specific format:
 ```json
 {
   "type": "dummy_passive_check",
@@ -51,12 +54,12 @@ This is an example of an event, which we'll use later on, sending it to tornado.
 ```
 
 Now let's configure a rule with the following **WHERE** constraints:
-* events of *type* **dummy_passive_check**
-* containing the critical *exit_code* **2**
-* and *service name* **my_dummy**
+* It matches events of *type* **dummy_passive_check**
+* It requires the *service name* to be **my_dummy**
+* It contains the critical *exit_code* **2**
 
-We can achieve this by creating the following rule in `/neteye/shared/tornado/conf/rules.d/` in a file called 
-*900_icinga2_my_checkresult_crit.json*
+We can achieve this by creating the following rule in `/neteye/shared/tornado/conf/rules.d/`,
+in a file called *900_icinga2_my_checkresult_crit.json*:
 ```json
 {
   "description": "Set the critical status for my_dummy checks in Icinga2",
@@ -89,16 +92,16 @@ We can achieve this by creating the following rule in `/neteye/shared/tornado/co
 }
 ```
 
-In addition, we want our rule to trigger an icinga2 action with a passive check result that:
+In addition, we want our rule to trigger an Icinga 2 action with a passive check result that:
 * Applies to the *my_dummy* service of the host in **${event.payload.hostname}**
 * Sets the **exit_status** to *critical* (=2)
 * Adds a human readable **plugin_output**
-* Adds a machine readable **performance_data** with two simple static thresholds:
-    * **result1** perfdata: it contains immaginary millisecond duration, with 300ms _warn_ and 500ms _crit_ threshold
-    * **result2** perfdata: it contains immaginary percentage, with 80% _warn_ and 95% _crit_
+* Adds a machine readable **performance_data** field with two simple static thresholds:
+    * **result1** perfdata: contains imaginary millisecond duration, with 300ms _warn_ and 500ms _crit_ threshold
+    * **result2** perfdata: contains imaginary percentages, with 80% _warn_ and 95% _crit_
 
 
-Here's our final rule including the desired action:
+Now let's add these desired actions to the rule above to create this final version:
 ```json
 {
   "description": "Set the critical status for my_dummy checks in Icinga2",
@@ -147,30 +150,33 @@ Here's our final rule including the desired action:
 ```
 
 Remember that whenever you create a new rule or edit an existing one,
-you need to restart the Tornado service. It is also
+you will need to restart the Tornado service. It is also
 helpful to run a check to make sure there are no syntactic errors in your new rule:
 ```
 # tornado --config-dir=/neteye/shared/tornado/conf check
 # systemctl restart tornado.service
 ```
 
-If you performed all the previous steps correctly, you should notice that,
+If you performed all the above steps correctly, you should notice that
 whenever an event matches the rule, 
 the body of the generated action will no longer contain any of the 
 original placeholders ${event.payload.*}. 
 In fact, they are replaced by the actual values extracted from the event.
-If one or more placeholders cannot be resolved, the action will fail.
+If one or more placeholders cannot be resolved, the entire action will fail.
 
 
-## <a id="tornado-howto-string-interpolation-step3"></a> Step #3:  Send the event and set the status
+## <a id="tornado-howto-string-interpolation-step3"></a> Step #3:  Send the Event and Set the Status
 
-Open a browser and verify that you deployed the required configuration to icinga2,
-this can be done navigating to the
-**Overview > Services > host.example.com: my_dummy** [service](/neteye/monitoring/service/show?host=host.example.com&service=my_dummy). You should see that it is still in
-**Pending** state as no active checks are executed.
+Open a browser and verify that you have deployed the required configuration to Icinga 2.
+This can be done by navigating to the
+**Overview > Services > host.example.com: my_dummy**
+<a href="/neteye/monitoring/service/show?host=host.example.com&service=my_dummy" data-base-target="_next">service</a>
+(note that this link will not work if you have not followed all the steps above).
+You should see that it is still in the
+**Pending** state as no active checks have been executed.
 
-We can now use the *tornado-send-event* helper command to send the JSON content of a file to the tornado API.
-So, create a file called *payload.json* with the following contents in your *home directory*:
+We can now use the *tornado-send-event* helper command to send the JSON content of a file to the Tornado API.
+So now create a file called *payload.json* with the following content in your *home directory*:
 ```json
 {
   "type": "dummy_passive_check",
@@ -187,9 +193,9 @@ So, create a file called *payload.json* with the following contents in your *hom
 }
 ```
 
-Send it to tornado using the following command:
+Send it to Tornado using the following command:
 ```
-tornado-send-event ~/payload.json
+# tornado-send-event ~/payload.json
 ```
 
 This should trigger our rule and produce a response similar to the following:
@@ -240,8 +246,8 @@ This should trigger our rule and produce a response similar to the following:
 }
 ```
 
-Now open the browser and check the Service in Icinga2 again, you'll see that it has **NOT** changed yet.
-This is intentional, in fact, to avoid triggering actions accidentally,
+Now open your browser and check the service in Icinga2 again. You'll see that it has **NOT**
+changed yet. This behavior is intentional: in order to avoid triggering actions accidentally,
 the _tornado-send-event_ command executes no actions by default. 
 We can tell tornado to actually
 execute the actions by passing the **-f** flag to the script as follows:
@@ -249,10 +255,12 @@ execute the actions by passing the **-f** flag to the script as follows:
 tornado-send-event ~/payload.json -f
 ```
 
-Checking the Service once again should show that it turned red and its state is *soft critical*. Depending
-on your configuration, after a few additional executions, it will end up in hard *critical* state.
+Checking the Service once again should now show that it has turned red and its state has become
+*soft critical*. Depending on your configuration, after a few additional executions it will end
+up in the hard *critical* state.
 
-As you may note, if we change the *exit_code* in the event payload to
-anything other than *2*, the rule will not match as we filter out everything
-but critical events.
-Adding another rule that filters only on *OK* states (exit_code == 0) and then sets the service state to an OK state, is left as an exercise to the reader.
+As you may notice, if we change the *exit_code* in the event payload to
+anything other than *2*, the rule will no longer match since we filter out everything
+that is not a critical event.
+Adding another rule that filters only on *OK* states (exit_code == 0), and then sets the service
+state to an OK state, is left as an exercise to the reader.
