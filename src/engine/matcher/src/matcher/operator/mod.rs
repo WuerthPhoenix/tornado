@@ -125,10 +125,10 @@ impl OperatorBuilder {
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
-            rule::Operator::Contain { text, substring } => {
+            rule::Operator::Contain { first, second } => {
                 Ok(Box::new(crate::matcher::operator::contain::Contain::build(
-                    self.accessor.build(rule_name, text)?,
-                    self.accessor.build(rule_name, substring)?,
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
             rule::Operator::Regex { regex, target } => {
@@ -231,8 +231,8 @@ mod test {
     #[test]
     fn build_should_return_the_contain_operator() {
         let ops = rule::Operator::Contain {
-            text: "first_arg=".to_owned(),
-            substring: "second_arg".to_owned(),
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
         };
 
         let builder = OperatorBuilder::new();

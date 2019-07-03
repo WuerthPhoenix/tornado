@@ -77,7 +77,10 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
                 .map(operator_into_dto)
                 .collect::<Result<Vec<_>, _>>()?,
         },
-        Operator::Contain { text, substring } => OperatorDto::Contain { text, substring },
+        Operator::Contain { first, second } => OperatorDto::Contain {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
         Operator::Equal { first, second } => OperatorDto::Equal {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
