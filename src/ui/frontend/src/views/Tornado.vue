@@ -5,6 +5,16 @@
       Config your
       <strong>Tornado</strong> instance!
     </p>
+    <Tree :data="[{
+      active: 3,
+      nodes: [
+        {
+          id: 1,
+          title: 'Email',
+          description: 'Configure events delivered from a received email'
+        }
+       ]
+    }]" />
     <div class="columns">
       <div class="column">
         <button class="button" @click="loadConfig()">Load config from Tornado</button>
