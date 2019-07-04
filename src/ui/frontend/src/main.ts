@@ -6,7 +6,9 @@ import DesignSystem from 'wp-design-system';
 import 'wp-design-system/dist/system/system.css';
 
 Vue.config.productionTip = false;
-Vue.use(DesignSystem);
+
+Vue.use(DesignSystem as any);
+
 const tornadoApp = new Vue({
   router,
   store,

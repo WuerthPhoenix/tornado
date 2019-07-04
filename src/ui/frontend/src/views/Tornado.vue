@@ -5,16 +5,7 @@
       Config your
       <strong>Tornado</strong> instance!
     </p>
-    <Tree :data="[{
-      active: 3,
-      nodes: [
-        {
-          id: 1,
-          title: 'Email',
-          description: 'Configure events delivered from a received email'
-        }
-       ]
-    }]" />
+    <Tree :data="[treeData]" />
     <div class="columns">
       <div class="column">
         <button class="button" @click="loadConfig()">Load config from Tornado</button>
@@ -37,6 +28,7 @@ import NodeDetails from '@/components/NodeDetails.vue';
 import ProcessingTree from '@/components/ProcessingTree.vue';
 import { MatcherConfigDto } from '@/generated/dto';
 import configModule from '@/store/module/config';
+import { Patterns } from 'wp-design-system';
 
 @Component({
   components: {
@@ -52,6 +44,20 @@ export default class Tornado extends Vue {
 
   public loadConfig() {
     configModule.getConfig();
+  }
+
+  get treeData(): Patterns.TreeData {
+    return {
+      active: 0,
+      nodes: [
+        {
+          id: 1,
+          title: 'Email',
+          description: 'Configure events delivered from a received email',
+          actions: [],
+        },
+      ],
+    };
   }
 
 }
