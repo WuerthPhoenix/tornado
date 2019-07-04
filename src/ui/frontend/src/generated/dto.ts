@@ -10,8 +10,12 @@ export type ExtractorRegexDto = { match: string; group_match_idx: number };
 export type OperatorDto = 
  | { type: "AND"; operators: OperatorDto[] } 
  | { type: "OR"; operators: OperatorDto[] } 
- | { type: "contain"; text: string; substring: string } 
- | { type: "equal"; first: string; second: string } 
+ | { type: "contain"; first: Value; second: Value } 
+ | { type: "equal"; first: Value; second: Value } 
+ | { type: "ge"; first: Value; second: Value } 
+ | { type: "gt"; first: Value; second: Value } 
+ | { type: "le"; first: Value; second: Value } 
+ | { type: "lt"; first: Value; second: Value } 
  | { type: "regex"; regex: string; target: string };
 
 export type ActionDto = { id: string; payload: Value };

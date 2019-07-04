@@ -48,9 +48,17 @@ pub enum OperatorDto {
     #[serde(rename = "OR")]
     Or { operators: Vec<OperatorDto> },
     #[serde(rename = "contain")]
-    Contain { text: String, substring: String },
+    Contain { first: Value, second: Value },
     #[serde(rename = "equal")]
-    Equal { first: String, second: String },
+    Equal { first: Value, second: Value },
+    #[serde(rename = "ge")]
+    GreaterEqualThan { first: Value, second: Value },
+    #[serde(rename = "gt")]
+    GreaterThan { first: Value, second: Value },
+    #[serde(rename = "le")]
+    LessEqualThan { first: Value, second: Value },
+    #[serde(rename = "lt")]
+    LessThan { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }

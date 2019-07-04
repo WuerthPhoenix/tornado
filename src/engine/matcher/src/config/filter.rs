@@ -23,6 +23,7 @@ impl Filter {
 mod test {
     use super::*;
     use std::fs;
+    use tornado_common_api::Value;
 
     #[test]
     fn should_deserialize_filter_from_json() {
@@ -35,7 +36,10 @@ mod test {
         assert_eq!("only_emails", filter.name);
 
         assert_eq!(
-            Some(Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() }),
+            Some(Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned())
+            }),
             filter.filter
         );
     }

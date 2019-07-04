@@ -16,6 +16,10 @@ use tornado_common_api::Value;
 pub mod and;
 pub mod contain;
 pub mod equal;
+pub mod ge;
+pub mod gt;
+pub mod le;
+pub mod lt;
 pub mod or;
 pub mod regex;
 pub mod true_operator;
@@ -69,10 +73,11 @@ impl OperatorBuilder {
     ///
     /// use tornado_engine_matcher::matcher::operator::OperatorBuilder;
     /// use tornado_engine_matcher::config::rule;
+    /// use tornado_common_api::Value;
     ///
     /// let ops = rule::Operator::Equal {
-    ///              first: "${event.type}".to_owned(),
-    ///              second: "email".to_owned(),
+    ///              first: Value::Text("${event.type}".to_owned()),
+    ///              second: Value::Text("email".to_owned()),
     ///           };
     ///
     /// let builder = OperatorBuilder::new();
@@ -92,14 +97,38 @@ impl OperatorBuilder {
             }
             rule::Operator::Equal { first, second } => {
                 Ok(Box::new(crate::matcher::operator::equal::Equal::build(
-                    self.accessor.build(rule_name, first)?,
-                    self.accessor.build(rule_name, second)?,
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
-            rule::Operator::Contain { text, substring } => {
+            rule::Operator::GreaterEqualThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::ge::GreaterEqualThan::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::GreaterThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::gt::GreaterThan::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::LessEqualThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::le::LessEqualThan::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::LessThan { first, second } => {
+                Ok(Box::new(crate::matcher::operator::lt::LessThan::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?))
+            }
+            rule::Operator::Contain { first, second } => {
                 Ok(Box::new(crate::matcher::operator::contain::Contain::build(
-                    self.accessor.build(rule_name, text)?,
-                    self.accessor.build(rule_name, substring)?,
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
             rule::Operator::Regex { regex, target } => {
@@ -126,8 +155,8 @@ mod test {
     #[test]
     fn build_should_return_error_if_wrong_operator() {
         let ops = rule::Operator::Equal {
-            first: "${WRONG_ARG}".to_owned(),
-            second: "second_arg".to_owned(),
+            first: Value::Text("${WRONG_ARG}".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
         };
 
         let builder = OperatorBuilder::new();
@@ -137,8 +166,8 @@ mod test {
     #[test]
     fn build_should_return_the_equal_operator() {
         let ops = rule::Operator::Equal {
-            first: "first_arg=".to_owned(),
-            second: "second_arg".to_owned(),
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
         };
 
         let builder = OperatorBuilder::new();
@@ -148,10 +177,62 @@ mod test {
     }
 
     #[test]
+    fn build_should_return_the_greater_equal_operator() {
+        let ops = rule::Operator::GreaterEqualThan {
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("ge", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_greater_operator() {
+        let ops = rule::Operator::GreaterThan {
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("gt", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_less_equal_operator() {
+        let ops = rule::Operator::LessEqualThan {
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("le", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_less_operator() {
+        let ops = rule::Operator::LessThan {
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("lt", operator.name());
+    }
+
+    #[test]
     fn build_should_return_the_contain_operator() {
         let ops = rule::Operator::Contain {
-            text: "first_arg=".to_owned(),
-            substring: "second_arg".to_owned(),
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
         };
 
         let builder = OperatorBuilder::new();
@@ -175,8 +256,8 @@ mod test {
     fn build_should_return_the_and_operator() {
         let ops = rule::Operator::And {
             operators: vec![rule::Operator::Equal {
-                first: "first_arg".to_owned(),
-                second: "second_arg".to_owned(),
+                first: Value::Text("first_arg".to_owned()),
+                second: Value::Text("second_arg".to_owned()),
             }],
         };
 

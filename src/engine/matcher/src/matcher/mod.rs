@@ -244,7 +244,10 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         // Act
@@ -265,7 +268,10 @@ mod test {
         // Arrange
         let filter = new_filter(
             "filter_name",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         // Act
@@ -310,7 +316,10 @@ mod test {
         // Arrange
         let filter = new_filter(
             "filter1",
-            Operator::Equal { first: "1".to_owned(), second: "1".to_owned() },
+            Operator::Equal {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            },
         );
 
         let nodes = btreemap![
@@ -363,7 +372,10 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_name() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let rule_1 = new_rule("rule_name", op.clone());
         let rule_2 = new_rule("rule_name", op.clone());
 
@@ -402,7 +414,10 @@ mod test {
     #[test]
     fn should_sort_the_rules_based_on_input_order() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let rule_1 = new_rule("rule1", op.clone());
         let rule_2 = new_rule("rule2", op.clone());
         let rule_3 = new_rule("rule3", op.clone());
@@ -429,7 +444,10 @@ mod test {
     #[test]
     fn should_ignore_non_active_rules() {
         // Arrange
-        let op = Operator::Equal { first: "1".to_owned(), second: "1".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("1".to_owned()),
+            second: Value::Text("1".to_owned()),
+        };
         let mut rule_1 = new_rule("rule1", op.clone());
         rule_1.active = false;
 
@@ -461,17 +479,26 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         let rule_2 = new_rule(
             "rule2_sms",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "sms".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("sms".to_owned()),
+            },
         );
 
         let rule_3 = new_rule(
             "rule3_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         let matcher =
@@ -509,7 +536,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -555,7 +585,10 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1] }).unwrap();
@@ -581,7 +614,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -618,7 +654,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -666,7 +705,10 @@ mod test {
     #[test]
     fn should_stop_execution_if_continue_is_false() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let rule_1 = new_rule("rule1_email", op.clone());
 
@@ -703,13 +745,19 @@ mod test {
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let rule_1 = new_rule("rule1_email", op.clone());
 
         let mut rule_2 = new_rule(
             "rule2_sms",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "sms".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("sms".to_owned()),
+            },
         );
         rule_2.do_continue = false;
 
@@ -750,7 +798,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -786,7 +837,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -799,7 +853,10 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_2.constraint.with.insert(
@@ -839,7 +896,10 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_1.constraint.with.insert(
@@ -852,7 +912,10 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("email".to_owned()),
+            },
         );
 
         rule_2.constraint.with.insert(
@@ -892,8 +955,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1",
             Operator::Equal {
-                first: "${event.payload.array[0]}".to_owned(),
-                second: "aaa".to_owned(),
+                first: Value::Text("${event.payload.array[0]}".to_owned()),
+                second: Value::Text("aaa".to_owned()),
             },
         );
 
@@ -936,8 +999,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1",
             Operator::Equal {
-                first: "${event.payload.map.key0}".to_owned(),
-                second: "aaa".to_owned(),
+                first: Value::Text("${event.payload.map.key0}".to_owned()),
+                second: Value::Text("aaa".to_owned()),
             },
         );
 
@@ -977,7 +1040,10 @@ mod test {
     #[test]
     fn should_process_rulesets_if_filter_has_no_operator() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let filter = new_filter("filter1", None);
 
@@ -1022,7 +1088,10 @@ mod test {
     #[test]
     fn should_process_all_filter_rulesets() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let filter = new_filter("filter1", op.clone());
 
@@ -1093,7 +1162,10 @@ mod test {
     #[test]
     fn should_process_filter_rulesets_recursively() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let filter = new_filter("filter1", None);
 
@@ -1106,8 +1178,8 @@ mod test {
                 filter: new_filter(
                     "filter3",
                     Operator::Equal {
-                        first: "${event.type}".to_owned(),
-                        second: "trap".to_owned(),
+                        first: Value::Text("${event.type}".to_owned()),
+                        second: Value::Text("trap".to_owned()),
                     },
                 ),
                 nodes: btreemap![ "node".to_owned() => MatcherConfig::Rules { rules: vec![new_rule("rule3", None)] }],
@@ -1196,7 +1268,10 @@ mod test {
     #[test]
     fn should_process_no_rulesets_if_filter_is_inactive() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let mut filter = new_filter("filter1", None);
         filter.active = false;
@@ -1226,11 +1301,17 @@ mod test {
     #[test]
     fn should_process_no_rulesets_if_filter_does_not_match() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let filter = new_filter(
             "filter1",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "trapd".to_owned() },
+            Operator::Equal {
+                first: Value::Text("${event.type}".to_owned()),
+                second: Value::Text("trapd".to_owned()),
+            },
         );
 
         let nodes = btreemap![
@@ -1262,7 +1343,10 @@ mod test {
     #[test]
     fn should_process_rulesets_independently() {
         // Arrange
-        let op = Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() };
+        let op = Operator::Equal {
+            first: Value::Text("${event.type}".to_owned()),
+            second: Value::Text("email".to_owned()),
+        };
 
         let filter = new_filter("filter1", op.clone());
 
@@ -1401,6 +1485,152 @@ mod test {
             }
             _ => assert!(false),
         };
+    }
+
+    #[test]
+    fn should_match_cmp_operators() {
+        // Arrange
+        let filename = "./test_resources/rules/004_cmp_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "cmp_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule.clone()] }).unwrap();
+
+        // Value equal to 1000 should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(1000)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value equal to 2000 should not match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(2000)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value less than 0 should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::NegInt(-1000)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value more than 2000 (not included) should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::Float(1000000000.0)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value between 100 and 200 (included) should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(100)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value between 100 and 200 (included) should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value between 100 and 200 (included) should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(200)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Rules { rules } => {
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(
+                        ProcessedRuleStatus::Matched,
+                        rules.rules.get(&rule.name).unwrap().status
+                    );
+                }
+                _ => assert!(false),
+            };
+        }
     }
 
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {

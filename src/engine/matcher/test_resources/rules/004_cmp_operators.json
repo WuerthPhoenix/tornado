@@ -1,0 +1,44 @@
+{
+  "description": "This is All Emails and Syslogs",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "OR",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.payload.value}",
+          "second": 1000
+        },
+        {
+          "type": "AND",
+          "operators": [
+            {
+              "type": "ge",
+              "first": "${event.payload.value}",
+              "second": 100
+            },
+            {
+              "type": "le",
+              "first": "${event.payload.value}",
+              "second": 200
+            }
+          ]
+        },
+        {
+          "type": "lt",
+          "first": "${event.payload.value}",
+          "second": 0
+        },
+        {
+          "type": "gt",
+          "first": "${event.payload.value}",
+          "second": 2000
+        }
+      ]
+    },
+    "WITH": {}
+  },
+  "actions": []
+}

@@ -97,7 +97,6 @@ automatically generate an implicit filter for the *root* node, and all incoming 
 will be dispatched to each child node.
 
 
-
 ## Structure of a Rule
 
 A __Rule__ is composed of a set of properties, constraints and actions.
@@ -131,9 +130,17 @@ An event matches a rule if and only if the WHERE clause evaluates to `true` and 
 expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
-- __'contain'__: Evaluates whether a string contains a given substring.
+- __'contain'__: Evaluates whether the first argument contains the second one.
 - __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
   the values do not exist, it returns `false`.
+- __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
+  to the second one. If one or both of the values do not exist, it returns `false`.
+- __'gt'__:  Compares two values and returns whether the first value is greater 
+  than the second one. If one or both of the values do not exist, it returns `false`.
+- __'le'__:  Compares two values and returns whether the first value is less than or equal 
+  to the second one. If one or both of the values do not exist, it returns `false`.
+- __'lt'__:  Compares two values and returns whether the first value is less 
+  than the second one. If one or both of the values do not exist, it returns `false`.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
@@ -180,13 +187,14 @@ The following accessors are valid:
 - `${event.payload}`:  Returns the entire payload
 - `${event}`: Returns the entire event
 
+
 ### String interpolation
 
 An action payload can also contain
 text with placeholders that Tornado will replace at runtime. 
 The values to be used for the substitution are extracted
 from the incoming _Events_ following the accessor rules 
-aforementioned.
+mentioned earlier.
 
 For example, if the Event is the one of the previous paragraph, 
 this definition in the action payload:
@@ -204,6 +212,7 @@ extracted from the Event is:
 - _undefined_
 - an _Array_
 - a _Map_
+
 
 ## Filter Examples
 
@@ -293,20 +302,27 @@ Content of *only_trapd_filter.json*:
 
 ### The 'contain' Operator
 
-The _contain_ operator is used to check if a string contains a substring.
+The _contain_ operator is used to check whether the first argument contains the second one.
+
+It applies in three different situations:
+- The arguments are both strings:  Returns true if the second string is a substring of the first one.
+- The first argument is an array:  Returns true if the second argument is contained in the array.
+- The first argument is a map and the second is a string:
+  Returns true if the second argument is an existing key in the map.
+
+In any other case, it will return false.
 
 Rule example:
 ```json
 {
-  "name": "contain_operator",
   "description": "",
   "continue": true,
   "active": true,
   "constraint": {
     "WHERE": {
       "type": "contain",
-      "text": "${event.payload.hostname}",
-      "substring": "linux"
+      "first": "${event.payload.hostname}",
+      "second": "linux"
     },
     "WITH": {}
   },
@@ -329,38 +345,94 @@ A matching Event is:
 ```
 
 
-### The 'equal' Operator
+### The 'equal', 'ge', 'gt', 'le' and 'lt' Operators
 
-The _equal_ operator is used to check if two values are the same.
+The _equal_, _ge_, _gt_, _le_, _lt_ operators are used to compare two values.
+
+All these operators can work with values of type Number, String, Bool, null and Array. 
+
+Please be extremely careful when using these operators with numbers of type float. The
+representation of floating point numbers is often slightly imprecise and can lead to
+unexpected results (for example, see: https://www.floating-point-gui.de/errors/comparison/).
 
 Example:
 ```json
 {
-  "name": "equal_operator",
   "description": "",
   "continue": true,
   "active": true,
   "constraint": {
-    "WHERE": {
-      "type": "equal",
-      "first": "${event.type}",
-      "second": "email"
+      "WHERE": {
+      "type": "OR",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.payload.value}",
+          "second": 1000
+        },
+        {
+          "type": "AND",
+          "operators": [
+            {
+              "type": "ge",
+              "first": "${event.payload.value}",
+              "second": 100
+            },
+            {
+              "type": "le",
+              "first": "${event.payload.value}",
+              "second": 200
+            }
+          ]
+        },
+        {
+          "type": "lt",
+          "first": "${event.payload.value}",
+          "second": 0
+        },
+        {
+          "type": "gt",
+          "first": "${event.payload.value}",
+          "second": 2000
+        }
+      ]
     },
     "WITH": {}
   },
   "actions": []
 }
 ```
-An event matches this rule if its type is "email".
+An event matches this rule if _event.payload.value_ exists and one or more of the following
+conditions hold:
+- it is equal to _1000_
+- it is between _100_ (inclusive) and _200_ (inclusive)
+- it is less than _0_ (exclusive)
+- it is greater than _2000_ (exclusive)
 
 A matching Event is:
 ```json
 {
     "type": "email",
     "created_ms": 1554130814854,
-    "payload":{}
+    "payload":{
+      "value": 150
+    }
 }
 ```
+
+Here are some examples showing how these operators behave:
+- `[{"id":557}, {"one":"two"}]` _lt_ `3`: _false_
+  (cannot compare different types, e.g. here the first is an array and the second is a number)
+- `{id: "one"}` _lt_ `{id: "two"}`: _false_ (maps cannot be compared)
+- `[["id",557], ["one"]]` _gt_ `[["id",555], ["two"]]`: _true_
+  (elements in the array are compared recursively from left to right:  so here "id" is first compared to
+  "id", then 557 to 555, returning true before attempting to match "one" and "two")
+- `[["id",557]]` _gt_ `[["id",555], ["two"]]`: _true_
+  (elements are compared even if the length of the arrays is not the same)
+- `true` _gt_ `false`: _true_ (the value 'true' is evaluated as 1, and the value
+  'false' as 0; consequently, the expression is equivalent to "1 gt 0" which is true)
+- "twelve" _gt_ "two": _false_ (strings are compared lexically, and 'e' comes before
+  'o', not after it) 
 
 
 ### The 'regex' Operator
@@ -373,7 +445,6 @@ The evaluation is performed with the Rust Regex library
 Rule example:
 ```json
 {
-  "name": "regex_operator",
   "description": "",
   "continue": true,
   "active": true,
@@ -413,7 +484,6 @@ As you would expect:
 Example:
 ```json
 {
-  "name": "complex_rule",
   "description": "",
   "continue": true,
   "active": true,
@@ -472,7 +542,6 @@ If the _WHERE_ clause is not specified, the Rule evaluates to true for each inco
 For example, this Rule generates an "archive" Action for each Event:
 ```json
 {
-    "name": "rule_without_where",
     "description": "",
     "continue": true,
     "active": true,
@@ -502,7 +571,6 @@ All variables declared by a Rule should be resolved, otherwise the Rule will not
 Example:
 ```json
 {
-  "name": "motion_sensor_4",
   "description": "",
   "continue": true,
   "active": true,
@@ -587,7 +655,6 @@ It will generate this Action:
 An example of valid content for a Rule JSON file is:
 ```json
 {
-  "name": "emails_with_temperature",
   "description": "This matches all emails containing a temperature measurement.",
   "continue": true,
   "active": true,

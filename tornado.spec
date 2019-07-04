@@ -21,7 +21,7 @@
 %endif
 
 Name:    tornado
-Version: 0.12.0
+Version: 0.13.0
 Release: 1
 Summary: Tornado Package
 
@@ -65,12 +65,6 @@ mkdir -p %{buildroot}/%{_bindir}
 # Install executables
 cp -pv src/%{build_target_dir}/tornado_*_collector %{buildroot}/%{bin_dir}
 
-#EXECUTABLES="tornado_rsyslog_collector tornado_webhook_collector"
-#for binary in $EXECUTABLES ; do
-#    mkdir -p %{buildroot}/%{bin_dir}
-#    cp -pv src/%{build_target_dir}/$binary %{buildroot}/%{bin_dir}/$binary
-#done
-
 # Install tornado daemon
 cp -pv src/%{build_target_dir}/tornado_engine %{buildroot}%{_bindir}/tornado
 
@@ -88,7 +82,6 @@ cp -rp conf/systemd/*.d %{buildroot}%{systemd_plugin_dir}
 mkdir -p %{buildroot}/%{log_dir}
 mkdir -p %{buildroot}/%{data_dir}/archive/
 
-
 # Install rsyslog config file
 mkdir -p %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
 cp conf/rsyslog_collector/05_tornado.conf %{buildroot}/neteye/shared/rsyslog/conf/rsyslog.d/
@@ -98,7 +91,6 @@ mkdir -p %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
 mkdir -p %{buildroot}%{script_dir}
 cp src/tornado/snmptrapd_collector/src/snmptrapd_collector.pl %{buildroot}%{script_dir}
 cp conf/snmptrapd_collector/tornado.conf %{buildroot}/neteye/shared/snmptrapd/conf/conf.d/
-
 
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
@@ -121,9 +113,10 @@ cp -p src/tornado/webhook_collector/config/webhooks/* %{buildroot}%{lib_dir}/exa
 mkdir -p %{buildroot}%{userguide_dir}/
 cp -p doc/how-to/* %{buildroot}%{userguide_dir}/
 
-# install autosetup
+# install scripts & autosetup
 %{__mkdir_p} %{buildroot}/%{ne_secure_install_dir}/
 %{__cp} src/scripts/510_tornado_eventgw_procmail_config.sh %{buildroot}/%{ne_secure_install_dir}
+%{__cp} src/scripts/tornado-send-event.sh %{buildroot}%{_bindir}/tornado-send-event
 
 %post
 # Copy example rules, streams only on first installation to avoid rpmnew/save files
@@ -139,6 +132,7 @@ fi
 %{bin_dir}
 %{script_dir}
 %{_bindir}/tornado
+%{_bindir}/tornado-send-event
 
 %defattr(0660, root, root, 0770)
 %dir %{tornado_dir}
@@ -182,6 +176,14 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Tue Jun 25 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.13.0-1
+- New Feature: tornado-send-event script to easily send events to tornado
+- Added How To for String Interpolation
+- Added ge, gt, le and lt operators
+- Rule operator accept every valid JSON type
+- The "contain" operator accepts generic input
+- Added first integretion tests
+
 * Thu May 23 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
  - New Feature: String Interpolation in Action Payload
