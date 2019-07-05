@@ -182,6 +182,7 @@ Files for neteye_secure_install %{name} autosetup
 - Added ge, gt, le and lt operators
 - Rule operator accept every valid JSON type
 - The "contain" operator accepts generic input
+- Added first integretion tests
 
 * Thu May 23 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.12.0-1
  - New Collector: Email collector via Procmail
