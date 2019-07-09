@@ -19,7 +19,7 @@
     "vue-router": "^3.0.3",
     "vuex": "^3.0.1",
     "vuex-module-decorators": "^0.9.8",
-    "wp-design-system": "file:./../../../../design-system"
+    "wp-design-system": "bitbucket:siwuerthphoenix/design-system.git#implement-node-element-design"
   },
   "devDependencies": {
     "@types/jest": "^23.1.4",
