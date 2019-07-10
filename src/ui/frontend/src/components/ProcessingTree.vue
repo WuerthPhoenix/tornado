@@ -1,18 +1,7 @@
 <template>
-  <div class="card">
-    <header class="card-header">
-      <p class="card-header-title">
-        Processing Tree
-      </p>
-    </header>
-    <div class="card-content">
-      <div class="content">
-        tree here
-        <Tree :data="[treeData]" />
-        ends here
-        <DisplayAsJson :obj="tree"/>
-      </div>
-    </div>
+  <div>
+    <Tree :data="[treeData]" />
+    <DisplayAsJson :obj="tree"/>
   </div>
 </template>
 
@@ -32,8 +21,7 @@ export default class ProcessingTree extends Vue {
 
   get treeData(): Patterns.TreeCard {
     const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.tree);
-    console.log(JSON.stringify(treeCard));
-    //;
+    // console.log(treeCard);
     return treeCard;
   }
 
