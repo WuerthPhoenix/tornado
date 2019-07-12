@@ -1,12 +1,17 @@
 import { shallowMount } from '@vue/test-utils';
-import HelloWorld from '@/components/HelloWorld.vue';
+import ProcessingTree from '@/components/ProcessingTree.vue';
+import { MatcherConfigDto } from '@/generated/dto';
 
-describe('HelloWorld.vue', () => {
+describe('Tornado.vue', () => {
   it('renders props.msg when passed', () => {
-    const msg = 'new message';
-    const wrapper = shallowMount(HelloWorld, {
-      propsData: { msg },
+    const tree: MatcherConfigDto = {
+      type: 'Rules',
+      rules: [],
+    };
+    const wrapper = shallowMount(ProcessingTree, {
+      propsData: { tree },
+      stubs: ['Tree'],
     });
-    expect(wrapper.text()).toMatch(msg);
+    expect(wrapper.text()).toBeDefined();
   });
 });
