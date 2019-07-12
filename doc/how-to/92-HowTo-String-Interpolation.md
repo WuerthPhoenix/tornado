@@ -17,12 +17,12 @@ Before continuing, you should first check the
 * For testing purposes we will manually send an event to Tornado via the shell. In a production
   environment, Tornado can accept events from any collector and even via an HTTP POST request
   with a JSON payload.
-* Make sure that the username and password are properly set to your dedicated Tornado user in icinga2:
+* Make sure that the username and password are properly set to your dedicated Tornado user in Icinga 2:
   ```
   /neteye/shared/tornado/conf/icinga2_client_executor.toml
   ```
 
-**Icinga Director / Icinga2**:
+**Icinga Director / Icinga 2**:
 * Create a **host** called *host.example.com* with no particular requirements
 * Create a **service template** with the following properties:
     * Check command: *dummy*
@@ -64,7 +64,7 @@ We can achieve this by creating the following rule in `/neteye/shared/tornado/co
 in a file called *900_icinga2_my_checkresult_crit.json*:
 ```json
 {
-  "description": "Set the critical status for my_dummy checks in Icinga2",
+  "description": "Set the critical status for my_dummy checks in Icinga 2",
   "continue": true,
   "active": true,
   "constraint": {
@@ -106,7 +106,7 @@ In addition, we want our rule to trigger an Icinga 2 action with a passive check
 Now let's add these desired actions to the rule above to create this final version:
 ```json
 {
-  "description": "Set the critical status for my_dummy checks in Icinga2",
+  "description": "Set the critical status for my_dummy checks in Icinga 2",
   "continue": true,
   "active": true,
   "constraint": {
@@ -148,7 +148,6 @@ Now let's add these desired actions to the rule above to create this final versi
     }
   ]
 }
-
 ```
 
 Remember that whenever you create a new rule or edit an existing one,
@@ -249,7 +248,7 @@ This should trigger our rule and produce a response similar to the following:
 }
 ```
 
-Now open your browser and check the service in Icinga2 again. You'll see that it has **NOT**
+Now open your browser and check the service in Icinga 2 again. You'll see that it has **NOT**
 changed yet. This behavior is intentional: in order to avoid triggering actions accidentally,
 the _tornado-send-event_ command executes no actions by default. 
 We can tell tornado to actually
