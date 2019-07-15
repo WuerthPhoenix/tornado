@@ -1,7 +1,7 @@
 <template>
   <div>
-    <Tree :data="[treeData]" />
-    <DisplayAsJson :obj="tree"/>
+    <Tree :data="treeData" :key="Math.random()"/>
+    <DisplayAsJson :obj="treeData"/>
   </div>
 </template>
 
@@ -19,17 +19,20 @@ import { Patterns } from 'wp-design-system';
 export default class ProcessingTree extends Vue {
   @Prop() public tree!: MatcherConfigDto;
 
-  get treeData(): Patterns.TreeCard {
-    const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.tree);
-    // console.log(treeCard);
-    return treeCard;
+  public count = 0;
+
+  get treeData(): Patterns.TreeData {
+    const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.count++, this.tree);
+    console.log(`count: ${this.count}`);
+    console.log(treeCard);
+    return {cards: [treeCard]};
   }
 
-  private toTreeNode(name: string, node: MatcherConfigDto): Patterns.TreeCard {
+  private toTreeNode(name: string, id: number, node: MatcherConfigDto): Patterns.TreeCard {
     if (node.type === 'Filter') {
       const treeNode: Patterns.TreeCard = {
-        active: true,
-        id: 0,
+        active: false,
+        id,
         title: `Filter - ${name}` + node.filter.name,
         description: node.filter.description,
         actions: [],
@@ -37,14 +40,15 @@ export default class ProcessingTree extends Vue {
       };
 
       Object.keys(node.nodes).forEach((key) => {
-        treeNode.children.push(this.toTreeNode(key, node.nodes[key]));
+        id = id + 1;
+        treeNode.children.push(this.toTreeNode(key, id, node.nodes[key]));
       });
 
       return treeNode;
     } else {
       const treeNode: Patterns.TreeCard = {
-        id: 0,
-        active: true,
+        id,
+        active: false,
         title: `Rules - ${name}`,
         description: `Rule set with ${node.rules.length} rules`,
         actions: [],

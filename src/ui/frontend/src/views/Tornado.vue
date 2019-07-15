@@ -28,7 +28,7 @@ export default class Tornado extends Vue {
     configModule.getConfig();
   }
   */
-  public mounted() {
+  public async mounted() {
     configModule.getConfig();
   }
 }
