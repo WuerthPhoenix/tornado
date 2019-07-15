@@ -24,7 +24,7 @@ time:
 ```bash
 # curl -H "content-type: application/json" \
        -X POST -vvv \
-       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":55, "IP":"198.51.100.11"}}, "process_type":"Full"}' \
+       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":55, "ip":"198.51.100.11"}}, "process_type":"Full"}' \
        http://localhost:4748/api/send_event | jq .
 ```
 
@@ -51,7 +51,7 @@ le       | Less than or equal to
 All these operators can work with values of type Number, String, Bool, null and Array, but we
 will just use Number for temperatures.
 
-Now it's time to build our rule.  It needs to be both of type **iot-temp** and to have its
+Now it's time to build our rule.  The event needs to be both of type **iot-temp** and to have its
 temperature measurement be greater than 57 (Celsius), which we will do by comparing the computed
 value of **${event.payload.temperature}** to the number 57:
 ```json
@@ -79,12 +79,14 @@ value of **${event.payload.temperature}** to the number 57:
   },
   "actions": [
     {
-      "id": "Logger",
+      "id": "archive",
       "payload": {
-        "type": "${event.type}",
-        "time": "${event.created_ms}",
-        "source": "${event.payload.ip}",
-        "temperature:": "${_variables.temperature}"
+        "id": "archive",
+        "payload": {
+          "event": "At ${event.created_ms}, device ${event.payload.ip} exceeded the temperature limit at ${event.payload.temperature} degrees.",
+          "archive_type": "iot_temp",
+          "source": "${event.payload.ip}"
+        }
       }
     }
   ]
@@ -100,7 +102,7 @@ Our log message that implements
 [string interpolation](/neteye/doc/module/tornado/chapter/tornado-howto-string-interpolation)
 should then have the following template:
 ```
-At ${event.payload.created_ms}, device ${event.payload.ip} exceeded the temperature limit at ${event.payload.temperature} degrees.
+At ${event.created_ms}, device ${event.payload.ip} exceeded the temperature limit at ${event.payload.temperature} degrees.
 ```
 
 So our rule needs to check incoming events of type *iot-temp*, and when one matches, extract the
@@ -115,7 +117,7 @@ configuration is */neteye/shared/tornado/conf/rules.d/*.  Let's give it a name l
 Also remember that whenever you create a new rule and save the file in that directory, you will
 need to restart the Tornado service.  And it's always helpful to run a check first to make sure
 there are no syntactic errors in your new rule:
-```
+```bash
 # tornado --config-dir=/neteye/shared/tornado/conf check
 # systemctl restart tornado.service
 ```
@@ -160,34 +162,34 @@ message with the values for time, IP and temperature will be written out to the 
 
 Let's observe how our newly configured temperature monitor works using a bash shell.  Open a
 shell and trigger the following events manually:
-```
+```bash
 # curl -H "content-type: application/json" \
        -X POST -vvv \
-       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":55, "IP":"198.51.100.11"}}, "process_type":"Full"}' \
+       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":55, "ip":"198.51.100.11"}}, "process_type":"Full"}' \
        http://localhost:4748/api/send_event | jq .
 # curl -H "content-type: application/json" \
        -X POST -vvv \
-       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":57, "IP":"198.51.100.11"}}, "process_type":"Full"}' \
+       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":57, "ip":"198.51.100.11"}}, "process_type":"Full"}' \
        http://localhost:4748/api/send_event | jq .
 ```
 
 So far if you look at our new log file, you shouldn't see anything at all.  After all, the two
 temperature events so far haven't been greater than 57 degrees, so they haven't matched our rule:
-```
+```bash
 # cat /neteye/shared/tornado/data/archive/temp/198.51.100.11/too_hot.log
 <empty>
 ```
 
 And now our server has gotten hot.  So let's simulate the next temperature reading:
-```
+```bash
 # curl -H "content-type: application/json" \
        -X POST -vvv \
-       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":59, "IP":"198.51.100.11"}}, "process_type":"Full"}' \
+       -d '{"event":{"type":"iot-temp", "created_ms":111, "payload": {"temperature":59, "ip":"198.51.100.11"}}, "process_type":"Full"}' \
        http://localhost:4748/api/send_event | jq .
 ```
 
 There you should see the full event written into the file we specified during Step #2:
-```
+```bash
 # cat /neteye/shared/tornado/data/archive/temp/198.51.100.11/too_hot.log
 At 17:43:22, device 198.51.100.11 exceeded the temperature limit at 59 degrees.
 ```
