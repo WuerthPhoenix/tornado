@@ -21,7 +21,7 @@
 %endif
 
 Name:    tornado
-Version: 0.13.0
+Version: 0.14.0
 Release: 1
 Summary: Tornado Package
 
@@ -176,6 +176,9 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Mon Jul 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.14.0-1
+- Added How To for Numerical Operators
+
 * Tue Jun 25 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.13.0-1
 - New Feature: tornado-send-event script to easily send events to tornado
 - Added How To for String Interpolation
