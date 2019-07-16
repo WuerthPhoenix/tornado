@@ -1,7 +1,7 @@
 <template>
   <div>
     <Tree :data="treeData" :key="Math.random()"/>
-    <DisplayAsJson :obj="treeData"/>
+    <!-- <DisplayAsJson :obj="treeData"/> -->
   </div>
 </template>
 
@@ -23,8 +23,8 @@ export default class ProcessingTree extends Vue {
 
   get treeData(): Patterns.TreeData {
     const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.count++, this.tree);
-    console.log(`count: ${this.count}`);
-    console.log(treeCard);
+    // console.log(`count: ${this.count}`);
+    // console.log(treeCard);
     return {cards: [treeCard]};
   }
 
