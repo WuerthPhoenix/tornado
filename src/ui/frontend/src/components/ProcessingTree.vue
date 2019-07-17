@@ -33,7 +33,7 @@ export default class ProcessingTree extends Vue {
       const treeNode: Patterns.TreeCard = {
         active: false,
         id,
-        title: `Filter - ${name}` + node.filter.name,
+        title: `${name} ${node.filter.name}`,
         description: node.filter.description,
         actions: [],
         children: [],
@@ -49,10 +49,14 @@ export default class ProcessingTree extends Vue {
       const treeNode: Patterns.TreeCard = {
         id,
         active: false,
-        title: `Rules - ${name}`,
-        description: `Rule set with ${node.rules.length} rules`,
+        title: `${name}`,
+        description: ``,
         actions: [],
         children: [],
+        info: {
+          field1: 'Rule set',
+          field2: `${node.rules.length} rules`,
+        },
       };
       return treeNode;
     }
