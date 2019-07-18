@@ -183,7 +183,7 @@ So if the source IP was 127.0.0.1, the log file's name will be:
 ```
 
 When an SNMP event is received, the field "event" under "payload" will be written into that
-file.  Since we have only specifed "event", the entire event will be saved to the log file.
+file.  Since we have only specified "event", the entire event will be saved to the log file.
 
 
 
