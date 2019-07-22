@@ -1,6 +1,6 @@
 <template>
   <Container>
-    <Heading>Tornado</Heading>
+    <Heading>Processing Tree</Heading>
     <div>
       <ProcessingTree :tree="tree"/>
     </div>
