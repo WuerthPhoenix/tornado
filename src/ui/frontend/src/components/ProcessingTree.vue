@@ -1,6 +1,8 @@
 <template>
   <div>
-    <Tree :data="treeData" :key="Math.random()"/>
+    <Tree class="wptree" :data="treeData" :key="Math.random()">
+      <Placeholder>Your processing tree has no nodes.</Placeholder>
+    </Tree>
     <!-- <DisplayAsJson :obj="treeData"/> -->
   </div>
 </template>
@@ -23,8 +25,6 @@ export default class ProcessingTree extends Vue {
 
   get treeData(): Patterns.TreeData {
     const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.count++, this.tree);
-    // console.log(`count: ${this.count}`);
-    // console.log(treeCard);
     return {cards: [treeCard]};
   }
 
