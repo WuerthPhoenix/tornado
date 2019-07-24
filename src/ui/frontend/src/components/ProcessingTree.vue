@@ -1,6 +1,6 @@
 <template>
   <div>
-    <Tree class="wptree" :data="treeData" :key="Math.random()">
+    <Tree class="wptree" :data="treeData" :config="treeConfig" :key="Math.random()">
       <Placeholder>Your processing tree has no nodes.</Placeholder>
     </Tree>
     <!-- <DisplayAsJson :obj="treeData"/> -->
@@ -20,12 +20,20 @@ import { Patterns } from 'wp-design-system';
 })
 export default class ProcessingTree extends Vue {
   @Prop() public tree!: MatcherConfigDto;
+  @Prop() public loaded!: boolean;
 
   public count = 0;
 
   get treeData(): Patterns.TreeData {
     const treeCard: Patterns.TreeCard = this.toTreeNode('root', this.tree);
     return {cards: [treeCard]};
+  }
+
+  get treeConfig(): Patterns.TreeConfig {
+    return {
+      class: 'wptree',
+      loaded: this.loaded,
+    };
   }
 
   private toTreeNode(name: string, node: MatcherConfigDto): Patterns.TreeCard {
