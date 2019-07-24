@@ -2,7 +2,7 @@
   <Container>
     <Heading>Processing Tree</Heading>
     <div>
-      <ProcessingTree :tree="tree"/>
+      <ProcessingTree :tree="tree" :loaded="loaded"/>
     </div>
   </Container>
 </template>
@@ -22,6 +22,10 @@ export default class Tornado extends Vue {
 
   get tree(): MatcherConfigDto {
     return configModule.config;
+  }
+
+  get loaded(): boolean {
+    return configModule.loaded;
   }
   /*
   public loadConfig() {
