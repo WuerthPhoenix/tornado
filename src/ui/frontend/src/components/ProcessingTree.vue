@@ -41,7 +41,7 @@ export default class ProcessingTree extends Vue {
       const treeNode: Patterns.TreeCard = {
         active: false,
         id: this.count++,
-        title: `${name} ${node.filter.name}`,
+        title: `${node.filter.name}`,
         description: node.filter.description,
         actions: [],
         children: [],
