@@ -1,7 +1,7 @@
 <template>
   <div>
     <Tree class="wptree" :data="treeData" :config="treeConfig" :key="Math.random()">
-      <Placeholder>Your processing tree has no nodes.</Placeholder>
+      <Placeholder>Could not open your Tornado configuration.</Placeholder>
     </Tree>
     <!-- <DisplayAsJson :obj="treeData"/> -->
   </div>
