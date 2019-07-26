@@ -22,13 +22,17 @@
 
 Name:    tornado
 Version: 0.14.0
-Release: 1
+Release: 2
 Summary: Tornado Package
 
 Group:   Applications/System
 License: GPLv3
 Source0: %{name}.tar.gz
 
+# Needed for packages.ini
+Requires: neteye-setup >= 1:1.19.0
+
+# can be removed after switching to rustls
 BuildRequires: openssl-devel
 Requires: openssl-libs
 
@@ -176,7 +180,7 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
-* Mon Jul 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.14.0-1
+* Mon Jul 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.14.0-2
 - Added How To for Numerical Operators
 
 * Tue Jun 25 2019 Benjamin Groeber <Benjamin.Groeber@wuerth-phoenix.com> - 0.13.0-1
