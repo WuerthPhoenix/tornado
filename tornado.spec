@@ -29,6 +29,10 @@ Group:   Applications/System
 License: GPLv3
 Source0: %{name}.tar.gz
 
+# Needed for packages.ini
+Requires: neteye-setup >= 1:1.19.0
+
+# can be removed after switching to rustls
 BuildRequires: openssl-devel
 Requires: openssl-libs
 
