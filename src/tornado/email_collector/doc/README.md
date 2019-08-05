@@ -35,7 +35,7 @@ LOGFILE=$MAILDIR/procmail.log
 # This is where we ask procmail to write to our UDS socket.
 SHELL=/bin/sh
 :0
-| /usr/bin/socat - /var/run/tornado/email.sock 2>&1
+| /usr/bin/socat - /var/run/tornado_email_collector/email.sock 2>&1
 ```
 
 A precondition for procmail to work is that the mail server in use must be properly
@@ -71,7 +71,7 @@ The executable configuration is based on the following command-line parameters:
   When the buffer is full, the collector will start discarding older messages first.
   The default buffer size is `10000` messages.
 - __uds-path__: The Unix Socket path on which the collector will listen for incoming emails.
-    The default is: _/var/run/tornado/email.sock_
+    The default is: _/var/run/tornado_email_collector/email.sock_
     
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
