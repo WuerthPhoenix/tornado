@@ -21,8 +21,8 @@
 %endif
 
 Name:    tornado
-Version: 0.14.0
-Release: 2
+Version: 0.15.0
+Release: 1
 Summary: Tornado Package
 
 Group:   Applications/System
@@ -180,6 +180,9 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Tue Aug 06 2019 Karlis Upitis <karlis.upitis@wuerth-phoenix.com> - 0.15.0-1
+- Add Tornado UI (TOR-113)
+
 * Mon Jul 15 2019 Benjamin Groeber <benjamin.groeber@wuerth-phoenix.com> - 0.14.0-2
 - Added How To for Numerical Operators
 
