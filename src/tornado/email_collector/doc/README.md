@@ -16,8 +16,8 @@ Each email published on the socket is processed by the embedded
 to produce Tornado Events which are, finally, forwarded to the
 Tornado Engine's TCP address.
 
-The UDS socket is created with the same user and group of the tornado_email_collector process;
- in addition, the permissions are set to 770 (read, write and execute for the user and the group).
+The UDS socket is created with the same user and group as the tornado_email_collector process,
+with permissions set to __770__ (read, write and execute for both the user and the group).
 
 Each client that needs to write an email message to the socket should close the connection
 as soon as it completes its action. In fact, the Email Collector Executable will not even start
