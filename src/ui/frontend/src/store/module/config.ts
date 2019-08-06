@@ -16,11 +16,14 @@ default class ConfigModule extends VuexModule {
         rules: [],
     };
 
-    @MutationAction({ mutate: ['config'] })
+    public loaded = false;
+
+    @MutationAction({ mutate: ['config', 'loaded'] })
     public async getConfig() {
         const config = await getConfig();
         return {
             config,
+            loaded: true,
         };
     }
 

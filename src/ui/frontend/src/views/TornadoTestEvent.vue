@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <Container>
     <h1 class="title">Test Event</h1>
     <div class="columns">
 
@@ -61,7 +61,7 @@
       </div>
 
     </div>
-  </div>
+  </Container>
 </template>
 
 <script lang="ts">

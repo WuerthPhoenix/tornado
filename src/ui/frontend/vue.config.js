@@ -1,10 +1,13 @@
 module.exports = {
     devServer: {
       proxy: {
-        '^/api': {
+        '/neteye/tornado/backend/api': {
           target: 'http://127.0.0.1:4748',
           ws: true,
-          changeOrigin: true
+          changeOrigin: true,
+          pathRewrite: {
+            '^/neteye/tornado/backend/api': '/api'
+          }
         }
       }
     },
