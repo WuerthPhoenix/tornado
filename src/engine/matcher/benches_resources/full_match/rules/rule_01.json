@@ -19,13 +19,13 @@
         },
         {
           "type": "contain",
-          "text": "${event.payload.line_11}",
-          "substring": " 1"
+          "first": "${event.payload.line_11}",
+          "second": " 1"
         },
         {
           "type": "contain",
-          "text": "${event.payload.line_9}",
-          "substring": "Sensor 4"
+          "first": "${event.payload.line_9}",
+          "second": "Sensor 4"
         }
       ]
     },

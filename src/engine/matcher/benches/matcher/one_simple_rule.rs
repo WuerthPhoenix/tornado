@@ -10,7 +10,7 @@ pub fn bench(c: &mut Criterion) {
     let rule = {
         let mut rule = new_rule(
             "rule_name",
-            Operator::Equal { first: "${event.type}".to_owned(), second: "email".to_owned() },
+            Operator::Equal { first: Value::Text("${event.type}".to_owned()), second: Value::Text("email".to_owned()) },
         );
 
         // Add constraint
