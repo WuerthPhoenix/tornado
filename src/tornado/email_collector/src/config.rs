@@ -10,7 +10,7 @@ pub struct Io {
     pub message_queue_size: usize,
 
     /// The Unix Socket path where we will listen for incoming emails.
-    #[structopt(long, default_value = "/var/run/tornado/email.sock")]
+    #[structopt(long, default_value = "/var/run/tornado_email_collector/email.sock")]
     pub uds_path: String,
 
     /// The Tornado IP address where outgoing events will be written

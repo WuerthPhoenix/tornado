@@ -21,7 +21,7 @@
 %endif
 
 Name:    tornado
-Version: 0.15.0
+Version: 0.15.1
 Release: 1
 Summary: Tornado Package
 
@@ -180,6 +180,9 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Tue Aug 06 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.15.1-1
+- Fix wrong email collector permissions (TOR-116)
+
 * Tue Aug 06 2019 Karlis Upitis <karlis.upitis@wuerth-phoenix.com> - 0.15.0-1
 - Add Tornado UI (TOR-113)
 

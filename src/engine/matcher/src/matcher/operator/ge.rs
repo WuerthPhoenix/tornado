@@ -248,21 +248,21 @@ mod test {
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
-            .unwrap();
+        .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert("one".to_owned(),
-                             Value::Array(vec![
-                                Value::Text("id".to_owned()),
-                                Value::Number(Number::PosInt(110))
-                             ])
+        event.payload.insert(
+            "one".to_owned(),
+            Value::Array(vec![Value::Text("id".to_owned()), Value::Number(Number::PosInt(110))]),
         );
-        event.payload.insert("two".to_owned(),
-        Value::Array(vec![
-            Value::Text("id".to_owned()),
-            Value::Number(Number::PosInt(10)),
-            Value::Number(Number::PosInt(110))
-        ]));
+        event.payload.insert(
+            "two".to_owned(),
+            Value::Array(vec![
+                Value::Text("id".to_owned()),
+                Value::Number(Number::PosInt(10)),
+                Value::Number(Number::PosInt(110)),
+            ]),
+        );
 
         assert!(operator.evaluate(&InternalEvent::new(event), None));
     }

@@ -31,7 +31,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
         let email_addr = EmailReaderActor::start_new(tpc_client_addr.clone());
 
         // Open UDS socket
-        listen_to_uds_socket(conf.io.uds_path.clone(), move |msg| {
+        listen_to_uds_socket(conf.io.uds_path.clone(), Some(0o770), move |msg| {
             debug!("Received message on the socket");
             email_addr.do_send(msg);
         })

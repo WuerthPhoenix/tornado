@@ -4,6 +4,8 @@ use actix::prelude::*;
 use futures::Stream;
 use log::*;
 use std::fs;
+use std::fs::Permissions;
+use std::os::unix::fs::PermissionsExt;
 use tokio_uds::*;
 
 pub fn listen_to_uds_socket<
@@ -11,6 +13,7 @@ pub fn listen_to_uds_socket<
     F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 >(
     path: P,
+    socket_permissions: Option<u32>,
     callback: F,
 ) -> Result<(), TornadoError> {
     let path_string = path.into();
@@ -29,14 +32,14 @@ pub fn listen_to_uds_socket<
         }
     };
 
-    UdsServerActor::create(|ctx| {
+    UdsServerActor::create(move |ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
                 AsyncReadMessage { stream }
             },
         ));
-        UdsServerActor { path: path_string, callback }
+        UdsServerActor { path: path_string, socket_permissions, callback }
     });
 
     Ok(())
@@ -47,6 +50,7 @@ where
     F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 {
     path: String,
+    socket_permissions: Option<u32>,
     callback: F,
 }
 
@@ -55,6 +59,16 @@ where
     F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
 {
     type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        if let Some(permissions) = self.socket_permissions {
+            info!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
+            if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
+                error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
+                ctx.stop();
+            }
+        }
+    }
 }
 
 /// Handle a stream of UnixStream elements

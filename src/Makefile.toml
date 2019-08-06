@@ -115,6 +115,6 @@ args = [
     "--",
     "--logger-stdout",
     "--logger-level=debug",
-    "--uds-path=./tornado-email.sock"
+    "--uds-path=./target/tornado-email.sock"
 ]
 dependencies = ["build"]
