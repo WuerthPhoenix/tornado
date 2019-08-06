@@ -4,9 +4,9 @@ use actix::prelude::*;
 use futures::Stream;
 use log::*;
 use std::fs;
-use tokio_uds::*;
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
+use tokio_uds::*;
 
 pub fn listen_to_uds_socket<
     P: Into<String>,
@@ -18,9 +18,7 @@ pub fn listen_to_uds_socket<
 ) -> Result<(), TornadoError> {
     let path_string = path.into();
     let listener = match UnixListener::bind(&path_string) {
-        Ok(m) => {
-            m
-        },
+        Ok(m) => m,
         Err(_) => {
             fs::remove_file(&path_string).map_err(|err| TornadoError::ActorCreationError {
                 message: format!(
@@ -34,14 +32,14 @@ pub fn listen_to_uds_socket<
         }
     };
 
-/*
-    use std::os::unix::io::AsRawFd;
-    use std::os::unix::io::FromRawFd;
-    let file = fs::File::from_raw_fd(listener.as_raw_fd());
-    let mut perms = file.metadata().expect("cannot open metadata").permissions();
-    //perms.set_readonly(true);
-    file.set_permissions(perms).expect("cannot set permissions");
-*/
+    /*
+        use std::os::unix::io::AsRawFd;
+        use std::os::unix::io::FromRawFd;
+        let file = fs::File::from_raw_fd(listener.as_raw_fd());
+        let mut perms = file.metadata().expect("cannot open metadata").permissions();
+        //perms.set_readonly(true);
+        file.set_permissions(perms).expect("cannot set permissions");
+    */
     UdsServerActor::create(move |ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
@@ -71,15 +69,14 @@ where
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-       if let Some(permissions) = self.socket_permissions {
-           info!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
-           if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
-               error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
-               ctx.stop();
-           }
-       }
+        if let Some(permissions) = self.socket_permissions {
+            info!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
+            if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
+                error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
+                ctx.stop();
+            }
+        }
     }
-
 }
 
 /// Handle a stream of UnixStream elements
