@@ -32,14 +32,6 @@ pub fn listen_to_uds_socket<
         }
     };
 
-    /*
-        use std::os::unix::io::AsRawFd;
-        use std::os::unix::io::FromRawFd;
-        let file = fs::File::from_raw_fd(listener.as_raw_fd());
-        let mut perms = file.metadata().expect("cannot open metadata").permissions();
-        //perms.set_readonly(true);
-        file.set_permissions(perms).expect("cannot set permissions");
-    */
     UdsServerActor::create(move |ctx| {
         ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
             |stream| {
