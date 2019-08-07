@@ -86,24 +86,41 @@ impl AccessorBuilder {
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
 
-                        let keys: Vec<&str> = key.split(".").collect();
+                        let keys: Vec<&str> = key.split('.').collect();
                         if keys.len() == 1 {
                             let variable_name = keys[0];
-                            self.id_validator
-                                .validate_extracted_var_from_accessor(variable_name, value, rule_name)?;
-                            Ok(Accessor::ExtractedVar { key: format!("{}.{}", rule_name, variable_name) })
+                            self.id_validator.validate_extracted_var_from_accessor(
+                                variable_name,
+                                value,
+                                rule_name,
+                            )?;
+                            Ok(Accessor::ExtractedVar {
+                                key: format!("{}.{}", rule_name, variable_name),
+                            })
                         } else if keys.len() == 2 {
                             let variable_rule = keys[0];
                             let variable_name = keys[1];
-                            self.id_validator
-                                .validate_extracted_var_from_accessor(variable_name, value, rule_name)?;
-                            self.id_validator
-                                .validate_extracted_var_from_accessor(variable_rule, value, rule_name)?;
-                            Ok(Accessor::ExtractedVar { key: format!("{}.{}", variable_rule, variable_name) })
+                            self.id_validator.validate_extracted_var_from_accessor(
+                                variable_name,
+                                value,
+                                rule_name,
+                            )?;
+                            self.id_validator.validate_extracted_var_from_accessor(
+                                variable_rule,
+                                value,
+                                rule_name,
+                            )?;
+                            Ok(Accessor::ExtractedVar {
+                                key: format!("{}.{}", variable_rule, variable_name),
+                            })
                         } else {
-                            Err(MatcherError::NotValidIdOrNameError { message: format!("Invalid extracted variables accessor [{}] for rule [{}]", value, rule_name ) })
+                            Err(MatcherError::NotValidIdOrNameError {
+                                message: format!(
+                                    "Invalid extracted variables accessor [{}] for rule [{}]",
+                                    value, rule_name
+                                ),
+                            })
                         }
-
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
@@ -497,10 +514,18 @@ mod test {
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert("current_rule_name.subject".to_owned(), Value::Text("current_subject".to_owned()));
-        extracted_vars.insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert("custom_rule_name.subject".to_owned(), Value::Text("custom_subject".to_owned()));
+        extracted_vars
+            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars.insert(
+            "current_rule_name.subject".to_owned(),
+            Value::Text("current_subject".to_owned()),
+        );
+        extracted_vars
+            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars.insert(
+            "custom_rule_name.subject".to_owned(),
+            Value::Text("custom_subject".to_owned()),
+        );
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -516,10 +541,18 @@ mod test {
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert("current_rule_name.subject".to_owned(), Value::Text("current_subject".to_owned()));
-        extracted_vars.insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert("custom_rule_name.subject".to_owned(), Value::Text("custom_subject".to_owned()));
+        extracted_vars
+            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars.insert(
+            "current_rule_name.subject".to_owned(),
+            Value::Text("current_subject".to_owned()),
+        );
+        extracted_vars
+            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars.insert(
+            "custom_rule_name.subject".to_owned(),
+            Value::Text("custom_subject".to_owned()),
+        );
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
