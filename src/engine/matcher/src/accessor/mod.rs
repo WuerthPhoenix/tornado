@@ -85,9 +85,25 @@ impl AccessorBuilder {
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
-                        self.id_validator
-                            .validate_extracted_var_from_accessor(key, value, rule_name)?;
-                        Ok(Accessor::ExtractedVar { key: format!("{}.{}", rule_name, key) })
+
+                        let keys: Vec<&str> = key.split(".").collect();
+                        if keys.len() == 1 {
+                            let variable_name = keys[0];
+                            self.id_validator
+                                .validate_extracted_var_from_accessor(variable_name, value, rule_name)?;
+                            Ok(Accessor::ExtractedVar { key: format!("{}.{}", rule_name, variable_name) })
+                        } else if keys.len() == 2 {
+                            let variable_rule = keys[0];
+                            let variable_name = keys[1];
+                            self.id_validator
+                                .validate_extracted_var_from_accessor(variable_name, value, rule_name)?;
+                            self.id_validator
+                                .validate_extracted_var_from_accessor(variable_rule, value, rule_name)?;
+                            Ok(Accessor::ExtractedVar { key: format!("{}.{}", variable_rule, variable_name) })
+                        } else {
+                            Err(MatcherError::NotValidIdOrNameError { message: format!("Invalid extracted variables accessor [{}] for rule [{}]", value, rule_name ) })
+                        }
+
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
@@ -473,6 +489,44 @@ mod test {
     }
 
     #[test]
+    fn should_return_value_from_extracted_var_of_current_rule() {
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.body}".to_owned();
+
+        let accessor = builder.build("current_rule_name", &value).unwrap();
+
+        let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars = HashMap::new();
+        extracted_vars.insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars.insert("current_rule_name.subject".to_owned(), Value::Text("current_subject".to_owned()));
+        extracted_vars.insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars.insert("custom_rule_name.subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
+        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
+
+        assert_eq!("current_body", result.as_ref());
+    }
+
+    #[test]
+    fn should_return_value_from_extracted_var_of_custom_rule() {
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.custom_rule_name.body}".to_owned();
+
+        let accessor = builder.build("current_rule_name", &value).unwrap();
+
+        let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars = HashMap::new();
+        extracted_vars.insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars.insert("current_rule_name.subject".to_owned(), Value::Text("current_subject".to_owned()));
+        extracted_vars.insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars.insert("custom_rule_name.subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
+        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
+
+        assert_eq!("custom_body", result.as_ref());
+    }
+
+    #[test]
     fn should_return_none_if_no_match() {
         let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
 
@@ -556,6 +610,16 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         assert_eq!(Accessor::ExtractedVar { key: "current_rule_name.key".to_owned() }, accessor)
+    }
+
+    #[test]
+    fn builder_should_return_custom_rule_extracted_var_accessor() {
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.custom_rule.key}".to_owned();
+
+        let accessor = builder.build("current_rule_name", &value).unwrap();
+
+        assert_eq!(Accessor::ExtractedVar { key: "custom_rule.key".to_owned() }, accessor)
     }
 
     #[test]
@@ -653,7 +717,7 @@ mod test {
     #[test]
     fn builder_should_return_error_if_wrong_extracted_var_name() {
         let builder = AccessorBuilder::new();
-        let value = "${_variables.not.valid}";
+        let value = "${_variables.not.valid.at.all}";
 
         let accessor = builder.build("", value);
 
@@ -661,7 +725,7 @@ mod test {
 
         match accessor.err().unwrap() {
             MatcherError::NotValidIdOrNameError { message } => {
-                assert!(message.contains("${_variables.not.valid}"));
+                assert!(message.contains("${_variables.not.valid.at.all}"));
             }
             _ => assert!(false),
         };
