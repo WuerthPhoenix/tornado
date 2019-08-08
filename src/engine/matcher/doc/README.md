@@ -568,6 +568,22 @@ These variables can then be used to populate an Action payload.
 
 All variables declared by a Rule should be resolved, otherwise the Rule will not be matched.
 
+Two simple rules regulate the access and use of extracted variables:
+1. As they are evaluated after the _WHERE_ clause,
+   the extracted variables declared in the _WITH_ clause, are not accessible by the _WHERE_
+   clause of the very same rule
+2. A rule can use extracted variables declared by other rules, even in its _WHERE_ clause, but:
+    - the two rules should belong to the same rule set
+    - the rule that attempts to use them should be executed after one that declares them
+    - the rule that declares them should match the event
+
+The syntax to access an extracted variable is in the form:
+
+**_variables.**[*.RULE_NAME*].*VARIABLES_NAME*
+
+If the *RULE_NAME* is omitted, the current rule name is automatically inferred.
+
+
 Example:
 ```json
 {
