@@ -1,5 +1,6 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
 use config_rs::{Config, ConfigError, File};
+use serde_derive::{Deserialize, Serialize};
 use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
@@ -9,9 +10,6 @@ use tornado_executor_archive::config::ArchiveConfig;
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
 pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
     /// The filesystem folder where the Tornado configuration is saved
     #[structopt(long, default_value = "/etc/tornado")]
     pub config_dir: String,
@@ -65,17 +63,32 @@ impl Conf {
     }
 }
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct TornadoConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+}
+
+pub fn build_config(conf: &Conf) -> Result<TornadoConfig, ConfigError> {
+    let config_file_path = format!("{}/tornado.toml", conf.config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
 pub struct ComponentsConfig {
     pub matcher_config: Box<MatcherConfigManager>,
+    pub tornado: TornadoConfig,
     pub archive: ArchiveConfig,
     pub icinga2_client: Icinga2ClientConfig,
 }
 
 pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
-    let matcher_config = Box::new(build_matcher_config(&conf));
-    let archive = build_archive_config(&conf)?;
-    let icinga2_client = build_icinga2_client_config(&conf)?;
-    Ok(ComponentsConfig { matcher_config, archive, icinga2_client })
+    let matcher_config = Box::new(build_matcher_config(conf));
+    let tornado = build_config(conf)?;
+    let archive = build_archive_config(conf)?;
+    let icinga2_client = build_icinga2_client_config(conf)?;
+    Ok(ComponentsConfig { matcher_config, tornado, archive, icinga2_client })
 }
 
 fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
@@ -130,7 +143,6 @@ mod test {
     fn should_read_icinga2_client_configurations_from_file() {
         // Arrange
         let conf = Conf {
-            logger: Default::default(),
             config_dir: "./config".to_owned(),
             rules_dir: "/rules.d".to_owned(),
             command: Command::Check,

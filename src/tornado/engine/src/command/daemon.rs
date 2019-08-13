@@ -23,9 +23,9 @@ pub fn daemon(
     conf: &config::Conf,
     daemon_config: config::DaemonCommandConfig,
 ) -> Result<(), Box<std::error::Error>> {
-    setup_logger(&conf.logger).map_err(Fail::compat)?;
-
     let configs = config::parse_config_files(conf)?;
+
+    setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
 
     // Start matcher
     let matcher = Arc::new(

@@ -101,7 +101,7 @@ mkdir -p %{buildroot}/%{conf_dir}/rules.d/
 mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
 mkdir -p %{buildroot}/%{conf_dir}/collectors/webhook/webhooks
 
-cp -p conf/tornado/*_executor.toml %{buildroot}/%{conf_dir}
+cp -p conf/tornado/*.toml %{buildroot}/%{conf_dir}
 cp -p conf/email_collector/email_collector.toml %{buildroot}/%{conf_dir}/collectors/email/
 cp -p conf/icinga2_collector/icinga2_collector.toml %{buildroot}/%{conf_dir}/collectors/icinga2/
 cp -p conf/rsyslog_collector/rsyslog_collector.toml %{buildroot}/%{conf_dir}/collectors/rsyslog/
@@ -156,7 +156,7 @@ fi
 %dir %{conf_dir}/collectors/rsyslog/
 %dir %{conf_dir}/collectors/webhook/
 %dir %{conf_dir}/collectors/webhook/webhooks/
-%config(noreplace) %{conf_dir}/*_executor.toml
+%config(noreplace) %{conf_dir}/*.toml
 %config(noreplace) %{conf_dir}/collectors/email/*.toml
 %config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
 %config(noreplace) %{conf_dir}/collectors/rsyslog/*.toml
