@@ -55,8 +55,6 @@ args = [
     "--bin",
     "tornado_icinga2_collector",
     "--",
-    "--logger-stdout",
-    "--logger-level=debug",
     "--config-dir=./tornado/icinga2_collector/config"
 ]
 dependencies = ["build"]

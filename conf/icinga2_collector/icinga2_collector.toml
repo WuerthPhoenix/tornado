@@ -1,3 +1,19 @@
+[logger]
+
+# The Logger level
+# Valid values: trace, debug, info, warn, error
+level = "info"
+
+# Whether the Logger should print to standard output.
+# Valid values: true, false
+stdout_output = true
+
+# A file path in the file system; if provided, the Logger will append any output to it.
+# file_output_path = "/output/file.log"
+
+
+[icinga2_collector]
+
 # The complete URL of the Icinga2 Event Stream API
 server_api_url = "https://icinga2-master.neteyelocal:5665/v1/events"
 # Username used to connect to the Icinga2 APIs

@@ -36,9 +36,6 @@ pub struct Io {
 #[derive(Debug, StructOpt, Clone)]
 pub struct Conf {
     #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
-    #[structopt(flatten)]
     pub io: Io,
 }
 
@@ -67,9 +64,16 @@ pub struct Icinga2ClientConfig {
     pub sleep_ms_between_connection_attempts: u64,
 }
 
-pub fn build_icinga2_client_config(
-    config_file_path: &str,
-) -> Result<Icinga2ClientConfig, ConfigError> {
+#[derive(Deserialize, Serialize, Clone)]
+pub struct CollectorConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+
+    /// The icinga2 client configuration
+    pub icinga2_collector: Icinga2ClientConfig,
+}
+
+pub fn build_config(config_file_path: &str) -> Result<CollectorConfig, ConfigError> {
     let mut s = Config::new();
     s.merge(File::with_name(config_file_path))?;
     s.try_into()
@@ -174,9 +178,9 @@ mod test {
         let path = "./config/icinga2_collector.toml";
 
         // Act
-        let config = build_icinga2_client_config(path).unwrap();
+        let config = build_config(path).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/events", config.server_api_url)
+        assert_eq!("https://127.0.0.1:5665/v1/events", config.icinga2_collector.server_api_url)
     }
 }
