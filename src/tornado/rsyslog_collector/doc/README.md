@@ -26,7 +26,7 @@ An example of a fully instantiated startup setup is:
 module(load="omprog")
 
 action(type="omprog"
-       binary="/path/to/rsyslog_collector --logger-file-path=/log/rsys-collector.log --logger-level=info --tornado-event-socket-ip=tornado_server_ip --tornado-event-socket-port=4747")
+       binary="/path/to/rsyslog_collector --config-dir=/tornado-rsyslog-collector/config --tornado-event-socket-ip=tornado_server_ip --tornado-event-socket-port=4747")
 ```
 
 <!-- This part may only be necessary for non-expert users. Hide until later? -->
@@ -37,13 +37,13 @@ place this configuration in a file in your rsyslog directory, for instance:
 ```
 
 In this example the collector will:
-- Log to the file _/log/rsys-collector.log_ at the _info_ logger level
+- Reads the configuration from the _/tornado-rsyslog-collector/config_ directory
 - Write outgoing Events to the TCP socket at tornado_server_ip:4747
 
 The Collector will need to be run in parallel with the Tornado engine before any events will be
 processed, for example:  <!-- Link to the description of that executable -->
 ```
-/opt/tornado/bin/tornado --logger-file-path=/tmp/my-tornado.log --tornado-event-socket-ip=tornado_server_ip
+/opt/tornado/bin/tornado --tornado-event-socket-ip=tornado_server_ip
 ```
 
 Under this configuration, rsyslog is in charge of starting the collector when needed and piping
