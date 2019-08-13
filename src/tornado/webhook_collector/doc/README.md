@@ -32,16 +32,9 @@ For each webhook, you must provide three values in order to successfully create 
 
 ## Configuration
 
-The executable configuration is based partially on configuration files and partially on command
-line parameters.
+The executable configuration is based partially on configuration files and partially on command line parameters.
 
 The available startup parameters are:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
 - __config-dir__:  The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_webhook_collector/_.
 - __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
@@ -60,13 +53,22 @@ The available startup parameters are:
 - __bind-address__:  The IP to bind the HTTP server to. The default value is `0.0.0.0`.
 - __server-port__:  The port to be used by the HTTP Server. The default value is `8080`.
 
+In addition to these parameters, the following configuration entries are available in the 
+_'config-dir'/webhook_collector.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+      
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
 
 An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
-      --logger-stdout --logger-level=debug \
       --config-dir=/tornado-webhook-collector/config \
       --bind-address=127.0.0.1 \
       --server-port=1234 \
@@ -75,7 +77,6 @@ An example of a full startup command is:
 ```
 
 In this example the Webhook Collector does the following:
-- Logs to standard output at the *debug* level
 - Reads the configuration from the _/tornado-webhook-collector/config_ directory
 - Searches for webhook configurations in the _/tornado-webhook-collector/config/webhooks_ directory
 - Binds the HTTP server to the IP 127.0.0.1
