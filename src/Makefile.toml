@@ -38,7 +38,7 @@ dependencies = ["build"]
 workspace = false
 script = [
     "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
-    "cargo run --bin tornado_rsyslog_collector -- --logger-stdout --logger-level=debug"
+    "cargo run --bin tornado_rsyslog_collector -- --config-dir=./tornado/rsyslog_collector/config"
 ]
 dependencies = ["build"]
 

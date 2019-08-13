@@ -41,12 +41,12 @@ impl Conf {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct EmailCollectorConfig {
+pub struct CollectorConfig {
     /// The logger configuration
     pub logger: LoggerConfig,
 }
 
-pub fn build_config(config_file_path: &str) -> Result<EmailCollectorConfig, ConfigError> {
+pub fn build_config(config_file_path: &str) -> Result<CollectorConfig, ConfigError> {
     let mut s = Config::new();
     s.merge(File::with_name(config_file_path))?;
     s.try_into()

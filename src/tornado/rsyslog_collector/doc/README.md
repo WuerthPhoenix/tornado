@@ -60,13 +60,12 @@ to properly pipe its inputs in this form.
 
 ## Configuration Options
 
-This collector's configuration is based on the following command line parameters:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
+The executable configuration is based partially on configuration files and partially on command
+line parameters.
+
+The available startup parameters are:
+- __config-dir__:  The filesystem folder from which the collector configuration is read.
+  The default path is _/etc/tornado_rsyslog_collector/_.
 - __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
   This should be the address where the Tornado Engine is listening for incoming events.
   The default is _127.0.0.1_.
@@ -78,6 +77,16 @@ This collector's configuration is based on the following command line parameters
   When Tornado restarts, all messages in the buffer will be sent.
   When the buffer is full, the collector will start discarding older messages first.
   The default buffer size is `10000` messages.
+
+In addition to these parameters, the following configuration entries are available in the 
+_'config-dir'/rsyslog_collector.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_, defaulting to _warn_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`, defaults to `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
 
 More information about the logger configuration is available
 [here](../../../common/logger/doc/README.md).
