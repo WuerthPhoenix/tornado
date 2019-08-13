@@ -1,5 +1,6 @@
+use config_rs::{Config, ConfigError, File};
 use log::{info, trace};
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use structopt::StructOpt;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
@@ -43,9 +44,6 @@ pub struct Io {
 #[derive(Debug, StructOpt, Clone)]
 pub struct Conf {
     #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
-    #[structopt(flatten)]
     pub io: Io,
 }
 
@@ -53,6 +51,18 @@ impl Conf {
     pub fn build() -> Self {
         Conf::from_args()
     }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct CollectorConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+}
+
+pub fn build_config(config_file_path: &str) -> Result<CollectorConfig, ConfigError> {
+    let mut s = Config::new();
+    s.merge(File::with_name(config_file_path))?;
+    s.try_into()
 }
 
 pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, TornadoError> {

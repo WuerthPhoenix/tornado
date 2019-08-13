@@ -73,8 +73,6 @@ args = [
     "--bin",
     "tornado_webhook_collector",
     "--",
-    "--logger-stdout",
-    "--logger-level=debug",
     "--config-dir=./tornado/webhook_collector/config"
 ]
 dependencies = ["build"]

@@ -22,7 +22,10 @@ fn pong(_req: HttpRequest) -> impl Responder {
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
 
-    setup_logger(&config.logger).map_err(failure::Fail::compat)?;
+    let collector_config_path = format!("{}/{}", &config.io.config_dir, "webhook_collector.toml");
+    let collector_config = config::build_config(&collector_config_path)?;
+
+    setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
 
     let webhooks_dir = format!("{}/{}", &config.io.config_dir, &config.io.webhooks_dir);
     let webhooks_config =
