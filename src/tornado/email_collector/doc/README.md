@@ -54,14 +54,12 @@ MIME format and UDS sockets.
 
 
 ## Configuration
+The executable configuration is based partially on configuration files and partially on command
+line parameters.
 
-The executable configuration is based on the following command-line parameters:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
+The available startup parameters are:
+- __config-dir__:  The filesystem folder from which the collector configuration is read.
+  The default path is _/etc/tornado_email_collector/_.
 - __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
   This should be the address where the Tornado Engine is listening for incoming events.
   The default is _127.0.0.1_.
@@ -75,7 +73,17 @@ The executable configuration is based on the following command-line parameters:
   The default buffer size is `10000` messages.
 - __uds-path__: The Unix Socket path on which the collector will listen for incoming emails.
     The default is: _/var/run/tornado_email_collector/email.sock_
-    
+
+In addition to these parameters, the following configuration entries are available in the 
+_'config-dir'/email_collector.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_, defaulting to _warn_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`, defaults to `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+  
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
 
@@ -83,14 +91,14 @@ More information about the logger configuration
 An example of a full startup command is:
 ```bash
 ./tornado_email_collector \
-      --logger-stdout --logger-level=debug \
+      --config-dir=/tornado-email-collector/config \
       --tornado-event-socket-ip=tornado_server_ip \
       --tornado-event-socket-port=4747 \
       --uds-path=/my/custom/socket/path
 ```
 
 In this example the Email Collector does the following:
-- Logs to standard output at the *debug* level
+- Reads the configuration from the _/tornado-email-collector/config_ directory
 - Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
 - Listens for incoming emails on the local Unix Socket _/my/custom/socket/path_  
 

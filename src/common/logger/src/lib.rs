@@ -1,9 +1,10 @@
 use failure_derive::Fail;
+use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
 use structopt::StructOpt;
 
 /// Defines the Logger configuration.
-#[derive(Debug, Clone, StructOpt)]
+#[derive(Debug, Clone, StructOpt, Serialize, Deserialize)]
 pub struct LoggerConfig {
     // Todo: check if an enum can be used
     /// The Logger level

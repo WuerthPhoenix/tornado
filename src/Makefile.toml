@@ -113,8 +113,7 @@ args = [
     "--bin",
     "tornado_email_collector",
     "--",
-    "--logger-stdout",
-    "--logger-level=debug",
+    "--config-dir=./tornado/email_collector/config",
     "--uds-path=./target/tornado-email.sock"
 ]
 dependencies = ["build"]

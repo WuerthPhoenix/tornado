@@ -7,7 +7,7 @@ Type=simple
 #User=tornado
 Group=eventgw
 RuntimeDirectory=tornado_email_collector
-ExecStart=/usr/lib64/tornado/bin/tornado_email_collector --logger-level=info --logger-stdout
+ExecStart=/usr/lib64/tornado/bin/tornado_email_collector --config-dir /neteye/shared/tornado/conf/collectors/email/
 Restart=on-failure
 RestartSec=3
 # Other Restart options: or always, on-abort, etc
