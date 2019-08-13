@@ -37,12 +37,6 @@ The executable configuration is based partially on configuration files and parti
 line parameters.
 
 The available startup parameters are:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
 - __config-dir__:  The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_icinga2_collector/_.
 - __streams_dir__:  The folder where the Stream configurations are saved in JSON format;
@@ -59,30 +53,35 @@ The available startup parameters are:
   When the buffer is full, the collector will start discarding older messages first.
   The default buffer size is `10000` messages.
 
-More information about the logger configuration
-[is available here](../../../common/logger/doc/README.md).
-
 In addition to these parameters, the following configuration entries are available in the 
 _'config-dir'/icinga2_collector.toml_:
-- __server_api_url__: The complete URL of the Icinga2 Event Stream API.
-- __username__: Username used to connect to the Icinga2 APIs.
-- __password__: Password used to connect to the Icinga2 APIs.
-- __disable_ssl_verification__: A boolean value. If true, 
-the client will not verify the Icinga2 SSL certificate.
-- __sleep_ms_between_connection_attempts__: In case of connection failure, how many milliseconds to wait before a new connection attempt.
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+- **icinga2_collector**
+    - __server_api_url__: The complete URL of the Icinga2 Event Stream API.
+    - __username__: Username used to connect to the Icinga2 APIs.
+    - __password__: Password used to connect to the Icinga2 APIs.
+    - __disable_ssl_verification__: A boolean value. If true, 
+    the client will not verify the Icinga2 SSL certificate.
+    - __sleep_ms_between_connection_attempts__: In case of connection failure, how many milliseconds to wait before a new connection attempt.
 
+More information about the logger configuration
+[is available here](../../../common/logger/doc/README.md).
 
 An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
-      --logger-stdout --logger-level=debug \
       --config-dir=/tornado-icinga2-collector/config \
       --tornado-event-socket-ip=tornado_server_ip \
       --tornado-event-socket-port=4747
 ```
 
 In this example the Icinga2 Collector does the following:
-- Logs to standard output at the *debug* level
 - Reads the configuration from the _/tornado-icinga2-collector/config_ directory
 - Searches for stream configurations in the _/tornado-icinga2-collector/config/streams_ directory
 - Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
