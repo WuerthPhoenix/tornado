@@ -10,9 +10,11 @@ use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    let collector_config = config::build_config(&config.config_dir)?;
+    let collector_config = config::build_config(
+        &arg_matches.value_of("config-dir").expect("config-dir should be provided"),
+    )?;
 
     // Setup logger
     setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
