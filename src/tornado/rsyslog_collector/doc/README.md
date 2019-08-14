@@ -66,17 +66,6 @@ line parameters.
 The available startup parameters are:
 - __config-dir__:  The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_rsyslog_collector/_.
-- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
-  The default is _127.0.0.1_.
-- __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the port where the Tornado Engine is listening for incoming events.
-  The default is _4747_.
-- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
-  resilient to Tornado Engine crashes or temporary unavailability.
-  When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding older messages first.
-  The default buffer size is `10000` messages.
 
 In addition to these parameters, the following configuration entries are available in the 
 _'config-dir'/rsyslog_collector.toml_:
@@ -85,8 +74,17 @@ _'config-dir'/rsyslog_collector.toml_:
       _error_.
     - __stdout__:  Determines whether the Logger should print to standard output.
       Valid values are `true` and `false`.
-    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+    - **file_output_path**:  A file path in the file system; if provided, the Logger will
       append any output to it.
+- **rsyslog_collector**:
+    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+      This should be the address where the Tornado Engine is listening for incoming events.
+    - **tornado_event_socket_port**:  The port where outgoing events will be written.
+      This should be the port where the Tornado Engine is listening for incoming events.
+    - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
+      resilient to Tornado Engine crashes or temporary unavailability.
+      When Tornado restarts, all messages in the buffer will be sent.
+      When the buffer is full, the collector will start discarding older messages first.
 
 More information about the logger configuration is available
 [here](../../../common/logger/doc/README.md).
