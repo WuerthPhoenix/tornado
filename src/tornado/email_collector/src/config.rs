@@ -5,33 +5,10 @@ use tornado_common_logger::LoggerConfig;
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
-pub struct Io {
+pub struct Conf {
     /// The filesystem folder where the Tornado Email Collector configuration is saved
     #[structopt(long, default_value = "/etc/tornado_email_collector")]
     pub config_dir: String,
-
-    /// Set the size of the in-memory queue where messages will be stored before being written
-    /// to the output socket.
-    #[structopt(long, default_value = "10000")]
-    pub message_queue_size: usize,
-
-    /// The Unix Socket path where we will listen for incoming emails.
-    #[structopt(long, default_value = "/var/run/tornado_email_collector/email.sock")]
-    pub uds_path: String,
-
-    /// The Tornado IP address where outgoing events will be written
-    #[structopt(long, default_value = "127.0.0.1")]
-    pub tornado_event_socket_ip: String,
-
-    /// The Tornado port where outgoing events will be written
-    #[structopt(long, default_value = "4747")]
-    pub tornado_event_socket_port: u16,
-}
-
-#[derive(Debug, StructOpt)]
-pub struct Conf {
-    #[structopt(flatten)]
-    pub io: Io,
 }
 
 impl Conf {
@@ -41,13 +18,42 @@ impl Conf {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct EmailCollectorConfig {
+pub struct CollectorConfig {
     /// The logger configuration
     pub logger: LoggerConfig,
+    pub email_collector: EmailCollectorConfig,
 }
 
-pub fn build_config(config_file_path: &str) -> Result<EmailCollectorConfig, ConfigError> {
+#[derive(Deserialize, Serialize, Clone)]
+pub struct EmailCollectorConfig {
+    pub message_queue_size: usize,
+    pub uds_path: String,
+    pub tornado_event_socket_ip: String,
+    pub tornado_event_socket_port: u16,
+}
+
+pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
+    let config_file_path = format!("{}/{}", config_dir, "email_collector.toml");
     let mut s = Config::new();
-    s.merge(File::with_name(config_file_path))?;
+    s.merge(File::with_name(&config_file_path))?;
     s.try_into()
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn should_read_configuration_from_file() {
+        // Arrange
+        let path = "./config/";
+
+        // Act
+        let config = build_config(path);
+
+        // Assert
+        assert!(config.is_ok())
+    }
+
 }
