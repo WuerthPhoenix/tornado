@@ -11,8 +11,7 @@ use tornado_common_logger::setup_logger;
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
 
-    let collector_config_path = format!("{}/{}", &config.io.config_dir, "rsyslog_collector.toml");
-    let collector_config = config::build_config(&collector_config_path)?;
+    let collector_config = config::build_config(&config.config_dir)?;
 
     // Setup logger
     setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
@@ -24,11 +23,12 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start UdsWriter
         let tornado_tcp_address = format!(
             "{}:{}",
-            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
+            collector_config.rsyslog_collector.tornado_event_socket_ip,
+            collector_config.rsyslog_collector.tornado_event_socket_port
         );
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
             tornado_tcp_address.clone(),
-            config.io.message_queue_size,
+            collector_config.rsyslog_collector.message_queue_size,
         );
 
         // Start Rsyslog collector
