@@ -8,7 +8,7 @@ use crate::executor::ExecutorActor;
 use crate::api::MatcherApiHandler;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
-use actix_web::middleware::cors::Cors;
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;

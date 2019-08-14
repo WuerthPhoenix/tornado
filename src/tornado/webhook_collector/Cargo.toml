@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.8"
-actix-web = "1.0.0-rc"
+actix-web = "1.0.5"
 chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }
 failure = "0.1"

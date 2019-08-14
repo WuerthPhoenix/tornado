@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 actix = "0.8"
-actix-web = { version = "1.0.0-rc", features=["ssl", "client"] }
+actix-cors = "0.1"
+actix-web = { version = "1.0.5", features=["ssl", "client"] }
 base64 = "0.10"
 chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }

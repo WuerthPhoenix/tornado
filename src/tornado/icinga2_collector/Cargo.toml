@@ -25,5 +25,5 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1" }
 
 [dev-dependencies]
-actix-web = { version = "1.0.0-rc" }
+actix-web = { version = "1.0.5" }
 maplit = "1.0"
