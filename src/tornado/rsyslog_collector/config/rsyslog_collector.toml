@@ -12,14 +12,11 @@ stdout_output = true
 # file_output_path = "/output/file.log"
 
 
-[email_collector]
+[rsyslog_collector]
 
 # Set the size of the in-memory queue where messages will be stored before being written
 # to the output socket.
 message_queue_size = 10000
-
-# The Unix Socket path where we will listen for incoming emails.
-uds_path = "./target/tornado-email.sock"
 
 # The Tornado IP address where outgoing events will be written
 tornado_event_socket_ip = "127.0.0.1"

@@ -9,7 +9,7 @@ use tornado_common_logger::LoggerConfig;
 
 #[derive(Debug, StructOpt, Clone)]
 #[structopt(rename_all = "kebab-case")]
-pub struct Io {
+pub struct Conf {
     /// The filesystem folder where the Tornado Icinga2 Collector configuration is saved
     #[structopt(long, default_value = "/etc/tornado_icinga2_collector")]
     pub config_dir: String,
@@ -19,27 +19,6 @@ pub struct Io {
     #[structopt(long, default_value = "/streams")]
     pub streams_dir: String,
 
-    /// Set the size of the in-memory queue where messages will be stored before being written
-    /// to the output socket.
-    #[structopt(long, default_value = "10000")]
-    pub message_queue_size: usize,
-
-    /// The Tornado IP address where outgoing events will be written
-    #[structopt(long, default_value = "127.0.0.1")]
-    pub tornado_event_socket_ip: String,
-
-    /// The Tornado port where outgoing events will be written
-    #[structopt(long, default_value = "4747")]
-    pub tornado_event_socket_port: u16,
-}
-
-#[derive(Debug, StructOpt, Clone)]
-pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
-    #[structopt(flatten)]
-    pub io: Io,
 }
 
 impl Conf {
@@ -49,29 +28,35 @@ impl Conf {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
+pub struct Icinga2CollectorConfig {
+    pub message_queue_size: usize,
+    pub tornado_event_socket_ip: String,
+    pub tornado_event_socket_port: u16,
+    pub connection: Icinga2ClientConfig
+}
+
+#[derive(Deserialize, Serialize, Clone)]
 pub struct Icinga2ClientConfig {
-    /// The complete URL of the Icinga2 Event Stream API
     pub server_api_url: String,
-
-    /// Username used to connect to the Icinga2 APIs
     pub username: String,
-
-    /// Password used to connect to the Icinga2 APIs
     pub password: String,
-
-    /// If true, the client will not verify the SSL certificate
     pub disable_ssl_verification: bool,
-
-    /// In case of connection failure, how many milliseconds
-    /// to wait before a new connection attempt.
     pub sleep_ms_between_connection_attempts: u64,
 }
 
-pub fn build_icinga2_client_config(
-    config_file_path: &str,
-) -> Result<Icinga2ClientConfig, ConfigError> {
+#[derive(Deserialize, Serialize, Clone)]
+pub struct CollectorConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+
+    /// The icinga2 client configuration
+    pub icinga2_collector: Icinga2CollectorConfig,
+}
+
+pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
+    let config_file_path = format!("{}/{}", config_dir, "icinga2_collector.toml");
     let mut s = Config::new();
-    s.merge(File::with_name(config_file_path))?;
+    s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
@@ -171,12 +156,12 @@ mod test {
     #[test]
     fn should_read_icinga2_config_from_file() {
         // Arrange
-        let path = "./config/icinga2_collector.toml";
+        let path = "./config/";
 
         // Act
-        let config = build_icinga2_client_config(path).unwrap();
+        let config = build_config(path).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/events", config.server_api_url)
+        assert_eq!("https://127.0.0.1:5665/v1/events", config.icinga2_collector.connection.server_api_url)
     }
 }
