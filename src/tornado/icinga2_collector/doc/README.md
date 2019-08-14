@@ -63,6 +63,15 @@ _'config-dir'/icinga2_collector.toml_:
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **icinga2_collector**
+    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+      This should be the address where the Tornado Engine is listening for incoming events.
+    - **tornado_event_socket_port**:  The port where outgoing events will be written.
+      This should be the port where the Tornado Engine is listening for incoming events.
+    - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
+      resilient to Tornado Engine crashes or temporary unavailability.
+      When Tornado restarts, all messages in the buffer will be sent.
+      When the buffer is full, the collector will start discarding older messages first.
+- **icinga2_collector.connection**
     - __server_api_url__: The complete URL of the Icinga2 Event Stream API.
     - __username__: Username used to connect to the Icinga2 APIs.
     - __password__: Password used to connect to the Icinga2 APIs.
@@ -76,16 +85,11 @@ More information about the logger configuration
 An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
-      --config-dir=/tornado-icinga2-collector/config \
-      --tornado-event-socket-ip=tornado_server_ip \
-      --tornado-event-socket-port=4747
+      --config-dir=/tornado-icinga2-collector/config 
 ```
 
-In this example the Icinga2 Collector does the following:
-- Reads the configuration from the _/tornado-icinga2-collector/config_ directory
-- Searches for stream configurations in the _/tornado-icinga2-collector/config/streams_ directory
-- Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
-
+In this example the Icinga2 Collector starts and reads 
+the configuration from the _/tornado-icinga2-collector/config_ directory.
 
 
 ## Streams Configuration

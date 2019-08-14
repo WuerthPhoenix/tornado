@@ -1633,6 +1633,74 @@ mod test {
         }
     }
 
+    #[test]
+    fn rule_should_get_extracted_variables_of_another_rule() {
+        // Arrange
+        let mut rule_1 = new_rule("rule1", None);
+
+        rule_1.constraint.with.insert(
+            String::from("extracted"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+            },
+        );
+
+        let mut rule_2 = new_rule(
+            "rule2",
+            Operator::Equal {
+                first: Value::Text("${_variables.rule1.extracted}".to_owned()),
+                second: Value::Text("aaa".to_owned()),
+            },
+        );
+
+        rule_2.constraint.with.insert(
+            String::from("extracted"),
+            Extractor {
+                from: String::from("${event.payload.value}"),
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+            },
+        );
+
+        let matcher = new_matcher(&MatcherConfig::Rules { rules: vec![rule_1, rule_2] })
+            .expect("should create a matcher");
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Rules { rules } => {
+                assert_eq!(2, rules.rules.len());
+
+                assert_eq!(
+                    "aaa",
+                    rules
+                        .extracted_vars
+                        .get("rule1.extracted")
+                        .expect("should contain rule1.extracted")
+                );
+                assert_eq!(
+                    "999",
+                    rules
+                        .extracted_vars
+                        .get("rule2.extracted")
+                        .expect("should contain rule2.extracted")
+                );
+
+                let rule_1_processed = rules.rules.get("rule1").expect("should contain rule1");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+
+                let rule_2_processed = rules.rules.get("rule2").expect("should contain rule2");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+            }
+            _ => assert!(false),
+        };
+    }
+
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         //crate::test_root::start_context();
         Matcher::build(config)
