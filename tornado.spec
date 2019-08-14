@@ -11,6 +11,8 @@
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
 
+%define email_collector_conf_dir %{conf_dir}/collectors/email_collector/
+
 %define userguide_dir /usr/share/icingaweb2/modules/%{name}/doc
 
 %define build_target_dir target/release/
@@ -53,6 +55,7 @@ Tornado Package
 %build
 cd src
 
+export TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT="%{email_collector_conf_dir}"
 %if 0%{?debugbuild:1}
 cargo build
 %else
