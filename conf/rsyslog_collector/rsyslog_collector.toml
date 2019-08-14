@@ -6,10 +6,10 @@ level = "info"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
-stdout_output = true
+stdout_output = false
 
 # A file path in the file system; if provided, the Logger will append any output to it.
-# file_output_path = "/output/file.log"
+file_output_path = "/neteye/shared/tornado/log/tornado_rsyslog_collector.log"
 
 
 [rsyslog_collector]
