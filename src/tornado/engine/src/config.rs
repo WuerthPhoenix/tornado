@@ -67,6 +67,8 @@ impl Conf {
 pub struct TornadoConfig {
     /// The logger configuration
     pub logger: LoggerConfig,
+    pub archive_executor: ArchiveConfig,
+    pub icinga2_executor: Icinga2ClientConfig
 }
 
 pub fn build_config(conf: &Conf) -> Result<TornadoConfig, ConfigError> {
@@ -79,30 +81,12 @@ pub fn build_config(conf: &Conf) -> Result<TornadoConfig, ConfigError> {
 pub struct ComponentsConfig {
     pub matcher_config: Box<MatcherConfigManager>,
     pub tornado: TornadoConfig,
-    pub archive: ArchiveConfig,
-    pub icinga2_client: Icinga2ClientConfig,
 }
 
 pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
     let matcher_config = Box::new(build_matcher_config(conf));
     let tornado = build_config(conf)?;
-    let archive = build_archive_config(conf)?;
-    let icinga2_client = build_icinga2_client_config(conf)?;
-    Ok(ComponentsConfig { matcher_config, tornado, archive, icinga2_client })
-}
-
-fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
-    let config_file_path = format!("{}/archive_executor.toml", conf.config_dir);
-    let mut s = Config::new();
-    s.merge(File::with_name(&config_file_path))?;
-    s.try_into()
-}
-
-fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, ConfigError> {
-    let config_file_path = format!("{}/icinga2_client_executor.toml", conf.config_dir);
-    let mut s = Config::new();
-    s.merge(File::with_name(&config_file_path))?;
-    s.try_into()
+    Ok(ComponentsConfig { matcher_config, tornado })
 }
 
 fn build_matcher_config(conf: &Conf) -> impl MatcherConfigManager {
@@ -149,9 +133,9 @@ mod test {
         };
 
         // Act
-        let config = build_icinga2_client_config(&conf).unwrap();
+        let config = build_config(&conf).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+        assert_eq!("https://127.0.0.1:5665/v1/actions", config.icinga2_executor.server_api_url)
     }
 }

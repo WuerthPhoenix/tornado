@@ -42,7 +42,7 @@ pub fn daemon(
         info!("Available CPUs: {}", cpus);
 
         // Start archive executor actor
-        let archive_config = configs.archive.clone();
+        let archive_config = configs.tornado.archive_executor.clone();
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -55,7 +55,7 @@ pub fn daemon(
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_client);
+        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.tornado.icinga2_executor);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {
