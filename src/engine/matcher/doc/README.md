@@ -404,10 +404,10 @@ Example:
 ```
 An event matches this rule if _event.payload.value_ exists and one or more of the following
 conditions hold:
-- it is equal to _1000_
-- it is between _100_ (inclusive) and _200_ (inclusive)
-- it is less than _0_ (exclusive)
-- it is greater than _2000_ (exclusive)
+- It is equal to _1000_
+- It is between _100_ (inclusive) and _200_ (inclusive)
+- It is less than _0_ (exclusive)
+- It is greater than _2000_ (exclusive)
 
 A matching Event is:
 ```json
@@ -520,7 +520,7 @@ Example:
 
 ```
 An event matches this rule if:
-- in its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
+- In its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
 - __AND__ its type is "rsyslog"
 
 A matching Event is:
@@ -566,7 +566,22 @@ For example, this Rule generates an "archive" Action for each Event:
 The _WITH_ clause generates variables extracted from the Event based on regular expressions.
 These variables can then be used to populate an Action payload.
 
-All variables declared by a Rule should be resolved, otherwise the Rule will not be matched.
+All variables declared by a Rule must be resolved, or else the Rule will not be matched.
+
+Two simple rules restrict accessing and using extracted variables:
+1. Because they are evaluated after the _WHERE_ clause is parsed, any extracted variables declared
+   inside the _WITH_ clause are not accessible by the _WHERE_ clause of the very same rule
+2. A rule can use extracted variables declared by other rules, even in its _WHERE_ clause, but:
+   - The two rules must belong to the same rule set
+   - The rule attempting to use those variables should be executed after the one that declares them
+   - The rule that declares the variables should also match the event
+
+The syntax for accessing an extracted variable has the form:
+
+**_variables.**[*.RULE_NAME*].*VARIABLES_NAME*
+
+If the *RULE_NAME* is omitted, the current rule name is automatically inferred.
+
 
 Example:
 ```json

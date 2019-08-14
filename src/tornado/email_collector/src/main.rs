@@ -12,8 +12,7 @@ use tornado_common_logger::setup_logger;
 fn main() -> Result<(), Box<std::error::Error>> {
     let config = config::Conf::build();
 
-    let collector_config_path = format!("{}/{}", &config.io.config_dir, "email_collector.toml");
-    let collector_config = config::build_config(&collector_config_path)?;
+    let collector_config = config::build_config(&config.config_dir)?;
 
     // Setup logger
     setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
@@ -25,30 +24,39 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start TcpWriter
         let tornado_tcp_address = format!(
             "{}:{}",
-            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
+            collector_config.email_collector.tornado_event_socket_ip,
+            collector_config.email_collector.tornado_event_socket_port
         );
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
             tornado_tcp_address.clone(),
-            config.io.message_queue_size,
+            collector_config.email_collector.message_queue_size,
         );
 
         // Start Email collector
         let email_addr = EmailReaderActor::start_new(tpc_client_addr.clone());
 
         // Open UDS socket
-        listen_to_uds_socket(config.io.uds_path.clone(), Some(0o770), move |msg| {
-            debug!("Received message on the socket");
-            email_addr.do_send(msg);
-        })
+        listen_to_uds_socket(
+            collector_config.email_collector.uds_path.clone(),
+            Some(0o770),
+            move |msg| {
+                debug!("Received message on the socket");
+                email_addr.do_send(msg);
+            },
+        )
         .and_then(|_| {
             info!(
                 "Started UDS server at [{}]. Listening for incoming events",
-                config.io.uds_path.clone()
+                collector_config.email_collector.uds_path.clone()
             );
             Ok(())
         })
         .unwrap_or_else(|err| {
-            error!("Cannot start UDS server at [{}]. Err: {}", config.io.uds_path.clone(), err);
+            error!(
+                "Cannot start UDS server at [{}]. Err: {}",
+                collector_config.email_collector.uds_path.clone(),
+                err
+            );
             std::process::exit(1);
         });
     })?;
