@@ -22,7 +22,6 @@ args = [
     "--event-socket-ip=0.0.0.0",
     "--web-server-ip=0.0.0.0",
 ]
-dependencies = ["build"]
 
 
 # Starts the rsyslog-collector and the spike_rsyslog_collector_writer.
@@ -40,7 +39,6 @@ script = [
     "cargo run --bin spike_rsyslog_collector_writer -- --json-events-path=./spike/rsyslog_collector_writer/events |",
     "cargo run --bin tornado_rsyslog_collector -- --config-dir=./tornado/rsyslog_collector/config"
 ]
-dependencies = ["build"]
 
 
 # Starts the tornado_icinga2_collector.
@@ -59,7 +57,6 @@ args = [
     "--logger-level=debug",
     "--config-dir=./tornado/icinga2_collector/config"
 ]
-dependencies = ["build"]
 
 
 
@@ -79,7 +76,6 @@ args = [
     "--logger-level=debug",
     "--config-dir=./tornado/webhook_collector/config"
 ]
-dependencies = ["build"]
 
 
 # Starts a Tornado Events generator that sends simulated Events to the Engine.
@@ -98,7 +94,6 @@ args = [
     "--logger-level=debug",
     "--config-dir=./spike/tornado_events_generator/config"
 ]
-dependencies = ["build"]
 
 
 # Starts the tornado_email_collector.
@@ -113,7 +108,5 @@ args = [
     "--bin",
     "tornado_email_collector",
     "--",
-    "--config-dir=./tornado/email_collector/config",
-    "--uds-path=./target/tornado-email.sock"
+    "--config-dir=./tornado/email_collector/config"
 ]
-dependencies = ["build"]
