@@ -108,6 +108,7 @@ cp -p conf/tornado/*_executor.toml %{buildroot}/%{conf_dir}
 cp -p conf/email_collector/email_collector.toml %{buildroot}/%{conf_dir}/collectors/email/
 cp -p conf/icinga2_collector/icinga2_collector.toml %{buildroot}/%{conf_dir}/collectors/icinga2/
 cp -p conf/rsyslog_collector/rsyslog_collector.toml %{buildroot}/%{conf_dir}/collectors/rsyslog/
+cp -p conf/webhook_collector/webhook_collector.toml %{buildroot}/%{conf_dir}/collectors/webhook/
 
 # install example rules, streams, webhooks
 mkdir -p %{buildroot}%{lib_dir}/examples/rules/
@@ -162,6 +163,7 @@ fi
 %config(noreplace) %{conf_dir}/collectors/email/*.toml
 %config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
 %config(noreplace) %{conf_dir}/collectors/rsyslog/*.toml
+%config(noreplace) %{conf_dir}/collectors/webhook/*.toml
 %config(noreplace) /neteye/shared/rsyslog/conf/rsyslog.d/*
 %config(noreplace) /neteye/shared/snmptrapd/conf/conf.d/*
 

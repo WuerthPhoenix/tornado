@@ -18,7 +18,6 @@ pub struct Conf {
     ///   this folder is relative to the `config_dir`.
     #[structopt(long, default_value = "/streams")]
     pub streams_dir: String,
-
 }
 
 impl Conf {
@@ -32,7 +31,7 @@ pub struct Icinga2CollectorConfig {
     pub message_queue_size: usize,
     pub tornado_event_socket_ip: String,
     pub tornado_event_socket_port: u16,
-    pub connection: Icinga2ClientConfig
+    pub connection: Icinga2ClientConfig,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -162,6 +161,9 @@ mod test {
         let config = build_config(path).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/events", config.icinga2_collector.connection.server_api_url)
+        assert_eq!(
+            "https://127.0.0.1:5665/v1/events",
+            config.icinga2_collector.connection.server_api_url
+        )
     }
 }

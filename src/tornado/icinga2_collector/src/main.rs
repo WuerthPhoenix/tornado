@@ -26,10 +26,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
 
         let tornado_tcp_address = format!(
             "{}:{}",
-            icinga2_config.icinga2_collector.tornado_event_socket_ip, icinga2_config.icinga2_collector.tornado_event_socket_port
+            icinga2_config.icinga2_collector.tornado_event_socket_ip,
+            icinga2_config.icinga2_collector.tornado_event_socket_port
         );
-        let tcp_client_addr =
-            TcpClientActor::start_new(tornado_tcp_address.clone(), icinga2_config.icinga2_collector.message_queue_size);
+        let tcp_client_addr = TcpClientActor::start_new(
+            tornado_tcp_address.clone(),
+            icinga2_config.icinga2_collector.message_queue_size,
+        );
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
