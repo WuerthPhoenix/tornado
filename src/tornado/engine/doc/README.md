@@ -58,12 +58,6 @@ parameters. The location of configuration files in the file system is determined
 on the provided CLI options.
 
 Tornado global options:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, with `false` the default.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_. The default value is _warn_.
 - __config-dir__:  The filesystem folder from which the Tornado configuration is read.
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
@@ -82,13 +76,22 @@ The __daemon__ command has the following options:
 - __web-server-port__:  The port where the Tornado Web Server will listen for HTTP requests.
   The default port is _4748_.  
 
+In addition to these parameters, the following configuration entries are available in the 
+_'config-dir'/tornado.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
 The command-specific options should always be used after the command name, while the global ones
 always precede it.  An example of a full startup command is:
 ```bash
-./tornado_engine --logger-stdout --logger-level=debug \
+./tornado_engine 
     --config-dir=./tornado/engine/config \
     daemon \
     --event-socket-ip=0.0.0.0 \
@@ -96,7 +99,6 @@ always precede it.  An example of a full startup command is:
 ```
 
 In this case, the CLI:
-- Logs to standard output at the _debug_ level
 - Reads the configuration from the _./tornado/engine/config_ directory
 - Executes the __daemon__ command that starts the Engine
 - Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory

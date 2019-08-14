@@ -6,9 +6,7 @@ Type=simple
 
 #User=tornado
 RuntimeDirectory=tornado
-ExecStart=/usr/bin/tornado \
-          --config-dir /neteye/shared/tornado/conf --logger-level=info --logger-stdout \
-          daemon 
+ExecStart=/usr/bin/tornado --config-dir /neteye/shared/tornado/conf daemon 
 Restart=on-failure
 RestartSec=3
 # Other Restart options: or always, on-abort, etc

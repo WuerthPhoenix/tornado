@@ -1,0 +1,35 @@
+[logger]
+
+# The Logger level
+# Valid values: trace, debug, info, warn, error
+level = "debug"
+
+# Whether the Logger should print to standard output.
+# Valid values: true, false
+stdout_output = true
+
+# A file path in the file system; if provided, the Logger will append any output to it.
+# file_output_path = "/output/file.log"
+
+
+[archive_executor]
+
+base_path =  "./target/tornado-log"
+default_path = "/default/file.log"
+file_cache_size = 10
+file_cache_ttl_secs = 1
+
+[archive_executor.paths]
+"one" = "/one/file.log"
+
+
+[icinga2_executor]
+
+# The complete URL of the Icinga2 APIs
+server_api_url = "https://127.0.0.1:5665/v1/actions"
+# Username used to connect to the Icinga2 APIs
+username = "root"
+# Password used to connect to the Icinga2 APIs
+password = ""
+# If true, the client will not verify the SSL certificate
+disable_ssl_verification = true
