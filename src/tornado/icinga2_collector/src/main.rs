@@ -11,15 +11,17 @@ mod config;
 mod error;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    let icinga2_config = config::build_config(&config.config_dir)?;
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+    let streams_dir = arg_matches.value_of("streams-dir").expect("streams-dir should be provided");
+    let icinga2_config = config::build_config(&config_dir)?;
 
     setup_logger(&icinga2_config.logger).map_err(failure::Fail::compat)?;
 
-    let streams_dir = format!("{}/{}", &config.config_dir, &config.streams_dir);
+    let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
     let streams_config =
-        config::read_streams_from_config(&streams_dir).map_err(failure::Fail::compat)?;
+        config::read_streams_from_config(&streams_dir_full_path).map_err(failure::Fail::compat)?;
 
     System::run(move || {
         info!("Starting Icinga2 Collector");

@@ -1,29 +1,24 @@
+use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use log::{info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
-use structopt::StructOpt;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
 
-#[derive(Debug, StructOpt, Clone)]
-#[structopt(rename_all = "kebab-case")]
-pub struct Conf {
-    /// The filesystem folder where the Tornado Icinga2 Collector configuration is saved
-    #[structopt(long, default_value = "/etc/tornado_icinga2_collector")]
-    pub config_dir: String,
+pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
+    option_env!("TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT");
 
-    /// The folder where the Stream Configurations are saved in JSON format;
-    ///   this folder is relative to the `config_dir`.
-    #[structopt(long, default_value = "/streams")]
-    pub streams_dir: String,
-}
-
-impl Conf {
-    pub fn build() -> Self {
-        Conf::from_args()
-    }
+pub fn arg_matches<'a>() -> ArgMatches<'a> {
+    App::new("tornado_icinga2_collector")
+        .arg(Arg::with_name("config-dir")
+            .help("The filesystem folder where the Tornado Icinga2 Collector configuration is saved")
+            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_icinga2_collector")))
+        .arg(Arg::with_name("streams-dir")
+            .help("The folder where the Stream Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .default_value("/streams"))
+        .get_matches()
 }
 
 #[derive(Deserialize, Serialize, Clone)]

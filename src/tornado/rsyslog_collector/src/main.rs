@@ -9,9 +9,11 @@ use tornado_common::actors::message::StringMessage;
 use tornado_common_logger::setup_logger;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    let collector_config = config::build_config(&config.config_dir)?;
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+
+    let collector_config = config::build_config(&config_dir)?;
 
     // Setup logger
     setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;

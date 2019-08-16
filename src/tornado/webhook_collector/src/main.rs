@@ -20,15 +20,18 @@ fn pong(_req: HttpRequest) -> impl Responder {
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    let collector_config = config::build_config(&config.config_dir)?;
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+    let webhooks_dir = arg_matches.value_of("webhooks-dir").expect("webhooks-dir should be provided");
+
+    let collector_config = config::build_config(&config_dir)?;
 
     setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
 
-    let webhooks_dir = format!("{}/{}", &config.config_dir, &config.webhooks_dir);
+    let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
     let webhooks_config =
-        config::read_webhooks_from_config(&webhooks_dir).map_err(failure::Fail::compat)?;
+        config::read_webhooks_from_config(&webhooks_dir_full_path).map_err(failure::Fail::compat)?;
 
     let port = collector_config.webhook_collector.server_port;
     let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();

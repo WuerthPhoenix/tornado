@@ -82,8 +82,6 @@ args = [
     "--bin",
     "spike_tornado_events_generator",
     "--",
-    "--logger-stdout",
-    "--logger-level=debug",
     "--config-dir=./spike/tornado_events_generator/config"
 ]
 
