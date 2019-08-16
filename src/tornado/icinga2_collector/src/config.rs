@@ -13,9 +13,11 @@ pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
 pub fn arg_matches<'a>() -> ArgMatches<'a> {
     App::new("tornado_icinga2_collector")
         .arg(Arg::with_name("config-dir")
+            .long("config-dir")
             .help("The filesystem folder where the Tornado Icinga2 Collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_icinga2_collector")))
         .arg(Arg::with_name("streams-dir")
+            .long("streams-dir")
             .help("The folder where the Stream Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/streams"))
         .get_matches()

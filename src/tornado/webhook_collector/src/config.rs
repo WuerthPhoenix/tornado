@@ -13,9 +13,11 @@ pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
 pub fn arg_matches<'a>() -> ArgMatches<'a> {
     App::new("tornado_webhook_collector")
         .arg(Arg::with_name("config-dir")
+            .long("config-dir")
             .help("The filesystem folder where the Tornado Webhook collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_webhook_collector")))
         .arg(Arg::with_name("webhooks-dir")
+            .long("webhooks-dir")
             .help("The folder where the Webhooks Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/webhooks/"))
         .get_matches()

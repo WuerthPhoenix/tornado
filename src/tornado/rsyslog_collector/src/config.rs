@@ -9,6 +9,7 @@ pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
 pub fn arg_matches<'a>() -> ArgMatches<'a> {
     App::new("tornado_rsyslog_collector")
         .arg(Arg::with_name("config-dir")
+            .long("config-dir")
             .help("The filesystem folder where the Tornado Rsyslog Collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_rsyslog_collector")))
         .get_matches()
