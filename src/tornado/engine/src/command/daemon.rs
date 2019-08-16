@@ -19,10 +19,7 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn daemon(
-    conf: &config::Conf,
-    daemon_config: config::DaemonCommandConfig,
-) -> Result<(), Box<std::error::Error>> {
+pub fn daemon(conf: &config::Conf) -> Result<(), Box<std::error::Error>> {
     let configs = config::parse_config_files(conf)?;
 
     setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
@@ -41,6 +38,8 @@ pub fn daemon(
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
+        let daemon_config = configs.tornado.tornado.daemon;
+
         // Start archive executor actor
         let archive_config = configs.tornado.archive_executor.clone();
         let archive_executor_addr = SyncArbiter::start(1, move || {
@@ -55,7 +54,8 @@ pub fn daemon(
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.tornado.icinga2_executor);
+        let icinga2_client_addr =
+            Icinga2ApiClientActor::start_new(configs.tornado.icinga2_executor);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {

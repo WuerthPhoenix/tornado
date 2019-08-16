@@ -3,7 +3,8 @@ use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use tornado_common_logger::LoggerConfig;
 
-pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT");
+pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
+    option_env!("TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT");
 
 pub fn arg_matches<'a>() -> ArgMatches<'a> {
     App::new("tornado_email_collector")
@@ -12,7 +13,6 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_email_collector")))
         .get_matches()
 }
-
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct CollectorConfig {

@@ -17,8 +17,6 @@ args = [
     "--",
     "--config-dir=./tornado/engine/config",
     "daemon",
-    "--event-socket-ip=0.0.0.0",
-    "--web-server-ip=0.0.0.0",
 ]
 
 

@@ -65,16 +65,8 @@ Tornado global options:
 
 The __check__ command does not have any specific options.
 
-The __daemon__ command has the following options:
-- __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
-  The default address is _127.0.0.1_.
-- __event-socket-port__:  The port where Tornado will listen for incoming events.
-  The default port is _4747_.
-- __web-server-ip__: The IP address where the Tornado Web Server will listen for HTTP requests.
-  This is used, for example, by the monitoring endpoints.
-  The default address is _127.0.0.1_.
-- __web-server-port__:  The port where the Tornado Web Server will listen for HTTP requests.
-  The default port is _4748_.  
+The __daemon__ command has options specified in the **tornado.daemon** section of the 
+_tornado.toml_ configuration file. 
 
 In addition to these parameters, the following configuration entries are available in the 
 _'config-dir'/tornado.toml_:
@@ -83,8 +75,15 @@ _'config-dir'/tornado.toml_:
       _error_.
     - __stdout__:  Determines whether the Logger should print to standard output.
       Valid values are `true` and `false`.
-    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+    - **file_output_path**:  A file path in the file system; if provided, the Logger will
       append any output to it.
+- **tornado.daemon**
+    - **event_socket_ip**:  The IP address where Tornado will listen for incoming events.
+    - **event_socket_port**:  The port where Tornado will listen for incoming events.
+    - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
+      This is used, for example, by the monitoring endpoints.
+    - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
+
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
@@ -98,13 +97,10 @@ always precede it.  An example of a full startup command is:
     --event-socket-port=12345
 ```
 
-In this case, the CLI:
-- Reads the configuration from the _./tornado/engine/config_ directory
-- Executes the __daemon__ command that starts the Engine
-- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
-  in order to build the processing tree
-- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
-
+In this case, the CLI executes the __daemon__ command that starts the Engine with the
+configuration read form the _./tornado/engine/config_ directory. In addition, 
+it will searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ 
+directory in order to build the processing tree.
 
 
 ### Structure and Configuration: The JSON Collector

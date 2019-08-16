@@ -30,30 +30,14 @@ pub enum Command {
     Check,
     #[structopt(name = "daemon")]
     /// Starts the Tornado daemon
-    Daemon {
-        #[structopt(flatten)]
-        daemon_config: DaemonCommandConfig,
-    },
+    Daemon,
 }
 
-#[derive(Debug, StructOpt, Clone)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
-    /// The IP address where we will listen for incoming events.
-    #[structopt(long, default_value = "127.0.0.1")]
     pub event_socket_ip: String,
-
-    /// The port where we will listen for incoming events.
-    #[structopt(long, default_value = "4747")]
     pub event_socket_port: u16,
-
-    /// The IP address where the Tornado Web Server will listen for HTTP requests.
-    ///  This is used, for example, by the monitoring endpoints.
-    #[structopt(long, default_value = "127.0.0.1")]
     pub web_server_ip: String,
-
-    /// The port where the Tornado Web Server will listen for HTTP requests.
-    #[structopt(long, default_value = "4748")]
     pub web_server_port: u16,
 }
 
@@ -64,15 +48,21 @@ impl Conf {
 }
 
 #[derive(Deserialize, Serialize, Clone)]
-pub struct TornadoConfig {
+pub struct GlobalConfig {
     /// The logger configuration
     pub logger: LoggerConfig,
+    pub tornado: TornadoConfig,
     pub archive_executor: ArchiveConfig,
-    pub icinga2_executor: Icinga2ClientConfig
+    pub icinga2_executor: Icinga2ClientConfig,
 }
 
-pub fn build_config(conf: &Conf) -> Result<TornadoConfig, ConfigError> {
-    let config_file_path = format!("{}/tornado.toml", conf.config_dir);
+#[derive(Deserialize, Serialize, Clone)]
+pub struct TornadoConfig {
+    pub daemon: DaemonCommandConfig,
+}
+
+pub fn build_config(config_dir: &str) -> Result<GlobalConfig, ConfigError> {
+    let config_file_path = format!("{}/tornado.toml", config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
@@ -80,12 +70,12 @@ pub fn build_config(conf: &Conf) -> Result<TornadoConfig, ConfigError> {
 
 pub struct ComponentsConfig {
     pub matcher_config: Box<MatcherConfigManager>,
-    pub tornado: TornadoConfig,
+    pub tornado: GlobalConfig,
 }
 
 pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
     let matcher_config = Box::new(build_matcher_config(conf));
-    let tornado = build_config(conf)?;
+    let tornado = build_config(&conf.config_dir)?;
     Ok(ComponentsConfig { matcher_config, tornado })
 }
 
@@ -99,6 +89,18 @@ mod test {
     use super::*;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::config::MatcherConfig;
+
+    #[test]
+    fn should_read_configuration_from_file() {
+        // Arrange
+        let path = "./config/";
+
+        // Act
+        let config = build_config(path);
+
+        // Assert
+        assert!(config.is_ok())
+    }
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
@@ -133,9 +135,12 @@ mod test {
         };
 
         // Act
-        let config = build_config(&conf).unwrap();
+        let config = parse_config_files(&conf).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/actions", config.icinga2_executor.server_api_url)
+        assert_eq!(
+            "https://127.0.0.1:5665/v1/actions",
+            config.tornado.icinga2_executor.server_api_url
+        )
     }
 }
