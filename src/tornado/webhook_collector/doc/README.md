@@ -65,6 +65,14 @@ _'config-dir'/webhook_collector.toml_:
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
 
+The default __config-dir__ value can be customized at build time specifying
+the environment variable *TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT*. 
+For example, this will build an executable that uses */my/custom/path* 
+as default value:
+```bash
+TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+```
+
 An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
