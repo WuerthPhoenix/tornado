@@ -54,7 +54,7 @@ MIME format and UDS sockets.
 
 
 ## Configuration
-The executable configuration is based partially on configuration files and partially on command
+The executable configuration is based partially on configuration files, and partially on command
 line parameters.
 
 The available startup parameters are:
@@ -62,7 +62,7 @@ The available startup parameters are:
   The default path is _/etc/tornado_email_collector/_.
 
 In addition to these parameters, the following configuration entries are available in the 
-_'config-dir'/email_collector.toml_:
+file _'config-dir'/email_collector.toml_:
 - __logger__:
     - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
       _error_.
@@ -72,9 +72,9 @@ _'config-dir'/email_collector.toml_:
       append any output to it.
 - **email_collector**:
     - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
-      This should be the address where the Tornado Engine is listening for incoming events.
+      This should be the address where the Tornado Engine listens for incoming events.
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
-      This should be the port where the Tornado Engine is listening for incoming events.
+      This should be the port where the Tornado Engine listens for incoming events.
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
       resilient to Tornado Engine crashes or temporary unavailability.
       When Tornado restarts, all messages in the buffer will be sent.
@@ -84,10 +84,10 @@ _'config-dir'/email_collector.toml_:
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
 
-The default __config-dir__ value can be customized at build time specifying
+The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT*. 
 For example, this will build an executable that uses */my/custom/path* 
-as default value:
+as the default value:
 ```bash
 TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
 ```
@@ -98,7 +98,7 @@ An example of a full startup command is:
       --config-dir=/tornado-email-collector/config \
 ```
 
-In this example the Email Collector starts and reads the configuration from 
-the _/tornado-email-collector/config_ directory
+In this example the Email Collector starts up and then reads the configuration from 
+the _/tornado-email-collector/config_ directory.
 
 

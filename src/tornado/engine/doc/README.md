@@ -69,7 +69,7 @@ The __daemon__ command has options specified in the **tornado.daemon** section o
 _tornado.toml_ configuration file. 
 
 In addition to these parameters, the following configuration entries are available in the 
-_'config-dir'/tornado.toml_:
+file _'config-dir'/tornado.toml_:
 - __logger__:
     - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
       _error_.
@@ -87,10 +87,10 @@ _'config-dir'/tornado.toml_:
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
-The default __config-dir__ value can be customized at build time specifying
+The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_CONFIG_DIR_DEFAULT*. 
 For example, this will build an executable that uses */my/custom/path* 
-as default value:
+as the default value:
 ```bash
 TORNADO_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
 ```
@@ -106,8 +106,8 @@ always precede it.  An example of a full startup command is:
 ```
 
 In this case, the CLI executes the __daemon__ command that starts the Engine with the
-configuration read form the _./tornado/engine/config_ directory. In addition, 
-it will searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ 
+configuration read from the _./tornado/engine/config_ directory. In addition, 
+it will search for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ 
 directory in order to build the processing tree.
 
 

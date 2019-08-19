@@ -33,7 +33,7 @@ __Note__: Based on the [Icinga2 Event Streams documentation](https://icinga.com/
 
 ## Configuration
 
-The executable configuration is based partially on configuration files and partially on command
+The executable configuration is based partially on configuration files, and partially on command
 line parameters.
 
 The available startup parameters are:
@@ -42,10 +42,10 @@ The available startup parameters are:
 - __streams_dir__:  The folder where the Stream configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/streams/_.
 - __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
+  This should be the address where the Tornado Engine listens for incoming events.
   The default is _127.0.0.1_.
 - __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the port where the Tornado Engine is listening for incoming events.
+  This should be the port where the Tornado Engine listens for incoming events.
   The default is _4747_.
 - __message-queue-size__:  The in-memory buffer size for Events. It makes the application
   resilient to Tornado Engine crashes or temporary unavailability.
@@ -54,7 +54,7 @@ The available startup parameters are:
   The default buffer size is `10000` messages.
 
 In addition to these parameters, the following configuration entries are available in the 
-_'config-dir'/icinga2_collector.toml_:
+file _'config-dir'/icinga2_collector.toml_:
 - __logger__:
     - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
       _error_.
@@ -64,28 +64,29 @@ _'config-dir'/icinga2_collector.toml_:
       append any output to it.
 - **icinga2_collector**
     - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
-      This should be the address where the Tornado Engine is listening for incoming events.
+      This should be the address where the Tornado Engine listens for incoming events.
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
-      This should be the port where the Tornado Engine is listening for incoming events.
+      This should be the port where the Tornado Engine listens for incoming events.
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
       resilient to Tornado Engine crashes or temporary unavailability.
       When Tornado restarts, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
 - **icinga2_collector.connection**
     - __server_api_url__: The complete URL of the Icinga2 Event Stream API.
-    - __username__: Username used to connect to the Icinga2 APIs.
-    - __password__: Password used to connect to the Icinga2 APIs.
+    - __username__: The username used to connect to the Icinga2 APIs.
+    - __password__: The password used to connect to the Icinga2 APIs.
     - __disable_ssl_verification__: A boolean value. If true, 
     the client will not verify the Icinga2 SSL certificate.
-    - __sleep_ms_between_connection_attempts__: In case of connection failure, how many milliseconds to wait before a new connection attempt.
+    - __sleep_ms_between_connection_attempts__: In case of connection failure, the number of
+      milliseconds to wait before a new connection attempt.
 
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
 
-The default __config-dir__ value can be customized at build time specifying
+The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT*. 
 For example, this will build an executable that uses */my/custom/path* 
-as default value:
+as the default value:
 ```bash
 TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
 ```
@@ -96,7 +97,7 @@ An example of a full startup command is:
       --config-dir=/tornado-icinga2-collector/config 
 ```
 
-In this example the Icinga2 Collector starts and reads 
+In this example the Icinga2 Collector starts up and then reads 
 the configuration from the _/tornado-icinga2-collector/config_ directory.
 
 

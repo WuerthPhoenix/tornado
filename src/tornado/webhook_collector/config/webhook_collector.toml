@@ -26,5 +26,5 @@ tornado_event_socket_port = 4747
 # IP to bind the HTTP server to.
 server_bind_address = "0.0.0.0"
 
-# The port to be use by the HTTP Server.
+# The port to be used by the HTTP Server.
 server_port = 8080
