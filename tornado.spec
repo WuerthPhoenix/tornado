@@ -104,7 +104,9 @@ cp conf/snmptrapd_collector/tornado.conf %{buildroot}/neteye/shared/snmptrapd/co
 
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
+mkdir -p %{buildroot}/%{conf_dir}/collectors/email
 mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
+mkdir -p %{buildroot}/%{conf_dir}/collectors/rsyslog
 mkdir -p %{buildroot}/%{conf_dir}/collectors/webhook/webhooks
 
 cp -p conf/tornado/*.toml %{buildroot}/%{conf_dir}
