@@ -39,8 +39,6 @@ pub struct GlobalConfig {
     /// The logger configuration
     pub logger: LoggerConfig,
     pub tornado: TornadoConfig,
-    pub archive_executor: ArchiveConfig,
-    pub icinga2_executor: Icinga2ClientConfig,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -55,9 +53,25 @@ pub fn build_config(config_dir: &str) -> Result<GlobalConfig, ConfigError> {
     s.try_into()
 }
 
+fn build_archive_config(config_dir: &str) -> Result<ArchiveConfig, ConfigError> {
+    let config_file_path = format!("{}/archive_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
+fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, ConfigError> {
+    let config_file_path = format!("{}/icinga2_client_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
 pub struct ComponentsConfig {
     pub matcher_config: Box<MatcherConfigManager>,
     pub tornado: GlobalConfig,
+    pub archive_executor_config: ArchiveConfig,
+    pub icinga2_executor_config: Icinga2ClientConfig,
 }
 
 pub fn parse_config_files(
@@ -66,7 +80,14 @@ pub fn parse_config_files(
 ) -> Result<ComponentsConfig, Box<std::error::Error>> {
     let matcher_config = Box::new(build_matcher_config(config_dir, rules_dir));
     let tornado = build_config(config_dir)?;
-    Ok(ComponentsConfig { matcher_config, tornado })
+    let archive_executor_config = build_archive_config(config_dir)?;
+    let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
+    Ok(ComponentsConfig {
+        matcher_config,
+        tornado,
+        archive_executor_config,
+        icinga2_executor_config,
+    })
 }
 
 fn build_matcher_config(config_dir: &str, rules_dir: &str) -> impl MatcherConfigManager {
@@ -116,7 +137,7 @@ mod test {
     }
 
     #[test]
-    fn should_read_icinga2_client_configurations_from_file() {
+    fn should_read_configurations_from_file() {
         // Arrange
         let config_dir = "./config";
         let rules_dir = "/rules.d";
@@ -127,7 +148,31 @@ mod test {
         // Assert
         assert_eq!(
             "https://127.0.0.1:5665/v1/actions",
-            config.tornado.icinga2_executor.server_api_url
+            config.icinga2_executor_config.server_api_url
         )
+    }
+
+    #[test]
+    fn should_read_archiver_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_archive_config(config_dir).unwrap();
+
+        // Assert
+        assert_eq!("./target/tornado-log", config.base_path)
+    }
+
+    #[test]
+    fn should_read_icinga2_client_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_icinga2_client_config(config_dir).unwrap();
+
+        // Assert
+        assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
     }
 }

@@ -40,7 +40,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::E
         let daemon_config = configs.tornado.tornado.daemon;
 
         // Start archive executor actor
-        let archive_config = configs.tornado.archive_executor.clone();
+        let archive_config = configs.archive_executor_config.clone();
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -53,8 +53,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::E
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_addr =
-            Icinga2ApiClientActor::start_new(configs.tornado.icinga2_executor);
+        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {
