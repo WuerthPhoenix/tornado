@@ -27,7 +27,6 @@ pub struct Io {
 
 #[derive(Debug, StructOpt)]
 pub struct Conf {
-
     #[structopt(flatten)]
     pub io: Io,
 }

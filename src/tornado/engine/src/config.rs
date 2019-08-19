@@ -1,36 +1,29 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
-use structopt::StructOpt;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct Conf {
-    /// The filesystem folder where the Tornado configuration is saved
-    #[structopt(long, default_value = "/etc/tornado")]
-    pub config_dir: String,
+pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
-    /// The folder where the processing tree configuration is saved in JSON format;
-    ///   this folder is relative to the `config_dir`.
-    #[structopt(long, default_value = "/rules.d/")]
-    pub rules_dir: String,
-
-    #[structopt(subcommand)]
-    pub command: Command,
-}
-
-#[derive(StructOpt, Debug, Clone)]
-pub enum Command {
-    #[structopt(name = "check")]
-    /// Checks that the configuration is valid.
-    Check,
-    #[structopt(name = "daemon")]
-    /// Starts the Tornado daemon
-    Daemon,
+pub fn arg_matches<'a>() -> ArgMatches<'a> {
+    App::new("tornado_daemon")
+        .arg(Arg::with_name("config-dir")
+            .long("config-dir")
+            .help("The filesystem folder where the Tornado configuration is saved")
+            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado")))
+        .arg(Arg::with_name("rules-dir")
+            .long("rules-dir")
+            .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
+            .default_value("/rules.d/"))
+        .subcommand(SubCommand::with_name("daemon" )
+            .help("Starts the Tornado daemon"))
+        .subcommand(SubCommand::with_name("check" )
+            .help("Checks that the configuration is valid"))
+        .get_matches()
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -39,12 +32,6 @@ pub struct DaemonCommandConfig {
     pub event_socket_port: u16,
     pub web_server_ip: String,
     pub web_server_port: u16,
-}
-
-impl Conf {
-    pub fn build() -> Self {
-        Conf::from_args()
-    }
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -73,14 +60,17 @@ pub struct ComponentsConfig {
     pub tornado: GlobalConfig,
 }
 
-pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
-    let matcher_config = Box::new(build_matcher_config(conf));
-    let tornado = build_config(&conf.config_dir)?;
+pub fn parse_config_files(
+    config_dir: &str,
+    rules_dir: &str,
+) -> Result<ComponentsConfig, Box<std::error::Error>> {
+    let matcher_config = Box::new(build_matcher_config(config_dir, rules_dir));
+    let tornado = build_config(config_dir)?;
     Ok(ComponentsConfig { matcher_config, tornado })
 }
 
-fn build_matcher_config(conf: &Conf) -> impl MatcherConfigManager {
-    FsMatcherConfigManager::new(format!("{}/{}", conf.config_dir, conf.rules_dir))
+fn build_matcher_config(config_dir: &str, rules_dir: &str) -> impl MatcherConfigManager {
+    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir))
 }
 
 #[cfg(test)]
@@ -128,14 +118,11 @@ mod test {
     #[test]
     fn should_read_icinga2_client_configurations_from_file() {
         // Arrange
-        let conf = Conf {
-            config_dir: "./config".to_owned(),
-            rules_dir: "/rules.d".to_owned(),
-            command: Command::Check,
-        };
+        let config_dir = "./config";
+        let rules_dir = "/rules.d";
 
         // Act
-        let config = parse_config_files(&conf).unwrap();
+        let config = parse_config_files(config_dir, rules_dir).unwrap();
 
         // Assert
         assert_eq!(

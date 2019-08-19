@@ -1,11 +1,10 @@
+use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
-
-use crate::api::MatcherApiHandler;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
@@ -19,8 +18,8 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn daemon(conf: &config::Conf) -> Result<(), Box<std::error::Error>> {
-    let configs = config::parse_config_files(conf)?;
+pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::Error>> {
+    let configs = config::parse_config_files(config_dir, rules_dir)?;
 
     setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
 
