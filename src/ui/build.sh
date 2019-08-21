@@ -15,11 +15,3 @@ echo "---------------------------"
 cd backend
 cargo build 
 cd ..
-
-echo "---------------------------"
-echo "- BUILD FRONTEND"
-echo "---------------------------"
-
-cd frontend
-./build.sh
-cd ..
