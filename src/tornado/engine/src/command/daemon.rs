@@ -8,7 +8,7 @@ use crate::executor::ExecutorActor;
 use crate::api::MatcherApiHandler;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
-use actix_web::middleware::cors::Cors;
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;
@@ -126,7 +126,12 @@ pub fn daemon(
         HttpServer::new(move || {
             App::new()
                 .wrap(Cors::new().max_age(3600))
-                .service({ backend::api::new_endpoints(web::scope("/api"), api_handler.clone()) })
+                .service({
+                    tornado_engine_backend::api::new_endpoints(
+                        web::scope("/api"),
+                        api_handler.clone(),
+                    )
+                })
                 .service(monitoring_endpoints(web::scope("/monitoring")))
         })
         .bind(format!("{}:{}", web_server_ip, web_server_port))

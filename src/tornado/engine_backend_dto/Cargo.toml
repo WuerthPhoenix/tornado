@@ -1,5 +1,5 @@
 [package]
-name = "dto"
+name = "tornado_engine_backend_dto"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
@@ -9,4 +9,4 @@ edition = "2018"
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-typescript-definitions = "0.1"
+typescript-definitions = "0.1.10"

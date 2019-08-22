@@ -1,9 +1,9 @@
-use dto::config::{
+use serde_json::Error;
+use std::collections::btree_map::BTreeMap;
+use tornado_engine_backend_dto::config::{
     ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto, MatcherConfigDto,
     OperatorDto, RuleDto,
 };
-use serde_json::Error;
-use std::collections::btree_map::BTreeMap;
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
     Action, Constraint, Extractor, ExtractorRegex, Operator, Rule,

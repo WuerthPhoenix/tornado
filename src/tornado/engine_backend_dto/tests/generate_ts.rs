@@ -3,10 +3,10 @@
 
 use typescript_definitions::TypeScriptifyTrait;
 
-use dto::*;
 use std::fs::*;
 use std::io::Write;
 use std::str::FromStr;
+use tornado_engine_backend_dto::*;
 
 const TS_OUTPUT_DIR: &str = "./ts";
 const TS_OUTPUT_FILE: &str = "dto.ts";
@@ -23,7 +23,6 @@ const TORNADO_DTO_BUILD_REGENERATE_TS_FILES: &str = "TORNADO_DTO_BUILD_REGENERAT
 ///
 #[test]
 fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
-
     let ts_definitions = generate_ts_definitions();
     // println!("{}", ts_code);
 
@@ -37,7 +36,6 @@ fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
     assert_eq!(previous_ts_definitions, ts_definitions, "\n\nError: The DTO TS definitions have changed but the *.ts files are not being updated!\n\n");
     Ok(())
 }
-
 
 // Whether the ts files need to be regenerated
 fn is_regenerate_ts_file() -> Result<bool, Box<std::error::Error>> {

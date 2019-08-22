@@ -8,7 +8,8 @@ edition = "2018"
 
 [dependencies]
 actix = "0.8"
-actix-web = { version = "1.0.0-rc", features=["ssl", "client"] }
+actix-web = { version = "1.0.0", features=["ssl", "client"] }
+actix-cors = "0.1.0"
 base64 = "0.10"
 chrono = "0.4"
 config_rs = { version = "0.9", package = "config" }
@@ -31,6 +32,7 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
+tornado_engine_backend = { path = "../engine_backend", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 tornado_executor_archive = { path = "../../executor/archive", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
@@ -38,7 +40,6 @@ tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" 
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
-backend = { path = "../../ui/backend", version = "0.0.1" }
 
 [dev-dependencies]
 lazy_static = "1.0"
