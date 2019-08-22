@@ -1,3 +1,6 @@
+// It works only in debug mode (i.e. not in release mode)
+#![cfg(debug_assertions)]
+
 use typescript_definitions::TypeScriptifyTrait;
 
 use dto::*;
@@ -7,11 +10,70 @@ use std::str::FromStr;
 
 const TS_OUTPUT_DIR: &str = "./ts";
 const TS_OUTPUT_FILE: &str = "dto.ts";
+const TORNADO_DTO_BUILD_REGENERATE_TS_FILES: &str = "TORNADO_DTO_BUILD_REGENERATE_TS_FILES";
 
+///
+/// This test verifies that the rust structs and the TS definitions in the generated *.ts files
+/// are coherent.
+/// To regenerate the *.ts files, launch this test setting the environment variable
+/// TORNADO_DTO_BUILD_REGENERATE_TS_FILES to true.
+///
+/// E.g.:
+/// TORNADO_DTO_BUILD_REGENERATE_TS_FILES=true cargo test
+///
 #[test]
-fn generate_ts_files() -> Result<(), Box<std::error::Error>> {
+fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
+
+    let ts_definitions = generate_ts_definitions();
+    // println!("{}", ts_code);
+
+    let regenerate_ts_file = is_regenerate_ts_file()?;
+
+    if regenerate_ts_file {
+        write_ts_file(&ts_definitions)?;
+    }
+
+    let previous_ts_definitions = read_ts_file();
+    assert_eq!(previous_ts_definitions, ts_definitions, "\n\nError: The DTO TS definitions have changed but the *.ts files are not being updated!\n\n");
+    Ok(())
+}
+
+
+// Whether the ts files need to be regenerated
+fn is_regenerate_ts_file() -> Result<bool, Box<std::error::Error>> {
+    let fail_if_changed =
+        std::env::var(TORNADO_DTO_BUILD_REGENERATE_TS_FILES).unwrap_or("false".to_owned());
+    let regenerate_files = bool::from_str(&fail_if_changed)?;
+
+    println!("Should DTO TS files be regenerated? {}", regenerate_files);
+    Ok(regenerate_files)
+}
+
+// Reads the content of the current ts file from the file system
+fn read_ts_file() -> String {
+    let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
+    if let Ok(txt) = read_to_string(&path) {
+        txt
+    } else {
+        "".to_owned()
+    }
+}
+
+// Writes the ts definitions to the file system
+fn write_ts_file(ts_code: &str) -> Result<(), Box<std::error::Error>> {
+    create_dir_all(TS_OUTPUT_DIR)?;
+    let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
+    let mut ts_file = File::create(path)?;
+    Ok(ts_file.write_all(ts_code.as_bytes())?)
+}
+
+// Generates the TS definitions from the source rust code
+fn generate_ts_definitions() -> String {
     let custom_types = r#"
 /* tslint:disable */
+
+/* WARNING: this file was automatically generated at compile time */
+/* DO NOT CHANGE IT MANUALLY */
 
 /* ------------ */
 /* custom types */
@@ -60,41 +122,10 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &event::ProcessedRuleStatusDto::type_script_ify());
     push_ts(&mut ts_code, &event::SendEventRequestDto::type_script_ify());
 
-    // println!("{}", ts_code);
-
-    let previous_ts_code = read_ts_file();
-    if fail_if_changed()? && !ts_code.eq(&previous_ts_code) {
-        assert!(false, "The DTO TS definitions have changed!")
-    }
-    write_ts_file(&ts_code)
+    ts_code
 }
 
 fn push_ts(ts_code: &mut String, ts_trait: &str) {
     ts_code.push_str("\n\n");
     ts_code.push_str(ts_trait);
-}
-
-fn fail_if_changed() -> Result<bool, Box<std::error::Error>> {
-    let fail_if_changed =
-        std::env::var("TORNADO_DTO_BUILD_FAIL_IF_CHANGED").unwrap_or("false".to_owned());
-    let fail_if_changed = bool::from_str(&fail_if_changed)?;
-
-    println!("Fail if dto changed: {}", fail_if_changed);
-    Ok(fail_if_changed)
-}
-
-fn read_ts_file() -> String {
-    let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
-    if let Ok(txt) = read_to_string(&path) {
-        txt
-    } else {
-        "".to_owned()
-    }
-}
-
-fn write_ts_file(ts_code: &str) -> Result<(), Box<std::error::Error>> {
-    create_dir_all(TS_OUTPUT_DIR)?;
-    let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
-    let mut ts_file = File::create(path)?;
-    Ok(ts_file.write_all(ts_code.as_bytes())?)
 }

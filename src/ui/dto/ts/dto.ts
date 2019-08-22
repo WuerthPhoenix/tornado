@@ -3,6 +3,9 @@
 
 /* tslint:disable */
 
+/* WARNING: this file was automatically generated at compile time */
+/* DO NOT CHANGE IT MANUALLY */
+
 /* ------------ */
 /* custom types */
 /* ------------ */
