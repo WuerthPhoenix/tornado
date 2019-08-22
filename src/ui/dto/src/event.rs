@@ -1,26 +1,23 @@
-#[cfg(target_arch = "wasm32")]
-use wasm_bindgen::prelude::*;
-
 use crate::config::ActionDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
-use typescript_definitions::TypescriptDefinition;
+use typescript_definitions::TypeScriptify;
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct SendEventRequestDto {
     pub process_type: ProcessType,
     pub event: EventDto,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub enum ProcessType {
     Full,
     SkipActions,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct EventDto {
     #[serde(rename = "type")]
     pub event_type: String,
@@ -28,39 +25,39 @@ pub struct EventDto {
     pub payload: HashMap<String, Value>,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedEventDto {
     pub event: EventDto,
     pub result: ProcessedNodeDto,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ProcessedNodeDto {
     Filter { filter: ProcessedFilterDto, nodes: BTreeMap<String, ProcessedNodeDto> },
     Rules { rules: ProcessedRulesDto },
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedFilterDto {
     pub name: String,
     pub status: ProcessedFilterStatusDto,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub enum ProcessedFilterStatusDto {
     Matched,
     NotMatched,
     Inactive,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRulesDto {
     pub rules: HashMap<String, ProcessedRuleDto>,
     pub extracted_vars: HashMap<String, Value>,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRuleDto {
     pub rule_name: String,
     pub status: ProcessedRuleStatusDto,
@@ -68,7 +65,7 @@ pub struct ProcessedRuleDto {
     pub message: Option<String>,
 }
 
-#[derive(Clone, Serialize, Deserialize, TypescriptDefinition)]
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub enum ProcessedRuleStatusDto {
     Matched,
     PartiallyMatched,
