@@ -58,12 +58,6 @@ parameters. The location of configuration files in the file system is determined
 on the provided CLI options.
 
 Tornado global options:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, with `false` the default.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_. The default value is _warn_.
 - __config-dir__:  The filesystem folder from which the Tornado configuration is read.
   The default path is _/etc/tornado_.
 - __rules-dir__:  The folder where the Rules are saved in JSON format;
@@ -71,38 +65,50 @@ Tornado global options:
 
 The __check__ command does not have any specific options.
 
-The __daemon__ command has the following options:
-- __event-socket-ip__:  The IP address where Tornado will listen for incoming events.
-  The default address is _127.0.0.1_.
-- __event-socket-port__:  The port where Tornado will listen for incoming events.
-  The default port is _4747_.
-- __web-server-ip__: The IP address where the Tornado Web Server will listen for HTTP requests.
-  This is used, for example, by the monitoring endpoints.
-  The default address is _127.0.0.1_.
-- __web-server-port__:  The port where the Tornado Web Server will listen for HTTP requests.
-  The default port is _4748_.  
+The __daemon__ command has options specified in the **tornado.daemon** section of the 
+_tornado.toml_ configuration file. 
+
+In addition to these parameters, the following configuration entries are available in the 
+file _'config-dir'/tornado.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - **file_output_path**:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+- **tornado.daemon**
+    - **event_socket_ip**:  The IP address where Tornado will listen for incoming events.
+    - **event_socket_port**:  The port where Tornado will listen for incoming events.
+    - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
+      This is used, for example, by the monitoring endpoints.
+    - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
 
 
 More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
 
+The default __config-dir__ value can be customized at build time by specifying
+the environment variable *TORNADO_CONFIG_DIR_DEFAULT*. 
+For example, this will build an executable that uses */my/custom/path* 
+as the default value:
+```bash
+TORNADO_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+```
+
 The command-specific options should always be used after the command name, while the global ones
 always precede it.  An example of a full startup command is:
 ```bash
-./tornado_engine --logger-stdout --logger-level=debug \
+./tornado_engine 
     --config-dir=./tornado/engine/config \
     daemon \
     --event-socket-ip=0.0.0.0 \
     --event-socket-port=12345
 ```
 
-In this case, the CLI:
-- Logs to standard output at the _debug_ level
-- Reads the configuration from the _./tornado/engine/config_ directory
-- Executes the __daemon__ command that starts the Engine
-- Searches for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ directory
-  in order to build the processing tree
-- Opens a TCP port at _0.0.0.0:12345_ for receiving Tornado Events
-
+In this case, the CLI executes the __daemon__ command that starts the Engine with the
+configuration read from the _./tornado/engine/config_ directory. In addition, 
+it will search for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ 
+directory in order to build the processing tree.
 
 
 ### Structure and Configuration: The JSON Collector

@@ -6,7 +6,7 @@ Type=simple
 
 #User=tornado
 RuntimeDirectory=tornado_webhook_collector
-ExecStart=/usr/lib64/tornado/bin/tornado_webhook_collector --config-dir /neteye/shared/tornado/conf/collectors/webhook/ --logger-level=info --logger-stdout
+ExecStart=/usr/lib64/tornado/bin/tornado_webhook_collector
 Restart=on-failure
 RestartSec=3
 # Other Restart options: or always, on-abort, etc

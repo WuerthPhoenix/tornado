@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.8"
-actix-web = "1.0.0"
+actix-web = "1.0.5"
 tornado_engine_backend_dto = { path = "../engine_backend_dto", version = "0.0.1" }
 failure = "0.1"
 failure_derive = "0.1"

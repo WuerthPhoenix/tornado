@@ -1,58 +1,49 @@
+use clap::{App, Arg, ArgMatches};
+use config_rs::{Config, ConfigError, File};
 use log::{info, trace};
-use serde_derive::Deserialize;
+use serde_derive::{Deserialize, Serialize};
 use std::fs;
-use structopt::StructOpt;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
 
-#[derive(Debug, StructOpt, Clone)]
-#[structopt(rename_all = "kebab-case")]
-pub struct Io {
-    /// The filesystem folder where the Tornado Webhook collector configuration is saved
-    #[structopt(long, default_value = "/etc/tornado_webhook_collector/")]
-    pub config_dir: String,
+pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
+    option_env!("TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT");
 
-    /// The folder where the Webhooks Configurations are saved in JSON format;
-    ///   this folder is relative to the `config_dir`.
-    #[structopt(long, default_value = "/webhooks/")]
-    pub webhooks_dir: String,
+pub fn arg_matches<'a>() -> ArgMatches<'a> {
+    App::new("tornado_webhook_collector")
+        .arg(Arg::with_name("config-dir")
+            .long("config-dir")
+            .help("The filesystem folder where the Tornado Webhook collector configuration is saved")
+            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_webhook_collector")))
+        .arg(Arg::with_name("webhooks-dir")
+            .long("webhooks-dir")
+            .help("The folder where the Webhooks Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .default_value("/webhooks/"))
+        .get_matches()
+}
 
-    /// Set the size of the in-memory queue where messages will be stored before being written
-    /// to the output socket.
-    #[structopt(long, default_value = "10000")]
+#[derive(Deserialize, Serialize, Clone)]
+pub struct CollectorConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+    pub webhook_collector: WebhookCollectorConfig,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct WebhookCollectorConfig {
     pub message_queue_size: usize,
-
-    /// The Tornado IP address where outgoing events will be written
-    #[structopt(long, default_value = "127.0.0.1")]
     pub tornado_event_socket_ip: String,
-
-    /// The Tornado port where outgoing events will be written
-    #[structopt(long, default_value = "4747")]
     pub tornado_event_socket_port: u16,
-
-    /// IP to bind the HTTP server to.
-    #[structopt(long, default_value = "0.0.0.0")]
-    pub bind_address: String,
-
-    /// The port to be use by the HTTP Server.
-    #[structopt(long, default_value = "8080")]
+    pub server_bind_address: String,
     pub server_port: u32,
 }
 
-#[derive(Debug, StructOpt, Clone)]
-pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
-    #[structopt(flatten)]
-    pub io: Io,
-}
-
-impl Conf {
-    pub fn build() -> Self {
-        Conf::from_args()
-    }
+pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
+    let config_file_path = format!("{}/{}", &config_dir, "webhook_collector.toml");
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
 }
 
 pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, TornadoError> {
@@ -101,6 +92,18 @@ pub struct WebhookConfig {
 mod test {
 
     use super::*;
+
+    #[test]
+    fn should_read_configuration_from_file() {
+        // Arrange
+        let path = "./config/";
+
+        // Act
+        let config = build_config(path);
+
+        // Assert
+        assert!(config.is_ok())
+    }
 
     #[test]
     fn should_read_all_webhooks_configurations_from_file() {

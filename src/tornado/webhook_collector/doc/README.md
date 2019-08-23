@@ -32,56 +32,56 @@ For each webhook, you must provide three values in order to successfully create 
 
 ## Configuration
 
-The executable configuration is based partially on configuration files and partially on command
+The executable configuration is based partially on configuration files, and partially on command
 line parameters.
 
 The available startup parameters are:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
 - __config-dir__:  The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_webhook_collector/_.
 - __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/webhooks/_.
-- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
-  The default is _127.0.0.1_.
-- __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the port where the Tornado Engine is listening for incoming events.
-  The default is _4747_.
-- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
-  resilient to Tornado Engine crashes or temporary unavailability.
-  When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding older messages first.
-  The default buffer size is `10000` messages.
-- __bind-address__:  The IP to bind the HTTP server to. The default value is `0.0.0.0`.
-- __server-port__:  The port to be used by the HTTP Server. The default value is `8080`.
 
+In addition to these parameters, the following configuration entries are available in the 
+file _'config-dir'/webhook_collector.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - __file_output_path__:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+- **webhook_collector**:
+    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+      This should be the address where the Tornado Engine listens for incoming events.
+    - **tornado_event_socket_port**:  The port where outgoing events will be written.
+      This should be the port where the Tornado Engine listens for incoming events.
+    - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
+      resilient to Tornado Engine crashes or temporary unavailability.
+      When Tornado restarts, all messages in the buffer will be sent.
+      When the buffer is full, the collector will start discarding older messages first.
+    - **server_bind_address**:  The IP to bind the HTTP server to.
+    - **server_port**:  The port to be used by the HTTP Server.
+
+   
 More information about the logger configuration
 [is available here](../../../common/logger/doc/README.md).
+
+The default __config-dir__ value can be customized at build time by specifying
+the environment variable *TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT*. 
+For example, this will build an executable that uses */my/custom/path* 
+as the default value:
+```bash
+TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+```
 
 An example of a full startup command is:
 ```bash
 ./tornado_webhook_collector \
-      --logger-stdout --logger-level=debug \
-      --config-dir=/tornado-webhook-collector/config \
-      --bind-address=127.0.0.1 \
-      --server-port=1234 \
-      --tornado-event-socket-ip=tornado_server_ip \
-      --tornado-event-socket-port=4747
+      --config-dir=/tornado-webhook-collector/config
 ```
 
-In this example the Webhook Collector does the following:
-- Logs to standard output at the *debug* level
-- Reads the configuration from the _/tornado-webhook-collector/config_ directory
-- Searches for webhook configurations in the _/tornado-webhook-collector/config/webhooks_ directory
-- Binds the HTTP server to the IP 127.0.0.1
-- Starts the HTTP server at port 1234
-- Writes outgoing Events to the TCP socket at _tornado_server_ip:4747_
-
+In this example the Webhook Collector starts up and then reads 
+the configuration from the _/tornado-webhook-collector/config_ directory.
 
 
 ## Webhooks Configuration

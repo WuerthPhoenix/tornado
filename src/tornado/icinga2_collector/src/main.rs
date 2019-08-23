@@ -11,26 +11,30 @@ mod config;
 mod error;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    setup_logger(&config.logger).map_err(failure::Fail::compat)?;
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+    let streams_dir = arg_matches.value_of("streams-dir").expect("streams-dir should be provided");
+    let icinga2_config = config::build_config(&config_dir)?;
 
-    let streams_dir = format!("{}/{}", &config.io.config_dir, &config.io.streams_dir);
+    setup_logger(&icinga2_config.logger).map_err(failure::Fail::compat)?;
+
+    let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
     let streams_config =
-        config::read_streams_from_config(&streams_dir).map_err(failure::Fail::compat)?;
-
-    let icinga2_config_path = format!("{}/{}", &config.io.config_dir, "icinga2_collector.toml");
-    let icinga2_config = config::build_icinga2_client_config(&icinga2_config_path)?;
+        config::read_streams_from_config(&streams_dir_full_path).map_err(failure::Fail::compat)?;
 
     System::run(move || {
         info!("Starting Icinga2 Collector");
 
         let tornado_tcp_address = format!(
             "{}:{}",
-            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
+            icinga2_config.icinga2_collector.tornado_event_socket_ip,
+            icinga2_config.icinga2_collector.tornado_event_socket_port
         );
-        let tcp_client_addr =
-            TcpClientActor::start_new(tornado_tcp_address.clone(), config.io.message_queue_size);
+        let tcp_client_addr = TcpClientActor::start_new(
+            tornado_tcp_address.clone(),
+            icinga2_config.icinga2_collector.message_queue_size,
+        );
 
         streams_config.iter().for_each(|config| {
             let config = config.clone();
@@ -39,7 +43,7 @@ fn main() -> Result<(), Box<std::error::Error>> {
             SyncArbiter::start(1, move || {
                 let tcp_client_addr = tcp_client_addr.clone();
                 actor::Icinga2StreamActor {
-                    icinga_config: icinga2_config.clone(),
+                    icinga_config: icinga2_config.icinga2_collector.connection.clone(),
                     collector: JMESPathEventCollector::build(config.collector_config.clone())
                         .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:#?}. Err: {}", config.collector_config.clone(), e)),
                     stream_config: config.stream.clone(),

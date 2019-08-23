@@ -2,7 +2,7 @@
 
 # The Logger level
 # Valid values: trace, debug, info, warn, error
-level = "debug"
+level = "info"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
@@ -12,26 +12,20 @@ stdout_output = true
 # file_output_path = "/output/file.log"
 
 
-[icinga2_collector]
+[webhook_collector]
 
 # Set the size of the in-memory queue where messages will be stored before being written
 # to the output socket.
 message_queue_size = 10000
+
 # The Tornado IP address where outgoing events will be written
 tornado_event_socket_ip = "127.0.0.1"
+
 # The Tornado port where outgoing events will be written
 tornado_event_socket_port = 4747
 
+# IP to bind the HTTP server to.
+server_bind_address = "0.0.0.0"
 
-[icinga2_collector.connection]
-
-# The complete URL of the Icinga2 Event Stream API
-server_api_url = "https://127.0.0.1:5665/v1/events"
-# Username used to connect to the Icinga2 APIs
-username = "root"
-# Password used to connect to the Icinga2 APIs
-password = ""
-# If true, the client will not verify the SSL certificate
-disable_ssl_verification = true
-# In case of connection failure, the number of milliseconds to wait before a new connection attempt.
-sleep_ms_between_connection_attempts = 5000
+# The port to be use by the HTTP Server.
+server_port = 8080

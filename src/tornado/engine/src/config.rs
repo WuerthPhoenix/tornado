@@ -1,99 +1,97 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
+use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
-use structopt::StructOpt;
+use serde_derive::{Deserialize, Serialize};
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
-pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
+pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
-    /// The filesystem folder where the Tornado configuration is saved
-    #[structopt(long, default_value = "/etc/tornado")]
-    pub config_dir: String,
-
-    /// The folder where the processing tree configuration is saved in JSON format;
-    ///   this folder is relative to the `config_dir`.
-    #[structopt(long, default_value = "/rules.d/")]
-    pub rules_dir: String,
-
-    #[structopt(subcommand)]
-    pub command: Command,
+pub fn arg_matches<'a>() -> ArgMatches<'a> {
+    App::new("tornado_daemon")
+        .arg(Arg::with_name("config-dir")
+            .long("config-dir")
+            .help("The filesystem folder where the Tornado configuration is saved")
+            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado")))
+        .arg(Arg::with_name("rules-dir")
+            .long("rules-dir")
+            .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
+            .default_value("/rules.d/"))
+        .subcommand(SubCommand::with_name("daemon" )
+            .help("Starts the Tornado daemon"))
+        .subcommand(SubCommand::with_name("check" )
+            .help("Checks that the configuration is valid"))
+        .get_matches()
 }
 
-#[derive(StructOpt, Debug, Clone)]
-pub enum Command {
-    #[structopt(name = "check")]
-    /// Checks that the configuration is valid.
-    Check,
-    #[structopt(name = "daemon")]
-    /// Starts the Tornado daemon
-    Daemon {
-        #[structopt(flatten)]
-        daemon_config: DaemonCommandConfig,
-    },
-}
-
-#[derive(Debug, StructOpt, Clone)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
-    /// The IP address where we will listen for incoming events.
-    #[structopt(long, default_value = "127.0.0.1")]
     pub event_socket_ip: String,
-
-    /// The port where we will listen for incoming events.
-    #[structopt(long, default_value = "4747")]
     pub event_socket_port: u16,
-
-    /// The IP address where the Tornado Web Server will listen for HTTP requests.
-    ///  This is used, for example, by the monitoring endpoints.
-    #[structopt(long, default_value = "127.0.0.1")]
     pub web_server_ip: String,
-
-    /// The port where the Tornado Web Server will listen for HTTP requests.
-    #[structopt(long, default_value = "4748")]
     pub web_server_port: u16,
 }
 
-impl Conf {
-    pub fn build() -> Self {
-        Conf::from_args()
-    }
+#[derive(Deserialize, Serialize, Clone)]
+pub struct GlobalConfig {
+    /// The logger configuration
+    pub logger: LoggerConfig,
+    pub tornado: TornadoConfig,
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct TornadoConfig {
+    pub daemon: DaemonCommandConfig,
+}
+
+pub fn build_config(config_dir: &str) -> Result<GlobalConfig, ConfigError> {
+    let config_file_path = format!("{}/tornado.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
+fn build_archive_config(config_dir: &str) -> Result<ArchiveConfig, ConfigError> {
+    let config_file_path = format!("{}/archive_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
+fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, ConfigError> {
+    let config_file_path = format!("{}/icinga2_client_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
 }
 
 pub struct ComponentsConfig {
     pub matcher_config: Box<MatcherConfigManager>,
-    pub archive: ArchiveConfig,
-    pub icinga2_client: Icinga2ClientConfig,
+    pub tornado: GlobalConfig,
+    pub archive_executor_config: ArchiveConfig,
+    pub icinga2_executor_config: Icinga2ClientConfig,
 }
 
-pub fn parse_config_files(conf: &Conf) -> Result<ComponentsConfig, Box<std::error::Error>> {
-    let matcher_config = Box::new(build_matcher_config(&conf));
-    let archive = build_archive_config(&conf)?;
-    let icinga2_client = build_icinga2_client_config(&conf)?;
-    Ok(ComponentsConfig { matcher_config, archive, icinga2_client })
+pub fn parse_config_files(
+    config_dir: &str,
+    rules_dir: &str,
+) -> Result<ComponentsConfig, Box<std::error::Error>> {
+    let matcher_config = Box::new(build_matcher_config(config_dir, rules_dir));
+    let tornado = build_config(config_dir)?;
+    let archive_executor_config = build_archive_config(config_dir)?;
+    let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
+    Ok(ComponentsConfig {
+        matcher_config,
+        tornado,
+        archive_executor_config,
+        icinga2_executor_config,
+    })
 }
 
-fn build_archive_config(conf: &Conf) -> Result<ArchiveConfig, ConfigError> {
-    let config_file_path = format!("{}/archive_executor.toml", conf.config_dir);
-    let mut s = Config::new();
-    s.merge(File::with_name(&config_file_path))?;
-    s.try_into()
-}
-
-fn build_icinga2_client_config(conf: &Conf) -> Result<Icinga2ClientConfig, ConfigError> {
-    let config_file_path = format!("{}/icinga2_client_executor.toml", conf.config_dir);
-    let mut s = Config::new();
-    s.merge(File::with_name(&config_file_path))?;
-    s.try_into()
-}
-
-fn build_matcher_config(conf: &Conf) -> impl MatcherConfigManager {
-    FsMatcherConfigManager::new(format!("{}/{}", conf.config_dir, conf.rules_dir))
+fn build_matcher_config(config_dir: &str, rules_dir: &str) -> impl MatcherConfigManager {
+    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir))
 }
 
 #[cfg(test)]
@@ -102,6 +100,18 @@ mod test {
     use super::*;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::config::MatcherConfig;
+
+    #[test]
+    fn should_read_configuration_from_file() {
+        // Arrange
+        let path = "./config/";
+
+        // Act
+        let config = build_config(path);
+
+        // Assert
+        assert!(config.is_ok())
+    }
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
@@ -127,17 +137,40 @@ mod test {
     }
 
     #[test]
-    fn should_read_icinga2_client_configurations_from_file() {
+    fn should_read_configurations_from_file() {
         // Arrange
-        let conf = Conf {
-            logger: Default::default(),
-            config_dir: "./config".to_owned(),
-            rules_dir: "/rules.d".to_owned(),
-            command: Command::Check,
-        };
+        let config_dir = "./config";
+        let rules_dir = "/rules.d";
 
         // Act
-        let config = build_icinga2_client_config(&conf).unwrap();
+        let config = parse_config_files(config_dir, rules_dir).unwrap();
+
+        // Assert
+        assert_eq!(
+            "https://127.0.0.1:5665/v1/actions",
+            config.icinga2_executor_config.server_api_url
+        )
+    }
+
+    #[test]
+    fn should_read_archiver_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_archive_config(config_dir).unwrap();
+
+        // Assert
+        assert_eq!("./target/tornado-log", config.base_path)
+    }
+
+    #[test]
+    fn should_read_icinga2_client_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_icinga2_client_config(config_dir).unwrap();
 
         // Assert
         assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)

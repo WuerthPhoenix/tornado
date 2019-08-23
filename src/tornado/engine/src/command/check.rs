@@ -1,10 +1,10 @@
-use crate::config::{parse_config_files, Conf};
+use crate::config::parse_config_files;
 use failure::Fail;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn check(conf: &Conf) -> Result<(), Box<std::error::Error>> {
+pub fn check(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::Error>> {
     println!("Check Tornado configuration");
-    let configs = parse_config_files(conf)?;
+    let configs = parse_config_files(config_dir, rules_dir)?;
     let _matcher = configs
         .matcher_config
         .read()

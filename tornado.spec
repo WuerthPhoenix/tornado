@@ -59,6 +59,12 @@ cd -
 
 cd src
 
+export TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT="%{conf_dir}/collectors/email/"
+export TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT="%{conf_dir}/collectors/icinga2/"
+export TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT="%{conf_dir}/collectors/rsyslog/"
+export TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT="%{conf_dir}/collectors/webhook/"
+export TORNADO_CONFIG_DIR_DEFAULT="%{conf_dir}/"
+
 %if 0%{?debugbuild:1}
 cargo build
 %else
@@ -104,11 +110,16 @@ cp conf/snmptrapd_collector/tornado.conf %{buildroot}/neteye/shared/snmptrapd/co
 
 # Install config files
 mkdir -p %{buildroot}/%{conf_dir}/rules.d/
+mkdir -p %{buildroot}/%{conf_dir}/collectors/email
 mkdir -p %{buildroot}/%{conf_dir}/collectors/icinga2/streams
+mkdir -p %{buildroot}/%{conf_dir}/collectors/rsyslog
 mkdir -p %{buildroot}/%{conf_dir}/collectors/webhook/webhooks
 
-cp -p conf/tornado/*_executor.toml %{buildroot}/%{conf_dir}
+cp -p conf/tornado/*.toml %{buildroot}/%{conf_dir}
+cp -p conf/email_collector/email_collector.toml %{buildroot}/%{conf_dir}/collectors/email/
 cp -p conf/icinga2_collector/icinga2_collector.toml %{buildroot}/%{conf_dir}/collectors/icinga2/
+cp -p conf/rsyslog_collector/rsyslog_collector.toml %{buildroot}/%{conf_dir}/collectors/rsyslog/
+cp -p conf/webhook_collector/webhook_collector.toml %{buildroot}/%{conf_dir}/collectors/webhook/
 
 # install example rules, streams, webhooks
 mkdir -p %{buildroot}%{lib_dir}/examples/rules/
@@ -153,12 +164,17 @@ fi
 %dir %{conf_dir}
 %dir %{conf_dir}/rules.d/
 %dir %{conf_dir}/collectors/
+%dir %{conf_dir}/collectors/email/
 %dir %{conf_dir}/collectors/icinga2/
 %dir %{conf_dir}/collectors/icinga2/streams/
+%dir %{conf_dir}/collectors/rsyslog/
 %dir %{conf_dir}/collectors/webhook/
 %dir %{conf_dir}/collectors/webhook/webhooks/
-%config(noreplace) %{conf_dir}/*_executor.toml
+%config(noreplace) %{conf_dir}/*.toml
+%config(noreplace) %{conf_dir}/collectors/email/*.toml
 %config(noreplace) %{conf_dir}/collectors/icinga2/*.toml
+%config(noreplace) %{conf_dir}/collectors/rsyslog/*.toml
+%config(noreplace) %{conf_dir}/collectors/webhook/*.toml
 %config(noreplace) /neteye/shared/rsyslog/conf/rsyslog.d/*
 %config(noreplace) /neteye/shared/snmptrapd/conf/conf.d/*
 

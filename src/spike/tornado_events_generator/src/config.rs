@@ -1,5 +1,4 @@
 use structopt::StructOpt;
-use tornado_common_logger::LoggerConfig;
 
 #[derive(Debug, StructOpt)]
 #[structopt(rename_all = "kebab-case")]
@@ -28,9 +27,6 @@ pub struct Io {
 
 #[derive(Debug, StructOpt)]
 pub struct Conf {
-    #[structopt(flatten)]
-    pub logger: LoggerConfig,
-
     #[structopt(flatten)]
     pub io: Io,
 }
