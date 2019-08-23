@@ -20,16 +20,22 @@ fn pong(_req: HttpRequest) -> impl Responder {
 }
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let config = config::Conf::build();
+    let arg_matches = config::arg_matches();
 
-    setup_logger(&config.logger).map_err(failure::Fail::compat)?;
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+    let webhooks_dir =
+        arg_matches.value_of("webhooks-dir").expect("webhooks-dir should be provided");
 
-    let webhooks_dir = format!("{}/{}", &config.io.config_dir, &config.io.webhooks_dir);
-    let webhooks_config =
-        config::read_webhooks_from_config(&webhooks_dir).map_err(failure::Fail::compat)?;
+    let collector_config = config::build_config(&config_dir)?;
 
-    let port = config.io.server_port;
-    let bind_address = config.io.bind_address.to_owned();
+    setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
+
+    let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
+    let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)
+        .map_err(failure::Fail::compat)?;
+
+    let port = collector_config.webhook_collector.server_port;
+    let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
 
     System::run(move || {
         info!("Starting web server at port {}", port);
@@ -37,10 +43,13 @@ fn main() -> Result<(), Box<std::error::Error>> {
         // Start UdsWriter
         let tornado_tcp_address = format!(
             "{}:{}",
-            config.io.tornado_event_socket_ip, config.io.tornado_event_socket_port
+            collector_config.webhook_collector.tornado_event_socket_ip,
+            collector_config.webhook_collector.tornado_event_socket_port
         );
-        let tpc_client_addr =
-            TcpClientActor::start_new(tornado_tcp_address.clone(), config.io.message_queue_size);
+        let tpc_client_addr = TcpClientActor::start_new(
+            tornado_tcp_address.clone(),
+            collector_config.webhook_collector.message_queue_size,
+        );
 
         HttpServer::new(move || {
             App::new().service(

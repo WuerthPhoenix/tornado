@@ -1,14 +1,13 @@
+use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
 use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
-
-use crate::api::MatcherApiHandler;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
-use actix_web::middleware::cors::Cors;
+use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
 use failure::Fail;
 use log::*;
@@ -19,13 +18,10 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn daemon(
-    conf: &config::Conf,
-    daemon_config: config::DaemonCommandConfig,
-) -> Result<(), Box<std::error::Error>> {
-    setup_logger(&conf.logger).map_err(Fail::compat)?;
+pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::Error>> {
+    let configs = config::parse_config_files(config_dir, rules_dir)?;
 
-    let configs = config::parse_config_files(conf)?;
+    setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
 
     // Start matcher
     let matcher = Arc::new(
@@ -41,8 +37,10 @@ pub fn daemon(
         let cpus = num_cpus::get();
         info!("Available CPUs: {}", cpus);
 
+        let daemon_config = configs.tornado.tornado.daemon;
+
         // Start archive executor actor
-        let archive_config = configs.archive.clone();
+        let archive_config = configs.archive_executor_config.clone();
         let archive_executor_addr = SyncArbiter::start(1, move || {
             let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
             ExecutorActor { executor }
@@ -55,7 +53,7 @@ pub fn daemon(
         });
 
         // Start Icinga2 Client Actor
-        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_client);
+        let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {

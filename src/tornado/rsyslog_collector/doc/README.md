@@ -26,7 +26,7 @@ An example of a fully instantiated startup setup is:
 module(load="omprog")
 
 action(type="omprog"
-       binary="/path/to/rsyslog_collector --logger-file-path=/log/rsys-collector.log --logger-level=info --tornado-event-socket-ip=tornado_server_ip --tornado-event-socket-port=4747")
+       binary="/path/to/rsyslog_collector --config-dir=/tornado-rsyslog-collector/config --tornado-event-socket-ip=tornado_server_ip --tornado-event-socket-port=4747")
 ```
 
 <!-- This part may only be necessary for non-expert users. Hide until later? -->
@@ -37,13 +37,13 @@ place this configuration in a file in your rsyslog directory, for instance:
 ```
 
 In this example the collector will:
-- Log to the file _/log/rsys-collector.log_ at the _info_ logger level
+- Reads the configuration from the _/tornado-rsyslog-collector/config_ directory
 - Write outgoing Events to the TCP socket at tornado_server_ip:4747
 
 The Collector will need to be run in parallel with the Tornado engine before any events will be
 processed, for example:  <!-- Link to the description of that executable -->
 ```
-/opt/tornado/bin/tornado --logger-file-path=/tmp/my-tornado.log --tornado-event-socket-ip=tornado_server_ip
+/opt/tornado/bin/tornado --tornado-event-socket-ip=tornado_server_ip
 ```
 
 Under this configuration, rsyslog is in charge of starting the collector when needed and piping
@@ -60,24 +60,39 @@ to properly pipe its inputs in this form.
 
 ## Configuration Options
 
-This collector's configuration is based on the following command line parameters:
-- __logger-stdout__:  Determines whether the Logger should print to standard output.
-  Valid values are `true` and `false`, defaults to `false`.
-- __logger-file-path__:  A file path in the file system; if provided, the Logger will
-  append any output to it.
-- __logger-level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-  _error_, defaulting to _warn_.
-- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
-  This should be the address where the Tornado Engine is listening for incoming events.
-  The default is _127.0.0.1_.
-- __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the port where the Tornado Engine is listening for incoming events.
-  The default is _4747_.
-- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
-  resilient to Tornado Engine crashes or temporary unavailability.
-  When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding older messages first.
-  The default buffer size is `10000` messages.
+The executable configuration is based partially on configuration files, and partially on command
+line parameters.
+
+The available startup parameters are:
+- __config-dir__:  The filesystem folder from which the collector configuration is read.
+  The default path is _/etc/tornado_rsyslog_collector/_.
+
+In addition to these parameters, the following configuration entries are available in the 
+file _'config-dir'/rsyslog_collector.toml_:
+- __logger__:
+    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+      _error_.
+    - __stdout__:  Determines whether the Logger should print to standard output.
+      Valid values are `true` and `false`.
+    - **file_output_path**:  A file path in the file system; if provided, the Logger will
+      append any output to it.
+- **rsyslog_collector**:
+    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+      This should be the address where the Tornado Engine listens for incoming events.
+    - **tornado_event_socket_port**:  The port where outgoing events will be written.
+      This should be the port where the Tornado Engine listens for incoming events.
+    - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
+      resilient to Tornado Engine crashes or temporary unavailability.
+      When Tornado restarts, all messages in the buffer will be sent.
+      When the buffer is full, the collector will start discarding older messages first.
 
 More information about the logger configuration is available
 [here](../../../common/logger/doc/README.md).
+
+The default __config-dir__ value can be customized at build time by specifying
+the environment variable *TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT*. 
+For example, this will build an executable that uses */my/custom/path* 
+as the default value:
+```bash
+TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+```

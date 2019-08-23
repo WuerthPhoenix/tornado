@@ -1,4 +1,4 @@
-use crate::config::Command;
+use log::error;
 
 mod api;
 mod command;
@@ -9,9 +9,18 @@ pub mod executor;
 mod monitoring;
 
 fn main() -> Result<(), Box<std::error::Error>> {
-    let conf = config::Conf::build();
-    match &conf.command {
-        Command::Check => command::check::check(&conf),
-        Command::Daemon { daemon_config } => command::daemon::daemon(&conf, daemon_config.clone()),
+    let arg_matches = config::arg_matches();
+
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
+    let rules_dir = arg_matches.value_of("rules-dir").expect("rules-dir should be provided");
+
+    let subcommand = arg_matches.subcommand();
+    match subcommand {
+        ("check", _) => command::check::check(config_dir, rules_dir),
+        ("daemon", _) => command::daemon::daemon(config_dir, rules_dir),
+        _ => {
+            error!("Unknown subcommand [{}]", subcommand.0);
+            Ok(())
+        }
     }
 }
