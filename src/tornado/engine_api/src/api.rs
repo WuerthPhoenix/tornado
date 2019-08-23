@@ -32,9 +32,9 @@ mod test {
         http::{header, StatusCode},
         test, App,
     };
-    use dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use futures::{future::FutureResult, Future};
     use std::collections::HashMap;
+    use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
 
@@ -93,8 +93,9 @@ mod test {
             .to_request();
 
         // Assert
-        let dto: dto::config::MatcherConfigDto = test::read_response_json(&mut srv, request);
-        assert_eq!(dto::config::MatcherConfigDto::Rules { rules: vec![] }, dto);
+        let dto: tornado_engine_api_dto::config::MatcherConfigDto =
+            test::read_response_json(&mut srv, request);
+        assert_eq!(tornado_engine_api_dto::config::MatcherConfigDto::Rules { rules: vec![] }, dto);
     }
 
     #[test]
@@ -121,7 +122,8 @@ mod test {
             .to_request();
 
         // Assert
-        let dto: dto::event::ProcessedEventDto = test::read_response_json(&mut srv, request);
+        let dto: tornado_engine_api_dto::event::ProcessedEventDto =
+            test::read_response_json(&mut srv, request);
         assert_eq!("my_test_event", dto.event.event_type);
     }
 }

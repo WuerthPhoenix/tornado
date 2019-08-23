@@ -51,6 +51,12 @@ Tornado Package
 %setup -c
 
 %build
+
+# Verify that the TS DTO files are updated
+cd src/tornado/engine_api_dto
+cargo test
+cd -
+
 cd src
 
 export TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT="%{conf_dir}/collectors/email/"

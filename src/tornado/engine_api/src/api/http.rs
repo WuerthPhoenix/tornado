@@ -4,11 +4,11 @@ use crate::convert::event::{dto_into_send_event_request, processed_event_into_dt
 use crate::error::ApiError;
 use actix_web::web::Json;
 use actix_web::{Error as AWError, HttpRequest, HttpResponse};
-use dto::event::SendEventRequestDto;
 use futures::future::FutureResult;
 use futures::Future;
 use log::*;
 use std::sync::Arc;
+use tornado_engine_api_dto::event::SendEventRequestDto;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
