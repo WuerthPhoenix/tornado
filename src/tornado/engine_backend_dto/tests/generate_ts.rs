@@ -33,7 +33,7 @@ fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
     }
 
     let previous_ts_definitions = read_ts_file();
-    assert_eq!(previous_ts_definitions, ts_definitions, "\n\nError: The DTO TS definitions have changed but the *.ts files are not being updated!\n\n");
+    assert_eq!(previous_ts_definitions, ts_definitions, "\n\nError: The DTO TS definitions are changed but the *.ts files have not being updated!\n\n");
     Ok(())
 }
 

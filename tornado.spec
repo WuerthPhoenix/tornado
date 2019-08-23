@@ -51,6 +51,12 @@ Tornado Package
 %setup -c
 
 %build
+
+# Verify that the TS DTO files are updated
+cd src/tornado/engine_backend_dto
+cargo test
+cd -
+
 cd src
 
 %if 0%{?debugbuild:1}
