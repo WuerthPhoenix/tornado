@@ -70,7 +70,7 @@ WantedBy=neteye.target
 If you want to change the default address and port, you shouldn't just modify that file directly,
 since any changes would disappear after the next package update.  Instead, you can modify the
 override file at */etc/systemd/system/tornado.service.d/neteye.conf*, or create a reverse proxy
-in Apache, creating a */tornado/* * route that forwards requests to the *localhost* on the
+in Apache, creating a */tornado/* route that forwards requests to the *localhost* on the
 desired port.
 ```
 ExecStart=/usr/bin/tornado \
