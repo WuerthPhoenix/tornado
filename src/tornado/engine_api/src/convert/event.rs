@@ -3,8 +3,8 @@ use serde_json::Error;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use tornado_common_api::Action;
-use tornado_engine_backend_dto::config::ActionDto;
-use tornado_engine_backend_dto::event::{
+use tornado_engine_api_dto::config::ActionDto;
+use tornado_engine_api_dto::event::{
     EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
     ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto,
     SendEventRequestDto,

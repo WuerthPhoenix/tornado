@@ -1,5 +1,5 @@
 [package]
-name = "tornado_engine_backend_dto"
+name = "tornado_engine_api_dto"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"

@@ -125,10 +125,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::E
             App::new()
                 .wrap(Cors::new().max_age(3600))
                 .service({
-                    tornado_engine_backend::api::new_endpoints(
-                        web::scope("/api"),
-                        api_handler.clone(),
-                    )
+                    tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler.clone())
                 })
                 .service(monitoring_endpoints(web::scope("/monitoring")))
         })

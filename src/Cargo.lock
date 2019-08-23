@@ -2662,7 +2662,7 @@ dependencies = [
  "tornado_common 0.0.1",
  "tornado_common_api 0.0.1",
  "tornado_common_logger 0.0.1",
- "tornado_engine_backend 0.0.1",
+ "tornado_engine_api 0.0.1",
  "tornado_engine_matcher 0.0.1",
  "tornado_executor_archive 0.0.1",
  "tornado_executor_common 0.0.1",
@@ -2672,7 +2672,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "tornado_engine_backend"
+name = "tornado_engine_api"
 version = "0.0.1"
 dependencies = [
  "actix 0.8.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -2684,12 +2684,12 @@ dependencies = [
  "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_common_api 0.0.1",
- "tornado_engine_backend_dto 0.0.1",
+ "tornado_engine_api_dto 0.0.1",
  "tornado_engine_matcher 0.0.1",
 ]
 
 [[package]]
-name = "tornado_engine_backend_dto"
+name = "tornado_engine_api_dto"
 version = "0.0.1"
 dependencies = [
  "serde 1.0.99 (registry+https://github.com/rust-lang/crates.io-index)",

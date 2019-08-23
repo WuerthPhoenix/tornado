@@ -8,7 +8,7 @@ use futures::future::FutureResult;
 use futures::Future;
 use log::*;
 use std::sync::Arc;
-use tornado_engine_backend_dto::event::SendEventRequestDto;
+use tornado_engine_api_dto::event::SendEventRequestDto;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.

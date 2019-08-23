@@ -6,7 +6,7 @@ use typescript_definitions::TypeScriptifyTrait;
 use std::fs::*;
 use std::io::Write;
 use std::str::FromStr;
-use tornado_engine_backend_dto::*;
+use tornado_engine_api_dto::*;
 
 const TS_OUTPUT_DIR: &str = "./ts";
 const TS_OUTPUT_FILE: &str = "dto.ts";

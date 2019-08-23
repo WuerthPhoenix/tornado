@@ -53,7 +53,7 @@ Tornado Package
 %build
 
 # Verify that the TS DTO files are updated
-cd src/tornado/engine_backend_dto
+cd src/tornado/engine_api_dto
 cargo test
 cd -
 
