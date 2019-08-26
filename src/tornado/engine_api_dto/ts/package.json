@@ -1,0 +1,5 @@
+{
+  "name": "tornado-backend-dto",
+  "version": "0.0.1",
+  "main": "dto.ts"
+}

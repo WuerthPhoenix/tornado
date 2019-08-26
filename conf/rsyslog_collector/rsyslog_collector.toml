@@ -1,0 +1,25 @@
+[logger]
+
+# The Logger level
+# Valid values: trace, debug, info, warn, error
+level = "info"
+
+# Whether the Logger should print to standard output.
+# Valid values: true, false
+stdout_output = false
+
+# A file path in the file system; if provided, the Logger will append any output to it.
+file_output_path = "/neteye/shared/tornado/log/tornado_rsyslog_collector.log"
+
+
+[rsyslog_collector]
+
+# Set the size of the in-memory queue where messages will be stored before being written
+# to the output socket.
+message_queue_size = 10000
+
+# The Tornado IP address where outgoing events will be written
+tornado_event_socket_ip = "127.0.0.1"
+
+# The Tornado port where outgoing events will be written
+tornado_event_socket_port = 4747
