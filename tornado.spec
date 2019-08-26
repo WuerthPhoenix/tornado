@@ -21,7 +21,7 @@
 %endif
 
 Name:    tornado
-Version: 0.15.1
+Version: 0.16.0
 Release: 1
 Summary: Tornado Package
 
@@ -202,6 +202,11 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Tue Aug 26 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.16.0-1
+- Build DTO's without wasm or package wasm binary as build requirement for tornado build (IMT-15)
+- Allow usage of extracted variables in successive rules (TOR-118)
+- Tornado & Collector logging configuration in toml files (TOR-121)
+
 * Tue Aug 06 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.15.1-1
 - Fix wrong email collector permissions (TOR-116)
 
