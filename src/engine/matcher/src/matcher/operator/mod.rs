@@ -60,7 +60,8 @@ impl OperatorBuilder {
 
         trace!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
-            &result, config
+            &result,
+            config
         );
         result
     }
@@ -141,7 +142,8 @@ impl OperatorBuilder {
 
         trace!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
-            &result, config
+            &result,
+            config
         );
         result
     }

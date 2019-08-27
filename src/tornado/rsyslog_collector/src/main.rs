@@ -54,7 +54,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             info!("EOF received. Stopping Rsyslog collector.");
                             system.stop();
                         } else {
-                            debug!("Received line: {}", input);
                             rsyslog_addr.do_send(StringMessage { msg: input });
                         }
                     }

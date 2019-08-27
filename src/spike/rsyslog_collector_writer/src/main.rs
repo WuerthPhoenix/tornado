@@ -44,10 +44,8 @@ fn read_events_from_config(path: &str) -> Vec<Payload> {
 
     for path in paths {
         let filename = path.unwrap().path();
-        info!("Loading event from file: [{}]", filename.display());
         let event_body = fs::read_to_string(&filename)
             .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename.display()));
-        trace!("Event body: \n{}", event_body);
         events.push(serde_json::from_str(&event_body).unwrap());
     }
 
@@ -57,7 +55,6 @@ fn read_events_from_config(path: &str) -> Vec<Payload> {
 }
 
 fn write(stdout: &mut dyn io::Write, event: &Payload) {
-    debug!("Sending event: \n{:?}", event);
     let event_bytes = serde_json::to_vec(event).unwrap();
     stdout.write_all(&event_bytes).expect("should write event to socket");
     stdout.write_all(b"\n").expect("should write endline to socket");

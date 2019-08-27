@@ -28,11 +28,11 @@ impl Handler<StringMessage> for RsyslogCollectorActor {
     type Result = ();
 
     fn handle(&mut self, msg: StringMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("JsonReaderActor - received msg: [{}]", &msg.msg);
+        debug!("RsyslogCollectorActor - received msg: [{}]", &msg.msg);
 
         match self.collector.to_event(&msg.msg) {
             Ok(event) => self.writer_addr.do_send(EventMessage { event }),
-            Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
+            Err(e) => error!("RsyslogCollectorActor - Cannot unmarshal event from json: {}", e),
         };
     }
 }

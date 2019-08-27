@@ -101,7 +101,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
         });
 
         let path = format!("/event/{}", config.id);
-        info!("Creating endpoint: [{}]", &path);
+        debug!("Creating endpoint: [{}]", &path);
 
         scope =
             scope.service(web::resource(&path).route(web::post().to(move |f| handler.handle(f))));

@@ -40,7 +40,6 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.matcher.process(msg.event);
@@ -53,7 +52,6 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut SyncContext<Self>) -> Self::Result {
-
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
         let processed_event = self.matcher.process(msg.event);

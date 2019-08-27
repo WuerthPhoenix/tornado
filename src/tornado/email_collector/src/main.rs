@@ -42,7 +42,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             collector_config.email_collector.uds_path.clone(),
             Some(0o770),
             move |msg| {
-                debug!("Received message on the socket");
                 email_addr.do_send(msg);
             },
         )

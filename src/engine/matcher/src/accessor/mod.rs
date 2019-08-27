@@ -130,7 +130,8 @@ impl AccessorBuilder {
 
         trace!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
-            &result, input
+            &result,
+            input
         );
         result
     }
