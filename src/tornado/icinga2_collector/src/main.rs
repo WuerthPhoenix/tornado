@@ -10,7 +10,7 @@ mod actor;
 mod config;
 mod error;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arg_matches = config::arg_matches();
 
     let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");

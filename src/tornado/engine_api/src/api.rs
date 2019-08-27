@@ -41,14 +41,14 @@ mod test {
     struct TestApiHandler {}
 
     impl ApiHandler for TestApiHandler {
-        fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>> {
+        fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
             Box::new(FutureResult::from(Ok(MatcherConfig::Rules { rules: vec![] })))
         }
 
         fn send_event(
             &self,
             event: SendEventRequest,
-        ) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
+        ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
             Box::new(FutureResult::from(Ok(ProcessedEvent {
                 event: event.event.into(),
                 result: ProcessedNode::Rules {

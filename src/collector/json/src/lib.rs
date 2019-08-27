@@ -1,3 +1,4 @@
+use log::trace;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::{Event, Payload};
 
@@ -13,6 +14,7 @@ impl JsonEventCollector {
 
 impl<'a> Collector<&'a str> for JsonEventCollector {
     fn to_event(&self, input: &'a str) -> Result<Event, CollectorError> {
+        trace!("JsonEventCollector - received event: {}", input);
         serde_json::from_str::<tornado_common_api::Event>(&input)
             .map_err(|e| CollectorError::EventCreationError { message: format!("{}", e) })
     }

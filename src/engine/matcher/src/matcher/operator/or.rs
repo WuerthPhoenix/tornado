@@ -10,7 +10,7 @@ const OPERATOR_NAME: &str = "or";
 /// A matching matcher.operator that checks whether at least one child on a list of operators has been verified
 #[derive(Debug)]
 pub struct Or {
-    operators: Vec<Box<Operator>>,
+    operators: Vec<Box<dyn Operator>>,
 }
 
 impl Or {

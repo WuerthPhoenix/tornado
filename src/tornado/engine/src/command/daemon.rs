@@ -18,7 +18,7 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<std::error::Error>> {
+pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
     let configs = config::parse_config_files(config_dir, rules_dir)?;
 
     setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;

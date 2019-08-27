@@ -9,7 +9,7 @@ use log::*;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arg_matches = config::arg_matches();
 
     let collector_config = config::build_config(

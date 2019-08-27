@@ -56,7 +56,7 @@ fn read_events_from_config(path: &str) -> Vec<Payload> {
     events
 }
 
-fn write(stdout: &mut io::Write, event: &Payload) {
+fn write(stdout: &mut dyn io::Write, event: &Payload) {
     debug!("Sending event: \n{:?}", event);
     let event_bytes = serde_json::to_vec(event).unwrap();
     stdout.write_all(&event_bytes).expect("should write event to socket");

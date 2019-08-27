@@ -19,7 +19,7 @@ use tornado_common_api::{Event, Value};
 pub struct MatcherRule {
     name: String,
     do_continue: bool,
-    operator: Box<operator::Operator>,
+    operator: Box<dyn operator::Operator>,
     extractor: MatcherExtractor,
     actions: Vec<action::ActionResolver>,
 }
@@ -29,7 +29,7 @@ pub struct MatcherRule {
 pub struct MatcherFilter {
     pub name: String,
     pub active: bool,
-    pub filter: Box<operator::Operator>,
+    pub filter: Box<dyn operator::Operator>,
 }
 
 pub enum ProcessingNode {
