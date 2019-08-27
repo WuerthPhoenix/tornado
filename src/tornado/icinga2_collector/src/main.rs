@@ -45,7 +45,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 actor::Icinga2StreamActor {
                     icinga_config: icinga2_config.icinga2_collector.connection.clone(),
                     collector: JMESPathEventCollector::build(config.collector_config.clone())
-                        .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:#?}. Err: {}", config.collector_config.clone(), e)),
+                        .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {}", config.collector_config.clone(), e)),
                     stream_config: config.stream.clone(),
                     callback: move |event| {
                         tcp_client_addr.do_send(EventMessage { event });

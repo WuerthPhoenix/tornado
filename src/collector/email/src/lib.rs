@@ -18,10 +18,10 @@ impl EmailEventCollector {
 
 impl<'a> Collector<&'a [u8]> for EmailEventCollector {
     fn to_event(&self, input: &'a [u8]) -> Result<Event, CollectorError> {
-        debug!("EmailEventCollector - Received a new email");
+        trace!("EmailEventCollector - Received a new email");
         let email = parse_mail(input).map_err(into_err)?;
 
-        trace!("EmailEventCollector - Parsed email: \n {:#?}", email);
+        trace!("EmailEventCollector - Parsed email: \n {:?}", email);
 
         let subject = get_first_header_value_or_empty(&email, "Subject")?;
         let from = get_first_header_value_or_empty(&email, "From")?;

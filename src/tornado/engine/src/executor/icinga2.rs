@@ -50,7 +50,7 @@ impl Actor for Icinga2ApiClientActor {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
-        info!("Icinga2ApiClientActor started.");
+        debug!("Icinga2ApiClientActor started.");
     }
 }
 
@@ -107,7 +107,7 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         //      let connector = self.client_connector.clone();
         let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
 
-        debug!("Icinga2ApiClientMessage - calling url: {}", url);
+        trace!("Icinga2ApiClientMessage - calling url: {}", url);
 
         actix::spawn(
             self.client.post(url)
@@ -120,7 +120,7 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                 .and_then(|mut response| {
                     actix::spawn(response.body().map_err(|_| ()).map(move |bytes| {
                         if !response.status().is_success() {
-                            error!("Icinga2 API returned an error. Response: \n{:#?}. Response body: {:#?}", response, bytes)
+                            error!("Icinga2 API returned an error. Response: \n{:?}. Response body: {:?}", response, bytes)
                         } else {
                             debug!("Icinga2 API request completed successfully. Response body: {:?}", bytes);
                         }

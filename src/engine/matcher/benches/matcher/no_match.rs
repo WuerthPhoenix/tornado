@@ -18,7 +18,7 @@ pub fn bench(c: &mut Criterion) {
     // Create Matcher
     let matcher = Matcher::build(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
 
-    // println!("result is : {:#?}", matcher.process(event.clone()));
+    // println!("result is : {:?}", matcher.process(event.clone()));
     PROFILER.lock().unwrap().start("./target/no_match.profile").unwrap();
     c.bench_function("No match", move |b| b.iter(|| execute_test(&matcher, event.clone())));
     PROFILER.lock().unwrap().stop().unwrap();

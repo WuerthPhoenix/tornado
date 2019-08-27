@@ -62,7 +62,7 @@ impl fmt::Display for ScriptExecutor {
 
 impl Executor for ScriptExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        debug!("ScriptExecutor - received action: \n{:#?}", action);
+        trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let mut script = action
             .payload
@@ -76,7 +76,7 @@ impl Executor for ScriptExecutor {
         if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
             ScriptExecutor::append_params(&mut script, &value)?;
         } else {
-            debug!("No args found in payload")
+            trace!("No args found in payload")
         };
 
         let output =

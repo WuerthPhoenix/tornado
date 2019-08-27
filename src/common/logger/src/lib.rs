@@ -72,6 +72,11 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
     }
     */
 
+    log_dispatcher = log_dispatcher
+        .level_for("mio".to_owned(), log::LevelFilter::Warn)
+        .level_for("tokio_io".to_owned(), log::LevelFilter::Warn)
+        .level_for("tokio_reactor".to_owned(), log::LevelFilter::Warn);
+
     if logger_config.stdout_output {
         log_dispatcher = log_dispatcher.chain(std::io::stdout());
     }

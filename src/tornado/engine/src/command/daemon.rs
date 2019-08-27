@@ -35,7 +35,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
     // start system
     System::run(move || {
         let cpus = num_cpus::get();
-        info!("Available CPUs: {}", cpus);
+        debug!("Available CPUs: {}", cpus);
 
         let daemon_config = configs.tornado.tornado.daemon;
 
