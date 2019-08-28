@@ -9,7 +9,7 @@ use log::*;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arg_matches = config::arg_matches();
 
     let collector_config = config::build_config(
@@ -42,7 +42,6 @@ fn main() -> Result<(), Box<std::error::Error>> {
             collector_config.email_collector.uds_path.clone(),
             Some(0o770),
             move |msg| {
-                debug!("Received message on the socket");
                 email_addr.do_send(msg);
             },
         )

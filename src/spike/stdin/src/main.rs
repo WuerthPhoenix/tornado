@@ -1,7 +1,7 @@
 pub mod standard;
 pub mod tokio_actix;
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // with tokio/actix
     tokio_actix::start_actix_stdin()
 

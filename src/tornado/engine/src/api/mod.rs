@@ -8,18 +8,18 @@ use tornado_engine_matcher::model::ProcessedEvent;
 
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
-    config_manager: Box<MatcherConfigManager>,
+    config_manager: Box<dyn MatcherConfigManager>,
 }
 
 impl ApiHandler for MatcherApiHandler {
-    fn get_config(&self) -> Box<Future<Item = MatcherConfig, Error = ApiError>> {
+    fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
         Box::new(FutureResult::from(self.config_manager.read().map_err(ApiError::from)))
     }
 
     fn send_event(
         &self,
         event: SendEventRequest,
-    ) -> Box<Future<Item = ProcessedEvent, Error = ApiError>> {
+    ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
         let request = self
             .matcher
             .send(EventMessageWithReply { event: event.event, process_type: event.process_type });
@@ -37,7 +37,7 @@ impl ApiHandler for MatcherApiHandler {
 
 impl MatcherApiHandler {
     pub fn new(
-        config_manager: Box<MatcherConfigManager>,
+        config_manager: Box<dyn MatcherConfigManager>,
         matcher: Addr<MatcherActor>,
     ) -> MatcherApiHandler {
         MatcherApiHandler { config_manager, matcher }

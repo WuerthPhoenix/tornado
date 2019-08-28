@@ -4,7 +4,7 @@ use tornado_network_common::EventBus;
 
 #[derive(Default)]
 pub struct SimpleEventBus {
-    subscribers: HashMap<String, Box<'static + Fn(Action) -> () + Sync + Send>>,
+    subscribers: HashMap<String, Box<dyn 'static + Fn(Action) -> () + Sync + Send>>,
 }
 
 impl SimpleEventBus {
@@ -17,7 +17,7 @@ impl SimpleEventBus {
     pub fn subscribe_to_action(
         &mut self,
         action_id: &str,
-        handler: Box<'static + Fn(Action) -> () + Sync + Send>,
+        handler: Box<dyn 'static + Fn(Action) -> () + Sync + Send>,
     ) {
         self.subscribers.insert(action_id.to_owned(), handler);
     }

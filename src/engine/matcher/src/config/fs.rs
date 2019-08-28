@@ -2,7 +2,7 @@ use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::config::{MatcherConfig, MatcherConfigManager};
 use crate::error::MatcherError;
-use log::{debug, info, trace};
+use log::*;
 use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
@@ -102,11 +102,11 @@ impl FsMatcherConfigManager {
             let extension = ".json";
 
             if !filename.ends_with(extension) {
-                info!("Configuration file [{}] is ignored.", path.display());
+                warn!("Configuration file [{}] is ignored.", path.display());
                 continue;
             }
 
-            info!("Loading rule from file: [{}]", path.display());
+            debug!("Loading rule from file: [{}]", path.display());
             let rule_body =
                 fs::read_to_string(&path).map_err(|e| MatcherError::ConfigurationError {
                     message: format!("Unable to open the file [{}]. Err: {}", path.display(), e),

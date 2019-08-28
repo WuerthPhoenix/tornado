@@ -86,7 +86,7 @@ impl MatcherExtractorBuilder {
             );
         }
 
-        debug!(
+        trace!(
             "MatcherExtractorBuilder - build: built matcher.extractor [{:?}] for input value [{:?}]",
             &matcher_extractor, config
         );

@@ -105,7 +105,7 @@ impl ArchiveExecutor {
 
 impl Executor for ArchiveExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        debug!("ArchiveExecutor - received action: \n{:#?}", action);
+        trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action
             .payload

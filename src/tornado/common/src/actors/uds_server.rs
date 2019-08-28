@@ -62,7 +62,7 @@ where
 
     fn started(&mut self, ctx: &mut Self::Context) {
         if let Some(permissions) = self.socket_permissions {
-            info!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
+            debug!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
             if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
                 error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
                 ctx.stop();
@@ -79,7 +79,7 @@ where
     type Result = ();
 
     fn handle(&mut self, msg: AsyncReadMessage<UnixStream>, _: &mut Context<Self>) {
-        info!("UdsServerActor - new client connected to [{}]", &self.path);
+        debug!("UdsServerActor - new client connected to [{}]", &self.path);
         (&mut self.callback)(msg);
     }
 }

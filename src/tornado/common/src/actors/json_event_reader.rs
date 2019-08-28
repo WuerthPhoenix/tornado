@@ -40,7 +40,7 @@ impl<F: Fn(Event) + 'static> Actor for JsonEventReaderActor<F> {
 /// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
 impl<F: Fn(Event) + 'static> StreamHandler<StringMessage, io::Error> for JsonEventReaderActor<F> {
     fn handle(&mut self, msg: StringMessage, _ctx: &mut Self::Context) {
-        debug!("JsonReaderActor - received msg: [{}]", &msg.msg);
+        debug!("JsonReaderActor - received json message: [{}]", &msg.msg);
 
         match self.json_collector.to_event(&msg.msg) {
             Ok(event) => (self.callback)(event),

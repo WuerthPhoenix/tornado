@@ -14,7 +14,7 @@ impl LoggerExecutor {
 
 impl Executor for LoggerExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        info!("LoggerExecutor - received action: \n[{:#?}]", action);
+        info!("LoggerExecutor - received action: \n[{:?}]", action);
         Ok(())
     }
 }

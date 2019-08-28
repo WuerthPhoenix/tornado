@@ -52,15 +52,16 @@ impl OperatorBuilder {
         &self,
         rule_name: &str,
         config: &Option<rule::Operator>,
-    ) -> Result<Box<Operator>, MatcherError> {
-        let result: Result<Box<Operator>, MatcherError> = match config {
+    ) -> Result<Box<dyn Operator>, MatcherError> {
+        let result: Result<Box<dyn Operator>, MatcherError> = match config {
             Some(operator) => self.build(rule_name, operator),
             None => Ok(Box::new(crate::matcher::operator::true_operator::True {})),
         };
 
-        debug!(
+        trace!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
-            &result, config
+            &result,
+            config
         );
         result
     }
@@ -87,8 +88,8 @@ impl OperatorBuilder {
         &self,
         rule_name: &str,
         config: &rule::Operator,
-    ) -> Result<Box<Operator>, MatcherError> {
-        let result: Result<Box<Operator>, MatcherError> = match config {
+    ) -> Result<Box<dyn Operator>, MatcherError> {
+        let result: Result<Box<dyn Operator>, MatcherError> = match config {
             rule::Operator::And { operators } => {
                 Ok(Box::new(crate::matcher::operator::and::And::build("", &operators, self)?))
             }
@@ -139,9 +140,10 @@ impl OperatorBuilder {
             }
         };
 
-        debug!(
+        trace!(
             "OperatorBuilder - build: return matcher.operator [{:?}] for input value [{:?}]",
-            &result, config
+            &result,
+            config
         );
         result
     }

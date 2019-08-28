@@ -89,7 +89,7 @@ impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
     type Context = SyncContext<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
-        info!("Starting Icinga2StreamActor with stream config: {:#?}", self.stream_config);
+        info!("Starting Icinga2StreamActor with stream config: {:?}", self.stream_config);
 
         let client = reqwest::ClientBuilder::new()
             .danger_accept_invalid_certs(self.icinga_config.disable_ssl_verification)
@@ -145,7 +145,7 @@ mod test {
         HttpServer::new(move || {
             App::new().service(web::resource(api).route(web::post().to(
                 move |body: Json<Stream>| {
-                    info!("Server received a call with Stream: \n{:#?}", body.clone());
+                    info!("Server received a call with Stream: \n{:?}", body.clone());
                     body
                 },
             )))

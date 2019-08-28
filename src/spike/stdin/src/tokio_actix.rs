@@ -2,7 +2,7 @@ use actix::prelude::*;
 use tokio::prelude::Stream;
 use tokio_codec::{FramedRead, LinesCodec};
 
-pub fn start_actix_stdin() -> Result<(), Box<std::error::Error>> {
+pub fn start_actix_stdin() -> Result<(), Box<dyn std::error::Error>> {
     System::run(move || {
         StdinActor::create(move |ctx| {
             let codec = LinesCodec::new();

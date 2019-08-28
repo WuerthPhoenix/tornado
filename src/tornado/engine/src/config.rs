@@ -68,7 +68,7 @@ fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, 
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Box<MatcherConfigManager>,
+    pub matcher_config: Box<dyn MatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
@@ -77,7 +77,7 @@ pub struct ComponentsConfig {
 pub fn parse_config_files(
     config_dir: &str,
     rules_dir: &str,
-) -> Result<ComponentsConfig, Box<std::error::Error>> {
+) -> Result<ComponentsConfig, Box<dyn std::error::Error>> {
     let matcher_config = Box::new(build_matcher_config(config_dir, rules_dir));
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
