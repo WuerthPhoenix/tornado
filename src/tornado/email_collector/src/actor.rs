@@ -33,13 +33,15 @@ impl<R: AsyncRead + 'static> Handler<AsyncReadMessage<R>> for EmailReaderActor {
     type Result = ();
 
     fn handle(&mut self, msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
-        debug!("EmailReaderActor - received new email");
-
         let tcp = self.tpc_client_addr.clone();
         let collector = self.email_collector.clone();
         let buf = Vec::new();
         let reader = tokio::io::read_to_end(msg.stream, buf)
             .map(move |(_, buf)| {
+                if log_enabled!(Level::Debug) {
+                    let buf_to_string = String::from_utf8_lossy(&buf);
+                    debug!("EmailReaderActor - received email:\n{}", buf_to_string);
+                }
                 match collector.to_event(&buf) {
                     Ok(event) => {
                         tcp.do_send(EventMessage { event });
