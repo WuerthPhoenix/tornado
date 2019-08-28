@@ -32,7 +32,7 @@ pub struct MatcherActor {
 impl Actor for MatcherActor {
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
-        info!("MatcherActor started.");
+        debug!("MatcherActor started.");
     }
 }
 
@@ -40,7 +40,8 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
+        trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
+
         let processed_event = self.matcher.process(msg.event);
         self.dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event });
         Ok(())
@@ -51,7 +52,8 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+        trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+
         let processed_event = self.matcher.process(msg.event);
 
         match msg.process_type {

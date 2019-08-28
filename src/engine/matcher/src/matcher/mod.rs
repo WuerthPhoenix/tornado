@@ -19,7 +19,7 @@ use tornado_common_api::{Event, Value};
 pub struct MatcherRule {
     name: String,
     do_continue: bool,
-    operator: Box<operator::Operator>,
+    operator: Box<dyn operator::Operator>,
     extractor: MatcherExtractor,
     actions: Vec<action::ActionResolver>,
 }
@@ -29,7 +29,7 @@ pub struct MatcherRule {
 pub struct MatcherFilter {
     pub name: String,
     pub active: bool,
-    pub filter: Box<operator::Operator>,
+    pub filter: Box<dyn operator::Operator>,
 }
 
 pub enum ProcessingNode {
@@ -63,8 +63,8 @@ impl Matcher {
                 let mut processed_rules = vec![];
 
                 for rule in rules.iter().filter(|rule| rule.active) {
-                    info!("Matcher build - Processing rule: [{}]", &rule.name);
-                    debug!("Matcher build - Processing rule definition:\n{:#?}", rule);
+                    debug!("Matcher build - Processing rule: [{}]", &rule.name);
+                    trace!("Matcher build - Processing rule definition:\n{:?}", rule);
 
                     processed_rules.push(MatcherRule {
                         name: rule.name.to_owned(),
@@ -81,7 +81,7 @@ impl Matcher {
                 Ok(ProcessingNode::Rules(processed_rules))
             }
             MatcherConfig::Filter { filter, nodes } => {
-                info!("Start processing Matcher Filter [{}] Config", filter.name);
+                debug!("Start processing Matcher Filter [{}] Config", filter.name);
                 let operator_builder = operator::OperatorBuilder::new();
 
                 let matcher_filter = MatcherFilter {
@@ -97,7 +97,7 @@ impl Matcher {
                     }
                 };
 
-                info!("Matcher Filter [{}] build completed", filter.name);
+                debug!("Matcher Filter [{}] build completed", filter.name);
                 Ok(ProcessingNode::Filter(matcher_filter, matcher_nodes))
             }
         }
@@ -106,7 +106,7 @@ impl Matcher {
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event) -> ProcessedEvent {
-        debug!("Matcher process - processing event: [{:#?}]", &event);
+        trace!("Matcher process - processing event: [{:?}]", &event);
         let internal_event: InternalEvent = event.into();
         let result = Matcher::process_node(&self.node, &internal_event);
         ProcessedEvent { event: internal_event, result }
@@ -213,7 +213,7 @@ impl Matcher {
         let result = ProcessedNode::Rules {
             rules: ProcessedRules { rules: processed_rules, extracted_vars },
         };
-        debug!("Matcher process - event processing rules result: [{:#?}]", &result);
+        trace!("Matcher process - event processing rules result: [{:?}]", &result);
         result
     }
 

@@ -37,7 +37,7 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Icinga2Executor<F> {
 
 impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Executor<F> {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        debug!("Icinga2Executor - received action: \n[{:#?}]", action);
+        trace!("Icinga2Executor - received action: \n[{:?}]", action);
 
         match action
             .payload
@@ -45,7 +45,7 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Exec
             .and_then(tornado_common_api::Value::get_text)
         {
             Some(icinga2_action) => {
-                info!("Icinga2Executor - perform Icinga2Action: \n[{:#?}]", icinga2_action);
+                trace!("Icinga2Executor - perform Icinga2Action: \n[{:?}]", icinga2_action);
 
                 let action_payload = self.get_payload(&action.payload);
 

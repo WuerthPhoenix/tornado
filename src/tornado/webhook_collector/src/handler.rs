@@ -1,7 +1,7 @@
 use actix_web::web::Query;
 use actix_web::{error, http, HttpRequest, HttpResponse};
 use failure::Fail;
-use log::{debug, error};
+use log::*;
 use serde_derive::Deserialize;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
@@ -45,7 +45,8 @@ impl<F: Fn(Event)> Handler<F> {
     ) -> Result<String, HandlerError> {
         let received_token = &query.token;
 
-        debug!("Endpoint [{}] called with token [{}]", self.id, received_token);
+        trace!("Endpoint [{}] called with token [{}]", self.id, received_token);
+        debug!("Received call with body [{}]", &body);
 
         if !(self.token.eq(received_token)) {
             error!("Endpoint [{}] - Token is not valid: [{}]", self.id, received_token);

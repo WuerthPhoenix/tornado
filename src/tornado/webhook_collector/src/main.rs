@@ -19,7 +19,7 @@ fn pong(_req: HttpRequest) -> impl Responder {
     format!("pong - {}", created_ms)
 }
 
-fn main() -> Result<(), Box<std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let arg_matches = config::arg_matches();
 
     let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
@@ -101,7 +101,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
         });
 
         let path = format!("/event/{}", config.id);
-        info!("Creating endpoint: [{}]", &path);
+        debug!("Creating endpoint: [{}]", &path);
 
         scope =
             scope.service(web::resource(&path).route(web::post().to(move |f| handler.handle(f))));

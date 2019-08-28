@@ -1,6 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
-use log::{info, trace};
+use log::*;
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
@@ -60,7 +60,7 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
                 message: format!("Cannot get the filename. Err: {}", e),
             })?
             .path();
-        info!("Loading webhook configuration from file: [{}]", filename.display());
+        debug!("Loading webhook configuration from file: [{}]", filename.display());
         let webhook_body =
             fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
                 message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),

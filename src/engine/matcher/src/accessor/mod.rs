@@ -64,7 +64,7 @@ impl AccessorBuilder {
     /// - "${event.payload.body}": returns an instance of Accessor::Payload that returns the value of the entry with the key "body" from the event payload
     /// - "event.type": returns an instance of Accessor::Constant that always returns the String "event.type"
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
-        debug!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
+        trace!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
         let result = match input.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -128,9 +128,10 @@ impl AccessorBuilder {
             _value => Ok(Accessor::Constant { value: Value::Text(input.to_owned()) }),
         };
 
-        debug!(
+        trace!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
-            &result, input
+            &result,
+            input
         );
         result
     }

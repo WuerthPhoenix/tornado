@@ -22,7 +22,7 @@ const TORNADO_DTO_BUILD_REGENERATE_TS_FILES: &str = "TORNADO_DTO_BUILD_REGENERAT
 /// TORNADO_DTO_BUILD_REGENERATE_TS_FILES=true cargo test
 ///
 #[test]
-fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
+fn check_ts_file_status() -> Result<(), Box<dyn std::error::Error>> {
     let ts_definitions = generate_ts_definitions();
     // println!("{}", ts_code);
 
@@ -38,7 +38,7 @@ fn check_ts_file_status() -> Result<(), Box<std::error::Error>> {
 }
 
 // Whether the ts files need to be regenerated
-fn is_regenerate_ts_file() -> Result<bool, Box<std::error::Error>> {
+fn is_regenerate_ts_file() -> Result<bool, Box<dyn std::error::Error>> {
     let fail_if_changed =
         std::env::var(TORNADO_DTO_BUILD_REGENERATE_TS_FILES).unwrap_or("false".to_owned());
     let regenerate_files = bool::from_str(&fail_if_changed)?;
@@ -58,7 +58,7 @@ fn read_ts_file() -> String {
 }
 
 // Writes the ts definitions to the file system
-fn write_ts_file(ts_code: &str) -> Result<(), Box<std::error::Error>> {
+fn write_ts_file(ts_code: &str) -> Result<(), Box<dyn std::error::Error>> {
     create_dir_all(TS_OUTPUT_DIR)?;
     let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
     let mut ts_file = File::create(path)?;

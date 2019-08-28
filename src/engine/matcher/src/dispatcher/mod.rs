@@ -7,11 +7,11 @@ use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
 pub struct Dispatcher {
-    event_bus: Arc<EventBus>,
+    event_bus: Arc<dyn EventBus>,
 }
 
 impl Dispatcher {
-    pub fn build(event_bus: Arc<EventBus>) -> Result<Dispatcher, MatcherError> {
+    pub fn build(event_bus: Arc<dyn EventBus>) -> Result<Dispatcher, MatcherError> {
         Ok(Dispatcher { event_bus })
     }
 

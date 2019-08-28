@@ -29,7 +29,7 @@ pub struct DispatcherActor {
 impl Actor for DispatcherActor {
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
-        info!("DispatcherActor started.");
+        debug!("DispatcherActor started.");
     }
 }
 
@@ -37,7 +37,7 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut SyncContext<Self>) -> Self::Result {
-        debug!("DispatcherActor - received new processed event [{:?}]", &msg.event);
+        trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }
 }

@@ -1,4 +1,5 @@
 use jmespath::Rcvar;
+use log::trace;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::Payload;
@@ -25,6 +26,8 @@ impl JMESPathEventCollector {
 
 impl<'a> Collector<&'a str> for JMESPathEventCollector {
     fn to_event(&self, input: &'a str) -> Result<Event, CollectorError> {
+        trace!("JMESPathEventCollector - received event: {}", input);
+
         let data = jmespath::Variable::from_json(input).map_err(|err| {
             CollectorError::EventCreationError {
                 message: format!("Cannot parse received json. Err: {} - Json: {}.", err, input),

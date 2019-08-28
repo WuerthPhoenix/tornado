@@ -553,7 +553,7 @@ mod test {
         assert!(result.is_ok());
 
         println!("---------------------------");
-        println!("Event: \n{:#?}", event);
+        println!("Event: \n{:?}", event);
         println!("Template: \n{}", template);
         println!("Rendered template: \n{}", result.unwrap());
         println!("---------------------------");

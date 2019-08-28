@@ -32,7 +32,7 @@ impl MatcherConfigValidator {
         filter: &Filter,
         nodes: &BTreeMap<String, MatcherConfig>,
     ) -> Result<(), MatcherError> {
-        info!("MatcherConfigValidator validate_filter - validate filter [{}]", filter.name);
+        debug!("MatcherConfigValidator validate_filter - validate filter [{}]", filter.name);
 
         self.id.validate_filter_name(&filter.name)?;
 
@@ -48,7 +48,7 @@ impl MatcherConfigValidator {
     /// In addition to the checks performed by the validate(rule) method,
     /// it verifies that rule names are unique.
     fn validate_rules(&self, rules: &[Rule]) -> Result<(), MatcherError> {
-        info!("MatcherConfigValidator validate_all - validate all rules");
+        debug!("MatcherConfigValidator validate_all - validate all rules");
 
         let mut rule_names = vec![];
 
@@ -69,7 +69,7 @@ impl MatcherConfigValidator {
     fn validate_rule(&self, rule: &Rule) -> Result<(), MatcherError> {
         let rule_name = &rule.name;
 
-        info!("MatcherConfigValidator validate - Validating rule: [{}]", rule_name);
+        debug!("MatcherConfigValidator validate - Validating rule: [{}]", rule_name);
         self.id.validate_rule_name(rule_name)?;
 
         for var_name in rule.constraint.with.keys() {
