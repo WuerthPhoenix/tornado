@@ -21,7 +21,7 @@
 %endif
 
 Name:    tornado
-Version: 0.17.0
+Version: 0.17.1
 Release: 1
 Summary: Tornado Package
 
@@ -202,12 +202,15 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Thu Aug 29 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.17.1-1
+- Add spike for runtime log change (TOR-126)
+
 * Wed Aug 28 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.17.0-1
 - Tuned log verbosity (TOR-122)
 - Tornado and Collectors log Events in JSON format (TOR-120)
 
 * Tue Aug 26 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.16.0-1
-- Build DTO's without wasm or package wasm binary as build requirement for tornado build (IMT-15)
+- Build DTO's without wasm or package wasm binary as build requirement for tornado build (IMT-16)
 - Allow usage of extracted variables in successive rules (TOR-118)
 - Tornado & Collector logging configuration in toml files (TOR-121)
 

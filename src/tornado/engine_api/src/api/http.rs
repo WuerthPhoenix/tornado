@@ -9,6 +9,7 @@ use futures::Future;
 use log::*;
 use std::sync::Arc;
 use tornado_engine_api_dto::event::SendEventRequestDto;
+use std::ops::Deref;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
@@ -44,7 +45,11 @@ impl<T: ApiHandler> HttpHandler<T> {
         _req: HttpRequest,
         body: Json<SendEventRequestDto>,
     ) -> impl Future<Item = HttpResponse, Error = AWError> {
-        debug!("API - received send_event request");
+
+        if log_enabled!(Level::Debug) {
+            let json_string = serde_json::to_string(body.deref()).unwrap();
+            debug!("API - received send_event request: {}", json_string);
+        }
 
         let api_handler = self.api_handler.clone();
 
