@@ -15,6 +15,7 @@ members = [
    "executor/script",
    "network/common",
    "network/simple",
+   "spike/dynamic_log",
    "spike/jmespath",
    "spike/rsyslog_collector_writer",
    "spike/stdin",
