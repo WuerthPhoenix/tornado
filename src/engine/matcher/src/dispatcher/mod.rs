@@ -19,7 +19,7 @@ impl Dispatcher {
     /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
-            ProcessedNode::Rules { rules } => {
+            ProcessedNode::Ruleset { rules, .. } => {
                 for (rule_name, rule) in rules.rules {
                     match rule.status {
                         ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
@@ -82,7 +82,7 @@ mod test {
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
-        let node = ProcessedNode::Rules {
+        let node = ProcessedNode::Ruleset {
             rules: ProcessedRules {
                 rules: hashmap!("rule1".to_owned() => rule),
                 extracted_vars: HashMap::new(),
@@ -121,7 +121,7 @@ mod test {
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
-        let node = ProcessedNode::Rules {
+        let node = ProcessedNode::Ruleset {
             rules: ProcessedRules {
                 rules: hashmap!("rule1".to_owned() => rule),
                 extracted_vars: HashMap::new(),

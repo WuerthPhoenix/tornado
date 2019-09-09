@@ -41,7 +41,7 @@ mod test {
     struct TestApiHandler {}
 
     impl ApiHandler for TestApiHandler {
-        fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
+        fn get_config(&self) -> Box<dyn Future<Item =MatcherConfig, Error = ApiError>> {
             Box::new(FutureResult::from(Ok(MatcherConfig::Rules { rules: vec![] })))
         }
 
@@ -51,7 +51,7 @@ mod test {
         ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
             Box::new(FutureResult::from(Ok(ProcessedEvent {
                 event: event.event.into(),
-                result: ProcessedNode::Rules {
+                result: ProcessedNode::Ruleset {
                     rules: ProcessedRules { rules: HashMap::new(), extracted_vars: HashMap::new() },
                 },
             })))

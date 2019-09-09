@@ -41,7 +41,7 @@ pub fn internal_event_into_dto(internal_event: InternalEvent) -> Result<EventDto
 
 pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, Error> {
     Ok(match node {
-        ProcessedNode::Rules { rules } => {
+        ProcessedNode::Ruleset { rules } => {
             ProcessedNodeDto::Rules { rules: processed_rules_into_dto(rules)? }
         }
         ProcessedNode::Filter { filter, nodes } => ProcessedNodeDto::Filter {
