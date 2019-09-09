@@ -355,15 +355,12 @@ mod test {
 
         match config {
             MatcherConfig::Filter {name: _, filter: _, nodes } => {
-                assert!(nodes.contains_key("node1"));
-                assert!(nodes.contains_key("node2"));
-                assert!(is_filter(&nodes["node1"], "filter2", 1));
-                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
+                assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_ruleset(MatcherConfig::get_config("node2", &nodes).unwrap(), "node2", &vec!["rule1"]));
 
-                match &nodes["node1"] {
+                match MatcherConfig::get_config("node1", &nodes).unwrap() {
                     MatcherConfig::Filter {name: _, filter: _, nodes: inner_nodes } => {
-                        assert!(inner_nodes.contains_key("inner_node1"));
-                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2", "rule3"]));
+                        assert!(is_ruleset(MatcherConfig::get_config("inner_node1", &nodes).unwrap(), "inner_node1", &vec!["rule2", "rule3"]));
                     }
                     _ => assert!(false),
                 }
@@ -375,24 +372,23 @@ mod test {
     #[test]
     fn should_create_implicit_filter_recursively() {
         let path = "./test_resources/config_implicit_filter";
-        let config = FsMatcherConfigManager::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("implicit", path).unwrap();
         println!("{:?}", config);
 
-        assert!(is_filter(&config, "implicit_forward", 2));
+        assert!(is_filter(&config, "implicit", 2));
 
         match config {
-            MatcherConfig::Filter { filter: root_filter, nodes } => {
+            MatcherConfig::Filter { name: _name, filter: root_filter, nodes } => {
                 assert!(root_filter.filter.is_none());
                 assert!(nodes.contains_key("node1"));
                 assert!(nodes.contains_key("node2"));
-                assert!(is_filter(&nodes["node1"], "implicit_forward", 1));
-                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
+                assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_ruleset(MatcherConfig::get_config("node2", &nodes).unwrap(), "node2",  &vec!["rule1"]));
 
-                match &nodes["node1"] {
-                    MatcherConfig::Filter { filter: inner_filter, nodes: inner_nodes } => {
+                match MatcherConfig::get_config("node1", &nodes).unwrap() {
+                    MatcherConfig::Filter { name: _name, filter: inner_filter, nodes: inner_nodes } => {
                         assert!(inner_filter.filter.is_none());
-                        assert!(inner_nodes.contains_key("inner_node1"));
-                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2"]));
+                        assert!(is_ruleset(MatcherConfig::get_config("inner_node1", &nodes).unwrap(), "inner_node1", &vec!["rule2"]));
                     }
                     _ => assert!(false),
                 }
