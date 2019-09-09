@@ -83,6 +83,7 @@ mod test {
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let node = ProcessedNode::Ruleset {
+            name: "".to_owned(),
             rules: ProcessedRules {
                 rules: hashmap!("rule1".to_owned() => rule),
                 extracted_vars: HashMap::new(),
@@ -122,6 +123,7 @@ mod test {
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let node = ProcessedNode::Ruleset {
+            name: "".to_owned(),
             rules: ProcessedRules {
                 rules: hashmap!("rule1".to_owned() => rule),
                 extracted_vars: HashMap::new(),
@@ -162,15 +164,18 @@ mod test {
         rule.actions.push(Action { id: action_id.clone(), payload: HashMap::new() });
 
         let node = ProcessedNode::Filter {
-            filter: ProcessedFilter { status: ProcessedFilterStatus::Matched, name: "".to_owned() },
-            nodes: btreemap!(
-                "node0".to_owned() => ProcessedNode::Rules {
+            name: "".to_owned(),
+            filter: ProcessedFilter { status: ProcessedFilterStatus::Matched },
+            nodes: hashmap!(
+                "node0".to_owned() => ProcessedNode::Ruleset {
+                    name: "".to_owned(),
                     rules: ProcessedRules {
                         rules: hashmap!("rule1".to_owned() => rule.clone()),
                         extracted_vars: HashMap::new(),
                     },
                 },
-                "node1".to_owned() => ProcessedNode::Rules {
+                "node1".to_owned() => ProcessedNode::Ruleset {
+                    name: "".to_owned(),
                     rules: ProcessedRules {
                         rules: hashmap!("rule1".to_owned() => rule.clone()),
                         extracted_vars: HashMap::new(),
