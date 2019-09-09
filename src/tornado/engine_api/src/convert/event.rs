@@ -1,36 +1,40 @@
-use crate::api::handler::SendEventRequest;
+use crate::api::handler::{SendEventRequest, SendEventResponse, ProcessType};
 use serde_json::Error;
 use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
-use tornado_engine_api_dto::event::{
-    EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
-    ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto,
-    SendEventRequestDto,
-};
+use tornado_engine_api_dto::event::{EventDto, ProcessType as ProcessTypeDto, ProcessedFilterDto, ProcessedFilterStatusDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto, SendEventRequestDto, SendEventResponseDto};
 use tornado_engine_matcher::model::{
-    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
+    InternalEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {
         process_type: match dto.process_type {
-            ProcessType::Full => crate::api::handler::ProcessType::Full,
-            ProcessType::SkipActions => crate::api::handler::ProcessType::SkipActions,
+            ProcessTypeDto::Full => crate::api::handler::ProcessType::Full,
+            ProcessTypeDto::SkipActions => crate::api::handler::ProcessType::SkipActions,
         },
         event: serde_json::from_value(serde_json::to_value(dto.event)?)?,
     })
 }
 
-pub fn processed_event_into_dto(
-    processed_event: ProcessedEvent,
-) -> Result<ProcessedEventDto, Error> {
-    Ok(ProcessedEventDto {
-        event: internal_event_into_dto(processed_event.event)?,
-        result: processed_node_into_dto(processed_event.result)?,
+pub fn send_event_response_into_dto(
+    send_event_response: SendEventResponse,
+) -> Result<SendEventResponseDto, Error> {
+    Ok(SendEventResponseDto {
+        event: internal_event_into_dto(send_event_response.event.event)?,
+        result: processed_node_into_dto(send_event_response.event.result)?,
+        process_type: process_type_into_dto(send_event_response.process_type)
     })
+}
+
+pub fn process_type_into_dto(process_type: ProcessType) -> ProcessTypeDto{
+    match process_type {
+        ProcessType::Full => ProcessTypeDto::Full,
+        ProcessType::SkipActions => ProcessTypeDto::SkipActions,
+    }
 }
 
 pub fn internal_event_into_dto(internal_event: InternalEvent) -> Result<EventDto, Error> {

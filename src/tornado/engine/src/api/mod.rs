@@ -1,10 +1,11 @@
 use crate::engine::{EventMessageWithReply, MatcherActor};
 use actix::Addr;
 use futures::future::{Future, FutureResult};
-use tornado_engine_api::api::handler::{ApiHandler, SendEventRequest};
+use tornado_engine_api::api::handler::{
+    ApiHandler, SendEventRequest, SendEventResponse,
+};
 use tornado_engine_api::error::ApiError;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
-use tornado_engine_matcher::model::ProcessedEvent;
 
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
@@ -19,17 +20,21 @@ impl ApiHandler for MatcherApiHandler {
     fn send_event(
         &self,
         event: SendEventRequest,
-    ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
+    ) -> Box<dyn Future<Item = SendEventResponse, Error = ApiError>> {
         let request = self
             .matcher
             .send(EventMessageWithReply { event: event.event, process_type: event.process_type });
 
+        let process_type = event.process_type;
         // The last closure:
         // |res| Ok(res?)
         // is a Rust trick to let the compiler convert automatically the error from the one of the 'res' variable (MatcherError)
         // to the one expected for the response (ApiError).
         // This works because the ApiError implements From<MatcherError>
-        let response = request.map_err(ApiError::from).and_then(|res| Ok(res?));
+        let response = request
+            .map_err(ApiError::from)
+            .and_then(|res| Ok(res?))
+            .map(move |event| SendEventResponse { process_type, event });
 
         Box::new(response)
     }
@@ -88,7 +93,7 @@ mod test {
                 api.send_event(send_event_request).then(|res| {
                     // Verify
                     assert!(res.is_ok());
-                    assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
+                    assert_eq!(Some("test-type"), res.unwrap().event.event.event_type.get_text());
                     System::current().stop();
                     Ok(())
                 })

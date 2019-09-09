@@ -1,15 +1,15 @@
 use crate::api::handler::ApiHandler;
 use crate::convert::config::matcher_config_into_dto;
-use crate::convert::event::{dto_into_send_event_request, processed_event_into_dto};
+use crate::convert::event::{dto_into_send_event_request, send_event_response_into_dto};
 use crate::error::ApiError;
 use actix_web::web::Json;
 use actix_web::{Error as AWError, HttpRequest, HttpResponse};
 use futures::future::FutureResult;
 use futures::Future;
 use log::*;
+use std::ops::Deref;
 use std::sync::Arc;
 use tornado_engine_api_dto::event::SendEventRequestDto;
-use std::ops::Deref;
 
 /// The HttpHandler wraps an ApiHandler hiding the low level HTTP Request details
 /// and handling the DTOs conversions.
@@ -45,7 +45,6 @@ impl<T: ApiHandler> HttpHandler<T> {
         _req: HttpRequest,
         body: Json<SendEventRequestDto>,
     ) -> impl Future<Item = HttpResponse, Error = AWError> {
-
         if log_enabled!(Level::Debug) {
             let json_string = serde_json::to_string(body.deref()).unwrap();
             debug!("API - received send_event request: {}", json_string);
@@ -60,7 +59,7 @@ impl<T: ApiHandler> HttpHandler<T> {
             .map_err(ApiError::from)
             .and_then(move |send_event_request| api_handler.send_event(send_event_request))
             .map_err(AWError::from)
-            .and_then(|processed_event| match processed_event_into_dto(processed_event) {
+            .and_then(|send_event_response| match send_event_response_into_dto(send_event_response) {
                 Ok(dto) => HttpResponse::Ok().json(dto),
                 Err(err) => {
                     error!("Cannot convert the processed_event into a DTO. Err: {}", err);

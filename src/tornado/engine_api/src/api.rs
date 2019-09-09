@@ -26,7 +26,7 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::handler::SendEventRequest;
+    use crate::api::handler::{SendEventRequest, SendEventResponse, ProcessType};
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},
@@ -34,7 +34,7 @@ mod test {
     };
     use futures::{future::FutureResult, Future};
     use std::collections::HashMap;
-    use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
+    use tornado_engine_api_dto::event::{EventDto, ProcessType as ProcessTypeDto, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
 
@@ -48,12 +48,15 @@ mod test {
         fn send_event(
             &self,
             event: SendEventRequest,
-        ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
-            Box::new(FutureResult::from(Ok(ProcessedEvent {
-                event: event.event.into(),
-                result: ProcessedNode::Rules {
-                    rules: ProcessedRules { rules: HashMap::new(), extracted_vars: HashMap::new() },
+        ) -> Box<dyn Future<Item = SendEventResponse, Error = ApiError>> {
+            Box::new(FutureResult::from(Ok(SendEventResponse{
+                event: ProcessedEvent {
+                    event: event.event.into(),
+                    result: ProcessedNode::Rules {
+                        rules: ProcessedRules { rules: HashMap::new(), extracted_vars: HashMap::new() },
+                    },
                 },
+                process_type: ProcessType::Full
             })))
         }
     }
@@ -111,7 +114,7 @@ mod test {
                 payload: HashMap::new(),
                 created_ms: 0,
             },
-            process_type: ProcessType::SkipActions,
+            process_type: ProcessTypeDto::SkipActions,
         };
 
         // Act

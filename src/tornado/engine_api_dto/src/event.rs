@@ -32,6 +32,13 @@ pub struct ProcessedEventDto {
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct SendEventResponseDto {
+    pub event: EventDto,
+    pub result: ProcessedNodeDto,
+    pub process_type: ProcessType,
+}
+
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ProcessedNodeDto {
     Filter { filter: ProcessedFilterDto, nodes: BTreeMap<String, ProcessedNodeDto> },

@@ -12,7 +12,7 @@ pub trait ApiHandler {
     fn send_event(
         &self,
         event: SendEventRequest,
-    ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>>;
+    ) -> Box<dyn Future<Item = SendEventResponse, Error = ApiError>>;
 }
 
 pub struct SendEventRequest {
@@ -20,6 +20,12 @@ pub struct SendEventRequest {
     pub process_type: ProcessType,
 }
 
+pub struct SendEventResponse {
+    pub event: ProcessedEvent,
+    pub process_type: ProcessType,
+}
+
+#[derive(Copy, Clone)]
 pub enum ProcessType {
     Full,
     SkipActions,
