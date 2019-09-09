@@ -10,6 +10,7 @@
 %define ne_secure_install_dir %{_datadir}/neteye/secure_install/
 %define systemd_dir /usr/lib/systemd/system/
 %define systemd_plugin_dir /etc/systemd/system/
+%define logrotate_dir %{_sysconfdir}/logrotate.d/
 
 %define userguide_dir /usr/share/icingaweb2/modules/%{name}/doc
 
@@ -121,6 +122,10 @@ cp -p conf/icinga2_collector/icinga2_collector.toml %{buildroot}/%{conf_dir}/col
 cp -p conf/rsyslog_collector/rsyslog_collector.toml %{buildroot}/%{conf_dir}/collectors/rsyslog/
 cp -p conf/webhook_collector/webhook_collector.toml %{buildroot}/%{conf_dir}/collectors/webhook/
 
+# Install Logrotate
+mkdir -p %{buildroot}%{logrotate_dir}
+cp -p conf/tornado.logrotate %{buildroot}%{logrotate_dir}/tornado
+
 # install example rules, streams, webhooks
 mkdir -p %{buildroot}%{lib_dir}/examples/rules/
 mkdir -p %{buildroot}%{lib_dir}/examples/icinga2_collector_streams/
@@ -148,6 +153,7 @@ if test "$1" == 1 ; then
 fi
 
 %files
+%attr(0644, root, root) %{logrotate_dir}/tornado
 
 %defattr(0755, root, root, 0775)
 %{bin_dir}
