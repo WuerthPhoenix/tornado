@@ -22,7 +22,7 @@ impl MatcherConfig {
         }
     }
 
-    pub fn get_config(name: &str, nodes: &[MatcherConfig]) -> Option<&MatcherConfig> {
+    pub fn get_config<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
         for node in nodes {
             if node.name().eq(name) {
                 return Some(node);
@@ -31,7 +31,7 @@ impl MatcherConfig {
         None
     }
 
-    pub fn get_rule(name: &str, rules: &[Rule]) -> Option<&Rule> {
+    pub fn get_rule<'a>(name: &str, rules: &'a [Rule]) -> Option<&'a Rule> {
         for rule in rules {
             if rule.name.eq(name) {
                 return Some(rule);
