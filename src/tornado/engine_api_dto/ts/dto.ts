@@ -25,11 +25,11 @@ export type ExtractorDto = { from: string; regex: ExtractorRegexDto };
 
 export type ExtractorRegexDto = { match: string; group_match_idx: number };
 
-export type FilterDto = { name: string; description: string; active: boolean; filter: OperatorDto | null };
+export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
 
 export type MatcherConfigDto = 
- | { type: "Filter"; filter: FilterDto; nodes: { [ key: string ]: MatcherConfigDto } } 
- | { type: "Rules"; rules: RuleDto[] };
+ | { type: "Filter"; name: string; filter: FilterDto; nodes: MatcherConfigDto[] } 
+ | { type: "Ruleset"; name: string; rules: RuleDto[] };
 
 export type OperatorDto = 
  | { type: "AND"; operators: OperatorDto[] } 
@@ -55,17 +55,17 @@ export enum ProcessType { Full = "Full" , SkipActions = "SkipActions" };
 
 export type ProcessedEventDto = { event: EventDto; result: ProcessedNodeDto };
 
-export type ProcessedFilterDto = { name: string; status: ProcessedFilterStatusDto };
+export type ProcessedFilterDto = { status: ProcessedFilterStatusDto };
 
 export enum ProcessedFilterStatusDto { Matched = "Matched" , NotMatched = "NotMatched" , Inactive = "Inactive" };
 
 export type ProcessedNodeDto = 
- | { type: "Filter"; filter: ProcessedFilterDto; nodes: { [ key: string ]: ProcessedNodeDto } } 
- | { type: "Rules"; rules: ProcessedRulesDto };
+ | { type: "Filter"; name: string; filter: ProcessedFilterDto; nodes: ProcessedNodeDto[] } 
+ | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
 export type ProcessedRuleDto = { rule_name: string; status: ProcessedRuleStatusDto; actions: ActionDto[]; message: string | null };
 
-export type ProcessedRulesDto = { rules: { [ key: string ]: ProcessedRuleDto }; extracted_vars: { [ key: string ]: Value } };
+export type ProcessedRulesDto = { rules: ProcessedRuleDto[]; extracted_vars: { [ key: string ]: Value } };
 
 export enum ProcessedRuleStatusDto { Matched = "Matched" , PartiallyMatched = "PartiallyMatched" , NotMatched = "NotMatched" , NotProcessed = "NotProcessed" };
 

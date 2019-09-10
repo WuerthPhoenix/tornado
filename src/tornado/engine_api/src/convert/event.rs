@@ -1,6 +1,5 @@
 use crate::api::handler::SendEventRequest;
 use serde_json::Error;
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
@@ -41,17 +40,15 @@ pub fn internal_event_into_dto(internal_event: InternalEvent) -> Result<EventDto
 
 pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, Error> {
     Ok(match node {
-        ProcessedNode::Ruleset { rules } => {
-            ProcessedNodeDto::Rules { rules: processed_rules_into_dto(rules)? }
+        ProcessedNode::Ruleset { name, rules } => {
+            ProcessedNodeDto::Ruleset { name, rules: processed_rules_into_dto(rules)? }
         }
-        ProcessedNode::Filter { filter, nodes } => ProcessedNodeDto::Filter {
+        ProcessedNode::Filter { name, filter, nodes } => ProcessedNodeDto::Filter {
+            name,
             nodes: nodes
                 .into_iter()
-                .map(|(key, value)| {
-                    let dto = processed_node_into_dto(value)?;
-                    Ok((key, dto))
-                })
-                .collect::<Result<BTreeMap<_, _>, _>>()?,
+                .map(processed_node_into_dto)
+                .collect::<Result<Vec<_>, _>>()?,
             filter: processed_filter_into_dto(filter),
         },
     })
@@ -70,11 +67,8 @@ pub fn processed_rules_into_dto(node: ProcessedRules) -> Result<ProcessedRulesDt
         rules: node
             .rules
             .into_iter()
-            .map(|(key, value)| {
-                let dto = processed_rule_into_dto(value)?;
-                Ok((key, dto))
-            })
-            .collect::<Result<HashMap<_, _>, _>>()?,
+            .map(processed_rule_into_dto)
+            .collect::<Result<Vec<_>, _>>()?,
     })
 }
 
@@ -101,7 +95,7 @@ pub fn action_into_dto(action: Action) -> Result<ActionDto, Error> {
 }
 
 pub fn processed_filter_into_dto(node: ProcessedFilter) -> ProcessedFilterDto {
-    ProcessedFilterDto { name: node.name, status: processed_filter_status_into_dto(node.status) }
+    ProcessedFilterDto { status: processed_filter_status_into_dto(node.status) }
 }
 
 pub fn processed_filter_status_into_dto(node: ProcessedFilterStatus) -> ProcessedFilterStatusDto {
