@@ -133,7 +133,7 @@ impl Matcher {
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of filter: [{}]", filter_name);
 
-        let mut result_nodes = HashMap::new();
+        let mut result_nodes = vec!();
 
         let filter_status = if filter.active {
             if filter.filter.evaluate(&internal_event, None) {
@@ -143,11 +143,7 @@ impl Matcher {
                     );
                 nodes.iter().for_each(|node| {
                     let processed_node = Matcher::process_node(node, internal_event);
-                    let name = match &processed_node {
-                        ProcessedNode::Filter { name, .. } => name,
-                        ProcessedNode::Ruleset { name, .. } => name,
-                    };
-                    result_nodes.insert(name.to_owned(), processed_node);
+                    result_nodes.push(processed_node);
                 });
                 ProcessedFilterStatus::Matched
             } else {
@@ -171,7 +167,7 @@ impl Matcher {
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
         let mut extracted_vars = HashMap::new();
-        let mut processed_rules = HashMap::new();
+        let mut processed_rules = vec![];
 
         for rule in rules {
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
@@ -202,7 +198,7 @@ impl Matcher {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
                                 if !rule.do_continue {
-                                    processed_rules.insert(rule.name.clone(), processed_rule);
+                                    processed_rules.push(processed_rule);
                                     break;
                                 }
                             }
@@ -223,7 +219,7 @@ impl Matcher {
                 }
             }
 
-            processed_rules.insert(rule.name.clone(), processed_rule);
+            processed_rules.push(processed_rule);
         }
 
         let result = ProcessedNode::Ruleset {
@@ -553,20 +549,23 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(3, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
+
+                assert_eq!(rules.rules.get(0).unwrap().rule_name, "rule1_email");
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule1_email").unwrap().status
+                    rules.rules.get(0).unwrap().status
                 );
-                assert!(rules.rules.contains_key("rule2_sms"));
+
+                assert_eq!(rules.rules.get(1).unwrap().rule_name, "rule2_sms");
                 assert_eq!(
                     ProcessedRuleStatus::NotMatched,
-                    rules.rules.get("rule2_sms").unwrap().status
+                    rules.rules.get(1).unwrap().status
                 );
-                assert!(rules.rules.contains_key("rule3_email"));
+
+                assert_eq!(rules.rules.get(2).unwrap().rule_name, "rule3_email");
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule3_email").unwrap().status
+                    rules.rules.get(2).unwrap().status
                 );
             }
             _ => assert!(false),
@@ -613,9 +612,9 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(1, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
 
-                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                let processed_rule = rules.rules.get(0).unwrap();
+                assert_eq!(processed_rule.rule_name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
                 assert_eq!(1, rules.extracted_vars.len());
                 assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
@@ -652,9 +651,9 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(1, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
 
-                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                let processed_rule = rules.rules.get(0).unwrap();
+                assert_eq!(processed_rule.rule_name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
             }
             _ => assert!(false),
@@ -694,9 +693,9 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(1, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
 
-                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                let processed_rule = rules.rules.get(0).unwrap();
+                assert_eq!(processed_rule.rule_name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
                 info!("Message: {:?}", processed_rule.message);
@@ -752,9 +751,9 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset1", name);
                 assert_eq!(1, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
 
-                let processed_rule = rules.rules.get("rule1_email").unwrap();
+                let processed_rule = rules.rules.get(0).unwrap();
+                assert_eq!(processed_rule.rule_name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
                 info!("Message: {:?}", processed_rule.message);
@@ -793,15 +792,17 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(2, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
+
+                assert_eq!(rules.rules.get(0).unwrap().rule_name, "rule1_email");
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule1_email").unwrap().status
+                    rules.rules.get(0).unwrap().status
                 );
-                assert!(rules.rules.contains_key("rule2_email"));
+
+                assert_eq!(rules.rules.get(1).unwrap().rule_name, "rule1_email");
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule2_email").unwrap().status
+                    rules.rules.get(1).unwrap().status
                 );
             }
             _ => assert!(false),
@@ -843,20 +844,20 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(3, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
+
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule1_email").unwrap().status
+                    rules.rules.get(0).unwrap().status
                 );
-                assert!(rules.rules.contains_key("rule2_sms"));
+
                 assert_eq!(
                     ProcessedRuleStatus::NotMatched,
-                    rules.rules.get("rule2_sms").unwrap().status
+                    rules.rules.get(1).unwrap().status
                 );
-                assert!(rules.rules.contains_key("rule3_email"));
+
                 assert_eq!(
                     ProcessedRuleStatus::Matched,
-                    rules.rules.get("rule3_email").unwrap().status
+                    rules.rules.get(2).unwrap().status
                 );
             }
             _ => assert!(false),
@@ -896,9 +897,8 @@ mod test {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
                 assert_eq!(1, rules.rules.len());
-                assert!(rules.rules.contains_key("rule1_email"));
 
-                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
                 assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
@@ -957,12 +957,12 @@ mod test {
                 assert_eq!("ruleset", name);
                 assert_eq!(2, rules.rules.len());
 
-                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
                 assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
 
-                let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
                 assert_eq!("em", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
@@ -1021,11 +1021,11 @@ mod test {
                 assert_eq!("ruleset", name);
                 assert_eq!(2, rules.rules.len());
 
-                let rule_1_processed = rules.rules.get("rule1_email").unwrap();
+                let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
                 assert!(!rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
 
-                let rule_2_processed = rules.rules.get("rule2_email").unwrap();
+                let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
                 assert_eq!("ai", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
@@ -1072,7 +1072,7 @@ mod test {
         match result.result {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
-                let rule_1_processed = rules.rules.get("rule1").unwrap();
+                let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "zzz",
@@ -1121,7 +1121,7 @@ mod test {
         match result.result {
             ProcessedNode::Ruleset { name, rules } => {
                 assert_eq!("ruleset", name);
-                let rule_1_processed = rules.rules.get("rule1").unwrap();
+                let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "zzz",
@@ -1167,20 +1167,20 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Matched, filter.status);
                 assert_eq!(2, nodes.len());
 
-                match nodes.get("node1").unwrap() {
+                match nodes.get(0).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node1", name);
                         assert_eq!(1, rules.rules.len());
-                        assert!(rules.rules.contains_key("rule_a1"));
+                        assert_eq!(rules.rules.get(0).unwrap().rule_name, "rule_a1");
                     }
                     _ => assert!(false),
                 };
 
-                match nodes.get("node2").unwrap() {
+                match nodes.get(1).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node2", name);
                         assert_eq!(1, rules.rules.len());
-                        assert!(rules.rules.contains_key("rule_b1"));
+                        assert_eq!(rules.rules.get(0).unwrap().rule_name, "rule_b1");
                     }
                     _ => assert!(false),
                 };
@@ -1224,7 +1224,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Matched, filter.status);
                 assert_eq!(2, nodes.len());
 
-                match nodes.get("node1").unwrap() {
+                match nodes.get(0).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node1", name);
                         assert_eq!(2, rules.rules.len());
@@ -1244,7 +1244,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node2").unwrap() {
+                match nodes.get(1).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node2", name);
                         assert_eq!(2, rules.rules.len());
@@ -1321,7 +1321,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Matched, filter.status);
                 assert_eq!(4, nodes.len());
 
-                match nodes.get("node0").unwrap() {
+                match nodes.get(0).unwrap() {
                     ProcessedNode::Filter { name, filter, nodes } => {
                         assert_eq!(name, "node0");
                         assert_eq!(ProcessedFilterStatus::Matched, filter.status);
@@ -1342,7 +1342,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node1").unwrap() {
+                match nodes.get(1).unwrap() {
                     ProcessedNode::Filter { name, filter, nodes } => {
                         assert_eq!(name, "node1");
                         assert_eq!(ProcessedFilterStatus::NotMatched, filter.status);
@@ -1351,7 +1351,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node2").unwrap() {
+                match nodes.get(2).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!(name, "node2");
                         assert_eq!(2, rules.rules.len());
@@ -1367,7 +1367,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node3").unwrap() {
+                match nodes.get(3).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!(name, "node3");
                         assert_eq!(2, rules.rules.len());
@@ -1517,7 +1517,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Matched, filter.status);
                 assert_eq!(3, nodes.len());
 
-                match nodes.get("node0").unwrap() {
+                match nodes.get(0).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node0", name);
                         assert_eq!(1, rules.rules.len());
@@ -1529,7 +1529,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node1").unwrap() {
+                match nodes.get(1).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node1", name);
                         assert_eq!(1, rules.rules.len());
@@ -1541,7 +1541,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node2").unwrap() {
+                match nodes.get(2).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node2", name);
                         assert_eq!(1, rules.rules.len());
@@ -1604,7 +1604,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Matched, filter.status);
                 assert_eq!(2, nodes.len());
 
-                match nodes.get("node0").unwrap() {
+                match nodes.get(0).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node0", name);
                         assert_eq!(1, rules.rules.len());
@@ -1617,7 +1617,7 @@ mod test {
                     _ => assert!(false),
                 };
 
-                match nodes.get("node1").unwrap() {
+                match nodes.get(1).unwrap() {
                     ProcessedNode::Ruleset { name, rules } => {
                         assert_eq!("node1", name);
                         assert_eq!(1, rules.rules.len());
@@ -1661,9 +1661,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1681,9 +1682,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::NotMatched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1701,9 +1703,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1721,9 +1724,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1741,9 +1745,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1761,9 +1766,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1781,9 +1787,10 @@ mod test {
                 ProcessedNode::Ruleset { name, rules } => {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().rule_name, &rule.name);
                     assert_eq!(
                         ProcessedRuleStatus::Matched,
-                        rules.rules.get(&rule.name).unwrap().status
+                        rules.rules.get(0).unwrap().status
                     );
                 }
                 _ => assert!(false),
@@ -1853,10 +1860,10 @@ mod test {
                         .expect("should contain rule2.extracted")
                 );
 
-                let rule_1_processed = rules.rules.get("rule1").expect("should contain rule1");
+                let rule_1_processed = rules.rules.get(0).expect("should contain rule1");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
 
-                let rule_2_processed = rules.rules.get("rule2").expect("should contain rule2");
+                let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
             }
             _ => assert!(false),

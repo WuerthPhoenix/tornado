@@ -44,7 +44,7 @@ pub struct ProcessedEvent {
 
 #[derive(Debug, Clone)]
 pub enum ProcessedNode {
-    Filter { name: String, filter: ProcessedFilter, nodes: HashMap<String, ProcessedNode> },
+    Filter { name: String, filter: ProcessedFilter, nodes: Vec<ProcessedNode> },
     Ruleset { name: String, rules: ProcessedRules },
 }
 
@@ -61,7 +61,7 @@ pub enum ProcessedFilterStatus {
 }
 #[derive(Debug, Clone)]
 pub struct ProcessedRules {
-    pub rules: HashMap<String, ProcessedRule>,
+    pub rules: Vec<ProcessedRule>,
     pub extracted_vars: HashMap<String, Value>,
 }
 

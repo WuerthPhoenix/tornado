@@ -20,17 +20,17 @@ impl Dispatcher {
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
             ProcessedNode::Ruleset { rules, .. } => {
-                for (rule_name, rule) in rules.rules {
+                for rule in rules.rules {
                     match rule.status {
                         ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
                         _ => {
-                            trace!("Rule [{}] not matched, ignoring actions", rule_name);
+                            trace!("Rule [{}] not matched, ignoring actions", rule.rule_name);
                         }
                     }
                 }
             }
             ProcessedNode::Filter { nodes, .. } => {
-                for (_, node) in nodes {
+                for node in nodes {
                     self.dispatch_actions(node)?;
                 }
             }
@@ -50,7 +50,6 @@ impl Dispatcher {
 mod test {
     use super::*;
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
-    use maplit::*;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use tornado_network_simple::SimpleEventBus;
@@ -85,7 +84,7 @@ mod test {
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
             rules: ProcessedRules {
-                rules: hashmap!("rule1".to_owned() => rule),
+                rules: vec!(rule),
                 extracted_vars: HashMap::new(),
             },
         };
@@ -125,7 +124,7 @@ mod test {
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
             rules: ProcessedRules {
-                rules: hashmap!("rule1".to_owned() => rule),
+                rules: vec!(rule),
                 extracted_vars: HashMap::new(),
             },
         };
@@ -166,18 +165,18 @@ mod test {
         let node = ProcessedNode::Filter {
             name: "".to_owned(),
             filter: ProcessedFilter { status: ProcessedFilterStatus::Matched },
-            nodes: hashmap!(
-                "node0".to_owned() => ProcessedNode::Ruleset {
-                    name: "".to_owned(),
+            nodes: vec!(
+                ProcessedNode::Ruleset {
+                    name: "node0".to_owned(),
                     rules: ProcessedRules {
-                        rules: hashmap!("rule1".to_owned() => rule.clone()),
+                        rules: vec!(rule.clone()),
                         extracted_vars: HashMap::new(),
                     },
                 },
-                "node1".to_owned() => ProcessedNode::Ruleset {
-                    name: "".to_owned(),
+                ProcessedNode::Ruleset {
+                    name: "node1".to_owned(),
                     rules: ProcessedRules {
-                        rules: hashmap!("rule1".to_owned() => rule.clone()),
+                        rules: vec!(rule.clone()),
                         extracted_vars: HashMap::new(),
                     },
                 }
