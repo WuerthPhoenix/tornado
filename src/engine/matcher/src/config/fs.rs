@@ -354,17 +354,17 @@ mod test {
 
         match config {
             MatcherConfig::Filter { name: _, filter: _, nodes } => {
-                assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_filter(get_config_by_name("node1", &nodes).unwrap(), "node1", 1));
                 assert!(is_ruleset(
-                    MatcherConfig::get_config("node2", &nodes).unwrap(),
+                    get_config_by_name("node2", &nodes).unwrap(),
                     "node2",
                     &vec!["rule1"]
                 ));
 
-                match MatcherConfig::get_config("node1", &nodes).unwrap() {
+                match get_config_by_name("node1", &nodes).unwrap() {
                     MatcherConfig::Filter { name: _, filter: _, nodes: inner_nodes } => {
                         assert!(is_ruleset(
-                            MatcherConfig::get_config("inner_node1", &inner_nodes).unwrap(),
+                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
                             "inner_node1",
                             &vec!["rule2", "rule3"]
                         ));
@@ -387,14 +387,14 @@ mod test {
         match config {
             MatcherConfig::Filter { name: _name, filter: root_filter, nodes } => {
                 assert!(root_filter.filter.is_none());
-                assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_filter(get_config_by_name("node1", &nodes).unwrap(), "node1", 1));
                 assert!(is_ruleset(
-                    MatcherConfig::get_config("node2", &nodes).unwrap(),
+                    get_config_by_name("node2", &nodes).unwrap(),
                     "node2",
                     &vec!["rule1"]
                 ));
 
-                match MatcherConfig::get_config("node1", &nodes).unwrap() {
+                match get_config_by_name("node1", &nodes).unwrap() {
                     MatcherConfig::Filter {
                         name: _name,
                         filter: inner_filter,
@@ -402,7 +402,7 @@ mod test {
                     } => {
                         assert!(inner_filter.filter.is_none());
                         assert!(is_ruleset(
-                            MatcherConfig::get_config("inner_node1", &inner_nodes).unwrap(),
+                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
                             "inner_node1",
                             &vec!["rule2"]
                         ));
@@ -534,4 +534,24 @@ mod test {
             FsMatcherConfigManager::rule_name_from_filename("ascfb5.46_rule_name_1__._").unwrap()
         );
     }
+
+    fn get_config_name(config: &MatcherConfig) -> &str {
+        match config {
+            MatcherConfig::Filter { name, .. } => name,
+            MatcherConfig::Ruleset { name, .. } => name,
+        }
+    }
+
+    fn get_config_by_name<'a>(
+        name: &str,
+        nodes: &'a [MatcherConfig],
+    ) -> Option<&'a MatcherConfig> {
+        for node in nodes {
+            if get_config_name(node).eq(name) {
+                return Some(node);
+            }
+        }
+        None
+    }
+
 }
