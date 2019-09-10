@@ -31,8 +31,6 @@ mod test {
 
         let filter = Filter::from_json(&json).unwrap();
 
-        assert_eq!("only_emails", filter.name);
-
         assert_eq!(
             Some(Operator::Equal {
                 first: Value::Text("${event.type}".to_owned()),

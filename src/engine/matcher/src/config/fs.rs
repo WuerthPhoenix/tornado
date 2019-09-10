@@ -270,7 +270,6 @@ mod test {
 
         match config {
             MatcherConfig::Ruleset { name, rules } => {
-
                 assert_eq!("root", name);
 
                 assert_eq!(4, rules.len());
@@ -308,8 +307,8 @@ mod test {
 
     fn is_filter(config: &MatcherConfig, name: &str, nodes_num: usize) -> bool {
         match config {
-            MatcherConfig::Filter { name, filter, nodes } => {
-                name.eq(name) && nodes.len() == nodes_num
+            MatcherConfig::Filter { name: filter_name, filter: _filter, nodes } => {
+                name.eq(filter_name) && nodes.len() == nodes_num
             }
             _ => false,
         }
@@ -317,8 +316,8 @@ mod test {
 
     fn is_ruleset(config: &MatcherConfig, name: &str, rule_names: &[&str]) -> bool {
         match config {
-            MatcherConfig::Ruleset {name,  rules } => {
-                let mut result = name.eq(name) && rules.len() == rule_names.len();
+            MatcherConfig::Ruleset { name: ruleset_name, rules } => {
+                let mut result = name.eq(ruleset_name) && rules.len() == rule_names.len();
                 for i in 0..rule_names.len() {
                     result = result && rules[i].name.eq(rule_names[i]);
                 }
@@ -354,13 +353,21 @@ mod test {
         assert!(is_filter(&config, "root", 2));
 
         match config {
-            MatcherConfig::Filter {name: _, filter: _, nodes } => {
+            MatcherConfig::Filter { name: _, filter: _, nodes } => {
                 assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
-                assert!(is_ruleset(MatcherConfig::get_config("node2", &nodes).unwrap(), "node2", &vec!["rule1"]));
+                assert!(is_ruleset(
+                    MatcherConfig::get_config("node2", &nodes).unwrap(),
+                    "node2",
+                    &vec!["rule1"]
+                ));
 
                 match MatcherConfig::get_config("node1", &nodes).unwrap() {
-                    MatcherConfig::Filter {name: _, filter: _, nodes: inner_nodes } => {
-                        assert!(is_ruleset(MatcherConfig::get_config("inner_node1", &nodes).unwrap(), "inner_node1", &vec!["rule2", "rule3"]));
+                    MatcherConfig::Filter { name: _, filter: _, nodes: inner_nodes } => {
+                        assert!(is_ruleset(
+                            MatcherConfig::get_config("inner_node1", &inner_nodes).unwrap(),
+                            "inner_node1",
+                            &vec!["rule2", "rule3"]
+                        ));
                     }
                     _ => assert!(false),
                 }
@@ -380,15 +387,25 @@ mod test {
         match config {
             MatcherConfig::Filter { name: _name, filter: root_filter, nodes } => {
                 assert!(root_filter.filter.is_none());
-                assert!(nodes.contains_key("node1"));
-                assert!(nodes.contains_key("node2"));
                 assert!(is_filter(MatcherConfig::get_config("node1", &nodes).unwrap(), "node1", 1));
-                assert!(is_ruleset(MatcherConfig::get_config("node2", &nodes).unwrap(), "node2",  &vec!["rule1"]));
+                assert!(is_ruleset(
+                    MatcherConfig::get_config("node2", &nodes).unwrap(),
+                    "node2",
+                    &vec!["rule1"]
+                ));
 
                 match MatcherConfig::get_config("node1", &nodes).unwrap() {
-                    MatcherConfig::Filter { name: _name, filter: inner_filter, nodes: inner_nodes } => {
+                    MatcherConfig::Filter {
+                        name: _name,
+                        filter: inner_filter,
+                        nodes: inner_nodes,
+                    } => {
                         assert!(inner_filter.filter.is_none());
-                        assert!(is_ruleset(MatcherConfig::get_config("inner_node1", &nodes).unwrap(), "inner_node1", &vec!["rule2"]));
+                        assert!(is_ruleset(
+                            MatcherConfig::get_config("inner_node1", &inner_nodes).unwrap(),
+                            "inner_node1",
+                            &vec!["rule2"]
+                        ));
                     }
                     _ => assert!(false),
                 }

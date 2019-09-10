@@ -14,11 +14,10 @@ pub enum MatcherConfig {
 }
 
 impl MatcherConfig {
-
     pub fn name(&self) -> &str {
         match self {
-            MatcherConfig::Filter{name, ..} => name,
-            MatcherConfig::Ruleset{name, ..} => name,
+            MatcherConfig::Filter { name, .. } => name,
+            MatcherConfig::Ruleset { name, .. } => name,
         }
     }
 
@@ -27,7 +26,7 @@ impl MatcherConfig {
             if node.name().eq(name) {
                 return Some(node);
             }
-        };
+        }
         None
     }
 
@@ -36,7 +35,7 @@ impl MatcherConfig {
             if rule.name.eq(name) {
                 return Some(rule);
             }
-        };
+        }
         None
     }
 }

@@ -104,7 +104,6 @@ impl MatcherConfigValidator {
 mod test {
     use super::*;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
-    use maplit::*;
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
@@ -164,7 +163,8 @@ mod test {
         );
 
         // Act
-        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1, rule_2]);
+        let result =
+            MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1, rule_2]);
 
         // Assert
         assert!(result.is_ok());
@@ -182,7 +182,7 @@ mod test {
         );
 
         // Act
-        let result = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1]);
+        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
 
         // Assert
         assert!(result.is_err());
@@ -199,7 +199,8 @@ mod test {
         let rule_2 = new_rule("rule_name", op.clone());
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1, rule_2]);
+        let matcher =
+            MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1, rule_2]);
 
         // Assert
         assert!(matcher.is_err());
@@ -220,7 +221,7 @@ mod test {
         let rule_1 = new_rule("rule name", op.clone());
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -236,7 +237,7 @@ mod test {
         let rule_1 = new_rule("rule.name", op.clone());
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -260,7 +261,7 @@ mod test {
         );
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -281,7 +282,7 @@ mod test {
         });
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset",&vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -290,14 +291,14 @@ mod test {
     #[test]
     fn build_should_fail_if_wrong_filter_name() {
         // Arrange
-        let filter = Filter {
-            filter: None,
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter = Filter { filter: None, active: true, description: "".to_owned() };
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_filter("wrong.because.of.dots", &filter, &vec![]);
+        let matcher = MatcherConfigValidator::new().validate_filter(
+            "wrong.because.of.dots",
+            &filter,
+            &vec![],
+        );
 
         // Assert
         assert!(matcher.is_err());
@@ -306,11 +307,7 @@ mod test {
     #[test]
     fn should_validate_filter_name() {
         // Arrange
-        let filter = Filter {
-            filter: None,
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter = Filter { filter: None, active: true, description: "".to_owned() };
 
         // Act
         let matcher = MatcherConfigValidator::new().validate_filter("good_name", &filter, &vec![]);
@@ -322,11 +319,7 @@ mod test {
     #[test]
     fn build_should_fail_if_wrong_node_name() {
         // Arrange
-        let filter = Filter {
-            filter: None,
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter = Filter { filter: None, active: true, description: "".to_owned() };
 
         let rules = MatcherConfig::Ruleset { name: "wrong.name!".to_owned(), rules: vec![] };
 
@@ -341,14 +334,9 @@ mod test {
     #[test]
     fn should_validate_node_name() {
         // Arrange
-        let filter = Filter {
-            filter: None,
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter = Filter { filter: None, active: true, description: "".to_owned() };
 
         let rules = MatcherConfig::Ruleset { name: "good_name".to_owned(), rules: vec![] };
-        let node_name = "great_name".to_owned();
 
         // Act
         let matcher =
@@ -361,11 +349,7 @@ mod test {
     #[test]
     fn should_validate_a_config_recursively() {
         // Arrange
-        let filter1 = Filter {
-            filter: None,
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter1 = Filter { filter: None, active: true, description: "".to_owned() };
 
         let filter2 = filter1.clone();
         let rule_1 = new_rule("rule_name", None);
@@ -373,10 +357,17 @@ mod test {
         let config = MatcherConfig::Filter {
             name: "good_name".to_owned(),
             filter: filter1,
-            nodes: vec!(
-                MatcherConfig::Filter {name: "good_name".to_owned(), filter: filter2, nodes: vec!()},
-                MatcherConfig::Ruleset{ name: "good_ruleset_name".to_owned(), rules: vec![rule_1]}
-            ),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "good_name".to_owned(),
+                    filter: filter2,
+                    nodes: vec![],
+                },
+                MatcherConfig::Ruleset {
+                    name: "good_ruleset_name".to_owned(),
+                    rules: vec![rule_1],
+                },
+            ],
         };
 
         // Act
@@ -389,12 +380,7 @@ mod test {
     #[test]
     fn should_validate_a_config_recursively_and_fail_if_wrong_inner_rule_name() {
         // Arrange
-        let filter1 = Filter {
-            filter: None,
-
-            active: true,
-            description: "".to_owned(),
-        };
+        let filter1 = Filter { filter: None, active: true, description: "".to_owned() };
 
         let filter2 = filter1.clone();
         let rule_1 = new_rule("rule.name!", None);
@@ -402,10 +388,14 @@ mod test {
         let config = MatcherConfig::Filter {
             name: "good_name".to_owned(),
             filter: filter1,
-            nodes: vec!(
-                MatcherConfig::Filter {name: "good_name".to_owned(), filter: filter2, nodes: vec!()},
-                MatcherConfig::Ruleset {name: "ruleset".to_owned(), rules: vec![rule_1]}
-            ),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "good_name".to_owned(),
+                    filter: filter2,
+                    nodes: vec![],
+                },
+                MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule_1] },
+            ],
         };
 
         // Act
