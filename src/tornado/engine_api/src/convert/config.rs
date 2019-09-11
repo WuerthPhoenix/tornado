@@ -1,5 +1,4 @@
 use serde_json::Error;
-use std::collections::btree_map::BTreeMap;
 use tornado_engine_api_dto::config::{
     ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto, MatcherConfigDto,
     OperatorDto, RuleDto,
@@ -12,25 +11,20 @@ use tornado_engine_matcher::config::MatcherConfig;
 
 pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto, Error> {
     Ok(match config {
-        MatcherConfig::Rules { rules } => MatcherConfigDto::Rules {
+        MatcherConfig::Ruleset { name, rules } => MatcherConfigDto::Ruleset {
+            name,
             rules: rules.into_iter().map(rule_into_dto).collect::<Result<Vec<_>, _>>()?,
         },
-        MatcherConfig::Filter { filter, nodes } => MatcherConfigDto::Filter {
+        MatcherConfig::Filter { name, filter, nodes } => MatcherConfigDto::Filter {
+            name,
             filter: filter_into_dto(filter)?,
-            nodes: nodes
-                .into_iter()
-                .map(|(key, value)| {
-                    let dto = matcher_config_into_dto(value)?;
-                    Ok((key, dto))
-                })
-                .collect::<Result<BTreeMap<_, _>, _>>()?,
+            nodes: nodes.into_iter().map(matcher_config_into_dto).collect::<Result<Vec<_>, _>>()?,
         },
     })
 }
 
 pub fn filter_into_dto(filter: Filter) -> Result<FilterDto, Error> {
     Ok(FilterDto {
-        name: filter.name,
         description: filter.description,
         filter: filter.filter.map(operator_into_dto).transpose()?,
         active: filter.active,

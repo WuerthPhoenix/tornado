@@ -1,7 +1,6 @@
 use crate::config::ActionDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use typescript_definitions::TypeScriptify;
 
@@ -34,13 +33,12 @@ pub struct ProcessedEventDto {
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ProcessedNodeDto {
-    Filter { filter: ProcessedFilterDto, nodes: BTreeMap<String, ProcessedNodeDto> },
-    Rules { rules: ProcessedRulesDto },
+    Filter { name: String, filter: ProcessedFilterDto, nodes: Vec<ProcessedNodeDto> },
+    Ruleset { name: String, rules: ProcessedRulesDto },
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedFilterDto {
-    pub name: String,
     pub status: ProcessedFilterStatusDto,
 }
 
@@ -53,13 +51,13 @@ pub enum ProcessedFilterStatusDto {
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRulesDto {
-    pub rules: HashMap<String, ProcessedRuleDto>,
+    pub rules: Vec<ProcessedRuleDto>,
     pub extracted_vars: HashMap<String, Value>,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRuleDto {
-    pub rule_name: String,
+    pub name: String,
     pub status: ProcessedRuleStatusDto,
     pub actions: Vec<ActionDto>,
     pub message: Option<String>,

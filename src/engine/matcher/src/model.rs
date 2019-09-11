@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use tornado_common_api::{Action, Event, Number, Payload, Value};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -44,13 +44,12 @@ pub struct ProcessedEvent {
 
 #[derive(Debug, Clone)]
 pub enum ProcessedNode {
-    Filter { filter: ProcessedFilter, nodes: BTreeMap<String, ProcessedNode> },
-    Rules { rules: ProcessedRules },
+    Filter { name: String, filter: ProcessedFilter, nodes: Vec<ProcessedNode> },
+    Ruleset { name: String, rules: ProcessedRules },
 }
 
 #[derive(Debug, Clone)]
 pub struct ProcessedFilter {
-    pub name: String,
     pub status: ProcessedFilterStatus,
 }
 
@@ -62,13 +61,13 @@ pub enum ProcessedFilterStatus {
 }
 #[derive(Debug, Clone)]
 pub struct ProcessedRules {
-    pub rules: HashMap<String, ProcessedRule>,
+    pub rules: Vec<ProcessedRule>,
     pub extracted_vars: HashMap<String, Value>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ProcessedRule {
-    pub rule_name: String,
+    pub name: String,
     pub status: ProcessedRuleStatus,
     pub actions: Vec<Action>,
     pub message: Option<String>,
@@ -77,7 +76,7 @@ pub struct ProcessedRule {
 impl ProcessedRule {
     pub fn new(rule_name: String) -> ProcessedRule {
         ProcessedRule {
-            rule_name,
+            name: rule_name,
             status: ProcessedRuleStatus::NotProcessed,
             actions: vec![],
             message: None,

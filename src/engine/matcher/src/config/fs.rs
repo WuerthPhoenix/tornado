@@ -3,11 +3,12 @@ use crate::config::rule::Rule;
 use crate::config::{MatcherConfig, MatcherConfigManager};
 use crate::error::MatcherError;
 use log::*;
-use std::collections::BTreeMap;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
+
+pub const ROOT_NODE_NAME: &str = "root";
 
 pub struct FsMatcherConfigManager {
     root_path: String,
@@ -22,20 +23,31 @@ impl FsMatcherConfigManager {
 #[derive(Debug, PartialEq)]
 pub enum DirType {
     Filter,
-    Rules,
+    Ruleset,
 }
 
 impl MatcherConfigManager for FsMatcherConfigManager {
     fn read(&self) -> Result<MatcherConfig, MatcherError> {
-        FsMatcherConfigManager::read_from_dir(&self.root_path)
+        FsMatcherConfigManager::read_from_root_dir(&self.root_path)
     }
 }
 
 impl FsMatcherConfigManager {
-    fn read_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
+    fn read_from_root_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
+        FsMatcherConfigManager::read_from_dir(ROOT_NODE_NAME, dir)
+    }
+
+    fn read_from_dir<P: AsRef<Path>>(
+        node_name: &str,
+        dir: P,
+    ) -> Result<MatcherConfig, MatcherError> {
         match FsMatcherConfigManager::detect_dir_type(dir.as_ref())? {
-            DirType::Filter => FsMatcherConfigManager::read_filter_from_dir(dir.as_ref()),
-            DirType::Rules => FsMatcherConfigManager::read_rules_from_dir(dir.as_ref()),
+            DirType::Filter => {
+                FsMatcherConfigManager::read_filter_from_dir(node_name, dir.as_ref())
+            }
+            DirType::Ruleset => {
+                FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref())
+            }
         }
     }
 
@@ -45,7 +57,7 @@ impl FsMatcherConfigManager {
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
     fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
-        let paths = FsMatcherConfigManager::read_dirs(dir.as_ref())?;
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
 
         let mut subdirectories_count = 0;
         let mut json_files_count = 0;
@@ -84,14 +96,14 @@ impl FsMatcherConfigManager {
                 ),
             });
         }
-        Ok(DirType::Rules)
+        Ok(DirType::Ruleset)
     }
 
-    fn read_rules_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = FsMatcherConfigManager::read_dirs(dir.as_ref())?;
-
-        // Sort by filename
-        paths.sort_by_key(DirEntry::path);
+    fn read_ruleset_from_dir<P: AsRef<Path>>(
+        node_name: &str,
+        dir: P,
+    ) -> Result<MatcherConfig, MatcherError> {
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
 
         let mut rules = vec![];
 
@@ -130,16 +142,16 @@ impl FsMatcherConfigManager {
 
         info!("Loaded {} rule(s) from [{}]", rules.len(), dir.as_ref().display());
 
-        Ok(MatcherConfig::Rules { rules })
+        Ok(MatcherConfig::Ruleset { name: node_name.to_owned(), rules })
     }
 
-    fn read_filter_from_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        let mut paths = FsMatcherConfigManager::read_dirs(dir.as_ref())?;
+    fn read_filter_from_dir<P: AsRef<Path>>(
+        node_name: &str,
+        dir: P,
+    ) -> Result<MatcherConfig, MatcherError> {
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
 
-        // Sort by filename
-        paths.sort_by_key(DirEntry::path);
-
-        let mut nodes = BTreeMap::new();
+        let mut nodes = vec![];
         let mut filters = vec![];
 
         for entry in paths {
@@ -151,10 +163,7 @@ impl FsMatcherConfigManager {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call FsMatcherConfigManager::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.insert(
-                    filename.to_owned(),
-                    FsMatcherConfigManager::read_from_dir(path.as_path())?,
-                );
+                nodes.push(FsMatcherConfigManager::read_from_dir(filename, path.as_path())?);
                 continue;
             }
 
@@ -171,7 +180,7 @@ impl FsMatcherConfigManager {
                 })?;
 
             trace!("Filter [{}] body: \n{}", filename, filter_body);
-            let mut filter =
+            let filter =
                 Filter::from_json(&filter_body).map_err(|e| MatcherError::ConfigurationError {
                     message: format!(
                         "Error building Filter from file [{}]. Err: {}",
@@ -179,23 +188,23 @@ impl FsMatcherConfigManager {
                         e
                     ),
                 })?;
-            filter.name = FsMatcherConfigManager::truncate(filename, extension.len());
             filters.push(filter);
         }
+
+        let name = node_name.to_owned();
 
         if filters.is_empty() && !nodes.is_empty() {
             let filter = Filter {
                 active: true,
-                name: "implicit_forward".to_owned(),
                 description: "An implicit filter that allows all events".to_owned(),
                 filter: None,
             };
-            return Ok(MatcherConfig::Filter { filter, nodes });
+            return Ok(MatcherConfig::Filter { name, filter, nodes });
         }
 
         if filters.len() == 1 && !nodes.is_empty() {
             let filter = filters.remove(0);
-            return Ok(MatcherConfig::Filter { filter, nodes });
+            return Ok(MatcherConfig::Filter { name, filter, nodes });
         }
 
         Err(MatcherError::ConfigurationError {
@@ -204,16 +213,20 @@ impl FsMatcherConfigManager {
         })
     }
 
-    fn read_dirs<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
-        fs::read_dir(dir.as_ref()).and_then(Iterator::collect).map_err(|e| {
-            MatcherError::ConfigurationError {
-                message: format!(
-                    "Error reading from config path [{}]: {}",
-                    dir.as_ref().display(),
-                    e
-                ),
-            }
-        })
+    fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+        let mut paths: Vec<_> =
+            fs::read_dir(dir.as_ref()).and_then(Iterator::collect).map_err(|e| {
+                MatcherError::ConfigurationError {
+                    message: format!(
+                        "Error reading from config path [{}]: {}",
+                        dir.as_ref().display(),
+                        e
+                    ),
+                }
+            })?;
+        // Sort by filename
+        paths.sort_by_key(DirEntry::path);
+        Ok(paths)
     }
 
     fn truncate(name: &str, truncate: usize) -> String {
@@ -256,7 +269,9 @@ mod test {
         let config = FsMatcherConfigManager::new(path).read().unwrap();
 
         match config {
-            MatcherConfig::Rules { rules } => {
+            MatcherConfig::Ruleset { name, rules } => {
+                assert_eq!("root", name);
+
                 assert_eq!(4, rules.len());
 
                 assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
@@ -274,7 +289,8 @@ mod test {
         let config = FsMatcherConfigManager::new(path).read().unwrap();
 
         match config {
-            MatcherConfig::Rules { rules } => {
+            MatcherConfig::Ruleset { name, rules } => {
+                assert_eq!("root", name);
                 assert_eq!(0, rules.len());
             }
             _ => assert!(false),
@@ -284,24 +300,24 @@ mod test {
     #[test]
     fn should_read_filter_from_folder() {
         let path = "./test_resources/config_01";
-        let config = FsMatcherConfigManager::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("custom_name", path).unwrap();
 
-        assert!(is_filter(&config, "only_emails", 1));
+        assert!(is_filter(&config, "custom_name", 1));
     }
 
     fn is_filter(config: &MatcherConfig, name: &str, nodes_num: usize) -> bool {
         match config {
-            MatcherConfig::Filter { filter, nodes } => {
-                filter.name.eq(name) && nodes.len() == nodes_num
+            MatcherConfig::Filter { name: filter_name, filter: _filter, nodes } => {
+                name.eq(filter_name) && nodes.len() == nodes_num
             }
             _ => false,
         }
     }
 
-    fn is_ruleset(config: &MatcherConfig, rule_names: &[&str]) -> bool {
+    fn is_ruleset(config: &MatcherConfig, name: &str, rule_names: &[&str]) -> bool {
         match config {
-            MatcherConfig::Rules { rules } => {
-                let mut result = rules.len() == rule_names.len();
+            MatcherConfig::Ruleset { name: ruleset_name, rules } => {
+                let mut result = name.eq(ruleset_name) && rules.len() == rule_names.len();
                 for i in 0..rule_names.len() {
                     result = result && rules[i].name.eq(rule_names[i]);
                 }
@@ -314,7 +330,7 @@ mod test {
     #[test]
     fn should_read_from_folder_and_return_error_if_not_a_rule() {
         let path = "./test_resources/config_02";
-        let config = FsMatcherConfigManager::read_from_dir(path);
+        let config = FsMatcherConfigManager::read_from_root_dir(path);
 
         assert!(config.is_err());
     }
@@ -322,31 +338,36 @@ mod test {
     #[test]
     fn should_read_filter_from_folder_with_many_subfolders() {
         let path = "./test_resources/config_03";
-        let config = FsMatcherConfigManager::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("emails", path).unwrap();
 
-        assert!(is_filter(&config, "only_emails", 2));
+        assert!(is_filter(&config, "emails", 2));
     }
 
     #[test]
     fn should_read_config_from_folder_recursively() {
         let path = "./test_resources/config_04";
-        let config = FsMatcherConfigManager::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
 
         println!("{:?}", config);
 
-        assert!(is_filter(&config, "filter1", 2));
+        assert!(is_filter(&config, "root", 2));
 
         match config {
-            MatcherConfig::Filter { filter: _, nodes } => {
-                assert!(nodes.contains_key("node1"));
-                assert!(nodes.contains_key("node2"));
-                assert!(is_filter(&nodes["node1"], "filter2", 1));
-                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
+            MatcherConfig::Filter { name: _, filter: _, nodes } => {
+                assert!(is_filter(get_config_by_name("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_ruleset(
+                    get_config_by_name("node2", &nodes).unwrap(),
+                    "node2",
+                    &vec!["rule1"]
+                ));
 
-                match &nodes["node1"] {
-                    MatcherConfig::Filter { filter: _, nodes: inner_nodes } => {
-                        assert!(inner_nodes.contains_key("inner_node1"));
-                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2", "rule3"]));
+                match get_config_by_name("node1", &nodes).unwrap() {
+                    MatcherConfig::Filter { name: _, filter: _, nodes: inner_nodes } => {
+                        assert!(is_ruleset(
+                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
+                            "inner_node1",
+                            &vec!["rule2", "rule3"]
+                        ));
                     }
                     _ => assert!(false),
                 }
@@ -358,24 +379,33 @@ mod test {
     #[test]
     fn should_create_implicit_filter_recursively() {
         let path = "./test_resources/config_implicit_filter";
-        let config = FsMatcherConfigManager::read_from_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("implicit", path).unwrap();
         println!("{:?}", config);
 
-        assert!(is_filter(&config, "implicit_forward", 2));
+        assert!(is_filter(&config, "implicit", 2));
 
         match config {
-            MatcherConfig::Filter { filter: root_filter, nodes } => {
+            MatcherConfig::Filter { name: _name, filter: root_filter, nodes } => {
                 assert!(root_filter.filter.is_none());
-                assert!(nodes.contains_key("node1"));
-                assert!(nodes.contains_key("node2"));
-                assert!(is_filter(&nodes["node1"], "implicit_forward", 1));
-                assert!(is_ruleset(&nodes["node2"], &vec!["rule1"]));
+                assert!(is_filter(get_config_by_name("node1", &nodes).unwrap(), "node1", 1));
+                assert!(is_ruleset(
+                    get_config_by_name("node2", &nodes).unwrap(),
+                    "node2",
+                    &vec!["rule1"]
+                ));
 
-                match &nodes["node1"] {
-                    MatcherConfig::Filter { filter: inner_filter, nodes: inner_nodes } => {
+                match get_config_by_name("node1", &nodes).unwrap() {
+                    MatcherConfig::Filter {
+                        name: _name,
+                        filter: inner_filter,
+                        nodes: inner_nodes,
+                    } => {
                         assert!(inner_filter.filter.is_none());
-                        assert!(inner_nodes.contains_key("inner_node1"));
-                        assert!(is_ruleset(&inner_nodes["inner_node1"], &vec!["rule2"]));
+                        assert!(is_ruleset(
+                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
+                            "inner_node1",
+                            &vec!["rule2"]
+                        ));
                     }
                     _ => assert!(false),
                 }
@@ -412,7 +442,7 @@ mod test {
         let result = FsMatcherConfigManager::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(DirType::Rules), result);
+        assert_eq!(Ok(DirType::Ruleset), result);
     }
 
     #[test]
@@ -429,7 +459,7 @@ mod test {
         let result = FsMatcherConfigManager::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(DirType::Rules), result);
+        assert_eq!(Ok(DirType::Ruleset), result);
     }
 
     #[test]
@@ -504,4 +534,21 @@ mod test {
             FsMatcherConfigManager::rule_name_from_filename("ascfb5.46_rule_name_1__._").unwrap()
         );
     }
+
+    fn get_config_name(config: &MatcherConfig) -> &str {
+        match config {
+            MatcherConfig::Filter { name, .. } => name,
+            MatcherConfig::Ruleset { name, .. } => name,
+        }
+    }
+
+    fn get_config_by_name<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
+        for node in nodes {
+            if get_config_name(node).eq(name) {
+                return Some(node);
+            }
+        }
+        None
+    }
+
 }
