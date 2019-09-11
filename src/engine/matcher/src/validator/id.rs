@@ -46,13 +46,13 @@ impl IdValidator {
         self.validate(filter_name, error_message)
     }
 
-    /// Validates a node name.
-    pub fn validate_node_name(&self, node_name: &str) -> Result<(), MatcherError> {
+    /// Validates a ruleset name.
+    pub fn validate_ruleset_name(&self, ruleset_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
-            "Node name [{}] is not valid. It should respect the pattern {}",
-            node_name, ID_REGEX_PATTERN
+            "Ruleset name [{}] is not valid. It should respect the pattern {}",
+            ruleset_name, ID_REGEX_PATTERN
         );
-        self.validate(node_name, error_message)
+        self.validate(ruleset_name, error_message)
     }
 
     /// Validates an extracted variable name.

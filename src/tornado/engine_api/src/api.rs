@@ -42,7 +42,10 @@ mod test {
 
     impl ApiHandler for TestApiHandler {
         fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
-            Box::new(FutureResult::from(Ok(MatcherConfig::Rules { rules: vec![] })))
+            Box::new(FutureResult::from(Ok(MatcherConfig::Ruleset {
+                name: "ruleset".to_owned(),
+                rules: vec![],
+            })))
         }
 
         fn send_event(
@@ -51,8 +54,9 @@ mod test {
         ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
             Box::new(FutureResult::from(Ok(ProcessedEvent {
                 event: event.event.into(),
-                result: ProcessedNode::Rules {
-                    rules: ProcessedRules { rules: HashMap::new(), extracted_vars: HashMap::new() },
+                result: ProcessedNode::Ruleset {
+                    name: "ruleset".to_owned(),
+                    rules: ProcessedRules { rules: vec![], extracted_vars: HashMap::new() },
                 },
             })))
         }
@@ -95,7 +99,13 @@ mod test {
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =
             test::read_response_json(&mut srv, request);
-        assert_eq!(tornado_engine_api_dto::config::MatcherConfigDto::Rules { rules: vec![] }, dto);
+        assert_eq!(
+            tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
+                name: "ruleset".to_owned(),
+                rules: vec![]
+            },
+            dto
+        );
     }
 
     #[test]

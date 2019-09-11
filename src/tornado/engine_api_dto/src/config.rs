@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::btree_map::BTreeMap;
 use std::collections::HashMap;
 use typescript_definitions::TypeScriptify;
 
@@ -68,8 +67,6 @@ pub struct ActionDto {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct FilterDto {
-    #[serde(default)]
-    pub name: String,
     pub description: String,
     pub active: bool,
     pub filter: Option<OperatorDto>,
@@ -78,6 +75,6 @@ pub struct FilterDto {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum MatcherConfigDto {
-    Filter { filter: FilterDto, nodes: BTreeMap<String, MatcherConfigDto> },
-    Rules { rules: Vec<RuleDto> },
+    Filter { name: String, filter: FilterDto, nodes: Vec<MatcherConfigDto> },
+    Ruleset { name: String, rules: Vec<RuleDto> },
 }

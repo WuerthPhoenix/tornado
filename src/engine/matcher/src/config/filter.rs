@@ -4,8 +4,6 @@ use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Filter {
-    #[serde(default)]
-    pub name: String,
     pub description: String,
     pub active: bool,
     pub filter: Option<Operator>,
@@ -32,8 +30,6 @@ mod test {
             fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
 
         let filter = Filter::from_json(&json).unwrap();
-
-        assert_eq!("only_emails", filter.name);
 
         assert_eq!(
             Some(Operator::Equal {
