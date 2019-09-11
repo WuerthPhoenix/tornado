@@ -148,8 +148,8 @@ bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 
 The directory structure in the _rules-dir_ reflects the processing tree structure. Each
 subdirectory can contain either:
-- A Filter: a single json file with the filter details and a set of sub directories
-- A Ruleset: a set of json files with rules details.
+- A Filter:  A single JSON file with the filter details and a set of sub directories
+- A Ruleset:  A set of JSON files with rules details
 
 Each Rule and Filter composing the processing tree should be saved in a separate file in JSON format.
 
@@ -176,12 +176,12 @@ In the above example, the processing tree composition is the following:
 - *inner_node* is a **Ruleset* with a single **Rule** called "rule_one"
 
 In a ruleset, the natural alphanumeric order of the filenames determines the execution
-order of the internal  __Rules__, so the file ordering corresponds to the processing order.
+order of the internal __Rules__, so the file ordering corresponds to the processing order.
 
-The __Filter__ and **Ruleset** names are always derived from the containing folder name 
-with the only exception of the root node which is always named *root*.
+The __Filter__ and **Ruleset** names are always derived from the parent folder name 
+with one exception:  the root node is always named "root".
 
-The **Rule** names are instead extracted from the json filenames. 
+The **Rule** names are instead extracted from the JSON filenames. 
 The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol.
 The first part determines the rule execution order, and the second is the rule name.
 For example:
