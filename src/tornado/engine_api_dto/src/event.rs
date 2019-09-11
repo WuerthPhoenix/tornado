@@ -57,7 +57,7 @@ pub struct ProcessedRulesDto {
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRuleDto {
-    pub rule_name: String,
+    pub name: String,
     pub status: ProcessedRuleStatusDto,
     pub actions: Vec<ActionDto>,
     pub message: Option<String>,

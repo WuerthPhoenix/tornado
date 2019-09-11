@@ -542,10 +542,7 @@ mod test {
         }
     }
 
-    fn get_config_by_name<'a>(
-        name: &str,
-        nodes: &'a [MatcherConfig],
-    ) -> Option<&'a MatcherConfig> {
+    fn get_config_by_name<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
         for node in nodes {
             if get_config_name(node).eq(name) {
                 return Some(node);

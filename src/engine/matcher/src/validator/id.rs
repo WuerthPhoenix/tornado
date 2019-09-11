@@ -47,12 +47,12 @@ impl IdValidator {
     }
 
     /// Validates a ruleset name.
-    pub fn validate_ruleset_name(&self, filter_name: &str) -> Result<(), MatcherError> {
+    pub fn validate_ruleset_name(&self, ruleset_name: &str) -> Result<(), MatcherError> {
         let error_message = format!(
             "Ruleset name [{}] is not valid. It should respect the pattern {}",
-            filter_name, ID_REGEX_PATTERN
+            ruleset_name, ID_REGEX_PATTERN
         );
-        self.validate(filter_name, error_message)
+        self.validate(ruleset_name, error_message)
     }
 
     /// Validates an extracted variable name.

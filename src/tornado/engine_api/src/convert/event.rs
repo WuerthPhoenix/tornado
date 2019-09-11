@@ -45,10 +45,7 @@ pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, 
         }
         ProcessedNode::Filter { name, filter, nodes } => ProcessedNodeDto::Filter {
             name,
-            nodes: nodes
-                .into_iter()
-                .map(processed_node_into_dto)
-                .collect::<Result<Vec<_>, _>>()?,
+            nodes: nodes.into_iter().map(processed_node_into_dto).collect::<Result<Vec<_>, _>>()?,
             filter: processed_filter_into_dto(filter),
         },
     })
@@ -75,7 +72,7 @@ pub fn processed_rules_into_dto(node: ProcessedRules) -> Result<ProcessedRulesDt
 pub fn processed_rule_into_dto(node: ProcessedRule) -> Result<ProcessedRuleDto, Error> {
     Ok(ProcessedRuleDto {
         message: node.message,
-        rule_name: node.rule_name,
+        name: node.name,
         actions: node.actions.into_iter().map(action_into_dto).collect::<Result<Vec<_>, _>>()?,
         status: processed_rule_status_into_dto(node.status),
     })

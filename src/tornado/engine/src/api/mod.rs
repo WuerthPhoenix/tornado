@@ -12,7 +12,7 @@ pub struct MatcherApiHandler {
 }
 
 impl ApiHandler for MatcherApiHandler {
-    fn get_config(&self) -> Box<dyn Future<Item =MatcherConfig, Error = ApiError>> {
+    fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
         Box::new(FutureResult::from(self.config_manager.read().map_err(ApiError::from)))
     }
 

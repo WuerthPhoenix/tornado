@@ -63,7 +63,7 @@ export type ProcessedNodeDto =
  | { type: "Filter"; name: string; filter: ProcessedFilterDto; nodes: ProcessedNodeDto[] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
-export type ProcessedRuleDto = { rule_name: string; status: ProcessedRuleStatusDto; actions: ActionDto[]; message: string | null };
+export type ProcessedRuleDto = { name: string; status: ProcessedRuleStatusDto; actions: ActionDto[]; message: string | null };
 
 export type ProcessedRulesDto = { rules: ProcessedRuleDto[]; extracted_vars: { [ key: string ]: Value } };
 

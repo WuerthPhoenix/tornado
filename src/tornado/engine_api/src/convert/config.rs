@@ -18,10 +18,7 @@ pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto
         MatcherConfig::Filter { name, filter, nodes } => MatcherConfigDto::Filter {
             name,
             filter: filter_into_dto(filter)?,
-            nodes: nodes
-                .into_iter()
-                .map(matcher_config_into_dto)
-                .collect::<Result<Vec<_>, _>>()?,
+            nodes: nodes.into_iter().map(matcher_config_into_dto).collect::<Result<Vec<_>, _>>()?,
         },
     })
 }

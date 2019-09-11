@@ -123,7 +123,7 @@ mod test {
 
         // Assert
         match config {
-            MatcherConfig::Ruleset {name,  rules } => {
+            MatcherConfig::Ruleset { name, rules } => {
                 assert_eq!("root", name);
                 assert_eq!(4, rules.len());
                 assert_eq!(1, rules.iter().filter(|val| "all_emails".eq(&val.name)).count());

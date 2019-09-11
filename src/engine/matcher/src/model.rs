@@ -67,7 +67,7 @@ pub struct ProcessedRules {
 
 #[derive(Debug, Clone)]
 pub struct ProcessedRule {
-    pub rule_name: String,
+    pub name: String,
     pub status: ProcessedRuleStatus,
     pub actions: Vec<Action>,
     pub message: Option<String>,
@@ -76,7 +76,7 @@ pub struct ProcessedRule {
 impl ProcessedRule {
     pub fn new(rule_name: String) -> ProcessedRule {
         ProcessedRule {
-            rule_name,
+            name: rule_name,
             status: ProcessedRuleStatus::NotProcessed,
             actions: vec![],
             message: None,

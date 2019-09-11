@@ -24,7 +24,7 @@ impl Dispatcher {
                     match rule.status {
                         ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
                         _ => {
-                            trace!("Rule [{}] not matched, ignoring actions", rule.rule_name);
+                            trace!("Rule [{}] not matched, ignoring actions", rule.name);
                         }
                     }
                 }
@@ -83,10 +83,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules {
-                rules: vec!(rule),
-                extracted_vars: HashMap::new(),
-            },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: HashMap::new() },
         };
 
         // Act
@@ -123,10 +120,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules {
-                rules: vec!(rule),
-                extracted_vars: HashMap::new(),
-            },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: HashMap::new() },
         };
 
         // Act
@@ -165,22 +159,22 @@ mod test {
         let node = ProcessedNode::Filter {
             name: "".to_owned(),
             filter: ProcessedFilter { status: ProcessedFilterStatus::Matched },
-            nodes: vec!(
+            nodes: vec![
                 ProcessedNode::Ruleset {
                     name: "node0".to_owned(),
                     rules: ProcessedRules {
-                        rules: vec!(rule.clone()),
+                        rules: vec![rule.clone()],
                         extracted_vars: HashMap::new(),
                     },
                 },
                 ProcessedNode::Ruleset {
                     name: "node1".to_owned(),
                     rules: ProcessedRules {
-                        rules: vec!(rule.clone()),
+                        rules: vec![rule.clone()],
                         extracted_vars: HashMap::new(),
                     },
-                }
-            ),
+                },
+            ],
         };
 
         // Act
