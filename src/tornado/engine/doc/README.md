@@ -148,8 +148,8 @@ bash tornado_engine --config-dir=/tornado/config --rules-dir=/rules
 
 The directory structure in the _rules-dir_ reflects the processing tree structure. Each
 subdirectory can contain either:
-- A Filter and a set of sub directories
-- A set of Rules
+- A Filter: a single json file with the filter details and a set of sub directories
+- A Ruleset: a set of json files with rules details.
 
 Each Rule and Filter composing the processing tree should be saved in a separate file in JSON format.
 
@@ -169,14 +169,19 @@ E.g.:
 All files must use the _json_ extension; the system will ignore all other file types.
 
 In the above example, the processing tree composition is the following:
-- The root node is a filter named "filter_one". 
-- The filter "filter_one" has two children nodes: "node_0" and "node_1"
-- _node_0_ is a rule set that contains two rules called "rule_one" and "rule_two"
-- _node_1_ is a filter with a single child named "inner_node"
-- _inner_node_ is a rule set with a single rule called "rule_one"
+- The root node is a **Filter** named "root". 
+- The filter "root" has two child nodes: "node_0" and "node_1"
+- *node_0* is a **Ruleset** that contains two **Rules** called "rule_one" and "rule_two"
+- *node_1* is a **Filter** with a single child named "inner_node"
+- *inner_node* is a **Ruleset* with a single **Rule** called "rule_one"
 
-In a rule set, the natural alphanumeric order of the filenames determines the execution
-order of the  __Rules__, so the file ordering corresponds to the processing order.
+In a ruleset, the natural alphanumeric order of the filenames determines the execution
+order of the internal  __Rules__, so the file ordering corresponds to the processing order.
+
+The __Filter__ and **Ruleset** names are always derived from the containing folder name 
+with the only exception of the root node which is always named *root*.
+
+The **Rule** names are instead extracted from the json filenames. 
 The rule JSON filename is composed of two parts separated by the first '_' (underscore) symbol.
 The first part determines the rule execution order, and the second is the rule name.
 For example:
@@ -196,10 +201,7 @@ above defines the following rules:
 - root -> node_0 -> rule_two
 - root -> node_1 -> inner_node -> rule_one
 
-Similar to what happens for __Rules__, __Filter__ names are also derived from the filenames.
-However, in this case, the entire filename corresponds to the __Filter__ name.
-
-In this example, the "filter_one" node is the entry point of the processing tree. When an
+In this example, the "root" node is the entry point of the processing tree. When an
 __Event__ arrives, the matcher will evaluate whether it matches the filter condition; if this
 happens, the matcher process will pass the __Event__ to the filter's children, otherwise it
 will ignore them.
