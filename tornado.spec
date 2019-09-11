@@ -22,7 +22,7 @@
 %endif
 
 Name:    tornado
-Version: 0.17.1
+Version: 0.18.0
 Release: 1
 Summary: Tornado Package
 
@@ -208,6 +208,9 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Wed Sep 11 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.18.0-1
+- Refactor configuration structure (IMT-13)
+
 * Thu Aug 29 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.17.1-1
 - Add spike for runtime log change (TOR-126)
 
