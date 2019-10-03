@@ -1,4 +1,4 @@
-/neteye/shared/tornado/log/*.log
+/neteye/shared/tornado/log/*.log {
         daily
         rotate 7
         copytruncate
