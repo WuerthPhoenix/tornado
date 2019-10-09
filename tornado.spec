@@ -22,7 +22,7 @@
 %endif
 
 Name:    tornado
-Version: 0.18.0
+Version: 0.18.1
 Release: 1
 Summary: Tornado Package
 
@@ -208,6 +208,9 @@ Files for neteye_secure_install %{name} autosetup
 
 
 %changelog
+* Wed Oct 09 2019 Thomas Forrer <thomas.forrer@wuerth-phoenix.com> - 0.18.1-1
+- Fix logrotate definition misses a bracket (TOR-131)
+
 * Wed Sep 11 2019 Francesco Cina <mr.francesco.cina@gmail.com> - 0.18.0-1
 - Refactor configuration structure (IMT-13)
 
