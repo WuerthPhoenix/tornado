@@ -1,4 +1,0 @@
-[submodule "continuous-integration"]
-	path = continuous-integration
-	url = ../continuous-integration.git
-	branch = master

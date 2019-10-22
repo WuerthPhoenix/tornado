@@ -360,3 +360,12 @@ A Perl trap handler for Net-SNMP's to subscribe to snmptrapd events.
 
 A standalone HTTP server binary executable that listens for REST calls from a generic Webhook.
 - [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md)
+
+
+### License
+
+Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+[https://www.apache.org/licenses/LICENSE-2.0](https://www.apache.org/licenses/LICENSE-2.0)> or the MIT license
+<LICENSE-MIT or [https://opensource.org/licenses/MIT](https://opensource.org/licenses/MIT)>, at your
+option. All files in the project carrying such notice may not be
+copied, modified, or distributed except according to those terms.
