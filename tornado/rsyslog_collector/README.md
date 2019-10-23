@@ -87,7 +87,7 @@ file _'config-dir'/rsyslog_collector.toml_:
       When the buffer is full, the collector will start discarding older messages first.
 
 More information about the logger configuration is available
-[here](../../../common/logger/doc/README.md).
+[here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT*. 

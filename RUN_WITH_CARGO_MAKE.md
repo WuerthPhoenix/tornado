@@ -17,7 +17,7 @@ For more information about cargo-make functionalities and installation options, 
 [refer to its documentation](https://github.com/sagiegurari/cargo-make).
 
 ## Configuration
-The run configuration is in the _src/Makefile.toml_ which is the default configuration
+The run configuration is in the _Makefile.toml_ which is the default configuration
 file used by cargo-make.
 
 Into this file, each Tornado executable has its own run task.
@@ -28,7 +28,7 @@ to launch the executable.
 
 
 ## Start Tornado Engine
-To start the [tornado_engine](src/tornado/engine/doc/README.md), enter the _src_ folder and run:
+To start the [tornado_engine](tornado/engine/README.md), enter the _src_ folder and run:
 
 ```bash
 cargo make run-engine
@@ -39,7 +39,7 @@ on the UDS path _/tmp/tornado_.
 
 
 ## Start Tornado Icinga2 Collector
-To start the [tornado_icinga2_collector](src/tornado/icinga2_collector/doc/README.md),
+To start the [tornado_icinga2_collector](tornado/icinga2_collector/README.md),
 enter the _src_ folder and run:
 
 ```bash
@@ -52,7 +52,7 @@ For each incoming Icinga2 Event, it will send a Tornado Event on the UDS path _/
 
 
 ## Start Tornado Webhook Collector
-To start the [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md),
+To start the [tornado_webhook_collector](tornado/webhook_collector/README.md),
 enter the _src_ folder and run:
 
 ```bash
@@ -64,12 +64,12 @@ For each incoming webhook message, it will send a Tornado Event on the UDS path 
 
 
 ## Start Tornado Rsyslog Collector
-The [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
+The [tornado_rsyslog_collector](tornado/rsyslog_collector/README.md)
 is be managed by the
-[Rsyslog omprog module](https://www.rsyslog.com/doc/v8-stable/configuration/modules/omprog.html).
+[Rsyslog omprog module](https://www.rsyslog.com/v8-stable/configuration/modules/omprog.html).
 
 To simplify local testing, a spike that produces fake rsyslog events was developed
-(see ./src/spike/rsyslog_collector_writer). This fake rsyslog starts the
+(see ./spike/rsyslog_collector_writer). This fake rsyslog starts the
 rsyslog_collector and forwards fake events to it. Consequently, the
 collector will generate Tornado Events and forward them to the Engine.
 
@@ -85,7 +85,7 @@ The collector will send Tornado Events on the UDS path _/tmp/tornado_.
 
 ## Start fake snmptrapd
 A spike that produces fake snmptrapd events is available for local testing
-(see ./src/spike/snmptrapd_collector_writer). This fake snmptrapd
+(see ./spike/snmptrapd_collector_writer). This fake snmptrapd
 generates fake events and forwards them directly to the Engine
 on the UDS path _/tmp/tornado_snmptrapd_.
 

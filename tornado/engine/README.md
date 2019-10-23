@@ -85,7 +85,7 @@ file _'config-dir'/tornado.toml_:
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
 
 
-More information about the logger configuration is available [here](../../../common/logger/doc/README.md).
+More information about the logger configuration is available [here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_CONFIG_DIR_DEFAULT*. 
@@ -113,7 +113,7 @@ directory in order to build the processing tree.
 
 ### Structure and Configuration: The JSON Collector
 
-The [JSON collector](../../../collector/json/doc/README.md)
+The [JSON collector](../../collector/json/README.md)
 receives Events in JSON format and passes them to the matcher engine.
 
 The events to be delivered to the JSON collector are published on the TCP port
@@ -130,7 +130,7 @@ If not specified, Tornado will use the default value `127.0.0.1:4747`.
 
 ### Structure and Configuration:  The Matching Engine
 
-The [matching engine](../../../engine/matcher/doc/README.md) is the core of the Tornado Engine.
+The [matching engine](../../engine/matcher/README.md) is the core of the Tornado Engine.
 It receives Events from the collectors, processes them with the configured Rules, and, in case
 of a match, generates the Actions to be performed.
 
@@ -207,13 +207,13 @@ happens, the matcher process will pass the __Event__ to the filter's children, o
 will ignore them.
 
 More information and examples about the processing tree configuration and runtime behavior can
-be found in the [matching engine documentation](../../../engine/matcher/doc/README.md)
+be found in the [matching engine documentation](../../engine/matcher/README.md)
 
 
 
 ### Structure and Configuration:  The Archive Executor
 
-The [archive executor](../../../executor/archive/doc/README.md) processes and executes Actions
+The [archive executor](../../executor/archive/README.md) processes and executes Actions
 of type "archive". This executor configuration is specified in the `archive_executor.toml`
 file in the Tornado config folder.
 
@@ -235,13 +235,13 @@ file_cache_ttl_secs = 1
 ```
 
 More details about the meaning of each entry and how the archive executor functions can be found
-in the [executor documentation](../../../executor/archive/doc/README.md).
+in the [executor documentation](../../executor/archive/README.md).
 
 
 
 ### Structure and Configuration:  The Icinga2 Executor
 
-The [Icinga2 executor](../../../executor/icinga2/doc/README.md) processes and executes Actions
+The [Icinga2 executor](../../executor/icinga2/README.md) processes and executes Actions
 of type "icinga2". The configuration for this executor is specified in the `icinga2_client_executor.toml`
 file into the Tornado config folder.
 
@@ -258,25 +258,25 @@ The icinga2_client_executor.toml has the following configuration options:
 - __disable_ssl_verification__: If true, the client will not verify the SSL certificate of the Icinga2 server.
 
 More details about the executor can be found in the
-[Icinga2 executor documentation](../../../executor/icinga2/doc/README.md).
+[Icinga2 executor documentation](../../executor/icinga2/README.md).
 
 
 
 ### Structure and Configuration:  The Script Executor
 
-The [script executor](../../../executor/script/doc/README.md) processes and executes Actions
+The [script executor](../../executor/script/README.md) processes and executes Actions
 of type "script".
 
 This executor has no specific configuration, since everything required for script execution is
 contained in the Action itself as described in the
-[executor documentation](../../../executor/script/doc/README.md)
+[executor documentation](../../executor/script/README.md)
 
 
 ## Tornado API
 The Tornado API endpoints allow to interact with a Tornado instance.
 
 More details about the API can be found in the
-[Tornado backend documentation](../../../ui/backend/doc/README.md).
+[Tornado backend documentation](../engine_api/README.md).
 
 
 ## Self-Monitoring API

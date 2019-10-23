@@ -12,7 +12,7 @@ The Email Collector Executable is built on
 On startup, it creates a [UDS](https://en.wikipedia.org/wiki/Unix_domain_socket) 
 socket where it listens for incoming email messages. 
 Each email published on the socket is processed by the embedded
-[email collector](../../../collector/email/doc/README.md)
+[email collector](../../collector/email/README.md)
 to produce Tornado Events which are, finally, forwarded to the
 Tornado Engine's TCP address.
 
@@ -47,7 +47,7 @@ configured to notify procmail whenever it receives new email.
 For additional information about how incoming email is processed and
 the structure of the generated Event, check the documentation specific to the 
 embedded 
-[email collector](../../../collector/email/doc/README.md).
+[email collector](../../collector/email/README.md).
 
 Note that the Email Collector will support any email client that works with the
 MIME format and UDS sockets.
@@ -82,7 +82,7 @@ file _'config-dir'/email_collector.toml_:
     - **uds_path**: The Unix Socket path on which the collector will listen for incoming emails.
     
 More information about the logger configuration
-[is available here](../../../common/logger/doc/README.md).
+[is available here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT*. 

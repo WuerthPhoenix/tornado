@@ -13,7 +13,7 @@ The Icinga2 collector executable is built on
 
 On startup, it connects to an existing [Icinga2 Server API](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/) and subscribes to user defined [Event Streams](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-streams). 
 Each Icinga2 Event published on the stream, is processed by the embedded
-[jmespath collector](../../../collector/jmespath/doc/README.md)
+[jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events which are, finally, forwarded to the
 Tornado Engine's TCP address.
 
@@ -27,7 +27,7 @@ For each stream, you must provide two values in order to successfully create a s
     Additional information about the filter can be found in the [official documentation](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-stream-filter).
 - *collector_config*:  The transformation logic that converts an Icinga2 Event into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
-  [specific documentation](../../../collector/jmespath/doc/README.md).
+  [specific documentation](../../collector/jmespath/README.md).
 
 __Note__: Based on the [Icinga2 Event Streams documentation](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-streams), multiple HTTP clients can use the same queue name as long as they use the same event types and filter.
 
@@ -81,7 +81,7 @@ file _'config-dir'/icinga2_collector.toml_:
       milliseconds to wait before a new connection attempt.
 
 More information about the logger configuration
-[is available here](../../../common/logger/doc/README.md).
+[is available here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT*. 
@@ -143,4 +143,4 @@ Icinga2 Event in the payload with key 'icinga2_event'.
 
 The Event creation logic is handled internally by the JMESPath collector, a
 detailed description of which is available in its
-[specific documentation](../../../collector/jmespath/doc/README.md).
+[specific documentation](../../collector/jmespath/README.md).
