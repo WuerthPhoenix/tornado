@@ -13,7 +13,7 @@ The webhook collector executable is an HTTP server built on
 
 On startup, it creates a dedicated REST endpoint for each configured webhook. Calls received by
 an endpoint are processed by the embedded
-[jmespath collector](../../../collector/jmespath/doc/README.md)
+[jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
 Tornado Engine's UDS socket.
 
@@ -26,7 +26,7 @@ For each webhook, you must provide three values in order to successfully create 
   be rejected and an HTTP 401 code (UNAUTHORIZED) will be returned.
 - *collector_config*:  The transformation logic that converts a webhook JSON object into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
-  [specific documentation](../../../collector/jmespath/doc/README.md).
+  [specific documentation](../../collector/jmespath/README.md).
 
 
 
@@ -64,7 +64,7 @@ file _'config-dir'/webhook_collector.toml_:
 
    
 More information about the logger configuration
-[is available here](../../../common/logger/doc/README.md).
+[is available here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
 the environment variable *TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT*. 
@@ -182,4 +182,4 @@ then the resulting Event will be:
 
 The Event creation logic is handled internally by the JMESPath collector, a
 detailed description of which is available in its
-[specific documentation](../../../collector/jmespath/doc/README.md).
+[specific documentation](../../collector/jmespath/README.md).
