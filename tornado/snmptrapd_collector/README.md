@@ -140,7 +140,7 @@ To test the collector, verify that snmptrapd is installed on the machine and
 follow the collector configuration instructions above.
 
 As a prerequisite, the Tornado Engine should be up and running on the same machine 
-([See the dedicated Tornado engine documentation](../../engine/doc/README.md)). 
+([See the dedicated Tornado engine documentation](../engine/README.md)). 
 
 In addition the _snmptrap_ tool is required to send fake snmptrapd messages.
 

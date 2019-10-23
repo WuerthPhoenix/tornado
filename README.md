@@ -187,7 +187,7 @@ and launch:
 $ cargo build
 ```
 
-This will build the entire project and produces executable files in the *src/target/debug* folder.
+This will build the entire project and produces executable files in the *target/debug* folder.
 It may require from 5 to 10 minutes depending on your hardware.
 
 Alternatively, you can perform a release build with:
@@ -195,16 +195,16 @@ Alternatively, you can perform a release build with:
 $ cargo build --release
 ```
 
-This will produce smaller, highly optimized executables in the *src/target/release* folder.
+This will produce smaller, highly optimized executables in the *target/release* folder.
 If you intend to run benchmarks, or assess or deploy Tornado in a production environment, this is
 the way you should built it.
 
 The elements of the Tornado build process can be grouped into three categories:
 - Tornado libraries: Everything not in the the "spike" or "tornado" folder.
   These are common Rust libraries used by Tornado, and can be imported by other projects as well.
-- Tornado executables: The crates on the "src/tornado" folder generate the Tornado executables. These
+- Tornado executables: The crates on the "tornado" folder generate the Tornado executables. These
   are what you need to run and deploy Tornado. All these executables are suffixed with *tornado_*.
-- Spikes: The crates on the "src/spike" folder generate executables suffixed with *spike_*. These are
+- Spikes: The crates on the "spike" folder generate executables suffixed with *spike_*. These are
   experimental crates that are not part of the basic Tornado architecture.
 
 
@@ -213,9 +213,9 @@ The elements of the Tornado build process can be grouped into three categories:
 
 To run Tornado, follow the configuration instructions of the Tornado executables provided by
 their respective documentation pages:
-* [tornado_engine documentation](src/tornado/engine/doc/README.md)
-* [tornado_rsyslog_collector documentation](src/tornado/rsyslog_collector/doc/README.md)
-* [tornado_web_collector documentation](src/tornado/webhook_collector/doc/README.md)
+* [tornado_engine documentation](tornado/engine/README.md)
+* [tornado_rsyslog_collector documentation](tornado/rsyslog_collector/README.md)
+* [tornado_web_collector documentation](tornado/webhook_collector/README.md)
 
 
 
@@ -274,10 +274,10 @@ The shortcuts below, organized thematically, will take you to the documentation 
 ### Common Traits and Code
 
 The Common API page describes the API and defines the Event and Action structures.
-- [tornado_common_api](src/common/api/doc/README.md)
+- [tornado_common_api](common/api/README.md)
 
 The Logger page describes how Tornado logs its own actions.
-- [tornado_common_logger](src/common/logger/doc/README.md)
+- [tornado_common_logger](common/logger/README.md)
 
 
 
@@ -285,23 +285,23 @@ The Logger page describes how Tornado logs its own actions.
 
 This crate describes the commonalities of all Collector types.
 <!-- This page of doc. is very short. -->
-- [tornado_collector_common](src/collector/common/doc/README.md)
+- [tornado_collector_common](collector/common/README.md)
 
 Describes a collector that receives a MIME email message and generates an Event.
-- [tornado_collector_email](src/collector/email/doc/README.md)
+- [tornado_collector_email](collector/email/README.md)
 
 This page illustrates the Collector for JSON events using the JMESPath JSON query language.
-- [tornado_collector_jmespath](src/collector/jmespath/doc/README.md)
+- [tornado_collector_jmespath](collector/jmespath/README.md)
 
 Presents the standard JSON collector that deserializes an unstructured JSON string into an Event.
-- [tornado_collector_json](src/collector/json/doc/README.md)
+- [tornado_collector_json](collector/json/README.md)
 
 
 ### Engine
 
 The Matcher page describes the structure of the rules used in matching.
 <!-- It doesn't describe anything else about the matcher besides the rule structure. -->
-- [tornado_engine_matcher](src/engine/matcher/doc/README.md)
+- [tornado_engine_matcher](engine/matcher/README.md)
 
 
 
@@ -309,23 +309,23 @@ The Matcher page describes the structure of the rules used in matching.
 
 This crate describes the commonalities of all Executor types.
 <!-- This page of doc. is very short. -->
-- [tornado_executor_common](src/executor/common/doc/README.md)
+- [tornado_executor_common](executor/common/README.md)
 
 This page describes how the Archive executor writes to log files on locally mounted file systems,
 with a focus on configuration.
-- [tornado_executor_archive](src/executor/archive/doc/README.md)
+- [tornado_executor_archive](executor/archive/README.md)
 
 The Icinga2 executor forwards Tornado Actions to the 
-[Icinga2 API](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api).
-- [tornado_executor_icinga2](src/executor/icinga2/doc/README.md)
+[Icinga2 API](https://icinga.com/docs/icinga2/latest/12-icinga2-api).
+- [tornado_executor_icinga2](executor/icinga2/README.md)
 
 The Logger executor simply outputs the whole Action body
 to the standard [log](https://crates.io/crates/log) at the _info_ level.
 <!-- This page of doc. is very short. -->
-- [tornado_executor_logger](src/executor/logger/doc/README.md)
+- [tornado_executor_logger](executor/logger/README.md)
 
 The Executor Script page defines how to configure Actions that launch shell scripts.
-- [tornado_executor_script](src/executor/script/doc/README.md)
+- [tornado_executor_script](executor/script/README.md)
 
 
 
@@ -333,33 +333,33 @@ The Executor Script page defines how to configure Actions that launch shell scri
 
 This page contains high level traits not bound to any specific network technology.
 <!-- This page of doc. is very short. -->
-- [tornado_network_common](src/network/common/doc/README.md)
+- [tornado_network_common](network/common/README.md)
 
 Describes tests that dispatch Events and Actions on a single process without actually making network calls.
 <!-- This page of doc. is very short. -->
-- [tornado_network_simple](src/network/simple/doc/README.md)
+- [tornado_network_simple](network/simple/README.md)
 
 
 
 ### Executables
 
 Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
-- [tornado_engine](src/tornado/engine/doc/README.md)
+- [tornado_engine](tornado/engine/README.md)
 
 An executable that processes incoming emails and generates Tornado Events.
-- [tornado_email_collector](src/tornado/email_collector/doc/README.md)
+- [tornado_email_collector](tornado/email_collector/README.md)
 
 An executable that subscribes to Icinga2 Event Streams API and generates Tornado Events.
-- [tornado_icinga2_collector](src/tornado/icinga2_collector/doc/README.md)
+- [tornado_icinga2_collector](tornado/icinga2_collector/README.md)
 
 The description of a binary executable that generates Tornado Events from _rsyslog_ inputs.
-- [tornado_rsyslog_collector](src/tornado/rsyslog_collector/doc/README.md)
+- [tornado_rsyslog_collector](tornado/rsyslog_collector/README.md)
 
 A Perl trap handler for Net-SNMP's to subscribe to snmptrapd events.
-- [tornado_snmptrapd_collector](src/tornado/snmptrapd_collector/doc/README.md)
+- [tornado_snmptrapd_collector](tornado/snmptrapd_collector/README.md)
 
 A standalone HTTP server binary executable that listens for REST calls from a generic Webhook.
-- [tornado_webhook_collector](src/tornado/webhook_collector/doc/README.md)
+- [tornado_webhook_collector](tornado/webhook_collector/README.md)
 
 
 ### License
