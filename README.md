@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="tornado-banner.jpg">
+</p>
+
 # Tornado Basics
 
 Tornado is a Complex Event Processor that receives reports of events from data sources such as
