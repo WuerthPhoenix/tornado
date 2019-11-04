@@ -1,3 +1,5 @@
+![Tornado banner](https://developers.wuerth-phoenix.com/static/images/tornado-banner.jpg)
+
 # Tornado Basics
 
 Tornado is a Complex Event Processor that receives reports of events from data sources such as
