@@ -1,6 +1,4 @@
-<p align="center">
-    <img src="tornado-banner.jpg">
-</p>
+![Tornado banner](https://developers.wuerth-phoenix.com/static/images/tornado-banner.jpg)
 
 # Tornado Basics
 
