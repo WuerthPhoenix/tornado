@@ -79,7 +79,25 @@ sub my_receiver {
 
     my %VarBindData;
     for (@{$VarBinds}) {
-        $VarBindData{sprintf("%s",$_->[0])} = sprintf("%s", $_->[2]);
+        # Data is available in the form of $DATATYPE: $CONTENT
+        # We split at the first ocurrence of ': '
+        my ($datatype, $content) = split /: /, $_->[1], 2;
+
+        # Drop the escaped leading and trailing " for strings
+        if ( $datatype =~ m/^string$/i ) {
+            $content = substr $content, 1, -1;
+        }
+
+        # Provide both datatype in text form as well as content in JSON e.g.
+        # "NMPv2-SMI::enterprises.6876.4.3.305.": {
+        #     "datatype": "STRING",
+        #     "content": "Yellow"
+        # }
+        my %oid = (
+            "datatype" => $datatype,
+            "content" => $content
+        );
+        $VarBindData{sprintf("%s",$_->[0])} = \%oid;
     }
 
     my $protocol;
