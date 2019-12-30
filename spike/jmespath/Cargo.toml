@@ -13,7 +13,7 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 
 [dev-dependencies]
-criterion = "0.2"
+criterion = "0.3"
 
 [[bench]]
 name = "jmespath_bench"

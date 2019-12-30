@@ -303,7 +303,7 @@ mod test {
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response = test::call_service(&mut srv, request);;
+        let response = test::call_service(&mut srv, request);
 
         // Assert
         assert_eq!(http::StatusCode::NOT_FOUND, response.status());
@@ -332,7 +332,7 @@ mod test {
             .uri("/event/hook_1?token=hook_1_token")
             .header(http::header::CONTENT_TYPE, "application/json")
             .to_request();
-        let response = test::call_service(&mut srv, request);;
+        let response = test::call_service(&mut srv, request);
 
         // Assert
         assert_eq!(http::StatusCode::METHOD_NOT_ALLOWED, response.status());
@@ -362,7 +362,7 @@ mod test {
             .header(http::header::CONTENT_TYPE, "application/json")
             .set_payload("{}")
             .to_request();
-        let response = test::call_service(&mut srv, request);;
+        let response = test::call_service(&mut srv, request);
 
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());
