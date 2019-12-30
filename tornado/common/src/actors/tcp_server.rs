@@ -5,8 +5,9 @@ use log::*;
 use std::net;
 use std::str::FromStr;
 use tokio::net::{TcpStream, TcpListener};
+use futures::StreamExt;
 
-pub fn listen_to_tcp<
+pub async fn listen_to_tcp<
     P: 'static + Into<String>,
     F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 >(
@@ -16,15 +17,15 @@ pub fn listen_to_tcp<
     let address = address.into();
     let socket_address = net::SocketAddr::from_str(address.as_str()).unwrap();
     let listener =
-        TcpListener::bind(&socket_address).map_err(|err| TornadoError::ActorCreationError {
+        TcpListener::bind(&socket_address).await.map_err(|err| TornadoError::ActorCreationError {
             message: format!("Cannot start TCP server on [{}]: {}", address, err),
         })?;
 
     TcpServerActor::create(|ctx| {
-        ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
+        ctx.add_message_stream(listener.incoming().map(
             |stream| {
                 //let addr = stream.peer_addr().unwrap();
-                AsyncReadMessage { stream }
+                AsyncReadMessage { stream: stream.expect("REMOVE ME") }
             },
         ));
         TcpServerActor { address, callback }
