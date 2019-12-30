@@ -5,11 +5,10 @@ use serde_json;
 use std::io::Error;
 use std::net;
 use std::str::FromStr;
-use std::time;
+use tokio::time;
 use tokio::io::WriteHalf;
-use tokio::prelude::*;
-use tokio_codec::LinesCodec;
-use tokio_tcp::TcpStream;
+use tokio_util::codec::LinesCodec;
+use tokio::net::TcpStream;
 use tornado_common_api;
 
 pub struct EventMessage {
@@ -61,7 +60,7 @@ impl Actor for TcpClientActor {
 
         let socket_address = net::SocketAddr::from_str(self.address.as_str()).unwrap();
 
-        tokio::timer::Delay::new(delay_until)
+        time::delay_until(delay_until)
             .map_err(|_| ())
             .and_then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
             .into_actor(self)

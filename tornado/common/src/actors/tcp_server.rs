@@ -1,15 +1,14 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::Stream;
 use log::*;
 use std::net;
 use std::str::FromStr;
-use tokio_tcp::{TcpListener, TcpStream};
+use tokio::net::{TcpStream, TcpListener};
 
 pub fn listen_to_tcp<
     P: 'static + Into<String>,
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 >(
     address: P,
     callback: F,
@@ -36,7 +35,7 @@ pub fn listen_to_tcp<
 
 struct TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     address: String,
     callback: F,
@@ -44,14 +43,14 @@ where
 
 impl<F> Actor for TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
 impl<F> Handler<AsyncReadMessage<TcpStream>> for TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     type Result = ();
 
