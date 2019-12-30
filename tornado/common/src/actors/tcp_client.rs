@@ -7,10 +7,9 @@ use std::net;
 use std::str::FromStr;
 use tokio::time;
 use tokio::io::WriteHalf;
-use tokio_util::codec::LinesCodec;
+use tokio_util::codec::{LinesCodec, LinesCodecError};
 use tokio::net::TcpStream;
 use tornado_common_api;
-use futures::StreamExt;
 
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
@@ -67,7 +66,6 @@ impl Actor for TcpClientActor {
         }.into_actor(self)
             .map(move |stream, act, ctx| {
                 info!("TcpClientActor connected to server [{:?}]", &act.address);
-                //let (_r, w) = stream.expect("REMOVE ME").split();
                 let (_r, w) = tokio::io::split(stream.expect("REMOVE ME"));
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
         }));
@@ -96,6 +94,8 @@ impl actix::Supervised for TcpClientActor {
         self.restarted = true;
     }
 }
+
+impl actix::io::WriteHandler<LinesCodecError> for TcpClientActor {}
 
 impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TcpClientActorError>;
