@@ -10,6 +10,7 @@ use tokio::io::WriteHalf;
 use tokio_util::codec::LinesCodec;
 use tokio::net::TcpStream;
 use tornado_common_api;
+use futures::StreamExt;
 
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
@@ -51,18 +52,29 @@ impl Actor for TcpClientActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+
         info!("TcpClientActor started. Attempting connection to server [{:?}]", &self.address);
+        let socket_address = net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
             delay_until += time::Duration::new(1, 0)
         }
 
-        let socket_address = net::SocketAddr::from_str(self.address.as_str()).unwrap();
-
+        ctx.wait(async move {
+            time::delay_until(delay_until).await;
+            TcpStream::connect(&socket_address).await
+        }.into_actor(self)
+            .map(move |stream, act, ctx| {
+                info!("TcpClientActor connected to server [{:?}]", &act.address);
+                //let (_r, w) = stream.expect("REMOVE ME").split();
+                let (_r, w) = tokio::io::split(stream.expect("REMOVE ME"));
+                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+        }));
+/*
         time::delay_until(delay_until)
-            .map_err(|_| ())
-            .and_then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
+            //.map_err(|_| ())
+            .then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
             .into_actor(self)
             .map(move |stream, act, ctx| {
                 info!("TcpClientActor connected to server [{:?}]", &act.address);
@@ -74,6 +86,7 @@ impl Actor for TcpClientActor {
                 ctx.stop();
             })
             .wait(ctx);
+            */
     }
 }
 
