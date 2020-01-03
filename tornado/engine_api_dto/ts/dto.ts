@@ -21,9 +21,11 @@ export type ActionDto = { id: string; payload: Value };
 
 export type ConstraintDto = { WHERE: OperatorDto | null; WITH: { [key: string]: ExtractorDto } };
 
-export type ExtractorDto = { from: string; regex: ExtractorRegexDto };
+export type ExtractorDto = 
+ | {     type: "Regex"; from: string; regex: ExtractorRegexDto; multi:     boolean | null } 
+ | {     type: "RegexNamedGroups"; from: string; regex: string; multi:     boolean | null };
 
-export type ExtractorRegexDto = { match: string; group_match_idx: number };
+export type ExtractorRegexDto = { match: string; group_match_idx: number | null };
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
 

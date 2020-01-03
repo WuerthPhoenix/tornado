@@ -35,6 +35,13 @@
           "match": "([0-9]+\\sDegrees)",
           "group_match_idx": 2
         }
+      },
+      "all_temperatures": {
+        "from": "${event.payload.body}",
+        "multi": true,
+        "regex": {
+          "match": "([0-9]+\\sDegrees)"
+        }
       }
     }
   },

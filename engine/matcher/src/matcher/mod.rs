@@ -576,9 +576,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -664,9 +665,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -709,9 +711,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -853,9 +856,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -896,9 +900,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -912,9 +917,10 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[em]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[em]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -960,9 +966,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -976,9 +983,10 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1023,9 +1031,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.array[1]}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1072,9 +1081,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.map.key1}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1548,9 +1558,10 @@ mod test {
 
         rule_0.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1558,9 +1569,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1770,9 +1782,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: Some(0) },
             },
         );
 
@@ -1786,9 +1799,10 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted"),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0) },
             },
         );
 

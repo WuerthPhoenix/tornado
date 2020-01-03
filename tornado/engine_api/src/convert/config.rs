@@ -101,7 +101,14 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
 }
 
 pub fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
-    ExtractorDto { from: extractor.from, regex: extractor_regex_into_dto(extractor.regex) }
+    match extractor {
+        Extractor::Regex { from, regex, multi } => {
+            ExtractorDto::Regex { from, regex: extractor_regex_into_dto(regex), multi }
+        }
+        Extractor::RegexNamedGroups { from, regex, multi } => {
+            ExtractorDto::RegexNamedGroups { from, regex, multi }
+        }
+    }
 }
 
 pub fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDto {

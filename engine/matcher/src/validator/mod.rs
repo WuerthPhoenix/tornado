@@ -254,9 +254,10 @@ mod test {
 
         rule_1.constraint.with.insert(
             "var.with.dot".to_owned(),
-            Extractor {
+            Extractor::Regex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+                multi: None,
+                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0) },
             },
         );
 
