@@ -125,6 +125,15 @@ mod test {
             }
             _ => assert!(false),
         }
+
+        match &rule.constraint.with["all_temperatures_named"] {
+            Extractor::RegexNamedGroups { from, regex, multi } => {
+                assert_eq!("(?P<DEGREES>[0-9]+\\sDegrees)", regex);
+                assert_eq!("${event.payload.body}", from);
+                assert_eq!(multi, &Some(true));
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]

@@ -42,6 +42,11 @@
         "regex": {
           "match": "([0-9]+\\sDegrees)"
         }
+      },
+      "all_temperatures_named": {
+        "from": "${event.payload.body}",
+        "multi": true,
+        "regex": "(?P<DEGREES>[0-9]+\\sDegrees)"
       }
     }
   },
