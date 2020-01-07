@@ -236,5 +236,4 @@ mod test {
         setup_logger(&conf).unwrap();
     }
     */
-
 }

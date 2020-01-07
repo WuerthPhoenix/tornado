@@ -26,7 +26,7 @@ pub struct ConstraintDto {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ExtractorDto {
     pub from: String,
-    pub regex: ExtractorRegexDto
+    pub regex: ExtractorRegexDto,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
@@ -36,13 +36,13 @@ pub enum ExtractorRegexDto {
         #[serde(rename = "match")]
         regex: String,
         group_match_idx: Option<usize>,
-        all_matches: Option<bool>
+        all_matches: Option<bool>,
     },
     RegexNamedGroups {
         #[serde(rename = "named_match")]
         regex: String,
-        all_matches: Option<bool>
-    }
+        all_matches: Option<bool>,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]

@@ -14,10 +14,9 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
         web::resource("/config").route(web::get().to_async(move |req| http_clone.get_config(req))),
     );
 
-    let http_clone = http.clone();
     scope = scope.service(
         web::resource("/send_event")
-            .route(web::post().to_async(move |req, body| http_clone.send_event(req, body))),
+            .route(web::post().to_async(move |req, body| http.send_event(req, body))),
     );
 
     scope

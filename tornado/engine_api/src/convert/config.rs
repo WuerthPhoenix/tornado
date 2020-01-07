@@ -101,7 +101,7 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
 }
 
 pub fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
-    ExtractorDto{ from: extractor.from, regex: extractor_regex_into_dto(extractor.regex) }
+    ExtractorDto { from: extractor.from, regex: extractor_regex_into_dto(extractor.regex) }
 }
 
 pub fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDto {

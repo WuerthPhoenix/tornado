@@ -32,7 +32,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             icinga2_config.icinga2_collector.tornado_event_socket_port
         );
         let tcp_client_addr = TcpClientActor::start_new(
-            tornado_tcp_address.clone(),
+            tornado_tcp_address,
             icinga2_config.icinga2_collector.message_queue_size,
         );
 

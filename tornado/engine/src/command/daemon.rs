@@ -118,7 +118,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         let web_server_port = daemon_config.web_server_port;
         let matcher_config = configs.matcher_config;
 
-        let api_handler = Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr.clone()));
+        let api_handler = Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr));
 
         // Start API and monitoring endpoint
         HttpServer::new(move || {
