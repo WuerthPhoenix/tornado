@@ -29,17 +29,25 @@ pub struct Constraint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Extractor {
-    Regex { from: String, regex: ExtractorRegex, multi: Option<bool> },
-    RegexNamedGroups { from: String, regex: String, multi: Option<bool> },
+pub struct Extractor {
+    pub from: String,
+    pub regex: ExtractorRegex
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExtractorRegex {
-    #[serde(rename = "match")]
-    pub regex: String,
-    pub group_match_idx: Option<usize>,
+#[serde(untagged)]
+pub enum ExtractorRegex {
+    Regex {
+        #[serde(rename = "match")]
+        regex: String,
+        group_match_idx: Option<usize>,
+        all_matches: Option<bool>
+    },
+    RegexNamedGroups {
+        #[serde(rename = "named_match")]
+        regex: String,
+        all_matches: Option<bool>
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

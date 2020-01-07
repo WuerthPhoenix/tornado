@@ -38,15 +38,16 @@
       },
       "all_temperatures": {
         "from": "${event.payload.body}",
-        "multi": true,
         "regex": {
-          "match": "([0-9]+\\sDegrees)"
+          "match": "([0-9]+\\sDegrees)",
+          "all_matches": true
         }
       },
       "all_temperatures_named": {
         "from": "${event.payload.body}",
-        "multi": true,
-        "regex": "(?P<DEGREES>[0-9]+\\sDegrees)"
+        "regex": {
+          "named_match": "(?P<DEGREES>[0-9]+\\sDegrees)"
+        }
       }
     }
   },
