@@ -666,24 +666,24 @@ It will generate this Action:
 
 ### The 'WITH' Clause - Configuration details
 
-As seen in the previous chapter, the _WITH_ clause generates 
+As already seen in the previous section, the _WITH_ clause generates 
 variables extracted from the Event using regular expressions.
-There are multiple ways of configuring those regex
-to obtain a different result.
+There are multiple ways of configuring those regexes
+to obtain the desired result.
 
-There are, essentially, three parameters that combined define the 
-behavior of the extractor:
-- **all_matches**: whether our regex has to loop trough all the matches or if only the first one has to be taken into account. 
-Accpeted values are _true_ and _false_ . If omitted, it defaults to _false_
+There are, essentially, three parameters that, combined, define the 
+behavior of an extractor:
+- **all_matches**: whether the regex will loop through all the matches or only the first one will be considered. 
+Accepted values are _true_ and _false_. If omitted, it defaults to _false_
 - **match** or **named_match**: a string value representing the
-regex to be executed. **match** is used for index based regex while 
-**named_match** is used for regex with named groups.
-They cannot be used together.
-- **group_match_idx**: valid only in case of index based regex.
-This is a positive numeric value that indicates which group of the match has to be extracted.
-If omitted, an array with all the groups is returned.
+regex to be executed. **match** is used in case of an index based regex while 
+**named_match** is used when named groups are present.
+They exclude each other.
+- **group_match_idx**: valid only in case of an index based regex.
+It is a positive numeric value that indicates which group of the match has to be extracted.
+If omitted, an array with all groups is returned.
 
-To show how they work and what is the produced output, we'll use this hypotetical email body as input:
+To show how they work and what is the produced output, from now on, we'll use this hypotetical email body as input:
 ```
 A critical event has been received:
 
@@ -691,7 +691,7 @@ STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3
 STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231
 ```
 
-Let's imagine that we need to parse the body to extract information
+Our objective is to extract from it information
 about the host status, name and service name.
 
 *Option 1*
@@ -733,10 +733,10 @@ any regex the group with index 0 always represents the full match.
 This extractor:
 - processes only the first match because *all_matches* is _false_
 - uses an index based regex specified by *match*
-- returns an array with all the groups of the match
+- returns an array with all groups of the match
 because *group_match_idx* is omitted.
 
-In this case the output will be an array of string:
+In this case the output will be an array of strings:
 ```
 [
   "STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3",
@@ -760,15 +760,15 @@ In this case the output will be an array of string:
     }
 ```
 This extractor:
-- processes all the matches because *all_matches* is _true_
+- processes all matches because *all_matches* is _true_
 - uses an index based regex specified by *match*
 - for each match, returns the group of index 2
 
-In this case the output will be an array of string:
+In this case the output will be an array of strings:
 ```
 [
-  "MYVALUE2", <-- first match, group of index 2
-  "MYHOST"    <-- second match, group of index 2
+  "MYVALUE2", <-- group of index 2 of the first match
+  "MYHOST"    <-- group of index 2 of the second match
 ]
 ```
 
@@ -785,9 +785,9 @@ In this case the output will be an array of string:
     }
 ```
 This extractor:
-- processes all the matches because *all_matches* is _true_
+- processes all matches because *all_matches* is _true_
 - uses an index based regex specified by *match*
-- for each match, returns an array with all the groups of the match
+- for each match, returns an array with all groups of the match
 because *group_match_idx* is omitted.
 
 In this case the output will be an array of arrays of strings:
@@ -808,8 +808,67 @@ In this case the output will be an array of arrays of strings:
 ]
 ```
 
-The inner array in position 0 contains all the groups of the first match
+The inner array, in position 0, contains all the groups of the first match
 while the one in position 1 contains the groups of the second match.
+
+*Option 5*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "named_match": "STATUS:\s+(?P<STATUS>.*)\s+HOSTNAME:\s+(?P<HOSTNAME>.*)SERVICENAME:\s+(?P<SERVICENAME>.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because *all_matches* is omitted
+- uses a regex with named groups specified by *named_match*
+
+In this case the output is an object where the 
+group names are the property keys:
+```
+{
+  "STATUS": "CRITICAL",
+  "HOSTNAME": "MYVALUE2",
+  "SERVICENAME: "MYVALUE3"
+}
+```
+
+*Option 6*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "named_match": "STATUS:\s+(?P<STATUS>.*)\s+HOSTNAME:\s+(?P<HOSTNAME>.*)SERVICENAME:\s+(?P<SERVICENAME>.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes all matches because *all_matches* is _true_
+- uses a regex with named groups specified by *named_match*
+
+In this case the output is an array that contains one object
+for each match:
+```
+[
+  {
+    "STATUS": "CRITICAL",
+    "HOSTNAME": "MYVALUE2",
+    "SERVICENAME: "MYVALUE3"
+  },
+  {
+    "STATUS": "OK",
+    "HOSTNAME": "MYHOST",
+    "SERVICENAME: "MYVALUE41231"
+  },
+]
+```
+
 
 ### Complete Rule Example 1
 
