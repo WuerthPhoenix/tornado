@@ -133,34 +133,34 @@ impl MatcherExtractor {
 
 #[derive(Debug)]
 enum ValueExtractor {
-    RegexSingleMatchSingleGroup {
+    SingleMatchSingleGroup {
         scoped_key: String,
         regex: RustRegex,
         group_match_idx: usize,
         target: Accessor,
     },
-    RegexAllMatchesSingleGroup {
+    AllMatchesSingleGroup {
         scoped_key: String,
         regex: RustRegex,
         group_match_idx: usize,
         target: Accessor,
     },
-    RegexSingleMatchAllGroups {
+    SingleMatchAllGroups {
         scoped_key: String,
         regex: RustRegex,
         target: Accessor,
     },
-    RegexAllMatchesAllGroups {
+    AllMatchesAllGroups {
         scoped_key: String,
         regex: RustRegex,
         target: Accessor,
     },
-    RegexSingleMatchNamedGroups {
+    SingleMatchNamedGroups {
         scoped_key: String,
         regex: RustRegex,
         target: Accessor,
     },
-    RegexAllMatchesNamedGroups {
+    AllMatchesNamedGroups {
         scoped_key: String,
         regex: RustRegex,
         target: Accessor,
@@ -188,17 +188,24 @@ impl ValueExtractor {
 
                 let all_matches = all_matches.unwrap_or(false);
 
+                if has_named_groups(&rust_regex) {
+                    warn!(
+                        "The regex [{}] has named groups but the extractor is index based.",
+                        regex
+                    );
+                }
+
                 match group_match_idx {
                     Some(group_match_idx) => {
                         if all_matches {
-                            Ok(ValueExtractor::RegexAllMatchesSingleGroup {
+                            Ok(ValueExtractor::AllMatchesSingleGroup {
                                 scoped_key,
                                 target,
                                 group_match_idx: *group_match_idx,
                                 regex: rust_regex,
                             })
                         } else {
-                            Ok(ValueExtractor::RegexSingleMatchSingleGroup {
+                            Ok(ValueExtractor::SingleMatchSingleGroup {
                                 scoped_key,
                                 target,
                                 group_match_idx: *group_match_idx,
@@ -208,13 +215,13 @@ impl ValueExtractor {
                     }
                     None => {
                         if all_matches {
-                            Ok(ValueExtractor::RegexAllMatchesAllGroups {
+                            Ok(ValueExtractor::AllMatchesAllGroups {
                                 scoped_key,
                                 target,
                                 regex: rust_regex,
                             })
                         } else {
-                            Ok(ValueExtractor::RegexSingleMatchAllGroups {
+                            Ok(ValueExtractor::SingleMatchAllGroups {
                                 scoped_key,
                                 target,
                                 regex: rust_regex,
@@ -229,14 +236,24 @@ impl ValueExtractor {
                         message: format!("Cannot parse regex [{}]", regex),
                         cause: e.to_string(),
                     })?;
+
+                if !has_named_groups(&rust_regex) {
+                    return Err(MatcherError::ConfigurationError {
+                        message: format!(
+                            "The regex [{}] has no named groups but it is used in named_match.",
+                            regex
+                        ),
+                    });
+                }
+
                 if all_matches.unwrap_or(false) {
-                    Ok(ValueExtractor::RegexAllMatchesNamedGroups {
+                    Ok(ValueExtractor::AllMatchesNamedGroups {
                         regex: rust_regex,
                         scoped_key,
                         target,
                     })
                 } else {
-                    Ok(ValueExtractor::RegexSingleMatchNamedGroups {
+                    Ok(ValueExtractor::SingleMatchNamedGroups {
                         regex: rust_regex,
                         scoped_key,
                         target,
@@ -254,7 +271,7 @@ impl ValueExtractor {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
             // however, we can use an optimized logic if we know beforehand that only the first capture is required
-            ValueExtractor::RegexSingleMatchSingleGroup {
+            ValueExtractor::SingleMatchSingleGroup {
                 regex, group_match_idx, target, ..
             } => {
                 let cow_value = target.get(event, extracted_vars)?;
@@ -264,7 +281,7 @@ impl ValueExtractor {
                     .get(*group_match_idx)
                     .map(|matched| Value::Text(matched.as_str().to_owned()))
             }
-            ValueExtractor::RegexAllMatchesSingleGroup {
+            ValueExtractor::AllMatchesSingleGroup {
                 regex, group_match_idx, target, ..
             } => {
                 let cow_value = target.get(event, extracted_vars)?;
@@ -287,7 +304,7 @@ impl ValueExtractor {
                     None
                 }
             }
-            ValueExtractor::RegexSingleMatchAllGroups { regex, target, .. } => {
+            ValueExtractor::SingleMatchAllGroups { regex, target, .. } => {
                 let cow_value = target.get(event, extracted_vars)?;
                 let text = cow_value.get_text()?;
                 let captures = regex.captures(text)?;
@@ -298,7 +315,7 @@ impl ValueExtractor {
                     None
                 }
             }
-            ValueExtractor::RegexAllMatchesAllGroups { regex, target, .. } => {
+            ValueExtractor::AllMatchesAllGroups { regex, target, .. } => {
                 let cow_value = target.get(event, extracted_vars)?;
                 let text = cow_value.get_text()?;
 
@@ -316,7 +333,7 @@ impl ValueExtractor {
                     None
                 }
             }
-            ValueExtractor::RegexSingleMatchNamedGroups { regex, target, .. } => {
+            ValueExtractor::SingleMatchNamedGroups { regex, target, .. } => {
                 let cow_value = target.get(event, extracted_vars)?;
                 let text = cow_value.get_text()?;
 
@@ -329,7 +346,7 @@ impl ValueExtractor {
                 };
                 None
             }
-            ValueExtractor::RegexAllMatchesNamedGroups { regex, target, .. } => {
+            ValueExtractor::AllMatchesNamedGroups { regex, target, .. } => {
                 println!("multi");
                 let cow_value = target.get(event, extracted_vars)?;
                 let text = cow_value.get_text()?;
@@ -355,12 +372,12 @@ impl ValueExtractor {
 
     pub fn scoped_key(&self) -> &str {
         match self {
-            ValueExtractor::RegexSingleMatchSingleGroup { scoped_key, .. } => scoped_key,
-            ValueExtractor::RegexAllMatchesSingleGroup { scoped_key, .. } => scoped_key,
-            ValueExtractor::RegexSingleMatchAllGroups { scoped_key, .. } => scoped_key,
-            ValueExtractor::RegexAllMatchesAllGroups { scoped_key, .. } => scoped_key,
-            ValueExtractor::RegexSingleMatchNamedGroups { scoped_key, .. } => scoped_key,
-            ValueExtractor::RegexAllMatchesNamedGroups { scoped_key, .. } => scoped_key,
+            ValueExtractor::SingleMatchSingleGroup { scoped_key, .. } => scoped_key,
+            ValueExtractor::AllMatchesSingleGroup { scoped_key, .. } => scoped_key,
+            ValueExtractor::SingleMatchAllGroups { scoped_key, .. } => scoped_key,
+            ValueExtractor::AllMatchesAllGroups { scoped_key, .. } => scoped_key,
+            ValueExtractor::SingleMatchNamedGroups { scoped_key, .. } => scoped_key,
+            ValueExtractor::AllMatchesNamedGroups { scoped_key, .. } => scoped_key,
         }
     }
 }
@@ -389,6 +406,15 @@ fn get_indexed_groups(captures: &Captures) -> Option<Vec<Value>> {
         }
     }
     Some(groups)
+}
+
+fn has_named_groups(regex: &RustRegex) -> bool {
+    for name in regex.capture_names() {
+        if name.is_some() {
+            return true;
+        }
+    }
+    false
 }
 
 #[cfg(test)]
@@ -1043,6 +1069,37 @@ mod test {
                 ]),
             ]),
         );
+    }
+
+    #[test]
+    fn should_return_whether_the_regex_has_named_groups() {
+        // Arrange
+        let no_named_regex = RustRegex::new(r"(https?|ftp)://([^.\n]+).([^.\n]*)?").unwrap();
+        let partially_named_regex =
+            RustRegex::new(r"(https?|ftp)://([^.\n]+).(?P<PID>[0-9]+)\s+([^.\n]*)?").unwrap();
+        let named_regex = RustRegex::new(r#"(?P<PID>[0-9]+)\s+(?P<Time>[0-9:]+)\s+(?P<UserId>[0-9]+)\s+(?P<UserName>\w+)\s+(?P<ServerName>\w+)\s+(?P<Level>[0-9]+)"#).unwrap();
+
+        // Assert
+        assert!(!has_named_groups(&no_named_regex));
+        assert!(has_named_groups(&partially_named_regex));
+        assert!(has_named_groups(&named_regex));
+    }
+
+    #[test]
+    fn build_should_fail_if_named_match_has_no_named_groups() {
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "&{event.payload}".to_string(),
+                regex: ExtractorRegex::RegexNamedGroups {
+                    regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
+                    all_matches: None,
+                },
+            },
+            &AccessorBuilder::new(),
+        );
+        assert!(extractor.is_err());
     }
 
     fn new_event(event_type: &str) -> InternalEvent {
