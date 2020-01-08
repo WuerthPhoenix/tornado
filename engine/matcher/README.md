@@ -664,6 +664,46 @@ It will generate this Action:
     }
 ```
 
+### The 'WITH' Clause - Configuration details
+
+As seen in the previous chapter, the _WITH_ clause generates 
+variables extracted from the Event using regular expressions.
+There are multiple ways of configuring those regex
+to obtain a different result.
+
+There are, essentially, three parameters that combined define the 
+behavior of the extractor:
+- **all_matches**: whether our regex has to loop trough all the matches or if only the first one has to be taken into account. 
+Accpeted values are _true_ and _false_ . If omitted, it defaults to _false_
+- **group_match_idx**: valid only in case of index based regex.
+This is a positive numeric value that indicates which group of the match has to be extracted.
+If omitted, an array with all the groups is returned.
+- **match** or **named_match**: a string value representing the
+regex to be executed. **match** is used for index based regex while 
+**named_match** is used for regex with named groups.
+They cannot be used together.
+
+First of all, we can decide if our regex has to loop trough all the matches or if we need only the first one.
+In addition, we can opt or not to use a regex with named groups.
+
+
+
+
+To demonstrate what can be achieved, we'll use this email body as input:
+```
+A critical event has been received:
+
+STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3
+STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231
+```
+
+Let's imagine that we need to parse the body to extract information
+about the host status, name and service name.
+
+
+
+
+
 
 ### Complete Rule Example 1
 
