@@ -675,21 +675,15 @@ There are, essentially, three parameters that combined define the
 behavior of the extractor:
 - **all_matches**: whether our regex has to loop trough all the matches or if only the first one has to be taken into account. 
 Accpeted values are _true_ and _false_ . If omitted, it defaults to _false_
-- **group_match_idx**: valid only in case of index based regex.
-This is a positive numeric value that indicates which group of the match has to be extracted.
-If omitted, an array with all the groups is returned.
 - **match** or **named_match**: a string value representing the
 regex to be executed. **match** is used for index based regex while 
 **named_match** is used for regex with named groups.
 They cannot be used together.
+- **group_match_idx**: valid only in case of index based regex.
+This is a positive numeric value that indicates which group of the match has to be extracted.
+If omitted, an array with all the groups is returned.
 
-First of all, we can decide if our regex has to loop trough all the matches or if we need only the first one.
-In addition, we can opt or not to use a regex with named groups.
-
-
-
-
-To demonstrate what can be achieved, we'll use this email body as input:
+To show how they work and what is the produced output, we'll use this hypotetical email body as input:
 ```
 A critical event has been received:
 
@@ -700,10 +694,122 @@ STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231
 Let's imagine that we need to parse the body to extract information
 about the host status, name and service name.
 
+*Option 1*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": false,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)",
+          "group_match_idx": 1
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because *all_matches* is _false_
+- uses an index based regex specified by *match*
+- returns the group of index 1
 
+In this case the output will be the string _"CRITICAL"_.
 
+Please note that, if the *group_match_idx* was 0, it would have returned 
+*"STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3"* as in
+any regex the group with index 0 always represents the full match.
 
+*Option 2*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": false,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because *all_matches* is _false_
+- uses an index based regex specified by *match*
+- returns an array with all the groups of the match
+because *group_match_idx* is omitted.
 
+In this case the output will be an array of string:
+```
+[
+  "STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3",
+  "CRITICAL",
+  "MYVALUE2",
+  "MYVALUE3"
+]
+```
+
+*Option 3*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)",
+          "group_match_idx": 2
+        }
+      }
+    }
+```
+This extractor:
+- processes all the matches because *all_matches* is _true_
+- uses an index based regex specified by *match*
+- for each match, returns the group of index 2
+
+In this case the output will be an array of string:
+```
+[
+  "MYVALUE2", <-- first match, group of index 2
+  "MYHOST"    <-- second match, group of index 2
+]
+```
+
+*Option 4*
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes all the matches because *all_matches* is _true_
+- uses an index based regex specified by *match*
+- for each match, returns an array with all the groups of the match
+because *group_match_idx* is omitted.
+
+In this case the output will be an array of arrays of strings:
+```
+[
+  [
+    "STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3",
+    "CRITICAL",
+    "MYVALUE2",
+    "MYVALUE3"
+  ],
+  [
+    "STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231",
+    "OK",
+    "MYHOST",
+    "MYVALUE41231"
+  ]
+]
+```
+
+The inner array in position 0 contains all the groups of the first match
+while the one in position 1 contains the groups of the second match.
 
 ### Complete Rule Example 1
 
