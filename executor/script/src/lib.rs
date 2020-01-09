@@ -206,7 +206,6 @@ mod test {
         // Assert
         assert_eq!(expected_final_script, script);
     }
-
 }
 
 #[cfg(all(test, unix))]
@@ -325,5 +324,4 @@ mod test_unix {
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
-
 }

@@ -286,5 +286,4 @@ mod test {
 
         assert_eq!("true", operator.name());
     }
-
 }

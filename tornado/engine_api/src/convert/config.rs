@@ -105,8 +105,12 @@ pub fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
 }
 
 pub fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDto {
-    ExtractorRegexDto {
-        group_match_idx: extractor_regex.group_match_idx,
-        regex: extractor_regex.regex,
+    match extractor_regex {
+        ExtractorRegex::Regex { regex, all_matches, group_match_idx } => {
+            ExtractorRegexDto::Regex { regex, all_matches, group_match_idx }
+        }
+        ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
+            ExtractorRegexDto::RegexNamedGroups { regex, all_matches }
+        }
     }
 }

@@ -60,5 +60,4 @@ mod test {
         let value = &*received.lock().unwrap();
         assert_eq!(action_id, value)
     }
-
 }

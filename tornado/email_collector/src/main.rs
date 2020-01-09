@@ -30,12 +30,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             collector_config.email_collector.tornado_event_socket_port
         );
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
-            tornado_tcp_address.clone(),
+            tornado_tcp_address,
             collector_config.email_collector.message_queue_size,
         );
 
         // Start Email collector
-        let email_addr = EmailReaderActor::start_new(tpc_client_addr.clone());
+        let email_addr = EmailReaderActor::start_new(tpc_client_addr);
 
         // Open UDS socket
         listen_to_uds_socket(

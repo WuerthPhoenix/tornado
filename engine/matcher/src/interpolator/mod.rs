@@ -601,5 +601,4 @@ mod test {
             .unwrap()
             .is_interpolation_required());
     }
-
 }

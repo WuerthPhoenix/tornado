@@ -99,5 +99,4 @@ mod test {
         expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
     }
-
 }

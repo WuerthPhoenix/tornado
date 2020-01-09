@@ -53,5 +53,4 @@ mod test {
         // Assert
         assert_eq!("some text", result.as_string().unwrap());
     }
-
 }

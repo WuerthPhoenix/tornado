@@ -141,5 +141,4 @@ mod test {
         assert!(id.validate_action_id(" ", "rule").is_err());
         assert!(id.validate_action_id("!", "rule").is_err());
     }
-
 }

@@ -377,5 +377,4 @@ mod test {
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
-
 }
