@@ -568,10 +568,11 @@ These variables can then be used to populate an Action payload.
 
 All variables declared by a Rule must be resolved, or else the Rule will not be matched.
 
-Two simple rules restrict accessing and using extracted variables:
+Two simple rules restrict the access and use of the extracted variables:
 1. Because they are evaluated after the _WHERE_ clause is parsed, any extracted variables declared
    inside the _WITH_ clause are not accessible by the _WHERE_ clause of the very same rule
-2. A rule can use extracted variables declared by other rules, even in its _WHERE_ clause, but:
+2. A rule can use extracted variables declared by other rules, even in its _WHERE_ clause, provided
+   that:
    - The two rules must belong to the same rule set
    - The rule attempting to use those variables should be executed after the one that declares them
    - The rule that declares the variables should also match the event
@@ -580,7 +581,7 @@ The syntax for accessing an extracted variable has the form:
 
 **_variables.**[*.RULE_NAME*].*VARIABLES_NAME*
 
-If the *RULE_NAME* is omitted, the current rule name is automatically inferred.
+If the *RULE_NAME* is omitted, the current rule name is automatically selected.
 
 
 Example:
@@ -664,10 +665,213 @@ It will generate this Action:
     }
 ```
 
+### The 'WITH' Clause - Configuration details
+
+As already seen in the previous section, the _WITH_ clause generates 
+variables extracted from the Event using regular expressions.
+There are multiple ways of configuring those regexes
+to obtain the desired result.
+
+Essentially, three parameters combined will define the behavior of an extractor:
+- **all_matches**: whether the regex will loop through all the matches or only the first one will be considered. 
+Accepted values are _true_ and _false_. If omitted, it defaults to _false_
+- **match** or **named_match**: a string value representing the regex to be executed. **match** is
+used in case of an index-based regex, while **named_match** is used when named groups are
+present. Note that they are mutually exclusive.
+- **group_match_idx**: valid only in case of an index-based regex.
+It is a positive numeric value that indicates which group of the match has to be extracted.
+If omitted, an array with **all** groups is returned.
+
+To show how they work and what is the produced output, from now on, we'll use this hypotetical email body as input:
+```
+A critical event has been received:
+
+STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3
+STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231
+```
+
+Our objective is to extract from it information about the host status and name, and the service
+name. We show how using different extractors leads to different results.
+
+**Option 1** 
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": false,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)",
+          "group_match_idx": 1
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because **all_matches** is _false_
+- uses an index-based regex specified by **match**
+- returns the group of index **1**
+
+In this case the output will be the string _"CRITICAL"_.
+
+Please note that, if the *group_match_idx* was 0, it would have returned 
+*"STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3"* as in
+any regex the group with index 0 always represents the full match.
+
+**Option 2**
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": false,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because **all_matches** is _false_
+- uses an index-based regex specified by **match**
+- returns an array with **all** groups of the match
+because *group_match_idx* is omitted.
+
+In this case the output will be an array of strings:
+```
+[
+  "STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3",
+  "CRITICAL",
+  "MYVALUE2",
+  "MYVALUE3"
+]
+```
+
+**Option 3**
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)",
+          "group_match_idx": 2
+        }
+      }
+    }
+```
+This extractor:
+- processes all matches because **all_matches** is _true_
+- uses an index-based regex specified by **match**
+- for each match, returns the group of index **2**
+
+In this case the output will be an array of strings:
+```
+[
+  "MYVALUE2", <-- group of index 2 of the first match
+  "MYHOST"    <-- group of index 2 of the second match
+]
+```
+
+**Option 4**
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes all matches because **all_matches** is _true_
+- uses an index-based regex specified by **match**
+- for each match, returns an array with **all** groups of the match
+because *group_match_idx* is omitted.
+
+In this case the output will be an array of arrays of strings:
+```
+[
+  [
+    "STATUS: CRITICAL HOSTNAME: MYVALUE2 SERVICENAME: MYVALUE3",
+    "CRITICAL",
+    "MYVALUE2",
+    "MYVALUE3"
+  ],
+  [
+    "STATUS: OK HOSTNAME: MYHOST SERVICENAME: MYVALUE41231",
+    "OK",
+    "MYHOST",
+    "MYVALUE41231"
+  ]
+]
+```
+
+The inner array, in position 0, contains all the groups of the first match
+while the one in position 1 contains the groups of the second match.
+
+**Option 5**
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "named_match": "STATUS:\s+(?P<STATUS>.*)\s+HOSTNAME:\s+(?P<HOSTNAME>.*)SERVICENAME:\s+(?P<SERVICENAME>.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes only the first match because **all_matches** is omitted
+- uses a regex with named groups specified by **named_match**
+
+In this case the output is an object where the 
+group names are the property keys:
+```
+{
+  "STATUS": "CRITICAL",
+  "HOSTNAME": "MYVALUE2",
+  "SERVICENAME: "MYVALUE3"
+}
+```
+
+**Option 6**
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": true,
+          "named_match": "STATUS:\s+(?P<STATUS>.*)\s+HOSTNAME:\s+(?P<HOSTNAME>.*)SERVICENAME:\s+(?P<SERVICENAME>.*)"
+        }
+      }
+    }
+```
+This extractor:
+- processes all matches because **all_matches** is _true_
+- uses a regex with named groups specified by **named_match**
+
+In this case the output is an array that contains one object
+for each match:
+```
+[
+  {
+    "STATUS": "CRITICAL",
+    "HOSTNAME": "MYVALUE2",
+    "SERVICENAME: "MYVALUE3"
+  },
+  {
+    "STATUS": "OK",
+    "HOSTNAME": "MYHOST",
+    "SERVICENAME: "MYVALUE41231"
+  },
+]
+```
+
 
 ### Complete Rule Example 1
 
-An example of valid content for a Rule JSON file is:
+An example of a valid Rule in a JSON file is:
 ```json
 {
   "description": "This matches all emails containing a temperature measurement.",
