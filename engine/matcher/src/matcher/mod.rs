@@ -1891,6 +1891,115 @@ mod test {
         };
     }
 
+    #[test]
+    fn extracted_variables_name_collisions_should_prioritize_the_local_rule() {
+        // Arrange
+        let rule_1 = {
+            let mut rule = new_rule("first", None);
+            rule.constraint.with.insert(
+                String::from("VALUE"),
+                Extractor {
+                    from: String::from("${event.payload.value}"),
+                    regex: ExtractorRegex::Regex {
+                        regex: String::from(r"[a-z]+"),
+                        group_match_idx: Some(0),
+                        all_matches: None,
+                    },
+                },
+            );
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action
+                .payload
+                .insert("value".to_owned(), Value::Text("${_variables.VALUE}".to_owned()));
+            rule.actions.push(action);
+            rule
+        };
+
+        let rule_2 = {
+            let mut rule = new_rule("rule2", None);
+            rule.constraint.with.insert(
+                String::from("first"),
+                Extractor {
+                    from: String::from("${event.payload.value}"),
+                    regex: ExtractorRegex::RegexNamedGroups {
+                        regex: String::from(r"(?P<VALUE>[0-9]+)"),
+                        all_matches: None,
+                    },
+                },
+            );
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action
+                .payload
+                .insert("value".to_owned(), Value::Text("${_variables.first.VALUE}".to_owned()));
+            rule.actions.push(action);
+            rule
+        };
+
+        let rule_3 = {
+            let mut rule = new_rule("rule3", None);
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action
+                .payload
+                .insert("value".to_owned(), Value::Text("${_variables.first.VALUE}".to_owned()));
+            rule.actions.push(action);
+            rule
+        };
+
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule_1, rule_2, rule_3],
+        })
+            .expect("should create a matcher");
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(3, rules.rules.len());
+
+                assert_eq!(
+                    "aaa",
+                    rules
+                        .extracted_vars
+                        .get("first.VALUE")
+                        .expect("should contain rule1.extracted")
+                );
+
+                let mut vars = HashMap::new();
+                vars.insert("VALUE".to_owned(), Value::Text("999".to_owned()));
+
+                assert_eq!(
+                    &Value::Map(vars),
+                    rules
+                        .extracted_vars
+                        .get("rule2.first")
+                        .expect("should contain rule2.extracted")
+                );
+
+                let rule_1_processed = rules.rules.get(0).expect("should contain rule1");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+
+                let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+               dd  assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
+
+                let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
+                assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
+            }
+            _ => assert!(false),
+        };
+    }
+
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         //crate::test_root::start_context();
         Matcher::build(config)
