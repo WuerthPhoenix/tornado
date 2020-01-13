@@ -1990,7 +1990,7 @@ mod test {
 
                 let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-               dd  assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
+                assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
 
                 let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
