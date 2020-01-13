@@ -3,6 +3,7 @@
 members = [
    "common/api",
    "common/logger",
+   "common/parser",
    "collector/common",
    "collector/email",
    "collector/jmespath",

@@ -1,0 +1,17 @@
+[package]
+name = "tornado_common_parser"
+version = "0.0.1"
+authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
+edition = "2018"
+
+
+[dependencies]
+tornado_common_api = { path = "../api", version = "0.0.1" }
+failure = "0.1"
+failure_derive = "0.1"
+jmespath = "0.2.0"
+serde = "1.0"
+serde_derive = "1.0"
+
+[dev-dependencies]
+serde_json = "1.0"
