@@ -183,5 +183,4 @@ mod test {
         // Assert
         assert_eq!(2, received.lock().unwrap().len());
     }
-
 }

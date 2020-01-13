@@ -47,5 +47,4 @@ mod test {
         // Assert
         assert!(result);
     }
-
 }

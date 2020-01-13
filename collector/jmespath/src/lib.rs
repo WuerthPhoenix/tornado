@@ -533,7 +533,7 @@ mod test {
             .expect(&format!("Unable to open the file [{}]", output_path));
         let mut expected_event: Event = serde_json::from_str(&output_json)
             .map_err(|e| panic!("Cannot parse output json. Err: {}", e))
-            .unwrap();;
+            .unwrap();
 
         // Act
         let result = collector.to_event(&input_json);
@@ -546,5 +546,4 @@ mod test {
 
         assert_eq!(expected_event, result_event);
     }
-
 }

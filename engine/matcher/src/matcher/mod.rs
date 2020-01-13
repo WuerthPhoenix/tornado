@@ -578,7 +578,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -666,7 +670,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -711,7 +719,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -855,7 +867,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -898,7 +914,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -914,7 +934,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[em]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[em]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -962,7 +986,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[z]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -978,7 +1006,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex { regex: String::from(r"[ai]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[ai]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1025,7 +1057,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.array[1]}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[z]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1074,7 +1110,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.map.key1}"),
-                regex: ExtractorRegex { regex: String::from(r"[z]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[z]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1550,7 +1590,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[a-z]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1560,7 +1604,11 @@ mod test {
             String::from("extracted_temp"),
             Extractor {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1772,7 +1820,11 @@ mod test {
             String::from("extracted"),
             Extractor {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[a-z]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[a-z]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -1788,7 +1840,11 @@ mod test {
             String::from("extracted"),
             Extractor {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: 0 },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
