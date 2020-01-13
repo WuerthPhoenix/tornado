@@ -1933,6 +1933,9 @@ mod test {
             action
                 .payload
                 .insert("value".to_owned(), Value::Text("${_variables.first.VALUE}".to_owned()));
+            action
+                .payload
+                .insert("full".to_owned(), Value::Text("${_variables.first}".to_owned()));
             rule.actions.push(action);
             rule
         };
@@ -1976,9 +1979,9 @@ mod test {
 
                 let mut vars = HashMap::new();
                 vars.insert("VALUE".to_owned(), Value::Text("999".to_owned()));
-
+                let vars = Value::Map(vars);
                 assert_eq!(
-                    &Value::Map(vars),
+                    &vars,
                     rules
                         .extracted_vars
                         .get("rule2.first")
@@ -1990,6 +1993,7 @@ mod test {
 
                 let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                assert_eq!(&vars, rule_2_processed.actions[0].payload.get("full").unwrap());
                 assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
 
                 let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
