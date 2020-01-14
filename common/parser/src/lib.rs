@@ -1,7 +1,7 @@
 use failure_derive::Fail;
 use jmespath::{Rcvar, ToJmespath};
-use tornado_common_api::{Value, Payload, Number};
 use std::borrow::Cow;
+use tornado_common_api::{Number, Payload, Value};
 
 const EXPRESSION_START_DELIMITER: &str = "${";
 const EXPRESSION_END_DELIMITER: &str = "}";
@@ -16,58 +16,46 @@ pub enum ParserError {
 
 pub enum Parser {
     Exp(jmespath::Expression<'static>),
-    Val(Value)
+    Val(Value),
 }
 
 impl Parser {
-
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
         if text.starts_with(EXPRESSION_START_DELIMITER) && text.ends_with(EXPRESSION_END_DELIMITER)
         {
             let expression = &text
                 [EXPRESSION_START_DELIMITER.len()..(text.len() - EXPRESSION_END_DELIMITER.len())];
-            let jmespath_exp = jmespath::compile(expression).map_err(|err| {
-                ParserError::ConfigurationError {
-                    message: format!(
-                        "Not valid expression: [{}]. Err: {}",
-                        expression, err
-                    ),
-                }
-            })?;
+            let jmespath_exp =
+                jmespath::compile(expression).map_err(|err| ParserError::ConfigurationError {
+                    message: format!("Not valid expression: [{}]. Err: {}", expression, err),
+                })?;
             Ok(Parser::Exp(jmespath_exp))
         } else {
             Ok(Parser::Val(Value::Text(text.to_owned())))
         }
     }
 
-    pub fn parse_str<'o>(
-        &'o self,
-        value: &'o str,
-    ) -> Result<Cow<'o, Value>, ParserError> {
+    pub fn parse_str<'o>(&'o self, value: &'o str) -> Result<Cow<'o, Value>, ParserError> {
         match self {
-            Parser::Exp(exp) => search(exp, value).map(|val| Cow::Owned(val)),
-            Parser::Val(value) => Ok(Cow::Borrowed(value))
+            Parser::Exp(exp) => search(exp, value).map(Cow::Owned),
+            Parser::Val(value) => Ok(Cow::Borrowed(value)),
         }
     }
 
-    pub fn parse_value<'o>(
-        &'o self,
-        value: &'o Value,
-    ) -> Result<Cow<'o, Value>, ParserError> {
+    pub fn parse_value<'o>(&'o self, value: &'o Value) -> Result<Cow<'o, Value>, ParserError> {
         match self {
-            Parser::Exp(exp) => search(exp, value).map(|val| Cow::Owned(val)),
-            Parser::Val(value) => Ok(Cow::Borrowed(value))
+            Parser::Exp(exp) => search(exp, value).map(Cow::Owned),
+            Parser::Val(value) => Ok(Cow::Borrowed(value)),
         }
     }
-
 }
 
-fn search<T: ToJmespath>(exp: &jmespath::Expression<'static>, data: T) -> Result<Value, ParserError> {
+fn search<T: ToJmespath>(
+    exp: &jmespath::Expression<'static>,
+    data: T,
+) -> Result<Value, ParserError> {
     let search_result = exp.search(data).map_err(|e| ParserError::ParsingError {
-        message: format!(
-            "Expression failed to execute. Exp: {}. Error: {}",
-            exp, e
-        ),
+        message: format!("Expression failed to execute. Exp: {}. Error: {}", exp, e),
     })?;
     variable_to_value(&search_result)
 }

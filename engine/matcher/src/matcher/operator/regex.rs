@@ -34,7 +34,7 @@ impl Operator for Regex {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> bool {
         let cow_value = self.target.get(event, extracted_vars);
         cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))

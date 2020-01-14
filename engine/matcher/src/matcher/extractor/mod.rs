@@ -65,7 +65,7 @@ impl MatcherExtractorBuilder {
     ///    assert_eq!(1, extracted_vars.len());
     ///    assert_eq!(
     ///        "44",
-    ///        extracted_vars.get("rule_name.extracted_temp").unwrap()
+    ///        extracted_vars.get("rule_name").unwrap().get("extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -73,7 +73,8 @@ impl MatcherExtractorBuilder {
         rule_name: &str,
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
-        let mut matcher_extractor = MatcherExtractor { extractors: HashMap::new() };
+        let mut matcher_extractor =
+            MatcherExtractor { rule_name: rule_name.to_owned(), extractors: HashMap::new() };
         for (key, extractor) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
@@ -92,6 +93,7 @@ impl MatcherExtractorBuilder {
 
 #[derive(Debug)]
 pub struct MatcherExtractor {
+    rule_name: String,
     extractors: HashMap<String, ValueExtractor>,
 }
 
@@ -111,12 +113,16 @@ impl MatcherExtractor {
     pub fn process_all(
         &self,
         event: &InternalEvent,
-        extracted_vars: &mut HashMap<String, Value>,
+        extracted_vars: &mut HashMap<String, HashMap<String, Value>>,
     ) -> Result<(), MatcherError> {
+        let mut vars = HashMap::new();
         for (key, extractor) in &self.extractors {
             let value =
                 self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
-            extracted_vars.insert(extractor.scoped_key.to_string(), value);
+            vars.insert(extractor.key.to_string(), value);
+        }
+        if !vars.is_empty() {
+            extracted_vars.insert(self.rule_name.to_string(), vars);
         }
         Ok(())
     }
@@ -133,7 +139,7 @@ impl MatcherExtractor {
 
 #[derive(Debug)]
 struct ValueExtractor {
-    pub scoped_key: String,
+    pub key: String,
     pub regex_extractor: RegexValueExtractor,
 }
 
@@ -144,9 +150,8 @@ impl ValueExtractor {
         extractor: &Extractor,
         accessor: &AccessorBuilder,
     ) -> Result<ValueExtractor, MatcherError> {
-        let scoped_key = format!("{}.{}", rule_name, key);
         Ok(Self {
-            scoped_key,
+            key: key.to_owned(),
             regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
         })
     }
@@ -154,7 +159,7 @@ impl ValueExtractor {
     pub fn extract(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> Option<Value> {
         self.regex_extractor.extract(event, extracted_vars)
     }
@@ -254,7 +259,7 @@ impl RegexValueExtractor {
     pub fn extract(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> Option<Value> {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
@@ -629,9 +634,10 @@ mod test {
 
         extractor.process_all(&event, &mut extracted_vars).unwrap();
 
-        assert_eq!(2, extracted_vars.len());
-        assert_eq!("44", extracted_vars.get("rule.extracted_temp").unwrap());
-        assert_eq!("temp", extracted_vars.get("rule.extracted_text").unwrap());
+        assert_eq!(1, extracted_vars.len());
+        assert_eq!(2, extracted_vars.get("rule").unwrap().len());
+        assert_eq!("44", extracted_vars.get("rule").unwrap().get("extracted_temp").unwrap());
+        assert_eq!("temp", extracted_vars.get("rule").unwrap().get("extracted_text").unwrap());
     }
 
     #[test]

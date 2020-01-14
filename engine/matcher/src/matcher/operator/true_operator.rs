@@ -17,7 +17,7 @@ impl Operator for True {
     fn evaluate(
         &self,
         _event: &InternalEvent,
-        _extracted_vars: Option<&HashMap<String, Value>>,
+        _extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> bool {
         true
     }

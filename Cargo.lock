@@ -2665,7 +2665,6 @@ dependencies = [
  "serde_json 1.0.40 (registry+https://github.com/rust-lang/crates.io-index)",
  "tornado_collector_common 0.0.1",
  "tornado_common_api 0.0.1",
- "tornado_common_parser 0.0.1",
 ]
 
 [[package]]

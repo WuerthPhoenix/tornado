@@ -95,7 +95,8 @@ impl AccessorBuilder {
                                 rule_name,
                             )?;
                             Ok(Accessor::ExtractedVar {
-                                key: format!("{}.{}", rule_name, variable_name),
+                                rule_name: rule_name.to_owned(),
+                                key: variable_name.to_owned(),
                             })
                         } else if keys.len() == 2 {
                             let variable_rule = keys[0];
@@ -111,7 +112,8 @@ impl AccessorBuilder {
                                 rule_name,
                             )?;
                             Ok(Accessor::ExtractedVar {
-                                key: format!("{}.{}", variable_rule, variable_name),
+                                rule_name: variable_rule.to_owned(),
+                                key: variable_name.to_owned(),
                             })
                         } else {
                             Err(MatcherError::NotValidIdOrNameError {
@@ -191,7 +193,7 @@ impl AccessorBuilder {
 pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
-    ExtractedVar { key: String },
+    ExtractedVar { rule_name: String, key: String },
     Payload { keys: Vec<ValueGetter> },
     Type,
     Event,
@@ -201,12 +203,13 @@ impl Accessor {
     pub fn get<'o>(
         &'o self,
         event: &'o InternalEvent,
-        extracted_vars: Option<&'o HashMap<String, Value>>,
+        extracted_vars: Option<&'o HashMap<String, HashMap<String, Value>>>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
-            Accessor::ExtractedVar { key } => extracted_vars
+            Accessor::ExtractedVar { rule_name, key } => extracted_vars
+                .and_then(|vars| vars.get(rule_name.as_str()))
                 .and_then(|vars| vars.get(key.as_str()))
                 .map(|value| Cow::Borrowed(value)),
             Accessor::Payload { keys } => {
@@ -494,12 +497,16 @@ mod test {
 
     #[test]
     fn should_return_value_from_extracted_var() {
-        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
+        let accessor =
+            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), key: "body".to_owned() };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        extracted_vars_inner.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule1.body".to_owned(), Value::Text("body_value".to_owned()));
-        extracted_vars.insert("rule1.subject".to_owned(), Value::Text("subject_value".to_owned()));
+        extracted_vars.insert("rule1".to_owned(), extracted_vars_inner);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -514,19 +521,19 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars_current = HashMap::new();
+        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current
+            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+
+        let mut extracted_vars_custom = HashMap::new();
+        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom
+            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert(
-            "current_rule_name.subject".to_owned(),
-            Value::Text("current_subject".to_owned()),
-        );
-        extracted_vars
-            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert(
-            "custom_rule_name.subject".to_owned(),
-            Value::Text("custom_subject".to_owned()),
-        );
+        extracted_vars.insert("current_rule_name".to_owned(), extracted_vars_current);
+        extracted_vars.insert("custom_rule_name".to_owned(), extracted_vars_custom);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -541,19 +548,19 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars_current = HashMap::new();
+        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current
+            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+
+        let mut extracted_vars_custom = HashMap::new();
+        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom
+            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert(
-            "current_rule_name.subject".to_owned(),
-            Value::Text("current_subject".to_owned()),
-        );
-        extracted_vars
-            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert(
-            "custom_rule_name.subject".to_owned(),
-            Value::Text("custom_subject".to_owned()),
-        );
+        extracted_vars.insert("current_rule_name".to_owned(), extracted_vars_current);
+        extracted_vars.insert("custom_rule_name".to_owned(), extracted_vars_custom);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -562,7 +569,8 @@ mod test {
 
     #[test]
     fn should_return_none_if_no_match() {
-        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
+        let accessor =
+            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), key: "body".to_owned() };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -643,7 +651,13 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        assert_eq!(Accessor::ExtractedVar { key: "current_rule_name.key".to_owned() }, accessor)
+        assert_eq!(
+            Accessor::ExtractedVar {
+                rule_name: "current_rule_name".to_owned(),
+                key: "key".to_owned()
+            },
+            accessor
+        )
     }
 
     #[test]
@@ -653,7 +667,10 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        assert_eq!(Accessor::ExtractedVar { key: "custom_rule.key".to_owned() }, accessor)
+        assert_eq!(
+            Accessor::ExtractedVar { rule_name: "custom_rule".to_owned(), key: "key".to_owned() },
+            accessor
+        )
     }
 
     #[test]

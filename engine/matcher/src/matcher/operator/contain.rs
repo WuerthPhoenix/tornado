@@ -28,7 +28,7 @@ impl Operator for Contain {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> bool {
         match self.first.get(event, extracted_vars) {
             Some(first_value) => match first_value.as_ref() {

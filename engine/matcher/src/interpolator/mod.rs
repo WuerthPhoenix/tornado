@@ -102,7 +102,7 @@ impl StringInterpolator {
     pub fn render(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> Result<String, MatcherError> {
         let mut render = String::new();
 
@@ -205,7 +205,10 @@ mod test {
         assert_eq!(&58, &interpolator.accessors[2].start);
         assert_eq!(&78, &interpolator.accessors[2].end);
         match &interpolator.accessors[2].accessor {
-            Accessor::ExtractedVar { key } => assert_eq!("rule.test12", key),
+            Accessor::ExtractedVar { rule_name, key } => {
+                assert_eq!("rule", rule_name);
+                assert_eq!("test12", key);
+            }
             _ => assert!(false),
         }
     }
@@ -325,11 +328,12 @@ mod test {
             created_ms: 1554130814854,
             payload,
         });
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1".to_owned()));
+        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1".to_owned()));
-        extracted_vars
-            .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2".to_owned()));
+        extracted_vars.insert("rule_for_test".to_owned(), extracted_vars_inner);
 
         let template = "1: ${_variables.test1} - 2: ${_variables.test2}";
 

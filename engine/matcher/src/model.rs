@@ -62,7 +62,7 @@ pub enum ProcessedFilterStatus {
 #[derive(Debug, Clone)]
 pub struct ProcessedRules {
     pub rules: Vec<ProcessedRule>,
-    pub extracted_vars: HashMap<String, Value>,
+    pub extracted_vars: HashMap<String, HashMap<String, Value>>,
 }
 
 #[derive(Debug, Clone)]

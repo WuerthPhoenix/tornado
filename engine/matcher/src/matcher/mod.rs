@@ -232,7 +232,7 @@ impl Matcher {
 
     fn process_actions(
         processed_event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
@@ -612,7 +612,10 @@ mod test {
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
                 assert_eq!(1, rules.extracted_vars.len());
-                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                assert_eq!(
+                    "ai",
+                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                );
                 assert_eq!(1, processed_rule.actions.len());
                 assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
                 assert!(processed_rule.message.is_none())
@@ -759,8 +762,12 @@ mod test {
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-                info!("Message: {:?}", processed_rule.message);
-                assert!(processed_rule.message.clone().unwrap().contains("rule1_email.missing"))
+                println!("Message: {:?}", processed_rule.message);
+                assert!(processed_rule
+                    .message
+                    .clone()
+                    .unwrap()
+                    .contains(r#"ExtractedVar { rule_name: "rule1_email", key: "missing" }"#))
             }
             _ => assert!(false),
         };
@@ -892,8 +899,10 @@ mod test {
 
                 let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-                assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
-                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                assert_eq!(
+                    "ai",
+                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                );
             }
             _ => assert!(false),
         };
@@ -959,13 +968,17 @@ mod test {
 
                 let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-                assert!(rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
-                assert_eq!("ai", rules.extracted_vars.get("rule1_email.extracted_temp").unwrap());
+                assert_eq!(
+                    "ai",
+                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                );
 
                 let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-                assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
-                assert_eq!("em", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                assert_eq!(
+                    "em",
+                    rules.extracted_vars.get("rule2_email").unwrap().get("extracted_temp").unwrap()
+                );
             }
             _ => assert!(false),
         };
@@ -1031,12 +1044,18 @@ mod test {
 
                 let rule_1_processed = rules.rules.get(0).unwrap();
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
-                assert!(!rules.extracted_vars.contains_key("rule1_email.extracted_temp"));
+                assert!(rules
+                    .extracted_vars
+                    .get("rule1_email")
+                    .and_then(|inner| inner.get("extracted_temp"))
+                    .is_none());
 
                 let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-                assert!(rules.extracted_vars.contains_key("rule2_email.extracted_temp"));
-                assert_eq!("ai", rules.extracted_vars.get("rule2_email.extracted_temp").unwrap());
+                assert_eq!(
+                    "ai",
+                    rules.extracted_vars.get("rule2_email").unwrap().get("extracted_temp").unwrap()
+                );
             }
             _ => assert!(false),
         };
@@ -1088,7 +1107,14 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "zzz",
-                    rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule1")
+                        .unwrap()
+                        .get("extracted_temp")
+                        .unwrap()
+                        .get_text()
+                        .unwrap()
                 );
             }
             _ => assert!(false),
@@ -1141,7 +1167,14 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "zzz",
-                    rules.extracted_vars.get("rule1.extracted_temp").unwrap().get_text().unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule1")
+                        .unwrap()
+                        .get("extracted_temp")
+                        .unwrap()
+                        .get_text()
+                        .unwrap()
                 );
             }
             _ => assert!(false),
@@ -1645,7 +1678,15 @@ mod test {
                             ProcessedRuleStatus::Matched,
                             rules.rules.get(0).unwrap().status
                         );
-                        assert_eq!("aaa", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                        assert_eq!(
+                            "aaa",
+                            rules
+                                .extracted_vars
+                                .get("rule")
+                                .unwrap()
+                                .get("extracted_temp")
+                                .unwrap()
+                        );
                     }
                     _ => assert!(false),
                 };
@@ -1659,7 +1700,15 @@ mod test {
                             ProcessedRuleStatus::Matched,
                             rules.rules.get(0).unwrap().status
                         );
-                        assert_eq!("999", rules.extracted_vars.get("rule.extracted_temp").unwrap());
+                        assert_eq!(
+                            "999",
+                            rules
+                                .extracted_vars
+                                .get("rule")
+                                .unwrap()
+                                .get("extracted_temp")
+                                .unwrap()
+                        );
                     }
                     _ => assert!(false),
                 };
@@ -1870,15 +1919,19 @@ mod test {
                     "aaa",
                     rules
                         .extracted_vars
-                        .get("rule1.extracted")
+                        .get("rule1")
+                        .expect("should contain rule1.extracted")
+                        .get("extracted")
                         .expect("should contain rule1.extracted")
                 );
                 assert_eq!(
                     "999",
                     rules
                         .extracted_vars
-                        .get("rule2.extracted")
+                        .get("rule2")
                         .expect("should contain rule2.extracted")
+                        .get("extracted")
+                        .expect("should contain rule1.extracted")
                 );
 
                 let rule_1_processed = rules.rules.get(0).expect("should contain rule1");

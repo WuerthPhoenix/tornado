@@ -36,7 +36,7 @@ impl Operator for And {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
     ) -> bool {
         self.operators.iter().all(|op| op.evaluate(event, extracted_vars))
     }
