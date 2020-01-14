@@ -36,13 +36,13 @@ impl Parser {
     }
 
     pub fn parse_str<'o>(&'o self, value: &'o str) -> Result<Cow<'o, Value>, ParserError> {
-        match self {
-            Parser::Exp(exp) => search(exp, value).map(Cow::Owned),
-            Parser::Val(value) => Ok(Cow::Borrowed(value)),
-        }
+        let data: Value = serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
+            message: format!("Failed to parse str into Value. Err: {}", err),
+        })?;
+        self.parse_value(&data)
     }
 
-    pub fn parse_value<'o>(&'o self, value: &'o Value) -> Result<Cow<'o, Value>, ParserError> {
+    pub fn parse_value<'o>(&'o self, value: &Value) -> Result<Cow<'o, Value>, ParserError> {
         match self {
             Parser::Exp(exp) => search(exp, value).map(Cow::Owned),
             Parser::Val(value) => Ok(Cow::Borrowed(value)),
@@ -86,3 +86,241 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, ParserError> {
         }),
     }
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn parser_builder_should_return_value_type() {
+
+        // Act
+        let parser = Parser::build_parser("hello world").unwrap();
+
+        // Assert
+        match parser {
+            Parser::Val(value) => {
+                assert_eq!(Value::Text("hello world".to_owned()), value);
+            },
+            _ => assert!(false)
+        }
+
+    }
+
+    #[test]
+    fn parser_builder_should_return_value_exp() {
+
+        // Act
+        let parser = Parser::build_parser("${hello.world}").unwrap();
+
+        // Assert
+        match parser {
+            Parser::Exp(exp) => {
+                assert_eq!(exp.as_str(), "hello.world");
+            },
+            _ => assert!(false)
+        }
+
+    }
+    
+    #[test]
+    fn parser_text_should_return_static_text() {
+        // Arrange
+        let parser = Parser::Val(Value::Text("hello world".to_owned()));
+        let json = r#"
+        {
+            "level_one": {
+                "level_two": "level_two_value"
+            }
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(&json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Text("hello world".to_owned()), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_return_from_json() {
+        // Arrange
+        let exp = jmespath::compile("level_one.level_two").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "level_one": {
+                "level_two": "level_two_value"
+            }
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Text("level_two_value".to_owned()), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_return_null_if_not_present() {
+        // Arrange
+        let exp = jmespath::compile("level_one.level_three").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "level_one": {
+                "level_two": "level_two_value"
+            }
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Null, result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_return_null_if_not_present_in_array() {
+        // Arrange
+        let exp = jmespath::compile("level_one.level_two[2]").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "level_one": {
+                "level_two": ["level_two_0", "level_two_1"]
+            }
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Null, result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_handle_boolean_values() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "key": true
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Bool(true), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_handle_numeric_values() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "key": 99.66
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(json);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(&Value::Number(Number::Float(99.66)), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_handle_arrays() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "key": ["one", true, 13]
+        }
+        "#;
+
+        let value: Value = serde_json::from_str(json).unwrap();
+
+        // Act
+        let result = parser.parse_value(&value);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(
+            &Value::Array(vec![
+                Value::Text("one".to_owned()),
+                Value::Bool(true),
+                Value::Number(Number::Float(13 as f64))
+            ]),
+            result.unwrap().as_ref()
+        );
+    }
+
+    #[test]
+    fn parser_expression_should_handle_maps() {
+        // Arrange
+        let exp = jmespath::compile("key").unwrap();
+        let parser = Parser::Exp(exp);
+        let json = r#"
+        {
+            "key": {
+                "one": true,
+                "two": 13
+            }
+        }
+        "#;
+
+        // Act
+        let result = parser.parse_str(&json);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let mut payload = HashMap::new();
+        payload.insert("one".to_owned(), Value::Bool(true));
+        payload.insert("two".to_owned(), Value::Number(Number::Float(13 as f64)));
+
+        assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_should_enable_jmespath_functions() {
+
+        // Arrange
+        let parser = Parser::build_parser("${contains(@, 'one')}").unwrap();
+        let json1 = r#"["one", "two"]"#;
+        let json2 = r#"["three", "four"]"#;
+
+        // Act
+        let result1 = parser.parse_str(&json1);
+        let result2 = parser.parse_str(&json2);
+
+        // Assert
+        assert!(result1.is_ok());
+        assert!(result2.is_ok());
+
+        assert_eq!(&Value::Bool(true), result1.unwrap().as_ref());
+        assert_eq!(&Value::Bool(false), result2.unwrap().as_ref());
+
+    }
+
+}
+
