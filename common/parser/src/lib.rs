@@ -3,8 +3,8 @@ use jmespath::{Rcvar, ToJmespath};
 use std::borrow::Cow;
 use tornado_common_api::{Number, Payload, Value};
 
-const EXPRESSION_START_DELIMITER: &str = "${";
-const EXPRESSION_END_DELIMITER: &str = "}";
+pub const EXPRESSION_START_DELIMITER: &str = "${";
+pub const EXPRESSION_END_DELIMITER: &str = "}";
 
 #[derive(Fail, Debug)]
 pub enum ParserError {
@@ -14,17 +14,25 @@ pub enum ParserError {
     ParsingError { message: String },
 }
 
+#[derive(PartialEq, Debug)]
 pub enum Parser {
     Exp(jmespath::Expression<'static>),
     Val(Value),
 }
 
 impl Parser {
+
+    pub fn is_expression(text: &str) -> bool {
+        let trimmed = text.trim();
+        trimmed.starts_with(EXPRESSION_START_DELIMITER) && trimmed.ends_with(EXPRESSION_END_DELIMITER)
+    }
+
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
-        if text.starts_with(EXPRESSION_START_DELIMITER) && text.ends_with(EXPRESSION_END_DELIMITER)
+        if Parser::is_expression(text)
         {
-            let expression = &text
-                [EXPRESSION_START_DELIMITER.len()..(text.len() - EXPRESSION_END_DELIMITER.len())];
+            let trimmed = text.trim();
+            let expression = &trimmed
+                [EXPRESSION_START_DELIMITER.len()..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
             let jmespath_exp =
                 jmespath::compile(expression).map_err(|err| ParserError::ConfigurationError {
                     message: format!("Not valid expression: [{}]. Err: {}", expression, err),
@@ -35,7 +43,7 @@ impl Parser {
         }
     }
 
-    pub fn parse_str<'o>(&'o self, value: &'o str) -> Result<Cow<'o, Value>, ParserError> {
+    pub fn parse_str<'o>(&'o self, value: &str) -> Result<Cow<'o, Value>, ParserError> {
         let data: Value = serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
             message: format!("Failed to parse str into Value. Err: {}", err),
         })?;

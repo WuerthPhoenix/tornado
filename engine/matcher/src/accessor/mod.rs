@@ -8,6 +8,7 @@ use regex::Regex as RustRegex;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use tornado_common_api::Value;
+use tornado_common_parser::Parser;
 
 pub struct AccessorBuilder {
     id_validator: IdValidator,
@@ -81,7 +82,8 @@ impl AccessorBuilder {
                     {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
                         let keys = self.parse_payload_key(key, value, rule_name)?;
-                        Ok(Accessor::Payload { keys })
+                        let parser = Parser::build_parser(input)?;
+                        Ok(Accessor::Payload { keys, parser})
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
@@ -194,7 +196,7 @@ pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
     ExtractedVar { rule_name: String, key: String },
-    Payload { keys: Vec<ValueGetter> },
+    Payload { keys: Vec<ValueGetter>, parser: Parser },
     Type,
     Event,
 }
@@ -212,7 +214,8 @@ impl Accessor {
                 .and_then(|vars| vars.get(rule_name.as_str()))
                 .and_then(|vars| vars.get(key.as_str()))
                 .map(|value| Cow::Borrowed(value)),
-            Accessor::Payload { keys } => {
+            Accessor::Payload { keys, parser } => {
+                /*
                 let mut value = Some(&event.payload);
 
                 let mut count = 0;
@@ -223,6 +226,14 @@ impl Accessor {
                 }
 
                 value.map(|value| Cow::Borrowed(value))
+                */
+
+                // TODO: removed event cloning here
+                let event_value: tornado_common_api::Value = event.clone().into();
+                let mut event = HashMap::new();
+                event.insert("event".to_owned(), event_value);
+
+                parser.parse_value(&Value::Map(event)).ok()
             }
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -315,7 +326,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { keys: vec!["body".into()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()], parser: Parser::build_parser("${event.payload.body}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -331,7 +342,7 @@ mod test {
     #[test]
     fn should_return_bool_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["bool_true".into()] };
+        let accessor = Accessor::Payload { keys: vec!["bool_true".into()], parser: Parser::build_parser("${event.payload.bool_true}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("bool_true".to_owned(), Value::Bool(true));
@@ -349,7 +360,7 @@ mod test {
     #[test]
     fn should_return_number_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["num_555".into()] };
+        let accessor = Accessor::Payload { keys: vec!["num_555".into()], parser: Parser::build_parser("${event.payload.num_555}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("num_555".to_owned(), Value::Number(Number::Float(555.0)));
@@ -366,7 +377,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into()], parser: Parser::build_parser("${event.payload.body}").unwrap() };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -389,7 +400,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_map_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()], parser: Parser::build_parser("${event.payload.body.first}").unwrap() };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -410,7 +421,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_array_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), 1.into()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), 1.into()], parser: Parser::build_parser("${event.payload.body[1]}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert(
@@ -433,7 +444,7 @@ mod test {
     #[test]
     fn should_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()] };
+        let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()], parser: Parser::build_parser(r#"${event.payload.body."second.with.dot"}"#).unwrap() };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -454,7 +465,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { keys: vec!["date".into()] };
+        let accessor = Accessor::Payload { keys: vec!["date".into()], parser: Parser::build_parser("${event.payload.date}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -483,7 +494,7 @@ mod test {
 
     #[test]
     fn should_return_the_entire_payload() {
-        let accessor = Accessor::Payload { keys: vec![] };
+        let accessor = Accessor::Payload { keys: vec![], parser: Parser::build_parser("${event.payload}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -616,7 +627,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec![] }, accessor)
+        assert_eq!(Accessor::Payload { keys: vec![], parser: Parser::build_parser("${event.payload}").unwrap() }, accessor)
     }
 
     #[test]
@@ -626,7 +637,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec!["key".into()] }, accessor)
+        assert_eq!(Accessor::Payload { keys: vec!["key".into()], parser: Parser::build_parser("${event.payload.key}").unwrap() }, accessor)
     }
 
     #[test]
@@ -638,7 +649,8 @@ mod test {
 
         assert_eq!(
             Accessor::Payload {
-                keys: vec!["first".into(), "second".into(), "th. ird".into(), "four".into()]
+                keys: vec!["first".into(), "second".into(), "th. ird".into(), "four".into()],
+                parser: Parser::build_parser(r#"${event.payload.first.second."th. ird"."four"}"#).unwrap()
             },
             accessor
         )
@@ -758,7 +770,7 @@ mod test {
     #[test]
     fn accessor_should_return_the_entire_payload_if_empty_payload_key() {
         let builder = AccessorBuilder::new();
-        let value = "${event.payload.}";
+        let value = "${event.payload}";
 
         let accessor = builder.build("", value);
 

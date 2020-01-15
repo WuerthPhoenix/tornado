@@ -9,9 +9,8 @@ edition = "2018"
 tornado_common_api = { path = "../api", version = "0.0.1" }
 failure = "0.1"
 failure_derive = "0.1"
-jmespath = "0.2.0"
+jmespath = { version = "0.2.0", features = ["sync"] }
 serde = "1.0"
-serde_derive = "1.0"
+serde_json = "1.0"
 
 [dev-dependencies]
-serde_json = "1.0"
