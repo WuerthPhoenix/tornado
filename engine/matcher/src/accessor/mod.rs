@@ -90,9 +90,13 @@ impl AccessorBuilder {
                                 value,
                                 rule_name,
                             )?;
+                            let parser = Parser::build_parser(&format!(
+                                "{}{}{}",
+                                EXPRESSION_START_DELIMITER, variable_name, EXPRESSION_END_DELIMITER
+                            ))?;
                             Ok(Accessor::ExtractedVar {
                                 rule_name: rule_name.to_owned(),
-                                key: variable_name.to_owned(),
+                                parser,
                             })
                         } else if keys.len() == 2 {
                             let variable_rule = keys[0];
@@ -107,9 +111,13 @@ impl AccessorBuilder {
                                 value,
                                 rule_name,
                             )?;
+                            let parser = Parser::build_parser(&format!(
+                                "{}{}{}",
+                                EXPRESSION_START_DELIMITER, variable_name, EXPRESSION_END_DELIMITER
+                            ))?;
                             Ok(Accessor::ExtractedVar {
                                 rule_name: variable_rule.to_owned(),
-                                key: variable_name.to_owned(),
+                                parser,
                             })
                         } else {
                             Err(MatcherError::NotValidIdOrNameError {
@@ -147,7 +155,7 @@ impl AccessorBuilder {
 pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
-    ExtractedVar { rule_name: String, key: String },
+    ExtractedVar { rule_name: String, parser: Parser },
     Payload { parser: Parser },
     Type,
     Event,
@@ -162,15 +170,11 @@ impl Accessor {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
-            Accessor::ExtractedVar { rule_name, key } => extracted_vars
+            Accessor::ExtractedVar { rule_name, parser } => extracted_vars
                 .and_then(|vars| vars.get(rule_name.as_str()))
                 .and_then(|vars| {
-                    match vars {
-                        Value::Map(payload) => payload.get(key.as_str()),
-                        _ => None
-                    }
-                })
-                .map(|value| Cow::Borrowed(value)),
+                    parser.parse_value(vars)
+                }),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -421,7 +425,7 @@ mod test {
     #[test]
     fn should_return_value_from_extracted_var() {
         let accessor =
-            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), key: "body".to_owned() };
+            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), parser: Parser::build_parser("${body}").unwrap() };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars_inner = HashMap::new();
@@ -493,7 +497,7 @@ mod test {
     #[test]
     fn should_return_none_if_no_match() {
         let accessor =
-            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), key: "body".to_owned() };
+            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), parser: Parser::build_parser("${body}").unwrap() };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -577,7 +581,7 @@ mod test {
         assert_eq!(
             Accessor::ExtractedVar {
                 rule_name: "current_rule_name".to_owned(),
-                key: "key".to_owned()
+                parser: Parser::build_parser("${key}").unwrap()
             },
             accessor
         )
@@ -591,7 +595,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         assert_eq!(
-            Accessor::ExtractedVar { rule_name: "custom_rule".to_owned(), key: "key".to_owned() },
+            Accessor::ExtractedVar { rule_name: "custom_rule".to_owned(), parser: Parser::build_parser("${key}").unwrap() },
             accessor
         )
     }

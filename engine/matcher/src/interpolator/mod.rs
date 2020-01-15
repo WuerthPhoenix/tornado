@@ -206,9 +206,9 @@ mod test {
         assert_eq!(&58, &interpolator.accessors[2].start);
         assert_eq!(&78, &interpolator.accessors[2].end);
         match &interpolator.accessors[2].accessor {
-            Accessor::ExtractedVar { rule_name, key } => {
+            Accessor::ExtractedVar { rule_name, parser } => {
                 assert_eq!("rule", rule_name);
-                assert_eq!("test12", key);
+                assert_eq!(&Parser::build_parser("${test12}").unwrap(), parser);
             }
             _ => assert!(false),
         }

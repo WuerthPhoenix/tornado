@@ -767,7 +767,7 @@ mod test {
                     .message
                     .clone()
                     .unwrap()
-                    .contains(r#"ExtractedVar { rule_name: "rule1_email", key: "missing" }"#))
+                    .contains(r#"ExtractedVar { rule_name: "rule1_email", parser: Exp { keys: [Map { key: "missing" }] } }"#))
             }
             _ => assert!(false),
         };
