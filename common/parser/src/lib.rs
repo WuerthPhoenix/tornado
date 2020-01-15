@@ -157,7 +157,6 @@ mod test {
 
     }
 
-    /*
     #[test]
     fn parser_builder_should_return_value_exp() {
 
@@ -166,14 +165,13 @@ mod test {
 
         // Assert
         match parser {
-            Parser::Exp(exp) => {
-                assert_eq!(exp.as_str(), "hello.world");
+            Parser::Exp{keys} => {
+                assert!(!keys.is_empty());
             },
             _ => assert!(false)
         }
 
     }
-    */
 
     #[test]
     fn parser_text_should_return_static_text() {
@@ -347,6 +345,95 @@ mod test {
         payload.insert("two".to_owned(), Value::Number(Number::PosInt(13)));
 
         assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn builder_should_parse_a_payload_key() {
+
+        let expected: Vec<ValueGetter> = vec!["one".into()];
+        assert_eq!(expected, Parser::parse_keys("one").unwrap());
+
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, Parser::parse_keys("one.two").unwrap());
+
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
+        assert_eq!(expected, Parser::parse_keys("one.two.").unwrap());
+
+        let expected: Vec<ValueGetter> = vec!["one".into(), "".into()];
+        assert_eq!(expected, Parser::parse_keys(r#"one."""#).unwrap());
+
+        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into(), "th ir.d".into()];
+        assert_eq!(expected, Parser::parse_keys(r#"one.two."th ir.d""#).unwrap());
+
+        let expected: Vec<ValueGetter> =
+            vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
+        assert_eq!(
+            expected,
+            Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap()
+        );
+
+        let expected: Vec<ValueGetter> =
+            vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
+        assert_eq!(
+            expected,
+            Parser::parse_keys(r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#)
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
+
+        // Act
+        let result = Parser::parse_keys(r#"o"ne"#);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
+
+        // Act
+        let result = Parser::parse_keys(r#"one."two"#);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn builder_parser_should_return_empty_vector_if_no_matches() {
+        let expected: Vec<ValueGetter> = vec![];
+        assert_eq!(expected, Parser::parse_keys("").unwrap())
+    }
+
+    #[test]
+    fn builder_parser_should_return_empty_vector_if_single_dot() {
+        let expected: Vec<ValueGetter> = vec![];
+        assert_eq!(expected, Parser::parse_keys(".").unwrap())
+    }
+
+    #[test]
+    fn builder_parser_should_return_ignore_trailing_dot() {
+        let expected: Vec<ValueGetter> = vec!["hello".into(), "world".into()];
+        assert_eq!(expected, Parser::parse_keys(".hello.world").unwrap())
+    }
+
+    #[test]
+    fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
+        let expected: Vec<ValueGetter> =
+            vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
+        assert_eq!(
+            expected,
+            Parser::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap()
+        )
+    }
+
+    #[test]
+    fn builder_parser_should_return_array_reader() {
+        let expected: Vec<ValueGetter> =
+            vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
+        assert_eq!(expected, Parser::parse_keys("hello.world[11].inner[0]").unwrap())
     }
 
 }
