@@ -59,6 +59,9 @@ pub enum MatcherError {
         template, rule_name, cause
     )]
     InterpolatorRenderError { template: String, rule_name: String, cause: String },
+
+    #[fail(display = "InternalSystemError: [{}]", message)]
+    InternalSystemError { message: String },
 }
 
 impl From<ParserError> for MatcherError {

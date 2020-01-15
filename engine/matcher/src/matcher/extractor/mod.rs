@@ -122,8 +122,13 @@ impl MatcherExtractor {
             vars.insert(extractor.key.to_string(), value);
         }
         if !vars.is_empty() {
-            // ToDo remove unwrap()
-            extracted_vars.get_map_mut().unwrap().insert(self.rule_name.to_string(), Value::Map(vars));
+            if let Some(map) = extracted_vars.get_map_mut() {
+                map.insert(self.rule_name.to_string(), Value::Map(vars));
+            } else {
+                return Err(MatcherError::InternalSystemError{
+                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned()
+                })
+            }
         }
         Ok(())
     }
