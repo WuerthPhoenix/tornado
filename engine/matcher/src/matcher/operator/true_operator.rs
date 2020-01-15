@@ -1,6 +1,5 @@
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
-use std::collections::HashMap;
 use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "true";
@@ -17,7 +16,7 @@ impl Operator for True {
     fn evaluate(
         &self,
         _event: &InternalEvent,
-        _extracted_vars: Option<&HashMap<String, Value>>,
+        _extracted_vars: Option<&Value>,
     ) -> bool {
         true
     }

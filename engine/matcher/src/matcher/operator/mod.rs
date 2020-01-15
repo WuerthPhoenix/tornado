@@ -9,7 +9,6 @@ use crate::config::rule;
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use log::*;
-use std::collections::HashMap;
 use std::fmt;
 use tornado_common_api::Value;
 
@@ -33,7 +32,7 @@ pub trait Operator: fmt::Debug + Send + Sync {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> bool;
 }
 

@@ -3,7 +3,6 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use regex::Regex as RustRegex;
-use std::collections::HashMap;
 use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "regex";
@@ -34,7 +33,7 @@ impl Operator for Regex {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> bool {
         let cow_value = self.target.get(event, extracted_vars);
         cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))

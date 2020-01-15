@@ -5,7 +5,6 @@ use crate::model::InternalEvent;
 use crate::validator::id::IdValidator;
 use log::*;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use tornado_common_api::Value;
 use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
@@ -157,13 +156,13 @@ impl Accessor {
     pub fn get<'o>(
         &'o self,
         event: &'o InternalEvent,
-        extracted_vars: Option<&'o HashMap<String, Value>>,
+        extracted_vars: Option<&'o Value>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { rule_name, parser } => extracted_vars
-                .and_then(|vars| vars.get(rule_name.as_str()))
+                .and_then(|vars| vars.get_from_map(rule_name.as_str()))
                 .and_then(|vars| parser.parse_value(vars)),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
@@ -426,6 +425,7 @@ mod test {
 
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -453,6 +453,7 @@ mod test {
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -480,7 +481,7 @@ mod test {
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
-
+        let extracted_vars = Value::Map(extracted_vars);
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
         assert_eq!("custom_body", result.as_ref());
@@ -713,6 +714,7 @@ mod test {
 
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         // Act
         let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();

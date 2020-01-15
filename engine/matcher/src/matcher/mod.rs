@@ -166,7 +166,7 @@ impl Matcher {
         internal_event: &InternalEvent,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
-        let mut extracted_vars = HashMap::new();
+        let mut extracted_vars = Value::Map(HashMap::new());
         let mut processed_rules = vec![];
 
         for rule in rules {
@@ -232,7 +232,7 @@ impl Matcher {
 
     fn process_actions(
         processed_event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
@@ -611,12 +611,12 @@ mod test {
                 let processed_rule = rules.rules.get(0).unwrap();
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
-                assert_eq!(1, rules.extracted_vars.len());
+                assert_eq!(1, rules.extracted_vars.get_map().unwrap().len());
                 assert_eq!(
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -908,7 +908,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -982,7 +982,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -994,7 +994,7 @@ mod test {
                     "em",
                     rules
                         .extracted_vars
-                        .get("rule2_email")
+                        .get_from_map("rule2_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1066,7 +1066,7 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
                 assert!(rules
                     .extracted_vars
-                    .get("rule1_email")
+                    .get_from_map("rule1_email")
                     .and_then(|inner| inner.get_from_map("extracted_temp"))
                     .is_none());
 
@@ -1076,7 +1076,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule2_email")
+                        .get_from_map("rule2_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1134,7 +1134,7 @@ mod test {
                     "zzz",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1194,7 +1194,7 @@ mod test {
                     "zzz",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1707,7 +1707,7 @@ mod test {
                             "aaa",
                             rules
                                 .extracted_vars
-                                .get("rule")
+                                .get_from_map("rule")
                                 .unwrap()
                                 .get_from_map("extracted_temp")
                                 .unwrap()
@@ -1729,7 +1729,7 @@ mod test {
                             "999",
                             rules
                                 .extracted_vars
-                                .get("rule")
+                                .get_from_map("rule")
                                 .unwrap()
                                 .get_from_map("extracted_temp")
                                 .unwrap()
@@ -1944,7 +1944,7 @@ mod test {
                     "aaa",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .expect("should contain rule1.extracted")
                         .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
@@ -1953,7 +1953,7 @@ mod test {
                     "999",
                     rules
                         .extracted_vars
-                        .get("rule2")
+                        .get_from_map("rule2")
                         .expect("should contain rule2.extracted")
                         .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
@@ -2051,7 +2051,7 @@ mod test {
                     "aaa",
                     rules
                         .extracted_vars
-                        .get("first.VALUE")
+                        .get_from_map("first.VALUE")
                         .expect("should contain rule1.extracted")
                 );
 
@@ -2062,7 +2062,7 @@ mod test {
                     &vars,
                     rules
                         .extracted_vars
-                        .get("rule2.first")
+                        .get_from_map("rule2.first")
                         .expect("should contain rule2.extracted")
                 );
 

@@ -116,7 +116,7 @@ impl ActionResolver {
     pub fn execute(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
@@ -148,7 +148,7 @@ impl ActionValueProcessor {
         rule_name: &str,
         action_id: &str,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
@@ -312,7 +312,7 @@ mod test {
         extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.execute(&event, Some(&extracted_vars)).unwrap();
+        let result = matcher_action.execute(&event, Some(&Value::Map(extracted_vars))).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);

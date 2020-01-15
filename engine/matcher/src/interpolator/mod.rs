@@ -10,7 +10,6 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use lazy_static::*;
 use regex::Regex;
-use std::collections::HashMap;
 use tornado_common_api::{Number, Value};
 
 lazy_static! {
@@ -102,7 +101,7 @@ impl StringInterpolator {
     pub fn render(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> Result<String, MatcherError> {
         let mut render = String::new();
 
@@ -164,6 +163,7 @@ mod test {
     use super::*;
     use tornado_common_api::{Event, Payload};
     use tornado_common_parser::Parser;
+    use std::collections::HashMap;
 
     #[test]
     fn build_should_fail_if_not_valid_expression() {
@@ -341,7 +341,7 @@ mod test {
         // Act
         let interpolator =
             StringInterpolator::build(template, "rule_for_test", &Default::default()).unwrap();
-        let result = interpolator.render(&event, Some(&extracted_vars));
+        let result = interpolator.render(&event, Some(&Value::Map(extracted_vars)));
 
         // Assert
         assert!(result.is_ok());

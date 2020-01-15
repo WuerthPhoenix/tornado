@@ -3,7 +3,6 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use tornado_common_api::{partial_cmp_option_cow_value, Value};
 
 const OPERATOR_NAME: &str = "lt";
@@ -29,7 +28,7 @@ impl Operator for LessThan {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> bool {
         let cmp = partial_cmp_option_cow_value(&self.first.get(event, extracted_vars), || {
             self.second.get(event, extracted_vars)
