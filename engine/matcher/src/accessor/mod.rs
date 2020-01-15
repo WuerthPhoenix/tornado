@@ -244,33 +244,6 @@ impl Accessor {
     }
 }
 
-#[derive(PartialEq, Debug)]
-pub enum ValueGetter {
-    Map { key: String },
-    Array { index: usize },
-}
-
-impl ValueGetter {
-    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
-        match self {
-            ValueGetter::Map { key } => value.get_from_map(key),
-            ValueGetter::Array { index } => value.get_from_array(*index),
-        }
-    }
-}
-
-impl Into<ValueGetter> for &str {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Map { key: self.to_owned() }
-    }
-}
-
-impl Into<ValueGetter> for usize {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Array { index: self }
-    }
-}
-
 #[cfg(test)]
 mod test {
 

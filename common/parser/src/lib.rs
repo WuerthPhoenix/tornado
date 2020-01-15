@@ -1,10 +1,20 @@
 use failure_derive::Fail;
-use jmespath::{Rcvar, ToJmespath};
+use lazy_static::*;
+use regex::Regex;
 use std::borrow::Cow;
-use tornado_common_api::{Number, Payload, Value};
+use tornado_common_api::{Value};
 
-pub const EXPRESSION_START_DELIMITER: &str = "${";
-pub const EXPRESSION_END_DELIMITER: &str = "}";
+const EXPRESSION_START_DELIMITER: &str = "${";
+const EXPRESSION_END_DELIMITER: &str = "}";
+const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
+const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
+const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
+const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
+
+lazy_static! {
+    static ref RE: Regex =
+        Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
+}
 
 #[derive(Fail, Debug)]
 pub enum ParserError {
@@ -16,7 +26,7 @@ pub enum ParserError {
 
 #[derive(PartialEq, Debug)]
 pub enum Parser {
-    Exp(jmespath::Expression<'static>),
+    Exp{keys: Vec<ValueGetter>},
     Val(Value),
 }
 
@@ -33,73 +43,103 @@ impl Parser {
             let trimmed = text.trim();
             let expression = &trimmed
                 [EXPRESSION_START_DELIMITER.len()..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-            let jmespath_exp =
-                jmespath::compile(expression).map_err(|err| ParserError::ConfigurationError {
-                    message: format!("Not valid expression: [{}]. Err: {}", expression, err),
-                })?;
-            Ok(Parser::Exp(jmespath_exp))
+            Ok(Parser::Exp{keys: Parser::parse_keys(expression)?})
         } else {
             Ok(Parser::Val(Value::Text(text.to_owned())))
         }
     }
 
-    pub fn parse_str<'o>(&'o self, value: &str) -> Result<Cow<'o, Value>, ParserError> {
-        let data: Value = serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
-            message: format!("Failed to parse str into Value. Err: {}", err),
-        })?;
-        self.parse_value(&data)
+    fn parse_keys(
+        expression: &str,
+    ) -> Result<Vec<ValueGetter>, ParserError> {
+        let regex: &Regex = &RE;
+        regex
+            .captures_iter(expression)
+            .map(|cap| {
+                let capture = cap.get(0)
+                    .ok_or_else(|| ParserError::ConfigurationError {message: format!(
+                        "Error parsing expression [{}]",
+                        expression)})?;
+                let mut result = capture.as_str().to_string();
+
+                // Remove trailing delimiters
+                {
+                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) &&
+                        result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
+                        result = result[1..(result.len() - 1)].to_string();
+                    }
+                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER) &&
+                        result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER) {
+                        result = result[1..(result.len() - 1)].to_string();
+                        let index = usize::from_str_radix(&result, 10)
+                            .map_err(|err| ParserError::ConfigurationError { message: format!("Cannot parse value [{}] to number: {}", &result, err) })?;
+                        return Ok(ValueGetter::Array {index})
+                    }
+                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
+                        let error_message = format!(
+                            "Parser expression [{}] contains not valid characters: [{}]",
+                            expression, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
+                        );
+                        return Err(ParserError::ConfigurationError { message: error_message });
+                    }
+                }
+                Ok(ValueGetter::Map {key: result})
+            }).collect()
     }
 
-    pub fn parse_value<'o>(&'o self, value: &Value) -> Result<Cow<'o, Value>, ParserError> {
+    pub fn parse_value<'o>(&'o self, value: &'o Value) -> Option<Cow<'o, Value>> {
         match self {
-            Parser::Exp(exp) => search(exp, value).map(Cow::Owned),
-            Parser::Val(value) => Ok(Cow::Borrowed(value)),
+            Parser::Exp{keys} => {
+                let mut temp_value = Some(value);
+
+                let mut count = 0;
+
+                while count < keys.len() && temp_value.is_some() {
+                    temp_value = temp_value.and_then(|val| keys[count].get(val));
+                    count += 1;
+                }
+
+                temp_value.map(|value| Cow::Borrowed(value))
+            },
+            Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
     }
 }
 
-fn search<T: ToJmespath>(
-    exp: &jmespath::Expression<'static>,
-    data: T,
-) -> Result<Value, ParserError> {
-    let search_result = exp.search(data).map_err(|e| ParserError::ParsingError {
-        message: format!("Expression failed to execute. Exp: {}. Error: {}", exp, e),
-    })?;
-    variable_to_value(&search_result)
+#[derive(PartialEq, Debug)]
+pub enum ValueGetter {
+    Map { key: String },
+    Array { index: usize },
 }
 
-fn variable_to_value(var: &Rcvar) -> Result<Value, ParserError> {
-    match var.as_ref() {
-        jmespath::Variable::String(s) => Ok(Value::Text(s.to_owned())),
-        jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
-        jmespath::Variable::Number(n) => Ok(Value::Number(Number::Float(*n))),
-        jmespath::Variable::Object(values) => {
-            let mut payload = Payload::new();
-            for (key, value) in values {
-                payload.insert(key.to_owned(), variable_to_value(value)?);
-            }
-            Ok(Value::Map(payload))
+impl ValueGetter {
+    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
+        match self {
+            ValueGetter::Map { key } => value.get_from_map(key),
+            ValueGetter::Array { index } => value.get_from_array(*index),
         }
-        jmespath::Variable::Array(ref values) => {
-            let mut payload = vec![];
-            for value in values {
-                payload.push(variable_to_value(value)?);
-            }
-            Ok(Value::Array(payload))
-        }
-        jmespath::Variable::Null => Ok(Value::Null),
-        // ToDo: how to map Expref?
-        jmespath::Variable::Expref(_) => Err(ParserError::ParsingError {
-            message: "Cannot map jmespath::Variable::Expref to the Event payload".to_owned(),
-        }),
     }
 }
+
+impl Into<ValueGetter> for &str {
+    fn into(self) -> ValueGetter {
+        ValueGetter::Map { key: self.to_owned() }
+    }
+}
+
+impl Into<ValueGetter> for usize {
+    fn into(self) -> ValueGetter {
+        ValueGetter::Array { index: self }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
 
     use super::*;
     use std::collections::HashMap;
+    use tornado_common_api::Number;
 
     #[test]
     fn parser_builder_should_return_value_type() {
@@ -117,6 +157,7 @@ mod test {
 
     }
 
+    /*
     #[test]
     fn parser_builder_should_return_value_exp() {
 
@@ -132,7 +173,8 @@ mod test {
         }
 
     }
-    
+    */
+
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
@@ -146,18 +188,18 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(&json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(&Value::Text("hello world".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
     fn parser_expression_should_return_from_json() {
         // Arrange
-        let exp = jmespath::compile("level_one.level_two").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${level_one.level_two}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -167,18 +209,18 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(&Value::Text("level_two_value".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
-    fn parser_expression_should_return_null_if_not_present() {
+    fn parser_expression_should_return_none_if_not_present() {
         // Arrange
-        let exp = jmespath::compile("level_one.level_three").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${level_one.level_three}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -188,18 +230,17 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
-        assert_eq!(&Value::Null, result.unwrap().as_ref());
+        assert!(result.is_none());
     }
 
     #[test]
-    fn parser_expression_should_return_null_if_not_present_in_array() {
+    fn parser_expression_should_return_none_if_not_present_in_array() {
         // Arrange
-        let exp = jmespath::compile("level_one.level_two[2]").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${level_one.level_two[2]}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -209,18 +250,17 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
-        assert_eq!(&Value::Null, result.unwrap().as_ref());
+        assert!(result.is_none());
     }
 
     #[test]
     fn parser_expression_should_handle_boolean_values() {
         // Arrange
-        let exp = jmespath::compile("key").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": true
@@ -228,18 +268,18 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(&Value::Bool(true), result.unwrap().as_ref());
     }
 
     #[test]
     fn parser_expression_should_handle_numeric_values() {
         // Arrange
-        let exp = jmespath::compile("key").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": 99.66
@@ -247,21 +287,21 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(&Value::Number(Number::Float(99.66)), result.unwrap().as_ref());
     }
 
     #[test]
     fn parser_expression_should_handle_arrays() {
         // Arrange
-        let exp = jmespath::compile("key").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${key}").unwrap();
         let json = r#"
         {
-            "key": ["one", true, 13]
+            "key": ["one", true, 13.0]
         }
         "#;
 
@@ -271,7 +311,7 @@ mod test {
         let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         assert_eq!(
             &Value::Array(vec![
                 Value::Text("one".to_owned()),
@@ -285,8 +325,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_maps() {
         // Arrange
-        let exp = jmespath::compile("key").unwrap();
-        let parser = Parser::Exp(exp);
+        let parser = Parser::build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": {
@@ -297,37 +336,17 @@ mod test {
         "#;
 
         // Act
-        let result = parser.parse_str(&json);
+        let value = serde_json::from_str(json).unwrap();
+        let result = parser.parse_value(&value);
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
 
         let mut payload = HashMap::new();
         payload.insert("one".to_owned(), Value::Bool(true));
-        payload.insert("two".to_owned(), Value::Number(Number::Float(13 as f64)));
+        payload.insert("two".to_owned(), Value::Number(Number::PosInt(13)));
 
         assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
-    }
-
-    #[test]
-    fn parser_should_enable_jmespath_functions() {
-
-        // Arrange
-        let parser = Parser::build_parser("${contains(@, 'one')}").unwrap();
-        let json1 = r#"["one", "two"]"#;
-        let json2 = r#"["three", "four"]"#;
-
-        // Act
-        let result1 = parser.parse_str(&json1);
-        let result2 = parser.parse_str(&json2);
-
-        // Assert
-        assert!(result1.is_ok());
-        assert!(result2.is_ok());
-
-        assert_eq!(&Value::Bool(true), result1.unwrap().as_ref());
-        assert_eq!(&Value::Bool(false), result2.unwrap().as_ref());
-
     }
 
 }
