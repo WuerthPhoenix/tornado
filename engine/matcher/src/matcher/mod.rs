@@ -614,7 +614,12 @@ mod test {
                 assert_eq!(1, rules.extracted_vars.len());
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule1_email")
+                        .unwrap()
+                        .get_from_map("extracted_temp")
+                        .unwrap()
                 );
                 assert_eq!(1, processed_rule.actions.len());
                 assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
@@ -901,7 +906,12 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule1_email")
+                        .unwrap()
+                        .get_from_map("extracted_temp")
+                        .unwrap()
                 );
             }
             _ => assert!(false),
@@ -970,14 +980,24 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule1_email")
+                        .unwrap()
+                        .get_from_map("extracted_temp")
+                        .unwrap()
                 );
 
                 let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert_eq!(
                     "em",
-                    rules.extracted_vars.get("rule2_email").unwrap().get_from_map("extracted_temp").unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule2_email")
+                        .unwrap()
+                        .get_from_map("extracted_temp")
+                        .unwrap()
                 );
             }
             _ => assert!(false),
@@ -1054,7 +1074,12 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule2_email").unwrap().get_from_map("extracted_temp").unwrap()
+                    rules
+                        .extracted_vars
+                        .get("rule2_email")
+                        .unwrap()
+                        .get_from_map("extracted_temp")
+                        .unwrap()
                 );
             }
             _ => assert!(false),

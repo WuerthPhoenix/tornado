@@ -94,18 +94,10 @@ impl AccessorBuilder {
                                 "{}{}{}",
                                 EXPRESSION_START_DELIMITER, variable_name, EXPRESSION_END_DELIMITER
                             ))?;
-                            Ok(Accessor::ExtractedVar {
-                                rule_name: rule_name.to_owned(),
-                                parser,
-                            })
-                        } else if keys.len() == 2 {
+                            Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
+                        } else if keys.len() > 1 {
                             let variable_rule = keys[0];
-                            let variable_name = keys[1];
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_name,
-                                value,
-                                rule_name,
-                            )?;
+                            let variable_name = &key[variable_rule.len() + 1..];
                             self.id_validator.validate_extracted_var_from_accessor(
                                 variable_rule,
                                 value,
@@ -172,9 +164,7 @@ impl Accessor {
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { rule_name, parser } => extracted_vars
                 .and_then(|vars| vars.get(rule_name.as_str()))
-                .and_then(|vars| {
-                    parser.parse_value(vars)
-                }),
+                .and_then(|vars| parser.parse_value(vars)),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -424,8 +414,10 @@ mod test {
 
     #[test]
     fn should_return_value_from_extracted_var() {
-        let accessor =
-            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), parser: Parser::build_parser("${body}").unwrap() };
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            parser: Parser::build_parser("${body}").unwrap(),
+        };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars_inner = HashMap::new();
@@ -496,8 +488,10 @@ mod test {
 
     #[test]
     fn should_return_none_if_no_match() {
-        let accessor =
-            Accessor::ExtractedVar { rule_name: "rule1".to_owned(), parser: Parser::build_parser("${body}").unwrap() };
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            parser: Parser::build_parser("${body}").unwrap(),
+        };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -595,7 +589,10 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         assert_eq!(
-            Accessor::ExtractedVar { rule_name: "custom_rule".to_owned(), parser: Parser::build_parser("${key}").unwrap() },
+            Accessor::ExtractedVar {
+                rule_name: "custom_rule".to_owned(),
+                parser: Parser::build_parser("${key}").unwrap()
+            },
             accessor
         )
     }
@@ -693,19 +690,36 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_error_if_wrong_extracted_var_name() {
+    fn should_return_nested_values_from_extracted_var() {
+        // Arrange
         let builder = AccessorBuilder::new();
-        let value = "${_variables.not.valid.at.all}";
+        let map_accessor = builder.build("", "${_variables.rule1.body.map.key_1}").unwrap();
+        let array_accessor = builder.build("", "${_variables.rule1.body.array[0]}").unwrap();
 
-        let accessor = builder.build("", value);
+        let event = InternalEvent::new(Event::new("event_type_string"));
 
-        assert!(&accessor.is_err());
+        let mut map = HashMap::new();
+        map.insert("key_1".to_owned(), Value::Text("first_from_map".to_owned()));
 
-        match accessor.err().unwrap() {
-            MatcherError::NotValidIdOrNameError { message } => {
-                assert!(message.contains("${_variables.not.valid.at.all}"));
-            }
-            _ => assert!(false),
-        };
+        let mut body = HashMap::new();
+        body.insert("map".to_owned(), Value::Map(map));
+        body.insert(
+            "array".to_owned(),
+            Value::Array(vec![Value::Text("first_from_array".to_owned())]),
+        );
+
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("body".to_owned(), Value::Map(body));
+
+        let mut extracted_vars = HashMap::new();
+        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+
+        // Act
+        let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let array_result = array_accessor.get(&event, Some(&extracted_vars)).unwrap();
+
+        // Assert
+        assert_eq!("first_from_map", map_result.as_ref());
+        assert_eq!("first_from_array", array_result.as_ref());
     }
 }

@@ -636,8 +636,14 @@ mod test {
 
         assert_eq!(1, extracted_vars.len());
         assert_eq!(2, extracted_vars.get("rule").unwrap().get_map().unwrap().len());
-        assert_eq!("44", extracted_vars.get("rule").unwrap().get_from_map("extracted_temp").unwrap());
-        assert_eq!("temp", extracted_vars.get("rule").unwrap().get_from_map("extracted_text").unwrap());
+        assert_eq!(
+            "44",
+            extracted_vars.get("rule").unwrap().get_from_map("extracted_temp").unwrap()
+        );
+        assert_eq!(
+            "temp",
+            extracted_vars.get("rule").unwrap().get_from_map("extracted_text").unwrap()
+        );
     }
 
     #[test]
