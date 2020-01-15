@@ -29,11 +29,7 @@ pub trait Operator: fmt::Debug + Send + Sync {
     fn name(&self) -> &str;
 
     /// Executes the current matcher.operator on a target Event and returns whether the Event matches it.
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> bool;
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool;
 }
 
 /// The Operator instance builder

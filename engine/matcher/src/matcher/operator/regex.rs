@@ -30,11 +30,7 @@ impl Operator for Regex {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> bool {
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         let cow_value = self.target.get(event, extracted_vars);
         cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }

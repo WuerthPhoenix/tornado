@@ -52,7 +52,7 @@ pub enum ProcessedFilterStatusDto {
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRulesDto {
     pub rules: Vec<ProcessedRuleDto>,
-    pub extracted_vars: HashMap<String, Value>,
+    pub extracted_vars: Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]

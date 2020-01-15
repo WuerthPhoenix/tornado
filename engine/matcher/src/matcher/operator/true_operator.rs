@@ -13,11 +13,7 @@ impl Operator for True {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        _event: &InternalEvent,
-        _extracted_vars: Option<&Value>,
-    ) -> bool {
+    fn evaluate(&self, _event: &InternalEvent, _extracted_vars: Option<&Value>) -> bool {
         true
     }
 }

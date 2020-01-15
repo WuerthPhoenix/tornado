@@ -33,6 +33,7 @@ mod test {
     };
     use futures::{future::FutureResult, Future};
     use std::collections::HashMap;
+    use tornado_common_api::Value;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
@@ -55,7 +56,10 @@ mod test {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
-                    rules: ProcessedRules { rules: vec![], extracted_vars: HashMap::new() },
+                    rules: ProcessedRules {
+                        rules: vec![],
+                        extracted_vars: Value::Map(HashMap::new()),
+                    },
                 },
             })))
         }

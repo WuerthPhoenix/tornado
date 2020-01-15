@@ -32,11 +32,7 @@ impl Operator for Or {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> bool {
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         self.operators.iter().any(|op| op.evaluate(event, extracted_vars))
     }
 }

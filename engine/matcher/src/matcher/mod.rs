@@ -1973,7 +1973,7 @@ mod test {
     fn extracted_variables_name_collisions_should_prioritize_the_local_rule() {
         // Arrange
         let rule_1 = {
-            let mut rule = new_rule("first", None);
+            let mut rule = new_rule("collision_name", None);
             rule.constraint.with.insert(
                 String::from("VALUE"),
                 Extractor {
@@ -1997,7 +1997,7 @@ mod test {
         let rule_2 = {
             let mut rule = new_rule("rule2", None);
             rule.constraint.with.insert(
-                String::from("first"),
+                String::from("collision_name"),
                 Extractor {
                     from: String::from("${event.payload.value}"),
                     regex: ExtractorRegex::RegexNamedGroups {
@@ -2008,12 +2008,13 @@ mod test {
             );
 
             let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action.payload.insert(
+                "value".to_owned(),
+                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+            );
             action
                 .payload
-                .insert("value".to_owned(), Value::Text("${_variables.first.VALUE}".to_owned()));
-            action
-                .payload
-                .insert("full".to_owned(), Value::Text("${_variables.first}".to_owned()));
+                .insert("full".to_owned(), Value::Text("${_variables.collision_name}".to_owned()));
             rule.actions.push(action);
             rule
         };
@@ -2022,9 +2023,10 @@ mod test {
             let mut rule = new_rule("rule3", None);
 
             let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
-            action
-                .payload
-                .insert("value".to_owned(), Value::Text("${_variables.first.VALUE}".to_owned()));
+            action.payload.insert(
+                "value".to_owned(),
+                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+            );
             rule.actions.push(action);
             rule
         };
@@ -2033,7 +2035,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3],
         })
-            .expect("should create a matcher");
+        .expect("should create a matcher");
 
         let mut payload = Payload::new();
         payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
@@ -2051,8 +2053,10 @@ mod test {
                     "aaa",
                     rules
                         .extracted_vars
-                        .get_from_map("first.VALUE")
-                        .expect("should contain rule1.extracted")
+                        .get_from_map("collision_name")
+                        .expect("should contain collision_name")
+                        .get_from_map("VALUE")
+                        .expect("should contain collision_name.VALUE")
                 );
 
                 let mut vars = HashMap::new();
@@ -2062,8 +2066,10 @@ mod test {
                     &vars,
                     rules
                         .extracted_vars
-                        .get_from_map("rule2.first")
-                        .expect("should contain rule2.extracted")
+                        .get_from_map("rule2")
+                        .expect("should contain rule2")
+                        .get_from_map("collision_name")
+                        .expect("should contain rule2.collision_name")
                 );
 
                 let rule_1_processed = rules.rules.get(0).expect("should contain rule1");

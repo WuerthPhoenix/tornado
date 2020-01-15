@@ -161,9 +161,9 @@ impl StringInterpolator {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::collections::HashMap;
     use tornado_common_api::{Event, Payload};
     use tornado_common_parser::Parser;
-    use std::collections::HashMap;
 
     #[test]
     fn build_should_fail_if_not_valid_expression() {

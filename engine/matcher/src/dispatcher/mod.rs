@@ -52,8 +52,8 @@ mod test {
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
-    use tornado_network_simple::SimpleEventBus;
     use tornado_common_api::Value;
+    use tornado_network_simple::SimpleEventBus;
 
     #[test]
     fn should_publish_all_actions() {

@@ -24,11 +24,7 @@ impl Operator for Contain {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> bool {
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         match self.first.get(event, extracted_vars) {
             Some(first_value) => match first_value.as_ref() {
                 Value::Text(first) => {

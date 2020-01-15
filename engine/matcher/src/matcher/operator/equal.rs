@@ -24,11 +24,7 @@ impl Operator for Equal {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> bool {
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         let first = self.first_arg.get(event, extracted_vars);
         if first.is_some() {
             let second = self.second_arg.get(event, extracted_vars);

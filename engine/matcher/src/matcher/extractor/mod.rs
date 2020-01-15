@@ -31,7 +31,7 @@ impl MatcherExtractorBuilder {
     ///
     /// ```rust
     ///
-    ///    use tornado_common_api::Event;
+    ///    use tornado_common_api::{Event, Value};
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
     ///    use tornado_engine_matcher::model::InternalEvent;
@@ -57,15 +57,15 @@ impl MatcherExtractorBuilder {
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
     ///    let event: InternalEvent = Event::new("temp=44'C").into();
-    ///    let mut extracted_vars = HashMap::new();
+    ///    let mut extracted_vars = Value::Map(HashMap::new());
     ///
     ///    let result = matcher_extractor.process_all(&event, &mut extracted_vars);
     ///
     ///    assert!(result.is_ok());
-    ///    assert_eq!(1, extracted_vars.len());
+    ///    assert_eq!(1, extracted_vars.get_map().unwrap().len());
     ///    assert_eq!(
     ///        "44",
-    ///        extracted_vars.get("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
+    ///        extracted_vars.get_from_map("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -125,9 +125,9 @@ impl MatcherExtractor {
             if let Some(map) = extracted_vars.get_map_mut() {
                 map.insert(self.rule_name.to_string(), Value::Map(vars));
             } else {
-                return Err(MatcherError::InternalSystemError{
-                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned()
-                })
+                return Err(MatcherError::InternalSystemError {
+                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
+                });
             }
         }
         Ok(())
@@ -162,11 +162,7 @@ impl ValueExtractor {
         })
     }
 
-    pub fn extract(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> Option<Value> {
+    pub fn extract(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> Option<Value> {
         self.regex_extractor.extract(event, extracted_vars)
     }
 }
@@ -262,11 +258,7 @@ impl RegexValueExtractor {
         }
     }
 
-    pub fn extract(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
-    ) -> Option<Value> {
+    pub fn extract(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> Option<Value> {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
             // however, we can use an optimized logic if we know beforehand that only the first capture is required
