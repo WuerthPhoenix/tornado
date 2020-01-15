@@ -28,7 +28,7 @@ impl Operator for Equal {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool {
         let first = self.first_arg.get(event, extracted_vars);
         if first.is_some() {

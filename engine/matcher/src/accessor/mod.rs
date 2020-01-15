@@ -157,14 +157,19 @@ impl Accessor {
     pub fn get<'o>(
         &'o self,
         event: &'o InternalEvent,
-        extracted_vars: Option<&'o HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&'o HashMap<String, Value>>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { rule_name, key } => extracted_vars
                 .and_then(|vars| vars.get(rule_name.as_str()))
-                .and_then(|vars| vars.get(key.as_str()))
+                .and_then(|vars| {
+                    match vars {
+                        Value::Map(payload) => payload.get(key.as_str()),
+                        _ => None
+                    }
+                })
                 .map(|value| Cow::Borrowed(value)),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
@@ -424,7 +429,7 @@ mod test {
         extracted_vars_inner.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule1".to_owned(), extracted_vars_inner);
+        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -450,8 +455,8 @@ mod test {
             .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name".to_owned(), extracted_vars_current);
-        extracted_vars.insert("custom_rule_name".to_owned(), extracted_vars_custom);
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -477,8 +482,8 @@ mod test {
             .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name".to_owned(), extracted_vars_current);
-        extracted_vars.insert("custom_rule_name".to_owned(), extracted_vars_custom);
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 

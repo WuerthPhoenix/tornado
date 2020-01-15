@@ -232,7 +232,7 @@ impl Matcher {
 
     fn process_actions(
         processed_event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
@@ -614,7 +614,7 @@ mod test {
                 assert_eq!(1, rules.extracted_vars.len());
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
                 );
                 assert_eq!(1, processed_rule.actions.len());
                 assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
@@ -901,7 +901,7 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
                 );
             }
             _ => assert!(false),
@@ -970,14 +970,14 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule1_email").unwrap().get("extracted_temp").unwrap()
+                    rules.extracted_vars.get("rule1_email").unwrap().get_from_map("extracted_temp").unwrap()
                 );
 
                 let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert_eq!(
                     "em",
-                    rules.extracted_vars.get("rule2_email").unwrap().get("extracted_temp").unwrap()
+                    rules.extracted_vars.get("rule2_email").unwrap().get_from_map("extracted_temp").unwrap()
                 );
             }
             _ => assert!(false),
@@ -1047,14 +1047,14 @@ mod test {
                 assert!(rules
                     .extracted_vars
                     .get("rule1_email")
-                    .and_then(|inner| inner.get("extracted_temp"))
+                    .and_then(|inner| inner.get_from_map("extracted_temp"))
                     .is_none());
 
                 let rule_2_processed = rules.rules.get(1).unwrap();
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
                 assert_eq!(
                     "ai",
-                    rules.extracted_vars.get("rule2_email").unwrap().get("extracted_temp").unwrap()
+                    rules.extracted_vars.get("rule2_email").unwrap().get_from_map("extracted_temp").unwrap()
                 );
             }
             _ => assert!(false),
@@ -1111,7 +1111,7 @@ mod test {
                         .extracted_vars
                         .get("rule1")
                         .unwrap()
-                        .get("extracted_temp")
+                        .get_from_map("extracted_temp")
                         .unwrap()
                         .get_text()
                         .unwrap()
@@ -1171,7 +1171,7 @@ mod test {
                         .extracted_vars
                         .get("rule1")
                         .unwrap()
-                        .get("extracted_temp")
+                        .get_from_map("extracted_temp")
                         .unwrap()
                         .get_text()
                         .unwrap()
@@ -1684,7 +1684,7 @@ mod test {
                                 .extracted_vars
                                 .get("rule")
                                 .unwrap()
-                                .get("extracted_temp")
+                                .get_from_map("extracted_temp")
                                 .unwrap()
                         );
                     }
@@ -1706,7 +1706,7 @@ mod test {
                                 .extracted_vars
                                 .get("rule")
                                 .unwrap()
-                                .get("extracted_temp")
+                                .get_from_map("extracted_temp")
                                 .unwrap()
                         );
                     }
@@ -1921,7 +1921,7 @@ mod test {
                         .extracted_vars
                         .get("rule1")
                         .expect("should contain rule1.extracted")
-                        .get("extracted")
+                        .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
                 );
                 assert_eq!(
@@ -1930,7 +1930,7 @@ mod test {
                         .extracted_vars
                         .get("rule2")
                         .expect("should contain rule2.extracted")
-                        .get("extracted")
+                        .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
                 );
 

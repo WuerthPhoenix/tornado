@@ -102,7 +102,7 @@ impl StringInterpolator {
     pub fn render(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Result<String, MatcherError> {
         let mut render = String::new();
 
@@ -334,7 +334,7 @@ mod test {
         extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule_for_test".to_owned(), extracted_vars_inner);
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         let template = "1: ${_variables.test1} - 2: ${_variables.test2}";
 

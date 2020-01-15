@@ -30,7 +30,7 @@ impl Operator for GreaterEqualThan {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool {
         let cmp = partial_cmp_option_cow_value(&self.first.get(event, extracted_vars), || {
             self.second.get(event, extracted_vars)

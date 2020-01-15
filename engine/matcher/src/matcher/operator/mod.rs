@@ -33,7 +33,7 @@ pub trait Operator: fmt::Debug + Send + Sync {
     fn evaluate(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> bool;
 }
 

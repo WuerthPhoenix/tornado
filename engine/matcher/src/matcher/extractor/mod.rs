@@ -65,7 +65,7 @@ impl MatcherExtractorBuilder {
     ///    assert_eq!(1, extracted_vars.len());
     ///    assert_eq!(
     ///        "44",
-    ///        extracted_vars.get("rule_name").unwrap().get("extracted_temp").unwrap()
+    ///        extracted_vars.get("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -113,7 +113,7 @@ impl MatcherExtractor {
     pub fn process_all(
         &self,
         event: &InternalEvent,
-        extracted_vars: &mut HashMap<String, HashMap<String, Value>>,
+        extracted_vars: &mut HashMap<String, Value>,
     ) -> Result<(), MatcherError> {
         let mut vars = HashMap::new();
         for (key, extractor) in &self.extractors {
@@ -122,7 +122,7 @@ impl MatcherExtractor {
             vars.insert(extractor.key.to_string(), value);
         }
         if !vars.is_empty() {
-            extracted_vars.insert(self.rule_name.to_string(), vars);
+            extracted_vars.insert(self.rule_name.to_string(), Value::Map(vars));
         }
         Ok(())
     }
@@ -159,7 +159,7 @@ impl ValueExtractor {
     pub fn extract(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Option<Value> {
         self.regex_extractor.extract(event, extracted_vars)
     }
@@ -259,7 +259,7 @@ impl RegexValueExtractor {
     pub fn extract(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Option<Value> {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
@@ -635,9 +635,9 @@ mod test {
         extractor.process_all(&event, &mut extracted_vars).unwrap();
 
         assert_eq!(1, extracted_vars.len());
-        assert_eq!(2, extracted_vars.get("rule").unwrap().len());
-        assert_eq!("44", extracted_vars.get("rule").unwrap().get("extracted_temp").unwrap());
-        assert_eq!("temp", extracted_vars.get("rule").unwrap().get("extracted_text").unwrap());
+        assert_eq!(2, extracted_vars.get("rule").unwrap().get_map().unwrap().len());
+        assert_eq!("44", extracted_vars.get("rule").unwrap().get_from_map("extracted_temp").unwrap());
+        assert_eq!("temp", extracted_vars.get("rule").unwrap().get_from_map("extracted_text").unwrap());
     }
 
     #[test]

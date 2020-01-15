@@ -116,7 +116,7 @@ impl ActionResolver {
     pub fn execute(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Result<Action, MatcherError> {
         let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
 
@@ -148,7 +148,7 @@ impl ActionValueProcessor {
         rule_name: &str,
         action_id: &str,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, HashMap<String, Value>>>,
+        extracted_vars: Option<&HashMap<String, Value>>,
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
@@ -309,7 +309,7 @@ mod test {
         extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule_for_test".to_owned(), extracted_vars_inner);
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         // Act
         let result = matcher_action.execute(&event, Some(&extracted_vars)).unwrap();
