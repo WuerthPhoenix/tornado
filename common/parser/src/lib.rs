@@ -2,18 +2,17 @@ use failure_derive::Fail;
 use lazy_static::*;
 use regex::Regex;
 use std::borrow::Cow;
-use tornado_common_api::{Value};
+use tornado_common_api::Value;
 
-const EXPRESSION_START_DELIMITER: &str = "${";
-const EXPRESSION_END_DELIMITER: &str = "}";
+pub const EXPRESSION_START_DELIMITER: &str = "${";
+pub const EXPRESSION_END_DELIMITER: &str = "}";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
 const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
 const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
 const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
 
 lazy_static! {
-    static ref RE: Regex =
-        Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
+    static ref RE: Regex = Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
 }
 
 #[derive(Fail, Debug)]
@@ -26,54 +25,58 @@ pub enum ParserError {
 
 #[derive(PartialEq, Debug)]
 pub enum Parser {
-    Exp{keys: Vec<ValueGetter>},
+    Exp { keys: Vec<ValueGetter> },
     Val(Value),
 }
 
 impl Parser {
-
     pub fn is_expression(text: &str) -> bool {
         let trimmed = text.trim();
-        trimmed.starts_with(EXPRESSION_START_DELIMITER) && trimmed.ends_with(EXPRESSION_END_DELIMITER)
+        trimmed.starts_with(EXPRESSION_START_DELIMITER)
+            && trimmed.ends_with(EXPRESSION_END_DELIMITER)
     }
 
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
-        if Parser::is_expression(text)
-        {
+        if Parser::is_expression(text) {
             let trimmed = text.trim();
-            let expression = &trimmed
-                [EXPRESSION_START_DELIMITER.len()..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-            Ok(Parser::Exp{keys: Parser::parse_keys(expression)?})
+            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
+                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+            Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
         } else {
             Ok(Parser::Val(Value::Text(text.to_owned())))
         }
     }
 
-    fn parse_keys(
-        expression: &str,
-    ) -> Result<Vec<ValueGetter>, ParserError> {
+    fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
         let regex: &Regex = &RE;
         regex
             .captures_iter(expression)
             .map(|cap| {
-                let capture = cap.get(0)
-                    .ok_or_else(|| ParserError::ConfigurationError {message: format!(
-                        "Error parsing expression [{}]",
-                        expression)})?;
+                let capture = cap.get(0).ok_or_else(|| ParserError::ConfigurationError {
+                    message: format!("Error parsing expression [{}]", expression),
+                })?;
                 let mut result = capture.as_str().to_string();
 
                 // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) &&
-                        result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
+                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
+                        && result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
+                    {
                         result = result[1..(result.len() - 1)].to_string();
                     }
-                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER) &&
-                        result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER) {
+                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
+                        && result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER)
+                    {
                         result = result[1..(result.len() - 1)].to_string();
-                        let index = usize::from_str_radix(&result, 10)
-                            .map_err(|err| ParserError::ConfigurationError { message: format!("Cannot parse value [{}] to number: {}", &result, err) })?;
-                        return Ok(ValueGetter::Array {index})
+                        let index = usize::from_str_radix(&result, 10).map_err(|err| {
+                            ParserError::ConfigurationError {
+                                message: format!(
+                                    "Cannot parse value [{}] to number: {}",
+                                    &result, err
+                                ),
+                            }
+                        })?;
+                        return Ok(ValueGetter::Array { index });
                     }
                     if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
                         let error_message = format!(
@@ -83,13 +86,14 @@ impl Parser {
                         return Err(ParserError::ConfigurationError { message: error_message });
                     }
                 }
-                Ok(ValueGetter::Map {key: result})
-            }).collect()
+                Ok(ValueGetter::Map { key: result })
+            })
+            .collect()
     }
 
     pub fn parse_value<'o>(&'o self, value: &'o Value) -> Option<Cow<'o, Value>> {
         match self {
-            Parser::Exp{keys} => {
+            Parser::Exp { keys } => {
                 let mut temp_value = Some(value);
 
                 let mut count = 0;
@@ -100,7 +104,7 @@ impl Parser {
                 }
 
                 temp_value.map(|value| Cow::Borrowed(value))
-            },
+            }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
     }
@@ -133,7 +137,6 @@ impl Into<ValueGetter> for usize {
     }
 }
 
-
 #[cfg(test)]
 mod test {
 
@@ -143,7 +146,6 @@ mod test {
 
     #[test]
     fn parser_builder_should_return_value_type() {
-
         // Act
         let parser = Parser::build_parser("hello world").unwrap();
 
@@ -151,26 +153,23 @@ mod test {
         match parser {
             Parser::Val(value) => {
                 assert_eq!(Value::Text("hello world".to_owned()), value);
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
-
     }
 
     #[test]
     fn parser_builder_should_return_value_exp() {
-
         // Act
         let parser = Parser::build_parser("${hello.world}").unwrap();
 
         // Assert
         match parser {
-            Parser::Exp{keys} => {
+            Parser::Exp { keys } => {
                 assert!(!keys.is_empty());
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
-
     }
 
     #[test]
@@ -349,7 +348,6 @@ mod test {
 
     #[test]
     fn builder_should_parse_a_payload_key() {
-
         let expected: Vec<ValueGetter> = vec!["one".into()];
         assert_eq!(expected, Parser::parse_keys("one").unwrap());
 
@@ -367,10 +365,7 @@ mod test {
 
         let expected: Vec<ValueGetter> =
             vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
-        assert_eq!(
-            expected,
-            Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap()
-        );
+        assert_eq!(expected, Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
@@ -383,7 +378,6 @@ mod test {
 
     #[test]
     fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
-
         // Act
         let result = Parser::parse_keys(r#"o"ne"#);
 
@@ -393,7 +387,6 @@ mod test {
 
     #[test]
     fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
-
         // Act
         let result = Parser::parse_keys(r#"one."two"#);
 
@@ -423,10 +416,7 @@ mod test {
     fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
-        assert_eq!(
-            expected,
-            Parser::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap()
-        )
+        assert_eq!(expected, Parser::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap())
     }
 
     #[test]
@@ -435,6 +425,4 @@ mod test {
             vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
         assert_eq!(expected, Parser::parse_keys("hello.world[11].inner[0]").unwrap())
     }
-
 }
-

@@ -21,18 +21,17 @@ pub enum Parser {
 }
 
 impl Parser {
-
     pub fn is_expression(text: &str) -> bool {
         let trimmed = text.trim();
-        trimmed.starts_with(EXPRESSION_START_DELIMITER) && trimmed.ends_with(EXPRESSION_END_DELIMITER)
+        trimmed.starts_with(EXPRESSION_START_DELIMITER)
+            && trimmed.ends_with(EXPRESSION_END_DELIMITER)
     }
 
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
-        if Parser::is_expression(text)
-        {
+        if Parser::is_expression(text) {
             let trimmed = text.trim();
-            let expression = &trimmed
-                [EXPRESSION_START_DELIMITER.len()..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
+                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
             let jmespath_exp =
                 jmespath::compile(expression).map_err(|err| ParserError::ConfigurationError {
                     message: format!("Not valid expression: [{}]. Err: {}", expression, err),
@@ -44,9 +43,10 @@ impl Parser {
     }
 
     pub fn parse_str<'o>(&'o self, value: &str) -> Result<Cow<'o, Value>, ParserError> {
-        let data: Value = serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
-            message: format!("Failed to parse str into Value. Err: {}", err),
-        })?;
+        let data: Value =
+            serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
+                message: format!("Failed to parse str into Value. Err: {}", err),
+            })?;
         self.parse_value(&data)
     }
 
@@ -103,7 +103,6 @@ mod test {
 
     #[test]
     fn parser_builder_should_return_value_type() {
-
         // Act
         let parser = Parser::build_parser("hello world").unwrap();
 
@@ -111,15 +110,13 @@ mod test {
         match parser {
             Parser::Val(value) => {
                 assert_eq!(Value::Text("hello world".to_owned()), value);
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
-
     }
 
     #[test]
     fn parser_builder_should_return_value_exp() {
-
         // Act
         let parser = Parser::build_parser("${hello.world}").unwrap();
 
@@ -127,12 +124,11 @@ mod test {
         match parser {
             Parser::Exp(exp) => {
                 assert_eq!(exp.as_str(), "hello.world");
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
-
     }
-    
+
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
@@ -311,7 +307,6 @@ mod test {
 
     #[test]
     fn parser_should_enable_jmespath_functions() {
-
         // Arrange
         let parser = Parser::build_parser("${contains(@, 'one')}").unwrap();
         let json1 = r#"["one", "two"]"#;
@@ -327,8 +322,5 @@ mod test {
 
         assert_eq!(&Value::Bool(true), result1.unwrap().as_ref());
         assert_eq!(&Value::Bool(false), result2.unwrap().as_ref());
-
     }
-
 }
-

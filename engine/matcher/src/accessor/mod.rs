@@ -7,7 +7,7 @@ use log::*;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use tornado_common_api::Value;
-use tornado_common_parser::Parser;
+use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
 pub struct AccessorBuilder {
     id_validator: IdValidator,
@@ -19,8 +19,8 @@ impl Default for AccessorBuilder {
     fn default() -> Self {
         AccessorBuilder {
             id_validator: IdValidator::new(),
-            start_delimiter: "${",
-            end_delimiter: "}",
+            start_delimiter: EXPRESSION_START_DELIMITER,
+            end_delimiter: EXPRESSION_END_DELIMITER,
         }
     }
 }
@@ -30,7 +30,6 @@ const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_MS_KEY: &str = "event.created_ms";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
-
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -74,8 +73,11 @@ impl AccessorBuilder {
                         || val.eq(EVENT_PAYLOAD_SUFFIX)) =>
                     {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        let parser = Parser::build_parser(&format!("${{{}}}", key))?;
-                        Ok(Accessor::Payload { parser})
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::Payload { parser })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
@@ -131,7 +133,6 @@ impl AccessorBuilder {
         );
         result
     }
-
 }
 
 /// An Accessor returns the value of a specific field of an Event.
@@ -165,28 +166,7 @@ impl Accessor {
                 .and_then(|vars| vars.get(rule_name.as_str()))
                 .and_then(|vars| vars.get(key.as_str()))
                 .map(|value| Cow::Borrowed(value)),
-            Accessor::Payload { parser } => {
-                /*
-                let mut value = Some(&event.payload);
-
-                let mut count = 0;
-
-                while count < keys.len() && value.is_some() {
-                    value = value.and_then(|val| keys[count].get(val));
-                    count += 1;
-                }
-
-                value.map(|value| Cow::Borrowed(value))
-                */
-
-                /*
-                // TODO: removed event cloning here
-                let event_value: tornado_common_api::Value = event.clone().into();
-                let mut event = HashMap::new();
-                event.insert("event".to_owned(), event_value);
-                */
-                parser.parse_value(&event.payload)
-            }
+            Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
                 let event_value: Value = event.clone().into();
@@ -369,7 +349,9 @@ mod test {
     #[test]
     fn should_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor = Accessor::Payload { parser: Parser::build_parser(r#"${body."second.with.dot"}"#).unwrap() };
+        let accessor = Accessor::Payload {
+            parser: Parser::build_parser(r#"${body."second.with.dot"}"#).unwrap(),
+        };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));

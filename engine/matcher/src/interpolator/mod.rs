@@ -192,7 +192,7 @@ mod test {
         assert_eq!(&11, &interpolator.accessors[0].start);
         assert_eq!(&32, &interpolator.accessors[0].end);
         match &interpolator.accessors[0].accessor {
-            Accessor::Payload { parser: Parser::Exp {keys}} => assert_eq!(1, keys.len()),
+            Accessor::Payload { parser: Parser::Exp { keys } } => assert_eq!(1, keys.len()),
             _ => assert!(false),
         }
 
