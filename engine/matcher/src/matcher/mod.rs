@@ -767,7 +767,6 @@ mod test {
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-                println!("Message: {:?}", processed_rule.message);
                 assert!(processed_rule
                     .message
                     .clone()
