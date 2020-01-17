@@ -1,4 +1,5 @@
 use failure_derive::Fail;
+use tornado_common_parser::ParserError;
 
 #[derive(Fail, Debug, PartialEq)]
 pub enum MatcherError {
@@ -58,4 +59,10 @@ pub enum MatcherError {
         template, rule_name, cause
     )]
     InterpolatorRenderError { template: String, rule_name: String, cause: String },
+}
+
+impl From<ParserError> for MatcherError {
+    fn from(parser_error: ParserError) -> Self {
+        MatcherError::ConfigurationError { message: format!("{}", parser_error) }
+    }
 }

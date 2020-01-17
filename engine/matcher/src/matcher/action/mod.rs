@@ -303,11 +303,13 @@ mod test {
             created_ms: 1554130814854,
             payload,
         });
+
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
+        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
-        extracted_vars
-            .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         // Act
         let result = matcher_action.execute(&event, Some(&extracted_vars)).unwrap();
