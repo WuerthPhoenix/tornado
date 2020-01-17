@@ -166,7 +166,7 @@ impl Matcher {
         internal_event: &InternalEvent,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
-        let mut extracted_vars = HashMap::new();
+        let mut extracted_vars = Value::Map(HashMap::new());
         let mut processed_rules = vec![];
 
         for rule in rules {
@@ -232,7 +232,7 @@ impl Matcher {
 
     fn process_actions(
         processed_event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
@@ -611,12 +611,12 @@ mod test {
                 let processed_rule = rules.rules.get(0).unwrap();
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
-                assert_eq!(1, rules.extracted_vars.len());
+                assert_eq!(1, rules.extracted_vars.get_map().unwrap().len());
                 assert_eq!(
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -907,7 +907,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -981,7 +981,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule1_email")
+                        .get_from_map("rule1_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -993,7 +993,7 @@ mod test {
                     "em",
                     rules
                         .extracted_vars
-                        .get("rule2_email")
+                        .get_from_map("rule2_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1065,7 +1065,7 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, rule_1_processed.status);
                 assert!(rules
                     .extracted_vars
-                    .get("rule1_email")
+                    .get_from_map("rule1_email")
                     .and_then(|inner| inner.get_from_map("extracted_temp"))
                     .is_none());
 
@@ -1075,7 +1075,7 @@ mod test {
                     "ai",
                     rules
                         .extracted_vars
-                        .get("rule2_email")
+                        .get_from_map("rule2_email")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1133,7 +1133,7 @@ mod test {
                     "zzz",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1193,7 +1193,7 @@ mod test {
                     "zzz",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .unwrap()
                         .get_from_map("extracted_temp")
                         .unwrap()
@@ -1706,7 +1706,7 @@ mod test {
                             "aaa",
                             rules
                                 .extracted_vars
-                                .get("rule")
+                                .get_from_map("rule")
                                 .unwrap()
                                 .get_from_map("extracted_temp")
                                 .unwrap()
@@ -1728,7 +1728,7 @@ mod test {
                             "999",
                             rules
                                 .extracted_vars
-                                .get("rule")
+                                .get_from_map("rule")
                                 .unwrap()
                                 .get_from_map("extracted_temp")
                                 .unwrap()
@@ -1943,7 +1943,7 @@ mod test {
                     "aaa",
                     rules
                         .extracted_vars
-                        .get("rule1")
+                        .get_from_map("rule1")
                         .expect("should contain rule1.extracted")
                         .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
@@ -1952,7 +1952,7 @@ mod test {
                     "999",
                     rules
                         .extracted_vars
-                        .get("rule2")
+                        .get_from_map("rule2")
                         .expect("should contain rule2.extracted")
                         .get_from_map("extracted")
                         .expect("should contain rule1.extracted")
@@ -1963,6 +1963,125 @@ mod test {
 
                 let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn extracted_variables_name_collisions_should_prioritize_the_local_rule() {
+        // Arrange
+        let rule_1 = {
+            let mut rule = new_rule("collision_name", None);
+            rule.constraint.with.insert(
+                String::from("VALUE"),
+                Extractor {
+                    from: String::from("${event.payload.value}"),
+                    regex: ExtractorRegex::Regex {
+                        regex: String::from(r"[a-z]+"),
+                        group_match_idx: Some(0),
+                        all_matches: None,
+                    },
+                },
+            );
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action
+                .payload
+                .insert("value".to_owned(), Value::Text("${_variables.VALUE}".to_owned()));
+            rule.actions.push(action);
+            rule
+        };
+
+        let rule_2 = {
+            let mut rule = new_rule("rule2", None);
+            rule.constraint.with.insert(
+                String::from("collision_name"),
+                Extractor {
+                    from: String::from("${event.payload.value}"),
+                    regex: ExtractorRegex::RegexNamedGroups {
+                        regex: String::from(r"(?P<VALUE>[0-9]+)"),
+                        all_matches: None,
+                    },
+                },
+            );
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action.payload.insert(
+                "value".to_owned(),
+                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+            );
+            action
+                .payload
+                .insert("full".to_owned(), Value::Text("${_variables.collision_name}".to_owned()));
+            rule.actions.push(action);
+            rule
+        };
+
+        let rule_3 = {
+            let mut rule = new_rule("rule3", None);
+
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            action.payload.insert(
+                "value".to_owned(),
+                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+            );
+            rule.actions.push(action);
+            rule
+        };
+
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule_1, rule_2, rule_3],
+        })
+        .expect("should create a matcher");
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result = matcher.process(Event::new_with_payload("email", payload));
+
+        // Assert
+        match result.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(3, rules.rules.len());
+
+                assert_eq!(
+                    "aaa",
+                    rules
+                        .extracted_vars
+                        .get_from_map("collision_name")
+                        .expect("should contain collision_name")
+                        .get_from_map("VALUE")
+                        .expect("should contain collision_name.VALUE")
+                );
+
+                let mut vars = HashMap::new();
+                vars.insert("VALUE".to_owned(), Value::Text("999".to_owned()));
+                let vars = Value::Map(vars);
+                assert_eq!(
+                    &vars,
+                    rules
+                        .extracted_vars
+                        .get_from_map("rule2")
+                        .expect("should contain rule2")
+                        .get_from_map("collision_name")
+                        .expect("should contain rule2.collision_name")
+                );
+
+                let rule_1_processed = rules.rules.get(0).expect("should contain rule1");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
+
+                let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
+                assert_eq!(&vars, rule_2_processed.actions[0].payload.get("full").unwrap());
+                assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
+
+                let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
+                assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
+                assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
             }
             _ => assert!(false),
         };

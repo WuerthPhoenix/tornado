@@ -2,15 +2,12 @@
 
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
-use crate::validator::id::IdValidator;
 use log::*;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use tornado_common_api::Value;
 use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
 pub struct AccessorBuilder {
-    id_validator: IdValidator,
     start_delimiter: &'static str,
     end_delimiter: &'static str,
 }
@@ -18,7 +15,6 @@ pub struct AccessorBuilder {
 impl Default for AccessorBuilder {
     fn default() -> Self {
         AccessorBuilder {
-            id_validator: IdValidator::new(),
             start_delimiter: EXPRESSION_START_DELIMITER,
             end_delimiter: EXPRESSION_END_DELIMITER,
         }
@@ -81,44 +77,11 @@ impl AccessorBuilder {
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
-
-                        let keys: Vec<&str> = key.split('.').collect();
-                        if keys.len() == 1 {
-                            let variable_name = keys[0];
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_name,
-                                value,
-                                rule_name,
-                            )?;
-                            let parser = Parser::build_parser(&format!(
-                                "{}{}{}",
-                                EXPRESSION_START_DELIMITER, variable_name, EXPRESSION_END_DELIMITER
-                            ))?;
-                            Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
-                        } else if keys.len() > 1 {
-                            let variable_rule = keys[0];
-                            let variable_name = &key[variable_rule.len() + 1..];
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_rule,
-                                value,
-                                rule_name,
-                            )?;
-                            let parser = Parser::build_parser(&format!(
-                                "{}{}{}",
-                                EXPRESSION_START_DELIMITER, variable_name, EXPRESSION_END_DELIMITER
-                            ))?;
-                            Ok(Accessor::ExtractedVar {
-                                rule_name: variable_rule.to_owned(),
-                                parser,
-                            })
-                        } else {
-                            Err(MatcherError::NotValidIdOrNameError {
-                                message: format!(
-                                    "Invalid extracted variables accessor [{}] for rule [{}]",
-                                    value, rule_name
-                                ),
-                            })
-                        }
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
@@ -157,14 +120,16 @@ impl Accessor {
     pub fn get<'o>(
         &'o self,
         event: &'o InternalEvent,
-        extracted_vars: Option<&'o HashMap<String, Value>>,
+        extracted_vars: Option<&'o Value>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { rule_name, parser } => extracted_vars
-                .and_then(|vars| vars.get(rule_name.as_str()))
-                .and_then(|vars| parser.parse_value(vars)),
+                .and_then(|global_vars| global_vars.get_from_map(rule_name.as_str())
+                    .and_then(|rule_vars| parser.parse_value(rule_vars))
+                    .or_else(|| parser.parse_value(global_vars))
+                ),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -426,6 +391,7 @@ mod test {
 
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -453,6 +419,7 @@ mod test {
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -467,6 +434,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+
         let mut extracted_vars_current = HashMap::new();
         extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
         extracted_vars_current
@@ -480,6 +448,7 @@ mod test {
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -590,8 +559,8 @@ mod test {
 
         assert_eq!(
             Accessor::ExtractedVar {
-                rule_name: "custom_rule".to_owned(),
-                parser: Parser::build_parser("${key}").unwrap()
+                rule_name: "current_rule_name".to_owned(),
+                parser: Parser::build_parser("${custom_rule.key}").unwrap()
             },
             accessor
         )
@@ -713,6 +682,7 @@ mod test {
 
         let mut extracted_vars = HashMap::new();
         extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         // Act
         let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();

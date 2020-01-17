@@ -31,7 +31,7 @@ impl MatcherExtractorBuilder {
     ///
     /// ```rust
     ///
-    ///    use tornado_common_api::Event;
+    ///    use tornado_common_api::{Event, Value};
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
     ///    use tornado_engine_matcher::model::InternalEvent;
@@ -57,15 +57,15 @@ impl MatcherExtractorBuilder {
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
     ///    let event: InternalEvent = Event::new("temp=44'C").into();
-    ///    let mut extracted_vars = HashMap::new();
+    ///    let mut extracted_vars = Value::Map(HashMap::new());
     ///
     ///    let result = matcher_extractor.process_all(&event, &mut extracted_vars);
     ///
     ///    assert!(result.is_ok());
-    ///    assert_eq!(1, extracted_vars.len());
+    ///    assert_eq!(1, extracted_vars.get_map().unwrap().len());
     ///    assert_eq!(
     ///        "44",
-    ///        extracted_vars.get("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
+    ///        extracted_vars.get_from_map("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -100,7 +100,7 @@ pub struct MatcherExtractor {
 impl MatcherExtractor {
     /*
     /// Returns the value of the variable named 'key' generated from the provided Event.
-    fn extract(&self, key: &str, event: &InternalEvent, extracted_vars: Option<&HashMap<String, Value>>) -> Result<String, MatcherError> {
+    fn extract(&self, key: &str, event: &InternalEvent, extracted_vars: Option<&Value>) -> Result<String, MatcherError> {
         let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event, extracted_vars));
         self.check_extracted(key, extracted)
     }
@@ -113,16 +113,23 @@ impl MatcherExtractor {
     pub fn process_all(
         &self,
         event: &InternalEvent,
-        extracted_vars: &mut HashMap<String, Value>,
+        extracted_vars: &mut Value,
     ) -> Result<(), MatcherError> {
-        if !self.extractors.is_empty() {
-            let mut vars = HashMap::new();
-            for (key, extractor) in &self.extractors {
-                let value =
-                    self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
-                vars.insert(extractor.key.to_string(), value);
+	    if !self.extractors.is_empty() {
+	        let mut vars = HashMap::new();
+	        for (key, extractor) in &self.extractors {
+	            let value =
+	                self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
+	            vars.insert(extractor.key.to_string(), value);
+	        }
+
+            if let Some(map) = extracted_vars.get_map_mut() {
+                map.insert(self.rule_name.to_string(), Value::Map(vars));
+            } else {
+                return Err(MatcherError::InternalSystemError {
+                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
+                });
             }
-            extracted_vars.insert(self.rule_name.to_string(), Value::Map(vars));
         }
         Ok(())
     }
@@ -156,11 +163,7 @@ impl ValueExtractor {
         })
     }
 
-    pub fn extract(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
-    ) -> Option<Value> {
+    pub fn extract(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> Option<Value> {
         self.regex_extractor.extract(event, extracted_vars)
     }
 }
@@ -256,11 +259,7 @@ impl RegexValueExtractor {
         }
     }
 
-    pub fn extract(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
-    ) -> Option<Value> {
+    pub fn extract(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> Option<Value> {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
             // however, we can use an optimized logic if we know beforehand that only the first capture is required
@@ -630,19 +629,19 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
-        let mut extracted_vars = HashMap::new();
+        let mut extracted_vars = Value::Map(HashMap::new());
 
         extractor.process_all(&event, &mut extracted_vars).unwrap();
 
-        assert_eq!(1, extracted_vars.len());
-        assert_eq!(2, extracted_vars.get("rule").unwrap().get_map().unwrap().len());
+        assert_eq!(1, extracted_vars.get_map().unwrap().len());
+        assert_eq!(2, extracted_vars.get_from_map("rule").unwrap().get_map().unwrap().len());
         assert_eq!(
             "44",
-            extracted_vars.get("rule").unwrap().get_from_map("extracted_temp").unwrap()
+            extracted_vars.get_from_map("rule").unwrap().get_from_map("extracted_temp").unwrap()
         );
         assert_eq!(
             "temp",
-            extracted_vars.get("rule").unwrap().get_from_map("extracted_text").unwrap()
+            extracted_vars.get_from_map("rule").unwrap().get_from_map("extracted_text").unwrap()
         );
     }
 
@@ -677,7 +676,7 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let mut event = new_event("temp=44'C");
-        let mut extracted_vars = HashMap::new();
+        let mut extracted_vars = Value::Map(HashMap::new());
 
         assert!(extractor.process_all(&mut event, &mut extracted_vars).is_err());
     }

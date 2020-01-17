@@ -188,6 +188,12 @@ impl Value {
             _ => None,
         }
     }
+    pub fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
+        match self {
+            Value::Map(payload) => Some(payload),
+            _ => None,
+        }
+    }
     pub fn get_array(&self) -> Option<&Vec<Value>> {
         match self {
             Value::Array(array) => Some(array),
