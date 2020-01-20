@@ -27,7 +27,7 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E
 
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
         trace!("ExecutorActor - received new action [{:?}]", &msg.action);
-        match self.executor.execute(&msg.action) {
+        match self.executor.execute(msg.action) {
             Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
             Err(e) => {
                 error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e)
