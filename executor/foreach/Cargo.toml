@@ -11,3 +11,6 @@ log = "0.4"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
+
+[dev-dependencies]
+tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
