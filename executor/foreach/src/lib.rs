@@ -1,7 +1,7 @@
 use log::*;
+use std::sync::Arc;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{Executor, ExecutorError};
-use std::sync::Arc;
 use tornado_network_common::EventBus;
 
 const FOREACH_TARGET_KEY: &str = "target";
@@ -9,12 +9,12 @@ const FOREACH_ACTIONS_KEY: &str = "actions";
 const FOREACH_ITEM_KEY: &str = "item";
 
 pub struct ForEachExecutor {
-    bus: Arc::<dyn EventBus>
+    bus: Arc<dyn EventBus>,
 }
 
 impl ForEachExecutor {
-    pub fn new(bus: Arc::<dyn EventBus>) -> Self {
-        Self{bus}
+    pub fn new(bus: Arc<dyn EventBus>) -> Self {
+        Self { bus }
     }
 }
 
@@ -24,61 +24,63 @@ impl Executor for ForEachExecutor {
 
         match action.payload.remove(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
-
-                let actions = match action.payload.remove(FOREACH_ACTIONS_KEY) {
-                    Some(Value::Array(actions)) => actions,
+                let actions: Vec<Action> = match action.payload.remove(FOREACH_ACTIONS_KEY) {
+                    Some(Value::Array(actions)) => actions
+                        .into_iter()
+                        .map(to_action)
+                        .filter_map(Result::ok)
+                        .collect(),
                     _ => {
                         return Err(ExecutorError::MissingArgumentError {
-                            message: format!("ForEachExecutor - No [{}] key found in payload", FOREACH_ACTIONS_KEY)
+                            message: format!(
+                                "ForEachExecutor - No [{}] key found in payload",
+                                FOREACH_ACTIONS_KEY
+                            ),
                         })
                     }
                 };
 
-                for value in values.into_iter() {
-
-                }
-            },
-            _ => {
-                return Err(ExecutorError::MissingArgumentError {
-                    message: format!("ForEachExecutor - No [{}] key found in payload", FOREACH_TARGET_KEY)
-                })
+                actions.iter().for_each(|action| {
+                    for value in values.iter() {
+                        let mut cloned_action = action.clone();
+                        cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+                        self.bus.publish_action(cloned_action);
+                    }
+                });
+                Ok(())
             }
+            _ => Err(ExecutorError::MissingArgumentError {
+                message: format!(
+                    "ForEachExecutor - No [{}] key found in payload",
+                    FOREACH_TARGET_KEY
+                ),
+            }),
         }
-
-        Ok(())
     }
 }
 
-fn to_action(mut value: Value) -> Result<Action, ExecutorError> {
+fn to_action(value: Value) -> Result<Action, ExecutorError> {
     match value {
-        Value::Map(mut action) => {
-            match action.remove("id") {
-                Some(Value::Text(id)) => {
-                    match action.remove("payload") {
-                        Some(Value::Map(payload)) => {
-                            Ok(Action{
-                                id,
-                                payload
-                            })
-                        },
-                        _ => {
-                            Err(ExecutorError::MissingArgumentError {
-                                message: "ForEachExecutor - Not valid action format: Missing payload.".to_owned()
-                            })
-                        }
-                    }
-                },
+        Value::Map(mut action) => match action.remove("id") {
+            Some(Value::Text(id)) => match action.remove("payload") {
+                Some(Value::Map(payload)) => Ok(Action { id, payload }),
                 _ => {
-                    Err(ExecutorError::MissingArgumentError {
-                        message: "ForEachExecutor - Not valid action format: Missing id.".to_owned()
-                    })
+                    let message =
+                        "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
+                    warn!("{}", message);
+                    Err(ExecutorError::MissingArgumentError { message })
                 }
+            },
+            _ => {
+                let message = "ForEachExecutor - Not valid action format: Missing id.".to_owned();
+                warn!("{}", message);
+                Err(ExecutorError::MissingArgumentError { message })
             }
         },
         _ => {
-            Err(ExecutorError::MissingArgumentError {
-                message: "ForEachExecutor - Not valid action format".to_owned()
-            })
+            let message = "ForEachExecutor - Not valid action format".to_owned();
+            warn!("{}", message);
+            Err(ExecutorError::MissingArgumentError { message })
         }
     }
 }
