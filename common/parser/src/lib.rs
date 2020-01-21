@@ -361,6 +361,26 @@ mod test {
     }
 
     #[test]
+    fn parser_expression_should_use_the_interpolators() {
+        // Arrange
+        let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let json = r#"
+        {
+            "key": ["one", true, 13.0]
+        }
+        "#;
+
+        let value: Value = serde_json::from_str(json).unwrap();
+
+        // Act
+        let result = parser.parse_value(&value);
+
+        // Assert
+        assert!(result.is_some());
+        assert_eq!(&Value::Text("one - true - 13".to_owned()), result.unwrap().as_ref());
+    }
+
+    #[test]
     fn builder_should_parse_a_payload_key() {
         let expected: Vec<ValueGetter> = vec!["one".into()];
         assert_eq!(expected, Parser::parse_keys("one").unwrap());

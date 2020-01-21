@@ -66,8 +66,8 @@ impl StringInterpolator {
 
     /// Performs the placeholders substitution on the internal template and return the
     /// resulting string.
-    /// The placeholders are replaced with values extracted from the passed event and extracted_vars.
-    /// Only values of type String, Number, Boolean and null are accepted; consequently, this method
+    /// The placeholders are replaced with values extracted from the passed value.
+    /// Only values of type String, Number, Boolean and Null are accepted; consequently, this method
     /// will return an error if:
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
@@ -128,6 +128,7 @@ impl StringInterpolator {
 mod test {
     use super::*;
     use crate::Parser;
+    use tornado_common_api::Payload;
 
     #[test]
     fn should_create_new_interpolator() {
@@ -206,119 +207,24 @@ mod test {
         assert_eq!(&45, &interpolator.parsers[2].end);
     }
 
-    /*
-    #[test]
-    fn should_render_a_constant_string() {
-        // Arrange
-        let payload = Payload::new();
-
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "constant string";
-
-        // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
-
-        // Assert
-        assert!(result.is_ok());
-        let render = result.unwrap();
-
-        assert_eq!("constant string", &render);
-    }
-
-    #[test]
-    fn should_render_from_event() {
-        // Arrange
-        let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
-
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "type: ${event.type} - body: ${event.payload.body}";
-
-        // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
-
-        // Assert
-        assert!(result.is_ok());
-        let render = result.unwrap();
-
-        assert_eq!("type: event_type_value - body: body_value", &render);
-    }
-
-    #[test]
-    fn should_render_from_extracted_vars() {
-        // Arrange
-        let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
-
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-        let mut extracted_vars_inner = HashMap::new();
-        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1".to_owned()));
-        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2".to_owned()));
-
-        let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
-
-        let template = "1: ${_variables.test1} - 2: ${_variables.test2}";
-
-        // Act
-        let interpolator =
-            StringInterpolator::build(template, "rule_for_test", &Default::default()).unwrap();
-        let result = interpolator.render(&event, Some(&Value::Map(extracted_vars)));
-
-        // Assert
-        assert!(result.is_ok());
-        let render = result.unwrap();
-
-        assert_eq!("1: var_test_1 - 2: var_test_2", &render);
-    }
-
     #[test]
     fn should_render_numbers() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(1554130814854)));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "${event.created_ms}";
+        let template = " ${created_ms} ";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_ok());
         let render = result.unwrap();
 
-        assert_eq!("1554130814854", &render);
+        assert_eq!(" 1554130814854 ", &render);
     }
-
     #[test]
     fn should_render_booleans() {
         // Arrange
@@ -326,18 +232,11 @@ mod test {
         payload.insert("success".to_owned(), Value::Bool(true));
         payload.insert("fail".to_owned(), Value::Bool(false));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "success: ${event.payload.success} - fail: ${event.payload.fail}";
+        let template = "success: ${success} - fail: ${fail}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -352,18 +251,11 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("void".to_owned(), Value::Null);
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = " void:  ${event.payload.void} ";
+        let template = " void:  ${void} ";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -379,18 +271,11 @@ mod test {
         payload.insert("first".to_owned(), Value::Text("first line".to_owned()));
         payload.insert("second".to_owned(), Value::Text("second line".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "${event.payload.first}\n${event.payload.second}";
+        let template = "${first}\n${second}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -404,18 +289,11 @@ mod test {
         // Arrange
         let payload = Payload::new();
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "${event.payload.second}";
+        let template = "val: ${second}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_err());
@@ -429,18 +307,11 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Array(body));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "${event.payload.body}";
+        let template = "val: ${body}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_err());
@@ -449,24 +320,17 @@ mod test {
     #[test]
     fn render_should_fail_if_value_is_a_map() {
         // Arrange
-        let mut body = HashMap::new();
+        let mut body = Payload::new();
         body.insert("".to_owned(), Value::Text("".to_owned()));
 
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Map(body));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
-
-        let template = "${event.payload.body}";
+        let template = "val: ${body}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&Value::Map(payload));
 
         // Assert
         assert!(result.is_err());
@@ -478,11 +342,15 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("payload content".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "email".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
+        let mut event = Payload::new();
+        event.insert("type".to_owned(), Value::Text("email".to_owned()));
+        event.insert("created_ms".to_owned(), Value::Number(Number::PosInt(1554130814854)));
+        event.insert("payload".to_owned(), Value::Map(payload));
+
+        let mut event_data = Payload::new();
+        event_data.insert("event".to_owned(), Value::Map(event));
+
+        let event = Value::Map(event_data);
 
         let template = r#"
             Received event with type: ${event.type}
@@ -491,10 +359,8 @@ mod test {
          "#;
 
         // Act
-
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
-        let result = interpolator.render(&event, None);
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let result = interpolator.render(&event);
 
         // Assert
         assert!(result.is_ok());
@@ -505,48 +371,4 @@ mod test {
         println!("Rendered template: \n{}", result.unwrap());
         println!("---------------------------");
     }
-
-    #[test]
-    fn should_return_whether_the_interpolator_is_required() {
-        let template = "<div><span>${event.payload.test}</sp${event.type}an><span>${_variables.test12}</span></${}div>";
-        assert!(StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = " ${event.type}";
-        assert!(StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "${event.type} ";
-        assert!(StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "${event.type}";
-        assert!(!StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "${event.type}${event.type}";
-        assert!(StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "the type is: ${event.type}";
-        assert!(StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "constant text";
-        assert!(!StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-
-        let template = "constant with empty expression ${}";
-        assert!(!StringInterpolator::build(template)
-            .unwrap()
-            .is_interpolation_required());
-    }
-    */
 }
