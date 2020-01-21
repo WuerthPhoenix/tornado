@@ -1,6 +1,8 @@
 use log::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
+use tornado_common_parser::Parser;
 use tornado_executor_common::{Executor, ExecutorError};
 use tornado_network_common::EventBus;
 
@@ -42,9 +44,18 @@ impl Executor for ForEachExecutor {
 
                 actions.iter().for_each(|action| {
                     for value in values.iter() {
-                        let mut cloned_action = action.clone();
-                        cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        self.bus.publish_action(cloned_action);
+                        //let mut cloned_action = action.clone();
+                        //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+
+                        let mut item = HashMap::new();
+                        item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+                        if let Err(err) = resolve_payload(&Value::Map(item), action.clone())
+                            .map(|action| self.bus.publish_action(action)) {
+                            warn!(
+                                "ForEachExecutor - Error while executiong internal action [{}]. Err: {}",
+                                action.id, err
+                            )
+                        }
                     }
                 });
                 Ok(())
@@ -83,6 +94,25 @@ fn to_action(value: Value) -> Result<Action, ExecutorError> {
             Err(ExecutorError::MissingArgumentError { message })
         }
     }
+}
+
+fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
+    for (_key, element) in action.payload.iter_mut() {
+        match element {
+            Value::Text(text) => {
+                if let Some(parse_result) = Parser::build_parser(text)
+                    .map_err(|err| ExecutorError::ActionExecutionError {
+                        message: format!("Cannot build parser for [{}]. Err: {}", text, err),
+                    })?
+                    .parse_value(item)
+                {
+                    *element = parse_result.into_owned();
+                }
+            }
+            _ => {}
+        }
+    }
+    Ok(action)
 }
 
 #[cfg(test)]
@@ -251,6 +281,7 @@ mod test {
 
             let mut payload_one = HashMap::new();
             payload_one.insert("key_one".to_owned(), Value::Array(vec![]));
+            payload_one.insert("item".to_owned(), Value::Text("${item}".to_owned()));
             action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
 
             actions_array.push(Value::Map(action));
@@ -259,7 +290,13 @@ mod test {
         {
             let mut action = HashMap::new();
             action.insert("id".to_owned(), Value::Text("id_two".to_owned()));
-            action.insert("payload".to_owned(), Value::Map(HashMap::new()));
+
+            let mut payload_one = HashMap::new();
+            payload_one.insert(
+                "item_with_interpolation".to_owned(),
+                Value::Text("a ${item} bb <${item}>".to_owned()),
+            );
+            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
 
             actions_array.push(Value::Map(action));
         }
@@ -300,13 +337,19 @@ mod test {
 
         {
             let mut payload = HashMap::new();
-            payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
+            payload.insert(
+                "item_with_interpolation".to_owned(),
+                Value::Text("a first_item bb <first_item>".to_owned()),
+            );
             assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(0).unwrap());
         }
 
         {
             let mut payload = HashMap::new();
-            payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
+            payload.insert(
+                "item_with_interpolation".to_owned(),
+                Value::Text("a second_item bb <second_item>".to_owned()),
+            );
             assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
         }
     }
@@ -372,7 +415,10 @@ mod test {
         {
             let mut action = HashMap::new();
             action.insert("id".to_owned(), Value::Text("id_two".to_owned()));
-            action.insert("payload".to_owned(), Value::Map(HashMap::new()));
+
+            let mut payload_one = HashMap::new();
+            payload_one.insert("item".to_owned(), Value::Text("${item}".to_owned()));
+            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
 
             actions_array.push(Value::Map(action));
         }
@@ -403,6 +449,89 @@ mod test {
             let mut payload = HashMap::new();
             payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
             assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
+        }
+    }
+
+    #[test]
+    fn should_resolve_complex_placeholders() {
+        // Arrange
+
+        let execution_results = Arc::new(RwLock::new(HashMap::new()));
+
+        let mut bus = SimpleEventBus::new();
+        {
+            let execution_results = execution_results.clone();
+            bus.subscribe_to_action(
+                "id_one",
+                Box::new(move |action| {
+                    let mut lock = execution_results.write().unwrap();
+                    match lock.entry("id_one") {
+                        Entry::Vacant(entry) => {
+                            entry.insert(vec![action]);
+                        }
+                        Entry::Occupied(mut entry) => entry.get_mut().push(action),
+                    }
+                }),
+            );
+        };
+
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
+
+        let mut action = Action::new("");
+        action.payload.insert(
+            "target".to_owned(),
+            Value::Array(vec![
+                Value::Array(vec![
+                    Value::Text("first".to_owned()),
+                    Value::Text("second".to_owned()),
+                ]),
+                Value::Array(vec![
+                    Value::Text("third".to_owned()),
+                    Value::Text("fourth".to_owned()),
+                ]),
+            ]),
+        );
+
+        let mut actions_array = vec![];
+
+        {
+            let mut action = HashMap::new();
+            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+
+            let mut payload_one = HashMap::new();
+            payload_one
+                .insert("value".to_owned(), Value::Text("${item[0]} + ${item[1]}".to_owned()));
+            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+
+            actions_array.push(Value::Map(action));
+        }
+
+        action.payload.insert("actions".to_owned(), Value::Array(actions_array));
+
+        // Act
+        let result = executor.execute(action);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let lock = execution_results.read().unwrap();
+        assert_eq!(1, lock.len());
+
+        assert!(lock.contains_key("id_one"));
+
+        let action_two = lock.get("id_one").unwrap();
+        assert_eq!(2, action_two.len());
+
+        {
+            let mut payload = HashMap::new();
+            payload.insert("value".to_owned(), Value::Text("first + second".to_owned()));
+            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(0).unwrap());
+        }
+
+        {
+            let mut payload = HashMap::new();
+            payload.insert("value".to_owned(), Value::Text("third + fourth".to_owned()));
+            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(1).unwrap());
         }
     }
 }

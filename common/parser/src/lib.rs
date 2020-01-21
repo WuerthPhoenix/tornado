@@ -1,9 +1,9 @@
+use crate::interpolator::StringInterpolator;
 use failure_derive::Fail;
 use lazy_static::*;
 use regex::Regex;
 use std::borrow::Cow;
 use tornado_common_api::Value;
-use crate::interpolator::StringInterpolator;
 
 mod interpolator;
 
@@ -25,8 +25,8 @@ pub enum ParserError {
     #[fail(display = "ParsingError: [{}]", message)]
     ParsingError { message: String },
     #[fail(
-    display = "InterpolatorRenderError: Cannot resolve placeholders in template [{}] cause: [{}]",
-    template, cause
+        display = "InterpolatorRenderError: Cannot resolve placeholders in template [{}] cause: [{}]",
+        template, cause
     )]
     InterpolatorRenderError { template: String, cause: String },
 }
@@ -46,15 +46,14 @@ impl Parser {
     }
 
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
-        if Parser::is_expression(text) {
-            let trimmed = text.trim();
-            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
-                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-            Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
+        if let Some(interpolator) = StringInterpolator::build(text)? {
+            Ok(Parser::Interpolator { interpolator })
         } else {
-            let interpolator = StringInterpolator::build(text)?;
-            if interpolator.is_interpolation_required() {
-                Ok(Parser::Interpolator{interpolator})
+            if Parser::is_expression(text) {
+                let trimmed = text.trim();
+                let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
+                    ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+                Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
             } else {
                 Ok(Parser::Val(Value::Text(text.to_owned())))
             }
@@ -118,8 +117,10 @@ impl Parser {
                 }
 
                 temp_value.map(|value| Cow::Borrowed(value))
-            },
-            Parser::Interpolator {interpolator} => interpolator.render(value).map(|text| Cow::Owned(Value::Text(text))).ok(),
+            }
+            Parser::Interpolator { interpolator } => {
+                interpolator.render(value).map(|text| Cow::Owned(Value::Text(text))).ok()
+            }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
     }

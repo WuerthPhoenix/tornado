@@ -125,11 +125,14 @@ impl Accessor {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
-            Accessor::ExtractedVar { rule_name, parser } => extracted_vars
-                .and_then(|global_vars| global_vars.get_from_map(rule_name.as_str())
-                    .and_then(|rule_vars| parser.parse_value(rule_vars))
-                    .or_else(|| parser.parse_value(global_vars))
-                ),
+            Accessor::ExtractedVar { rule_name, parser } => {
+                extracted_vars.and_then(|global_vars| {
+                    global_vars
+                        .get_from_map(rule_name.as_str())
+                        .and_then(|rule_vars| parser.parse_value(rule_vars))
+                        .or_else(|| parser.parse_value(global_vars))
+                })
+            }
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {

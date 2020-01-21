@@ -5,10 +5,10 @@
 // - https://github.com/hoodie/concatenation_benchmarks-rs
 //
 
-use lazy_static::*;
-use regex::Regex;
-use tornado_common_api::{Number, Value};
 use crate::{Parser, ParserError};
+use lazy_static::*;
+use regex::{Match, Regex};
+use tornado_common_api::{Number, Value};
 
 lazy_static! {
     static ref RE: Regex =
@@ -30,20 +30,27 @@ struct BoundedAccessor {
 
 impl StringInterpolator {
     /// Creates a new StringInterpolator
-    pub fn build<T: Into<String>>(
-        template: T
-    ) -> Result<Self, ParserError> {
+    pub fn build<T: Into<String>>(template: T) -> Result<Option<Self>, ParserError> {
         let template_string = template.into();
 
-        let parsers = RE
-            .find_iter(&template_string)
-            .map(|m| {
-                Parser::build_parser(m.as_str())
-                    .map(|parser| BoundedAccessor { start: m.start(), end: m.end(), parser })
-            })
-            .collect::<Result<Vec<_>, ParserError>>()?;
+        let regex: &Regex = &RE;
+        let matchers = regex.find_iter(&template_string).collect::<Vec<Match<'_>>>();
 
-        Ok(StringInterpolator { template: template_string, parsers })
+        if StringInterpolator::interpolation_required(&template_string, &matchers) {
+            let parsers = matchers
+                .iter()
+                .map(|m| {
+                    Parser::build_parser(m.as_str()).map(|parser| BoundedAccessor {
+                        start: m.start(),
+                        end: m.end(),
+                        parser,
+                    })
+                })
+                .collect::<Result<Vec<_>, ParserError>>()?;
+
+            return Ok(Some(StringInterpolator { template: template_string.clone(), parsers }));
+        }
+        Ok(None)
     }
 
     /// Returns whether the template used to create this StringInterpolator
@@ -51,10 +58,10 @@ impl StringInterpolator {
     /// This is true only if the template contains at least both a static part (e.g. constant text)
     /// and a dynamic part (e.g. placeholders to be resolved at runtime).
     /// When the interpolator is not required, it can be replaced by a simpler Accessor.
-    pub fn is_interpolation_required(&self) -> bool {
-        self.parsers.len() > 1
-            || (self.parsers.len() == 1
-                && !(self.parsers[0].start == 0 && self.parsers[0].end == self.template.len()))
+    fn interpolation_required(template: &str, matches: &[Match]) -> bool {
+        matches.len() > 1
+            || (matches.len() == 1
+                && !(matches[0].start() == 0 && matches[0].end() == template.len()))
     }
 
     /// Performs the placeholders substitution on the internal template and return the
@@ -65,10 +72,7 @@ impl StringInterpolator {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render(
-        &self,
-        event: &Value,
-    ) -> Result<String, ParserError> {
+    pub fn render(&self, event: &Value) -> Result<String, ParserError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -81,12 +85,11 @@ impl StringInterpolator {
 
             let accessor = &bounded_accessor.parser;
 
-            let value = accessor.parse_value(event).ok_or(
-                ParserError::InterpolatorRenderError {
+            let value =
+                accessor.parse_value(event).ok_or(ParserError::InterpolatorRenderError {
                     template: self.template.to_owned(),
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
-                },
-            )?;
+                })?;
             match value.as_ref() {
                 Value::Text(text) => render.push_str(text),
                 Value::Bool(val) => render.push_str(&val.to_string()),
@@ -132,8 +135,7 @@ mod test {
         let template = "<div><span>${event.payload.test}</sp${event.type}an><span>${_variables.test12}</span></${}div>";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -154,35 +156,33 @@ mod test {
 
         assert_eq!(&58, &interpolator.parsers[2].start);
         assert_eq!(&78, &interpolator.parsers[2].end);
-        assert_eq!(&Parser::build_parser("${_variables.test12}").unwrap(), &interpolator.parsers[2].parser);
+        assert_eq!(
+            &Parser::build_parser("${_variables.test12}").unwrap(),
+            &interpolator.parsers[2].parser
+        );
     }
 
     #[test]
-    fn should_split_with_no_expressions_delimiters() {
+    fn should_return_none_with_no_expressions_delimiters() {
         // Arrange
         let template = "constant string";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
+        let result = StringInterpolator::build(template).unwrap();
 
         // Assert
-        assert_eq!(0, interpolator.parsers.len());
+        assert!(result.is_none());
     }
     #[test]
-    fn should_split_with_single_expression() {
+    fn should_return_none_with_single_expression() {
         // Arrange
         let template = "${event.type}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
+        let result = StringInterpolator::build(template).unwrap();
 
         // Assert
-        assert_eq!(1, interpolator.parsers.len());
-
-        assert_eq!(&0, &interpolator.parsers[0].start);
-        assert_eq!(&13, &interpolator.parsers[0].end);
+        assert!(result.is_none());
     }
 
     #[test]
@@ -191,8 +191,7 @@ mod test {
         let template = "${event.type}${event.created_ms}${event.type}";
 
         // Act
-        let interpolator =
-            StringInterpolator::build(template).unwrap();
+        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -207,7 +206,7 @@ mod test {
         assert_eq!(&45, &interpolator.parsers[2].end);
     }
 
-/*
+    /*
     #[test]
     fn should_render_a_constant_string() {
         // Arrange
