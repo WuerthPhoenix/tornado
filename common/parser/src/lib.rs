@@ -48,15 +48,13 @@ impl Parser {
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
         if let Some(interpolator) = StringInterpolator::build(text)? {
             Ok(Parser::Interpolator { interpolator })
+        } else if Parser::is_expression(text) {
+            let trimmed = text.trim();
+            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
+                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+            Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
         } else {
-            if Parser::is_expression(text) {
-                let trimmed = text.trim();
-                let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
-                    ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-                Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
-            } else {
-                Ok(Parser::Val(Value::Text(text.to_owned())))
-            }
+            Ok(Parser::Val(Value::Text(text.to_owned())))
         }
     }
 

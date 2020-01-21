@@ -98,18 +98,15 @@ fn to_action(value: Value) -> Result<Action, ExecutorError> {
 
 fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
     for (_key, element) in action.payload.iter_mut() {
-        match element {
-            Value::Text(text) => {
-                if let Some(parse_result) = Parser::build_parser(text)
-                    .map_err(|err| ExecutorError::ActionExecutionError {
-                        message: format!("Cannot build parser for [{}]. Err: {}", text, err),
-                    })?
-                    .parse_value(item)
-                {
-                    *element = parse_result.into_owned();
-                }
+        if let Value::Text(text) = element {
+            if let Some(parse_result) = Parser::build_parser(text)
+                .map_err(|err| ExecutorError::ActionExecutionError {
+                    message: format!("Cannot build parser for [{}]. Err: {}", text, err),
+                })?
+                .parse_value(item)
+            {
+                *element = parse_result.into_owned();
             }
-            _ => {}
         }
     }
     Ok(action)
