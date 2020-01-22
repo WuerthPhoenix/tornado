@@ -16,6 +16,13 @@ pub struct ForEachExecutor {
     bus: Arc<dyn EventBus>,
 }
 
+impl std::fmt::Display for ForEachExecutor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("ForEachExecutor")?;
+        Ok(())
+    }
+}
+
 impl ForEachExecutor {
     pub fn new(bus: Arc<dyn EventBus>) -> Self {
         Self { bus }

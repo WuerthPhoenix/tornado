@@ -3,7 +3,7 @@ use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
-use crate::executor::ActionMessage;
+use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::executor::ExecutorActor;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
@@ -55,6 +55,11 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         // Start Icinga2 Client Actor
         let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
+        // Start ForEach executor actor
+        let foreach_executor_addr = SyncArbiter::start(1, move || {
+            LazyExecutorActor::<tornado_executor_foreach::ForEachExecutor> { executor: None }
+        });
+
         // Start icinga2 executor actor
         let icinga2_executor_addr = SyncArbiter::start(1, move || {
             let icinga2_client_addr_clone = icinga2_client_addr.clone();
@@ -67,6 +72,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         });
 
         // Configure action dispatcher
+        let foreach_executor_addr_clone = foreach_executor_addr.clone();
         let event_bus = {
             let event_bus = ActixEventBus {
                 callback: move |action| {
@@ -74,12 +80,18 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
                         "archive" => archive_executor_addr.do_send(ActionMessage { action }),
                         "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
                         "script" => script_executor_addr.do_send(ActionMessage { action }),
+                        "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action }),
                         _ => error!("There are not executors for action id [{}]", &action.id),
                     };
                 },
             };
             Arc::new(event_bus)
         };
+
+        let event_bus_clone = event_bus.clone();
+        foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<tornado_executor_foreach::ForEachExecutor, _> { init: {
+            Box::new(move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()))
+        } });
 
         // Start dispatcher actor
         let dispatcher_addr = SyncArbiter::start(1, move || {
