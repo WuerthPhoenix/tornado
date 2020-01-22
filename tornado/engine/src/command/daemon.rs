@@ -3,8 +3,8 @@ use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
-use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::executor::ExecutorActor;
+use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
@@ -62,8 +62,10 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
         // Start ForEach executor actor
-        let foreach_executor_addr = SyncArbiter::start(1, move || {
-            LazyExecutorActor::<tornado_executor_foreach::ForEachExecutor> { executor: None }
+        let foreach_executor_addr = SyncArbiter::start(1, move || LazyExecutorActor::<
+            tornado_executor_foreach::ForEachExecutor,
+        > {
+            executor: None,
         });
 
         // Start icinga2 executor actor
@@ -96,8 +98,11 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         };
 
         let event_bus_clone = event_bus.clone();
-        foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<tornado_executor_foreach::ForEachExecutor, _> { init:
-            move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone())
+        foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<
+            tornado_executor_foreach::ForEachExecutor,
+            _,
+        > {
+            init: move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()),
         });
 
         // Start dispatcher actor

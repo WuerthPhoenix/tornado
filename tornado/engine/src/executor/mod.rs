@@ -38,7 +38,8 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E
 
 #[derive(Message)]
 pub struct LazyExecutorActorInitMessage<E: Executor + Display, F: Fn() -> E>
-    where F: Send + Sync
+where
+    F: Send + Sync,
 {
     pub init: F,
 }
@@ -70,11 +71,14 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for LazyExecutorAct
         } else {
             error!("LazyExecutorActor received a message when it was not yet initialized!");
         }
-
     }
 }
 
-impl<E: Executor + Display + 'static, F: Fn() -> E> Handler<LazyExecutorActorInitMessage<E, F>> for LazyExecutorActor<E> where F: Send + Sync {
+impl<E: Executor + Display + 'static, F: Fn() -> E> Handler<LazyExecutorActorInitMessage<E, F>>
+    for LazyExecutorActor<E>
+where
+    F: Send + Sync,
+{
     type Result = ();
 
     fn handle(&mut self, msg: LazyExecutorActorInitMessage<E, F>, _: &mut SyncContext<Self>) {
