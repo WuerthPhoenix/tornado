@@ -12,6 +12,13 @@ impl LoggerExecutor {
     }
 }
 
+impl std::fmt::Display for LoggerExecutor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("LoggerExecutor")?;
+        Ok(())
+    }
+}
+
 impl Executor for LoggerExecutor {
     fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:?}]", action);

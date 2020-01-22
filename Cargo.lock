@@ -2804,6 +2804,7 @@ dependencies = [
  "tornado_executor_common 0.0.1",
  "tornado_executor_foreach 0.0.1",
  "tornado_executor_icinga2 0.0.1",
+ "tornado_executor_logger 0.0.1",
  "tornado_executor_script 0.0.1",
  "tornado_network_common 0.0.1",
 ]

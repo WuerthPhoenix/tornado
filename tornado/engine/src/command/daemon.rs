@@ -52,6 +52,12 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
             ExecutorActor { executor }
         });
 
+        // Start logger executor actor
+        let logger_executor_addr = SyncArbiter::start(1, move || {
+            let executor = tornado_executor_logger::LoggerExecutor::new();
+            ExecutorActor { executor }
+        });
+
         // Start Icinga2 Client Actor
         let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
@@ -81,6 +87,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
                         "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
                         "script" => script_executor_addr.do_send(ActionMessage { action }),
                         "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action }),
+                        "logger" => logger_executor_addr.do_send(ActionMessage { action }),
                         _ => error!("There are not executors for action id [{}]", &action.id),
                     };
                 },
@@ -89,9 +96,9 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         };
 
         let event_bus_clone = event_bus.clone();
-        foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<tornado_executor_foreach::ForEachExecutor, _> { init: {
-            Box::new(move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()))
-        } });
+        foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<tornado_executor_foreach::ForEachExecutor, _> { init:
+            move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone())
+        });
 
         // Start dispatcher actor
         let dispatcher_addr = SyncArbiter::start(1, move || {

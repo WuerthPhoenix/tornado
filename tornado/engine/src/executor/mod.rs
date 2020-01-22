@@ -40,7 +40,7 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E
 pub struct LazyExecutorActorInitMessage<E: Executor + Display, F: Fn() -> E>
     where F: Send + Sync
 {
-    pub init: Box<F>,
+    pub init: F,
 }
 
 pub struct LazyExecutorActor<E: Executor + Display> {
