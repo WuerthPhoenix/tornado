@@ -18,7 +18,9 @@ This specific Tornado Engine executable is composed of the following components:
 - A JSON collector
 - The engine
 - The archive executor
+- The foreach executor
 - The Icinga2 executor
+- The logger executor
 - The script executor
 
 Each component is wrapped in a dedicated actix actor.
@@ -238,6 +240,14 @@ More details about the meaning of each entry and how the archive executor functi
 in the [executor documentation](../../executor/archive/README.md).
 
 
+### Structure and Configuration:  The Foreach Executor
+
+The [foreach executor](../../executor/foreach/README.md) allows
+the recursive executions of a set of actions with dynamic parameters.
+
+More details about the executor can be found in the
+[foreach executor documentation](../../executor/foreach/README.md).
+
 
 ### Structure and Configuration:  The Icinga2 Executor
 
@@ -262,6 +272,14 @@ More details about the executor can be found in the
 
 
 
+### Structure and Configuration:  The Logger Executor
+
+The [logger executor](../../executor/logger/README.md) logs the whole Action body
+to the standard [log](https://crates.io/crates/log) at the _info_ level.
+
+This executor has no specific configuration.
+
+
 ### Structure and Configuration:  The Script Executor
 
 The [script executor](../../executor/script/README.md) processes and executes Actions
@@ -270,6 +288,7 @@ of type "script".
 This executor has no specific configuration, since everything required for script execution is
 contained in the Action itself as described in the
 [executor documentation](../../executor/script/README.md)
+
 
 
 ## Tornado API
