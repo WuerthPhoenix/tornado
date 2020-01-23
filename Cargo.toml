@@ -11,6 +11,7 @@ members = [
    "engine/matcher",
    "executor/common",
    "executor/archive",
+   "executor/foreach",
    "executor/icinga2",
    "executor/logger",
    "executor/script",

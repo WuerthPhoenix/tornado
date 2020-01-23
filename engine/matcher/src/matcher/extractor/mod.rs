@@ -115,13 +115,13 @@ impl MatcherExtractor {
         event: &InternalEvent,
         extracted_vars: &mut Value,
     ) -> Result<(), MatcherError> {
-	    if !self.extractors.is_empty() {
-	        let mut vars = HashMap::new();
-	        for (key, extractor) in &self.extractors {
-	            let value =
-	                self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
-	            vars.insert(extractor.key.to_string(), value);
-	        }
+        if !self.extractors.is_empty() {
+            let mut vars = HashMap::new();
+            for (key, extractor) in &self.extractors {
+                let value =
+                    self.check_extracted(key, extractor.extract(event, Some(extracted_vars)))?;
+                vars.insert(extractor.key.to_string(), value);
+            }
 
             if let Some(map) = extracted_vars.get_map_mut() {
                 map.insert(self.rule_name.to_string(), Value::Map(vars));

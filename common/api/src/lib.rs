@@ -40,7 +40,7 @@ impl Into<Value> for Event {
 
 /// An Action is produced when an Event matches a specific Rule.
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,

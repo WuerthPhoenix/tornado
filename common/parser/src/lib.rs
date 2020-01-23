@@ -1,8 +1,11 @@
+use crate::interpolator::StringInterpolator;
 use failure_derive::Fail;
 use lazy_static::*;
 use regex::Regex;
 use std::borrow::Cow;
 use tornado_common_api::Value;
+
+mod interpolator;
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
@@ -21,11 +24,17 @@ pub enum ParserError {
     ConfigurationError { message: String },
     #[fail(display = "ParsingError: [{}]", message)]
     ParsingError { message: String },
+    #[fail(
+        display = "InterpolatorRenderError: Cannot resolve placeholders in template [{}] cause: [{}]",
+        template, cause
+    )]
+    InterpolatorRenderError { template: String, cause: String },
 }
 
 #[derive(PartialEq, Debug)]
 pub enum Parser {
     Exp { keys: Vec<ValueGetter> },
+    Interpolator { interpolator: StringInterpolator },
     Val(Value),
 }
 
@@ -37,7 +46,9 @@ impl Parser {
     }
 
     pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
-        if Parser::is_expression(text) {
+        if let Some(interpolator) = StringInterpolator::build(text)? {
+            Ok(Parser::Interpolator { interpolator })
+        } else if Parser::is_expression(text) {
             let trimmed = text.trim();
             let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
                 ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
@@ -104,6 +115,9 @@ impl Parser {
                 }
 
                 temp_value.map(|value| Cow::Borrowed(value))
+            }
+            Parser::Interpolator { interpolator } => {
+                interpolator.render(value).map(|text| Cow::Owned(Value::Text(text))).ok()
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
@@ -344,6 +358,26 @@ mod test {
         payload.insert("two".to_owned(), Value::Number(Number::PosInt(13)));
 
         assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn parser_expression_should_use_the_interpolators() {
+        // Arrange
+        let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let json = r#"
+        {
+            "key": ["one", true, 13.0]
+        }
+        "#;
+
+        let value: Value = serde_json::from_str(json).unwrap();
+
+        // Act
+        let result = parser.parse_value(&value);
+
+        // Assert
+        assert!(result.is_some());
+        assert_eq!(&Value::Text("one - true - 13".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]

@@ -21,6 +21,7 @@ impl Default for AccessorBuilder {
     }
 }
 
+const IGNORED_EXPRESSION_PREFIXES: &[&str] = &["item"];
 const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
 const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
@@ -83,6 +84,12 @@ impl AccessorBuilder {
                         ))?;
                         Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
                     }
+                    val if IGNORED_EXPRESSION_PREFIXES
+                        .iter()
+                        .any(|prefix| val.starts_with(prefix)) =>
+                    {
+                        Ok(Accessor::Constant { value: Value::Text(input.to_owned()) })
+                    }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
@@ -125,11 +132,14 @@ impl Accessor {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
-            Accessor::ExtractedVar { rule_name, parser } => extracted_vars
-                .and_then(|global_vars| global_vars.get_from_map(rule_name.as_str())
-                    .and_then(|rule_vars| parser.parse_value(rule_vars))
-                    .or_else(|| parser.parse_value(global_vars))
-                ),
+            Accessor::ExtractedVar { rule_name, parser } => {
+                extracted_vars.and_then(|global_vars| {
+                    global_vars
+                        .get_from_map(rule_name.as_str())
+                        .and_then(|rule_vars| parser.parse_value(rule_vars))
+                        .or_else(|| parser.parse_value(global_vars))
+                })
+            }
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -691,5 +701,19 @@ mod test {
         // Assert
         assert_eq!("first_from_map", map_result.as_ref());
         assert_eq!("first_from_array", array_result.as_ref());
+    }
+
+    #[test]
+    fn should_build_a_constant_accessor_for_expression_who_start_with_an_ignored_prefix() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "${item.body}".to_owned();
+
+        // Act
+        let accessor = builder.build("rule_name", &value).unwrap();
+
+        // Assert
+        let expected = Accessor::Constant { value: Value::Text(value) };
+        assert_eq!(expected, accessor);
     }
 }
