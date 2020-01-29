@@ -3,6 +3,7 @@
 members = [
    "common/api",
    "common/logger",
+   "common/parser",
    "collector/common",
    "collector/email",
    "collector/jmespath",
@@ -10,6 +11,7 @@ members = [
    "engine/matcher",
    "executor/common",
    "executor/archive",
+   "executor/foreach",
    "executor/icinga2",
    "executor/logger",
    "executor/script",
@@ -17,6 +19,7 @@ members = [
    "network/simple",
    "spike/dynamic_log",
    "spike/jmespath",
+   "spike/parser_jmespath",
    "spike/rsyslog_collector_writer",
    "spike/stdin",
    "spike/tornado_events_generator",

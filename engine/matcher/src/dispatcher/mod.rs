@@ -52,6 +52,7 @@ mod test {
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
+    use tornado_common_api::Value;
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -83,7 +84,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: HashMap::new() },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Map(HashMap::new()) },
         };
 
         // Act
@@ -120,7 +121,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: HashMap::new() },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Map(HashMap::new()) },
         };
 
         // Act
@@ -164,14 +165,14 @@ mod test {
                     name: "node0".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: HashMap::new(),
+                        extracted_vars: Value::Map(HashMap::new()),
                     },
                 },
                 ProcessedNode::Ruleset {
                     name: "node1".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: HashMap::new(),
+                        extracted_vars: Value::Map(HashMap::new()),
                     },
                 },
             ],

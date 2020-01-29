@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use tornado_common_api::{Action, Event, Number, Payload, Value};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -62,7 +61,7 @@ pub enum ProcessedFilterStatus {
 #[derive(Debug, Clone)]
 pub struct ProcessedRules {
     pub rules: Vec<ProcessedRule>,
-    pub extracted_vars: HashMap<String, Value>,
+    pub extracted_vars: Value,
 }
 
 #[derive(Debug, Clone)]

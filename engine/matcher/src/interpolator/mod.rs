@@ -10,7 +10,6 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use lazy_static::*;
 use regex::Regex;
-use std::collections::HashMap;
 use tornado_common_api::{Number, Value};
 
 lazy_static! {
@@ -102,7 +101,7 @@ impl StringInterpolator {
     pub fn render(
         &self,
         event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
+        extracted_vars: Option<&Value>,
     ) -> Result<String, MatcherError> {
         let mut render = String::new();
 
@@ -162,7 +161,9 @@ impl StringInterpolator {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::collections::HashMap;
     use tornado_common_api::{Event, Payload};
+    use tornado_common_parser::Parser;
 
     #[test]
     fn build_should_fail_if_not_valid_expression() {
@@ -191,7 +192,7 @@ mod test {
         assert_eq!(&11, &interpolator.accessors[0].start);
         assert_eq!(&32, &interpolator.accessors[0].end);
         match &interpolator.accessors[0].accessor {
-            Accessor::Payload { keys } => assert_eq!(1, keys.len()),
+            Accessor::Payload { parser: Parser::Exp { keys } } => assert_eq!(1, keys.len()),
             _ => assert!(false),
         }
 
@@ -205,7 +206,10 @@ mod test {
         assert_eq!(&58, &interpolator.accessors[2].start);
         assert_eq!(&78, &interpolator.accessors[2].end);
         match &interpolator.accessors[2].accessor {
-            Accessor::ExtractedVar { key } => assert_eq!("rule.test12", key),
+            Accessor::ExtractedVar { rule_name, parser } => {
+                assert_eq!("rule", rule_name);
+                assert_eq!(&Parser::build_parser("${test12}").unwrap(), parser);
+            }
             _ => assert!(false),
         }
     }
@@ -325,18 +329,19 @@ mod test {
             created_ms: 1554130814854,
             payload,
         });
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1".to_owned()));
+        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("rule_for_test.test1".to_owned(), Value::Text("var_test_1".to_owned()));
-        extracted_vars
-            .insert("rule_for_test.test2".to_owned(), Value::Text("var_test_2".to_owned()));
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         let template = "1: ${_variables.test1} - 2: ${_variables.test2}";
 
         // Act
         let interpolator =
             StringInterpolator::build(template, "rule_for_test", &Default::default()).unwrap();
-        let result = interpolator.render(&event, Some(&extracted_vars));
+        let result = interpolator.render(&event, Some(&Value::Map(extracted_vars)));
 
         // Assert
         assert!(result.is_ok());

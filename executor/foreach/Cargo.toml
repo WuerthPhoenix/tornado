@@ -1,5 +1,5 @@
 [package]
-name = "tornado_engine_matcher"
+name = "tornado_executor_foreach"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>"
@@ -7,27 +7,11 @@ authors = [
 edition = "2018"
 
 [dependencies]
-failure = "0.1"
-failure_derive = "0.1"
-lazy_static = "1.0"
 log = "0.4"
-regex = "1.1"
-serde = "1.0"
-serde_derive = "1.0"
-serde_json = "1.0"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }
+tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
 [dev-dependencies]
-chrono = "0.4"
-cpuprofiler = "0.0.3"
-criterion = "0.2"
-maplit = "1.0"
-tempfile = "3"
-tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
-
-[[bench]]
-name = "matcher_bench"
-harness = false

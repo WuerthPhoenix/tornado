@@ -67,7 +67,7 @@ export type ProcessedNodeDto =
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null };
 
-export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: { [key: string]: Value } };
+export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: Value };
 
 export enum ProcessedRuleStatusDto {     Matched = "Matched", PartiallyMatched = "PartiallyMatched", NotMatched =     "NotMatched", NotProcessed = "NotProcessed" };
 

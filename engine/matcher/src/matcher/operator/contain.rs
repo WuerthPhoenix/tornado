@@ -2,7 +2,6 @@ use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
-use std::collections::HashMap;
 use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "contain";
@@ -25,11 +24,7 @@ impl Operator for Contain {
         OPERATOR_NAME
     }
 
-    fn evaluate(
-        &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&HashMap<String, Value>>,
-    ) -> bool {
+    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         match self.first.get(event, extracted_vars) {
             Some(first_value) => match first_value.as_ref() {
                 Value::Text(first) => {
