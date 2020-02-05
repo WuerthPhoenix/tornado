@@ -10,7 +10,7 @@ and annotating events in a time series graphing system.
 Tornado is a high performance, scalable application.
 It is intended to handle millions of events each second on standard server hardware.
 
-![Tornado ilustration](https://raw.githubusercontent.com/WuerthPhoenix/tornado/develop/images/full.png)
+![Tornado ilustration](https://raw.githubusercontent.com/WuerthPhoenix/tornado/develop/images/illustration.png)
 
 ## Tornado Architecture
 
