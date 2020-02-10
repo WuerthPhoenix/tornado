@@ -546,5 +546,4 @@ mod test {
 
         assert_eq!(expected_event, result_event);
     }
-
 }

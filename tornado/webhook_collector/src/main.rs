@@ -47,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             collector_config.webhook_collector.tornado_event_socket_port
         );
         let tpc_client_addr = TcpClientActor::start_new(
-            tornado_tcp_address.clone(),
+            tornado_tcp_address,
             collector_config.webhook_collector.message_queue_size,
         );
 
@@ -367,5 +367,4 @@ mod test {
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());
     }
-
 }

@@ -23,7 +23,9 @@ export type ConstraintDto = { WHERE: OperatorDto | null; WITH: { [key: string]: 
 
 export type ExtractorDto = { from: string; regex: ExtractorRegexDto };
 
-export type ExtractorRegexDto = { match: string; group_match_idx: number };
+export type ExtractorRegexDto = 
+ | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean | null } 
+ | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null };
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
 
@@ -65,7 +67,7 @@ export type ProcessedNodeDto =
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null };
 
-export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: { [key: string]: Value } };
+export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: Value };
 
 export enum ProcessedRuleStatusDto {     Matched = "Matched", PartiallyMatched = "PartiallyMatched", NotMatched =     "NotMatched", NotProcessed = "NotProcessed" };
 

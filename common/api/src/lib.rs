@@ -40,7 +40,7 @@ impl Into<Value> for Event {
 
 /// An Action is produced when an Event matches a specific Rule.
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,
@@ -183,6 +183,12 @@ impl Value {
         }
     }
     pub fn get_map(&self) -> Option<&HashMap<String, Value>> {
+        match self {
+            Value::Map(payload) => Some(payload),
+            _ => None,
+        }
+    }
+    pub fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
         match self {
             Value::Map(payload) => Some(payload),
             _ => None,

@@ -43,7 +43,7 @@ impl ScriptExecutor {
             Value::Map(args) => {
                 for (key, value) in args {
                     script.push_str(" --");
-                    script.push_str(key);
+                    script.push_str(&key);
                     ScriptExecutor::append_params(script, value)?;
                 }
             }
@@ -61,7 +61,7 @@ impl fmt::Display for ScriptExecutor {
 }
 
 impl Executor for ScriptExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let mut script = action
@@ -74,7 +74,7 @@ impl Executor for ScriptExecutor {
             .to_owned();
 
         if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
-            ScriptExecutor::append_params(&mut script, &value)?;
+            ScriptExecutor::append_params(&mut script, value)?;
         } else {
             trace!("No args found in payload")
         };
@@ -206,7 +206,6 @@ mod test {
         // Assert
         assert_eq!(expected_final_script, script);
     }
-
 }
 
 #[cfg(all(test, unix))]
@@ -293,7 +292,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action);
 
         // Assert
         assert!(result.is_ok());
@@ -317,7 +316,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action);
 
         // Assert
         assert!(result.is_ok());
@@ -325,5 +324,4 @@ mod test_unix {
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
-
 }

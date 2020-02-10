@@ -96,5 +96,4 @@ mod test {
         })
         .unwrap();
     }
-
 }

@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             collector_config.rsyslog_collector.tornado_event_socket_port
         );
         let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
-            tornado_tcp_address.clone(),
+            tornado_tcp_address,
             collector_config.rsyslog_collector.message_queue_size,
         );
 

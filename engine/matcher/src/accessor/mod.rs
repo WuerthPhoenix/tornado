@@ -2,41 +2,31 @@
 
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
-use crate::validator::id::IdValidator;
 use log::*;
-use regex::Regex as RustRegex;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use tornado_common_api::Value;
+use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
 pub struct AccessorBuilder {
-    id_validator: IdValidator,
     start_delimiter: &'static str,
     end_delimiter: &'static str,
-    regex: RustRegex,
 }
 
 impl Default for AccessorBuilder {
     fn default() -> Self {
         AccessorBuilder {
-            id_validator: IdValidator::new(),
-            start_delimiter: "${",
-            end_delimiter: "}",
-            regex: RustRegex::new(PAYLOAD_KEY_PARSE_REGEX)
-                .expect("AccessorBuilder regex should be valid"),
+            start_delimiter: EXPRESSION_START_DELIMITER,
+            end_delimiter: EXPRESSION_END_DELIMITER,
         }
     }
 }
 
+const IGNORED_EXPRESSION_PREFIXES: &[&str] = &["item"];
 const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
 const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_MS_KEY: &str = "event.created_ms";
 const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
-const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
-const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
-const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
-const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -80,47 +70,25 @@ impl AccessorBuilder {
                         || val.eq(EVENT_PAYLOAD_SUFFIX)) =>
                     {
                         let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
-                        let keys = self.parse_payload_key(key, value, rule_name)?;
-                        Ok(Accessor::Payload { keys })
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::Payload { parser })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
                         let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
-
-                        let keys: Vec<&str> = key.split('.').collect();
-                        if keys.len() == 1 {
-                            let variable_name = keys[0];
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_name,
-                                value,
-                                rule_name,
-                            )?;
-                            Ok(Accessor::ExtractedVar {
-                                key: format!("{}.{}", rule_name, variable_name),
-                            })
-                        } else if keys.len() == 2 {
-                            let variable_rule = keys[0];
-                            let variable_name = keys[1];
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_name,
-                                value,
-                                rule_name,
-                            )?;
-                            self.id_validator.validate_extracted_var_from_accessor(
-                                variable_rule,
-                                value,
-                                rule_name,
-                            )?;
-                            Ok(Accessor::ExtractedVar {
-                                key: format!("{}.{}", variable_rule, variable_name),
-                            })
-                        } else {
-                            Err(MatcherError::NotValidIdOrNameError {
-                                message: format!(
-                                    "Invalid extracted variables accessor [{}] for rule [{}]",
-                                    value, rule_name
-                                ),
-                            })
-                        }
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
+                    }
+                    val if IGNORED_EXPRESSION_PREFIXES
+                        .iter()
+                        .any(|prefix| val.starts_with(prefix)) =>
+                    {
+                        Ok(Accessor::Constant { value: Value::Text(input.to_owned()) })
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
@@ -134,48 +102,6 @@ impl AccessorBuilder {
             input
         );
         result
-    }
-
-    fn parse_payload_key(
-        &self,
-        key: &str,
-        full_accessor: &str,
-        rule_name: &str,
-    ) -> Result<Vec<ValueGetter>, MatcherError> {
-        self
-            .regex
-            .captures_iter(key)
-            .map(|cap| {
-                let capture = cap.get(0)
-                    .ok_or_else(|| MatcherError::NotValidIdOrNameError {message: format!(
-                        "Error parsing payload key [{}] from accessor [{}] for rule [{}]",
-                        key, full_accessor, rule_name
-                    )})?;
-                let mut result = capture.as_str().to_string();
-
-                // Remove trailing delimiters
-                {
-                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) &&
-                        result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
-                        result = result[1..(result.len() - 1)].to_string();
-                    }
-                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER) &&
-                        result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER) {
-                        result = result[1..(result.len() - 1)].to_string();
-                        let index = usize::from_str_radix(&result, 10)
-                            .map_err(|err| MatcherError::ParseOperatorError { message: format!("Cannot parse value [{}] to number: {}", &result, err) })?;
-                        return Ok(ValueGetter::Array {index})
-                    }
-                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
-                        let error_message = format!(
-                            "Payload key [{}] from accessor [{}] for rule [{}] contains not valid characters: [{}]",
-                            key, full_accessor, rule_name, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
-                        );
-                        return Err(MatcherError::NotValidIdOrNameError { message: error_message });
-                    }
-                }
-                Ok(ValueGetter::Map {key: result})
-            }).collect()
     }
 }
 
@@ -191,8 +117,8 @@ impl AccessorBuilder {
 pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
-    ExtractedVar { key: String },
-    Payload { keys: Vec<ValueGetter> },
+    ExtractedVar { rule_name: String, parser: Parser },
+    Payload { parser: Parser },
     Type,
     Event,
 }
@@ -201,59 +127,26 @@ impl Accessor {
     pub fn get<'o>(
         &'o self,
         event: &'o InternalEvent,
-        extracted_vars: Option<&'o HashMap<String, Value>>,
+        extracted_vars: Option<&'o Value>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
-            Accessor::ExtractedVar { key } => extracted_vars
-                .and_then(|vars| vars.get(key.as_str()))
-                .map(|value| Cow::Borrowed(value)),
-            Accessor::Payload { keys } => {
-                let mut value = Some(&event.payload);
-
-                let mut count = 0;
-
-                while count < keys.len() && value.is_some() {
-                    value = value.and_then(|val| keys[count].get(val));
-                    count += 1;
-                }
-
-                value.map(|value| Cow::Borrowed(value))
+            Accessor::ExtractedVar { rule_name, parser } => {
+                extracted_vars.and_then(|global_vars| {
+                    global_vars
+                        .get_from_map(rule_name.as_str())
+                        .and_then(|rule_vars| parser.parse_value(rule_vars))
+                        .or_else(|| parser.parse_value(global_vars))
+                })
             }
+            Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
                 let event_value: Value = event.clone().into();
                 Some(Cow::Owned(event_value))
             }
         }
-    }
-}
-
-#[derive(PartialEq, Debug)]
-pub enum ValueGetter {
-    Map { key: String },
-    Array { index: usize },
-}
-
-impl ValueGetter {
-    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
-        match self {
-            ValueGetter::Map { key } => value.get_from_map(key),
-            ValueGetter::Array { index } => value.get_from_array(*index),
-        }
-    }
-}
-
-impl Into<ValueGetter> for &str {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Map { key: self.to_owned() }
-    }
-}
-
-impl Into<ValueGetter> for usize {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Array { index: self }
     }
 }
 
@@ -312,7 +205,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { keys: vec!["body".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${body}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -328,7 +221,7 @@ mod test {
     #[test]
     fn should_return_bool_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["bool_true".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${bool_true}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("bool_true".to_owned(), Value::Bool(true));
@@ -346,7 +239,7 @@ mod test {
     #[test]
     fn should_return_number_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["num_555".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${num_555}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("num_555".to_owned(), Value::Number(Number::Float(555.0)));
@@ -363,7 +256,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${body}").unwrap() };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -386,7 +279,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_map_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), "first".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${body.first}").unwrap() };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -407,7 +300,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_array_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), 1.into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${body[1]}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert(
@@ -430,7 +323,9 @@ mod test {
     #[test]
     fn should_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor = Accessor::Payload { keys: vec!["body".into(), "second.with.dot".into()] };
+        let accessor = Accessor::Payload {
+            parser: Parser::build_parser(r#"${body."second.with.dot"}"#).unwrap(),
+        };
 
         let mut body_payload = HashMap::new();
         body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
@@ -451,7 +346,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { keys: vec!["date".into()] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${date}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -480,7 +375,7 @@ mod test {
 
     #[test]
     fn should_return_the_entire_payload() {
-        let accessor = Accessor::Payload { keys: vec![] };
+        let accessor = Accessor::Payload { parser: Parser::build_parser("${}").unwrap() };
 
         let mut payload = HashMap::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
@@ -494,12 +389,19 @@ mod test {
 
     #[test]
     fn should_return_value_from_extracted_var() {
-        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            parser: Parser::build_parser("${body}").unwrap(),
+        };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        extracted_vars_inner.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule1.body".to_owned(), Value::Text("body_value".to_owned()));
-        extracted_vars.insert("rule1.subject".to_owned(), Value::Text("subject_value".to_owned()));
+        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -514,19 +416,20 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+        let mut extracted_vars_current = HashMap::new();
+        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current
+            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+
+        let mut extracted_vars_custom = HashMap::new();
+        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom
+            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert(
-            "current_rule_name.subject".to_owned(),
-            Value::Text("current_subject".to_owned()),
-        );
-        extracted_vars
-            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert(
-            "custom_rule_name.subject".to_owned(),
-            Value::Text("custom_subject".to_owned()),
-        );
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -541,19 +444,21 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         let event = InternalEvent::new(Event::new("event_type_string"));
+
+        let mut extracted_vars_current = HashMap::new();
+        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current
+            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+
+        let mut extracted_vars_custom = HashMap::new();
+        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom
+            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+
         let mut extracted_vars = HashMap::new();
-        extracted_vars
-            .insert("current_rule_name.body".to_owned(), Value::Text("current_body".to_owned()));
-        extracted_vars.insert(
-            "current_rule_name.subject".to_owned(),
-            Value::Text("current_subject".to_owned()),
-        );
-        extracted_vars
-            .insert("custom_rule_name.body".to_owned(), Value::Text("custom_body".to_owned()));
-        extracted_vars.insert(
-            "custom_rule_name.subject".to_owned(),
-            Value::Text("custom_subject".to_owned()),
-        );
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
+        let extracted_vars = Value::Map(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -562,7 +467,10 @@ mod test {
 
     #[test]
     fn should_return_none_if_no_match() {
-        let accessor = Accessor::ExtractedVar { key: "rule1.body".to_owned() };
+        let accessor = Accessor::ExtractedVar {
+            rule_name: "rule1".to_owned(),
+            parser: Parser::build_parser("${body}").unwrap(),
+        };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -608,7 +516,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec![] }, accessor)
+        assert_eq!(Accessor::Payload { parser: Parser::build_parser("${}").unwrap() }, accessor)
     }
 
     #[test]
@@ -618,7 +526,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Payload { keys: vec!["key".into()] }, accessor)
+        assert_eq!(Accessor::Payload { parser: Parser::build_parser("${key}").unwrap() }, accessor)
     }
 
     #[test]
@@ -630,7 +538,7 @@ mod test {
 
         assert_eq!(
             Accessor::Payload {
-                keys: vec!["first".into(), "second".into(), "th. ird".into(), "four".into()]
+                parser: Parser::build_parser(r#"${first.second."th. ird"."four"}"#).unwrap()
             },
             accessor
         )
@@ -643,7 +551,13 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        assert_eq!(Accessor::ExtractedVar { key: "current_rule_name.key".to_owned() }, accessor)
+        assert_eq!(
+            Accessor::ExtractedVar {
+                rule_name: "current_rule_name".to_owned(),
+                parser: Parser::build_parser("${key}").unwrap()
+            },
+            accessor
+        )
     }
 
     #[test]
@@ -653,7 +567,13 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        assert_eq!(Accessor::ExtractedVar { key: "custom_rule.key".to_owned() }, accessor)
+        assert_eq!(
+            Accessor::ExtractedVar {
+                rule_name: "current_rule_name".to_owned(),
+                parser: Parser::build_parser("${custom_rule.key}").unwrap()
+            },
+            accessor
+        )
     }
 
     #[test]
@@ -749,123 +669,51 @@ mod test {
     }
 
     #[test]
-    fn builder_should_return_error_if_wrong_extracted_var_name() {
-        let builder = AccessorBuilder::new();
-        let value = "${_variables.not.valid.at.all}";
-
-        let accessor = builder.build("", value);
-
-        assert!(&accessor.is_err());
-
-        match accessor.err().unwrap() {
-            MatcherError::NotValidIdOrNameError { message } => {
-                assert!(message.contains("${_variables.not.valid.at.all}"));
-            }
-            _ => assert!(false),
-        };
-    }
-
-    #[test]
-    fn builder_should_parse_a_payload_key() {
-        let builder = AccessorBuilder::new();
-
-        let expected: Vec<ValueGetter> = vec!["one".into()];
-        assert_eq!(expected, builder.parse_payload_key("one", "", "").unwrap());
-
-        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, builder.parse_payload_key("one.two", "", "").unwrap());
-
-        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, builder.parse_payload_key("one.two.", "", "").unwrap());
-
-        let expected: Vec<ValueGetter> = vec!["one".into(), "".into()];
-        assert_eq!(expected, builder.parse_payload_key(r#"one."""#, "", "").unwrap());
-
-        let expected: Vec<ValueGetter> = vec!["one".into(), "two".into(), "th ir.d".into()];
-        assert_eq!(expected, builder.parse_payload_key(r#"one.two."th ir.d""#, "", "").unwrap());
-
-        let expected: Vec<ValueGetter> =
-            vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
-        assert_eq!(
-            expected,
-            builder.parse_payload_key(r#""th ir.d".a."fourth".two"#, "", "").unwrap()
-        );
-
-        let expected: Vec<ValueGetter> =
-            vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
-        assert_eq!(
-            expected,
-            builder
-                .parse_payload_key(
-                    r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#,
-                    "",
-                    ""
-                )
-                .unwrap()
-        );
-    }
-
-    #[test]
-    fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
+    fn should_return_nested_values_from_extracted_var() {
         // Arrange
         let builder = AccessorBuilder::new();
+        let map_accessor = builder.build("", "${_variables.rule1.body.map.key_1}").unwrap();
+        let array_accessor = builder.build("", "${_variables.rule1.body.array[0]}").unwrap();
+
+        let event = InternalEvent::new(Event::new("event_type_string"));
+
+        let mut map = HashMap::new();
+        map.insert("key_1".to_owned(), Value::Text("first_from_map".to_owned()));
+
+        let mut body = HashMap::new();
+        body.insert("map".to_owned(), Value::Map(map));
+        body.insert(
+            "array".to_owned(),
+            Value::Array(vec![Value::Text("first_from_array".to_owned())]),
+        );
+
+        let mut extracted_vars_inner = HashMap::new();
+        extracted_vars_inner.insert("body".to_owned(), Value::Map(body));
+
+        let mut extracted_vars = HashMap::new();
+        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
+        let extracted_vars = Value::Map(extracted_vars);
 
         // Act
-        let result = builder.parse_payload_key(r#"o"ne"#, "", "");
+        let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let array_result = array_accessor.get(&event, Some(&extracted_vars)).unwrap();
 
         // Assert
-        assert!(result.is_err());
+        assert_eq!("first_from_map", map_result.as_ref());
+        assert_eq!("first_from_array", array_result.as_ref());
     }
 
     #[test]
-    fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
+    fn should_build_a_constant_accessor_for_expression_who_start_with_an_ignored_prefix() {
         // Arrange
         let builder = AccessorBuilder::new();
+        let value = "${item.body}".to_owned();
 
         // Act
-        let result = builder.parse_payload_key(r#"one."two"#, "", "");
+        let accessor = builder.build("rule_name", &value).unwrap();
 
         // Assert
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn builder_parser_should_return_empty_vector_if_no_matches() {
-        let builder = AccessorBuilder::new();
-        let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, builder.parse_payload_key("", "", "").unwrap())
-    }
-
-    #[test]
-    fn builder_parser_should_return_empty_vector_if_single_dot() {
-        let builder = AccessorBuilder::new();
-        let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, builder.parse_payload_key(".", "", "").unwrap())
-    }
-
-    #[test]
-    fn builder_parser_should_return_ignore_trailing_dot() {
-        let builder = AccessorBuilder::new();
-        let expected: Vec<ValueGetter> = vec!["hello".into(), "world".into()];
-        assert_eq!(expected, builder.parse_payload_key(".hello.world", "", "").unwrap())
-    }
-
-    #[test]
-    fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
-        let builder = AccessorBuilder::new();
-        let expected: Vec<ValueGetter> =
-            vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
-        assert_eq!(
-            expected,
-            builder.parse_payload_key(r#"hello."world[11]".inner[0]"#, "", "").unwrap()
-        )
-    }
-
-    #[test]
-    fn builder_parser_should_return_array_reader() {
-        let builder = AccessorBuilder::new();
-        let expected: Vec<ValueGetter> =
-            vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
-        assert_eq!(expected, builder.parse_payload_key("hello.world[11].inner[0]", "", "").unwrap())
+        let expected = Accessor::Constant { value: Value::Text(value) };
+        assert_eq!(expected, accessor);
     }
 }

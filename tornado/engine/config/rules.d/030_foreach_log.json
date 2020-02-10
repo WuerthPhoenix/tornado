@@ -1,0 +1,31 @@
+{
+  "name": "foreach_log",
+  "description": "This log an array of values",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "equal",
+      "first": "${event.type}",
+      "second": "foreach_log"
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "foreach",
+      "payload": {
+        "target": "${event.payload.values}",
+        "actions": [
+          {
+            "id": "logger",
+            "payload": {
+              "source": "${event.payload.source}",
+              "value": "the value is ${item}"
+            }
+          }
+        ]
+      }
+    }
+  ]
+}

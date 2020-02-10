@@ -1,6 +1,5 @@
 use crate::api::handler::SendEventRequest;
 use serde_json::Error;
-use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
@@ -53,14 +52,7 @@ pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, 
 
 pub fn processed_rules_into_dto(node: ProcessedRules) -> Result<ProcessedRulesDto, Error> {
     Ok(ProcessedRulesDto {
-        extracted_vars: node
-            .extracted_vars
-            .into_iter()
-            .map(|(key, value)| {
-                let dto = serde_json::to_value(value)?;
-                Ok((key, dto))
-            })
-            .collect::<Result<HashMap<_, _>, _>>()?,
+        extracted_vars: serde_json::to_value(node.extracted_vars)?,
         rules: node
             .rules
             .into_iter()

@@ -52,5 +52,4 @@ mod test {
         // Assert
         assert!(config.is_ok())
     }
-
 }

@@ -170,7 +170,10 @@ mod test {
             r#""Mr.Francesco.Cina" <mr.francesco.cina@gmail.com>"#,
             event.payload.get("from").unwrap()
         );
-        assert_eq!(r#""Groeber, Benjamin" <Benjamin.Groeber@wuerth-phoenix.com>, francesco cina <mr.francesco.cina@gmail.com>"#, event.payload.get("to").unwrap());
+        assert_eq!(
+            r#""Groeber, Benjamin" <Benjamin.Groeber@wuerth-phoenix.com>, francesco cina <mr.francesco.cina@gmail.com>"#,
+            event.payload.get("to").unwrap()
+        );
         assert_eq!(
             r#"Thomas.Forrer@wuerth-phoenix.com, mr.francesco.cina@gmail.com"#,
             event.payload.get("cc").unwrap()

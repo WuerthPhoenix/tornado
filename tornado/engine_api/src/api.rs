@@ -14,10 +14,9 @@ pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc
         web::resource("/config").route(web::get().to_async(move |req| http_clone.get_config(req))),
     );
 
-    let http_clone = http.clone();
     scope = scope.service(
         web::resource("/send_event")
-            .route(web::post().to_async(move |req, body| http_clone.send_event(req, body))),
+            .route(web::post().to_async(move |req, body| http.send_event(req, body))),
     );
 
     scope
@@ -34,6 +33,7 @@ mod test {
     };
     use futures::{future::FutureResult, Future};
     use std::collections::HashMap;
+    use tornado_common_api::Value;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
@@ -56,7 +56,10 @@ mod test {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
-                    rules: ProcessedRules { rules: vec![], extracted_vars: HashMap::new() },
+                    rules: ProcessedRules {
+                        rules: vec![],
+                        extracted_vars: Value::Map(HashMap::new()),
+                    },
                 },
             })))
         }

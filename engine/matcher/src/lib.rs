@@ -39,5 +39,4 @@ pub mod test_root {
         };
         setup_logger(&conf).unwrap();
     }
-
 }

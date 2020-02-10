@@ -35,10 +35,19 @@ pub struct Extractor {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ExtractorRegex {
-    #[serde(rename = "match")]
-    pub regex: String,
-    pub group_match_idx: u16,
+#[serde(untagged)]
+pub enum ExtractorRegex {
+    Regex {
+        #[serde(rename = "match")]
+        regex: String,
+        group_match_idx: Option<usize>,
+        all_matches: Option<bool>,
+    },
+    RegexNamedGroups {
+        #[serde(rename = "named_match")]
+        regex: String,
+        all_matches: Option<bool>,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -105,8 +114,37 @@ mod test {
             _ => assert!(false),
         }
 
-        assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
-        assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
+        let extractor1 = &rule.constraint.with["extracted_temp"];
+        assert_eq!("${event.payload.body}", extractor1.from);
+        match &extractor1.regex {
+            ExtractorRegex::Regex { regex, all_matches, group_match_idx } => {
+                assert_eq!("([0-9]+\\sDegrees)", regex);
+                assert_eq!(&Some(2), group_match_idx);
+                assert_eq!(all_matches, &None);
+            }
+            _ => assert!(false),
+        }
+
+        let extractor2 = &rule.constraint.with["all_temperatures"];
+        assert_eq!("${event.payload.body}", extractor1.from);
+        match &extractor2.regex {
+            ExtractorRegex::Regex { regex, group_match_idx, all_matches } => {
+                assert_eq!("([0-9]+\\sDegrees)", regex);
+                assert_eq!(&None, group_match_idx);
+                assert_eq!(all_matches, &Some(true));
+            }
+            _ => assert!(false),
+        }
+
+        let extractor2 = &rule.constraint.with["all_temperatures_named"];
+        assert_eq!("${event.payload.body}", extractor1.from);
+        match &extractor2.regex {
+            ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
+                assert_eq!("(?P<DEGREES>[0-9]+\\sDegrees)", regex);
+                assert_eq!(all_matches, &None);
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -139,8 +177,15 @@ mod test {
             _ => assert!(false),
         }
 
-        assert_eq!("${event.payload.body}", rule.constraint.with["extracted_temp"].from);
-        assert_eq!("([0-9]+\\sDegrees)", rule.constraint.with["extracted_temp"].regex.regex);
+        let extractor1 = &rule.constraint.with["extracted_temp"];
+        assert_eq!("${event.payload.body}", extractor1.from);
+        match &extractor1.regex {
+            ExtractorRegex::Regex { regex, all_matches, group_match_idx: _ } => {
+                assert_eq!("([0-9]+\\sDegrees)", regex);
+                assert_eq!(all_matches, &None);
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -150,5 +195,4 @@ mod test {
 
         assert!(rule.is_ok());
     }
-
 }

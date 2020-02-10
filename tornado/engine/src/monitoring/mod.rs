@@ -71,5 +71,4 @@ mod test {
         // Assert
         assert!(date.is_ok());
     }
-
 }
