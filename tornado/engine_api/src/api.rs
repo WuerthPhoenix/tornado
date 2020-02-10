@@ -1,13 +1,12 @@
 use self::handler::ApiHandler;
 use crate::convert::config::matcher_config_into_dto;
 use crate::convert::event::{dto_into_send_event_request, processed_event_into_dto};
-use crate::error::ApiError;
-use actix_web::error::BlockingError;
 use actix_web::web::{Data, Json};
-use actix_web::{web, Responder, Scope};
+use actix_web::{web, Scope};
 use log::*;
 use std::ops::Deref;
-use tornado_engine_api_dto::event::SendEventRequestDto;
+use tornado_engine_api_dto::event::{SendEventRequestDto, ProcessedEventDto};
+use tornado_engine_api_dto::config::MatcherConfigDto;
 
 pub mod handler;
 
@@ -18,6 +17,7 @@ pub fn new_endpoints<T: ApiHandler + 'static>(scope: Scope, api_handler: T) -> S
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
 }
 
+/*
 async fn web_block_json<I, F>(f: F) -> Result<Json<I>, ApiError>
 where
     F: FnOnce() -> Result<I, ApiError> + Send + 'static,
@@ -31,32 +31,39 @@ where
         })
         .map(Json)
 }
+*/
 
-async fn get_config<T: ApiHandler + 'static>(api_handler: Data<T>) -> impl Responder {
+async fn get_config<T: ApiHandler + 'static>(api_handler: Data<T>) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("API - received get_config request");
-    web_block_json(move || {
-        api_handler
-            .get_config()
-            .and_then(|matcher_config| Ok(matcher_config_into_dto(matcher_config)?))
-    })
-    .await
+    let matcher_config = api_handler
+        .get_config()
+        .await?;
+
+    let matcher_config_dto = matcher_config_into_dto(matcher_config)?;
+    Ok(Json(matcher_config_dto))
 }
 
 async fn send_event<T: ApiHandler + 'static>(
     api_handler: Data<T>,
     body: Json<SendEventRequestDto>,
-) -> impl Responder {
+) -> actix_web::Result<Json<ProcessedEventDto>> {
     if log_enabled!(Level::Debug) {
         let json_string = serde_json::to_string(body.deref()).unwrap();
         debug!("API - received send_event request: {}", json_string);
     }
 
+    let send_event_request = dto_into_send_event_request(body.into_inner())?;
+    let processed_event = api_handler.send_event(send_event_request).await?;
+    Ok(Json(processed_event_into_dto(processed_event)?))
+
+    /*
     web_block_json(move || {
         let send_event_request = dto_into_send_event_request(body.into_inner())?;
         let processed_event = api_handler.send_event(send_event_request)?;
         Ok(processed_event_into_dto(processed_event)?)
     })
     .await
+    */
 }
 
 #[cfg(test)]
@@ -73,15 +80,17 @@ mod test {
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
+    use async_trait::async_trait;
 
     struct TestApiHandler {}
 
+    #[async_trait]
     impl ApiHandler for TestApiHandler {
-        fn get_config(&self) -> Result<MatcherConfig, ApiError> {
+        async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
         }
 
-        fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+        async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {

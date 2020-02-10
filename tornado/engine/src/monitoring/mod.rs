@@ -9,7 +9,7 @@ pub fn monitoring_endpoints(scope: Scope) -> Scope {
         .service(web::resource("/ping").route(web::get().to(pong)))
 }
 
-fn index(_req: HttpRequest) -> HttpResponse {
+async fn index(_req: HttpRequest) -> HttpResponse {
     HttpResponse::Ok().content_type("text/html").body(
         r##"
         <div>
@@ -27,7 +27,7 @@ pub struct PongResponse {
     pub message: String,
 }
 
-fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
+async fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
     let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
     let created_ms: String = dt.to_rfc3339();
     Ok(Json(PongResponse { message: format!("pong - {}", created_ms) }))

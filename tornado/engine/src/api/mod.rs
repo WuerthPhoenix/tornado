@@ -1,47 +1,42 @@
 use crate::engine::{EventMessageWithReply, MatcherActor};
 use actix::Addr;
-use futures::future::{Future, FutureResult};
 use tornado_engine_api::api::handler::{ApiHandler, SendEventRequest};
 use tornado_engine_api::error::ApiError;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
 use tornado_engine_matcher::model::ProcessedEvent;
-use actix_web::web::Json;
-use actix_web::error::BlockingError;
+use async_trait::async_trait;
+use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
-    config_manager: Box<dyn MatcherConfigManager>,
+    config_manager: Arc<dyn MatcherConfigManager>,
 }
 
-
-
+#[async_trait]
 impl ApiHandler for MatcherApiHandler {
-    fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
-        Box::new(FutureResult::from(self.config_manager.read().map_err(ApiError::from)))
+
+    async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
+        self.config_manager.read().map_err(ApiError::from)
     }
 
-    fn send_event(
+    async fn send_event(
         &self,
         event: SendEventRequest,
-    ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
+    ) -> Result<ProcessedEvent, ApiError> {
         let request = self
             .matcher
-            .send(EventMessageWithReply { event: event.event, process_type: event.process_type });
+            .send(EventMessageWithReply { event: event.event, process_type: event.process_type })
+            .await?;
 
-        // The last closure:
-        // |res| Ok(res?)
-        // is a Rust trick to let the compiler convert automatically the error from the one of the 'res' variable (MatcherError)
-        // to the one expected for the response (ApiError).
-        // This works because the ApiError implements From<MatcherError>
-        let response = request.map_err(ApiError::from).and_then(|res| Ok(res?));
+        Ok(request?)
 
-        Box::new(response)
     }
 }
 
 impl MatcherApiHandler {
     pub fn new(
-        config_manager: Box<dyn MatcherConfigManager>,
+        config_manager: Arc<dyn MatcherConfigManager>,
         matcher: Addr<MatcherActor>,
     ) -> MatcherApiHandler {
         MatcherApiHandler { config_manager, matcher }

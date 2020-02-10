@@ -18,7 +18,7 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let configs = config::parse_config_files(config_dir, rules_dir)?;
 
     setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
@@ -33,7 +33,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
     );
 
     // start system
-    System::run(move || {
+
         let cpus = num_cpus::get();
         debug!("Available CPUs: {}", cpus);
 
@@ -128,6 +128,7 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
                 json_matcher_addr_clone.do_send(EventMessage { event })
             });
         })
+            .await
         .and_then(|_| {
             info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
             Ok(())
@@ -142,14 +143,14 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
         let web_server_port = daemon_config.web_server_port;
         let matcher_config = configs.matcher_config;
 
-        let api_handler = Arc::new(MatcherApiHandler::new(matcher_config, matcher_addr));
+        let api_handler = MatcherApiHandler::new(matcher_config, matcher_addr);
 
         // Start API and monitoring endpoint
-        HttpServer::new(move || {
+        Ok(HttpServer::new(move || {
             App::new()
-                .wrap(Cors::new().max_age(3600))
+                //.wrap(Cors::new().max_age(3600))
                 .service({
-                    tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler.clone())
+                    tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler)
                 })
                 .service(monitoring_endpoints(web::scope("/monitoring")))
         })
@@ -160,8 +161,8 @@ pub fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std::erro
             //System::current().stop_with_code(1);
             std::process::exit(1);
         })
-        .start();
-    })?;
+        .run()
+            .await?)
 
-    Ok(())
+
 }

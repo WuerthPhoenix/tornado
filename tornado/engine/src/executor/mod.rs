@@ -12,18 +12,18 @@ pub struct ActionMessage {
     pub action: Action,
 }
 
-pub struct ExecutorActor<E: Executor + Display> {
+pub struct ExecutorActor<E: Executor + Display + Unpin> {
     pub executor: E,
 }
 
-impl<E: Executor + Display + 'static> Actor for ExecutorActor<E> {
+impl<E: Executor + Display + Unpin + 'static> Actor for ExecutorActor<E> {
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
         debug!("ExecutorActor started.");
     }
 }
 
-impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E> {
+impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for ExecutorActor<E> {
     type Result = ();
 
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
@@ -46,18 +46,18 @@ where
     pub init: F,
 }
 
-pub struct LazyExecutorActor<E: Executor + Display> {
+pub struct LazyExecutorActor<E: Executor + Display + Unpin> {
     pub executor: Option<E>,
 }
 
-impl<E: Executor + Display + 'static> Actor for LazyExecutorActor<E> {
+impl<E: Executor + Display + Unpin + 'static> Actor for LazyExecutorActor<E> {
     type Context = SyncContext<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
         debug!("ExecutorActor started.");
     }
 }
 
-impl<E: Executor + Display + 'static> Handler<ActionMessage> for LazyExecutorActor<E> {
+impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for LazyExecutorActor<E> {
     type Result = ();
 
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
@@ -76,7 +76,7 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for LazyExecutorAct
     }
 }
 
-impl<E: Executor + Display + 'static, F: Fn() -> E> Handler<LazyExecutorActorInitMessage<E, F>>
+impl<E: Executor + Display + Unpin + 'static, F: Fn() -> E> Handler<LazyExecutorActorInitMessage<E, F>>
     for LazyExecutorActor<E>
 where
     F: Send + Sync,
