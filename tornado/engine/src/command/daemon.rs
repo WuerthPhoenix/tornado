@@ -147,8 +147,9 @@ pub async fn daemon(config_dir: &str, rules_dir: &str) -> Result<(), Box<dyn std
 
         // Start API and monitoring endpoint
         Ok(HttpServer::new(move || {
-            App::new()
-                //.wrap(Cors::new().max_age(3600))
+            let api_handler = api_handler.clone();
+                App::new()
+                .wrap(Cors::new().max_age(3600).finish())
                 .service({
                     tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler)
                 })
