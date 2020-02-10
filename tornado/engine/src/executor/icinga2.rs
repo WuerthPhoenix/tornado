@@ -1,7 +1,6 @@
 use actix::prelude::*;
 use actix_web::client::{Client, ClientBuilder, Connector};
 use failure_derive::Fail;
-use futures::future::Future;
 use http::header;
 use log::*;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};

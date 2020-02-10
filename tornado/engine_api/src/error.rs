@@ -11,6 +11,8 @@ pub enum ApiError {
     ActixMailboxError { cause: String },
     #[fail(display = "JsonError: [{}]", cause)]
     JsonError { cause: String },
+    #[fail(display = "InternalServerError: [{}]", cause)]
+    InternalServerError { cause: String },
 }
 
 impl From<MatcherError> for ApiError {
@@ -38,6 +40,7 @@ impl actix_web::error::ResponseError for ApiError {
             ApiError::MatcherError { .. } => HttpResponse::BadRequest().finish(),
             ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
         }
     }
 }

@@ -1,25 +1,62 @@
 use self::handler::ApiHandler;
-use self::http::HttpHandler;
-use actix_web::{web, Scope};
-use std::sync::Arc;
+use crate::convert::config::matcher_config_into_dto;
+use crate::convert::event::{dto_into_send_event_request, processed_event_into_dto};
+use crate::error::ApiError;
+use actix_web::error::BlockingError;
+use actix_web::web::{Data, Json};
+use actix_web::{web, Responder, Scope};
+use log::*;
+use std::ops::Deref;
+use tornado_engine_api_dto::event::SendEventRequestDto;
 
 pub mod handler;
-mod http;
 
-pub fn new_endpoints<T: ApiHandler + 'static>(mut scope: Scope, api_handler: Arc<T>) -> Scope {
-    let http = HttpHandler { api_handler };
-
-    let http_clone = http.clone();
-    scope = scope.service(
-        web::resource("/config").route(web::get().to_async(move |req| http_clone.get_config(req))),
-    );
-
-    scope = scope.service(
-        web::resource("/send_event")
-            .route(web::post().to_async(move |req, body| http.send_event(req, body))),
-    );
-
+pub fn new_endpoints<T: ApiHandler + 'static>(scope: Scope, api_handler: T) -> Scope {
     scope
+        .data(api_handler)
+        .service(web::resource("/config").route(web::get().to(get_config::<T>)))
+        .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
+}
+
+async fn web_block_json<I, F>(f: F) -> Result<Json<I>, ApiError>
+where
+    F: FnOnce() -> Result<I, ApiError> + Send + 'static,
+    I: Send + 'static,
+{
+    actix_web::web::block(f)
+        .await
+        .map_err(|err| match err {
+            BlockingError::Error(e) => e,
+            _ => ApiError::InternalServerError { cause: format!("{}", err) },
+        })
+        .map(Json)
+}
+
+async fn get_config<T: ApiHandler + 'static>(api_handler: Data<T>) -> impl Responder {
+    debug!("API - received get_config request");
+    web_block_json(move || {
+        api_handler
+            .get_config()
+            .and_then(|matcher_config| Ok(matcher_config_into_dto(matcher_config)?))
+    })
+    .await
+}
+
+async fn send_event<T: ApiHandler + 'static>(
+    api_handler: Data<T>,
+    body: Json<SendEventRequestDto>,
+) -> impl Responder {
+    if log_enabled!(Level::Debug) {
+        let json_string = serde_json::to_string(body.deref()).unwrap();
+        debug!("API - received send_event request: {}", json_string);
+    }
+
+    web_block_json(move || {
+        let send_event_request = dto_into_send_event_request(body.into_inner())?;
+        let processed_event = api_handler.send_event(send_event_request)?;
+        Ok(processed_event_into_dto(processed_event)?)
+    })
+    .await
 }
 
 #[cfg(test)]

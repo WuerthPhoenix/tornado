@@ -7,6 +7,7 @@ use tornado_executor_common::Executor;
 pub mod icinga2;
 
 #[derive(Message)]
+#[rtype(result="()")]
 pub struct ActionMessage {
     pub action: Action,
 }
@@ -37,6 +38,7 @@ impl<E: Executor + Display + 'static> Handler<ActionMessage> for ExecutorActor<E
 }
 
 #[derive(Message)]
+#[rtype(result="()")]
 pub struct LazyExecutorActorInitMessage<E: Executor + Display, F: Fn() -> E>
 where
     F: Send + Sync,
