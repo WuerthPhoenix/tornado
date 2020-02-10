@@ -68,7 +68,6 @@ mod test {
         http::{header, StatusCode},
         test, App,
     };
-    use futures::{future::FutureResult, Future};
     use std::collections::HashMap;
     use tornado_common_api::Value;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
@@ -78,18 +77,12 @@ mod test {
     struct TestApiHandler {}
 
     impl ApiHandler for TestApiHandler {
-        fn get_config(&self) -> Box<dyn Future<Item = MatcherConfig, Error = ApiError>> {
-            Box::new(FutureResult::from(Ok(MatcherConfig::Ruleset {
-                name: "ruleset".to_owned(),
-                rules: vec![],
-            })))
+        fn get_config(&self) -> Result<MatcherConfig, ApiError> {
+            Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
         }
 
-        fn send_event(
-            &self,
-            event: SendEventRequest,
-        ) -> Box<dyn Future<Item = ProcessedEvent, Error = ApiError>> {
-            Box::new(FutureResult::from(Ok(ProcessedEvent {
+        fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+            Ok(ProcessedEvent {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
@@ -98,16 +91,17 @@ mod test {
                         extracted_vars: Value::Map(HashMap::new()),
                     },
                 },
-            })))
+            })
         }
     }
 
-    #[test]
-    fn should_return_status_code_ok() {
+    #[actix_rt::test]
+    async fn should_return_status_code_ok() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), Arc::new(TestApiHandler {}))),
-        );
+            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -116,18 +110,19 @@ mod test {
             //.set_payload(payload)
             .to_request();
 
-        let response = test::call_service(&mut srv, request);
+        let response = test::call_service(&mut srv, request).await;
 
         // Assert
         assert_eq!(response.status(), StatusCode::OK);
     }
 
-    #[test]
-    fn should_return_the_matcher_config() {
+    #[actix_rt::test]
+    async fn should_return_the_matcher_config() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), Arc::new(TestApiHandler {}))),
-        );
+            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -138,7 +133,8 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =
-            test::read_response_json(&mut srv, request);
+            test::read_response_json(&mut srv, request).await;
+
         assert_eq!(
             tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
                 name: "ruleset".to_owned(),
@@ -148,12 +144,13 @@ mod test {
         );
     }
 
-    #[test]
-    fn should_return_the_processed_event() {
+    #[actix_rt::test]
+    async fn should_return_the_processed_event() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), Arc::new(TestApiHandler {}))),
-        );
+            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+        )
+        .await;
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -173,7 +170,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&mut srv, request);
+            test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
     }
 }
