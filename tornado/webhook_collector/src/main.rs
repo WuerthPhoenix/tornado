@@ -128,7 +128,7 @@ mod test {
     use super::*;
     use actix_web::{http, test};
     use std::collections::HashMap;
-    use std::sync::{Mutex, Arc};
+    use std::sync::{Arc, Mutex};
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 
     #[actix_rt::test]
@@ -170,7 +170,8 @@ mod test {
         });
         let mut srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        ).await;
+        )
+        .await;
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -217,7 +218,8 @@ mod test {
         });
         let mut srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        ).await;
+        )
+        .await;
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -267,7 +269,8 @@ mod test {
                 })
                 .unwrap(),
             ),
-        ).await;
+        )
+        .await;
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -307,7 +310,8 @@ mod test {
 
         let mut srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        ).await;
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -337,7 +341,8 @@ mod test {
 
         let mut srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        ).await;
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -366,7 +371,8 @@ mod test {
 
         let mut srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        ).await;
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::post()
