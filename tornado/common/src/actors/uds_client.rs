@@ -76,25 +76,6 @@ impl Actor for UdsClientActor {
                 }
             }),
         );
-        /*
-        tokio::timer::Delay::new(delay_until)
-            .map_err(|_| ())
-            .and_then(move |_| tokio_uds::UnixStream::connect(path).map_err(|_| ()))
-            .into_actor(self)
-            .map(move |stream, act, ctx| {
-                info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
-                let (_r, w) = stream.split();
-                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            })
-            .map_err(|err, act, ctx| {
-                warn!(
-                    "UdsClientActor failed to connected to socket [{:?}]: {:?}",
-                    &act.socket_path, err
-                );
-                ctx.stop();
-            })
-            .wait(ctx);
-            */
     }
 }
 

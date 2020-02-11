@@ -20,8 +20,6 @@ args = [
 ]
 
 
-
-
 # Starts the rsyslog-collector and the spike_rsyslog_collector_writer.
 #
 # The spike_rsyslog_collector_writer will generate fake rsyslog events
@@ -53,7 +51,6 @@ args = [
     "--",
     "--config-dir=./tornado/icinga2_collector/config"
 ]
-
 
 
 # Starts the webhook-collector.

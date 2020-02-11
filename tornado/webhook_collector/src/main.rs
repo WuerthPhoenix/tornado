@@ -54,7 +54,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {
                 error!("Cannot create the webhook handlers. Err: {}", err);
-                //System::current().stop_with_code(1);
                 std::process::exit(1);
             }),
         )
@@ -63,7 +62,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
     .unwrap_or_else(|err| {
         error!("Server cannot start on port {}. Err: {}", port, err);
-        //System::current().stop_with_code(1);
         std::process::exit(1);
     })
     .run();

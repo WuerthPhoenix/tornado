@@ -34,9 +34,7 @@ fn should_perform_a_tcp_request() {
 
             let client_addr = TcpClientActor::start_new(address.clone(), 16);
             client_addr.do_send(EventMessage { event: Event::new("an_event") });
-
         });
-
     })
     .unwrap();
 

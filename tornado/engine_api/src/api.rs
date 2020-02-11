@@ -17,22 +17,6 @@ pub fn new_endpoints<T: ApiHandler + 'static>(scope: Scope, api_handler: T) -> S
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
 }
 
-/*
-async fn web_block_json<I, F>(f: F) -> Result<Json<I>, ApiError>
-where
-    F: FnOnce() -> Result<I, ApiError> + Send + 'static,
-    I: Send + 'static,
-{
-    actix_web::web::block(f)
-        .await
-        .map_err(|err| match err {
-            BlockingError::Error(e) => e,
-            _ => ApiError::InternalServerError { cause: format!("{}", err) },
-        })
-        .map(Json)
-}
-*/
-
 async fn get_config<T: ApiHandler + 'static>(
     api_handler: Data<T>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
@@ -55,15 +39,6 @@ async fn send_event<T: ApiHandler + 'static>(
     let send_event_request = dto_into_send_event_request(body.into_inner())?;
     let processed_event = api_handler.send_event(send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
-
-    /*
-    web_block_json(move || {
-        let send_event_request = dto_into_send_event_request(body.into_inner())?;
-        let processed_event = api_handler.send_event(send_event_request)?;
-        Ok(processed_event_into_dto(processed_event)?)
-    })
-    .await
-    */
 }
 
 #[cfg(test)]
@@ -113,11 +88,7 @@ mod test {
         .await;
 
         // Act
-        let request = test::TestRequest::get()
-            .uri("/api/config")
-            //.header(header::CONTENT_TYPE, "application/json")
-            //.set_payload(payload)
-            .to_request();
+        let request = test::TestRequest::get().uri("/api/config").to_request();
 
         let response = test::call_service(&mut srv, request).await;
 
@@ -134,11 +105,7 @@ mod test {
         .await;
 
         // Act
-        let request = test::TestRequest::get()
-            .uri("/api/config")
-            //.header(header::CONTENT_TYPE, "application/json")
-            //.set_payload(payload)
-            .to_request();
+        let request = test::TestRequest::get().uri("/api/config").to_request();
 
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =

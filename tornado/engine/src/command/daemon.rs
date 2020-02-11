@@ -158,7 +158,6 @@ pub async fn daemon(
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
     .unwrap_or_else(|err| {
         error!("Web Server cannot start on port {}. Err: {}", web_server_port, err);
-        //System::current().stop_with_code(1);
         std::process::exit(1);
     })
     .run()

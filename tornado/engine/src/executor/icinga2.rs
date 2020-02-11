@@ -111,7 +111,6 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
 
             let mut response = client
                 .post(url)
-                //                .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))

@@ -8,12 +8,6 @@ use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
 
-/*
-use std::iter::Iterator;
-use actix::fut::ActorFuture;
-use actix::fut::ActorStream;
-*/
-
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static + Unpin> {
     pub json_collector: JsonEventCollector,
     pub callback: F,
@@ -27,7 +21,6 @@ impl<F: Fn(Event) + 'static + Unpin> JsonEventReaderActor<F> {
 
             let framed = FramedRead::new(connect_msg.stream, codec);
             ctx.add_stream(framed);
-            //JsonEventReaderActor::add_stream(framed, ctx);
             JsonEventReaderActor { json_collector: JsonEventCollector::new(), callback }
         });
     }
