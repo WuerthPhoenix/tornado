@@ -4,10 +4,10 @@ use log::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
-use tokio::time;
 use tokio::io::WriteHalf;
-use tokio_util::codec::{LinesCodec, LinesCodecError};
 use tokio::net::UnixStream;
+use tokio::time;
+use tokio_util::codec::{LinesCodec, LinesCodecError};
 use tornado_common_api;
 
 pub struct EventMessage {
@@ -58,15 +58,18 @@ impl Actor for UdsClientActor {
         }
         let path = (&self.socket_path).clone();
 
-        ctx.wait(async move {
-            time::delay_until(delay_until).await;
-            UnixStream::connect(path).await.map_err(|_| ())
-        }.into_actor(self)
+        ctx.wait(
+            async move {
+                time::delay_until(delay_until).await;
+                UnixStream::connect(path).await.map_err(|_| ())
+            }
+            .into_actor(self)
             .map(move |stream, act, ctx| {
                 info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
                 let (_r, w) = tokio::io::split(stream.expect("REMOVE ME"));
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            }));
+            }),
+        );
         /*
         tokio::timer::Delay::new(delay_until)
             .map_err(|_| ())

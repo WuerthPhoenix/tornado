@@ -1,4 +1,4 @@
-use crate::actors::message::{AsyncReadMessage,};
+use crate::actors::message::AsyncReadMessage;
 
 use actix::prelude::*;
 use log::*;
@@ -7,7 +7,6 @@ use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
-
 
 /*
 use std::iter::Iterator;
@@ -26,8 +25,7 @@ impl<F: Fn(Event) + 'static + Unpin> JsonEventReaderActor<F> {
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 
-            let framed =
-                FramedRead::new(connect_msg.stream, codec);
+            let framed = FramedRead::new(connect_msg.stream, codec);
             ctx.add_stream(framed);
             //JsonEventReaderActor::add_stream(framed, ctx);
             JsonEventReaderActor { json_collector: JsonEventCollector::new(), callback }
@@ -44,9 +42,10 @@ impl<F: Fn(Event) + 'static + Unpin> Actor for JsonEventReaderActor<F> {
 }
 
 /// To use `Framed` with an actor, we have to implement the `StreamHandler` trait
-impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecError>> for JsonEventReaderActor<F> {
+impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecError>>
+    for JsonEventReaderActor<F>
+{
     fn handle(&mut self, msg: Result<String, LinesCodecError>, _ctx: &mut Self::Context) {
-
         match msg {
             Ok(msg) => {
                 debug!("JsonReaderActor - received json message: [{}]", msg);
@@ -59,7 +58,5 @@ impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecErro
                 error!("JsonEventReaderActor stream error. Err: {}", err);
             }
         }
-
-
     }
 }
