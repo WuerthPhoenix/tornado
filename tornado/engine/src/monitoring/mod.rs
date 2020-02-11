@@ -39,32 +39,34 @@ mod test {
     use actix_web::{test, App};
     use chrono::DateTime;
 
-    #[test]
-    fn index_should_have_links_to_the_endpoints() {
+    #[actix_rt::test]
+    async fn index_should_have_links_to_the_endpoints() {
         // Arrange
         let mut srv =
-            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"))));
+            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"))))
+                .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring").to_request();
-        let response = test::read_response(&mut srv, request);
+        let response = test::read_response(&mut srv, request).await;
 
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
         assert!(body.contains(r#"<a href="/monitoring/ping">"#));
     }
 
-    #[test]
-    fn ping_should_return_pong() {
+    #[actix_rt::test]
+    async fn ping_should_return_pong() {
         // Arrange
         let mut srv =
-            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"))));
+            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"))))
+                .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring/ping").to_request();
 
         // Assert
-        let pong: PongResponse = test::read_response_json(&mut srv, request);
+        let pong: PongResponse = test::read_response_json(&mut srv, request).await;
         assert!(pong.message.contains("pong - "));
 
         let date = DateTime::parse_from_rfc3339(&pong.message.clone()[7..]);

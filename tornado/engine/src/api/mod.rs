@@ -70,7 +70,7 @@ mod test {
                 dispatcher_addr: dispatcher_addr.clone(),
             });
 
-            let api = MatcherApiHandler { matcher: matcher_addr, config_manager: Box::new(config) };
+            let api = MatcherApiHandler { matcher: matcher_addr, config_manager: Arc::new(config) };
 
             let send_event_request = SendEventRequest {
                 process_type: ProcessType::SkipActions,
@@ -78,14 +78,12 @@ mod test {
             };
 
             // Act
-            Arbiter::spawn({
-                api.send_event(send_event_request).then(|res| {
-                    // Verify
-                    assert!(res.is_ok());
-                    assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
-                    System::current().stop();
-                    Ok(())
-                })
+            Arbiter::spawn(async move {
+                let res = api.send_event(send_event_request).await;
+                // Verify
+                assert!(res.is_ok());
+                assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
+                System::current().stop();
             });
         })
         .unwrap();

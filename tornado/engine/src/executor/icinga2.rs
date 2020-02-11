@@ -98,7 +98,7 @@ impl Icinga2ApiClientActor {
 }
 
 impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
-    type Result = ResponseFuture<Result<(), Icinga2ApiClientActorError>>;
+    type Result = Result<(), Icinga2ApiClientActorError>;
 
     fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("Icinga2ApiClientMessage - received new message");
@@ -106,7 +106,7 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         let url = format!("{}/{}", &self.icinga2_api_url, msg.message.name);
         let http_auth_header = self.http_auth_header.to_owned();
         let client = self.client.clone();
-        Box::pin(async move {
+        actix::spawn(async move {
             trace!("Icinga2ApiClientMessage - calling url: {}", url);
 
             let mut response = client
@@ -122,7 +122,8 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                     Icinga2ApiClientActorError::ServerNotAvailableError {
                         message: format!("{}", err),
                     }
-                })?;
+                })
+                .expect("Icinga2ApiClientActor - cannot connect to Icinga server");
 
             response.body().await
                     .map_err(|err| {
@@ -135,10 +136,9 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                     } else {
                         debug!("Icinga2ApiClientActor - Icinga2 API request completed successfully. Response body: {:?}", bytes);
                     }
-                })?;
-
-            Ok(())
-        })
+                }).expect("Icinga2ApiClientActor - received an error from Icinga server");
+        });
+        Ok(())
     }
 }
 
@@ -148,9 +148,8 @@ mod test {
     use crate::executor::icinga2::Icinga2ApiClientMessage;
     use crate::executor::icinga2::Icinga2ClientConfig;
     use actix::prelude::*;
-    use actix_web::web::Json;
+    use actix_web::web::{Data, Json};
     use actix_web::{web, App, HttpServer};
-    use log::*;
     use maplit::*;
     use std::sync::Arc;
     use std::sync::Mutex;
@@ -160,7 +159,8 @@ mod test {
 
     #[test]
     fn should_perform_a_post_request() {
-        // start_logger();
+        println!("start actix System");
+
         let received = Arc::new(Mutex::new(None));
 
         let act_received = received.clone();
@@ -172,9 +172,9 @@ mod test {
                 let app_received = act_received.clone();
                 let url = format!("{}{}", api, "/icinga2-api-action");
 
-                App::new().service(web::resource(&url).route(web::post().to(
-                    move |body: Json<Value>| {
-                        info!("Server received a call");
+                App::new().data(app_received).service(web::resource(&url).route(web::post().to(
+                    move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
+                        println!("Server received a call");
                         let mut message = app_received.lock().unwrap();
                         *message = Some(body.into_inner());
                         System::current().stop();
@@ -187,7 +187,7 @@ mod test {
                 let server_port = server.addrs()[0].port();
 
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
-                warn!("Client connecting to: {}", url);
+                println!("Client connecting to: {}", url);
 
                 let config = Icinga2ClientConfig {
                     server_api_url: url,
@@ -196,6 +196,8 @@ mod test {
                     username: "".to_owned(),
                 };
                 let client_address = Icinga2ApiClientActor::start_new(config);
+
+                println!("Icinga2ApiClientActor created");
 
                 client_address.do_send(Icinga2ApiClientMessage {
                     message: Icinga2Action {
@@ -206,12 +208,16 @@ mod test {
                     },
                 });
 
+                println!("Icinga2ApiClientActor message sent");
+
                 Ok(server)
             })
             .expect("Can not bind to port 0")
-            .start();
+            .run();
         })
         .unwrap();
+
+        println!("actix System stopped");
 
         assert_eq!(
             Some(Value::Map(hashmap![
