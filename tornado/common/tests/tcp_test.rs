@@ -31,10 +31,12 @@ fn should_perform_a_tcp_request() {
 
         actix::spawn(async move {
             tcp_create.await.unwrap();
+
+            let client_addr = TcpClientActor::start_new(address.clone(), 16);
+            client_addr.do_send(EventMessage { event: Event::new("an_event") });
+
         });
 
-        let client_addr = TcpClientActor::start_new(address.clone(), 16);
-        client_addr.do_send(EventMessage { event: Event::new("an_event") });
     })
     .unwrap();
 

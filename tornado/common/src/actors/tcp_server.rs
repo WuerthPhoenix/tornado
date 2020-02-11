@@ -25,7 +25,7 @@ pub async fn listen_to_tcp<
     TcpServerActor::create(|ctx| {
         ctx.add_message_stream(Box::leak(listener).incoming().map(|stream| {
             //let addr = stream.peer_addr().unwrap();
-            AsyncReadMessage { stream: stream.expect("REMOVE ME") }
+            AsyncReadMessage { stream: stream.expect("Cannot read from TCP server stream") }
         }));
         TcpServerActor { address, callback }
     });
