@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.9"
+actix-rt = "1"
 actix-web = "2"
 chrono = "0.4"
 clap = "2.33"

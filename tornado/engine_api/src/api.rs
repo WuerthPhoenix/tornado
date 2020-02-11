@@ -5,8 +5,8 @@ use actix_web::web::{Data, Json};
 use actix_web::{web, Scope};
 use log::*;
 use std::ops::Deref;
-use tornado_engine_api_dto::event::{SendEventRequestDto, ProcessedEventDto};
 use tornado_engine_api_dto::config::MatcherConfigDto;
+use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 
 pub mod handler;
 
@@ -33,11 +33,11 @@ where
 }
 */
 
-async fn get_config<T: ApiHandler + 'static>(api_handler: Data<T>) -> actix_web::Result<Json<MatcherConfigDto>> {
+async fn get_config<T: ApiHandler + 'static>(
+    api_handler: Data<T>,
+) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("API - received get_config request");
-    let matcher_config = api_handler
-        .get_config()
-        .await?;
+    let matcher_config = api_handler.get_config().await?;
 
     let matcher_config_dto = matcher_config_into_dto(matcher_config)?;
     Ok(Json(matcher_config_dto))
@@ -75,12 +75,12 @@ mod test {
         http::{header, StatusCode},
         test, App,
     };
+    use async_trait::async_trait;
     use std::collections::HashMap;
     use tornado_common_api::Value;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::config::MatcherConfig;
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
-    use async_trait::async_trait;
 
     struct TestApiHandler {}
 

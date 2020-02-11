@@ -1,8 +1,8 @@
 use crate::error::ApiError;
+use async_trait::async_trait;
 use tornado_common_api::Event;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
-use async_trait::async_trait;
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.

@@ -106,13 +106,12 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
         let url = format!("{}/{}", &self.icinga2_api_url, msg.message.name);
         let http_auth_header = self.http_auth_header.to_owned();
         let client = self.client.clone();
-        Box::pin(
-            async move {
+        Box::pin(async move {
+            trace!("Icinga2ApiClientMessage - calling url: {}", url);
 
-                trace!("Icinga2ApiClientMessage - calling url: {}", url);
-
-                let mut response = client.post(url)
-//                .with_connector(connector)
+            let mut response = client
+                .post(url)
+                //                .with_connector(connector)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
@@ -120,10 +119,12 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                 .await
                 .map_err(|err| {
                     error!("Icinga2ApiClientActor - Connection failed. Err: {}", err);
-                    Icinga2ApiClientActorError::ServerNotAvailableError {message: format!("{}", err)}
+                    Icinga2ApiClientActorError::ServerNotAvailableError {
+                        message: format!("{}", err),
+                    }
                 })?;
 
-                response.body().await
+            response.body().await
                     .map_err(|err| {
                         error!("Icinga2ApiClientActor - Cannot extract response body. Err: {}", err);
                         Icinga2ApiClientActorError::ServerNotAvailableError {message: format!("{}", err)}
@@ -136,11 +137,8 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
                     }
                 })?;
 
-                Ok(())
-
-            })
-
-
+            Ok(())
+        })
     }
 }
 
@@ -222,5 +220,4 @@ mod test {
             *received.lock().unwrap()
         );
     }
-
 }

@@ -66,17 +66,15 @@ impl Actor for TcpClientActor {
                 TcpStream::connect(&socket_address).await
             }
             .into_actor(self)
-            .map(move |stream, act, ctx| {
-                match stream {
-                    Ok(stream) => {
-                        info!("TcpClientActor connected to server [{:?}]", &act.address);
-                        let (_r, w) = tokio::io::split(stream);
-                        act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-                    },
-                    Err(err) => {
-                        warn!("TCP connection failed. Err: {}", err);
-                        ctx.stop();
-                    }
+            .map(move |stream, act, ctx| match stream {
+                Ok(stream) => {
+                    info!("TcpClientActor connected to server [{:?}]", &act.address);
+                    let (_r, w) = tokio::io::split(stream);
+                    act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+                }
+                Err(err) => {
+                    warn!("TCP connection failed. Err: {}", err);
+                    ctx.stop();
                 }
             }),
         );
