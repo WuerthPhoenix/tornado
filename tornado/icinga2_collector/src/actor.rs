@@ -10,14 +10,14 @@ use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
 
-pub struct Icinga2StreamActor<F: 'static + Fn(Event)> {
+pub struct Icinga2StreamActor<F: 'static + Fn(Event) + Unpin> {
     pub icinga_config: Icinga2ClientConfig,
     pub collector: JMESPathEventCollector,
     pub stream_config: Stream,
     pub callback: F,
 }
 
-impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
+impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
     fn start_polling(&mut self, client: &Client) -> Result<(), Icinga2CollectorError> {
         info!("Starting Event Stream call to Icinga2");
 
@@ -85,7 +85,7 @@ impl<F: 'static + Fn(Event)> Icinga2StreamActor<F> {
     }
 }
 
-impl<F: 'static + Fn(Event)> Actor for Icinga2StreamActor<F> {
+impl<F: 'static + Fn(Event) + Unpin> Actor for Icinga2StreamActor<F> {
     type Context = SyncContext<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
@@ -144,7 +144,7 @@ mod test {
 
         HttpServer::new(move || {
             App::new().service(web::resource(api).route(web::post().to(
-                move |body: Json<Stream>| {
+                move |body: Json<Stream>| async {
                     info!("Server received a call with Stream: \n{:?}", body.clone());
                     body
                 },
@@ -201,7 +201,7 @@ mod test {
             Ok(server)
         })
         .expect("Can not bind to port 0")
-        .start();
+        .run();
 
         sys.run().unwrap();
 
