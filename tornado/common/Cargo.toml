@@ -18,4 +18,5 @@ tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
+actix-rt = "1"
 port_check = "0.1.3"
