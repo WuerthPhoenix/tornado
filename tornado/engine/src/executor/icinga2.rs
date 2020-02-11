@@ -1,7 +1,6 @@
 use actix::prelude::*;
 use actix_web::client::{Client, ClientBuilder, Connector};
 use failure_derive::Fail;
-use futures::future::Future;
 use http::header;
 use log::*;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
@@ -104,31 +103,40 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
     fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("Icinga2ApiClientMessage - received new message");
 
-        //      let connector = self.client_connector.clone();
-        let url = &format!("{}/{}", &self.icinga2_api_url, msg.message.name);
+        let url = format!("{}/{}", &self.icinga2_api_url, msg.message.name);
+        let http_auth_header = self.http_auth_header.to_owned();
+        let client = self.client.clone();
+        actix::spawn(async move {
+            trace!("Icinga2ApiClientMessage - calling url: {}", url);
 
-        trace!("Icinga2ApiClientMessage - calling url: {}", url);
-
-        actix::spawn(
-            self.client.post(url)
-//                .with_connector(connector)
+            let mut response = client
+                .post(url)
                 .header(header::ACCEPT, "application/json")
-                .header(header::AUTHORIZATION, self.http_auth_header.as_str())
+                .header(header::AUTHORIZATION, http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
                 .send_json(&msg.message.payload)
-                .map_err(|err| error!("Connection failed. Err: {}", err))
-                .and_then(|mut response| {
-                    actix::spawn(response.body().map_err(|_| ()).map(move |bytes| {
-                        if !response.status().is_success() {
-                            error!("Icinga2 API returned an error. Response: \n{:?}. Response body: {:?}", response, bytes)
-                        } else {
-                            debug!("Icinga2 API request completed successfully. Response body: {:?}", bytes);
-                        }
-                    }));
-                    Ok(())
-                }),
-        );
+                .await
+                .map_err(|err| {
+                    error!("Icinga2ApiClientActor - Connection failed. Err: {}", err);
+                    Icinga2ApiClientActorError::ServerNotAvailableError {
+                        message: format!("{}", err),
+                    }
+                })
+                .expect("Icinga2ApiClientActor - cannot connect to Icinga server");
 
+            response.body().await
+                    .map_err(|err| {
+                        error!("Icinga2ApiClientActor - Cannot extract response body. Err: {}", err);
+                        Icinga2ApiClientActorError::ServerNotAvailableError {message: format!("{}", err)}
+                    })
+                    .map(move |bytes| {
+                    if !response.status().is_success() {
+                        error!("Icinga2ApiClientActor - Icinga2 API returned an error. Response: \n{:?}. Response body: {:?}", response, bytes)
+                    } else {
+                        debug!("Icinga2ApiClientActor - Icinga2 API request completed successfully. Response body: {:?}", bytes);
+                    }
+                }).expect("Icinga2ApiClientActor - received an error from Icinga server");
+        });
         Ok(())
     }
 }
@@ -139,9 +147,8 @@ mod test {
     use crate::executor::icinga2::Icinga2ApiClientMessage;
     use crate::executor::icinga2::Icinga2ClientConfig;
     use actix::prelude::*;
-    use actix_web::web::Json;
+    use actix_web::web::{Data, Json};
     use actix_web::{web, App, HttpServer};
-    use log::*;
     use maplit::*;
     use std::sync::Arc;
     use std::sync::Mutex;
@@ -151,7 +158,8 @@ mod test {
 
     #[test]
     fn should_perform_a_post_request() {
-        // start_logger();
+        println!("start actix System");
+
         let received = Arc::new(Mutex::new(None));
 
         let act_received = received.clone();
@@ -163,9 +171,9 @@ mod test {
                 let app_received = act_received.clone();
                 let url = format!("{}{}", api, "/icinga2-api-action");
 
-                App::new().service(web::resource(&url).route(web::post().to(
-                    move |body: Json<Value>| {
-                        info!("Server received a call");
+                App::new().data(app_received).service(web::resource(&url).route(web::post().to(
+                    move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
+                        println!("Server received a call");
                         let mut message = app_received.lock().unwrap();
                         *message = Some(body.into_inner());
                         System::current().stop();
@@ -178,7 +186,7 @@ mod test {
                 let server_port = server.addrs()[0].port();
 
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
-                warn!("Client connecting to: {}", url);
+                println!("Client connecting to: {}", url);
 
                 let config = Icinga2ClientConfig {
                     server_api_url: url,
@@ -187,6 +195,8 @@ mod test {
                     username: "".to_owned(),
                 };
                 let client_address = Icinga2ApiClientActor::start_new(config);
+
+                println!("Icinga2ApiClientActor created");
 
                 client_address.do_send(Icinga2ApiClientMessage {
                     message: Icinga2Action {
@@ -197,12 +207,16 @@ mod test {
                     },
                 });
 
+                println!("Icinga2ApiClientActor message sent");
+
                 Ok(server)
             })
             .expect("Can not bind to port 0")
-            .start();
+            .run();
         })
         .unwrap();
+
+        println!("actix System stopped");
 
         assert_eq!(
             Some(Value::Map(hashmap![
@@ -211,16 +225,4 @@ mod test {
             *received.lock().unwrap()
         );
     }
-    /*
-    fn start_logger() {
-        println!("Init logger");
-
-        let conf = LoggerConfig {
-            level: String::from("info"),
-            stdout_output: true,
-            file_output_path: None,
-        };
-        setup_logger(&conf).unwrap();
-    }
-    */
 }

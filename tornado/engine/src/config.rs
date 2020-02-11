@@ -2,6 +2,7 @@ use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
+use std::sync::Arc;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
@@ -68,7 +69,7 @@ fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, 
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Box<dyn MatcherConfigManager>,
+    pub matcher_config: Arc<dyn MatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
@@ -77,8 +78,8 @@ pub struct ComponentsConfig {
 pub fn parse_config_files(
     config_dir: &str,
     rules_dir: &str,
-) -> Result<ComponentsConfig, Box<dyn std::error::Error>> {
-    let matcher_config = Box::new(build_matcher_config(config_dir, rules_dir));
+) -> Result<ComponentsConfig, Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir));
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;

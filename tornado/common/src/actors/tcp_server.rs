@@ -1,33 +1,31 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::Stream;
+use futures::StreamExt;
 use log::*;
 use std::net;
 use std::str::FromStr;
-use tokio_tcp::{TcpListener, TcpStream};
+use tokio::net::{TcpListener, TcpStream};
 
-pub fn listen_to_tcp<
+pub async fn listen_to_tcp<
     P: 'static + Into<String>,
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 >(
     address: P,
     callback: F,
 ) -> Result<(), TornadoError> {
     let address = address.into();
     let socket_address = net::SocketAddr::from_str(address.as_str()).unwrap();
-    let listener =
-        TcpListener::bind(&socket_address).map_err(|err| TornadoError::ActorCreationError {
+    let listener = Box::new(TcpListener::bind(&socket_address).await.map_err(|err| {
+        TornadoError::ActorCreationError {
             message: format!("Cannot start TCP server on [{}]: {}", address, err),
-        })?;
+        }
+    })?);
 
     TcpServerActor::create(|ctx| {
-        ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
-            |stream| {
-                //let addr = stream.peer_addr().unwrap();
-                AsyncReadMessage { stream }
-            },
-        ));
+        ctx.add_message_stream(Box::leak(listener).incoming().map(|stream| AsyncReadMessage {
+            stream: stream.expect("Cannot read from TCP server stream"),
+        }));
         TcpServerActor { address, callback }
     });
 
@@ -36,7 +34,7 @@ pub fn listen_to_tcp<
 
 struct TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     address: String,
     callback: F,
@@ -44,14 +42,14 @@ where
 
 impl<F> Actor for TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
 impl<F> Handler<AsyncReadMessage<TcpStream>> for TcpServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 {
     type Result = ();
 

@@ -1,7 +1,7 @@
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
-use tokio::prelude::AsyncRead;
+use tokio::prelude::*;
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::AsyncReadMessage;
@@ -29,28 +29,28 @@ impl Actor for EmailReaderActor {
     }
 }
 
-impl<R: AsyncRead + 'static> Handler<AsyncReadMessage<R>> for EmailReaderActor {
+impl<R: AsyncRead + 'static + Unpin> Handler<AsyncReadMessage<R>> for EmailReaderActor {
     type Result = ();
 
-    fn handle(&mut self, msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, mut msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
         let tcp = self.tpc_client_addr.clone();
         let collector = self.email_collector.clone();
-        let buf = Vec::new();
-        let reader = tokio::io::read_to_end(msg.stream, buf)
-            .map(move |(_, buf)| {
-                if log_enabled!(Level::Debug) {
-                    let buf_to_string = String::from_utf8_lossy(&buf);
-                    debug!("EmailReaderActor - received email:\n{}", buf_to_string);
-                }
-                match collector.to_event(&buf) {
-                    Ok(event) => {
-                        tcp.do_send(EventMessage { event });
-                    }
-                    Err(e) => error!("Error processing incoming email. Err: {}", e),
-                };
-            })
-            .then(|_| Ok(()));
+        let fut = async move {
+            let mut buf = Vec::new();
+            msg.stream.read_to_end(&mut buf).await.unwrap();
 
-        actix::spawn(reader);
+            if log_enabled!(Level::Debug) {
+                let buf_to_string = String::from_utf8_lossy(&buf);
+                debug!("EmailReaderActor - received email:\n{}", buf_to_string);
+            }
+            match collector.to_event(&buf) {
+                Ok(event) => {
+                    tcp.do_send(EventMessage { event });
+                }
+                Err(e) => error!("Error processing incoming email. Err: {}", e),
+            };
+        };
+
+        actix::spawn(fut);
     }
 }

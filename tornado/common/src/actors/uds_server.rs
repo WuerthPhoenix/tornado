@@ -1,16 +1,16 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::Stream;
+use futures::StreamExt;
 use log::*;
 use std::fs;
 use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
-use tokio_uds::*;
+use tokio::net::{UnixListener, UnixStream};
 
 pub fn listen_to_uds_socket<
-    P: Into<String>,
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
+    P: 'static + Into<String>,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
 >(
     path: P,
     socket_permissions: Option<u32>,
@@ -33,12 +33,9 @@ pub fn listen_to_uds_socket<
     };
 
     UdsServerActor::create(move |ctx| {
-        ctx.add_message_stream(listener.incoming().map_err(|e| panic!("err={:?}", e)).map(
-            |stream| {
-                //let addr = stream.peer_addr().unwrap();
-                AsyncReadMessage { stream }
-            },
-        ));
+        ctx.add_message_stream(Box::leak(Box::new(listener)).incoming().map(|stream| {
+            AsyncReadMessage { stream: stream.expect("Cannot read from UDS server stream") }
+        }));
         UdsServerActor { path: path_string, socket_permissions, callback }
     });
 
@@ -47,7 +44,7 @@ pub fn listen_to_uds_socket<
 
 struct UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
 {
     path: String,
     socket_permissions: Option<u32>,
@@ -56,7 +53,7 @@ where
 
 impl<F> Actor for UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
 {
     type Context = Context<Self>;
 
@@ -74,7 +71,7 @@ where
 /// Handle a stream of UnixStream elements
 impl<F> Handler<AsyncReadMessage<UnixStream>> for UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
 {
     type Result = ();
 
