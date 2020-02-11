@@ -65,9 +65,20 @@ impl Actor for UdsClientActor {
             }
             .into_actor(self)
             .map(move |stream, act, ctx| {
-                info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
-                let (_r, w) = tokio::io::split(stream.expect("REMOVE ME"));
-                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+
+                match stream {
+                    Ok(stream) => {
+                        info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
+                        let (_r, w) = tokio::io::split(stream);
+                        act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+                    },
+                    Err(_) => {
+                        warn!("UDS connection failed");
+                        ctx.stop();
+                    }
+                }
+
+
             }),
         );
         /*

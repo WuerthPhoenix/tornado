@@ -8,7 +8,7 @@ use std::fs::Permissions;
 use std::os::unix::fs::PermissionsExt;
 use tokio::net::{UnixListener, UnixStream};
 
-pub async fn listen_to_uds_socket<
+pub fn listen_to_uds_socket<
     P: 'static + Into<String>,
     F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
 >(
