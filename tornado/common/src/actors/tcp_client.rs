@@ -69,22 +69,7 @@ impl Actor for TcpClientActor {
                 let (_r, w) = tokio::io::split(stream.expect("REMOVE ME"));
                 act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
         }));
-/*
-        time::delay_until(delay_until)
-            //.map_err(|_| ())
-            .then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
-            .into_actor(self)
-            .map(move |stream, act, ctx| {
-                info!("TcpClientActor connected to server [{:?}]", &act.address);
-                let (_r, w) = stream.split();
-                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            })
-            .map_err(|err, act, ctx| {
-                warn!("TcpClientActor failed to connect to server [{:?}]: {:?}", &act.address, err);
-                ctx.stop();
-            })
-            .wait(ctx);
-            */
+
     }
 }
 
