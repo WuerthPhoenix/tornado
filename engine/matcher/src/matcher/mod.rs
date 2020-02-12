@@ -2106,7 +2106,7 @@ mod test {
     }
 
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
-        let filter = filter.into().unwrap_or_else(|| Operator::None);
+        let filter = filter.into().unwrap_or_else(|| Operator::Always);
         Filter { active: true, description: "".to_owned(), filter }
     }
 }

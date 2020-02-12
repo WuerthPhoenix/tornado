@@ -9,6 +9,7 @@ use std::collections::HashMap;
 use tornado_common_api::{Payload, Value};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Rule {
     #[serde(default)]
     pub name: String,
@@ -71,7 +72,8 @@ pub enum Operator {
     LessThan { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
-    None,
+    #[serde(rename = "always")]
+    Always,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -197,7 +197,7 @@ impl FsMatcherConfigManager {
             let filter = Filter {
                 active: true,
                 description: "An implicit filter that allows all events".to_owned(),
-                filter: Operator::None,
+                filter: Operator::Always,
             };
             return Ok(MatcherConfig::Filter { name, filter, nodes });
         }
@@ -386,7 +386,7 @@ mod test {
 
         match config {
             MatcherConfig::Filter { name: _name, filter: root_filter, nodes } => {
-                assert_eq!(Operator::None, root_filter.filter);
+                assert_eq!(Operator::Always, root_filter.filter);
                 assert!(is_filter(get_config_by_name("node1", &nodes).unwrap(), "node1", 1));
                 assert!(is_ruleset(
                     get_config_by_name("node2", &nodes).unwrap(),
@@ -400,7 +400,7 @@ mod test {
                         filter: inner_filter,
                         nodes: inner_nodes,
                     } => {
-                        assert_eq!(Operator::None, inner_filter.filter);
+                        assert_eq!(Operator::Always, inner_filter.filter);
                         assert!(is_ruleset(
                             get_config_by_name("inner_node1", &inner_nodes).unwrap(),
                             "inner_node1",

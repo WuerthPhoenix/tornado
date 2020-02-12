@@ -137,7 +137,7 @@ impl OperatorBuilder {
                     self.accessor.build(rule_name, target)?,
                 )?))
             }
-            rule::Operator::None => Ok(OperatorBuilder::default_operator())
+            rule::Operator::Always => Ok(OperatorBuilder::default_operator())
         };
 
         trace!(
