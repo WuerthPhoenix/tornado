@@ -50,7 +50,7 @@ impl OperatorBuilder {
     ) -> Result<Box<dyn Operator>, MatcherError> {
         let result: Result<Box<dyn Operator>, MatcherError> = match config {
             Some(operator) => self.build(rule_name, operator),
-            None => Ok(Box::new(crate::matcher::operator::true_operator::True {})),
+            None => Ok(OperatorBuilder::default_operator()),
         };
 
         trace!(
@@ -59,6 +59,10 @@ impl OperatorBuilder {
             config
         );
         result
+    }
+
+    fn default_operator() -> Box<dyn Operator> {
+        Box::new(crate::matcher::operator::true_operator::True {})
     }
 
     /// Returns a specific Operator instance based on the matcher.operator configuration.
@@ -133,6 +137,7 @@ impl OperatorBuilder {
                     self.accessor.build(rule_name, target)?,
                 )?))
             }
+            rule::Operator::None => Ok(OperatorBuilder::default_operator())
         };
 
         trace!(

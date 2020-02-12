@@ -71,6 +71,7 @@ pub enum Operator {
     LessThan { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
+    None,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

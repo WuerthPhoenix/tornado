@@ -85,7 +85,7 @@ impl Matcher {
 
                 let matcher_filter = MatcherFilter {
                     active: filter.active,
-                    filter: operator_builder.build_option(name, &filter.filter)?,
+                    filter: operator_builder.build_option(name, &Some(filter.filter.clone()))?,
                 };
 
                 let mut matcher_nodes = vec![];
@@ -2106,6 +2106,7 @@ mod test {
     }
 
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
-        Filter { active: true, description: "".to_owned(), filter: filter.into() }
+        let filter = filter.into().unwrap_or_else(|| Operator::None);
+        Filter { active: true, description: "".to_owned(), filter }
     }
 }
