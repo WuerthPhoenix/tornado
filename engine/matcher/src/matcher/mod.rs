@@ -85,7 +85,7 @@ impl Matcher {
 
                 let matcher_filter = MatcherFilter {
                     active: filter.active,
-                    filter: operator_builder.build_option(name, &Some(filter.filter.clone()))?,
+                    filter: operator_builder.build_option(name, &filter.filter.clone().into())?,
                 };
 
                 let mut matcher_nodes = vec![];
@@ -250,6 +250,7 @@ mod test {
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
     use std::collections::HashMap;
     use tornado_common_api::*;
+    use crate::config::Defaultable;
 
     #[test]
     fn should_build_the_matcher_with_a_rule_set() {
@@ -2106,7 +2107,7 @@ mod test {
     }
 
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
-        let filter = filter.into().unwrap_or_else(|| Operator::Always);
+        let filter = filter.into().map(|filter| Defaultable::Value(filter)).unwrap_or_else(|| Defaultable::Default{});
         Filter { active: true, description: "".to_owned(), filter }
     }
 }
