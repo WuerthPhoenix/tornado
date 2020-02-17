@@ -22,6 +22,7 @@ pub struct Rule {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Constraint {
     #[serde(rename = "WHERE")]
     pub where_operator: Option<Operator>,
@@ -30,6 +31,7 @@ pub struct Constraint {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Extractor {
     pub from: String,
     pub regex: ExtractorRegex,
@@ -37,6 +39,7 @@ pub struct Extractor {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
+#[serde(deny_unknown_fields)]
 pub enum ExtractorRegex {
     Regex {
         #[serde(rename = "match")]
@@ -53,6 +56,7 @@ pub enum ExtractorRegex {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
 pub enum Operator {
     #[serde(rename = "AND")]
     And { operators: Vec<Operator> },

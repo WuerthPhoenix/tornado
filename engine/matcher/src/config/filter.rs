@@ -1,7 +1,7 @@
 use crate::config::rule::Operator;
+use crate::config::Defaultable;
 use crate::error::MatcherError;
 use serde_derive::{Deserialize, Serialize};
-use crate::config::Defaultable;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -44,7 +44,6 @@ mod test {
 
     #[test]
     fn should_deserialize_with_empty_filter_type_field() {
-
         let json = r##"{
           "description": "This filter allows only events with type email",
           "active": true,
@@ -53,15 +52,11 @@ mod test {
 
         let filter = Filter::from_json(&json).unwrap();
 
-        assert_eq!(
-            Defaultable::Default{},
-            filter.filter
-        );
+        assert_eq!(Defaultable::Default {}, filter.filter);
     }
 
     #[test]
     fn should_not_deserialize_with_unknown_field() {
-
         let json = r##"{
           "description": "This filter allows only events with type email",
           "active": true,
@@ -74,13 +69,11 @@ mod test {
 
     #[test]
     fn should_not_deserialize_with_missing_filter_field() {
-
         let json = r##"{
           "description": "This filter allows only events with type email",
           "active": true
         }"##;
 
         assert!(Filter::from_json(&json).is_err());
-
     }
 }

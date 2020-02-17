@@ -248,9 +248,9 @@ mod test {
     use super::*;
     use crate::config::filter::Filter;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
+    use crate::config::Defaultable;
     use std::collections::HashMap;
     use tornado_common_api::*;
-    use crate::config::Defaultable;
 
     #[test]
     fn should_build_the_matcher_with_a_rule_set() {
@@ -2107,7 +2107,10 @@ mod test {
     }
 
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
-        let filter = filter.into().map(|filter| Defaultable::Value(filter)).unwrap_or_else(|| Defaultable::Default{});
+        let filter = filter
+            .into()
+            .map(|filter| Defaultable::Value(filter))
+            .unwrap_or_else(|| Defaultable::Default {});
         Filter { active: true, description: "".to_owned(), filter }
     }
 }

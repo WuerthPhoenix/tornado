@@ -104,9 +104,9 @@ impl MatcherConfigValidator {
 mod test {
     use super::*;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::Defaultable;
     use std::collections::HashMap;
     use tornado_common_api::Value;
-    use crate::config::Defaultable;
 
     #[test]
     fn should_fail_if_wrong_ruleset_name() {
@@ -296,7 +296,8 @@ mod test {
     #[test]
     fn build_should_fail_if_wrong_filter_name() {
         // Arrange
-        let filter = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         // Act
         let matcher = MatcherConfigValidator::new().validate_filter(
@@ -312,7 +313,8 @@ mod test {
     #[test]
     fn should_validate_filter_name() {
         // Arrange
-        let filter = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         // Act
         let matcher = MatcherConfigValidator::new().validate_filter("good_name", &filter, &vec![]);
@@ -324,7 +326,8 @@ mod test {
     #[test]
     fn build_should_fail_if_wrong_node_name() {
         // Arrange
-        let filter = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         let rules = MatcherConfig::Ruleset { name: "wrong.name!".to_owned(), rules: vec![] };
 
@@ -339,7 +342,8 @@ mod test {
     #[test]
     fn should_validate_node_name() {
         // Arrange
-        let filter = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         let rules = MatcherConfig::Ruleset { name: "good_name".to_owned(), rules: vec![] };
 
@@ -354,7 +358,8 @@ mod test {
     #[test]
     fn should_validate_a_config_recursively() {
         // Arrange
-        let filter1 = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter1 =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         let filter2 = filter1.clone();
         let rule_1 = new_rule("rule_name", None);
@@ -385,7 +390,8 @@ mod test {
     #[test]
     fn should_validate_a_config_recursively_and_fail_if_wrong_inner_rule_name() {
         // Arrange
-        let filter1 = Filter { filter: Defaultable::Default{}, active: true, description: "".to_owned() };
+        let filter1 =
+            Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         let filter2 = filter1.clone();
         let rule_1 = new_rule("rule.name!", None);

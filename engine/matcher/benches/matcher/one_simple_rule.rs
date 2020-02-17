@@ -19,10 +19,9 @@ pub fn bench(c: &mut Criterion) {
         // Add constraint
         rule.constraint.with.insert(
             String::from("extracted_var"),
-            Extractor::Regex {
+            Extractor {
                 from: String::from("${event.payload.body}"),
-                multi: None,
-                regex: ExtractorRegex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0) },
+                regex: ExtractorRegex::Regex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0), all_matches: None },
             },
         );
 
@@ -37,7 +36,7 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // Create Matcher
-    let matcher = Matcher::build(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
+    let matcher = Matcher::build(&MatcherConfig::Ruleset { rules: vec![rule], name: "name".to_owned() }).unwrap();
 
     // Create event
     let event = {
