@@ -7,7 +7,7 @@ use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
     Action, Constraint, Extractor, ExtractorRegex, Operator, Rule,
 };
-use tornado_engine_matcher::config::MatcherConfig;
+use tornado_engine_matcher::config::{MatcherConfig};
 
 pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto, Error> {
     Ok(match config {
@@ -24,9 +24,11 @@ pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto
 }
 
 pub fn filter_into_dto(filter: Filter) -> Result<FilterDto, Error> {
+
+    let option_filter : Option<_> = filter.filter.into();
     Ok(FilterDto {
         description: filter.description,
-        filter: filter.filter.map(operator_into_dto).transpose()?,
+        filter: option_filter.map(operator_into_dto).transpose()?,
         active: filter.active,
     })
 }
