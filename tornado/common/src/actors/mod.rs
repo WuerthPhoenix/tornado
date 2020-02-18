@@ -3,6 +3,9 @@ pub mod message;
 pub mod tcp_client;
 pub mod tcp_server;
 
+pub mod nats_streaming_publisher;
+pub mod nats_streaming_subscriber;
+
 #[cfg(unix)]
 pub mod uds_client;
 #[cfg(unix)]

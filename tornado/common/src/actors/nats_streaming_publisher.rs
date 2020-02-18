@@ -1,0 +1,62 @@
+pub struct TcpClientActor {
+    restarted: bool,
+    address: String,
+    tx: Option<actix::io::FramedWrite<WriteHalf<TcpStream>, LinesCodec>>,
+}
+
+impl actix::io::WriteHandler<Error> for TcpClientActor {}
+
+impl TcpClientActor {
+    pub fn start_new<T: 'static + Into<String>>(
+        address: T,
+        tcp_socket_mailbox_capacity: usize,
+    ) -> Addr<TcpClientActor> {
+        actix::Supervisor::start(move |ctx: &mut Context<TcpClientActor>| {
+            ctx.set_mailbox_capacity(tcp_socket_mailbox_capacity);
+            TcpClientActor { restarted: false, address: address.into(), tx: None }
+        })
+    }
+}
+
+impl Actor for TcpClientActor {
+    type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        info!("TcpClientActor started. Attempting connection to server [{:?}]", &self.address);
+        let socket_address =
+            net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
+
+        let mut delay_until = time::Instant::now();
+        if self.restarted {
+            delay_until += time::Duration::new(1, 0)
+        }
+
+        ctx.wait(
+            async move {
+                time::delay_until(delay_until).await;
+                TcpStream::connect(&socket_address).await
+            }
+                .into_actor(self)
+                .map(move |stream, act, ctx| match stream {
+                    Ok(stream) => {
+                        info!("TcpClientActor connected to server [{:?}]", &act.address);
+                        let (_r, w) = tokio::io::split(stream);
+                        act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+                    }
+                    Err(err) => {
+                        warn!("TCP connection failed. Err: {}", err);
+                        ctx.stop();
+                    }
+                }),
+        );
+    }
+}
+
+impl actix::Supervised for TcpClientActor {
+    fn restarting(&mut self, _ctx: &mut Context<TcpClientActor>) {
+        info!("Restarting TcpClientActor");
+        self.restarted = true;
+    }
+}
+
+impl actix::io::WriteHandler<LinesCodecError> for TcpClientActor {}
