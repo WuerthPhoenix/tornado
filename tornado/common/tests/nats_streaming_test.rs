@@ -1,3 +1,5 @@
+#![cfg(feature = "nats_streaming")]
+
 use tornado_common_api::Event;
 use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
 use tornado_common::actors::message::EventMessage;
@@ -7,6 +9,7 @@ use tokio::time;
 
 const BASE_ADDRESS: &str = "127.0.0.1:4222";
 
+// This test requires a running NATS streaming server listening on BASE_ADDRESS
 #[actix_rt::test]
 async fn should_publish_to_nats_streaming() {
     let random: u8 = rand::random();
@@ -16,13 +19,13 @@ async fn should_publish_to_nats_streaming() {
     let received = Arc::new(Mutex::new(None));
 
     let received_clone = received.clone();
-    subscribe_to_nats_streaming(BASE_ADDRESS, subject, move |event| {
+    subscribe_to_nats_streaming(&vec![BASE_ADDRESS.to_owned()], subject, move |event| {
         let mut lock = received_clone.lock().unwrap();
         *lock = Some(event);
         Ok(())
     }).await.unwrap();
 
-    let publisher = NatsPublisherActor::start_new(BASE_ADDRESS, subject, 10).await.unwrap();
+    let publisher = NatsPublisherActor::start_new(&vec![BASE_ADDRESS.to_owned()], subject, 10).await.unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
     time::delay_until(time::Instant::now() + time::Duration::new(2, 0)).await;

@@ -2,7 +2,7 @@ use actix::prelude::*;
 use log::*;
 use serde_json;
 use std::io::Error;
-use rants::{Client, Subject};
+use rants::{Client, Subject, Address};
 use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 
@@ -15,17 +15,19 @@ pub struct NatsPublisherActor {
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
 
 impl NatsPublisherActor {
-    pub async fn start_new<T: 'static + Into<String>>(
-        address: T,
+    pub async fn start_new(
+        addresses: &[String],
         subject: &str,
         tcp_socket_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
 
-        let address = address.into().parse().map_err(|err| {
-            TornadoError::ConfigurationError { message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err} }
-        })?;
+        let addresses = addresses.iter().map(|address| {
+            address.to_owned().parse().map_err(|err| {
+                TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err} }
+            })
+        }).collect::<Result<Vec<Address>, TornadoError>>()?;
 
-        let client = Client::new(vec![address]);
+        let client = Client::new(addresses);
 
         let subject = subject.parse().map_err(|err| {
             TornadoError::ConfigurationError { message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err} }

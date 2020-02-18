@@ -29,10 +29,18 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
+
+    pub event_socket_enabled: bool,
     pub event_socket_ip: String,
     pub event_socket_port: u16,
+
+    pub nats_streaming_enabled: bool,
+    pub nats_streaming_addresses: Vec<String>,
+    pub nats_streaming_subject: String,
+
     pub web_server_ip: String,
     pub web_server_port: u16,
+
 }
 
 #[derive(Deserialize, Serialize, Clone)]

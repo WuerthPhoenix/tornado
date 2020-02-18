@@ -17,6 +17,7 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
+use tornado_common::actors::nats_streaming_subscriber::subscribe_to_nats_streaming;
 
 pub async fn daemon(
     config_dir: &str,
@@ -119,26 +120,54 @@ pub async fn daemon(
         dispatcher_addr: dispatcher_addr.clone(),
     });
 
-    // Start Event Json TCP listener
-    let tcp_address =
-        format!("{}:{}", daemon_config.event_socket_ip, daemon_config.event_socket_port);
-    let json_matcher_addr_clone = matcher_addr.clone();
-    listen_to_tcp(tcp_address.clone(), move |msg| {
-        let json_matcher_addr_clone = json_matcher_addr_clone.clone();
-        JsonEventReaderActor::start_new(msg, move |event| {
-            json_matcher_addr_clone.do_send(EventMessage { event })
+    if daemon_config.nats_streaming_enabled {
+        info!("NATS Streaming connection is enabled. Starting it...");
+
+        let addresses = daemon_config.nats_streaming_addresses;
+        let subject = daemon_config.nats_streaming_subject;
+
+        let matcher_addr_clone = matcher_addr.clone();
+        subscribe_to_nats_streaming(&addresses, &subject, move |event| {
+            matcher_addr_clone.do_send(EventMessage { event });
+            Ok(())
+        }).await
+            .and_then(|_| {
+                info!("NATS Streaming connection started at [{:#?}]. Listening for incoming events on subject [{}]", addresses, subject);
+                Ok(())
+            })
+            .unwrap_or_else(|err| {
+                error!("NATS Streaming connection failed started at [{:#?}], subject [{}]. Err: {}", addresses, subject, err);
+                std::process::exit(1);
+            });
+    } else {
+        info!("NATS Streaming connection is disabled. Do not start it.")
+    };
+
+    if daemon_config.event_socket_enabled {
+        info!("TCP server is enabled. Starting it...");
+        // Start Event Json TCP listener
+        let tcp_address =
+            format!("{}:{}", daemon_config.event_socket_ip, daemon_config.event_socket_port);
+        let json_matcher_addr_clone = matcher_addr.clone();
+        listen_to_tcp(tcp_address.clone(), move |msg| {
+            let json_matcher_addr_clone = json_matcher_addr_clone.clone();
+            JsonEventReaderActor::start_new(msg, move |event| {
+                json_matcher_addr_clone.do_send(EventMessage { event })
+            });
+        })
+        .await
+        .and_then(|_| {
+            info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
+            Ok(())
+        })
+        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+        .unwrap_or_else(|err| {
+            error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
+            std::process::exit(1);
         });
-    })
-    .await
-    .and_then(|_| {
-        info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
-        Ok(())
-    })
-    // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-    .unwrap_or_else(|err| {
-        error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
-        std::process::exit(1);
-    });
+    } else {
+        info!("TCP server is disabled. Do not start it.")
+    };
 
     let web_server_ip = daemon_config.web_server_ip.clone();
     let web_server_port = daemon_config.web_server_port;

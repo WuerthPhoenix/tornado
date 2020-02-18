@@ -3,22 +3,24 @@ use crate::TornadoError;
 use actix::prelude::*;
 use futures::StreamExt;
 use log::*;
-use rants::Client;
+use rants::{Client, Address};
 use tornado_common_api::Event;
 
 pub async fn subscribe_to_nats_streaming<
-    P: 'static + Into<String>,
     F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 >(
-    address: P,
+    addresses: &[String],
     subject: &str,
     callback: F,
 ) -> Result<(), TornadoError> {
-    let address = address.into().parse().map_err(|err| {
-        TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err} }
-    })?;
 
-    let subscriber = Client::new(vec![address]);
+    let addresses = addresses.iter().map(|address| {
+        address.to_owned().parse().map_err(|err| {
+            TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err} }
+        })
+    }).collect::<Result<Vec<Address>, TornadoError>>()?;
+
+    let subscriber = Client::new(addresses);
     subscriber.connect().await;
 
     let subject = subject.parse().map_err(|err| {
