@@ -1,62 +1,84 @@
-pub struct TcpClientActor {
+use actix::prelude::*;
+use failure_derive::Fail;
+use log::*;
+use serde_json;
+use std::io::Error;
+use std::net;
+use std::str::FromStr;
+use tokio::time;
+use tokio_util::codec::{LinesCodec, LinesCodecError};
+use tornado_common_api;
+use rants::{Client, Subject};
+use crate::actors::message::EventMessage;
+
+pub struct NatsPublisherActor {
     restarted: bool,
-    address: String,
-    tx: Option<actix::io::FramedWrite<WriteHalf<TcpStream>, LinesCodec>>,
+    subject: Subject,
+    client: Client,
 }
 
-impl actix::io::WriteHandler<Error> for TcpClientActor {}
+#[derive(Fail, Debug)]
+pub enum NatsPublisherActorError {
+    #[fail(display = "ServerNotAvailableError: cannot connect to server [{}]", address)]
+    ServerNotAvailableError { address: String },
+    #[fail(display = "SerdeError: [{}]", message)]
+    SerdeError { message: String },
+}
 
-impl TcpClientActor {
-    pub fn start_new<T: 'static + Into<String>>(
+
+impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
+
+impl NatsPublisherActor {
+    pub async fn start_new<T: 'static + Into<String>>(
         address: T,
+        subject: &str,
         tcp_socket_mailbox_capacity: usize,
-    ) -> Addr<TcpClientActor> {
-        actix::Supervisor::start(move |ctx: &mut Context<TcpClientActor>| {
+    ) -> Addr<NatsPublisherActor> {
+
+        let address = address.into().parse().unwrap();
+        let client = Client::new(vec![address]);
+        // client.connect_mut().await.echo(true);
+
+        let subject = subject.parse().unwrap();
+
+        client.connect().await;
+
+        actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(tcp_socket_mailbox_capacity);
-            TcpClientActor { restarted: false, address: address.into(), tx: None }
+            NatsPublisherActor { restarted: false, subject, client }
         })
     }
 }
 
-impl Actor for TcpClientActor {
+impl Actor for NatsPublisherActor {
     type Context = Context<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        info!("TcpClientActor started. Attempting connection to server [{:?}]", &self.address);
-        let socket_address =
-            net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
-
-        let mut delay_until = time::Instant::now();
-        if self.restarted {
-            delay_until += time::Duration::new(1, 0)
-        }
-
-        ctx.wait(
-            async move {
-                time::delay_until(delay_until).await;
-                TcpStream::connect(&socket_address).await
-            }
-                .into_actor(self)
-                .map(move |stream, act, ctx| match stream {
-                    Ok(stream) => {
-                        info!("TcpClientActor connected to server [{:?}]", &act.address);
-                        let (_r, w) = tokio::io::split(stream);
-                        act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-                    }
-                    Err(err) => {
-                        warn!("TCP connection failed. Err: {}", err);
-                        ctx.stop();
-                    }
-                }),
-        );
-    }
 }
 
-impl actix::Supervised for TcpClientActor {
-    fn restarting(&mut self, _ctx: &mut Context<TcpClientActor>) {
-        info!("Restarting TcpClientActor");
+impl actix::Supervised for NatsPublisherActor {
+    fn restarting(&mut self, _ctx: &mut Context<NatsPublisherActor>) {
+        info!("Restarting NatsPublisherActor");
         self.restarted = true;
     }
 }
 
-impl actix::io::WriteHandler<LinesCodecError> for TcpClientActor {}
+impl Handler<EventMessage> for NatsPublisherActor {
+    type Result = Result<(), ()>;
+
+    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+        trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
+
+        let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            NatsPublisherActorError::SerdeError { message: format! {"{}", err} }
+        })?;
+        
+        actix::spawn({
+            debug!("NatsPublisherActor - Publish event to NATS");
+            if let Err(e) = self.client.publish(&self.subject, &event).await {
+                error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
+            };
+        });
+        Ok(())
+
+    }
+}
+
