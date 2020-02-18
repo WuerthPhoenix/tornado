@@ -4,6 +4,7 @@ use serde_json;
 use std::io::Error;
 use rants::{Client, Subject};
 use crate::actors::message::{EventMessage, TornadoCommonActorError};
+use crate::TornadoError;
 
 pub struct NatsPublisherActor {
     restarted: bool,
@@ -18,20 +19,24 @@ impl NatsPublisherActor {
         address: T,
         subject: &str,
         tcp_socket_mailbox_capacity: usize,
-    ) -> Addr<NatsPublisherActor> {
+    ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
 
-        let address = address.into().parse().unwrap();
+        let address = address.into().parse().map_err(|err| {
+            TornadoError::ConfigurationError { message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err} }
+        })?;
+
         let client = Client::new(vec![address]);
-        // client.connect_mut().await.echo(true);
 
-        let subject = subject.parse().unwrap();
+        let subject = subject.parse().map_err(|err| {
+            TornadoError::ConfigurationError { message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err} }
+        })?;
 
         client.connect().await;
 
-        actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
+        Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(tcp_socket_mailbox_capacity);
             NatsPublisherActor { restarted: false, subject, client }
-        })
+        }))
     }
 }
 

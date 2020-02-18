@@ -23,6 +23,12 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
+#[rtype(result = "Result<(), TornadoCommonActorError>")]
+pub struct BytesMessage {
+    pub msg: Vec<u8>,
+}
+
+#[derive(Message)]
 #[rtype(result = "()")]
 pub struct AsyncReadMessage<R: AsyncRead> {
     pub stream: R,
