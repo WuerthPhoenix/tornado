@@ -16,7 +16,7 @@ pub fn bench(c: &mut Criterion) {
     let event = utils::read_event_from_file("./benches_resources/full_match/events/event_01.json");
 
     // Create Matcher
-    let matcher = Matcher::build(&MatcherConfig::Rules { rules: vec![rule] }).unwrap();
+    let matcher = Matcher::build(&MatcherConfig::Ruleset { rules: vec![rule], name: "name".to_owned() }).unwrap();
 
     // println!("result is : {:?}", matcher.process(event.clone()));
     PROFILER.lock().unwrap().start("./target/full_match.profile").unwrap();

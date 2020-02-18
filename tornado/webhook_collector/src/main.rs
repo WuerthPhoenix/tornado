@@ -64,7 +64,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         error!("Server cannot start on port {}. Err: {}", port, err);
         std::process::exit(1);
     })
-    .run().await?;
+    .run()
+    .await?;
 
     Ok(())
 }
