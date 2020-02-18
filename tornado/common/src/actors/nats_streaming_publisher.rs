@@ -1,30 +1,15 @@
 use actix::prelude::*;
-use failure_derive::Fail;
 use log::*;
 use serde_json;
 use std::io::Error;
-use std::net;
-use std::str::FromStr;
-use tokio::time;
-use tokio_util::codec::{LinesCodec, LinesCodecError};
-use tornado_common_api;
 use rants::{Client, Subject};
-use crate::actors::message::EventMessage;
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 
 pub struct NatsPublisherActor {
     restarted: bool,
     subject: Subject,
     client: Client,
 }
-
-#[derive(Fail, Debug)]
-pub enum NatsPublisherActorError {
-    #[fail(display = "ServerNotAvailableError: cannot connect to server [{}]", address)]
-    ServerNotAvailableError { address: String },
-    #[fail(display = "SerdeError: [{}]", message)]
-    SerdeError { message: String },
-}
-
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
 
@@ -62,21 +47,24 @@ impl actix::Supervised for NatsPublisherActor {
 }
 
 impl Handler<EventMessage> for NatsPublisherActor {
-    type Result = Result<(), ()>;
+    type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: EventMessage, _ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
 
         let event = serde_json::to_vec(&msg.event).map_err(|err| {
-            NatsPublisherActorError::SerdeError { message: format! {"{}", err} }
+            TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
         })?;
-        
-        actix::spawn({
+
+        let client = self.client.clone();
+        let subject = self.subject.clone();
+        actix::spawn(async move {
             debug!("NatsPublisherActor - Publish event to NATS");
-            if let Err(e) = self.client.publish(&self.subject, &event).await {
+            if let Err(e) = client.publish(&subject, &event).await {
                 error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
             };
         });
+
         Ok(())
 
     }
