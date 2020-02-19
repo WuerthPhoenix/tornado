@@ -1,6 +1,6 @@
 use actix::prelude::Message;
-use tokio::prelude::AsyncRead;
 use failure_derive::Fail;
+use tokio::prelude::AsyncRead;
 
 #[derive(Fail, Debug)]
 pub enum TornadoCommonActorError {

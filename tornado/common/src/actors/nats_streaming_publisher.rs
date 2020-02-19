@@ -1,10 +1,10 @@
-use actix::prelude::*;
-use log::*;
-use serde_json;
-use std::io::Error;
-use rants::{Client, Subject, Address};
 use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
+use actix::prelude::*;
+use log::*;
+use rants::{Address, Client, Subject};
+use serde_json;
+use std::io::Error;
 
 pub struct NatsPublisherActor {
     restarted: bool,
@@ -20,17 +20,19 @@ impl NatsPublisherActor {
         subject: &str,
         tcp_socket_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-
-        let addresses = addresses.iter().map(|address| {
-            address.to_owned().parse().map_err(|err| {
-                TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err} }
+        let addresses = addresses
+            .iter()
+            .map(|address| {
+                address.to_owned().parse().map_err(|err| TornadoError::ConfigurationError {
+                    message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err},
+                })
             })
-        }).collect::<Result<Vec<Address>, TornadoError>>()?;
+            .collect::<Result<Vec<Address>, TornadoError>>()?;
 
         let client = Client::new(addresses);
 
-        let subject = subject.parse().map_err(|err| {
-            TornadoError::ConfigurationError { message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err} }
+        let subject = subject.parse().map_err(|err| TornadoError::ConfigurationError {
+            message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
         })?;
 
         client.connect().await;
@@ -59,9 +61,8 @@ impl Handler<EventMessage> for NatsPublisherActor {
     fn handle(&mut self, msg: EventMessage, _ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
 
-        let event = serde_json::to_vec(&msg.event).map_err(|err| {
-            TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
-        })?;
+        let event = serde_json::to_vec(&msg.event)
+            .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
 
         let client = self.client.clone();
         let subject = self.subject.clone();
@@ -73,7 +74,5 @@ impl Handler<EventMessage> for NatsPublisherActor {
         });
 
         Ok(())
-
     }
 }
-

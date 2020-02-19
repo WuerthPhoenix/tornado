@@ -1,4 +1,4 @@
-use crate::actors::tcp_client::EventMessage;
+use crate::actors::message::EventMessage;
 use actix::prelude::*;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;

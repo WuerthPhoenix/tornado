@@ -2,7 +2,8 @@ use actix::prelude::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::tcp_client::{EventMessage, TcpClientActor};
+use tornado_common::actors::message::EventMessage;
+use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_api::Event;
 

@@ -13,11 +13,11 @@ use failure::Fail;
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
+use tornado_common::actors::nats_streaming_subscriber::subscribe_to_nats_streaming;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_common::actors::nats_streaming_subscriber::subscribe_to_nats_streaming;
 
 pub async fn daemon(
     config_dir: &str,
