@@ -1,5 +1,4 @@
-use actix_web::web::Query;
-use actix_web::{error, http, HttpRequest, HttpResponse};
+use actix_web::{error, http, HttpResponse};
 use failure::Fail;
 use log::*;
 use serde_derive::Deserialize;
@@ -9,7 +8,7 @@ use tornado_common_api::Event;
 
 #[derive(Deserialize)]
 pub struct TokenQuery {
-    token: String,
+    pub token: String,
 }
 
 #[derive(Fail, Debug)]
@@ -39,14 +38,9 @@ pub struct Handler<F: Fn(Event)> {
 }
 
 impl<F: Fn(Event)> Handler<F> {
-    pub fn handle(
-        &self,
-        (_req, body, query): (HttpRequest, String, Query<TokenQuery>),
-    ) -> Result<String, HandlerError> {
-        let received_token = &query.token;
-
+    pub fn handle(&self, body: &str, received_token: &str) -> Result<String, HandlerError> {
         trace!("Endpoint [{}] called with token [{}]", self.id, received_token);
-        debug!("Received call with body [{}]", &body);
+        debug!("Received call with body [{}]", body);
 
         if !(self.token.eq(received_token)) {
             error!("Endpoint [{}] - Token is not valid: [{}]", self.id, received_token);
@@ -55,7 +49,7 @@ impl<F: Fn(Event)> Handler<F> {
 
         let event = self
             .collector
-            .to_event(&body)
+            .to_event(body)
             .map_err(|err| HandlerError::CollectorError { message: format!("{}", err) })?;
 
         (self.callback)(event);

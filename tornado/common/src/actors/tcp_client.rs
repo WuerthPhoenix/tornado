@@ -5,11 +5,10 @@ use serde_json;
 use std::io::Error;
 use std::net;
 use std::str::FromStr;
-use std::time;
 use tokio::io::WriteHalf;
-use tokio::prelude::*;
-use tokio_codec::LinesCodec;
-use tokio_tcp::TcpStream;
+use tokio::net::TcpStream;
+use tokio::time;
+use tokio_util::codec::{LinesCodec, LinesCodecError};
 use tornado_common_api;
 
 pub struct EventMessage {
@@ -53,28 +52,32 @@ impl Actor for TcpClientActor {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("TcpClientActor started. Attempting connection to server [{:?}]", &self.address);
+        let socket_address =
+            net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
             delay_until += time::Duration::new(1, 0)
         }
 
-        let socket_address = net::SocketAddr::from_str(self.address.as_str()).unwrap();
-
-        tokio::timer::Delay::new(delay_until)
-            .map_err(|_| ())
-            .and_then(move |_| TcpStream::connect(&socket_address).map_err(|_| ()))
+        ctx.wait(
+            async move {
+                time::delay_until(delay_until).await;
+                TcpStream::connect(&socket_address).await
+            }
             .into_actor(self)
-            .map(move |stream, act, ctx| {
-                info!("TcpClientActor connected to server [{:?}]", &act.address);
-                let (_r, w) = stream.split();
-                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            })
-            .map_err(|err, act, ctx| {
-                warn!("TcpClientActor failed to connect to server [{:?}]: {:?}", &act.address, err);
-                ctx.stop();
-            })
-            .wait(ctx);
+            .map(move |stream, act, ctx| match stream {
+                Ok(stream) => {
+                    info!("TcpClientActor connected to server [{:?}]", &act.address);
+                    let (_r, w) = tokio::io::split(stream);
+                    act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+                }
+                Err(err) => {
+                    warn!("TCP connection failed. Err: {}", err);
+                    ctx.stop();
+                }
+            }),
+        );
     }
 }
 
@@ -84,6 +87,8 @@ impl actix::Supervised for TcpClientActor {
         self.restarted = true;
     }
 }
+
+impl actix::io::WriteHandler<LinesCodecError> for TcpClientActor {}
 
 impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TcpClientActorError>;

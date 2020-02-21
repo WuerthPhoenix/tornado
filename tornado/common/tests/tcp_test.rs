@@ -18,7 +18,7 @@ fn should_perform_a_tcp_request() {
         let address = format!("{}:{}", BASE_ADDRESS, port);
 
         println!("Creating server at: {}", address);
-        listen_to_tcp(address.clone(), move |msg| {
+        let tcp_create = listen_to_tcp(address.clone(), move |msg| {
             println!("Received a connection request");
             let json_act_received = act_received.clone();
             JsonEventReaderActor::start_new(msg, move |event| {
@@ -27,11 +27,14 @@ fn should_perform_a_tcp_request() {
                 *lock = Some(event);
                 System::current().stop();
             });
-        })
-        .unwrap();
+        });
 
-        let client_addr = TcpClientActor::start_new(address.clone(), 16);
-        client_addr.do_send(EventMessage { event: Event::new("an_event") });
+        actix::spawn(async move {
+            tcp_create.await.unwrap();
+
+            let client_addr = TcpClientActor::start_new(address.clone(), 16);
+            client_addr.do_send(EventMessage { event: Event::new("an_event") });
+        });
     })
     .unwrap();
 

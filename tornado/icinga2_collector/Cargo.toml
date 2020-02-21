@@ -5,8 +5,7 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix-rt = "0.2"
-actix = "0.8"
+actix = "0.9"
 chrono = "0.4"
 clap = "2.33"
 config_rs = { version = "0.9", package = "config" }
@@ -25,5 +24,6 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1" }
 
 [dev-dependencies]
-actix-web = { version = "1.0.5" }
+actix-rt = "1"
+actix-web = { version = "2" }
 maplit = "1.0"

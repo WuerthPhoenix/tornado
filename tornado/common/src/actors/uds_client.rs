@@ -4,11 +4,10 @@ use log::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
-use std::time;
 use tokio::io::WriteHalf;
-use tokio::prelude::*;
-use tokio_codec::LinesCodec;
-use tokio_uds::*;
+use tokio::net::UnixStream;
+use tokio::time;
+use tokio_util::codec::{LinesCodec, LinesCodecError};
 use tornado_common_api;
 
 pub struct EventMessage {
@@ -59,23 +58,24 @@ impl Actor for UdsClientActor {
         }
         let path = (&self.socket_path).clone();
 
-        tokio::timer::Delay::new(delay_until)
-            .map_err(|_| ())
-            .and_then(move |_| tokio_uds::UnixStream::connect(path).map_err(|_| ()))
+        ctx.wait(
+            async move {
+                time::delay_until(delay_until).await;
+                UnixStream::connect(path).await.map_err(|_| ())
+            }
             .into_actor(self)
-            .map(move |stream, act, ctx| {
-                info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
-                let (_r, w) = stream.split();
-                act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
-            })
-            .map_err(|err, act, ctx| {
-                warn!(
-                    "UdsClientActor failed to connected to socket [{:?}]: {:?}",
-                    &act.socket_path, err
-                );
-                ctx.stop();
-            })
-            .wait(ctx);
+            .map(move |stream, act, ctx| match stream {
+                Ok(stream) => {
+                    info!("UdsClientActor connected to socket [{:?}]", &act.socket_path);
+                    let (_r, w) = tokio::io::split(stream);
+                    act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
+                }
+                Err(_) => {
+                    warn!("UDS connection failed");
+                    ctx.stop();
+                }
+            }),
+        );
     }
 }
 
@@ -85,6 +85,8 @@ impl actix::Supervised for UdsClientActor {
         self.restarted = true;
     }
 }
+
+impl actix::io::WriteHandler<LinesCodecError> for UdsClientActor {}
 
 impl Handler<EventMessage> for UdsClientActor {
     type Result = Result<(), UdsClientActorError>;
