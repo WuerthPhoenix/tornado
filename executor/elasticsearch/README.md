@@ -7,7 +7,7 @@ it to [Elasticsearch](https://www.elastic.co/guide/en/elasticsearch/reference/cu
 
 ## How It Works
 
-This executor expects a Tornado Action to include the following elements in its payload:
+This executor expects a Tornado Action that includes the following elements in its payload:
 
 1. An __endpoint__ : The Elasticsearch endpoint which Tornado will call to create the Elasticsearch document.
 1. An __index__ : The name of the Elasticsearch index in which the document will be created.
