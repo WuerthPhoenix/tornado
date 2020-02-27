@@ -1,12 +1,15 @@
 use log::*;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
-use reqwest::Client;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
+use std::fs::File;
+use std::io::Read;
 
 const ENDPOINT_KEY: &str = "endpoint";
 const DATA_KEY: &str = "data";
 const INDEX_KEY: &str = "index";
+const CERTIFICATE_KEY: &str = "cert_path";
+const PRIVATE_CERTIFICATE_KEY_KEY: &str = "private_key_path";
 
 /// An executor that sends data to elasticsearch
 #[derive(Default)]
@@ -47,10 +50,49 @@ impl Executor for ElasticsearchExecutor {
                 }
             })?;
 
+        let certificate_path =
+            action.payload.get(CERTIFICATE_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+                ExecutorError::MissingArgumentError {
+                    message: "cert_path field is missing".to_string(),
+                }
+            })?;
+
+        let private_certificate_key_path =
+            action.payload.get(PRIVATE_CERTIFICATE_KEY_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+                ExecutorError::MissingArgumentError {
+                    message: "private_key_path field is missing".to_string(),
+                }
+            })?;
+
         let endpoint =
             format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
 
-        let client = Client::new();
+        let mut buf = Vec::new();
+        File::open(certificate_path).and_then(|mut file| file.read_to_end(&mut buf)).map_err(|err| {
+            ExecutorError::ActionExecutionError {
+                message: format!("Error while reading certificate file {}. Err: {}", certificate_path, err),
+            }
+        })?;
+        File::open(private_certificate_key_path).and_then(|mut file| file.read_to_end(&mut buf)).map_err(|err| {
+            ExecutorError::ActionExecutionError {
+                message: format!("Error while reading private key file {}. Err: {}", private_certificate_key_path, err),
+            }
+        })?;
+
+        let identity = reqwest::Identity::from_pem(&buf).map_err(|err| {
+            ExecutorError::ActionExecutionError {
+                message: format!("Error while creating identity. Err: {}", err),
+            }
+        })?;
+
+        let client = reqwest::Client::builder()
+            .identity(identity)
+            .build().map_err(|err| {
+            ExecutorError::ActionExecutionError {
+                message: format!("Error while building reqwest client. Err: {}", err),
+            }
+        })?;
+
         let res = client.post(&endpoint).json(&data).send().map_err(|err| {
             ExecutorError::ActionExecutionError {
                 message: format!("Error while sending document to Elasticsearch. Err: {}", err),
@@ -76,26 +118,28 @@ mod test {
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    //    This can be used for local testing. It requires Elasticsearch running on localhost
-    //    #[test]
-    //    fn should_send_document_to_elasticsearch() {
-    //        // Arrange
-    //        let mut executor = ElasticsearchExecutor {};
-    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //        let mut es_document = HashMap::new();
-    //        es_document.insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //
-    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
-    //        action.payload.insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
-    //
-    //        // Act
-    //        let result = executor.execute(action);
-    //
-    //        // Assert
-    //        assert!(result.is_ok());
-    //    }
+//        This can be used for local testing. It requires Elasticsearch running on localhost
+//        #[test]
+//        fn should_send_document_to_elasticsearch() {
+//            // Arrange
+//            let mut executor = ElasticsearchExecutor {};
+//            let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+//            let mut es_document = HashMap::new();
+//            es_document.insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+//            es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+//
+//            action.payload.insert("data".to_owned(), Value::Map(es_document));
+//            action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+//            action.payload.insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
+//            action.payload.insert("cert_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()));
+//            action.payload.insert("private_key_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()));
+//
+//            // Act
+//            let result = executor.execute(action);
+//    result.unwrap();
+//            // Assert
+////            assert!(result.is_ok());
+//        }
 
     #[test]
     fn should_fail_if_index_is_missing() {
