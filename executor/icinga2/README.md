@@ -7,7 +7,7 @@ sent to the [Icinga2 API](https://icinga.com/docs/icinga2/latest/doc/12-icinga2-
 
 ## How It Works
 
-This collector expects a Tornado Action to include the following elements in its payload:
+This executor expects a Tornado Action to include the following elements in its payload:
 
 1. An __icinga2_action_name__: The Icinga2 action to perform.
 1. An __icinga2_action_payload__ (optional): The parameters of the Icinga2 action.
