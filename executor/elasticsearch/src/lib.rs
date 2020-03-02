@@ -21,6 +21,7 @@ pub enum ElasticsearchAuthentication {
         private_key_path: String,
         ca_certificate_path: String,
     },
+    None,
 }
 
 impl ElasticsearchAuthentication {
@@ -36,6 +37,7 @@ impl ElasticsearchAuthentication {
                 ca_certificate_path,
             )?
             .new_client(),
+            ElasticsearchAuthentication::None => Ok(Client::new()),
         }
     }
 }
@@ -85,14 +87,16 @@ impl PemCertificateData {
 }
 /// An executor that sends data to elasticsearch
 pub struct ElasticsearchExecutor {
-    default_client: Client,
+    default_client: Option<Client>,
 }
 
 impl ElasticsearchExecutor {
     pub fn new(
-        es_authentication: ElasticsearchAuthentication,
+        es_authentication: Option<ElasticsearchAuthentication>,
     ) -> Result<ElasticsearchExecutor, ExecutorError> {
-        let default_client = es_authentication.new_client()?;
+        let default_client = es_authentication
+            .map(|es_authentication| es_authentication.new_client())
+            .transpose()?;
 
         Ok(ElasticsearchExecutor { default_client })
     }
@@ -146,7 +150,9 @@ impl Executor for ElasticsearchExecutor {
                 })?;
             Cow::Owned(es_authentication.new_client()?)
         } else {
-            Cow::Borrowed(&self.default_client)
+            Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
+                ExecutorError::ActionExecutionError { message: "Missing client".to_string() }
+            })?)
         };
 
         let res = client.post(&endpoint).json(&data).send().map_err(|err| {
@@ -174,16 +180,71 @@ mod test {
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    //        This can be used for local testing. It requires Elasticsearch running on localhost
+    //            This can be used for local testing. It requires Elasticsearch running on localhost
+    //    #[test]
+    //    fn should_send_document_to_elasticsearch() {
+    //        // Arrange
+    //        let es_authentication = Some(ElasticsearchAuthentication::PemCertificatePath {
+    //            certificate_path: "/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_string(),
+    //            private_key_path: "/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_string(),
+    //            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string()
+    //        });
+    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+    //        let mut es_document = HashMap::new();
+    //        es_document
+    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
+    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //        action.payload.insert(
+    //            "endpoint".to_owned(),
+    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+    //        );
+    //
+    //        // Act
+    //        let result = executor.execute(action);
+    //        result.unwrap();
+    //        // Assert
+    //        //            assert!(result.is_ok());
+    //    }
+    //
+    //    // This can be used for local testing. It requires Elasticsearch running on localhost
+    //    #[test]
+    //    fn should_build_client_from_payload() {
+    //        // Arrange
+    //        let es_authentication = Some(ElasticsearchAuthentication::None {});
+    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+    //        let mut es_document = HashMap::new();
+    //        es_document
+    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
+    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //        action.payload.insert(
+    //            "endpoint".to_owned(),
+    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+    //        );
+    //
+    //        let mut auth = HashMap::new();
+    //        auth.insert("type".to_owned(), Value::Text("PemCertificatePath".to_owned()));
+    //        auth.insert("certificate_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()));
+    //        auth.insert("private_key_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()));
+    //        auth.insert("ca_certificate_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/root-ca.crt".to_owned()));
+    //        action.payload.insert("auth".to_owned(), Value::Map(auth));
+    //
+    //        // Act
+    //        let result = executor.execute(action);
+    //        result.unwrap();
+    //        // Assert
+    //        //            assert!(result.is_ok());
+    //    }
+
     #[test]
-    fn should_send_document_to_elasticsearch() {
+    fn should_fail_if_index_is_missing() {
         // Arrange
-        let es_authentication = ElasticsearchAuthentication::PemCertificatePath {
-            certificate_path: "/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_string(),
-            private_key_path: "/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_string(),
-            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string()
-        };
-        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -191,124 +252,115 @@ mod test {
         es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
 
         action.payload.insert("data".to_owned(), Value::Map(es_document));
-        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
-        action.payload.insert(
-            "endpoint".to_owned(),
-            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
-        );
+        action
+            .payload
+            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
         let result = executor.execute(action);
-        result.unwrap();
+
         // Assert
-        //            assert!(result.is_ok());
+        match result {
+            Err(ExecutorError::MissingArgumentError { .. }) => {}
+            _ => assert!(false),
+        };
     }
 
-//    #[test]
-//    fn should_fail_if_index_is_missing() {
-//        // Arrange
-//        let mut executor = ElasticsearchExecutor {};
-//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-//        let mut es_document = HashMap::new();
-//        es_document
-//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-//
-//        action.payload.insert("data".to_owned(), Value::Map(es_document));
-//        action
-//            .payload
-//            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
-//
-//        // Act
-//        let result = executor.execute(action);
-//
-//        // Assert
-//        assert!(result.is_err());
-//    }
-//
-//    #[test]
-//    fn should_fail_if_endpoint_is_missing() {
-//        // Arrange
-//        let mut executor = ElasticsearchExecutor {};
-//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-//        let mut es_document = HashMap::new();
-//        es_document
-//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-//
-//        action.payload.insert("data".to_owned(), Value::Map(es_document));
-//        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
-//
-//        // Act
-//        let result = executor.execute(action);
-//
-//        // Assert
-//        assert!(result.is_err());
-//    }
-//
-//    #[test]
-//    fn should_fail_if_data_is_missing() {
-//        // Arrange
-//        let mut executor = ElasticsearchExecutor {};
-//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-//        let mut es_document = HashMap::new();
-//        es_document
-//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-//
-//        action
-//            .payload
-//            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
-//        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
-//
-//        // Act
-//        let result = executor.execute(action);
-//
-//        // Assert
-//        assert!(result.is_err());
-//    }
-//
-//    #[test]
-//    fn should_fail_if_index_is_not_text() {
-//        // Arrange
-//        let mut executor = ElasticsearchExecutor {};
-//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-//        let mut es_document = HashMap::new();
-//        es_document
-//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-//
-//        action.payload.insert("data".to_owned(), Value::Map(es_document));
-//        action.payload.insert("index".to_owned(), Value::Array(vec![]));
-//        action
-//            .payload
-//            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
-//
-//        // Act
-//        let result = executor.execute(action);
-//
-//        // Assert
-//        assert!(result.is_err());
-//    }
-//
-//    #[test]
-//    fn should_fail_if_endpoint_is_not_text() {
-//        // Arrange
-//        let mut executor = ElasticsearchExecutor {};
-//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-//        let mut es_document = HashMap::new();
-//        es_document
-//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-//
-//        action.payload.insert("data".to_owned(), Value::Map(es_document));
-//        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
-//        action.payload.insert("endpoint".to_owned(), Value::Bool(false));
-//
-//        // Act
-//        let result = executor.execute(action);
-//
-//        // Assert
-//        assert!(result.is_err());
-//    }
+    #[test]
+    fn should_fail_if_endpoint_is_missing() {
+        // Arrange
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut es_document = HashMap::new();
+        es_document
+            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+
+        action.payload.insert("data".to_owned(), Value::Map(es_document));
+        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+
+        // Act
+        let result = executor.execute(action);
+
+        // Assert
+        match result {
+            Err(ExecutorError::MissingArgumentError { .. }) => {}
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_fail_if_data_is_missing() {
+        // Arrange
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut es_document = HashMap::new();
+        es_document
+            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+
+        action
+            .payload
+            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
+        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+
+        // Act
+        let result = executor.execute(action);
+
+        // Assert
+        match result {
+            Err(ExecutorError::MissingArgumentError { .. }) => {}
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_fail_if_index_is_not_text() {
+        // Arrange
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut es_document = HashMap::new();
+        es_document
+            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+
+        action.payload.insert("data".to_owned(), Value::Map(es_document));
+        action.payload.insert("index".to_owned(), Value::Array(vec![]));
+        action
+            .payload
+            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
+
+        // Act
+        let result = executor.execute(action);
+
+        // Assert
+        match result {
+            Err(ExecutorError::MissingArgumentError { .. }) => {}
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_fail_if_endpoint_is_not_text() {
+        // Arrange
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut es_document = HashMap::new();
+        es_document
+            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+
+        action.payload.insert("data".to_owned(), Value::Map(es_document));
+        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+        action.payload.insert("endpoint".to_owned(), Value::Bool(false));
+
+        // Act
+        let result = executor.execute(action);
+
+        // Assert
+        match result {
+            Err(ExecutorError::MissingArgumentError { .. }) => {}
+            _ => assert!(false),
+        };
+    }
 }
