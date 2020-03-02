@@ -31,13 +31,22 @@ impl ElasticsearchAuthentication {
                 certificate_path,
                 private_key_path,
                 ca_certificate_path,
-            } => PemCertificateData::from_fs(
-                certificate_path,
-                private_key_path,
-                ca_certificate_path,
-            )?
-            .new_client(),
-            ElasticsearchAuthentication::None => Ok(Client::new()),
+            } => {
+                debug!(
+                    "ElasticsearchAuthentication - Creating new PemCertificatePath client from paths: {}, {}, {}",
+                    certificate_path, private_key_path, ca_certificate_path,
+                );
+                PemCertificateData::from_fs(
+                    certificate_path,
+                    private_key_path,
+                    ca_certificate_path,
+                )?
+                .new_client()
+            }
+            ElasticsearchAuthentication::None => {
+                debug!("ElasticsearchAuthentication - Creating new client with no authentication",);
+                Ok(Client::new())
+            }
         }
     }
 }
@@ -94,6 +103,7 @@ impl ElasticsearchExecutor {
     pub fn new(
         es_authentication: Option<ElasticsearchAuthentication>,
     ) -> Result<ElasticsearchExecutor, ExecutorError> {
+        debug!("ElasticsearchExecutor - Creating new Elasticsearch executor");
         let default_client = es_authentication
             .map(|es_authentication| es_authentication.new_client())
             .transpose()?;
@@ -143,15 +153,19 @@ impl Executor for ElasticsearchExecutor {
             format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
 
         let client = if let Some(auth) = action.payload.get(AUTH_KEY) {
+            debug!("ElasticsearchExecutor - Found client data in payload. Create action specific client");
             let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
-                .and_then(|value| serde_json::from_value(value))
+                .and_then(serde_json::from_value)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
                 })?;
             Cow::Owned(es_authentication.new_client()?)
         } else {
+            debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
             Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
-                ExecutorError::ActionExecutionError { message: "Missing client".to_string() }
+                ExecutorError::ActionExecutionError {
+                    message: "Missing both default client and auth data from payload".to_string(),
+                }
             })?)
         };
 
@@ -169,6 +183,7 @@ impl Executor for ElasticsearchExecutor {
                 ),
             })
         } else {
+            debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");
             Ok(())
         }
     }
@@ -180,66 +195,76 @@ mod test {
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    //            This can be used for local testing. It requires Elasticsearch running on localhost
-    //    #[test]
-    //    fn should_send_document_to_elasticsearch() {
-    //        // Arrange
-    //        let es_authentication = Some(ElasticsearchAuthentication::PemCertificatePath {
-    //            certificate_path: "/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_string(),
-    //            private_key_path: "/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_string(),
-    //            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string()
-    //        });
-    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
-    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //        let mut es_document = HashMap::new();
-    //        es_document
-    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
-    //        action.payload.insert(
-    //            "endpoint".to_owned(),
-    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
-    //        );
-    //
-    //        // Act
-    //        let result = executor.execute(action);
-    //        result.unwrap();
-    //        // Assert
-    //        //            assert!(result.is_ok());
-    //    }
-    //
-    //    // This can be used for local testing. It requires Elasticsearch running on localhost
-    //    #[test]
-    //    fn should_build_client_from_payload() {
-    //        // Arrange
-    //        let es_authentication = Some(ElasticsearchAuthentication::None {});
-    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
-    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //        let mut es_document = HashMap::new();
-    //        es_document
-    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
-    //        action.payload.insert(
-    //            "endpoint".to_owned(),
-    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
-    //        );
-    //
-    //        let mut auth = HashMap::new();
-    //        auth.insert("type".to_owned(), Value::Text("PemCertificatePath".to_owned()));
-    //        auth.insert("certificate_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()));
-    //        auth.insert("private_key_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()));
-    //        auth.insert("ca_certificate_path".to_owned(), Value::Text("/neteye/shared/tornado/conf/certs/root-ca.crt".to_owned()));
-    //        action.payload.insert("auth".to_owned(), Value::Map(auth));
-    //
-    //        // Act
-    //        let result = executor.execute(action);
-    //        result.unwrap();
-    //        // Assert
-    //        //            assert!(result.is_ok());
-    //    }
+    //                This can be used for local testing. It requires Elasticsearch running on localhost
+//    #[test]
+//    fn should_send_document_to_elasticsearch() {
+//        // Arrange
+//        let es_authentication = Some(ElasticsearchAuthentication::PemCertificatePath {
+//            certificate_path: "/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_string(),
+//            private_key_path: "/neteye/shared/tornado/conf/certs/private/tornado.key.pem"
+//                .to_string(),
+//            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string(),
+//        });
+//        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+//        let mut es_document = HashMap::new();
+//        es_document
+//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+//        action.payload.insert("data".to_owned(), Value::Map(es_document));
+//        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+//        action.payload.insert(
+//            "endpoint".to_owned(),
+//            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+//        );
+//
+//        // Act
+//        let result = executor.execute(action);
+//        result.unwrap();
+//        // Assert
+//        //            assert!(result.is_ok());
+//    }
+//
+//    // This can be used for local testing. It requires Elasticsearch running on localhost
+//    #[test]
+//    fn should_build_client_from_payload() {
+//        // Arrange
+//        let es_authentication = Some(ElasticsearchAuthentication::None {});
+//        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+//        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+//        let mut es_document = HashMap::new();
+//        es_document
+//            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+//        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+//        action.payload.insert("data".to_owned(), Value::Map(es_document));
+//        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+//        action.payload.insert(
+//            "endpoint".to_owned(),
+//            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+//        );
+//
+//        let mut auth = HashMap::new();
+//        auth.insert("type".to_owned(), Value::Text("PemCertificatePath".to_owned()));
+//        auth.insert(
+//            "certificate_path".to_owned(),
+//            Value::Text("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()),
+//        );
+//        auth.insert(
+//            "private_key_path".to_owned(),
+//            Value::Text("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()),
+//        );
+//        auth.insert(
+//            "ca_certificate_path".to_owned(),
+//            Value::Text("/neteye/shared/tornado/conf/certs/root-ca.crt".to_owned()),
+//        );
+//        action.payload.insert("auth".to_owned(), Value::Map(auth));
+//
+//        // Act
+//        let result = executor.execute(action);
+//        result.unwrap();
+//        // Assert
+//        //            assert!(result.is_ok());
+//    }
 
     #[test]
     fn should_fail_if_index_is_missing() {
