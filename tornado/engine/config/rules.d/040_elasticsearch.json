@@ -1,0 +1,23 @@
+{
+  "description": "An example rule that triggers an Elasticsearch action",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "equal",
+      "first": "${event.type}",
+      "second": "index"
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "elasticsearch",
+      "payload": {
+        "index": "tornado-example",
+        "endpoint": "http://localhost:9200",
+        "data": "${event.payload.data}"
+      }
+    }
+  ]
+}
