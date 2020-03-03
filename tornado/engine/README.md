@@ -240,6 +240,46 @@ More details about the meaning of each entry and how the archive executor functi
 in the [executor documentation](../../executor/archive/README.md).
 
 
+### Structure and Configuration:  The Elasticsearch Executor
+
+The [Elasticsearch executor](../../executor/elasticsearch/README.md) processes and executes Actions
+of type "elasticsearch". The configuration for this executor is specified in the `elasticsearch_executor.toml`
+file into the Tornado config folder.
+
+For instance, if Tornado is started with the command:
+```bash
+tornado --config-dir=/tornado/config
+```
+then the configuration file's full path will be `/tornado/config/elasticsearch_executor.toml`.
+
+The elasticsearch_executor.toml has an optional `default_auth` section that allows to define the default 
+authentication method to be used with Elasticsearch. An action can override the default method by 
+specifying the `auth` payload parameter. 
+All the authentication types defined in [Elasticsearch executor](../../executor/elasticsearch/README.md)
+are supported.
+
+In case the `default_auth` section is omitted, no default authentication is available.
+
+#### Elasticsearch executor configuration examples
+* Connect without authentication:      
+    ```toml
+    [default_auth]
+    type = "None"
+    ```              
+
+* Authentication with PEM certificates:
+    ```toml
+    [default_auth]
+    type = "PemCertificatePath"
+    certificate_path = "/path/to/tornado/conf/certs/tornado.crt.pem"
+    private_key_path = "/path/to/tornado/conf/certs/private/tornado.key.pem"
+    ca_certificate_path = "/path/to/tornado/conf/certs/root-ca.crt"
+    ```        
+
+More details about the executor can be found in the
+[Elasticsearch executor](../../executor/elasticsearch/README.md).
+
+
 ### Structure and Configuration:  The Foreach Executor
 
 The [foreach executor](../../executor/foreach/README.md) allows

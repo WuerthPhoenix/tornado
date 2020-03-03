@@ -1,2 +1,2 @@
-#[default_auth]
-#type = "None"
+[default_auth]
+type = "None"
