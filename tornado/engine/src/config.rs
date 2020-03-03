@@ -7,6 +7,7 @@ use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
+use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -68,11 +69,19 @@ fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, 
     s.try_into()
 }
 
+fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, ConfigError> {
+    let config_file_path = format!("{}/elasticsearch_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
 pub struct ComponentsConfig {
     pub matcher_config: Arc<dyn MatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
+    pub elasticsearch_executor_config: ElasticsearchConfig,
 }
 
 pub fn parse_config_files(
@@ -83,11 +92,13 @@ pub fn parse_config_files(
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
+    let elasticsearch_executor_config = build_elasticsearch_config(config_dir)?;
     Ok(ComponentsConfig {
         matcher_config,
         tornado,
         archive_executor_config,
         icinga2_executor_config,
+        elasticsearch_executor_config,
     })
 }
 

@@ -3330,6 +3330,7 @@ dependencies = [
  "tornado_engine_matcher 0.0.1",
  "tornado_executor_archive 0.0.1",
  "tornado_executor_common 0.0.1",
+ "tornado_executor_elasticsearch 0.0.1",
  "tornado_executor_foreach 0.0.1",
  "tornado_executor_icinga2 0.0.1",
  "tornado_executor_logger 0.0.1",
