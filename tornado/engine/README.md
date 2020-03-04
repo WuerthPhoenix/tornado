@@ -260,7 +260,7 @@ are supported.
 
 In case the `default_auth` section is omitted, no default authentication is available.
 
-#### Elasticsearch executor configuration examples
+#### Defining default Authentication in elasticsearch_execute.toml
 * Connect without authentication:      
     ```toml
     [default_auth]
