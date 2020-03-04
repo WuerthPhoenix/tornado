@@ -21,7 +21,11 @@ pub fn bench(c: &mut Criterion) {
             String::from("extracted_var"),
             Extractor {
                 from: String::from("${event.payload.body}"),
-                regex: ExtractorRegex::Regex { regex: String::from(r"[0-9]+"), group_match_idx: Some(0), all_matches: None },
+                regex: ExtractorRegex::Regex {
+                    regex: String::from(r"[0-9]+"),
+                    group_match_idx: Some(0),
+                    all_matches: None,
+                },
             },
         );
 
@@ -36,7 +40,9 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // Create Matcher
-    let matcher = Matcher::build(&MatcherConfig::Ruleset { rules: vec![rule], name: "name".to_owned() }).unwrap();
+    let matcher =
+        Matcher::build(&MatcherConfig::Ruleset { rules: vec![rule], name: "name".to_owned() })
+            .unwrap();
 
     // Create event
     let event = {
