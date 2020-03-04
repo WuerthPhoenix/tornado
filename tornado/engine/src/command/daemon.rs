@@ -71,6 +71,16 @@ pub async fn daemon(
         executor: None,
     });
 
+    // Start elasticsearch executor actor
+    let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
+    let elasticsearch_executor_addr = SyncArbiter::start(1, move || {
+        let es_authentication = es_authentication.clone();
+        let executor =
+            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+                .expect("Cannot start the Elasticsearch Executor");
+        ExecutorActor { executor }
+    });
+
     // Start icinga2 executor actor
     let icinga2_executor_addr = SyncArbiter::start(1, move || {
         let icinga2_client_addr_clone = icinga2_client_addr.clone();
@@ -92,6 +102,9 @@ pub async fn daemon(
                     "script" => script_executor_addr.do_send(ActionMessage { action }),
                     "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action }),
                     "logger" => logger_executor_addr.do_send(ActionMessage { action }),
+                    "elasticsearch" => {
+                        elasticsearch_executor_addr.do_send(ActionMessage { action })
+                    }
                     _ => error!("There are not executors for action id [{}]", &action.id),
                 };
             },

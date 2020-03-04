@@ -22,7 +22,6 @@ members = [
    "spike/jmespath",
    "spike/parser_jmespath",
    "spike/rsyslog_collector_writer",
-   "spike/stdin",
    "spike/tornado_events_generator",
    "tornado/common",
    "tornado/email_collector",
