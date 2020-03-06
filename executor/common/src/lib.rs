@@ -16,4 +16,6 @@ pub enum ExecutorError {
     MissingArgumentError { message: String },
     #[fail(display = "UnknownArgumentError: [{}]", message)]
     UnknownArgumentError { message: String },
+    #[fail(display = "ConfigurationError: [{}]", message)]
+    ConfigurationError { message: String },
 }
