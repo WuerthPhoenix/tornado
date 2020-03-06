@@ -17,7 +17,6 @@ members = [
    "executor/logger",
    "executor/script",
    "network/common",
-   "network/nats_streaming",
    "network/simple",
    "spike/dynamic_log",
    "spike/jmespath",
