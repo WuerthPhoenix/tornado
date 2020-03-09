@@ -28,6 +28,10 @@ nats_streaming_enabled = true
 nats_streaming_addresses = ["127.0.0.1:4222"]
 # The NATS streaming Subject where tornado will subscribe and listen for incoming events
 nats_streaming_subject = "tornado.events"
+# The NATS queue group name for the tornado subscription
+nats_streaming_subscription_queue_group = "tornado"
+# The unique NATS name for the durable tornado subscription
+nats_streaming_subscription_durable_name = "tornado"
 
 # The IP address where the Tornado Web Server will listen for HTTP requests.
 # This is used, for example, by the monitoring endpoints.
