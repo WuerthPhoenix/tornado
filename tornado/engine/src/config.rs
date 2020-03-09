@@ -40,6 +40,8 @@ pub struct DaemonCommandConfig {
 
     pub web_server_ip: String,
     pub web_server_port: u16,
+
+    pub message_queue_size: usize,
 }
 
 #[derive(Deserialize, Serialize, Clone)]

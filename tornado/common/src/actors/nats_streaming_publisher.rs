@@ -7,7 +7,6 @@ use serde_json;
 use std::io::Error;
 
 pub struct NatsPublisherActor {
-    restarted: bool,
     subject: Subject,
     client: Client,
 }
@@ -18,13 +17,13 @@ impl NatsPublisherActor {
     pub async fn start_new(
         addresses: &[String],
         subject: &str,
-        tcp_socket_mailbox_capacity: usize,
+        message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         let addresses = addresses
             .iter()
             .map(|address| {
                 address.to_owned().parse().map_err(|err| TornadoError::ConfigurationError {
-                    message: format! {"NatsSubscriberActor - Cannot parse address. Err: {}", err},
+                    message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err},
                 })
             })
             .collect::<Result<Vec<Address>, TornadoError>>()?;
@@ -38,8 +37,8 @@ impl NatsPublisherActor {
         client.connect().await;
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
-            ctx.set_mailbox_capacity(tcp_socket_mailbox_capacity);
-            NatsPublisherActor { restarted: false, subject, client }
+            ctx.set_mailbox_capacity(message_mailbox_capacity);
+            NatsPublisherActor { subject, client }
         }))
     }
 }
@@ -51,7 +50,6 @@ impl Actor for NatsPublisherActor {
 impl actix::Supervised for NatsPublisherActor {
     fn restarting(&mut self, _ctx: &mut Context<NatsPublisherActor>) {
         info!("Restarting NatsPublisherActor");
-        self.restarted = true;
     }
 }
 

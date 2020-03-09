@@ -11,6 +11,7 @@ pub async fn subscribe_to_nats_streaming<
 >(
     addresses: &[String],
     subject: &str,
+    message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
     let addresses = addresses
@@ -29,11 +30,12 @@ pub async fn subscribe_to_nats_streaming<
         message: format! {"NatsSubscriberActor - Cannot parse subject. Err: {}", err},
     })?;
 
-    let (_, subscription) = client.subscribe(&subject, 1024).await.map_err(|err| {
+    let (_, subscription) = client.subscribe(&subject, message_mailbox_capacity).await.map_err(|err| {
         TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", subject, err} }
     })?;
 
     NatsStreamingSubscriberActor::create(|ctx| {
+        ctx.set_mailbox_capacity(message_mailbox_capacity);
         ctx.add_message_stream(
             Box::leak(Box::new(subscription))
                 .map(|message| BytesMessage { msg: message.into_payload() }),

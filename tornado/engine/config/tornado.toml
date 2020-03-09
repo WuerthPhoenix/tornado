@@ -34,3 +34,6 @@ nats_streaming_subject = "tornado.events"
 web_server_ip = "0.0.0.0"
 # The port where the Tornado Web Server will listen for HTTP requests.
 web_server_port = 4748
+
+# Set the size of the in-memory queue where messages will be stored before being processed
+message_queue_size = 10000

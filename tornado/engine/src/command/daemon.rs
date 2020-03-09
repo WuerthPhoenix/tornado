@@ -140,7 +140,7 @@ pub async fn daemon(
         let subject = daemon_config.nats_streaming_subject;
 
         let matcher_addr_clone = matcher_addr.clone();
-        subscribe_to_nats_streaming(&addresses, &subject, move |event| {
+        subscribe_to_nats_streaming(&addresses, &subject, daemon_config.message_queue_size, move |event| {
             matcher_addr_clone.do_send(EventMessage { event });
             Ok(())
         }).await
@@ -162,7 +162,7 @@ pub async fn daemon(
         let tcp_address =
             format!("{}:{}", daemon_config.event_socket_ip, daemon_config.event_socket_port);
         let json_matcher_addr_clone = matcher_addr.clone();
-        listen_to_tcp(tcp_address.clone(), move |msg| {
+        listen_to_tcp(tcp_address.clone(), daemon_config.message_queue_size, move |msg| {
             let json_matcher_addr_clone = json_matcher_addr_clone.clone();
             JsonEventReaderActor::start_new(msg, move |event| {
                 json_matcher_addr_clone.do_send(EventMessage { event })

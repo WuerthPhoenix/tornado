@@ -19,7 +19,7 @@ async fn should_publish_to_nats_streaming() {
     let received = Arc::new(Mutex::new(None));
 
     let received_clone = received.clone();
-    subscribe_to_nats_streaming(&vec![BASE_ADDRESS.to_owned()], subject, move |event| {
+    subscribe_to_nats_streaming(&vec![BASE_ADDRESS.to_owned()], subject, 10000, move |event| {
         let mut lock = received_clone.lock().unwrap();
         *lock = Some(event);
         Ok(())
