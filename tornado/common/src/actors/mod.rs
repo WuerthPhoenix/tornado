@@ -1,6 +1,6 @@
 use crate::TornadoError;
 use failure::_core::str::FromStr;
-use serde::{Deserialize, Serialize};
+use serde_derive::{Deserialize, Serialize};
 
 pub mod json_event_reader;
 pub mod message;

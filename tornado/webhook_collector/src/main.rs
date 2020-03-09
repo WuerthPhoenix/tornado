@@ -39,13 +39,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     info!("Starting web server at port {}", port);
 
-    // Start TcpWriter
-    let tornado_tcp_address = format!(
-        "{}:{}",
-        collector_config.webhook_collector.tornado_event_socket_ip,
-        collector_config.webhook_collector.tornado_event_socket_port
-    );
-
     match collector_config.webhook_collector.tornado_connection_channel {
         TornadoConnectionChannel::NatsStreaming => {
             info!("Connect to Tornado through NATS Streaming");
@@ -60,6 +53,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         }
         TornadoConnectionChannel::TCP => {
             info!("Connect to Tornado through TCP socket");
+            // Start TcpWriter
+            let tornado_tcp_address = format!(
+                "{}:{}",
+                collector_config.webhook_collector.tornado_event_socket_ip,
+                collector_config.webhook_collector.tornado_event_socket_port
+            );
+
             let actor_address = TcpClientActor::start_new(
                 tornado_tcp_address,
                 collector_config.webhook_collector.message_queue_size,

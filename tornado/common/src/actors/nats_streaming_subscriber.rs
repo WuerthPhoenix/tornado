@@ -22,14 +22,14 @@ pub async fn subscribe_to_nats_streaming<
         })
         .collect::<Result<Vec<Address>, TornadoError>>()?;
 
-    let subscriber = Client::new(addresses);
-    subscriber.connect().await;
+    let client = Client::new(addresses);
+    client.connect().await;
 
     let subject = subject.parse().map_err(|err| TornadoError::ConfigurationError {
         message: format! {"NatsSubscriberActor - Cannot parse subject. Err: {}", err},
     })?;
 
-    let (_, subscription) = subscriber.subscribe(&subject, 1024).await.map_err(|err| {
+    let (_, subscription) = client.subscribe(&subject, 1024).await.map_err(|err| {
         TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", subject, err} }
     })?;
 
