@@ -28,11 +28,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let collector_config = config::build_config(&config_dir)?;
 
-    setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
+    setup_logger(&collector_config.logger)?;
 
     let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
-    let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)
-        .map_err(failure::Fail::compat)?;
+    let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)?;
 
     let port = collector_config.webhook_collector.server_port;
     let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
@@ -47,8 +46,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 &collector_config.webhook_collector.nats_streaming_subject,
                 collector_config.webhook_collector.message_queue_size,
             )
-            .await
-            .map_err(failure::Fail::compat)?;
+            .await?;
             start_http_server(actor_address, webhooks_config, bind_address, port).await?;
         }
         TornadoConnectionChannel::TCP => {

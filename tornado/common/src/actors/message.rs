@@ -1,12 +1,12 @@
 use actix::prelude::Message;
-use failure_derive::Fail;
+use thiserror::Error;
 use tokio::prelude::AsyncRead;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum TornadoCommonActorError {
-    #[fail(display = "ServerNotAvailableError: cannot connect to server [{}]", address)]
+    #[error("ServerNotAvailableError: cannot connect to server [{address}]")]
     ServerNotAvailableError { address: String },
-    #[fail(display = "SerdeError: [{}]", message)]
+    #[error("SerdeError: [{message}]")]
     SerdeError { message: String },
 }
 

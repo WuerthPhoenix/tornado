@@ -1,7 +1,7 @@
 use actix_web::{error, http, HttpResponse};
-use failure::Fail;
 use log::*;
 use serde_derive::Deserialize;
+use thiserror::Error;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
@@ -11,11 +11,11 @@ pub struct TokenQuery {
     pub token: String,
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum HandlerError {
-    #[fail(display = "The request cannot be processed: {}", message)]
+    #[error("The request cannot be processed: {message}")]
     CollectorError { message: String },
-    #[fail(display = "NotValidToken")]
+    #[error("NotValidToken")]
     WrongTokenError,
 }
 

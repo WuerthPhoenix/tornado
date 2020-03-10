@@ -1,6 +1,6 @@
-use failure_derive::Fail;
 use serde_derive::{Deserialize, Serialize};
 use std::str::FromStr;
+use thiserror::Error;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,9 +26,9 @@ impl Default for LoggerConfig {
     }
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum LoggerError {
-    #[fail(display = "LoggerConfigurationError: [{}]", message)]
+    #[error("LoggerConfigurationError: [{message}]")]
     LoggerConfigurationError { message: String },
 }
 

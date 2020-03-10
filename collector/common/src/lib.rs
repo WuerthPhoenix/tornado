@@ -1,4 +1,4 @@
-use failure_derive::Fail;
+use thiserror::Error;
 use tornado_common_api::Event;
 
 /// A Collector is a source of Events.
@@ -9,13 +9,13 @@ pub trait Collector<T> {
     fn to_event(&self, input: T) -> Result<Event, CollectorError>;
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum CollectorError {
     /// Produce an error message depending on the error type.
-    #[fail(display = "EventCreationError: [{}]", message)]
+    #[error("EventCreationError: [{message}]")]
     EventCreationError { message: String },
-    #[fail(display = "JsonParsingError: [{}]", message)]
+    #[error("JsonParsingError: [{message}]")]
     JsonParsingError { message: String },
-    #[fail(display = "CollectorCreationError: [{}]", message)]
+    #[error("CollectorCreationError: [{message}]")]
     CollectorCreationError { message: String },
 }

@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let collector_config = config::build_config(&config_dir)?;
 
     // Setup logger
-    setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
+    setup_logger(&collector_config.logger)?;
 
     info!("Rsyslog collector started");
 

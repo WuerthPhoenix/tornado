@@ -1,16 +1,16 @@
-use failure_derive::Fail;
 use jmespath::{Rcvar, ToJmespath};
 use std::borrow::Cow;
+use thiserror::Error;
 use tornado_common_api::{Number, Payload, Value};
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum ParserError {
-    #[fail(display = "ConfigurationError: [{}]", message)]
+    #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
-    #[fail(display = "ParsingError: [{}]", message)]
+    #[error("ParsingError: [{message}]")]
     ParsingError { message: String },
 }
 

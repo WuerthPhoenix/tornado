@@ -17,11 +17,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let streams_dir = arg_matches.value_of("streams-dir").expect("streams-dir should be provided");
     let icinga2_config = config::build_config(&config_dir)?;
 
-    setup_logger(&icinga2_config.logger).map_err(failure::Fail::compat)?;
+    setup_logger(&icinga2_config.logger)?;
 
     let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
-    let streams_config =
-        config::read_streams_from_config(&streams_dir_full_path).map_err(failure::Fail::compat)?;
+    let streams_config = config::read_streams_from_config(&streams_dir_full_path)?;
 
     System::run(move || {
         info!("Starting Icinga2 Collector");

@@ -1,8 +1,8 @@
 use crate::interpolator::StringInterpolator;
-use failure_derive::Fail;
 use lazy_static::*;
 use regex::Regex;
 use std::borrow::Cow;
+use thiserror::Error;
 use tornado_common_api::Value;
 
 mod interpolator;
@@ -18,15 +18,13 @@ lazy_static! {
     static ref RE: Regex = Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum ParserError {
-    #[fail(display = "ConfigurationError: [{}]", message)]
+    #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
-    #[fail(display = "ParsingError: [{}]", message)]
+    #[error("ParsingError: [{message}]")]
     ParsingError { message: String },
-    #[fail(
-        display = "InterpolatorRenderError: Cannot resolve placeholders in template [{}] cause: [{}]",
-        template, cause
+    #[error("InterpolatorRenderError: Cannot resolve placeholders in template [{template}] cause: [{cause}]"
     )]
     InterpolatorRenderError { template: String, cause: String },
 }
