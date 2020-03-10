@@ -2,13 +2,14 @@ use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use rants::{Address, Client, Subject};
+use ratsio::{NatsClient, RatsioError, StanClient, StanOptions, NatsClientOptions, StartPosition};
 use serde_json;
 use std::io::Error;
+use std::sync::Arc;
 
 pub struct NatsPublisherActor {
-    subject: Subject,
-    client: Client,
+    subject: String,
+    client: Arc<StanClient>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -19,22 +20,28 @@ impl NatsPublisherActor {
         subject: &str,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-        let addresses = addresses
-            .iter()
-            .map(|address| {
-                address.to_owned().parse().map_err(|err| TornadoError::ConfigurationError {
-                    message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err},
-                })
-            })
-            .collect::<Result<Vec<Address>, TornadoError>>()?;
 
-        let client = Client::new(addresses);
+        // Create stan options
+        let nats_options = NatsClientOptions::builder()
+            //  .tls_required(false)
+            .cluster_uris(addresses.iter().cloned().collect::<Vec<String>>())
+            // .reconnect_timeout(5u64)
+            .build()
+            .unwrap();
 
-        let subject = subject.parse().map_err(|err| TornadoError::ConfigurationError {
-            message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
+        let stan_options = StanOptions::builder()
+            .nats_options(nats_options)
+            .cluster_id("test-cluster")
+            .client_id("test-client_pub")
+            .build()
+            .unwrap();
+
+        //Create STAN client
+        let client = StanClient::from_options(stan_options).await.map_err(|err| TornadoError::ConfigurationError {
+            message: format! {"NatsSubscriberActor - Cannot create Nats Streaming Client. Err: {}", err},
         })?;
 
-        client.connect().await;
+        let subject = subject.to_owned();
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);

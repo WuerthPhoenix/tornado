@@ -12,6 +12,8 @@ const BASE_ADDRESS: &str = "127.0.0.1:4222";
 // This test requires a running NATS streaming server listening on BASE_ADDRESS
 #[actix_rt::test]
 async fn should_publish_to_nats_streaming() {
+    start_logger();
+
     let random: u8 = rand::random();
     let event = Event::new(format!("event_type_{}", random));
     let subject = &format!("test_subject_{}", random);
@@ -36,4 +38,15 @@ async fn should_publish_to_nats_streaming() {
     let received_event = received.lock().unwrap();
     assert!(received_event.is_some());
     assert_eq!(&event, received_event.as_ref().unwrap());
+}
+
+fn start_logger() {
+    println!("Init logger");
+
+    let conf = tornado_common_logger::LoggerConfig {
+        level: String::from("trace"),
+        stdout_output: true,
+        file_output_path: None,
+    };
+    tornado_common_logger::setup_logger(&conf).unwrap();
 }
