@@ -9,7 +9,6 @@ use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
 use actix_web::{web, App, HttpServer};
-use failure::Fail;
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
@@ -24,16 +23,11 @@ pub async fn daemon(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let configs = config::parse_config_files(config_dir, rules_dir)?;
 
-    setup_logger(&configs.tornado.logger).map_err(Fail::compat)?;
+    setup_logger(&configs.tornado.logger)?;
 
     // Start matcher
-    let matcher = Arc::new(
-        configs
-            .matcher_config
-            .read()
-            .and_then(|config| Matcher::build(&config))
-            .map_err(Fail::compat)?,
-    );
+    let matcher =
+        Arc::new(configs.matcher_config.read().and_then(|config| Matcher::build(&config))?);
 
     // start system
 

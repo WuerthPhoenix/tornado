@@ -1,9 +1,9 @@
 use actix::prelude::*;
-use failure_derive::Fail;
 use log::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
+use thiserror::Error;
 use tokio::io::WriteHalf;
 use tokio::net::UnixStream;
 use tokio::time;
@@ -18,11 +18,11 @@ impl Message for EventMessage {
     type Result = Result<(), UdsClientActorError>;
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum UdsClientActorError {
-    #[fail(display = "UdsSocketNotAvailable: cannot connect to [{:?}]", socket)]
+    #[error("UdsSocketNotAvailable: cannot connect to [{socket:?}]")]
     UdsSocketNotAvailableError { socket: PathBuf },
-    #[fail(display = "SerdeError: [{}]", message)]
+    #[error("SerdeError: [{message}]")]
     SerdeError { message: String },
 }
 

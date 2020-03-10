@@ -1,66 +1,56 @@
-use failure_derive::Fail;
+use thiserror::Error;
 use tornado_common_parser::ParserError;
 
-#[derive(Fail, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum MatcherError {
-    #[fail(display = "ExtractorBuildFailError: [{}]\n cause: [{}]", message, cause)]
+    #[error("ExtractorBuildFailError: [{message}]\n cause: [{cause}]")]
     ExtractorBuildFailError { message: String, cause: String },
 
-    #[fail(
-        display = "MissingExtractedVariableError: Cannot extract variable [{}].",
-        variable_name
-    )]
+    #[error("MissingExtractedVariableError: Cannot extract variable [{variable_name}].")]
     MissingExtractedVariableError { variable_name: String },
 
-    #[fail(display = "MissingOperatorError: No operator specified (the args array is empty)")]
+    #[error("MissingOperatorError: No operator specified (the args array is empty)")]
     MissingOperatorError {},
 
-    #[fail(display = "ParseOperatorError: [{}]", message)]
+    #[error("ParseOperatorError: [{message}]")]
     ParseOperatorError { message: String },
 
-    #[fail(display = "UnknownOperatorError: Operator [{}] is unknown", operator)]
+    #[error("UnknownOperatorError: Operator [{operator}] is unknown")]
     UnknownOperatorError { operator: String },
 
-    #[fail(
-        display = "WrongNumberOfArgumentsError: While building operator [{}], expected arguments [{}], found [{}]",
-        operator, expected, found
+    #[error(
+        "WrongNumberOfArgumentsError: While building operator [{operator}], expected arguments [{expected}], found [{found}]"
     )]
     WrongNumberOfArgumentsError { operator: &'static str, expected: u64, found: u64 },
 
-    #[fail(display = "OperatorBuildFailError: [{}]\n cause: [{}]", message, cause)]
+    #[error("OperatorBuildFailError: [{message}]\n cause: [{cause}]")]
     OperatorBuildFailError { message: String, cause: String },
 
-    #[fail(display = "UnknownAccessorError: Unknown accessor: [{}]", accessor)]
+    #[error("UnknownAccessorError: Unknown accessor: [{accessor}]")]
     UnknownAccessorError { accessor: String },
 
-    #[fail(display = "JsonDeserializationError: [{}]", message)]
+    #[error("JsonDeserializationError: [{message}]")]
     JsonDeserializationError { message: String },
 
-    #[fail(display = "ConfigurationError: [{}]", message)]
+    #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
 
-    #[fail(
-        display = "NotUniqueRuleNameError: Two or more Rules have the same name [{}] but it must be unique.",
-        name
+    #[error("NotUniqueRuleNameError: Two or more Rules have the same name [{name}] but it must be unique."
     )]
     NotUniqueRuleNameError { name: String },
 
-    #[fail(display = "NotValidIdOrNameError: {}", message)]
+    #[error("NotValidIdOrNameError: {message}")]
     NotValidIdOrNameError { message: String },
 
-    #[fail(
-        display = "CreateActionError: Cannot create action [{}] for rule [{}]\n cause: [{}]",
-        action_id, rule_name, cause
+    #[error("CreateActionError: Cannot create action [{action_id}] for rule [{rule_name}]\n cause: [{cause}]"
     )]
     CreateActionError { action_id: String, rule_name: String, cause: String },
 
-    #[fail(
-        display = "StringInterpolatorRenderError: Cannot resolve placeholders in template [{}] for rule [{}]\n cause: [{}]",
-        template, rule_name, cause
+    #[error("StringInterpolatorRenderError: Cannot resolve placeholders in template [{template}] for rule [{rule_name}]\n cause: [{cause}]"
     )]
     InterpolatorRenderError { template: String, rule_name: String, cause: String },
 
-    #[fail(display = "InternalSystemError: [{}]", message)]
+    #[error("InternalSystemError: [{message}]")]
     InternalSystemError { message: String },
 }
 

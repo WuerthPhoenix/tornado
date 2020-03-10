@@ -18,7 +18,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     )?;
 
     // Setup logger
-    setup_logger(&collector_config.logger).map_err(failure::Fail::compat)?;
+    setup_logger(&collector_config.logger)?;
 
     info!("Email collector started");
 

@@ -1,17 +1,17 @@
 use actix::MailboxError;
 use actix_web::HttpResponse;
-use failure_derive::Fail;
+use thiserror::Error;
 use tornado_engine_matcher::error::MatcherError;
 
-#[derive(Fail, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ApiError {
-    #[fail(display = "MatcherError: [{}]", cause)]
+    #[error("MatcherError: [{cause}]")]
     MatcherError { cause: MatcherError },
-    #[fail(display = "ActixMailboxError: [{}]", cause)]
+    #[error("ActixMailboxError: [{cause}]")]
     ActixMailboxError { cause: String },
-    #[fail(display = "JsonError: [{}]", cause)]
+    #[error("JsonError: [{cause}]")]
     JsonError { cause: String },
-    #[fail(display = "InternalServerError: [{}]", cause)]
+    #[error("InternalServerError: [{cause}]")]
     InternalServerError { cause: String },
 }
 
