@@ -1,11 +1,11 @@
 use actix::prelude::*;
 use actix_web::client::{Client, ClientBuilder, Connector};
-use failure_derive::Fail;
 use http::header;
 use log::*;
 use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use serde_derive::{Deserialize, Serialize};
 use std::time::Duration;
+use thiserror::Error;
 use tornado_executor_icinga2::Icinga2Action;
 
 pub struct Icinga2ApiClientMessage {
@@ -16,9 +16,9 @@ impl Message for Icinga2ApiClientMessage {
     type Result = Result<(), Icinga2ApiClientActorError>;
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum Icinga2ApiClientActorError {
-    #[fail(display = "ServerNotAvailableError: cannot connect to [{}]", message)]
+    #[error("ServerNotAvailableError: cannot connect to [{message}]")]
     ServerNotAvailableError { message: String },
 }
 

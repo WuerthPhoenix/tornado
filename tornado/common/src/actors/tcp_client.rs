@@ -1,10 +1,10 @@
 use actix::prelude::*;
-use failure_derive::Fail;
 use log::*;
 use serde_json;
 use std::io::Error;
 use std::net;
 use std::str::FromStr;
+use thiserror::Error;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::time;
@@ -19,11 +19,11 @@ impl Message for EventMessage {
     type Result = Result<(), TcpClientActorError>;
 }
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum TcpClientActorError {
-    #[fail(display = "ServerNotAvailableError: cannot connect to server [{}]", address)]
+    #[error("ServerNotAvailableError: cannot connect to server [{address}]")]
     ServerNotAvailableError { address: String },
-    #[fail(display = "SerdeError: [{}]", message)]
+    #[error("SerdeError: [{message}]")]
     SerdeError { message: String },
 }
 

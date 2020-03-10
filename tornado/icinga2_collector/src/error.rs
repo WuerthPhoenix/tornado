@@ -1,9 +1,9 @@
-use failure_derive::Fail;
+use thiserror::Error;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum Icinga2CollectorError {
-    #[fail(display = "CannotPerformHttpRequest: [{}]", message)]
+    #[error("CannotPerformHttpRequest: [{message}]")]
     CannotPerformHttpRequest { message: String },
-    #[fail(display = "UnexpectedEndOfHttpRequest")]
+    #[error("UnexpectedEndOfHttpRequest")]
     UnexpectedEndOfHttpRequest,
 }
