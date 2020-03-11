@@ -127,7 +127,7 @@ pub async fn daemon(
         dispatcher_addr: dispatcher_addr.clone(),
     });
 
-    if daemon_config.nats_streaming_enabled {
+    if daemon_config.nats_streaming_enabled.unwrap_or(false) {
         info!("NATS Streaming connection is enabled. Starting it...");
 
         let nats_config = daemon_config
@@ -154,7 +154,7 @@ pub async fn daemon(
         info!("NATS Streaming connection is disabled. Do not start it.")
     };
 
-    if daemon_config.event_tcp_socket_enabled {
+    if daemon_config.event_tcp_socket_enabled.unwrap_or(false) {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
         let tcp_address = format!(

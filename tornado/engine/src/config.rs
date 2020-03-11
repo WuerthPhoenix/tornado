@@ -31,11 +31,11 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
-    pub event_tcp_socket_enabled: bool,
+    pub event_tcp_socket_enabled: Option<bool>,
     pub event_socket_ip: Option<String>,
     pub event_socket_port: Option<u16>,
 
-    pub nats_streaming_enabled: bool,
+    pub nats_streaming_enabled: Option<bool>,
     pub nats: Option<StanSubscriberConfig>,
 
     pub web_server_ip: String,
