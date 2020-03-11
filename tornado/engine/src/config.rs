@@ -3,6 +3,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use std::sync::Arc;
+use tornado_common::actors::nats_streaming_subscriber::StanSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
@@ -30,13 +31,12 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
-    pub event_socket_enabled: bool,
-    pub event_socket_ip: String,
-    pub event_socket_port: u16,
+    pub event_tcp_socket_enabled: bool,
+    pub event_socket_ip: Option<String>,
+    pub event_socket_port: Option<u16>,
 
     pub nats_streaming_enabled: bool,
-    pub nats_streaming_addresses: Vec<String>,
-    pub nats_streaming_subject: String,
+    pub nats: Option<StanSubscriberConfig>,
 
     pub web_server_ip: String,
     pub web_server_port: u16,

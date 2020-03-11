@@ -2,7 +2,8 @@ use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use ratsio::{NatsClient, RatsioError, StanClient, StanOptions, NatsClientOptions, StartPosition};
+use ratsio::{NatsClientOptions, StanClient, StanOptions};
+use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::io::Error;
 use std::sync::Arc;
@@ -14,35 +15,43 @@ pub struct NatsPublisherActor {
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
 
-impl NatsPublisherActor {
-    pub async fn start_new(
-        addresses: &[String],
-        subject: &str,
-        message_mailbox_capacity: usize,
-    ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+#[derive(Deserialize, Serialize, Clone)]
+pub struct StanPublisherConfig {
+    pub base: StanBaseConfig,
+}
 
+#[derive(Deserialize, Serialize, Clone)]
+pub struct StanBaseConfig {
+    pub addresses: Vec<String>,
+    pub subject: String,
+    pub cluster_id: String,
+    pub client_id: String,
+}
+
+impl StanBaseConfig {
+    pub async fn new_client(&self) -> Result<Arc<StanClient>, TornadoError> {
         // Create stan options
-        let nats_options = NatsClientOptions::builder()
-            //  .tls_required(false)
-            .cluster_uris(addresses.iter().cloned().collect::<Vec<String>>())
-            // .reconnect_timeout(5u64)
-            .build()
-            .unwrap();
-
-        let stan_options = StanOptions::builder()
-            .nats_options(nats_options)
-            .cluster_id("test-cluster")
-            .client_id("test-client_pub")
-            .build()
-            .unwrap();
+        let mut nats_options = NatsClientOptions::default();
+        nats_options.cluster_uris = self.addresses.clone().into();
+        let stan_options =
+            StanOptions::with_options(nats_options, &self.cluster_id, &self.client_id);
 
         //Create STAN client
-        let client = StanClient::from_options(stan_options).await.map_err(|err| TornadoError::ConfigurationError {
-            message: format! {"NatsSubscriberActor - Cannot create Nats Streaming Client. Err: {}", err},
-        })?;
+        StanClient::from_options(stan_options).await.map_err(|err| {
+            TornadoError::ConfigurationError {
+                message: format! {"StanConfig - Cannot create Nats Streaming Client. Err: {}", err},
+            }
+        })
+    }
+}
 
-        let subject = subject.to_owned();
-
+impl NatsPublisherActor {
+    pub async fn start_new(
+        config: StanPublisherConfig,
+        message_mailbox_capacity: usize,
+    ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+        let client = config.base.new_client().await?;
+        let subject = config.base.subject.to_owned();
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
             NatsPublisherActor { subject, client }

@@ -130,11 +130,15 @@ pub async fn daemon(
     if daemon_config.nats_streaming_enabled {
         info!("NATS Streaming connection is enabled. Starting it...");
 
-        let addresses = daemon_config.nats_streaming_addresses;
-        let subject = daemon_config.nats_streaming_subject;
+        let nats_config = daemon_config
+            .nats
+            .expect("Nats configuration must be provided to connect to the Nats cluster");
+
+        let addresses = nats_config.base.addresses.clone();
+        let subject = nats_config.base.subject.clone();
 
         let matcher_addr_clone = matcher_addr.clone();
-        subscribe_to_nats_streaming(&addresses, &subject, daemon_config.message_queue_size, move |event| {
+        subscribe_to_nats_streaming(nats_config, daemon_config.message_queue_size, move |event| {
             matcher_addr_clone.do_send(EventMessage { event });
             Ok(())
         }).await
@@ -150,11 +154,18 @@ pub async fn daemon(
         info!("NATS Streaming connection is disabled. Do not start it.")
     };
 
-    if daemon_config.event_socket_enabled {
+    if daemon_config.event_tcp_socket_enabled {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
-        let tcp_address =
-            format!("{}:{}", daemon_config.event_socket_ip, daemon_config.event_socket_port);
+        let tcp_address = format!(
+            "{}:{}",
+            daemon_config
+                .event_socket_ip
+                .expect("'event_socket_ip' must be provided to start the tornado TCP server"),
+            daemon_config
+                .event_socket_port
+                .expect("'event_socket_port' must be provided to start the tornado TCP server")
+        );
         let json_matcher_addr_clone = matcher_addr.clone();
         listen_to_tcp(tcp_address.clone(), daemon_config.message_queue_size, move |msg| {
             let json_matcher_addr_clone = json_matcher_addr_clone.clone();

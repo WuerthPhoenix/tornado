@@ -42,8 +42,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         TornadoConnectionChannel::NatsStreaming => {
             info!("Connect to Tornado through NATS Streaming");
             let actor_address = NatsPublisherActor::start_new(
-                &collector_config.webhook_collector.nats_streaming_addresses,
-                &collector_config.webhook_collector.nats_streaming_subject,
+                collector_config
+                    .webhook_collector
+                    .nats
+                    .expect("Nats Streaming config must be provided to connect to a Nats cluster"),
                 collector_config.webhook_collector.message_queue_size,
             )
             .await?;
@@ -54,8 +56,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             // Start TcpWriter
             let tornado_tcp_address = format!(
                 "{}:{}",
-                collector_config.webhook_collector.tornado_event_socket_ip,
-                collector_config.webhook_collector.tornado_event_socket_port
+                collector_config.webhook_collector.tornado_event_socket_ip.expect("'tornado_event_socket_ip' must be provided to connect to a Tornado through TCP"),
+                collector_config.webhook_collector.tornado_event_socket_port.expect("'tornado_event_socket_port' must be provided to connect to a Tornado through TCP"),
             );
 
             let actor_address = TcpClientActor::start_new(

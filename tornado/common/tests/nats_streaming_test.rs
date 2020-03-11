@@ -3,8 +3,12 @@
 use std::sync::{Arc, Mutex};
 use tokio::time;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
-use tornado_common::actors::nats_streaming_subscriber::subscribe_to_nats_streaming;
+use tornado_common::actors::nats_streaming_publisher::{
+    NatsPublisherActor, StanBaseConfig, StanPublisherConfig,
+};
+use tornado_common::actors::nats_streaming_subscriber::{
+    subscribe_to_nats_streaming, StanSubscriberConfig,
+};
 use tornado_common_api::Event;
 
 const BASE_ADDRESS: &str = "127.0.0.1:4222";
@@ -16,21 +20,46 @@ async fn should_publish_to_nats_streaming() {
 
     let random: u8 = rand::random();
     let event = Event::new(format!("event_type_{}", random));
-    let subject = &format!("test_subject_{}", random);
+    let subject = format!("test_subject_{}", random);
 
     let received = Arc::new(Mutex::new(None));
 
     let received_clone = received.clone();
-    subscribe_to_nats_streaming(&vec![BASE_ADDRESS.to_owned()], subject, 10000, move |event| {
-        let mut lock = received_clone.lock().unwrap();
-        *lock = Some(event);
-        Ok(())
-    })
+
+    subscribe_to_nats_streaming(
+        StanSubscriberConfig {
+            base: StanBaseConfig {
+                subject: subject.to_owned(),
+                cluster_id: "test-cluster".to_owned(),
+                client_id: "test-client-1".to_owned(),
+                addresses: vec![BASE_ADDRESS.to_owned()],
+            },
+            queue_group: None,
+            durable_name: None,
+        },
+        10000,
+        move |event| {
+            let mut lock = received_clone.lock().unwrap();
+            *lock = Some(event);
+            Ok(())
+        },
+    )
     .await
     .unwrap();
 
-    let publisher =
-        NatsPublisherActor::start_new(&vec![BASE_ADDRESS.to_owned()], subject, 10).await.unwrap();
+    let publisher = NatsPublisherActor::start_new(
+        StanPublisherConfig {
+            base: StanBaseConfig {
+                subject: subject.to_owned(),
+                cluster_id: "test-cluster".to_owned(),
+                client_id: "test-client-2".to_owned(),
+                addresses: vec![BASE_ADDRESS.to_owned()],
+            },
+        },
+        10,
+    )
+    .await
+    .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
     time::delay_until(time::Instant::now() + time::Duration::new(2, 0)).await;
