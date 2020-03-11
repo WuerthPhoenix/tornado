@@ -6,6 +6,8 @@ use futures::StreamExt;
 use log::*;
 use serde_derive::{Deserialize, Serialize};
 use tornado_common_api::Event;
+use ratsio::stan_client::StanSubscribe;
+use ratsio::StartPosition;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct StanSubscriberConfig {
@@ -26,7 +28,16 @@ pub async fn subscribe_to_nats_streaming<
     let subject = config.base.subject.to_owned();
 
     //Subscribe to STAN
-    let (_sid, subscription) = client.subscribe(subject.to_owned(), config.queue_group, config.durable_name).await.map_err(|err| {
+
+    let mut subscribe = StanSubscribe::default();
+    subscribe.subject = subject.to_owned();
+    subscribe.queue_group = config.queue_group;
+    subscribe.durable_name = config.durable_name;
+    subscribe.start_position = StartPosition::First;
+    //subscribe.manual_acks = true;
+    //subscribe.start_time_delta = Some(500000);
+
+    let (_sid, subscription) = client.subscribe_with(subscribe).await.map_err(|err| {
         TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", subject, err} }
     })?;
 
