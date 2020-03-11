@@ -28,12 +28,12 @@ pub async fn subscribe_to_nats_streaming<
     let subject = config.base.subject.to_owned();
 
     //Subscribe to STAN
-
     let mut subscribe = StanSubscribe::default();
     subscribe.subject = subject.to_owned();
     subscribe.queue_group = config.queue_group;
     subscribe.durable_name = config.durable_name;
     subscribe.start_position = StartPosition::First;
+    subscribe.ack_wait_in_secs = 30;
     //subscribe.manual_acks = true;
     //subscribe.start_time_delta = Some(500000);
 
