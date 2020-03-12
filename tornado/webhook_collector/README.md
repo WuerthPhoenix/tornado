@@ -1,8 +1,8 @@
 # Tornado Webhook Collector (executable)
 
 The Webhook Collector is a standalone HTTP server that listens for REST calls from a generic
-webhook, generates Tornado Events from the webhook JSON body, and publishes them on the
-Tornado Engine UDS socket.
+webhook, generates Tornado Events from the webhook JSON body, and sends them to the
+Tornado Engine.
 
 
 
@@ -15,7 +15,7 @@ On startup, it creates a dedicated REST endpoint for each configured webhook. Ca
 an endpoint are processed by the embedded
 [jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
-Tornado Engine's UDS socket.
+Tornado Engine through the configured connection type.
 
 For each webhook, you must provide three values in order to successfully create an endpoint:
 - _id_:  The webhook identifier. This will determine the path of the endpoint; it must be
@@ -51,13 +51,25 @@ file _'config-dir'/webhook_collector.toml_:
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **webhook_collector**:
+    - **tornado_connection_channel**: The channel to send events to Tornado. Valid values are:
+    `NatsStreaming` and `TCP`. When not provided, it defaults to `TCP`.
     - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
       This should be the address where the Tornado Engine listens for incoming events.
+      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
       This should be the port where the Tornado Engine listens for incoming events.
+      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
+    - **nats.base.addresses**: The addresses of the  NATS streaming server.
+      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
+    - **nats.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
+      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
+    - **nats.base.cluster_id**: The NATS streaming cluster id to connect to.
+      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
+    - **nats.base.client_id**: The unique client id to connect to NATS streaming.
+      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
-      resilient to Tornado Engine crashes or temporary unavailability.
-      When Tornado restarts, all messages in the buffer will be sent.
+      resilient to errors or temporary unavailability of the Tornado connection channel.
+      When the connection on the channel is restored, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
     - **server_bind_address**:  The IP to bind the HTTP server to.
     - **server_port**:  The port to be used by the HTTP Server.

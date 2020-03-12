@@ -36,7 +36,7 @@ pub struct CollectorConfig {
 pub struct WebhookCollectorConfig {
     pub message_queue_size: usize,
 
-    pub tornado_connection_channel: TornadoConnectionChannel,
+    pub tornado_connection_channel: Option<TornadoConnectionChannel>,
 
     pub nats: Option<StanPublisherConfig>,
 
