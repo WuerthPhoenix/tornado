@@ -131,7 +131,7 @@ pub async fn daemon(
         info!("NATS Streaming connection is enabled. Starting it...");
 
         let nats_config = daemon_config
-            .nats
+            .nats.clone()
             .expect("Nats configuration must be provided to connect to the Nats cluster");
 
         let addresses = nats_config.base.addresses.clone();
@@ -160,10 +160,10 @@ pub async fn daemon(
         let tcp_address = format!(
             "{}:{}",
             daemon_config
-                .event_socket_ip
+                .event_socket_ip.clone()
                 .expect("'event_socket_ip' must be provided to start the tornado TCP server"),
             daemon_config
-                .event_socket_port
+                .event_socket_port.clone()
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();
@@ -192,14 +192,16 @@ pub async fn daemon(
     let matcher_config = configs.matcher_config;
 
     let api_handler = MatcherApiHandler::new(matcher_config, matcher_addr);
+    let daemon_config = daemon_config.clone();
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
         let api_handler = api_handler.clone();
+        let daemon_config = daemon_config.clone();
         App::new()
             .wrap(Cors::new().max_age(3600).finish())
             .service({ tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler) })
-            .service(monitoring_endpoints(web::scope("/monitoring")))
+            .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
     .bind(format!("{}:{}", web_server_ip, web_server_port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
