@@ -6,6 +6,8 @@ use std::fs;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
+use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT");
@@ -26,9 +28,14 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Icinga2CollectorConfig {
     pub message_queue_size: usize,
-    pub tornado_event_socket_ip: String,
-    pub tornado_event_socket_port: u16,
     pub connection: Icinga2ClientConfig,
+
+    pub tornado_connection_channel: Option<TornadoConnectionChannel>,
+
+    pub nats: Option<StanPublisherConfig>,
+
+    pub tornado_event_socket_ip: Option<String>,
+    pub tornado_event_socket_port: Option<u16>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]

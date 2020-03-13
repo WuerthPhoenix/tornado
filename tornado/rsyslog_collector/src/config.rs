@@ -2,6 +2,8 @@ use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use tornado_common_logger::LoggerConfig;
+use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT");
@@ -25,8 +27,13 @@ pub struct CollectorConfig {
 #[derive(Deserialize, Serialize, Clone)]
 pub struct RsyslogCollectorConfig {
     pub message_queue_size: usize,
-    pub tornado_event_socket_ip: String,
-    pub tornado_event_socket_port: u16,
+
+    pub tornado_connection_channel: Option<TornadoConnectionChannel>,
+
+    pub nats: Option<StanPublisherConfig>,
+
+    pub tornado_event_socket_ip: Option<String>,
+    pub tornado_event_socket_port: Option<u16>,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {

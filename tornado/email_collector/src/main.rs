@@ -4,7 +4,7 @@ pub mod actor;
 pub mod config;
 
 use crate::actor::EmailReaderActor;
-use actix::System;
+use actix::{System};
 use log::*;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
@@ -66,3 +66,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     Ok(())
 }
+
+/*
+fn start<A: Actor + actix::Handler<EventMessage>>(
+    actor_address: Addr<A>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
+    where
+        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage> {
+    unimplemented!()
+}
+*/

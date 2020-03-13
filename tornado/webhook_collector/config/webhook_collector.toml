@@ -25,7 +25,7 @@ server_port = 8080
 # The channel to send events to Tornado. Valid values are:
 # - NatsStreaming
 # - TCP
-tornado_connection_channel = "NatsStreaming"
+tornado_connection_channel = "TCP"
 
 # The Tornado IP address where outgoing events will be written
 tornado_event_socket_ip = "127.0.0.1"

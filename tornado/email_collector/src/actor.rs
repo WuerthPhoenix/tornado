@@ -5,15 +5,24 @@ use tokio::prelude::*;
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
-use tornado_common::actors::tcp_client::TcpClientActor;
+use actix::dev::ToEnvelope;
 
-pub struct EmailReaderActor {
-    pub tpc_client_addr: Addr<TcpClientActor>,
+//pub type Address<M: Message> = Addr<actix::Handler<M>>;
+
+
+pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
+    where
+        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+{
+    pub tpc_client_addr: Addr<A>,
     pub email_collector: Arc<EmailEventCollector>,
 }
 
-impl EmailReaderActor {
-    pub fn start_new(tpc_client_addr: Addr<TcpClientActor>) -> Addr<EmailReaderActor> {
+impl <A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
+    where
+        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+{
+    pub fn start_new(tpc_client_addr: Addr<A>) -> Addr<Self> {
         EmailReaderActor::create(move |_ctx| EmailReaderActor {
             email_collector: Arc::new(EmailEventCollector::new()),
             tpc_client_addr,
@@ -21,7 +30,10 @@ impl EmailReaderActor {
     }
 }
 
-impl Actor for EmailReaderActor {
+impl <A: Actor + actix::Handler<EventMessage>> Actor for EmailReaderActor<A>
+    where
+        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+{
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
@@ -29,7 +41,10 @@ impl Actor for EmailReaderActor {
     }
 }
 
-impl<R: AsyncRead + 'static + Unpin> Handler<AsyncReadMessage<R>> for EmailReaderActor {
+impl<A: Actor + actix::Handler<EventMessage>, R: AsyncRead + 'static + Unpin> Handler<AsyncReadMessage<R>> for EmailReaderActor<A>
+    where
+       <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+{
     type Result = ();
 
     fn handle(&mut self, mut msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {

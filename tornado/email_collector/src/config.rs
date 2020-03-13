@@ -2,6 +2,8 @@ use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use tornado_common_logger::LoggerConfig;
+use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
+use tornado_common::actors::TornadoConnectionChannel;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_EMAIL_COLLECTOR_CONFIG_DIR_DEFAULT");
@@ -26,6 +28,11 @@ pub struct CollectorConfig {
 pub struct EmailCollectorConfig {
     pub message_queue_size: usize,
     pub uds_path: String,
+
+    pub tornado_connection_channel: Option<TornadoConnectionChannel>,
+
+    pub nats: Option<StanPublisherConfig>,
+
     pub tornado_event_socket_ip: String,
     pub tornado_event_socket_port: u16,
 }
