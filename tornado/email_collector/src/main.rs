@@ -4,10 +4,15 @@ pub mod actor;
 pub mod config;
 
 use crate::actor::EmailReaderActor;
-use actix::{System};
+use actix::{System, Actor, Addr};
 use log::*;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common_logger::setup_logger;
+use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::message::EventMessage;
+use actix::dev::ToEnvelope;
+use tornado_common::actors::tcp_client::TcpClientActor;
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -22,43 +27,39 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     info!("Email collector started");
 
-    // Start TcpWriter
-    let tornado_tcp_address = format!(
-        "{}:{}",
-        collector_config.email_collector.tornado_event_socket_ip,
-        collector_config.email_collector.tornado_event_socket_port
-    );
-    let tpc_client_addr = tornado_common::actors::tcp_client::TcpClientActor::start_new(
-        tornado_tcp_address,
-        collector_config.email_collector.message_queue_size,
-    );
+    match collector_config
+        .email_collector
+        .tornado_connection_channel
+        .unwrap_or(TornadoConnectionChannel::TCP)
+    {
+        TornadoConnectionChannel::NatsStreaming => {
+            info!("Connect to Tornado through NATS Streaming");
+            let actor_address = NatsPublisherActor::start_new(
+                collector_config
+                    .email_collector
+                    .nats
+                    .expect("Nats Streaming config must be provided to connect to a Nats cluster"),
+                collector_config.email_collector.message_queue_size,
+            )
+                .await?;
+            start(collector_config.email_collector.uds_path, actor_address)?;
+        }
+        TornadoConnectionChannel::TCP => {
+            info!("Connect to Tornado through TCP socket");
+            // Start TcpWriter
+            let tornado_tcp_address = format!(
+                "{}:{}",
+                collector_config.email_collector.tornado_event_socket_ip.expect("'tornado_event_socket_ip' must be provided to connect to a Tornado through TCP"),
+                collector_config.email_collector.tornado_event_socket_port.expect("'tornado_event_socket_port' must be provided to connect to a Tornado through TCP"),
+            );
 
-    // Start Email collector
-    let email_addr = EmailReaderActor::start_new(tpc_client_addr);
-
-    // Open UDS socket
-    listen_to_uds_socket(
-        collector_config.email_collector.uds_path.clone(),
-        Some(0o770),
-        move |msg| {
-            email_addr.do_send(msg);
-        },
-    )
-    .and_then(|_| {
-        info!(
-            "Started UDS server at [{}]. Listening for incoming events",
-            collector_config.email_collector.uds_path.clone()
-        );
-        Ok(())
-    })
-    .unwrap_or_else(|err| {
-        error!(
-            "Cannot start UDS server at [{}]. Err: {}",
-            collector_config.email_collector.uds_path.clone(),
-            err
-        );
-        std::process::exit(1);
-    });
+            let actor_address = TcpClientActor::start_new(
+                tornado_tcp_address,
+                collector_config.email_collector.message_queue_size,
+            );
+            start(collector_config.email_collector.uds_path, actor_address)?;
+        }
+    };
 
     tokio::signal::ctrl_c().await.unwrap();
     println!("Ctrl-C received, shutting down");
@@ -67,12 +68,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-/*
+
 fn start<A: Actor + actix::Handler<EventMessage>>(
+    uds_path: String,
     actor_address: Addr<A>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
     where
         <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage> {
-    unimplemented!()
+
+    // Start Email collector
+    let email_addr = EmailReaderActor::start_new(actor_address);
+
+    // Open UDS socket
+    listen_to_uds_socket(
+        uds_path.clone(),
+        Some(0o770),
+        move |msg| {
+            email_addr.do_send(msg);
+        },
+    )
+        .and_then(|_| {
+            info!(
+                "Started UDS server at [{}]. Listening for incoming events",
+                uds_path
+            );
+            Ok(())
+        })
+        .unwrap_or_else(|err| {
+            error!(
+                "Cannot start UDS server at [{}]. Err: {}",
+                uds_path,
+                err
+            );
+            std::process::exit(1);
+        });
+
+    Ok(())
 }
-*/

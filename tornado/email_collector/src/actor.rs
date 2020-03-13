@@ -7,12 +7,9 @@ use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
 use actix::dev::ToEnvelope;
 
-//pub type Address<M: Message> = Addr<actix::Handler<M>>;
-
-
 pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
     where
-        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+        <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
     pub tpc_client_addr: Addr<A>,
     pub email_collector: Arc<EmailEventCollector>,
@@ -20,7 +17,7 @@ pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 
 impl <A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
     where
-        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+        <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
     pub fn start_new(tpc_client_addr: Addr<A>) -> Addr<Self> {
         EmailReaderActor::create(move |_ctx| EmailReaderActor {
@@ -32,7 +29,7 @@ impl <A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
 
 impl <A: Actor + actix::Handler<EventMessage>> Actor for EmailReaderActor<A>
     where
-        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+        <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
     type Context = Context<Self>;
 
@@ -43,7 +40,7 @@ impl <A: Actor + actix::Handler<EventMessage>> Actor for EmailReaderActor<A>
 
 impl<A: Actor + actix::Handler<EventMessage>, R: AsyncRead + 'static + Unpin> Handler<AsyncReadMessage<R>> for EmailReaderActor<A>
     where
-       <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+       <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
     type Result = ();
 

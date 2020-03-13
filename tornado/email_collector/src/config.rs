@@ -33,8 +33,8 @@ pub struct EmailCollectorConfig {
 
     pub nats: Option<StanPublisherConfig>,
 
-    pub tornado_event_socket_ip: String,
-    pub tornado_event_socket_port: u16,
+    pub tornado_event_socket_ip: Option<String>,
+    pub tornado_event_socket_port: Option<u16>,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
