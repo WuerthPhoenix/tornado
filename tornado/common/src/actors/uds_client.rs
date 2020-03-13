@@ -1,30 +1,13 @@
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use actix::prelude::*;
 use log::*;
 use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
-use thiserror::Error;
 use tokio::io::WriteHalf;
 use tokio::net::UnixStream;
 use tokio::time;
 use tokio_util::codec::{LinesCodec, LinesCodecError};
-use tornado_common_api;
-
-pub struct EventMessage {
-    pub event: tornado_common_api::Event,
-}
-
-impl Message for EventMessage {
-    type Result = Result<(), UdsClientActorError>;
-}
-
-#[derive(Error, Debug)]
-pub enum UdsClientActorError {
-    #[error("UdsSocketNotAvailable: cannot connect to [{socket:?}]")]
-    UdsSocketNotAvailableError { socket: PathBuf },
-    #[error("SerdeError: [{message}]")]
-    SerdeError { message: String },
-}
 
 pub struct UdsClientActor {
     restarted: bool,
@@ -89,7 +72,7 @@ impl actix::Supervised for UdsClientActor {
 impl actix::io::WriteHandler<LinesCodecError> for UdsClientActor {}
 
 impl Handler<EventMessage> for UdsClientActor {
-    type Result = Result<(), UdsClientActorError>;
+    type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         trace!("UdsClientActor - {:?} - received new event", &msg.event);
@@ -97,7 +80,7 @@ impl Handler<EventMessage> for UdsClientActor {
         match &mut self.tx {
             Some(stream) => {
                 let event = serde_json::to_string(&msg.event).map_err(|err| {
-                    UdsClientActorError::SerdeError { message: format! {"{}", err} }
+                    TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 stream.write(event);
                 Ok(())
@@ -105,8 +88,8 @@ impl Handler<EventMessage> for UdsClientActor {
             None => {
                 warn!("Uds connection not available");
                 ctx.stop();
-                Err(UdsClientActorError::UdsSocketNotAvailableError {
-                    socket: self.socket_path.clone(),
+                Err(TornadoCommonActorError::ServerNotAvailableError {
+                    address: format!("{:?}", self.socket_path),
                 })
             }
         }

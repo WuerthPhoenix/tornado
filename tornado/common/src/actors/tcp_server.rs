@@ -12,6 +12,7 @@ pub async fn listen_to_tcp<
     F: 'static + FnMut(AsyncReadMessage<TcpStream>) -> () + Sized + Unpin,
 >(
     address: P,
+    message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
     let address = address.into();
@@ -23,6 +24,7 @@ pub async fn listen_to_tcp<
     })?);
 
     TcpServerActor::create(|ctx| {
+        ctx.set_mailbox_capacity(message_mailbox_capacity);
         ctx.add_message_stream(Box::leak(listener).incoming().map(|stream| AsyncReadMessage {
             stream: stream.expect("Cannot read from TCP server stream"),
         }));

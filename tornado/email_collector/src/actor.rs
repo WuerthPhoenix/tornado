@@ -4,8 +4,8 @@ use std::sync::Arc;
 use tokio::prelude::*;
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
-use tornado_common::actors::message::AsyncReadMessage;
-use tornado_common::actors::tcp_client::{EventMessage, TcpClientActor};
+use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
+use tornado_common::actors::tcp_client::TcpClientActor;
 
 pub struct EmailReaderActor {
     pub tpc_client_addr: Addr<TcpClientActor>,

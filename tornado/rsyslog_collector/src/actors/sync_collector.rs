@@ -2,8 +2,8 @@ use actix::prelude::*;
 use log::*;
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
-use tornado_common::actors::message::StringMessage;
-use tornado_common::actors::tcp_client::{EventMessage, TcpClientActor};
+use tornado_common::actors::message::{EventMessage, StringMessage};
+use tornado_common::actors::tcp_client::TcpClientActor;
 
 pub struct RsyslogCollectorActor {
     pub collector: JsonPayloadCollector,

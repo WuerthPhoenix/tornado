@@ -1,31 +1,14 @@
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use actix::prelude::*;
 use log::*;
 use serde_json;
 use std::io::Error;
 use std::net;
 use std::str::FromStr;
-use thiserror::Error;
 use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::time;
 use tokio_util::codec::{LinesCodec, LinesCodecError};
-use tornado_common_api;
-
-pub struct EventMessage {
-    pub event: tornado_common_api::Event,
-}
-
-impl Message for EventMessage {
-    type Result = Result<(), TcpClientActorError>;
-}
-
-#[derive(Error, Debug)]
-pub enum TcpClientActorError {
-    #[error("ServerNotAvailableError: cannot connect to server [{address}]")]
-    ServerNotAvailableError { address: String },
-    #[error("SerdeError: [{message}]")]
-    SerdeError { message: String },
-}
 
 pub struct TcpClientActor {
     restarted: bool,
@@ -91,7 +74,7 @@ impl actix::Supervised for TcpClientActor {
 impl actix::io::WriteHandler<LinesCodecError> for TcpClientActor {}
 
 impl Handler<EventMessage> for TcpClientActor {
-    type Result = Result<(), TcpClientActorError>;
+    type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         trace!("TcpClientActor - {:?} - received new event", &msg.event);
@@ -99,7 +82,7 @@ impl Handler<EventMessage> for TcpClientActor {
         match &mut self.tx {
             Some(stream) => {
                 let event = serde_json::to_string(&msg.event).map_err(|err| {
-                    TcpClientActorError::SerdeError { message: format! {"{}", err} }
+                    TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 stream.write(event);
                 Ok(())
@@ -107,7 +90,9 @@ impl Handler<EventMessage> for TcpClientActor {
             None => {
                 warn!("TCP connection not available");
                 ctx.stop();
-                Err(TcpClientActorError::ServerNotAvailableError { address: self.address.clone() })
+                Err(TornadoCommonActorError::ServerNotAvailableError {
+                    address: self.address.clone(),
+                })
             }
         }
     }
