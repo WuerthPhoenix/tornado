@@ -38,7 +38,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     info!("Starting web server at port {}", port);
 
-    match collector_config.webhook_collector.tornado_connection_channel.unwrap_or(TornadoConnectionChannel::TCP) {
+    match collector_config
+        .webhook_collector
+        .tornado_connection_channel
+        .unwrap_or(TornadoConnectionChannel::TCP)
+    {
         TornadoConnectionChannel::NatsStreaming => {
             info!("Connect to Tornado through NATS Streaming");
             let actor_address = NatsPublisherActor::start_new(

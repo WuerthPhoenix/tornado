@@ -82,7 +82,7 @@ file _'config-dir'/tornado.toml_:
       append any output to it.
 - **tornado.daemon**
     - **event_tcp_socket_enabled**: Whether to enable the TCP server for incoming events
-      (Optional. Valid values are `true` and `false`. Defaults to `false` if not provided).
+      (Optional. Valid values are `true` and `false`. Defaults to `true` if not provided).
     - **event_socket_ip**:  The IP address where Tornado will listen for incoming events 
     (Mandatory if `event_tcp_socket_enabled` is set to true).
     - **event_socket_port**:  The port where Tornado will listen for incoming events

@@ -4,10 +4,10 @@ use crate::TornadoError;
 use actix::prelude::*;
 use futures::StreamExt;
 use log::*;
-use serde_derive::{Deserialize, Serialize};
-use tornado_common_api::Event;
 use ratsio::stan_client::StanSubscribe;
 use ratsio::StartPosition;
+use serde_derive::{Deserialize, Serialize};
+use tornado_common_api::Event;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct StanSubscriberConfig {

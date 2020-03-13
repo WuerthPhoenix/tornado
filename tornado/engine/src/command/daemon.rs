@@ -154,7 +154,7 @@ pub async fn daemon(
         info!("NATS Streaming connection is disabled. Do not start it.")
     };
 
-    if daemon_config.event_tcp_socket_enabled.unwrap_or(false) {
+    if daemon_config.event_tcp_socket_enabled.unwrap_or(true) {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
         let tcp_address = format!(
