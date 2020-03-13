@@ -1,9 +1,9 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
-use tornado_common_logger::LoggerConfig;
-use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
+use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common_logger::LoggerConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT");

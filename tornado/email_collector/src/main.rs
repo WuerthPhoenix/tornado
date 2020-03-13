@@ -4,15 +4,15 @@ pub mod actor;
 pub mod config;
 
 use crate::actor::EmailReaderActor;
-use actix::{System, Actor, Addr};
-use log::*;
-use tornado_common::actors::uds_server::listen_to_uds_socket;
-use tornado_common_logger::setup_logger;
-use tornado_common::actors::TornadoConnectionChannel;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
-use tornado_common::actors::message::EventMessage;
 use actix::dev::ToEnvelope;
+use actix::{Actor, Addr, System};
+use log::*;
+use tornado_common::actors::message::EventMessage;
+use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
+use tornado_common::actors::uds_server::listen_to_uds_socket;
+use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common_logger::setup_logger;
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -41,7 +41,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     .expect("Nats Streaming config must be provided to connect to a Nats cluster"),
                 collector_config.email_collector.message_queue_size,
             )
-                .await?;
+            .await?;
             start(collector_config.email_collector.uds_path, actor_address)?;
         }
         TornadoConnectionChannel::TCP => {
@@ -68,40 +68,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-
 fn start<A: Actor + actix::Handler<EventMessage>>(
     uds_path: String,
     actor_address: Addr<A>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
-    where
-        <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage> {
-
+where
+    <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+{
     // Start Email collector
     let email_addr = EmailReaderActor::start_new(actor_address);
 
     // Open UDS socket
-    listen_to_uds_socket(
-        uds_path.clone(),
-        Some(0o770),
-        move |msg| {
-            email_addr.do_send(msg);
-        },
-    )
-        .and_then(|_| {
-            info!(
-                "Started UDS server at [{}]. Listening for incoming events",
-                uds_path
-            );
-            Ok(())
-        })
-        .unwrap_or_else(|err| {
-            error!(
-                "Cannot start UDS server at [{}]. Err: {}",
-                uds_path,
-                err
-            );
-            std::process::exit(1);
-        });
+    listen_to_uds_socket(uds_path.clone(), Some(0o770), move |msg| {
+        email_addr.do_send(msg);
+    })
+    .and_then(|_| {
+        info!("Started UDS server at [{}]. Listening for incoming events", uds_path);
+        Ok(())
+    })
+    .unwrap_or_else(|err| {
+        error!("Cannot start UDS server at [{}]. Err: {}", uds_path, err);
+        std::process::exit(1);
+    });
 
     Ok(())
 }

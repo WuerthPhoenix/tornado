@@ -4,10 +4,10 @@ use log::{info, trace};
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
+use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
-use tornado_common::actors::TornadoConnectionChannel;
-use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_ICINGA2_COLLECTOR_CONFIG_DIR_DEFAULT");
