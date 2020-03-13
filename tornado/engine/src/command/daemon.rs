@@ -18,6 +18,9 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
+pub const DEFAULT_TCP_CHANNEL_CONFIG: bool = true;
+pub const DEFAULT_NATS_CHANNEL_CONFIG: bool = false;
+
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
@@ -127,11 +130,12 @@ pub async fn daemon(
         dispatcher_addr: dispatcher_addr.clone(),
     });
 
-    if daemon_config.nats_streaming_enabled.unwrap_or(false) {
+    if daemon_config.nats_streaming_enabled.unwrap_or(DEFAULT_NATS_CHANNEL_CONFIG) {
         info!("NATS Streaming connection is enabled. Starting it...");
 
         let nats_config = daemon_config
-            .nats.clone()
+            .nats
+            .clone()
             .expect("Nats configuration must be provided to connect to the Nats cluster");
 
         let addresses = nats_config.base.addresses.clone();
@@ -154,16 +158,18 @@ pub async fn daemon(
         info!("NATS Streaming connection is disabled. Do not start it.")
     };
 
-    if daemon_config.event_tcp_socket_enabled.unwrap_or(true) {
+    if daemon_config.event_tcp_socket_enabled.unwrap_or(DEFAULT_TCP_CHANNEL_CONFIG) {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
         let tcp_address = format!(
             "{}:{}",
             daemon_config
-                .event_socket_ip.clone()
+                .event_socket_ip
+                .clone()
                 .expect("'event_socket_ip' must be provided to start the tornado TCP server"),
             daemon_config
-                .event_socket_port.clone()
+                .event_socket_port
+                .clone()
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();

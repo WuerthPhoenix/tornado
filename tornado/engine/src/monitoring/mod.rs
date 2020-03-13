@@ -1,9 +1,10 @@
+use crate::command::daemon::{DEFAULT_NATS_CHANNEL_CONFIG, DEFAULT_TCP_CHANNEL_CONFIG};
+use crate::config::DaemonCommandConfig;
+use actix_web::web::Data;
 use actix_web::web::Json;
 use actix_web::{web, HttpRequest, HttpResponse, Result, Scope};
 use chrono::prelude::Local;
 use serde_derive::{Deserialize, Serialize};
-use actix_web::web::{Data};
-use crate::config::DaemonCommandConfig;
 
 pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig) -> Scope {
     scope
@@ -41,10 +42,12 @@ async fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
 async fn daemon_config(
     daemon_command_config: Data<DaemonCommandConfig>,
 ) -> Result<Json<CommunicationChannelConfig>> {
-    let event_tcp_socket_enabled = daemon_command_config.event_tcp_socket_enabled.unwrap_or(false);
-    let nats_streaming_enabled = daemon_command_config.nats_streaming_enabled.unwrap_or(false);
+    let event_tcp_socket_enabled =
+        daemon_command_config.event_tcp_socket_enabled.unwrap_or(DEFAULT_TCP_CHANNEL_CONFIG);
+    let nats_streaming_enabled =
+        daemon_command_config.nats_streaming_enabled.unwrap_or(DEFAULT_NATS_CHANNEL_CONFIG);
 
-    Ok(Json(CommunicationChannelConfig { event_tcp_socket_enabled, nats_streaming_enabled}))
+    Ok(Json(CommunicationChannelConfig { event_tcp_socket_enabled, nats_streaming_enabled }))
 }
 
 #[derive(Serialize, Deserialize)]
@@ -62,7 +65,7 @@ mod test {
     #[actix_rt::test]
     async fn index_should_have_links_to_the_endpoints() {
         // Arrange
-        let daemon_config = DaemonCommandConfig{
+        let daemon_config = DaemonCommandConfig {
             event_tcp_socket_enabled: None,
             event_socket_ip: None,
             event_socket_port: None,
@@ -70,11 +73,12 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
-            message_queue_size: 0
+            message_queue_size: 0,
         };
-        let mut srv =
-            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"),daemon_config)))
-                .await;
+        let mut srv = test::init_service(
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring").to_request();
@@ -83,13 +87,15 @@ mod test {
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
         assert!(body.contains(r#"<a href="/monitoring/ping">"#));
-        assert!(body.contains(r#"<a href="/monitoring/communication_channel_config">Communication Channel Config</a>"#));
+        assert!(body.contains(
+            r#"<a href="/monitoring/communication_channel_config">Communication Channel Config</a>"#
+        ));
     }
 
     #[actix_rt::test]
     async fn ping_should_return_pong() {
         // Arrange
-        let daemon_config = DaemonCommandConfig{
+        let daemon_config = DaemonCommandConfig {
             event_tcp_socket_enabled: Some(true),
             event_socket_ip: None,
             event_socket_port: None,
@@ -97,11 +103,12 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
-            message_queue_size: 0
+            message_queue_size: 0,
         };
-        let mut srv =
-            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)))
-                .await;
+        let mut srv = test::init_service(
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+        )
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring/ping").to_request();
@@ -118,27 +125,29 @@ mod test {
     #[actix_rt::test]
     async fn communication_ch_should_return_correct_configs() {
         // Arrange
-        let daemon_config = DaemonCommandConfig{
+        let daemon_config = DaemonCommandConfig {
             event_tcp_socket_enabled: Some(true),
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: Some(false),
+            nats_streaming_enabled: None,
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
-            message_queue_size: 0
+            message_queue_size: 0,
         };
-        let mut srv =
-            test::init_service(App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)))
-                .await;
+        let mut srv = test::init_service(
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+        )
+        .await;
 
         // Act
-        let request = test::TestRequest::get().uri("/monitoring/communication_channel_config").to_request();
+        let request =
+            test::TestRequest::get().uri("/monitoring/communication_channel_config").to_request();
 
         // Assert
-        let channel_config: CommunicationChannelConfig = test::read_response_json(&mut srv, request).await;
+        let channel_config: CommunicationChannelConfig =
+            test::read_response_json(&mut srv, request).await;
         assert_eq!(channel_config.event_tcp_socket_enabled, true);
-        assert_eq!(channel_config.nats_streaming_enabled, false);
+        assert_eq!(channel_config.nats_streaming_enabled, DEFAULT_NATS_CHANNEL_CONFIG);
     }
-
 }
