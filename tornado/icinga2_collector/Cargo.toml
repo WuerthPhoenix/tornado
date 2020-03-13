@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.9"
+actix-rt = "1"
 chrono = "0.4"
 clap = "2.33"
 config_rs = { version = "0.9", package = "config" }
@@ -16,6 +17,7 @@ serde = "1.0"
 serde_derive = "1.0"
 serde_json = "1.0"
 thiserror = "1.0"
+tokio = { version = "0.2" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
@@ -23,6 +25,5 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats_streaming"] }
 
 [dev-dependencies]
-actix-rt = "1"
 actix-web = { version = "2" }
 maplit = "1.0"
