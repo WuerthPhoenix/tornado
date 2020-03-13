@@ -11,7 +11,7 @@ pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandCo
         .data(daemon_command_config)
         .service(web::resource("").route(web::get().to(index)))
         .service(web::resource("/ping").route(web::get().to(pong)))
-        .service(web::resource("/communication_channel_config").route(web::get().to(daemon_config)))
+        .service(web::resource("/communication_channel_config").route(web::get().to(communication_channel_config)))
 }
 
 async fn index(_req: HttpRequest) -> HttpResponse {
@@ -39,7 +39,7 @@ async fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
     Ok(Json(PongResponse { message: format!("pong - {}", created_ms) }))
 }
 
-async fn daemon_config(
+async fn communication_channel_config(
     daemon_command_config: Data<DaemonCommandConfig>,
 ) -> Result<Json<CommunicationChannelConfig>> {
     let event_tcp_socket_enabled =
