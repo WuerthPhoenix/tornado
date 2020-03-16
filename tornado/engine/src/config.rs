@@ -44,6 +44,22 @@ pub struct DaemonCommandConfig {
     pub message_queue_size: usize,
 }
 
+impl DaemonCommandConfig {
+    pub fn get_event_tcp_socket_enabled(&self) -> bool {
+        match self.event_tcp_socket_enabled {
+            Some(event_tcp_socket_enabled) => event_tcp_socket_enabled,
+            None => true,
+        }
+    }
+
+    pub fn get_nats_streaming_enabled(&self) -> bool {
+        match self.nats_streaming_enabled {
+            Some(nats_streaming_enabled) => nats_streaming_enabled,
+            None => false,
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct GlobalConfig {
     /// The logger configuration
@@ -195,5 +211,51 @@ mod test {
 
         // Assert
         assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+    }
+
+    #[test]
+    fn channel_config_getters_should_correctly_extract_value() {
+        // Arrange
+        let daemon_configs = DaemonCommandConfig {
+            event_tcp_socket_enabled: Some(false),
+            event_socket_ip: None,
+            event_socket_port: None,
+            nats_streaming_enabled: Some(true),
+            nats: None,
+            web_server_ip: "".to_string(),
+            web_server_port: 0,
+            message_queue_size: 0,
+        };
+
+        // Act
+        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
+        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+
+        // Assert
+        assert_eq!(event_tcp_socket_enabled, false);
+        assert_eq!(nats_streaming_enabled, true);
+    }
+
+    #[test]
+    fn channel_config_getters_should_correctly_handle_none() {
+        // Arrange
+        let daemon_configs = DaemonCommandConfig {
+            event_tcp_socket_enabled: None,
+            event_socket_ip: None,
+            event_socket_port: None,
+            nats_streaming_enabled: None,
+            nats: None,
+            web_server_ip: "".to_string(),
+            web_server_port: 0,
+            message_queue_size: 0,
+        };
+
+        // Act
+        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
+        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+
+        // Assert
+        assert_eq!(event_tcp_socket_enabled, true);
+        assert_eq!(nats_streaming_enabled, false);
     }
 }

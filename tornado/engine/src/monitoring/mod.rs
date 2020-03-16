@@ -1,4 +1,3 @@
-use crate::command::daemon::{DEFAULT_NATS_CHANNEL_CONFIG, DEFAULT_TCP_CHANNEL_CONFIG};
 use crate::config::DaemonCommandConfig;
 use actix_web::web::Data;
 use actix_web::web::Json;
@@ -11,7 +10,10 @@ pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandCo
         .data(daemon_command_config)
         .service(web::resource("").route(web::get().to(index)))
         .service(web::resource("/ping").route(web::get().to(pong)))
-        .service(web::resource("/communication_channel_config").route(web::get().to(communication_channel_config)))
+        .service(
+            web::resource("/communication_channel_config")
+                .route(web::get().to(communication_channel_config)),
+        )
 }
 
 async fn index(_req: HttpRequest) -> HttpResponse {
@@ -42,10 +44,8 @@ async fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
 async fn communication_channel_config(
     daemon_command_config: Data<DaemonCommandConfig>,
 ) -> Result<Json<CommunicationChannelConfig>> {
-    let event_tcp_socket_enabled =
-        daemon_command_config.event_tcp_socket_enabled.unwrap_or(DEFAULT_TCP_CHANNEL_CONFIG);
-    let nats_streaming_enabled =
-        daemon_command_config.nats_streaming_enabled.unwrap_or(DEFAULT_NATS_CHANNEL_CONFIG);
+    let event_tcp_socket_enabled = daemon_command_config.get_event_tcp_socket_enabled();
+    let nats_streaming_enabled = daemon_command_config.get_nats_streaming_enabled();
 
     Ok(Json(CommunicationChannelConfig { event_tcp_socket_enabled, nats_streaming_enabled }))
 }
@@ -148,6 +148,6 @@ mod test {
         let channel_config: CommunicationChannelConfig =
             test::read_response_json(&mut srv, request).await;
         assert_eq!(channel_config.event_tcp_socket_enabled, true);
-        assert_eq!(channel_config.nats_streaming_enabled, DEFAULT_NATS_CHANNEL_CONFIG);
+        assert_eq!(channel_config.nats_streaming_enabled, false);
     }
 }

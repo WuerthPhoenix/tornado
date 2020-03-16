@@ -18,9 +18,6 @@ use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
-pub const DEFAULT_TCP_CHANNEL_CONFIG: bool = true;
-pub const DEFAULT_NATS_CHANNEL_CONFIG: bool = false;
-
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
@@ -130,7 +127,7 @@ pub async fn daemon(
         dispatcher_addr: dispatcher_addr.clone(),
     });
 
-    if daemon_config.nats_streaming_enabled.unwrap_or(DEFAULT_NATS_CHANNEL_CONFIG) {
+    if daemon_config.get_nats_streaming_enabled() {
         info!("NATS Streaming connection is enabled. Starting it...");
 
         let nats_config = daemon_config
@@ -158,7 +155,7 @@ pub async fn daemon(
         info!("NATS Streaming connection is disabled. Do not start it.")
     };
 
-    if daemon_config.event_tcp_socket_enabled.unwrap_or(DEFAULT_TCP_CHANNEL_CONFIG) {
+    if daemon_config.get_event_tcp_socket_enabled() {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
         let tcp_address = format!(
