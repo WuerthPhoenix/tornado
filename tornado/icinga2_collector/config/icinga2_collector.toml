@@ -23,6 +23,7 @@ tornado_event_socket_ip = "127.0.0.1"
 # The Tornado port where outgoing events will be written
 tornado_event_socket_port = 4747
 
+
 [icinga2_collector.tornado_connection_channel]
 # The addresses of the  NATS streaming server
 nats_streaming.base.addresses = ["127.0.0.1:4222"]
@@ -31,7 +32,7 @@ nats_streaming.base.subject = "tornado.events"
 # The NATS streaming cluster id to connect to
 nats_streaming.base.cluster_id = "test-cluster"
 # The unique client id to connect to NATS streaming
-nats_streaming.base.client_id = "tornado_webhook_collector_01"
+nats_streaming.base.client_id = "tornado_icinga2_collector_01"
 
 
 [icinga2_collector.connection]
