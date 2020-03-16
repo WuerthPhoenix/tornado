@@ -51,29 +51,34 @@ file _'config-dir'/webhook_collector.toml_:
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **webhook_collector**:
-    - **tornado_connection_channel**: The channel to send events to Tornado. Valid values are:
-    `NatsStreaming` and `TCP`. When not provided, it defaults to `TCP`.
-    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+    - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
       This should be the address where the Tornado Engine listens for incoming events.
-      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
       This should be the port where the Tornado Engine listens for incoming events.
       This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
-    - **nats.base.addresses**: The addresses of the  NATS streaming server.
-      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
-    - **nats.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
-      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
-    - **nats.base.cluster_id**: The NATS streaming cluster id to connect to.
-      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
-    - **nats.base.client_id**: The unique client id to connect to NATS streaming.
-      This entry is mandatory if `tornado_connection_channel` is set to `NatsStreaming`.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
       resilient to errors or temporary unavailability of the Tornado connection channel.
       When the connection on the channel is restored, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
     - **server_bind_address**:  The IP to bind the HTTP server to.
     - **server_port**:  The port to be used by the HTTP Server.
-
+    - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries
+    required to configure a *NatsStreaming* or a *TCP* connection.
+    *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
+        - In case of connection using *NatsStreaming*, these entries are mandatory:
+            - **nats_streaming.base.addresses**: The addresses of the  NATS streaming server.
+            - **nats_streaming.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
+            - **nats_streaming.base.cluster_id**: The NATS streaming cluster id to connect to.
+            - **nats_streaming.base.client_id**: The unique client id to connect to NATS streaming.
+        - In case of connection using *TCP*, these entries are mandatory:
+            - **tcp_socket_ip**:  The IP address where outgoing events will be written.
+              This should be the address where the Tornado Engine listens for incoming events.
+            - **tcp_socket_port**:  The port where outgoing events will be written.
+              This should be the port where the Tornado Engine listens for incoming events.
    
 More information about the logger configuration
 [is available here](../../common/logger/README.md).
