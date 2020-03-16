@@ -46,17 +46,11 @@ pub struct DaemonCommandConfig {
 
 impl DaemonCommandConfig {
     pub fn get_event_tcp_socket_enabled(&self) -> bool {
-        match self.event_tcp_socket_enabled {
-            Some(event_tcp_socket_enabled) => event_tcp_socket_enabled,
-            None => true,
-        }
+        self.event_tcp_socket_enabled.unwrap_or(true)
     }
 
     pub fn get_nats_streaming_enabled(&self) -> bool {
-        match self.nats_streaming_enabled {
-            Some(nats_streaming_enabled) => nats_streaming_enabled,
-            None => false,
-        }
+        self.nats_streaming_enabled.unwrap_or(false)
     }
 }
 
