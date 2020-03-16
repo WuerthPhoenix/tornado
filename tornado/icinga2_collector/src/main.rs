@@ -4,10 +4,10 @@ use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
-use tornado_common::actors;
 use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
+use tornado_common::{actors, TornadoError};
 use tornado_common_logger::setup_logger;
 
 mod actor;
@@ -29,39 +29,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     info!("Starting Icinga2 Collector");
 
-    match collector_config
-        .icinga2_collector
-        .tornado_connection_channel
-        .unwrap_or(TornadoConnectionChannel::TCP)
+    //
+    // WARN:
+    // This 'if' block contains some duplicated code to allow temporary compatibility with the config file format of the previous release.
+    // It will be removed in the next release when the `tornado_connection_channel` will be mandatory.
+    //
+    if let (Some(tornado_event_socket_ip), Some(tornado_event_socket_port)) = (
+        collector_config.icinga2_collector.tornado_event_socket_ip.as_ref(),
+        collector_config.icinga2_collector.tornado_event_socket_port.as_ref(),
+    ) {
+        info!("Connect to Tornado through TCP socket");
+        // Start TcpWriter
+        let tornado_tcp_address =
+            format!("{}:{}", tornado_event_socket_ip, tornado_event_socket_port,);
+
+        let actor_address = TcpClientActor::start_new(
+            tornado_tcp_address,
+            collector_config.icinga2_collector.message_queue_size,
+        );
+        start(collector_config, streams_config, actor_address);
+    } else if let Some(connection_channel) =
+        &collector_config.icinga2_collector.tornado_connection_channel
     {
-        TornadoConnectionChannel::NatsStreaming => {
-            info!("Connect to Tornado through NATS Streaming");
-            let actor_address =
-                NatsPublisherActor::start_new(
-                    collector_config.icinga2_collector.nats.clone().expect(
-                        "Nats Streaming config must be provided to connect to a Nats cluster",
-                    ),
+        match connection_channel {
+            TornadoConnectionChannel::NatsStreaming { nats_streaming } => {
+                info!("Connect to Tornado through NATS Streaming");
+                let actor_address = NatsPublisherActor::start_new(
+                    nats_streaming,
                     collector_config.icinga2_collector.message_queue_size,
                 )
                 .await?;
-            start(collector_config, streams_config, actor_address);
-        }
-        TornadoConnectionChannel::TCP => {
-            info!("Connect to Tornado through TCP socket");
-            // Start TcpWriter
-            let tornado_tcp_address = format!(
-                    "{}:{}",
-                    collector_config.icinga2_collector.tornado_event_socket_ip.clone().expect("'tornado_event_socket_ip' must be provided to connect to a Tornado through TCP"),
-                    collector_config.icinga2_collector.tornado_event_socket_port.clone().expect("'tornado_event_socket_port' must be provided to connect to a Tornado through TCP"),
-                );
+                start(collector_config, streams_config, actor_address);
+            }
+            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+                info!("Connect to Tornado through TCP socket");
+                // Start TcpWriter
+                let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
 
-            let actor_address = TcpClientActor::start_new(
-                tornado_tcp_address,
-                collector_config.icinga2_collector.message_queue_size,
-            );
-            start(collector_config, streams_config, actor_address);
+                let actor_address = TcpClientActor::start_new(
+                    tornado_tcp_address,
+                    collector_config.icinga2_collector.message_queue_size,
+                );
+                start(collector_config, streams_config, actor_address);
+            }
+        };
+    } else {
+        return Err(TornadoError::ConfigurationError {
+            message: "A communication channel must be specified.".to_owned(),
         }
-    };
+        .into());
+    }
 
     tokio::signal::ctrl_c().await.unwrap();
     println!("Ctrl-C received, shutting down");

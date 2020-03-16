@@ -1,7 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
-use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common_logger::LoggerConfig;
 
@@ -30,8 +29,6 @@ pub struct EmailCollectorConfig {
     pub uds_path: String,
 
     pub tornado_connection_channel: Option<TornadoConnectionChannel>,
-
-    pub nats: Option<StanPublisherConfig>,
 
     pub tornado_event_socket_ip: Option<String>,
     pub tornado_event_socket_port: Option<u16>,
