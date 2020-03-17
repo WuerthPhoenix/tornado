@@ -1,8 +1,8 @@
 # Tornado Webhook Collector (executable)
 
 The Webhook Collector is a standalone HTTP server that listens for REST calls from a generic
-webhook, generates Tornado Events from the webhook JSON body, and publishes them on the
-Tornado Engine UDS socket.
+webhook, generates Tornado Events from the webhook JSON body, and sends them to the
+Tornado Engine.
 
 
 
@@ -15,7 +15,7 @@ On startup, it creates a dedicated REST endpoint for each configured webhook. Ca
 an endpoint are processed by the embedded
 [jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
-Tornado Engine's UDS socket.
+Tornado Engine through the configured connection type.
 
 For each webhook, you must provide three values in order to successfully create an endpoint:
 - _id_:  The webhook identifier. This will determine the path of the endpoint; it must be
@@ -51,17 +51,34 @@ file _'config-dir'/webhook_collector.toml_:
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **webhook_collector**:
-    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+    - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
       This should be the address where the Tornado Engine listens for incoming events.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
       This should be the port where the Tornado Engine listens for incoming events.
+      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
-      resilient to Tornado Engine crashes or temporary unavailability.
-      When Tornado restarts, all messages in the buffer will be sent.
+      resilient to errors or temporary unavailability of the Tornado connection channel.
+      When the connection on the channel is restored, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
     - **server_bind_address**:  The IP to bind the HTTP server to.
     - **server_port**:  The port to be used by the HTTP Server.
-
+    - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries
+    required to configure a *NatsStreaming* or a *TCP* connection.
+    *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
+        - In case of connection using *NatsStreaming*, these entries are mandatory:
+            - **nats_streaming.base.addresses**: The addresses of the  NATS streaming server.
+            - **nats_streaming.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
+            - **nats_streaming.base.cluster_id**: The NATS streaming cluster id to connect to.
+            - **nats_streaming.base.client_id**: The unique client id to connect to NATS streaming.
+        - In case of connection using *TCP*, these entries are mandatory:
+            - **tcp_socket_ip**:  The IP address where outgoing events will be written.
+              This should be the address where the Tornado Engine listens for incoming events.
+            - **tcp_socket_port**:  The port where outgoing events will be written.
+              This should be the port where the Tornado Engine listens for incoming events.
    
 More information about the logger configuration
 [is available here](../../common/logger/README.md).

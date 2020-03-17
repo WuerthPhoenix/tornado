@@ -3,6 +3,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use std::sync::Arc;
+use tornado_common::actors::nats_streaming_subscriber::StanSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
@@ -30,10 +31,27 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
-    pub event_socket_ip: String,
-    pub event_socket_port: u16,
+    pub event_tcp_socket_enabled: Option<bool>,
+    pub event_socket_ip: Option<String>,
+    pub event_socket_port: Option<u16>,
+
+    pub nats_streaming_enabled: Option<bool>,
+    pub nats: Option<StanSubscriberConfig>,
+
     pub web_server_ip: String,
     pub web_server_port: u16,
+
+    pub message_queue_size: usize,
+}
+
+impl DaemonCommandConfig {
+    pub fn get_event_tcp_socket_enabled(&self) -> bool {
+        self.event_tcp_socket_enabled.unwrap_or(true)
+    }
+
+    pub fn get_nats_streaming_enabled(&self) -> bool {
+        self.nats_streaming_enabled.unwrap_or(false)
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -187,5 +205,51 @@ mod test {
 
         // Assert
         assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+    }
+
+    #[test]
+    fn channel_config_getters_should_correctly_extract_value() {
+        // Arrange
+        let daemon_configs = DaemonCommandConfig {
+            event_tcp_socket_enabled: Some(false),
+            event_socket_ip: None,
+            event_socket_port: None,
+            nats_streaming_enabled: Some(true),
+            nats: None,
+            web_server_ip: "".to_string(),
+            web_server_port: 0,
+            message_queue_size: 0,
+        };
+
+        // Act
+        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
+        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+
+        // Assert
+        assert_eq!(event_tcp_socket_enabled, false);
+        assert_eq!(nats_streaming_enabled, true);
+    }
+
+    #[test]
+    fn channel_config_getters_should_correctly_handle_none() {
+        // Arrange
+        let daemon_configs = DaemonCommandConfig {
+            event_tcp_socket_enabled: None,
+            event_socket_ip: None,
+            event_socket_port: None,
+            nats_streaming_enabled: None,
+            nats: None,
+            web_server_ip: "".to_string(),
+            web_server_port: 0,
+            message_queue_size: 0,
+        };
+
+        // Act
+        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
+        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+
+        // Assert
+        assert_eq!(event_tcp_socket_enabled, true);
+        assert_eq!(nats_streaming_enabled, false);
     }
 }

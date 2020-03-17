@@ -1,22 +1,31 @@
+use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
-use tornado_common::actors::message::StringMessage;
-use tornado_common::actors::tcp_client::{EventMessage, TcpClientActor};
+use tornado_common::actors::message::{EventMessage, StringMessage};
 
-pub struct RsyslogCollectorActor {
+pub struct RsyslogCollectorActor<A: Actor + actix::Handler<EventMessage>>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
     pub collector: JsonPayloadCollector,
-    pub writer_addr: Addr<TcpClientActor>,
+    pub writer_addr: Addr<A>,
 }
 
-impl RsyslogCollectorActor {
-    pub fn new(writer_addr: Addr<TcpClientActor>) -> RsyslogCollectorActor {
+impl<A: Actor + actix::Handler<EventMessage>> RsyslogCollectorActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
+    pub fn new(writer_addr: Addr<A>) -> Self {
         RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
     }
 }
 
-impl Actor for RsyslogCollectorActor {
+impl<A: Actor + actix::Handler<EventMessage>> Actor for RsyslogCollectorActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
     type Context = SyncContext<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
@@ -24,7 +33,10 @@ impl Actor for RsyslogCollectorActor {
     }
 }
 
-impl Handler<StringMessage> for RsyslogCollectorActor {
+impl<A: Actor + actix::Handler<EventMessage>> Handler<StringMessage> for RsyslogCollectorActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
     type Result = ();
 
     fn handle(&mut self, msg: StringMessage, _: &mut SyncContext<Self>) -> Self::Result {

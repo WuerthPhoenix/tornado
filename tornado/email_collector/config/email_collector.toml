@@ -21,8 +21,23 @@ message_queue_size = 10000
 # The Unix Socket path where we will listen for incoming emails.
 uds_path = "./target/tornado-email.sock"
 
-# The Tornado IP address where outgoing events will be written
-tornado_event_socket_ip = "127.0.0.1"
 
+[email_collector.tornado_connection_channel]
+
+# In case of NatsStreaming Connection uncomment these entries; otherwise, comment them.
+# -----------------------------------
+# The addresses of the  NATS streaming server
+#nats_streaming.base.addresses = ["127.0.0.1:4222"]
+# The NATS streaming Subject where tornado will subscribe and listen for incoming events
+#nats_streaming.base.subject = "tornado.events"
+# The NATS streaming cluster id to connect to
+#nats_streaming.base.cluster_id = "test-cluster"
+# The unique client id to connect to NATS streaming
+#nats_streaming.base.client_id = "tornado_email_collector_01"
+
+# In case of TCP Connection uncomment these entries; otherwise, comment them.
+# -----------------------------------
+# The Tornado IP address where outgoing events will be written
+tcp_socket_ip = "127.0.0.1"
 # The Tornado port where outgoing events will be written
-tornado_event_socket_port = 4747
+tcp_socket_port = 4747

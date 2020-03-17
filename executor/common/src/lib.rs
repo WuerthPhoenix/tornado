@@ -1,4 +1,4 @@
-use failure_derive::Fail;
+use thiserror::Error;
 use tornado_common_api::Action;
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
@@ -8,14 +8,14 @@ pub trait Executor {
     fn execute(&mut self, action: Action) -> Result<(), ExecutorError>;
 }
 
-#[derive(Fail, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
-    #[fail(display = "ActionExecutionError: [{}]", message)]
+    #[error("ActionExecutionError: [{message}]")]
     ActionExecutionError { message: String },
-    #[fail(display = "MissingArgumentError: [{}]", message)]
+    #[error("MissingArgumentError: [{message}]")]
     MissingArgumentError { message: String },
-    #[fail(display = "UnknownArgumentError: [{}]", message)]
+    #[error("UnknownArgumentError: [{message}]")]
     UnknownArgumentError { message: String },
-    #[fail(display = "ConfigurationError: [{}]", message)]
+    #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
 }

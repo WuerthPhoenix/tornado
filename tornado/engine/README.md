@@ -18,6 +18,7 @@ This specific Tornado Engine executable is composed of the following components:
 - A JSON collector
 - The engine
 - The archive executor
+- The Elasticsearch Executor
 - The foreach executor
 - The Icinga2 executor
 - The logger executor
@@ -80,8 +81,26 @@ file _'config-dir'/tornado.toml_:
     - **file_output_path**:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **tornado.daemon**
-    - **event_socket_ip**:  The IP address where Tornado will listen for incoming events.
-    - **event_socket_port**:  The port where Tornado will listen for incoming events.
+    - **event_tcp_socket_enabled**: Whether to enable the TCP server for incoming events
+      (Optional. Valid values are `true` and `false`. Defaults to `true` if not provided).
+    - **event_socket_ip**:  The IP address where Tornado will listen for incoming events 
+    (Mandatory if `event_tcp_socket_enabled` is set to true).
+    - **event_socket_port**:  The port where Tornado will listen for incoming events
+    (Mandatory if `event_tcp_socket_enabled` is set to true).
+    - **nats_streaming_enabled**: Whether to connect to the NATS streaming server
+    (Optional. Valid values are `true` and `false`. Defaults to `false` if not provided).
+    - **nats.base.addresses**: Array of addresses of the NATS Streaming nodes of a cluster.
+    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.base.subject**:  The NATS streaming Subject where tornado will subscribe and listen for incoming events
+    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.base.cluster_id**: The NATS streaming cluster id to connect to
+    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.base.client_id**: The unique client id to connect to NATS streaming
+    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.queue_group**: The NATS queue group name for the tornado subscription
+    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.durable_name**: The unique NATS name for the durable tornado subscription
+    (Mandatory if `nats_streaming_enabled` is set to true).
     - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
       This is used, for example, by the monitoring endpoints.
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
@@ -102,9 +121,7 @@ always precede it.  An example of a full startup command is:
 ```bash
 ./tornado_engine 
     --config-dir=./tornado/engine/config \
-    daemon \
-    --event-socket-ip=0.0.0.0 \
-    --event-socket-port=12345
+    daemon 
 ```
 
 In this case, the CLI executes the __daemon__ command that starts the Engine with the
@@ -115,20 +132,57 @@ directory in order to build the processing tree.
 
 ### Structure and Configuration: The JSON Collector
 
-The [JSON collector](../../collector/json/README.md)
+The [JSON collector](../../collector/json/README.md) embedded in Tornado
 receives Events in JSON format and passes them to the matcher engine.
 
-The events to be delivered to the JSON collector are published on the TCP port
-configured by the command line parameters.
+There are two ways to receive an event; 
+the first one is through a direct TCP connection while the second one is using a Nats Streaming Cluster.
+These two channels are independent and can coexist.
 
-Example:
-```bash
-tornado engine --event-socket-ip=0.0.0.0 --event-socket-port=12345
+### Structure and Configuration: Enable the TCP event socket
+Enabling the TCP event socket server allows Tornado to receive events through a direct TCP connection.
+
+The TCP event socket configuration entries are available in the `tornado.toml` file.
+Example of the TCP socket section the `tornado.toml` file:
+```toml
+# Whether to enable the TCP listener
+event_tcp_socket_enabled = true
+# The IP address where we will listen for incoming events.
+event_socket_ip = "127.0.0.1"
+#The port where we will listen for incoming events.
+event_socket_port = 4747
 ```
 
-If not specified, Tornado will use the default value `127.0.0.1:4747`.
+In this case, Tornado will listen for incoming events on the TCP address `127.0.0.1:4747`.
 
 
+### Structure and Configuration: Enable the Nats Streaming connection
+Enabling the Nats Streaming connection allows Tornado to receive events published on a Nats cluster.
+
+The Nats Streaming configuration entries are available in the `tornado.toml` file.
+Example of the Nats Streaming section the `tornado.toml` file:
+```toml
+# Whether to connect to the NATS streaming server
+nats_streaming_enabled = true
+
+# The addresses of the  NATS streaming server
+nats.base.addresses = ["127.0.0.1:4222"]
+# The NATS streaming Subject where tornado will subscribe and listen for incoming events
+nats.base.subject = "tornado.events"
+# The NATS streaming cluster id to connect to
+nats.base.cluster_id = "test-cluster"
+# The unique client id to connect to NATS streaming
+nats.base.client_id = "tornado_01"
+# The NATS queue group name for the tornado subscription
+nats.queue_group = "tornado"
+# The unique NATS name for the durable tornado subscription
+nats.durable_name = "tornado"
+```
+
+In this case, Tornado will connect to the "test-cluster" and listen for incoming events published on "tornado.events" subject.
+
+At the moment, when the `nats_streaming_enabled` entry is set to `true`, it is required that the Nats Streaming
+cluster is available at Tornado startup.
 
 ### Structure and Configuration:  The Matching Engine
 

@@ -1,11 +1,11 @@
-use failure_derive::Fail;
+use thiserror::Error;
 
 pub mod actors;
 
-#[derive(Fail, Debug)]
+#[derive(Error, Debug)]
 pub enum TornadoError {
-    #[fail(display = "ActorCreationError: {}", message)]
+    #[error("ActorCreationError: {message}")]
     ActorCreationError { message: String },
-    #[fail(display = "ConfigurationError: {}", message)]
+    #[error("ConfigurationError: {message}")]
     ConfigurationError { message: String },
 }
