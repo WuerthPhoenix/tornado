@@ -11,7 +11,7 @@ pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub tpc_client_addr: Addr<A>,
+    pub client_addr: Addr<A>,
     pub email_collector: Arc<EmailEventCollector>,
 }
 
@@ -19,10 +19,10 @@ impl<A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub fn start_new(tpc_client_addr: Addr<A>) -> Addr<Self> {
+    pub fn start_new(client_addr: Addr<A>) -> Addr<Self> {
         EmailReaderActor::create(move |_ctx| EmailReaderActor {
             email_collector: Arc::new(EmailEventCollector::new()),
-            tpc_client_addr,
+            client_addr,
         })
     }
 }
@@ -46,7 +46,7 @@ where
     type Result = ();
 
     fn handle(&mut self, mut msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
-        let tcp = self.tpc_client_addr.clone();
+        let tcp = self.client_addr.clone();
         let collector = self.email_collector.clone();
         let fut = async move {
             let mut buf = Vec::new();
