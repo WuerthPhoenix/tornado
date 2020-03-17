@@ -41,18 +41,8 @@ The available startup parameters are:
   The default path is _/etc/tornado_icinga2_collector/_.
 - __streams_dir__:  The folder where the Stream configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/streams/_.
-- __tornado-event-socket-ip__:  The IP address where outgoing events will be written.
-  This should be the address where the Tornado Engine listens for incoming events.
-  The default is _127.0.0.1_.
-- __tornado-event-socket-port__:  The port where outgoing events will be written.
-  This should be the port where the Tornado Engine listens for incoming events.
-  The default is _4747_.
-- __message-queue-size__:  The in-memory buffer size for Events. It makes the application
-  resilient to Tornado Engine crashes or temporary unavailability.
-  When Tornado restarts, all messages in the buffer will be sent.
-  When the buffer is full, the collector will start discarding older messages first.
-  The default buffer size is `10000` messages.
 
+              
 In addition to these parameters, the following configuration entries are available in the 
 file _'config-dir'/icinga2_collector.toml_:
 - __logger__:
@@ -63,22 +53,40 @@ file _'config-dir'/icinga2_collector.toml_:
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **icinga2_collector**
-    - **tornado_event_socket_ip**:  The IP address where outgoing events will be written.
+    - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
       This should be the address where the Tornado Engine listens for incoming events.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **tornado_event_socket_port**:  The port where outgoing events will be written.
       This should be the port where the Tornado Engine listens for incoming events.
+      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
+      If present, this value overrides what specified by the `tornado_connection_channel` entry.
+      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
       resilient to Tornado Engine crashes or temporary unavailability.
       When Tornado restarts, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
-- **icinga2_collector.connection**
-    - __server_api_url__: The complete URL of the Icinga2 Event Stream API.
-    - __username__: The username used to connect to the Icinga2 APIs.
-    - __password__: The password used to connect to the Icinga2 APIs.
-    - __disable_ssl_verification__: A boolean value. If true, 
-    the client will not verify the Icinga2 SSL certificate.
-    - __sleep_ms_between_connection_attempts__: In case of connection failure, the number of
-      milliseconds to wait before a new connection attempt.
+    - **connection**
+        - __server_api_url__: The complete URL of the Icinga2 Event Stream API.
+        - __username__: The username used to connect to the Icinga2 APIs.
+        - __password__: The password used to connect to the Icinga2 APIs.
+        - __disable_ssl_verification__: A boolean value. If true, 
+        the client will not verify the Icinga2 SSL certificate.
+        - __sleep_ms_between_connection_attempts__: In case of connection failure, the number of
+          milliseconds to wait before a new connection attempt.
+    - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries
+    required to configure a *NatsStreaming* or a *TCP* connection.
+    *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
+        - In case of connection using *NatsStreaming*, these entries are mandatory:
+            - **nats_streaming.base.addresses**: The addresses of the  NATS streaming server.
+            - **nats_streaming.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
+            - **nats_streaming.base.cluster_id**: The NATS streaming cluster id to connect to.
+            - **nats_streaming.base.client_id**: The unique client id to connect to NATS streaming.
+        - In case of connection using *TCP*, these entries are mandatory:
+            - **tcp_socket_ip**:  The IP address where outgoing events will be written.
+              This should be the address where the Tornado Engine listens for incoming events.
+            - **tcp_socket_port**:  The port where outgoing events will be written.
+              This should be the port where the Tornado Engine listens for incoming events.
 
 More information about the logger configuration
 [is available here](../../common/logger/README.md).

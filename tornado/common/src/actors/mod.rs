@@ -1,6 +1,6 @@
-use crate::TornadoError;
+#[cfg(feature = "nats_streaming")]
+use crate::actors::nats_streaming_publisher::StanPublisherConfig;
 use serde_derive::{Deserialize, Serialize};
-use std::str::FromStr;
 
 pub mod json_event_reader;
 pub mod message;
@@ -17,22 +17,15 @@ pub mod uds_client;
 #[cfg(unix)]
 pub mod uds_server;
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Copy, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 pub enum TornadoConnectionChannel {
-    TCP,
-    NatsStreaming,
-}
-
-impl FromStr for TornadoConnectionChannel {
-    type Err = TornadoError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "tcp" => Ok(TornadoConnectionChannel::TCP),
-            "natsstreaming" => Ok(TornadoConnectionChannel::NatsStreaming),
-            _ => Err(TornadoError::ConfigurationError {
-                message: format!("Unknown Connection Channel [{}]", s),
-            }),
-        }
-    }
+    #[cfg(feature = "nats_streaming")]
+    NatsStreaming {
+        nats_streaming: StanPublisherConfig,
+    },
+    TCP {
+        tcp_socket_ip: String,
+        tcp_socket_port: u16,
+    },
 }

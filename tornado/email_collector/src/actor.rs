@@ -1,3 +1,4 @@
+use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
@@ -5,23 +6,31 @@ use tokio::prelude::*;
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
-use tornado_common::actors::tcp_client::TcpClientActor;
 
-pub struct EmailReaderActor {
-    pub tpc_client_addr: Addr<TcpClientActor>,
+pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
+    pub client_addr: Addr<A>,
     pub email_collector: Arc<EmailEventCollector>,
 }
 
-impl EmailReaderActor {
-    pub fn start_new(tpc_client_addr: Addr<TcpClientActor>) -> Addr<EmailReaderActor> {
+impl<A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
+    pub fn start_new(client_addr: Addr<A>) -> Addr<Self> {
         EmailReaderActor::create(move |_ctx| EmailReaderActor {
             email_collector: Arc::new(EmailEventCollector::new()),
-            tpc_client_addr,
+            client_addr,
         })
     }
 }
 
-impl Actor for EmailReaderActor {
+impl<A: Actor + actix::Handler<EventMessage>> Actor for EmailReaderActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
@@ -29,11 +38,15 @@ impl Actor for EmailReaderActor {
     }
 }
 
-impl<R: AsyncRead + 'static + Unpin> Handler<AsyncReadMessage<R>> for EmailReaderActor {
+impl<A: Actor + actix::Handler<EventMessage>, R: AsyncRead + 'static + Unpin>
+    Handler<AsyncReadMessage<R>> for EmailReaderActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
+{
     type Result = ();
 
     fn handle(&mut self, mut msg: AsyncReadMessage<R>, _ctx: &mut Context<Self>) -> Self::Result {
-        let tcp = self.tpc_client_addr.clone();
+        let tcp = self.client_addr.clone();
         let collector = self.email_collector.clone();
         let fut = async move {
             let mut buf = Vec::new();

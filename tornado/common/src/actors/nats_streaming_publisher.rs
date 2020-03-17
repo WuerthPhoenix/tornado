@@ -15,12 +15,12 @@ pub struct NatsPublisherActor {
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StanPublisherConfig {
     pub base: StanBaseConfig,
 }
 
-#[derive(Deserialize, Serialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct StanBaseConfig {
     pub addresses: Vec<String>,
     pub subject: String,
@@ -47,7 +47,7 @@ impl StanBaseConfig {
 
 impl NatsPublisherActor {
     pub async fn start_new(
-        config: StanPublisherConfig,
+        config: &StanPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         let client = config.base.new_client().await?;

@@ -24,7 +24,7 @@ event_socket_port = 4747
 
 
 # Whether to connect to the NATS streaming server
-nats_streaming_enabled = true
+nats_streaming_enabled = false
 
 # The addresses of the  NATS streaming server
 nats.base.addresses = ["127.0.0.1:4222"]

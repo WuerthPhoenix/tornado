@@ -4,7 +4,6 @@ use log::*;
 use serde_derive::{Deserialize, Serialize};
 use std::fs;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
-use tornado_common::actors::nats_streaming_publisher::StanPublisherConfig;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_logger::LoggerConfig;
@@ -37,8 +36,6 @@ pub struct WebhookCollectorConfig {
     pub message_queue_size: usize,
 
     pub tornado_connection_channel: Option<TornadoConnectionChannel>,
-
-    pub nats: Option<StanPublisherConfig>,
 
     pub tornado_event_socket_ip: Option<String>,
     pub tornado_event_socket_port: Option<u16>,
