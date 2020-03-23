@@ -12,7 +12,7 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::nats_streaming_subscriber::subscribe_to_nats_streaming;
+use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_matcher::dispatcher::Dispatcher;
@@ -135,11 +135,11 @@ pub async fn daemon(
             .clone()
             .expect("Nats configuration must be provided to connect to the Nats cluster");
 
-        let addresses = nats_config.base.addresses.clone();
-        let subject = nats_config.base.subject.clone();
+        let addresses = nats_config.client.addresses.clone();
+        let subject = nats_config.client.subject.clone();
 
         let matcher_addr_clone = matcher_addr.clone();
-        subscribe_to_nats_streaming(nats_config, daemon_config.message_queue_size, move |event| {
+        subscribe_to_nats(nats_config, daemon_config.message_queue_size, move |event| {
             matcher_addr_clone.do_send(EventMessage { event });
             Ok(())
         }).await

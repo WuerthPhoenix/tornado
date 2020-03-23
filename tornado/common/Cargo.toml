@@ -18,15 +18,17 @@ tornado_collector_common = { path = "../../collector/common", version = "0.0.1" 
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
-ratsio = { version = "0.3.0-alpha.1", optional = true }
+# Feature nats
+rants = { version = "0.4", optional = true }
 
 [dev-dependencies]
 actix-rt = "1"
 port_check = "0.1.3"
 rand = "0.7"
+testcontainers = "0.8.1"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 
 [features]
 default = []
 
-nats_streaming = ["ratsio"]
+nats = ["rants"]

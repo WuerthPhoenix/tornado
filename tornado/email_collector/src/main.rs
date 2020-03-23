@@ -8,7 +8,7 @@ use actix::dev::ToEnvelope;
 use actix::{Actor, Addr, System};
 use log::*;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::uds_server::listen_to_uds_socket;
 use tornado_common::actors::TornadoConnectionChannel;

@@ -9,7 +9,7 @@ use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;

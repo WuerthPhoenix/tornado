@@ -7,7 +7,7 @@ use log::*;
 use std::io::{stdin, BufRead};
 use std::thread;
 use tornado_common::actors::message::{EventMessage, StringMessage};
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;

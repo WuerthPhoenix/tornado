@@ -3,7 +3,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use std::sync::Arc;
-use tornado_common::actors::nats_streaming_subscriber::StanSubscriberConfig;
+use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
@@ -36,7 +36,7 @@ pub struct DaemonCommandConfig {
     pub event_socket_port: Option<u16>,
 
     pub nats_streaming_enabled: Option<bool>,
-    pub nats: Option<StanSubscriberConfig>,
+    pub nats: Option<NatsSubscriberConfig>,
 
     pub web_server_ip: String,
     pub web_server_port: u16,

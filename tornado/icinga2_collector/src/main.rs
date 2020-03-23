@@ -4,7 +4,7 @@ use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use tornado_collector_jmespath::JMESPathEventCollector;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::{actors, TornadoError};
