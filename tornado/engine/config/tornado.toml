@@ -23,21 +23,13 @@ event_socket_ip = "0.0.0.0"
 event_socket_port = 4747
 
 
-# Whether to connect to the NATS streaming server
-nats_streaming_enabled = false
+# Whether to connect to the NATS server
+nats_enabled = false
 
 # The addresses of the  NATS streaming server
-nats.base.addresses = ["127.0.0.1:4222"]
+nats.client.addresses = ["127.0.0.1:4222"]
 # The NATS streaming Subject where tornado will subscribe and listen for incoming events
-nats.base.subject = "tornado.events"
-# The NATS streaming cluster id to connect to
-nats.base.cluster_id = "test-cluster"
-# The unique client id to connect to NATS streaming
-nats.base.client_id = "tornado_01"
-# The NATS queue group name for the tornado subscription
-nats.queue_group = "tornado"
-# The unique NATS name for the durable tornado subscription
-nats.durable_name = "tornado"
+nats.subject = "tornado.events"
 
 # The IP address where the Tornado Web Server will listen for HTTP requests.
 # This is used, for example, by the monitoring endpoints.

@@ -136,7 +136,7 @@ pub async fn daemon(
             .expect("Nats configuration must be provided to connect to the Nats cluster");
 
         let addresses = nats_config.client.addresses.clone();
-        let subject = nats_config.client.subject.clone();
+        let subject = nats_config.subject.clone();
 
         let matcher_addr_clone = matcher_addr.clone();
         subscribe_to_nats(nats_config, daemon_config.message_queue_size, move |event| {

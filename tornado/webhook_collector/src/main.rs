@@ -62,7 +62,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         collector_config.webhook_collector.tornado_connection_channel
     {
         match connection_channel {
-            TornadoConnectionChannel::NatsStreaming { nats_streaming } => {
+            TornadoConnectionChannel::Nats { nats: nats_streaming } => {
                 info!("Connect to Tornado through NATS Streaming");
                 let actor_address = NatsPublisherActor::start_new(
                     &nats_streaming,

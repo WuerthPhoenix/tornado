@@ -94,10 +94,10 @@ file _'config-dir'/rsyslog_collector.toml_:
     required to configure a *NatsStreaming* or a *TCP* connection.
     *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
         - In case of connection using *NatsStreaming*, these entries are mandatory:
-            - **nats_streaming.base.addresses**: The addresses of the  NATS streaming server.
-            - **nats_streaming.base.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
-            - **nats_streaming.base.cluster_id**: The NATS streaming cluster id to connect to.
-            - **nats_streaming.base.client_id**: The unique client id to connect to NATS streaming.
+            - **nats.client.addresses**: The addresses of the  NATS streaming server.
+            - **nats.client.subject**: The NATS streaming Subject where tornado will subscribe and listen for incoming events.
+            - **nats.client.cluster_id**: The NATS streaming cluster id to connect to.
+            - **nats.client.client_id**: The unique client id to connect to NATS streaming.
         - In case of connection using *TCP*, these entries are mandatory:
             - **tcp_socket_ip**:  The IP address where outgoing events will be written.
               This should be the address where the Tornado Engine listens for incoming events.
