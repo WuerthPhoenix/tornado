@@ -127,8 +127,8 @@ pub async fn daemon(
         dispatcher_addr: dispatcher_addr.clone(),
     });
 
-    if daemon_config.get_nats_streaming_enabled() {
-        info!("NATS Streaming connection is enabled. Starting it...");
+    if daemon_config.is_nats_enabled() {
+        info!("NATS connection is enabled. Starting it...");
 
         let nats_config = daemon_config
             .nats
@@ -142,20 +142,27 @@ pub async fn daemon(
         subscribe_to_nats(nats_config, daemon_config.message_queue_size, move |event| {
             matcher_addr_clone.do_send(EventMessage { event });
             Ok(())
-        }).await
-            .and_then(|_| {
-                info!("NATS Streaming connection started at [{:#?}]. Listening for incoming events on subject [{}]", addresses, subject);
-                Ok(())
-            })
-            .unwrap_or_else(|err| {
-                error!("NATS Streaming connection failed started at [{:#?}], subject [{}]. Err: {}", addresses, subject, err);
-                std::process::exit(1);
-            });
+        })
+        .await
+        .and_then(|_| {
+            info!(
+                "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
+                addresses, subject
+            );
+            Ok(())
+        })
+        .unwrap_or_else(|err| {
+            error!(
+                "NATS connection failed started at [{:#?}], subject [{}]. Err: {}",
+                addresses, subject, err
+            );
+            std::process::exit(1);
+        });
     } else {
-        info!("NATS Streaming connection is disabled. Do not start it.")
+        info!("NATS connection is disabled. Do not start it.")
     };
 
-    if daemon_config.get_event_tcp_socket_enabled() {
+    if daemon_config.is_event_tcp_socket_enabled() {
         info!("TCP server is enabled. Starting it...");
         // Start Event Json TCP listener
         let tcp_address = format!(

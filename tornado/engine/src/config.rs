@@ -45,11 +45,11 @@ pub struct DaemonCommandConfig {
 }
 
 impl DaemonCommandConfig {
-    pub fn get_event_tcp_socket_enabled(&self) -> bool {
+    pub fn is_event_tcp_socket_enabled(&self) -> bool {
         self.event_tcp_socket_enabled.unwrap_or(true)
     }
 
-    pub fn get_nats_streaming_enabled(&self) -> bool {
+    pub fn is_nats_enabled(&self) -> bool {
         self.nats_enabled.unwrap_or(false)
     }
 }
@@ -222,12 +222,12 @@ mod test {
         };
 
         // Act
-        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
-        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+        let event_tcp_socket_enabled = daemon_configs.is_event_tcp_socket_enabled();
+        let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
         assert_eq!(event_tcp_socket_enabled, false);
-        assert_eq!(nats_streaming_enabled, true);
+        assert_eq!(nats_enabled, true);
     }
 
     #[test]
@@ -245,11 +245,11 @@ mod test {
         };
 
         // Act
-        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
-        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+        let event_tcp_socket_enabled = daemon_configs.is_event_tcp_socket_enabled();
+        let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
         assert_eq!(event_tcp_socket_enabled, true);
-        assert_eq!(nats_streaming_enabled, false);
+        assert_eq!(nats_enabled, false);
     }
 }

@@ -52,10 +52,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         &collector_config.icinga2_collector.tornado_connection_channel
     {
         match connection_channel {
-            TornadoConnectionChannel::Nats { nats: nats_streaming } => {
-                info!("Connect to Tornado through NATS Streaming");
+            TornadoConnectionChannel::Nats { nats } => {
+                info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    nats_streaming,
+                    nats,
                     collector_config.icinga2_collector.message_queue_size,
                 )
                 .await?;
