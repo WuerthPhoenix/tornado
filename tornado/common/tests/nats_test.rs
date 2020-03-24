@@ -56,13 +56,12 @@ async fn should_publish_to_nats() {
     .unwrap();
 
     let publisher = NatsPublisherActor::start_new(
-        &NatsPublisherConfig {
+        NatsPublisherConfig {
             client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
             subject: subject.to_owned(),
         },
         10,
     )
-    .await
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 

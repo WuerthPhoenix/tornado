@@ -6,10 +6,14 @@ use rants::{Address, Client, Connect, Subject};
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::io::Error;
+use tokio::time;
+use std::sync::Arc;
 
 pub struct NatsPublisherActor {
-    subject: Subject,
-    client: Client,
+    restarted: bool,
+    subject: Arc<Subject>,
+    client_config: Arc<NatsClientConfig>,
+    client: Option<Client>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -43,52 +47,98 @@ impl NatsClientConfig {
 }
 
 impl NatsPublisherActor {
-    pub async fn start_new(
-        config: &NatsPublisherConfig,
+    pub fn start_new(
+        config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-        let subject = config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
+        let subject = Arc::new(config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
             message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
-        })?;
-
-        let client = config.client.new_client().await?;
-        client.connect().await;
+        })?);
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { subject, client }
+            NatsPublisherActor { restarted: false, subject, client_config: Arc::new(config.client), client: None }
         }))
     }
 }
 
 impl Actor for NatsPublisherActor {
     type Context = Context<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        info!("NatsPublisherActor started. Attempting connection to server [{:?}]", &self.client_config.addresses);
+
+        let mut delay_until = time::Instant::now();
+        if self.restarted {
+            delay_until += time::Duration::new(1, 0)
+        }
+
+        let client_config = self.client_config.clone();
+
+        ctx.wait(
+            async move {
+                match client_config.new_client().await {
+                    Ok(client) => {
+                        client.connect().await;
+                        Ok(client)
+                    },
+                    Err(e) => Err(e)
+                }
+            }
+                .into_actor(self)
+                .map(move |client, act, ctx| match client {
+                    Ok(client) => {
+                        info!("NatsPublisherActor connected to server [{:?}]", &act.client_config.addresses);
+                        act.client = Some(client);
+                    }
+                    Err(err) => {
+                        warn!("NatsPublisherActor connection failed. Err: {}", err);
+                        ctx.stop();
+                    }
+                }),
+        );
+    }
 }
 
 impl actix::Supervised for NatsPublisherActor {
     fn restarting(&mut self, _ctx: &mut Context<NatsPublisherActor>) {
         info!("Restarting NatsPublisherActor");
+        self.restarted = true;
     }
 }
 
 impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
 
         let event = serde_json::to_vec(&msg.event)
             .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
 
-        let client = self.client.clone();
-        let subject = self.subject.clone();
-        actix::spawn(async move {
-            debug!("NatsPublisherActor - Publish event to NATS");
-            if let Err(e) = client.publish(&subject, &event).await {
-                error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
-            };
-        });
+        match &mut self.client {
+            Some(client) => {
 
-        Ok(())
+                let client = client.clone();
+                let subject = self.subject.clone();
+                let address = ctx.address();
+                actix::spawn(async move {
+                    debug!("NatsPublisherActor - Publish event to NATS");
+                    if let Err(e) = client.publish(&subject, &event).await {
+                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
+                    };
+                });
+                Ok(())
+            }
+            None => {
+                warn!("NatsPublisherActor - Connection not available. Restart Actor.");
+                ctx.address().do_send(msg);
+                ctx.stop();
+                Err(TornadoCommonActorError::ServerNotAvailableError {
+                    address: format!("{:?}", self.client_config.addresses),
+                })
+            }
+        }
+
     }
 }

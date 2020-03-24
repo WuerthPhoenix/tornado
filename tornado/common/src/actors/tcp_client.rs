@@ -89,6 +89,7 @@ impl Handler<EventMessage> for TcpClientActor {
             }
             None => {
                 warn!("TCP connection not available");
+                ctx.address().do_send(msg);
                 ctx.stop();
                 Err(TornadoCommonActorError::ServerNotAvailableError {
                     address: self.address.clone(),
