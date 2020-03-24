@@ -44,16 +44,16 @@ async fn pong(_req: HttpRequest) -> Result<Json<PongResponse>> {
 async fn communication_channel_config(
     daemon_command_config: Data<DaemonCommandConfig>,
 ) -> Result<Json<CommunicationChannelConfig>> {
-    let event_tcp_socket_enabled = daemon_command_config.get_event_tcp_socket_enabled();
-    let nats_streaming_enabled = daemon_command_config.get_nats_streaming_enabled();
+    let event_tcp_socket_enabled = daemon_command_config.is_event_tcp_socket_enabled();
+    let nats_enabled = daemon_command_config.is_nats_enabled();
 
-    Ok(Json(CommunicationChannelConfig { event_tcp_socket_enabled, nats_streaming_enabled }))
+    Ok(Json(CommunicationChannelConfig { event_tcp_socket_enabled, nats_enabled }))
 }
 
 #[derive(Serialize, Deserialize)]
 pub struct CommunicationChannelConfig {
     pub event_tcp_socket_enabled: bool,
-    pub nats_streaming_enabled: bool,
+    pub nats_enabled: bool,
 }
 
 #[cfg(test)]
@@ -69,7 +69,7 @@ mod test {
             event_tcp_socket_enabled: None,
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: None,
+            nats_enabled: None,
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
@@ -99,7 +99,7 @@ mod test {
             event_tcp_socket_enabled: Some(true),
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: Some(false),
+            nats_enabled: Some(false),
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
@@ -129,7 +129,7 @@ mod test {
             event_tcp_socket_enabled: Some(true),
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: None,
+            nats_enabled: None,
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
@@ -148,6 +148,6 @@ mod test {
         let channel_config: CommunicationChannelConfig =
             test::read_response_json(&mut srv, request).await;
         assert_eq!(channel_config.event_tcp_socket_enabled, true);
-        assert_eq!(channel_config.nats_streaming_enabled, false);
+        assert_eq!(channel_config.nats_enabled, false);
     }
 }

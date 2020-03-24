@@ -21,8 +21,8 @@ pub mod uds_server;
 #[serde(untagged)]
 pub enum TornadoConnectionChannel {
     #[cfg(feature = "nats")]
-    NatsStreaming {
-        nats_streaming: NatsPublisherConfig,
+    Nats {
+        nats: NatsPublisherConfig,
     },
     TCP {
         tcp_socket_ip: String,

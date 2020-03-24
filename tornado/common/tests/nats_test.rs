@@ -15,14 +15,13 @@ use tornado_common::actors::nats_publisher::{
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
 
-fn new_nats_docker_container<'a>(
-    docker: &'a clients::Cli,
-) -> (Container<'a, clients::Cli, GenericImage>, String) {
+fn new_nats_docker_container(
+    docker: &clients::Cli,
+) -> (Container<'_, clients::Cli, GenericImage>, String) {
     let node = docker.run(
         images::generic::GenericImage::new("nats:2.1-alpine")
             .with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")),
     );
-
     let nats_address = format!("127.0.0.1:{}", node.get_host_port(4222).unwrap());
     (node, nats_address)
 }

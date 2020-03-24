@@ -87,20 +87,12 @@ file _'config-dir'/tornado.toml_:
     (Mandatory if `event_tcp_socket_enabled` is set to true).
     - **event_socket_port**:  The port where Tornado will listen for incoming events
     (Mandatory if `event_tcp_socket_enabled` is set to true).
-    - **nats_streaming_enabled**: Whether to connect to the NATS streaming server
+    - **nats_enabled**: Whether to connect to the NATS server
     (Optional. Valid values are `true` and `false`. Defaults to `false` if not provided).
-    - **nats.base.addresses**: Array of addresses of the NATS Streaming nodes of a cluster.
-    (Mandatory if `nats_streaming_enabled` is set to true).
-    - **nats.base.subject**:  The NATS streaming Subject where tornado will subscribe and listen for incoming events
-    (Mandatory if `nats_streaming_enabled` is set to true).
-    - **nats.base.cluster_id**: The NATS streaming cluster id to connect to
-    (Mandatory if `nats_streaming_enabled` is set to true).
-    - **nats.base.client_id**: The unique client id to connect to NATS streaming
-    (Mandatory if `nats_streaming_enabled` is set to true).
-    - **nats.queue_group**: The NATS queue group name for the tornado subscription
-    (Mandatory if `nats_streaming_enabled` is set to true).
-    - **nats.durable_name**: The unique NATS name for the durable tornado subscription
-    (Mandatory if `nats_streaming_enabled` is set to true).
+    - **nats.client.addresses**: Array of addresses of the NATS nodes of a cluster.
+    (Mandatory if `nats_enabled` is set to true).
+    - **nats.subject**:  The NATS Subject where tornado will subscribe and listen for incoming events
+    (Mandatory if `nats_enabled` is set to true).
     - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
       This is used, for example, by the monitoring endpoints.
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
@@ -136,7 +128,7 @@ The [JSON collector](../../collector/json/README.md) embedded in Tornado
 receives Events in JSON format and passes them to the matcher engine.
 
 There are two ways to receive an event; 
-the first one is through a direct TCP connection while the second one is using a Nats Streaming Cluster.
+the first one is through a direct TCP connection while the second one is using a Nats Cluster.
 These two channels are independent and can coexist.
 
 ### Structure and Configuration: Enable the TCP event socket
@@ -156,33 +148,25 @@ event_socket_port = 4747
 In this case, Tornado will listen for incoming events on the TCP address `127.0.0.1:4747`.
 
 
-### Structure and Configuration: Enable the Nats Streaming connection
-Enabling the Nats Streaming connection allows Tornado to receive events published on a Nats cluster.
+### Structure and Configuration: Enable the Nats connection
+Enabling the Nats connection allows Tornado to receive events published on a Nats cluster.
 
-The Nats Streaming configuration entries are available in the `tornado.toml` file.
-Example of the Nats Streaming section the `tornado.toml` file:
+The Nats configuration entries are available in the `tornado.toml` file.
+Example of the Nats section the `tornado.toml` file:
 ```toml
-# Whether to connect to the NATS streaming server
-nats_streaming_enabled = true
+# Whether to connect to the NATS server
+nats_enabled = true
 
-# The addresses of the  NATS streaming server
-nats.base.addresses = ["127.0.0.1:4222"]
-# The NATS streaming Subject where tornado will subscribe and listen for incoming events
-nats.base.subject = "tornado.events"
-# The NATS streaming cluster id to connect to
-nats.base.cluster_id = "test-cluster"
-# The unique client id to connect to NATS streaming
-nats.base.client_id = "tornado_01"
-# The NATS queue group name for the tornado subscription
-nats.queue_group = "tornado"
-# The unique NATS name for the durable tornado subscription
-nats.durable_name = "tornado"
+# The addresses of the NATS server
+nats.client.addresses = ["127.0.0.1:4222"]
+# The NATS Subject where tornado will subscribe and listen for incoming events
+nats.subject = "tornado.events"
 ```
 
 In this case, Tornado will connect to the "test-cluster" and listen for incoming events published on "tornado.events" subject.
 
-At the moment, when the `nats_streaming_enabled` entry is set to `true`, it is required that the Nats Streaming
-cluster is available at Tornado startup.
+At the moment, when the `nats_enabled` entry is set to `true`, it is required that the Nats
+server is available at Tornado startup.
 
 ### Structure and Configuration:  The Matching Engine
 
