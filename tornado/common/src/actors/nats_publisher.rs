@@ -1,4 +1,4 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError};
+use crate::actors::message::{EventMessage, TornadoCommonActorError, ResetActorMessage};
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
@@ -74,9 +74,16 @@ impl Actor for NatsPublisherActor {
         }
 
         let client_config = self.client_config.clone();
+        let current_client = self.client.clone();
 
         ctx.wait(
             async move {
+
+                if let Some(client) = current_client {
+                    client.disconnect().await;
+                }
+
+                time::delay_until(delay_until).await;
                 match client_config.new_client().await {
                     Ok(client) => {
                         client.connect().await;
@@ -92,6 +99,7 @@ impl Actor for NatsPublisherActor {
                         act.client = Some(client);
                     }
                     Err(err) => {
+                        act.client = None;
                         warn!("NatsPublisherActor connection failed. Err: {}", err);
                         ctx.stop();
                     }
@@ -125,20 +133,37 @@ impl Handler<EventMessage> for NatsPublisherActor {
                 actix::spawn(async move {
                     debug!("NatsPublisherActor - Publish event to NATS");
                     if let Err(e) = client.publish(&subject, &event).await {
-                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
+                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
+                        match e {
+                            rants::error::Error::NotConnected => {
+                                warn!("NatsPublisherActor - Connection not available. Resending message.");
+                                address.do_send(ResetActorMessage{ payload: Some(msg)});
+                            }
+                            _ => ()
+                        }
                     };
                 });
                 Ok(())
             }
             None => {
                 warn!("NatsPublisherActor - Connection not available. Restart Actor.");
-                ctx.address().do_send(msg);
-                ctx.stop();
-                Err(TornadoCommonActorError::ServerNotAvailableError {
-                    address: format!("{:?}", self.client_config.addresses),
-                })
+                ctx.address().do_send(ResetActorMessage{ payload: Some(msg)});
+                Ok(())
             }
         }
 
+    }
+}
+
+impl Handler<ResetActorMessage<Option<EventMessage>>> for NatsPublisherActor {
+    type Result = Result<(), TornadoCommonActorError>;
+
+    fn handle(&mut self, msg: ResetActorMessage<Option<EventMessage>>, ctx: &mut Context<Self>) -> Self::Result {
+        trace!("NatsPublisherActor - Received reset actor message");
+        ctx.stop();
+        if let Some(message) = msg.payload {
+            ctx.address().do_send(message);
+        };
+        Ok(())
     }
 }
