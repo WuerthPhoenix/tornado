@@ -4,24 +4,21 @@
 // This tests require docker on the host machine
 //
 
-use std::sync::{Arc, Mutex};
+use log::*;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
 use tokio::time;
-use tokio::io;
 use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::nats_publisher::{
     NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
-use log::*;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
-    port: Option<u16>
+    port: Option<u16>,
 ) -> (Container<'_, clients::Cli, GenericImage>, String) {
-
     let port = port.unwrap_or_else(|| port_check::free_local_port().unwrap());
 
     let node = docker.run_with_options(
@@ -37,15 +34,13 @@ fn new_nats_docker_container(
 async fn should_publish_to_nats() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_address) = new_nats_docker_container(&docker,None);
+    let (_node, nats_address) = new_nats_docker_container(&docker, None);
 
     let random: u8 = rand::random();
     let event = Event::new(format!("event_type_{}", random));
     let subject = format!("test_subject_{}", random);
 
-    let received = Arc::new(Mutex::new(None));
-
-    let received_clone = received.clone();
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
     subscribe_to_nats(
         NatsSubscriberConfig {
@@ -54,8 +49,7 @@ async fn should_publish_to_nats() {
         },
         10000,
         move |event| {
-            let mut lock = received_clone.lock().unwrap();
-            *lock = Some(event);
+            sender.send(event).unwrap();
             Ok(())
         },
     )
@@ -72,11 +66,7 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    time::delay_until(time::Instant::now() + time::Duration::new(2, 0)).await;
-
-    let received_event = received.lock().unwrap();
-    assert!(received_event.is_some());
-    assert_eq!(&event, received_event.as_ref().unwrap());
+    assert_eq!(Some(event), receiver.recv().await);
 }
 
 #[actix_rt::test]
@@ -96,7 +86,7 @@ async fn publisher_should_reprocess_the_event_if_nats_not_available_at_startup()
         },
         10,
     )
-        .unwrap();
+    .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
     info!("Publisher started");
@@ -105,8 +95,7 @@ async fn publisher_should_reprocess_the_event_if_nats_not_available_at_startup()
     let docker = clients::Cli::default();
     let (_node, nats_address) = new_nats_docker_container(&docker, Some(free_local_port));
 
-    let received = Arc::new(Mutex::new(None));
-    let received_clone = received.clone();
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
     // Start a subscriber that should receive the message sent when NATS was down
     subscribe_to_nats(
@@ -116,19 +105,74 @@ async fn publisher_should_reprocess_the_event_if_nats_not_available_at_startup()
         },
         10000,
         move |event| {
-            let mut lock = received_clone.lock().unwrap();
-            *lock = Some(event);
+            sender.send(event).unwrap();
             Ok(())
         },
     )
+    .await
+    .unwrap();
+
+    assert_eq!(Some(event), receiver.recv().await);
+}
+
+#[actix_rt::test]
+async fn publisher_should_reprocess_events_if_nats_connection_is_lost() {
+    start_logger();
+    let free_local_port = port_check::free_local_port().unwrap();
+
+    let random: u8 = rand::random();
+    let event = Event::new(format!("event_type_{}", random));
+    let subject = format!("test_subject_{}", random);
+
+    let nats_address = format!("127.0.0.1:{}", free_local_port);
+
+    let publisher = NatsPublisherActor::start_new(
+        NatsPublisherConfig {
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+            subject: subject.to_owned(),
+        },
+        10,
+    )
+    .unwrap();
+
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    actix::spawn(async move {
+        subscribe_to_nats(
+            NatsSubscriberConfig {
+                client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+                subject: subject.to_owned(),
+            },
+            10000,
+            move |event| {
+                sender.send(event).unwrap();
+                Ok(())
+            },
+        )
         .await
         .unwrap();
+    });
 
-    time::delay_until(time::Instant::now() + time::Duration::new(2, 0)).await;
+    let docker = clients::Cli::default();
+    let loops: usize = 3;
 
-    let received_event = received.lock().unwrap();
-    assert!(received_event.is_some());
-    assert_eq!(&event, received_event.as_ref().unwrap());
+    for i in 1..=loops {
+        let (node, _nats_address) = new_nats_docker_container(&docker, Some(free_local_port));
+
+        publisher.do_send(EventMessage { event: event.clone() });
+        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+
+        if i != loops {
+            drop(node);
+            time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+        };
+
+        publisher.do_send(EventMessage { event: event.clone() });
+    }
+
+    for _i in 0..(loops * 2) {
+        assert!(receiver.recv().await.is_some());
+    }
 }
 
 fn start_logger() {

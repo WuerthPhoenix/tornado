@@ -1,4 +1,4 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError, ResetActorMessage};
+use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
@@ -6,8 +6,8 @@ use rants::{Address, Client, Connect, Subject};
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::io::Error;
-use tokio::time;
 use std::sync::Arc;
+use tokio::time;
 
 pub struct NatsPublisherActor {
     restarted: bool,
@@ -51,13 +51,19 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-        let subject = Arc::new(config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
-            message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
-        })?);
+        let subject =
+            Arc::new(config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
+                message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
+            })?);
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { restarted: false, subject, client_config: Arc::new(config.client), client: None }
+            NatsPublisherActor {
+                restarted: false,
+                subject,
+                client_config: Arc::new(config.client),
+                client: None,
+            }
         }))
     }
 }
@@ -66,7 +72,10 @@ impl Actor for NatsPublisherActor {
     type Context = Context<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
-        info!("NatsPublisherActor started. Attempting connection to server [{:?}]", &self.client_config.addresses);
+        info!(
+            "NatsPublisherActor started. Attempting connection to server [{:?}]",
+            &self.client_config.addresses
+        );
 
         let mut delay_until = time::Instant::now();
         if self.restarted {
@@ -78,7 +87,6 @@ impl Actor for NatsPublisherActor {
 
         ctx.wait(
             async move {
-
                 if let Some(client) = current_client {
                     client.disconnect().await;
                 }
@@ -88,22 +96,25 @@ impl Actor for NatsPublisherActor {
                     Ok(client) => {
                         client.connect().await;
                         Ok(client)
-                    },
-                    Err(e) => Err(e)
+                    }
+                    Err(e) => Err(e),
                 }
             }
-                .into_actor(self)
-                .map(move |client, act, ctx| match client {
-                    Ok(client) => {
-                        info!("NatsPublisherActor connected to server [{:?}]", &act.client_config.addresses);
-                        act.client = Some(client);
-                    }
-                    Err(err) => {
-                        act.client = None;
-                        warn!("NatsPublisherActor connection failed. Err: {}", err);
-                        ctx.stop();
-                    }
-                }),
+            .into_actor(self)
+            .map(move |client, act, ctx| match client {
+                Ok(client) => {
+                    info!(
+                        "NatsPublisherActor connected to server [{:?}]",
+                        &act.client_config.addresses
+                    );
+                    act.client = Some(client);
+                }
+                Err(err) => {
+                    act.client = None;
+                    warn!("NatsPublisherActor connection failed. Err: {}", err);
+                    ctx.stop();
+                }
+            }),
         );
     }
 }
@@ -126,7 +137,6 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
         match &mut self.client {
             Some(client) => {
-
                 let client = client.clone();
                 let subject = self.subject.clone();
                 let address = ctx.address();
@@ -134,12 +144,11 @@ impl Handler<EventMessage> for NatsPublisherActor {
                     debug!("NatsPublisherActor - Publish event to NATS");
                     if let Err(e) = client.publish(&subject, &event).await {
                         error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
-                        match e {
-                            rants::error::Error::NotConnected => {
-                                warn!("NatsPublisherActor - Connection not available. Resending message.");
-                                address.do_send(ResetActorMessage{ payload: Some(msg)});
-                            }
-                            _ => ()
+                        if let rants::error::Error::NotConnected = e {
+                            warn!(
+                                "NatsPublisherActor - Connection not available. Resending message."
+                            );
+                            address.do_send(ResetActorMessage { payload: Some(msg) });
                         }
                     };
                 });
@@ -147,18 +156,21 @@ impl Handler<EventMessage> for NatsPublisherActor {
             }
             None => {
                 warn!("NatsPublisherActor - Connection not available. Restart Actor.");
-                ctx.address().do_send(ResetActorMessage{ payload: Some(msg)});
+                ctx.address().do_send(ResetActorMessage { payload: Some(msg) });
                 Ok(())
             }
         }
-
     }
 }
 
 impl Handler<ResetActorMessage<Option<EventMessage>>> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: ResetActorMessage<Option<EventMessage>>, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(
+        &mut self,
+        msg: ResetActorMessage<Option<EventMessage>>,
+        ctx: &mut Context<Self>,
+    ) -> Self::Result {
         trace!("NatsPublisherActor - Received reset actor message");
         ctx.stop();
         if let Some(message) = msg.payload {
