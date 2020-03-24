@@ -164,7 +164,7 @@ async fn publisher_should_reprocess_events_if_nats_connection_is_lost() {
 
         if i != loops {
             drop(node);
-            time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+            wait_until_port_is_free(free_local_port).await;
         };
 
         publisher.do_send(EventMessage { event: event.clone() });
@@ -186,4 +186,11 @@ fn start_logger() {
     if let Err(err) = tornado_common_logger::setup_logger(&conf) {
         println!("Warn: err starting logger: {}", err)
     };
+}
+
+async fn wait_until_port_is_free(port: u16) {
+    while !port_check::is_local_port_free(port) {
+        warn!("port {} still not free", port);
+        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+    }
 }
