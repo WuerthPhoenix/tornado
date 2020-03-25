@@ -26,6 +26,7 @@ actix-rt = "1"
 port_check = "0.1.3"
 rand = "0.7"
 #testcontainers = "0.8.1"
+# Sent a PR upstream to use custom ports. When the PR is merged and released we'll switch to the official crate in crates.io
 testcontainers = { git = "https://github.com/ufoscout/testcontainers-rs.git", branch = "custom_run_options" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 

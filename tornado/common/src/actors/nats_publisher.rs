@@ -2,12 +2,13 @@ use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActor
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use rants::{Address, Client, Connect, Subject};
+use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
 use std::io::Error;
 use std::sync::Arc;
 use tokio::time;
+use tokio::time::Duration;
 
 pub struct NatsPublisherActor {
     restarted: bool,
@@ -42,7 +43,17 @@ impl NatsClientConfig {
             .collect::<Result<Vec<Address>, TornadoError>>()?;
 
         let connect = Connect::new();
-        Ok(Client::with_connect(addresses, connect))
+        let client = Client::with_connect(addresses, connect);
+        {
+            let mut delay_generator = client.delay_generator_mut().await;
+            *delay_generator = generate_delay_generator(
+                3,
+                Duration::from_secs(0),
+                Duration::from_secs(5),
+                Duration::from_secs(10),
+            );
+        }
+        Ok(client)
     }
 }
 

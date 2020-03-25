@@ -70,7 +70,7 @@ async fn should_publish_to_nats() {
 }
 
 #[actix_rt::test]
-async fn publisher_should_reprocess_the_event_if_nats_not_available_at_startup() {
+async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startup() {
     start_logger();
     let free_local_port = port_check::free_local_port().unwrap();
 
@@ -116,7 +116,70 @@ async fn publisher_should_reprocess_the_event_if_nats_not_available_at_startup()
 }
 
 #[actix_rt::test]
-async fn publisher_should_reprocess_events_if_nats_connection_is_lost() {
+async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
+    start_logger();
+    let free_local_port = port_check::free_local_port().unwrap();
+
+    let random: u8 = rand::random();
+    let event = Event::new(format!("event_type_{}", random));
+    let subject = format!("test_subject_{}", random);
+
+    let subject_clone = subject.clone();
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    actix::spawn(async move {
+        // Start a subscriber
+        subscribe_to_nats(
+            NatsSubscriberConfig {
+                client: NatsClientConfig { addresses: vec![format!("127.0.0.1:{}", free_local_port)] },
+                subject: subject_clone,
+            },
+            10000,
+            move |event| {
+                sender.send(event).unwrap();
+                Ok(())
+            },
+        )
+            .await
+            .unwrap();
+    });
+
+    time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+
+    // Start NATS
+    let docker = clients::Cli::default();
+    let (_node, nats_address) = new_nats_docker_container(&docker, Some(free_local_port));
+
+    // Start a publisher and publish a message when Nats is not available
+    let publisher = NatsPublisherActor::start_new(
+        NatsPublisherConfig {
+            client: NatsClientConfig { addresses: vec![nats_address] },
+            subject: subject.to_owned(),
+        },
+        10,
+    )
+        .unwrap();
+
+    let mut received = false;
+    let mut max_attempts: i32 = 30;
+
+    while !received && max_attempts>0{
+        max_attempts -= 1;
+        publisher.do_send(EventMessage { event: event.clone() });
+        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+        received = receiver.try_recv().is_ok();
+        if received {
+            info!("Message received by the subscriber");
+        } else {
+            warn!("Message NOT received by the subscriber... let's retry!");
+        }
+    }
+
+    assert!(received);
+}
+
+#[actix_rt::test]
+async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_connection_is_lost() {
     start_logger();
     let free_local_port = port_check::free_local_port().unwrap();
 
@@ -133,7 +196,7 @@ async fn publisher_should_reprocess_events_if_nats_connection_is_lost() {
         },
         10,
     )
-    .unwrap();
+        .unwrap();
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -149,8 +212,8 @@ async fn publisher_should_reprocess_events_if_nats_connection_is_lost() {
                 Ok(())
             },
         )
-        .await
-        .unwrap();
+            .await
+            .unwrap();
     });
 
     let docker = clients::Cli::default();
