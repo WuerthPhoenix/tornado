@@ -131,7 +131,9 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
         // Start a subscriber
         subscribe_to_nats(
             NatsSubscriberConfig {
-                client: NatsClientConfig { addresses: vec![format!("127.0.0.1:{}", free_local_port)] },
+                client: NatsClientConfig {
+                    addresses: vec![format!("127.0.0.1:{}", free_local_port)],
+                },
                 subject: subject_clone,
             },
             10000,
@@ -140,8 +142,8 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
                 Ok(())
             },
         )
-            .await
-            .unwrap();
+        .await
+        .unwrap();
     });
 
     time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
@@ -158,12 +160,12 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
         },
         10,
     )
-        .unwrap();
+    .unwrap();
 
     let mut received = false;
     let mut max_attempts: i32 = 30;
 
-    while !received && max_attempts>0{
+    while !received && max_attempts > 0 {
         max_attempts -= 1;
         publisher.do_send(EventMessage { event: event.clone() });
         time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
@@ -179,7 +181,8 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
 }
 
 #[actix_rt::test]
-async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_connection_is_lost() {
+async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_connection_is_lost()
+{
     start_logger();
     let free_local_port = port_check::free_local_port().unwrap();
 
@@ -196,7 +199,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         },
         10,
     )
-        .unwrap();
+    .unwrap();
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -212,8 +215,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
                 Ok(())
             },
         )
-            .await
-            .unwrap();
+        .await
+        .unwrap();
     });
 
     let docker = clients::Cli::default();

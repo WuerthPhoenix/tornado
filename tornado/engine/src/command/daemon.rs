@@ -137,26 +137,29 @@ pub async fn daemon(
 
         let addresses = nats_config.client.addresses.clone();
         let subject = nats_config.subject.clone();
-
+        let message_queue_size = daemon_config.message_queue_size;
         let matcher_addr_clone = matcher_addr.clone();
-        subscribe_to_nats(nats_config, daemon_config.message_queue_size, move |event| {
-            matcher_addr_clone.do_send(EventMessage { event });
-            Ok(())
-        })
-        .await
-        .and_then(|_| {
-            info!(
-                "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
-                addresses, subject
-            );
-            Ok(())
-        })
-        .unwrap_or_else(|err| {
-            error!(
-                "NATS connection failed started at [{:#?}], subject [{}]. Err: {}",
-                addresses, subject, err
-            );
-            std::process::exit(1);
+
+        actix::spawn(async move {
+            subscribe_to_nats(nats_config, message_queue_size, move |event| {
+                matcher_addr_clone.do_send(EventMessage { event });
+                Ok(())
+            })
+            .await
+            .and_then(|_| {
+                info!(
+                    "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
+                    addresses, subject
+                );
+                Ok(())
+            })
+            .unwrap_or_else(|err| {
+                error!(
+                    "NATS connection failed started at [{:#?}], subject [{}]. Err: {}",
+                    addresses, subject, err
+                );
+                std::process::exit(1);
+            });
         });
     } else {
         info!("NATS connection is disabled. Do not start it.")
@@ -177,21 +180,25 @@ pub async fn daemon(
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();
-        listen_to_tcp(tcp_address.clone(), daemon_config.message_queue_size, move |msg| {
-            let json_matcher_addr_clone = json_matcher_addr_clone.clone();
-            JsonEventReaderActor::start_new(msg, move |event| {
-                json_matcher_addr_clone.do_send(EventMessage { event })
+        let message_queue_size = daemon_config.message_queue_size;
+
+        actix::spawn(async move {
+            listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
+                let json_matcher_addr_clone = json_matcher_addr_clone.clone();
+                JsonEventReaderActor::start_new(msg, move |event| {
+                    json_matcher_addr_clone.do_send(EventMessage { event })
+                });
+            })
+            .await
+            .and_then(|_| {
+                info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
+                Ok(())
+            })
+            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+            .unwrap_or_else(|err| {
+                error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
+                std::process::exit(1);
             });
-        })
-        .await
-        .and_then(|_| {
-            info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
-            Ok(())
-        })
-        // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-        .unwrap_or_else(|err| {
-            error!("Cannot start TCP server at [{}]. Err: {}", tcp_address, err);
-            std::process::exit(1);
         });
     } else {
         info!("TCP server is disabled. Do not start it.")
