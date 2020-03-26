@@ -2,10 +2,12 @@ use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActor
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
+use native_tls::{Certificate, Identity, TlsConnector};
 use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
-use std::io::Error;
+use std::fs::File;
+use std::io::{Error, Read};
 use std::sync::Arc;
 use tokio::time;
 use tokio::time::Duration;
@@ -26,8 +28,20 @@ pub struct NatsPublisherConfig {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+pub enum NatsClientAuth {
+    None,
+    Tls {
+        path_to_pkcs_bundle: String,
+        pkcs_password: String,
+        path_to_root_certificate: Option<String>,
+    },
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct NatsClientConfig {
     pub addresses: Vec<String>,
+    pub auth: Option<NatsClientAuth>,
 }
 
 impl NatsClientConfig {
@@ -43,7 +57,7 @@ impl NatsClientConfig {
             .collect::<Result<Vec<Address>, TornadoError>>()?;
 
         let connect = Connect::new();
-        let client = Client::with_connect(addresses, connect);
+        let mut client = Client::with_connect(addresses, connect);
         {
             let mut delay_generator = client.delay_generator_mut().await;
             *delay_generator = generate_delay_generator(
@@ -53,8 +67,73 @@ impl NatsClientConfig {
                 Duration::from_secs(10),
             );
         }
+
+        let auth = self.get_auth();
+
+        let client = match auth {
+            NatsClientAuth::Tls {
+                path_to_pkcs_bundle,
+                pkcs_password,
+                path_to_root_certificate,
+            } => {
+                let mut tls_connector_builder = TlsConnector::builder();
+
+                // Load root certificate, if path is configured
+                if let Some(path_to_root_certificate) = path_to_root_certificate {
+                    let mut buf = vec![];
+                    read_file(&path_to_root_certificate, &mut buf)?;
+                    let root_ca_certificate = Certificate::from_pem(&buf).map_err(|err| {
+                        TornadoError::ConfigurationError {
+                            message: format!(
+                                "Error while constructing certificate from pem file {}. Err: {}",
+                                path_to_root_certificate, err
+                            ),
+                        }
+                    })?;
+                    tls_connector_builder.add_root_certificate(root_ca_certificate);
+                };
+
+                let mut buf = vec![];
+                read_file(&path_to_pkcs_bundle, &mut buf)?;
+                let identity =
+                    Identity::from_pkcs12(&buf, pkcs_password.as_str()).map_err(|err| {
+                        TornadoError::ConfigurationError {
+                            message: format!(
+                                "Error while constructing identity from pkcs12 file {}. Err: {}",
+                                path_to_pkcs_bundle, err
+                            ),
+                        }
+                    })?;
+
+                let tls_connector =
+                    tls_connector_builder.identity(identity).build().map_err(|err| {
+                        TornadoError::ConfigurationError {
+                            message: format!("Error while building tls connector. Err: {}", err),
+                        }
+                    })?;
+
+                client.set_tls_connector(tls_connector).await;
+                client
+            }
+            NatsClientAuth::None => client,
+        };
         Ok(client)
     }
+
+    fn get_auth(&self) -> &NatsClientAuth {
+        match &self.auth {
+            None => &NatsClientAuth::None,
+            Some(auth) => &auth,
+        }
+    }
+}
+
+fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError> {
+    File::open(path).and_then(|mut file| file.read_to_end(buf)).map_err(|err| {
+        TornadoError::ConfigurationError {
+            message: format!("Error while reading file {}. Err: {}", path, err),
+        }
+    })
 }
 
 impl NatsPublisherActor {

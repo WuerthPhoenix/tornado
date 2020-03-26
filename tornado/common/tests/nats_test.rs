@@ -44,7 +44,7 @@ async fn should_publish_to_nats() {
 
     subscribe_to_nats(
         NatsSubscriberConfig {
-            client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
             subject: subject.to_owned(),
         },
         10000,
@@ -58,7 +58,7 @@ async fn should_publish_to_nats() {
 
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
-            client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
             subject: subject.to_owned(),
         },
         10,
@@ -81,7 +81,10 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
     // Start a publisher and publish a message when Nats is not available
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
-            client: NatsClientConfig { addresses: vec![format!("127.0.0.1:{}", free_local_port)] },
+            client: NatsClientConfig {
+                addresses: vec![format!("127.0.0.1:{}", free_local_port)],
+                auth: None,
+            },
             subject: subject.to_owned(),
         },
         10,
@@ -100,7 +103,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
     // Start a subscriber that should receive the message sent when NATS was down
     subscribe_to_nats(
         NatsSubscriberConfig {
-            client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
             subject: subject.to_owned(),
         },
         10000,
@@ -133,6 +136,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
             NatsSubscriberConfig {
                 client: NatsClientConfig {
                     addresses: vec![format!("127.0.0.1:{}", free_local_port)],
+                    auth: None,
                 },
                 subject: subject_clone,
             },
@@ -155,7 +159,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
     // Start a publisher and publish a message when Nats is not available
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
-            client: NatsClientConfig { addresses: vec![nats_address] },
+            client: NatsClientConfig { addresses: vec![nats_address], auth: None },
             subject: subject.to_owned(),
         },
         10,
@@ -194,7 +198,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
-            client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
             subject: subject.to_owned(),
         },
         10,
@@ -206,7 +210,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
     actix::spawn(async move {
         subscribe_to_nats(
             NatsSubscriberConfig {
-                client: NatsClientConfig { addresses: vec![nats_address.to_owned()] },
+                client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
                 subject: subject.to_owned(),
             },
             10000,
