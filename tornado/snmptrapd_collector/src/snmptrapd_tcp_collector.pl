@@ -188,6 +188,6 @@ sub printTrapInfo {
 }
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
-  warn "Failed to register the perl snmptrapd_collector\n";
+  warn "Failed to register the perl TCP snmptrapd_collector\n";
 
-print STDERR "The snmptrapd_collector was loaded successfully.\n";
+print STDERR "The TCP based snmptrapd_collector was loaded successfully.\n";
