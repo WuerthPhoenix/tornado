@@ -55,10 +55,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             TornadoConnectionChannel::Nats { nats } => {
                 info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    nats,
+                    nats.clone(),
                     collector_config.icinga2_collector.message_queue_size,
-                )
-                .await?;
+                )?;
                 start(collector_config, streams_config, actor_address);
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {

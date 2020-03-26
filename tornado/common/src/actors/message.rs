@@ -24,6 +24,12 @@ pub struct EventMessage {
 
 #[derive(Message)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
+pub struct ResetActorMessage<P> {
+    pub payload: P,
+}
+
+#[derive(Message)]
+#[rtype(result = "Result<(), TornadoCommonActorError>")]
 pub struct BytesMessage {
     pub msg: Vec<u8>,
 }

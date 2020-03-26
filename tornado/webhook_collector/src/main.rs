@@ -65,10 +65,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             TornadoConnectionChannel::Nats { nats } => {
                 info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    &nats,
+                    nats,
                     collector_config.webhook_collector.message_queue_size,
-                )
-                .await?;
+                )?;
                 start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
