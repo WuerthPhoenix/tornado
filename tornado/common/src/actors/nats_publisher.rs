@@ -6,9 +6,10 @@ use native_tls::{Certificate, Identity, TlsConnector};
 use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde_derive::{Deserialize, Serialize};
 use serde_json;
-use std::fs::File;
-use std::io::{Error, Read};
+use std::io::Error;
 use std::sync::Arc;
+use tokio::fs::File;
+use tokio::prelude::*;
 use tokio::time;
 use tokio::time::Duration;
 
@@ -73,7 +74,7 @@ impl NatsClientConfig {
                 // Load root certificate, if path is configured
                 if let Some(path_to_root_certificate) = path_to_root_certificate {
                     let mut buf = vec![];
-                    read_file(&path_to_root_certificate, &mut buf)?;
+                    read_file(&path_to_root_certificate, &mut buf).await?;
                     let root_ca_certificate = Certificate::from_pem(&buf).map_err(|err| {
                         TornadoError::ConfigurationError {
                             message: format!(
@@ -86,7 +87,7 @@ impl NatsClientConfig {
                 };
 
                 let mut buf = vec![];
-                read_file(&path_to_pkcs_bundle, &mut buf)?;
+                read_file(&path_to_pkcs_bundle, &mut buf).await?;
                 let identity =
                     Identity::from_pkcs12(&buf, pkcs_password.as_str()).map_err(|err| {
                         TornadoError::ConfigurationError {
@@ -133,12 +134,12 @@ impl NatsClientConfig {
     }
 }
 
-//TODO:switch to tokio
-fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError> {
-    File::open(path).and_then(|mut file| file.read_to_end(buf)).map_err(|err| {
-        TornadoError::ConfigurationError {
-            message: format!("Error while reading file {}. Err: {}", path, err),
-        }
+async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError> {
+    let mut file = File::open(path).await.map_err(|err| TornadoError::ConfigurationError {
+        message: format!("Error while opening file {}. Err: {}", path, err),
+    })?;
+    file.read_to_end(buf).await.map_err(|err| TornadoError::ConfigurationError {
+        message: format!("Error while reading file {}. Err: {}", path, err),
     })
 }
 
