@@ -291,25 +291,44 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
     let docker = clients::Cli::default();
     let loops: usize = 3;
+    let mut in_flight_messages = 0;
+    let mut received_messages = 0;
 
     for i in 1..=loops {
         let (node, _nats_address) =
             new_nats_docker_container(&docker, Some(free_local_port), false);
 
+        let mut nats_is_up = true;
+
         publisher.do_send(EventMessage { event: event.clone() });
+        in_flight_messages += 1;
         time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+
+        for _ in 0..in_flight_messages {
+            assert!(receiver.recv().await.is_some());
+            in_flight_messages -= 1;
+            received_messages += 1;
+        }
 
         if i != loops {
             drop(node);
             wait_until_port_is_free(free_local_port).await;
+            nats_is_up = false;
         };
 
         publisher.do_send(EventMessage { event: event.clone() });
+        in_flight_messages += 1;
+
+        if nats_is_up {
+            for _ in 0..in_flight_messages {
+                assert!(receiver.recv().await.is_some());
+                in_flight_messages -= 1;
+                received_messages += 1;
+            }
+        }
     }
 
-    for _i in 0..(loops * 2) {
-        assert!(receiver.recv().await.is_some());
-    }
+    assert_eq!(loops * 2, received_messages);
 }
 
 fn start_logger() {
