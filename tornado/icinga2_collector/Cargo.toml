@@ -22,7 +22,7 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0.1" }
-tornado_common = { path = "../common", version = "0.0.1", features = ["nats_streaming"] }
+tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
 actix-web = { version = "2" }

@@ -7,7 +7,7 @@ use log::*;
 use std::io::{stdin, BufRead};
 use std::thread;
 use tornado_common::actors::message::{EventMessage, StringMessage};
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
@@ -49,13 +49,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         collector_config.rsyslog_collector.tornado_connection_channel
     {
         match connection_channel {
-            TornadoConnectionChannel::NatsStreaming { nats_streaming } => {
-                info!("Connect to Tornado through NATS Streaming");
+            TornadoConnectionChannel::Nats { nats } => {
+                info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    &nats_streaming,
+                    nats,
                     collector_config.rsyslog_collector.message_queue_size,
-                )
-                .await?;
+                )?;
                 start(actor_address)?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {

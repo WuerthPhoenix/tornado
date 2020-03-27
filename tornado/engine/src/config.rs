@@ -3,7 +3,7 @@ use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
 use std::sync::Arc;
-use tornado_common::actors::nats_streaming_subscriber::StanSubscriberConfig;
+use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
@@ -35,8 +35,8 @@ pub struct DaemonCommandConfig {
     pub event_socket_ip: Option<String>,
     pub event_socket_port: Option<u16>,
 
-    pub nats_streaming_enabled: Option<bool>,
-    pub nats: Option<StanSubscriberConfig>,
+    pub nats_enabled: Option<bool>,
+    pub nats: Option<NatsSubscriberConfig>,
 
     pub web_server_ip: String,
     pub web_server_port: u16,
@@ -45,12 +45,12 @@ pub struct DaemonCommandConfig {
 }
 
 impl DaemonCommandConfig {
-    pub fn get_event_tcp_socket_enabled(&self) -> bool {
+    pub fn is_event_tcp_socket_enabled(&self) -> bool {
         self.event_tcp_socket_enabled.unwrap_or(true)
     }
 
-    pub fn get_nats_streaming_enabled(&self) -> bool {
-        self.nats_streaming_enabled.unwrap_or(false)
+    pub fn is_nats_enabled(&self) -> bool {
+        self.nats_enabled.unwrap_or(false)
     }
 }
 
@@ -214,7 +214,7 @@ mod test {
             event_tcp_socket_enabled: Some(false),
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: Some(true),
+            nats_enabled: Some(true),
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
@@ -222,12 +222,12 @@ mod test {
         };
 
         // Act
-        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
-        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+        let event_tcp_socket_enabled = daemon_configs.is_event_tcp_socket_enabled();
+        let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
         assert_eq!(event_tcp_socket_enabled, false);
-        assert_eq!(nats_streaming_enabled, true);
+        assert_eq!(nats_enabled, true);
     }
 
     #[test]
@@ -237,7 +237,7 @@ mod test {
             event_tcp_socket_enabled: None,
             event_socket_ip: None,
             event_socket_port: None,
-            nats_streaming_enabled: None,
+            nats_enabled: None,
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
@@ -245,11 +245,11 @@ mod test {
         };
 
         // Act
-        let event_tcp_socket_enabled = daemon_configs.get_event_tcp_socket_enabled();
-        let nats_streaming_enabled = daemon_configs.get_nats_streaming_enabled();
+        let event_tcp_socket_enabled = daemon_configs.is_event_tcp_socket_enabled();
+        let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
         assert_eq!(event_tcp_socket_enabled, true);
-        assert_eq!(nats_streaming_enabled, false);
+        assert_eq!(nats_enabled, false);
     }
 }

@@ -9,7 +9,7 @@ use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_streaming_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
@@ -62,13 +62,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         collector_config.webhook_collector.tornado_connection_channel
     {
         match connection_channel {
-            TornadoConnectionChannel::NatsStreaming { nats_streaming } => {
-                info!("Connect to Tornado through NATS Streaming");
+            TornadoConnectionChannel::Nats { nats } => {
+                info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    &nats_streaming,
+                    nats,
                     collector_config.webhook_collector.message_queue_size,
-                )
-                .await?;
+                )?;
                 start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
