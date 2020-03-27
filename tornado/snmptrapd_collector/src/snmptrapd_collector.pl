@@ -35,10 +35,12 @@ my $tornado_writer = async {
 		    # print "[tornado_nats_writer] received event:\n$json_event\n";
 		    if (! defined $client) {
                 my $addr = getEnvOrDefault("TORNADO_NATS_ADDR", "127.0.0.1:4222");
+                $addr = "nats://$addr";
 
                 print "Start NATS connection to server $addr\n";
-                $client = Net::NATS::Client->new(uri => "nats://$addr");
+                $client = Net::NATS::Client->new(uri => $addr);
                 $client->connect();
+                print "Connected to NATS server $addr\n";
             }
 
 		    {
@@ -126,8 +128,8 @@ sub my_receiver {
             "oids" => \%VarBindData,
         },
     };
-
     my $json = encode_json($data) . "\n";
+
     # print $json;
     # push it in the queue
     enqueue($json);

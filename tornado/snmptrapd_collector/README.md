@@ -91,6 +91,9 @@ you will see error messages.
 
 In case of missing dependencies, use your system's package manager to install them.
 
+Instructions for installing `Net::NATS::Client` are available at 
+its [official repository](https://github.com/carwynmoore/perl-nats)
+
 
 ### Activation
 
@@ -116,7 +119,7 @@ The snmptrapd_collector for NATS was loaded successfully.
 The information to connect to the NATS Server are provided by the following environment variables:
 - __TORNADO_NATS_ADDR__: the address of the NATS server. If not specified, 
   it will use the default value _127.0.0.1:4222_
-- __TORNADO_NATS_SUBJEcT__: the NATS subject where the events are published. If not specified, 
+- __TORNADO_NATS_SUBJECT__: the NATS subject where the events are published. If not specified, 
   it will use the default value _tornado.events_
 
 
@@ -213,7 +216,7 @@ If everything is configured correctly, you should see a message in the snmptrapd
 and an Event of type _'snmptrapd'_ received by the Tornado Engine. 
 
 In the event of authorization errors, and **_only for testing purposes_**, 
-you can fix them by adding this line to the _snmptrapd.conf_ file:
+you can fix them by adding this line to the _snmptrapd.conf_ file (in Ubuntu you can find it in */etc/snmp/snmptrapd.conf*):
 ```
 disableAuthorization yes
 ```
