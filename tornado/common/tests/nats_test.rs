@@ -14,6 +14,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
+use serial_test::serial;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -50,6 +51,7 @@ fn new_nats_docker_container(
 }
 
 #[actix_rt::test]
+#[serial]
 async fn should_publish_to_nats() {
     start_logger();
     let docker = clients::Cli::default();
@@ -89,6 +91,7 @@ async fn should_publish_to_nats() {
 }
 
 #[actix_rt::test]
+#[serial]
 async fn should_publish_to_nats_with_tls() {
     start_logger();
     let docker = clients::Cli::default();
@@ -136,6 +139,7 @@ async fn should_publish_to_nats_with_tls() {
 }
 
 #[actix_rt::test]
+#[serial]
 async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startup() {
     start_logger();
     let free_local_port = port_check::free_local_port().unwrap();
@@ -185,6 +189,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
 }
 
 #[actix_rt::test]
+#[serial]
 async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
     start_logger();
     let free_local_port = port_check::free_local_port().unwrap();
@@ -251,6 +256,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
 }
 
 #[actix_rt::test]
+#[serial]
 async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_connection_is_lost()
 {
     start_logger();
