@@ -349,4 +349,5 @@ async fn wait_until_port_is_free(port: u16) {
         warn!("port {} still not free", port);
         time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
     }
+    time::delay_until(time::Instant::now() + time::Duration::new(0, 10000)).await;
 }
