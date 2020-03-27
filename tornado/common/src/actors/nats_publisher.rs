@@ -32,8 +32,8 @@ pub struct NatsPublisherConfig {
 pub enum NatsClientAuth {
     None,
     Tls {
-        path_to_pkcs_bundle: String,
-        pkcs_password: String,
+        path_to_pkcs12_bundle: String,
+        pkcs12_bundle_password: String,
         path_to_root_certificate: Option<String>,
     },
 }
@@ -56,26 +56,18 @@ impl NatsClientConfig {
             })
             .collect::<Result<Vec<Address>, TornadoError>>()?;
 
-        let connect = Connect::new();
-        let mut client = Client::with_connect(addresses, connect);
-        {
-            let mut delay_generator = client.delay_generator_mut().await;
-            *delay_generator = generate_delay_generator(
-                3,
-                Duration::from_secs(0),
-                Duration::from_secs(5),
-                Duration::from_secs(10),
-            );
-        }
-
         let auth = self.get_auth();
 
         let client = match auth {
             NatsClientAuth::Tls {
-                path_to_pkcs_bundle,
-                pkcs_password,
+                path_to_pkcs12_bundle: path_to_pkcs_bundle,
+                pkcs12_bundle_password: pkcs_password,
                 path_to_root_certificate,
             } => {
+                let mut connect = Connect::new();
+                connect.tls_required(true);
+                let mut client = Client::with_connect(addresses, connect);
+
                 let mut tls_connector_builder = TlsConnector::builder();
 
                 // Load root certificate, if path is configured
@@ -115,8 +107,21 @@ impl NatsClientConfig {
                 client.set_tls_connector(tls_connector).await;
                 client
             }
-            NatsClientAuth::None => client,
+            NatsClientAuth::None => {
+                let connect = Connect::new();
+                Client::with_connect(addresses, connect)
+            }
         };
+        {
+            let mut delay_generator = client.delay_generator_mut().await;
+            *delay_generator = generate_delay_generator(
+                3,
+                Duration::from_secs(0),
+                Duration::from_secs(5),
+                Duration::from_secs(10),
+            );
+        }
+
         Ok(client)
     }
 
@@ -128,6 +133,7 @@ impl NatsClientConfig {
     }
 }
 
+//TODO:switch to tokio
 fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError> {
     File::open(path).and_then(|mut file| file.read_to_end(buf)).map_err(|err| {
         TornadoError::ConfigurationError {
