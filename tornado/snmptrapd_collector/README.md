@@ -121,6 +121,11 @@ The information to connect to the NATS Server are provided by the following envi
   it will use the default value _127.0.0.1:4222_
 - __TORNADO_NATS_SUBJECT__: the NATS subject where the events are published. If not specified, 
   it will use the default value _tornado.events_
+- __TORNADO_NATS_SSL_CERT_PEM_FILE__: The filesystem path of a PEM certificate. 
+This entry is optional, when provided, the collector will use the certificate to connect to the NATS server   
+- __TORNADO_NATS_SSL_CERT_KEY__: The filesystem path for the KEY of the PEM certificate provided by the
+*TORNADO_NATS_SSL_CERT_PEM_FILE* entry. This entry is mandatory if the *TORNADO_NATS_SSL_CERT_PEM_FILE* entry
+is provided
 
 
 ## How They Work

@@ -4,6 +4,7 @@ use strict;
 
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
+use IO::Socket::SSL qw( SSL_VERIFY_PEER );
 use Net::NATS::Client;
 use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
 use Time::HiRes qw/gettimeofday/;
@@ -34,11 +35,29 @@ my $tornado_writer = async {
 
 		    # print "[tornado_nats_writer] received event:\n$json_event\n";
 		    if (! defined $client) {
+		        my $ssl_cert_file = getEnvOrDefault("TORNADO_NATS_SSL_CERT_PEM_FILE", "");
+		        my $ssl_cert_key = getEnvOrDefault("TORNADO_NATS_SSL_CERT_KEY", "");
+
+                if ( (!$ssl_cert_file && $ssl_cert_key) || ($ssl_cert_file && !$ssl_cert_key) ) {
+                    print "WARN: SSL certificate will NOT be used. You have to provide both the certificate and the key to use it! \n";
+                }
+
                 my $addr = getEnvOrDefault("TORNADO_NATS_ADDR", "127.0.0.1:4222");
                 $addr = "nats://$addr";
 
-                print "Start NATS connection to server $addr\n";
-                $client = Net::NATS::Client->new(uri => $addr);
+                if ($ssl_cert_file && $ssl_cert_key) {
+                    print "Start NATS connection to server $addr with SSL certificate [$ssl_cert_file] and key [$ssl_cert_key]\n";
+                    my $socket_args = {
+                        SSL_cert_file => $ssl_cert_file,
+                        SSL_key_file => $ssl_cert_key,
+                        SSL_verify_mode => SSL_VERIFY_PEER,
+                    };
+                    $client = Net::NATS::Client->new(uri => $addr, socket_args => $socket_args);
+                } else {
+                    print "Start NATS connection to server $addr without SSL certificate\n";
+                    $client = Net::NATS::Client->new(uri => $addr);
+                }
+
                 $client->connect();
                 print "Connected to NATS server $addr\n";
             }

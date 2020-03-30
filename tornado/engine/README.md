@@ -93,6 +93,15 @@ file _'config-dir'/tornado.toml_:
     (Mandatory if `nats_enabled` is set to true).
     - **nats.subject**:  The NATS Subject where tornado will subscribe and listen for incoming events
     (Mandatory if `nats_enabled` is set to true).
+    - **nats.client.auth.type**:  The type of authentication used to authenticate to NATS
+    (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
+    - **nats.client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
+    (Mandatory if `nats.client.auth.type` is set to `Tls`).
+    - **nats.client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
+    (Mandatory if `nats.client.auth.type` is set to `Tls`).
+    - **nats.client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
+    addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
+    (Optional, valid if `nats.client.auth.type` is set to `Tls`).
     - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
       This is used, for example, by the monitoring endpoints.
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
@@ -164,9 +173,41 @@ nats.subject = "tornado.events"
 ```
 
 In this case, Tornado will connect to the "test-cluster" and listen for incoming events published on "tornado.events" subject.
+Also, since **nats.client.auth.type** is not provided, Tornado will not authenticate to the NATS server. 
 
 At the moment, when the `nats_enabled` entry is set to `true`, it is required that the Nats
 server is available at Tornado startup.
+
+#### Structure and Configuration: Nats authentication
+Available authentication types for Tornado are:
+* **None**: Tornado does not authenticate to the NATS server
+* **Tls**: Tornado authenticates to the NATS server via certificates with TLS
+
+If not differently specified, Tornado will use the **None** authentication type.
+
+If you want instead to enable TLS authentication to the NATS server you need something similar to the following configuration:
+```toml
+# Whether to connect to the NATS server
+nats_enabled = true
+
+# The addresses of the NATS server
+nats.client.addresses = ["127.0.0.1:4222"]
+# The NATS Subject where tornado will subscribe and listen for incoming events
+nats.subject = "tornado.events"
+# The type of authentication used when connecting to the NATS server
+#nats.client.auth.type = "None"
+nats.client.auth.type = "Tls"
+# The path to a pkcs12 bundle file which contains the certificate and private key to authenicate to the NATS server
+nats.client.auth.path_to_pkcs12_bundle = "/path/to/pkcs12/bundle.pfx"
+# The password used to decrypt the pkcs12 bundle
+nats.client.auth.pkcs12_bundle_password = "mypwd"
+# The path to a root certificate (in .pem format) to trust in addition to system's trust root.
+# May be useful if the NATS server is not trusted by the system as default. Optional
+#nats.client.auth.path_to_root_certificate = "/path/to/root/certificate.crt.pem"
+```
+
+In this case Tornado will authenticate to the NATS server using the certificate in the file specified in the field 
+`nats.client.auth.path_to_pkcs12_bundle`, using the password `mypwd` to decrypt the file.
 
 ### Structure and Configuration:  The Matching Engine
 

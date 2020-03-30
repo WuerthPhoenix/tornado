@@ -1,4 +1,5 @@
 use actix::prelude::*;
+use serial_test::serial;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
@@ -10,6 +11,7 @@ use tornado_common_api::Event;
 const BASE_ADDRESS: &str = "127.0.0.1";
 
 #[test]
+#[serial]
 fn should_perform_a_tcp_request() {
     let received = Arc::new(Mutex::new(None));
 
