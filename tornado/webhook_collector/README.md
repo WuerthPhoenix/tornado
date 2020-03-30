@@ -71,6 +71,15 @@ file _'config-dir'/webhook_collector.toml_:
     *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
         - In case of connection using *Nats*, these entries are mandatory:
             - **nats.client.addresses**: The addresses of the  NATS server.
+            - **nats.client.auth.type**:  The type of authentication used to authenticate to NATS
+            (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
+            - **nats.client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
+            (Mandatory if `nats.client.auth.type` is set to `Tls`).
+            - **nats.client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
+            (Mandatory if `nats.client.auth.type` is set to `Tls`).
+            - **nats.client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
+            addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
+            (Optional, valid if `nats.client.auth.type` is set to `Tls`).
             - **nats.subject**: The NATS Subject where tornado will subscribe and listen for incoming events.
         - In case of connection using *TCP*, these entries are mandatory:
             - **tcp_socket_ip**:  The IP address where outgoing events will be written.
