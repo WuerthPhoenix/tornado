@@ -4,6 +4,7 @@ use strict;
 
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
+use IO::Socket::SSL qw( SSL_VERIFY_PEER );
 use Net::NATS::Client;
 use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
 use Time::HiRes qw/gettimeofday/;
@@ -44,6 +45,7 @@ my $tornado_writer = async {
                     my $socket_args = {
                         SSL_cert_file => $ssl_cert_file,
                         SSL_key_file => $ssl_cert_key,
+                        SSL_verify_mode => SSL_VERIFY_PEER,
                     };
                     $client = Net::NATS::Client->new(uri => $addr, socket_args => $socket_args);
                 } else {
