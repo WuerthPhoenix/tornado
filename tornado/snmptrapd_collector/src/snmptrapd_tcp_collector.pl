@@ -4,7 +4,6 @@ use strict;
 
 use Cpanel::JSON::XS;
 use IO::Socket::INET;
-use Net::NATS::Client;
 use NetSNMP::TrapReceiver qw/NETSNMPTRAPD_HANDLER_OK/;
 use Time::HiRes qw/gettimeofday/;
 use threads;
@@ -14,61 +13,60 @@ use Thread::Queue;
 # auto-flush on socket
 $| = 1;
 
-# Without this one, if the `$client->publish` call fails, the perl process is killed.
-# Calling `$client->publish` into an `eval` block does not solve the issue.
-$SIG{PIPE} = 'IGNORE';
-
-my $client;
+my $socket;
 
 my $sleep_seconds_between_connection_attempts = 5;
 
 my $max_events_queue_size = 10000;
 my $events_queue = Thread::Queue->new();
 
-my $subject = getEnvOrDefault("TORNADO_NATS_SUBJECT", "tornado.events");
 my $tornado_writer = async {
 	eval {
-		print "[tornado_nats_writer] started\n";
+		print "[tornado_writer] started\n";
 		my $json_event;
 		while ($json_event = $events_queue->dequeue()) {
 
-		    # print "[tornado_nats_writer] received event:\n$json_event\n";
-		    if (! defined $client) {
-                my $addr = getEnvOrDefault("TORNADO_NATS_ADDR", "127.0.0.1:4222");
-                $addr = "nats://$addr";
+		    # print "[tornado_writer] received event:\n$json_event\n";
+		    if (!isSocketConnected()) {
+                my $ip = getEnvOrDefault("TORNADO_ADDR", "127.0.0.1");
+                my $port = getEnvOrDefault("TORNADO_PORT", "4747");
 
-                print "Start NATS connection to server $addr\n";
-                $client = Net::NATS::Client->new(uri => $addr);
-                $client->connect();
-                print "Connected to NATS server $addr\n";
+                print "Open TCP socket connection to Tornado server at $ip:$port\n";
+                $socket = IO::Socket::INET->new (
+                    PeerHost => $ip,
+                    PeerPort => $port,
+                    Proto => 'tcp',
+                );
             }
 
 		    {
                 local $@;
-                my $result;
-                eval{$result = $client->publish($subject, $json_event);};
+                eval{$socket->send($json_event);};
 
-                my $failed = ! defined $result || $result ne 1;
+                # The $socket->send($json_event) executes transparently even if the event is not sent because the connection to Tornado is dropped.
+                # The only way we found to check whether the send was performed correctly, is to verify that the socket is still connected after a send.
+                # In fact, it will return 0 in case of issues during the send.
+                my $failed = !isSocketConnected();
 
-                if ($@ || $!) {
-                     print "[tornado_nats_writer] Cannot send Event to the NATS Server:$!$@\n";
-                     $failed = 1;
+                # This 'if' condition is true when the $socket variable is undefined.
+                # This happens when the socket cannot be created because Tornado is not available.
+                if ($@) {
+                    # print "[tornado_writer] cannot send Event to Tornado Server: $@\n";
+                    $failed = 1;
                 }
 
                 if ($failed) {
-                    print "[tornado_nats_writer] Cannot send Event to the NATS Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
+                    print "[tornado_writer] cannot send Event to Tornado Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
                     enqueue($json_event);
                     sleep($sleep_seconds_between_connection_attempts);
-                    eval{$client->close();};
-                    $client = undef;
                 }
             }
 
 		}
-		print "[tornado_nats_writer] stopped\n";
+		print "[tornado_writer] stopped\n";
 	};
 	if ($@) {
-		print "[tornado_nats_writer] FATAL: $@\n";
+		print "[tornado_writer] FATAL: $@\n";
 	}
 };
 
@@ -128,8 +126,8 @@ sub my_receiver {
             "oids" => \%VarBindData,
         },
     };
-    my $json = encode_json($data) . "\n";
 
+    my $json = encode_json($data) . "\n";
     # print $json;
     # push it in the queue
     enqueue($json);
@@ -144,6 +142,12 @@ sub enqueue {
     } else {
         print "WARN: The event buffer is full (max allowed: $max_events_queue_size events). New messages will be discarded!!"
     }
+}
+
+sub isSocketConnected {
+    return 0 unless defined $socket;
+    return 0 unless $socket->connected;
+    return 1;
 }
 
 sub getCurrentEpochMs {
@@ -184,6 +188,6 @@ sub printTrapInfo {
 }
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
-  warn "Failed to register the perl snmptrapd_collector for NATS\n";
+  warn "Failed to register the perl TCP snmptrapd_collector\n";
 
-print STDERR "The snmptrapd_collector for NATS was loaded successfully.\n";
+print STDERR "The TCP based snmptrapd_collector was loaded successfully.\n";
