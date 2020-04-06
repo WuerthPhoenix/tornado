@@ -19,6 +19,7 @@ pub mod ge;
 pub mod gt;
 pub mod le;
 pub mod lt;
+pub mod not;
 pub mod or;
 pub mod regex;
 pub mod true_operator;
@@ -94,6 +95,9 @@ impl OperatorBuilder {
             }
             rule::Operator::Or { operators } => {
                 Ok(Box::new(crate::matcher::operator::or::Or::build("", &operators, self)?))
+            }
+            rule::Operator::Not { operator } => {
+                Ok(Box::new(crate::matcher::operator::not::Not::build("", &operator, self)?))
             }
             rule::Operator::Equal { first, second } => {
                 Ok(Box::new(crate::matcher::operator::equal::Equal::build(
@@ -276,6 +280,21 @@ mod test {
         let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("or", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_not_operator() {
+        let ops = rule::Operator::Not {
+            operator: Box::new(rule::Operator::Equal {
+                first: Value::Text("first_arg".to_owned()),
+                second: Value::Text("second_arg".to_owned()),
+            }),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("not", operator.name());
     }
 
     #[test]

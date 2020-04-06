@@ -72,6 +72,9 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
                 .map(operator_into_dto)
                 .collect::<Result<Vec<_>, _>>()?,
         },
+        Operator::Not { operator } => {
+            OperatorDto::Not { operator: Box::new(operator_into_dto(*operator)?) }
+        }
         Operator::Contain { first, second } => OperatorDto::Contain {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,

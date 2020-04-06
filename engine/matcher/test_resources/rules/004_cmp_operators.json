@@ -4,37 +4,50 @@
   "active": true,
   "constraint": {
     "WHERE": {
-      "type": "OR",
+      "type": "AND",
       "operators": [
         {
-          "type": "equal",
-          "first": "${event.payload.value}",
-          "second": 1000
-        },
-        {
-          "type": "AND",
+          "type": "OR",
           "operators": [
             {
-              "type": "ge",
+              "type": "equal",
               "first": "${event.payload.value}",
-              "second": 100
+              "second": 1000
             },
             {
-              "type": "le",
+              "type": "AND",
+              "operators": [
+                {
+                  "type": "ge",
+                  "first": "${event.payload.value}",
+                  "second": 100
+                },
+                {
+                  "type": "le",
+                  "first": "${event.payload.value}",
+                  "second": 200
+                }
+              ]
+            },
+            {
+              "type": "lt",
               "first": "${event.payload.value}",
-              "second": 200
+              "second": 0
+            },
+            {
+              "type": "gt",
+              "first": "${event.payload.value}",
+              "second": 2000
             }
           ]
         },
         {
-          "type": "lt",
-          "first": "${event.payload.value}",
-          "second": 0
-        },
-        {
-          "type": "gt",
-          "first": "${event.payload.value}",
-          "second": 2000
+          "type": "NOT",
+          "operator": {
+            "type": "equal",
+            "first": "${event.payload.value}",
+            "second": -47
+          }
         }
       ]
     },
