@@ -53,6 +53,11 @@
           "type": "ne",
           "first": "${event.payload.value}",
           "second": -48
+        },
+        {
+          "type": "notEqual",
+          "first": "${event.payload.value}",
+          "second": -49
         }
       ]
     },
