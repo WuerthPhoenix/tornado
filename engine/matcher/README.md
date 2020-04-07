@@ -146,6 +146,8 @@ The following operators are available in the __WHERE__ clause:
   evaluate to `true`.
 - __'OR'__:  Receives an array of operator clauses and returns `true` if at least one of the
   operators evaluates to `true`.
+- __'NOT'__:  Receives one operator clause and returns `true` if the operator evaluates to `false`,
+  while it returns `false` if the operator evaluates to `true`.
 
 We use the Rust Regex library (see its [github project here](https://github.com/rust-lang/regex) )
 to evaluate regular expressions provided by the _WITH_ clause and by the _regex_ operator.
@@ -471,14 +473,17 @@ A matching Event is:
 ```
 
 
-### The 'and' And 'or' Operator
+### The 'AND', 'OR', and 'NOT' Operators
 
-The _and_ and _or_ operators work on a set of operators.
+The _and_ and _or_ operators work on a set of operators, while the _not_ operator
+works on one single operator.
 They can be nested recursively to define complex matching rules.
 
 As you would expect:
 - The _and_ operator evaluates to true if all inner operators match
 - The _or_ operator evaluates to true if at least an inner operator matches
+- The _not_ operator evaluates to true if the inner operator does not match,
+  and evaluates to false if the inner operator matches
 
 
 Example:
@@ -510,6 +515,14 @@ Example:
               "second": "other"
             }
           ]
+        },
+        {
+          "type": "NOT",
+          "operator": {
+              "type": "equal",
+              "first": "${event.payload.body}",
+              "second": "forbidden"
+          }
         }
       ]
     },
@@ -521,6 +534,7 @@ Example:
 ```
 An event matches this rule if:
 - In its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
+- __AND__ its payload does __NOT__ have an entry with key "body" whose value is "forbidden"
 - __AND__ its type is "rsyslog"
 
 A matching Event is:
