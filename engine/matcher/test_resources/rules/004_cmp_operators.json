@@ -48,6 +48,11 @@
             "first": "${event.payload.value}",
             "second": -47
           }
+        },
+        {
+          "type": "ne",
+          "first": "${event.payload.value}",
+          "second": -48
         }
       ]
     },

@@ -99,6 +99,10 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
+        Operator::NotEqual { first, second } => OperatorDto::NotEqual {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
         Operator::Regex { regex, target } => OperatorDto::Regex { regex, target },
     };
     Ok(result)
