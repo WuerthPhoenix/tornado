@@ -6,7 +6,7 @@ use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "ne";
 
-/// A matching matcher.operator that checks whether two strings are equal
+/// A matching matcher.operator that checks whether two arguments are different
 #[derive(Debug)]
 pub struct NotEqual {
     first_arg: Accessor,
