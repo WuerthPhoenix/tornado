@@ -3,11 +3,10 @@ use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
 use tornado_common_api::Value;
-//use std::ops::Not;
 
 const OPERATOR_NAME: &str = "not";
 
-/// A matching matcher.operator that evaluates whether a list of child operators have all been verified
+/// A matching matcher.operator that negates the evaluation of the child operator
 #[derive(Debug)]
 pub struct Not {
     operator: Box<dyn Operator>,
@@ -19,11 +18,7 @@ impl Not {
         args: &config::rule::Operator,
         builder: &OperatorBuilder,
     ) -> Result<Not, MatcherError> {
-        //        let mut operators = vec![];
-        //        for entry in args {
         let operator = builder.build(rule_name, &args)?;
-        //            operators.push(operator)
-        //        }
         Ok(Not { operator })
     }
 }
@@ -107,15 +102,6 @@ mod test {
             r#"Equal { first_arg: Constant { value: Text("1") }, second_arg: Constant { value: Text("2") } }"#
         ))
     }
-
-    //    #[test]
-    //    fn should_evaluate_to_true_if_no_children() {
-    //        let operator = And::build("", &vec![], &OperatorBuilder::new()).unwrap();
-    //
-    //        let event = Event::new("test_type");
-    //
-    //        assert!(operator.evaluate(&InternalEvent::new(event), None));
-    //    }
 
     #[test]
     fn should_evaluate_to_true_if_child_is_fales() {
