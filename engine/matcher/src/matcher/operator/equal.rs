@@ -26,12 +26,8 @@ impl Operator for Equal {
 
     fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         let first = self.first_arg.get(event, extracted_vars);
-        if first.is_some() {
-            let second = self.second_arg.get(event, extracted_vars);
-            second.is_some() && (first == second)
-        } else {
-            false
-        }
+        let second = self.second_arg.get(event, extracted_vars);
+        first == second
     }
 }
 
@@ -122,7 +118,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_false_if_fields_do_not_exist() {
+    fn should_return_true_if_both_fields_do_not_exist() {
         let operator = Equal::build(
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
@@ -131,7 +127,20 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&InternalEvent::new(event), None));
+    }
+
+    #[test]
+    fn should_return_false_if_one_field_does_not_exist() {
+        let operator = Equal::build(
+            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
+        )
+        .unwrap();
+
+        let event = Event::new("test_type");
+
+        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), false);
     }
 
     #[test]
