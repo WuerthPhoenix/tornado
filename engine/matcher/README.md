@@ -131,9 +131,7 @@ expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
 - __'contain'__: Evaluates whether the first argument contains the second one.
-- __'equal'__:  Compares two values and returns whether or not they are equal. If both values
-  do not exists, it returns `true`. If one of the two values does not exist, it returns `false`
-  the values do not exist, it returns `false`.
+- __'equal'__:  Compares two values and returns whether or not they are equal.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
@@ -142,9 +140,8 @@ The following operators are available in the __WHERE__ clause:
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
-- __'ne'__:  This is the negation of the `equal` operator. Compares two values and returns whether 
-  or not they are different. If both values do not exists, it returns `false`. If only one of the
-  two values does not exist, it returns `true`. It can also be called with the alias __'notEqual'__
+- __'ne'__:  This is the negation of the __'equal'__ operator. Compares two values and returns whether 
+  or not they are different. It can also be called with the alias __'notEqual'__.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
