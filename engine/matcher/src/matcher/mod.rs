@@ -1851,7 +1851,7 @@ mod test {
         // Value between 100 and 200 (included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(110)));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert
@@ -1883,10 +1883,11 @@ mod test {
                 _ => assert!(false),
             };
         }
-        // Value equal to -47 should not match
+        // Value equal to 140 should not match
+        // test for `NOT` operator
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::NegInt(-47)));
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(140)));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert
@@ -1901,11 +1902,11 @@ mod test {
             };
         }
 
-        // Value equal to -48 should not match
+        // Value equal to 150 should not match
         // test for `ne` operator
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::NegInt(-48)));
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert
@@ -1920,11 +1921,11 @@ mod test {
             };
         }
 
-        // Value equal to -48 should not match
+        // Value equal to 160 should not match
         // test for `notEqual` alias
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::NegInt(-49)));
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(160)));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert

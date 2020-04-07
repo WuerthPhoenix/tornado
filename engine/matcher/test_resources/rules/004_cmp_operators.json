@@ -4,60 +4,55 @@
   "active": true,
   "constraint": {
     "WHERE": {
-      "type": "AND",
+      "type": "OR",
       "operators": [
         {
-          "type": "OR",
+          "type": "equal",
+          "first": "${event.payload.value}",
+          "second": 1000
+        },
+        {
+          "type": "AND",
           "operators": [
             {
-              "type": "equal",
+              "type": "ge",
               "first": "${event.payload.value}",
-              "second": 1000
+              "second": 100
             },
             {
-              "type": "AND",
-              "operators": [
-                {
-                  "type": "ge",
-                  "first": "${event.payload.value}",
-                  "second": 100
-                },
-                {
-                  "type": "le",
-                  "first": "${event.payload.value}",
-                  "second": 200
-                }
-              ]
+              "type": "le",
+              "first": "${event.payload.value}",
+              "second": 200
             },
             {
-              "type": "lt",
-              "first": "${event.payload.value}",
-              "second": 0
+              "type": "NOT",
+              "operator": {
+                "type": "equal",
+                "first": "${event.payload.value}",
+                "second": 140
+              }
             },
             {
-              "type": "gt",
+              "type": "ne",
               "first": "${event.payload.value}",
-              "second": 2000
+              "second": 150
+            },
+            {
+              "type": "notEqual",
+              "first": "${event.payload.value}",
+              "second": 160
             }
           ]
         },
         {
-          "type": "NOT",
-          "operator": {
-            "type": "equal",
-            "first": "${event.payload.value}",
-            "second": -47
-          }
+          "type": "lt",
+          "first": "${event.payload.value}",
+          "second": 0
         },
         {
-          "type": "ne",
+          "type": "gt",
           "first": "${event.payload.value}",
-          "second": -48
-        },
-        {
-          "type": "notEqual",
-          "first": "${event.payload.value}",
-          "second": -49
+          "second": 2000
         }
       ]
     },
