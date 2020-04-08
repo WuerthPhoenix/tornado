@@ -1,22 +1,25 @@
-use crate::engine::{EventMessageWithReply, MatcherActor};
+use crate::engine::{EventMessageWithReply, MatcherActor, GetCurrentConfigMessage};
 use actix::Addr;
 use async_trait::async_trait;
-use std::sync::Arc;
 use tornado_engine_api::api::handler::{ApiHandler, SendEventRequest};
 use tornado_engine_api::error::ApiError;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
+use tornado_engine_matcher::config::{MatcherConfig};
 use tornado_engine_matcher::model::ProcessedEvent;
 
 #[derive(Clone)]
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
-    config_manager: Arc<dyn MatcherConfigManager>,
 }
 
 #[async_trait]
 impl ApiHandler for MatcherApiHandler {
     async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
-        self.config_manager.read().map_err(ApiError::from)
+        let request = self
+            .matcher
+            .send(GetCurrentConfigMessage{})
+            .await?;
+
+        Ok(request.as_ref().clone())
     }
 
     async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
@@ -31,10 +34,9 @@ impl ApiHandler for MatcherApiHandler {
 
 impl MatcherApiHandler {
     pub fn new(
-        config_manager: Arc<dyn MatcherConfigManager>,
         matcher: Addr<MatcherActor>,
     ) -> MatcherApiHandler {
-        MatcherApiHandler { config_manager, matcher }
+        MatcherApiHandler { matcher }
     }
 }
 
@@ -48,14 +50,12 @@ mod test {
     use tornado_engine_api::api::handler::ProcessType;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::dispatcher::Dispatcher;
-    use tornado_engine_matcher::matcher::Matcher;
 
     #[test]
     fn should_send_an_event_to_the_matcher_and_return_the_processed_event() {
         // Arrange
         let path = "./config/rules.d";
-        let config = FsMatcherConfigManager::new(path);
-        let matcher = Arc::new(config.read().and_then(|config| Matcher::build(&config)).unwrap());
+        let config_manager = Arc::new(FsMatcherConfigManager::new(path));
 
         System::run(move || {
             let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
@@ -65,12 +65,9 @@ mod test {
                 DispatcherActor { dispatcher }
             });
 
-            let matcher_addr = SyncArbiter::start(1, move || MatcherActor {
-                matcher: matcher.clone(),
-                dispatcher_addr: dispatcher_addr.clone(),
-            });
+            let matcher_addr = MatcherActor::start(dispatcher_addr.clone(), config_manager).unwrap();
 
-            let api = MatcherApiHandler { matcher: matcher_addr, config_manager: Arc::new(config) };
+            let api = MatcherApiHandler { matcher: matcher_addr };
 
             let send_event_request = SendEventRequest {
                 process_type: ProcessType::SkipActions,
