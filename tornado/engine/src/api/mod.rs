@@ -110,7 +110,15 @@ mod test {
 
             let api = MatcherApiHandler { matcher: matcher_addr };
 
+            // Add one rule after the tornado start
+            std::fs::copy(
+                "./config/rules.d/001_all_emails.json",
+                format!("{}/001_all_emails.json", temp_path),
+            )
+            .unwrap();
+
             Arbiter::spawn(async move {
+
                 // Act
                 let res = api.get_config().await;
                 // Verify
@@ -120,20 +128,15 @@ mod test {
                     MatcherConfig::Filter { .. } => assert!(false),
                 }
 
-                std::fs::copy(
-                    "./config/rules.d/001_all_emails.json",
-                    format!("{}/001_all_emails.json", temp_path),
-                )
-                .unwrap();
-
                 // Act
                 let res = api.reload_configuration().await;
                 // Verify
                 assert!(res.is_ok());
                 match res.unwrap() {
-                    MatcherConfig::Ruleset { rules, .. } => assert!(!rules.is_empty()),
+                    MatcherConfig::Ruleset { rules, .. } => assert_eq!(1, rules.len()),
                     MatcherConfig::Filter { .. } => assert!(false),
                 }
+
                 System::current().stop();
             });
         })
