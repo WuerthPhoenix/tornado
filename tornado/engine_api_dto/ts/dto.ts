@@ -43,6 +43,7 @@ export type OperatorDto =
  | { type: "gt"; first: Value; second: Value } 
  | { type: "le"; first: Value; second: Value } 
  | { type: "lt"; first: Value; second: Value } 
+ | { type: "ne"; first: Value; second: Value } 
  | { type: "regex"; regex: string; target: string };
 
 export type RuleDto = {     name: string; description: string; continue: boolean; active:     boolean; constraint: ConstraintDto; actions: ActionDto [] };

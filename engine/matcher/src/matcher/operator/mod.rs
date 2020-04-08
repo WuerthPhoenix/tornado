@@ -19,6 +19,7 @@ pub mod ge;
 pub mod gt;
 pub mod le;
 pub mod lt;
+pub mod ne;
 pub mod not;
 pub mod or;
 pub mod regex;
@@ -105,6 +106,12 @@ impl OperatorBuilder {
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
+            rule::Operator::NotEqual { first, second } => {
+                Ok(Box::new(crate::matcher::operator::ne::NotEqual::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?))
+            }
             rule::Operator::GreaterEqualThan { first, second } => {
                 Ok(Box::new(crate::matcher::operator::ge::GreaterEqualThan::build(
                     self.accessor.build_from_value(rule_name, first)?,
@@ -179,6 +186,19 @@ mod test {
         let operator = builder.build_option("", &Some(ops)).unwrap();
 
         assert_eq!("equal", operator.name());
+    }
+
+    #[test]
+    fn build_should_return_the_not_equal_operator() {
+        let ops = rule::Operator::NotEqual {
+            first: Value::Text("first_arg=".to_owned()),
+            second: Value::Text("second_arg".to_owned()),
+        };
+
+        let builder = OperatorBuilder::new();
+        let operator = builder.build_option("", &Some(ops)).unwrap();
+
+        assert_eq!("ne", operator.name());
     }
 
     #[test]

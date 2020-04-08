@@ -76,6 +76,9 @@ pub enum Operator {
     LessEqualThan { first: Value, second: Value },
     #[serde(rename = "lt")]
     LessThan { first: Value, second: Value },
+    #[serde(rename = "ne")]
+    #[serde(alias = "notEqual")]
+    NotEqual { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }

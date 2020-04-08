@@ -131,8 +131,7 @@ expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
 - __'contain'__: Evaluates whether the first argument contains the second one.
-- __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
-  the values do not exist, it returns `false`.
+- __'equal'__:  Compares two values and returns whether or not they are equal.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
@@ -141,6 +140,8 @@ The following operators are available in the __WHERE__ clause:
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
+- __'ne'__:  This is the negation of the __'equal'__ operator. Compares two values and returns whether 
+  or not they are different. It can also be called with the alias __'notEqual'__.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
@@ -347,9 +348,9 @@ A matching Event is:
 ```
 
 
-### The 'equal', 'ge', 'gt', 'le' and 'lt' Operators
+### The 'equal', 'ge', 'gt', 'le', 'lt' and 'ne' Operators
 
-The _equal_, _ge_, _gt_, _le_, _lt_ operators are used to compare two values.
+The _equal_, _ge_, _gt_, _le_, _lt_, __ne_ operators are used to compare two values.
 
 All these operators can work with values of type Number, String, Bool, null and Array. 
 
@@ -364,7 +365,7 @@ Example:
   "continue": true,
   "active": true,
   "constraint": {
-      "WHERE": {
+    "WHERE": {
       "type": "OR",
       "operators": [
         {
@@ -384,6 +385,16 @@ Example:
               "type": "le",
               "first": "${event.payload.value}",
               "second": 200
+            },
+            {
+              "type": "ne",
+              "first": "${event.payload.value}",
+              "second": 150
+            },
+            {
+              "type": "notEqual",
+              "first": "${event.payload.value}",
+              "second": 160
             }
           ]
         },
@@ -407,7 +418,7 @@ Example:
 An event matches this rule if _event.payload.value_ exists and one or more of the following
 conditions hold:
 - It is equal to _1000_
-- It is between _100_ (inclusive) and _200_ (inclusive)
+- It is between _100_ (inclusive) and _200_ (inclusive), but not equal to _150_ or to _160_
 - It is less than _0_ (exclusive)
 - It is greater than _2000_ (exclusive)
 
@@ -417,7 +428,7 @@ A matching Event is:
     "type": "email",
     "created_ms": 1554130814854,
     "payload":{
-      "value": 150
+      "value": 110
     }
 }
 ```
