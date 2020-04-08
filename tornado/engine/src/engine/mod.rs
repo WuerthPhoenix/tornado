@@ -4,11 +4,11 @@ use log::*;
 use std::sync::Arc;
 use tornado_common_api;
 use tornado_engine_api::api::handler::ProcessType;
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
+use tornado_engine_matcher::error::MatcherError;
+use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
-use tornado_engine_matcher::config::{MatcherConfigManager, MatcherConfig};
-use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::error::MatcherError;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
@@ -24,7 +24,7 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<(), error::MatcherError>")]
+#[rtype(result = "Result<Arc<MatcherConfig>, error::MatcherError>")]
 pub struct ReconfigureMessage {}
 
 #[derive(Message)]
@@ -45,8 +45,11 @@ impl MatcherActor {
     ) -> Result<Addr<MatcherActor>, MatcherError> {
         let matcher_config = Arc::new(matcher_config_manager.read()?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
-        Ok(actix::Supervisor::start(move |_ctx: &mut Context<MatcherActor>| {
-            MatcherActor { dispatcher_addr, matcher_config_manager, matcher_config, matcher}
+        Ok(actix::Supervisor::start(move |_ctx: &mut Context<MatcherActor>| MatcherActor {
+            dispatcher_addr,
+            matcher_config_manager,
+            matcher_config,
+            matcher,
         }))
     }
 }
@@ -109,18 +112,18 @@ impl Handler<GetCurrentConfigMessage> for MatcherActor {
 }
 
 impl Handler<ReconfigureMessage> for MatcherActor {
-    type Result = Result<(), error::MatcherError>;
+    type Result = Result<Arc<MatcherConfig>, error::MatcherError>;
 
     fn handle(&mut self, _msg: ReconfigureMessage, _: &mut Context<Self>) -> Self::Result {
         info!("MatcherActor - received ReconfigureMessage.");
 
         let matcher_config = Arc::new(self.matcher_config_manager.read()?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
-        self.matcher_config = matcher_config;
+        self.matcher_config = matcher_config.clone();
         self.matcher = matcher;
 
         info!("MatcherActor - Tornado configuration updated successfully.");
 
-        Ok(())
+        Ok(matcher_config)
     }
 }
