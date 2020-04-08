@@ -38,6 +38,7 @@ export type OperatorDto =
  | { type: "OR"; operators: OperatorDto [] } 
  | { type: "NOT"; operator: OperatorDto } 
  | { type: "contain"; first: Value; second: Value } 
+ | { type: "containIgnoreCase"; first: Value; second: Value } 
  | { type: "equal"; first: Value; second: Value } 
  | { type: "ge"; first: Value; second: Value } 
  | { type: "gt"; first: Value; second: Value } 

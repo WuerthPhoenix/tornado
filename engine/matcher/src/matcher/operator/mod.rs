@@ -14,6 +14,7 @@ use tornado_common_api::Value;
 
 pub mod and;
 pub mod contain;
+pub mod contain_ignore_case;
 pub mod equal;
 pub mod ge;
 pub mod gt;
@@ -142,6 +143,12 @@ impl OperatorBuilder {
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
+            rule::Operator::ContainIgnoreCase { first, second } => Ok(Box::new(
+                crate::matcher::operator::contain_ignore_case::ContainsIgnoreCase::build(
+                    self.accessor.build_from_value(rule_name, first)?,
+                    self.accessor.build_from_value(rule_name, second)?,
+                )?,
+            )),
             rule::Operator::Regex { regex, target } => {
                 Ok(Box::new(crate::matcher::operator::regex::Regex::build(
                     regex,
