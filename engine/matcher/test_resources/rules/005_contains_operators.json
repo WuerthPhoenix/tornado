@@ -1,0 +1,34 @@
+{
+  "description": "Test rule for containsIgnoreCase operator",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "OR",
+      "operators": [
+        {
+          "type": "containsIgnoreCase",
+          "first": "${event.payload.value}",
+          "second": "someTHING"
+        },
+        {
+          "type": "containsIgnoreCase",
+          "first": "${event.payload.value}",
+          "second": 6
+        },
+        {
+          "type": "contains",
+          "first": "${event.payload.value}",
+          "second": "Contains test"
+        },
+        {
+          "type": "contain",
+          "first": "${event.payload.value}",
+          "second": "Contain alias test"
+        }
+      ]
+    },
+    "WITH": {}
+  },
+  "actions": []
+}

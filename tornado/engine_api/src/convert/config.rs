@@ -75,11 +75,11 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
         Operator::Not { operator } => {
             OperatorDto::Not { operator: Box::new(operator_into_dto(*operator)?) }
         }
-        Operator::Contain { first, second } => OperatorDto::Contain {
+        Operator::Contains { first, second } => OperatorDto::Contains {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
-        Operator::ContainIgnoreCase { first, second } => OperatorDto::ContainIgnoreCase {
+        Operator::ContainsIgnoreCase { first, second } => OperatorDto::ContainsIgnoreCase {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },

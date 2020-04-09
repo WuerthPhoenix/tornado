@@ -1942,6 +1942,151 @@ mod test {
     }
 
     #[test]
+    fn should_match_contains_operators() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // Value containing (case insentitive) "something" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("The word Something should match".to_owned()),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value not containing (case insentitive) "something" should not match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Text("Some".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Array containing a string equal to (case insentivive) "something" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Array(vec![
+                    Value::Text("Something else".to_owned()),
+                    Value::Text("Something".to_owned()),
+                ]),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Array not containing a string equal to (case insentivive) "something" should not match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Array(vec![
+                    Value::Text("This is Something".to_owned()),
+                    Value::Text("Something else".to_owned()),
+                ]),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // contains operator should work
+        // Value containing "Contains test" should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Text("This is a Contains test!".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // contain alias operator should still work
+        // Value containing "Contain alias test" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
     fn rule_should_get_extracted_variables_of_another_rule() {
         // Arrange
         let mut rule_1 = new_rule("rule1", None);
