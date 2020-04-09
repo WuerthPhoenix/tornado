@@ -36,18 +36,18 @@ impl Operator for ContainsIgnoreCase {
                         Some(first_arg_value) => match first_arg_value.borrow() {
                             Value::Text(first_arg_string) => (first_arg_string.to_lowercase())
                                 .contains(&second_arg_string.to_lowercase()),
-                            Value::Array(first_arg_array) => first_arg_array.iter().any(|arr_el| {
-                                arr_el
-                                    .get_text()
-                                    .and_then(|arr_str| {
-                                        Some(
-                                            arr_str
-                                                .to_lowercase()
-                                                .eq(&second_arg_string.to_lowercase()),
-                                        )
-                                    })
-                                    .unwrap_or(false)
-                            }),
+                            Value::Array(first_arg_array) => {
+                                let second_arg_lowercased_string =
+                                    &second_arg_string.to_lowercase();
+                                first_arg_array.iter().any(|arr_el| {
+                                    arr_el
+                                        .get_text()
+                                        .map(|arr_str| {
+                                            arr_str.to_lowercase().eq(second_arg_lowercased_string)
+                                        })
+                                        .unwrap_or(false)
+                                })
+                            }
                             Value::Map(map) => map.iter().any(|entry| {
                                 entry.0.to_lowercase().eq(&second_arg_string.to_lowercase())
                             }),
