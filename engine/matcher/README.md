@@ -130,7 +130,10 @@ An event matches a rule if and only if the WHERE clause evaluates to `true` and 
 expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
-- __'contain'__: Evaluates whether the first argument contains the second one.
+- __'contains'__: Evaluates whether the first argument contains the second one. 
+  The operator can also be called with the alias __'contain'__.
+- __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
+  way, the string passed as second argument. 
 - __'equal'__:  Compares two values and returns whether or not they are equal.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
@@ -303,9 +306,9 @@ Content of *only_trapd_filter.json*:
 ## Rule Examples
 
 
-### The 'contain' Operator
+### The 'contains' Operator
 
-The _contain_ operator is used to check whether the first argument contains the second one.
+The _contains_ operator is used to check whether the first argument contains the second one.
 
 It applies in three different situations:
 - The arguments are both strings:  Returns true if the second string is a substring of the first one.
@@ -323,7 +326,7 @@ Rule example:
   "active": true,
   "constraint": {
     "WHERE": {
-      "type": "contain",
+      "type": "contains",
       "first": "${event.payload.hostname}",
       "second": "linux"
     },
@@ -343,6 +346,52 @@ A matching Event is:
     "created_ms": 1554130814854,
     "payload":{
         "hostname": "linux-server-01"
+    }
+}
+```
+
+### The 'containsIgnoreCase' Operator
+
+The _containsIgnoreCase_ operator is used to check whether the first argument contains, in a _case-insensitive_
+ way, the string passed as second argument.
+
+It applies in three different situations:
+- The arguments are both strings:  Returns true if the second string is a _case-insensitive substring_ of the first one.
+- The first argument is an array and the second is a string:  Returns true if the array passed as first parameter 
+ contains a (string) element which is equal, in a _case-insensitive_ way, to the string passed as second argument.
+- The first argument is a map and the second is a string:
+  Returns true if the second argument is equal, in a _case-insensitive_ way, to an existing key of the map.
+
+In any other case, it will return false.
+
+Rule example:
+```json
+{
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "containsIgnoreCase",
+      "first": "${event.payload.hostname}",
+      "second": "Linux"
+    },
+    "WITH": {}
+  },
+  "actions": []
+}
+```
+An event matches this rule if in its payload it has
+an entry with key "hostname" and whose value is a string that contains
+"linux", __ignoring the case__ of the strings.
+
+A matching Event is:
+```json
+{
+    "type": "trap",
+    "created_ms": 1554130814854,
+    "payload":{
+        "hostname": "LINUX-server-01"
     }
 }
 ```
