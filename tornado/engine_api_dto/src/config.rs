@@ -60,6 +60,8 @@ pub enum OperatorDto {
     ContainsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "equals")]
     Equals { first: Value, second: Value },
+    #[serde(rename = "equalsIgnoreCase")]
+    EqualsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "ge")]
     GreaterEqualThan { first: Value, second: Value },
     #[serde(rename = "gt")]

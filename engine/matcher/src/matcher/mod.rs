@@ -1939,6 +1939,50 @@ mod test {
                 _ => assert!(false),
             };
         }
+
+        // equalsIgnoreCase should match "Warning"
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
+            payload.insert("message".to_owned(), Value::Text("WaRnInG".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // equalsIgnoreCase should not match "WaRnInGs"
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
+            payload.insert("message".to_owned(), Value::Text("WaRnInGs".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
     }
 
     #[test]
