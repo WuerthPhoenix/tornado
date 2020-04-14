@@ -54,8 +54,10 @@ pub enum OperatorDto {
     Or { operators: Vec<OperatorDto> },
     #[serde(rename = "NOT")]
     Not { operator: Box<OperatorDto> },
-    #[serde(rename = "contain")]
-    Contain { first: Value, second: Value },
+    #[serde(rename = "contains")]
+    Contains { first: Value, second: Value },
+    #[serde(rename = "containsIgnoreCase")]
+    ContainsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "equal")]
     Equal { first: Value, second: Value },
     #[serde(rename = "ge")]

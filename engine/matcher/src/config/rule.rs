@@ -64,8 +64,12 @@ pub enum Operator {
     Or { operators: Vec<Operator> },
     #[serde(rename = "NOT")]
     Not { operator: Box<Operator> },
-    #[serde(rename = "contain")]
-    Contain { first: Value, second: Value },
+    #[serde(rename = "contains")]
+    #[serde(alias = "contain")]
+    Contains { first: Value, second: Value },
+    #[serde(rename = "containsIgnoreCase")]
+    #[serde(alias = "containIgnoreCase")]
+    ContainsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "equal")]
     Equal { first: Value, second: Value },
     #[serde(rename = "ge")]
