@@ -136,6 +136,7 @@ The following operators are available in the __WHERE__ clause:
   way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
 - __'equals'__:  Compares two values and returns whether or not they are equal. An alias for this operator is '__equal__'.
 - __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
+  The operator can also be called with the alias __'equalIgnoreCase'__.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
