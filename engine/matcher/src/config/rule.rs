@@ -70,8 +70,9 @@ pub enum Operator {
     #[serde(rename = "containsIgnoreCase")]
     #[serde(alias = "containIgnoreCase")]
     ContainsIgnoreCase { first: Value, second: Value },
-    #[serde(rename = "equal")]
-    Equal { first: Value, second: Value },
+    #[serde(rename = "equals")]
+    #[serde(alias = "equal")]
+    Equals { first: Value, second: Value },
     #[serde(rename = "ge")]
     GreaterEqualThan { first: Value, second: Value },
     #[serde(rename = "gt")]
@@ -81,8 +82,9 @@ pub enum Operator {
     #[serde(rename = "lt")]
     LessThan { first: Value, second: Value },
     #[serde(rename = "ne")]
+    #[serde(alias = "notEquals")]
     #[serde(alias = "notEqual")]
-    NotEqual { first: Value, second: Value },
+    NotEquals { first: Value, second: Value },
     #[serde(rename = "regex")]
     Regex { regex: String, target: String },
 }

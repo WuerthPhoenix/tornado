@@ -39,7 +39,7 @@ export type OperatorDto =
  | { type: "NOT"; operator: OperatorDto } 
  | { type: "contains"; first: Value; second: Value } 
  | { type: "containsIgnoreCase"; first: Value; second: Value } 
- | { type: "equal"; first: Value; second: Value } 
+ | { type: "equals"; first: Value; second: Value } 
  | { type: "ge"; first: Value; second: Value } 
  | { type: "gt"; first: Value; second: Value } 
  | { type: "le"; first: Value; second: Value } 

@@ -34,7 +34,7 @@ mod test {
         let filter = Filter::from_json(&json).unwrap();
 
         assert_eq!(
-            Defaultable::Value(Operator::Equal {
+            Defaultable::Value(Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned())
             }),

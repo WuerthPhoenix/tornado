@@ -7,7 +7,7 @@
       "type": "OR",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.payload.value}",
           "second": 1000
         },
@@ -38,7 +38,7 @@
               "second": 150
             },
             {
-              "type": "notEqual",
+              "type": "notEquals",
               "first": "${event.payload.value}",
               "second": 160
             }

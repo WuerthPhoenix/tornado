@@ -83,7 +83,7 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
-        Operator::Equal { first, second } => OperatorDto::Equal {
+        Operator::Equals { first, second } => OperatorDto::Equals {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
@@ -103,7 +103,7 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
-        Operator::NotEqual { first, second } => OperatorDto::NotEqual {
+        Operator::NotEquals { first, second } => OperatorDto::NotEquals {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },

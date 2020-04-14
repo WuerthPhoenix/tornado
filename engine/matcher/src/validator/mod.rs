@@ -113,7 +113,7 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -131,7 +131,7 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -149,7 +149,7 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule_name",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -157,7 +157,7 @@ mod test {
 
         let rule_2 = new_rule(
             "rule_name_2",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -176,7 +176,7 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -192,7 +192,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_name() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -215,7 +215,7 @@ mod test {
     #[test]
     fn build_should_fail_if_empty_spaces_in_rule_name() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -231,7 +231,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_name() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -247,7 +247,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_extracted_var_name() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -275,7 +275,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_correct_action_id() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };

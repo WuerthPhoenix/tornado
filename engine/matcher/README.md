@@ -134,7 +134,7 @@ The following operators are available in the __WHERE__ clause:
   The operator can also be called with the alias __'contain'__.
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
   way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
-- __'equal'__:  Compares two values and returns whether or not they are equal.
+- __'equals'__:  Compares two values and returns whether or not they are equal. An alias for this operator is '__equal__'.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
@@ -143,8 +143,8 @@ The following operators are available in the __WHERE__ clause:
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
-- __'ne'__:  This is the negation of the __'equal'__ operator. Compares two values and returns whether 
-  or not they are different. It can also be called with the alias __'notEqual'__.
+- __'ne'__:  This is the negation of the __'equals'__ operator. Compares two values and returns whether 
+  or not they are different. It can also be called with the aliases __'notEquals'__ and __'notEqual'__.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
@@ -282,7 +282,7 @@ Content of *only_email_filter.json*:
   "description": "This filter allows events of type 'email'",
   "active": true,
   "filter": {
-    "type": "equal",
+    "type": "equals",
     "first": "${event.type}",
     "second": "email"
   }
@@ -295,7 +295,7 @@ Content of *only_trapd_filter.json*:
   "description": "This filter allows events of type 'trapd'",
   "active": true,
   "filter": {
-    "type": "equal",
+    "type": "equals",
     "first": "${event.type}",
     "second": "trapd"
   }
@@ -397,9 +397,9 @@ A matching Event is:
 ```
 
 
-### The 'equal', 'ge', 'gt', 'le', 'lt' and 'ne' Operators
+### The 'equals', 'ge', 'gt', 'le', 'lt' and 'ne' Operators
 
-The _equal_, _ge_, _gt_, _le_, _lt_, __ne_ operators are used to compare two values.
+The _equals_, _ge_, _gt_, _le_, _lt_, __ne_ operators are used to compare two values.
 
 All these operators can work with values of type Number, String, Bool, null and Array. 
 
@@ -418,7 +418,7 @@ Example:
       "type": "OR",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.payload.value}",
           "second": 1000
         },
@@ -441,7 +441,7 @@ Example:
               "second": 150
             },
             {
-              "type": "notEqual",
+              "type": "notEquals",
               "first": "${event.payload.value}",
               "second": 160
             }
@@ -557,7 +557,7 @@ Example:
       "type": "AND",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "rsyslog"
         },
@@ -565,12 +565,12 @@ Example:
           "type": "OR",
           "operators": [
             {
-              "type": "equal",
+              "type": "equals",
               "first": "${event.payload.body}",
               "second": "something"
             },
             {
-              "type": "equal",
+              "type": "equals",
               "first": "${event.payload.body}",
               "second": "other"
             }
@@ -579,7 +579,7 @@ Example:
         {
           "type": "NOT",
           "operator": {
-              "type": "equal",
+              "type": "equals",
               "first": "${event.payload.body}",
               "second": "forbidden"
           }
@@ -666,7 +666,7 @@ Example:
   "active": true,
   "constraint": {
     "WHERE": {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "trap"
     },
@@ -956,7 +956,7 @@ An example of a valid Rule in a JSON file is:
       "type": "AND",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "email"
         }
