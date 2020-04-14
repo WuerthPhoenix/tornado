@@ -144,7 +144,7 @@ The following operators are available in the __WHERE__ clause:
 - __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
 - __'ne'__:  This is the negation of the __'equals'__ operator. Compares two values and returns whether 
-  or not they are different. It can also be called with the alias __'notEquals'__.
+  or not they are different. It can also be called with the aliases __'notEquals'__ and __'notEqual'__.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
