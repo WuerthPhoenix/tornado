@@ -8,18 +8,18 @@ const OPERATOR_NAME: &str = "ne";
 
 /// A matching matcher.operator that checks whether two arguments are different
 #[derive(Debug)]
-pub struct NotEqual {
+pub struct NotEquals {
     first_arg: Accessor,
     second_arg: Accessor,
 }
 
-impl NotEqual {
-    pub fn build(first_arg: Accessor, second_arg: Accessor) -> Result<NotEqual, MatcherError> {
-        Ok(NotEqual { first_arg, second_arg })
+impl NotEquals {
+    pub fn build(first_arg: Accessor, second_arg: Accessor) -> Result<NotEquals, MatcherError> {
+        Ok(NotEquals { first_arg, second_arg })
     }
 }
 
-impl Operator for NotEqual {
+impl Operator for NotEquals {
     fn name(&self) -> &str {
         OPERATOR_NAME
     }
@@ -41,7 +41,7 @@ mod test {
 
     #[test]
     fn should_return_the_operator_name() {
-        let operator = NotEqual {
+        let operator = NotEquals {
             first_arg: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
             second_arg: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
         };
@@ -50,7 +50,7 @@ mod test {
 
     #[test]
     fn should_build_the_operator_with_expected_arguments() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
         )
@@ -64,7 +64,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_equal_arguments() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
         )
@@ -77,7 +77,7 @@ mod test {
 
     #[test]
     fn should_evaluate_using_accessors() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
         )
@@ -90,7 +90,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_different_arguments() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
         )
@@ -103,7 +103,7 @@ mod test {
 
     #[test]
     fn should_compare_event_fields() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
         )
@@ -119,7 +119,7 @@ mod test {
 
     #[test]
     fn should_return_false_if_both_fields_do_not_exist() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
         )
@@ -132,7 +132,7 @@ mod test {
 
     #[test]
     fn should_return_true_if_one_field_do_not_exist() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
         )
@@ -145,7 +145,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_bool() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -160,7 +160,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_values_of_type_bool_but_not_equal() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -175,7 +175,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_number() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -190,7 +190,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_values_of_type_number_but_not_equal() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -205,7 +205,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_array() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -232,7 +232,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_values_of_type_array_but_different() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -255,7 +255,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_map() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -275,7 +275,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_values_of_type_map_but_different() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )
@@ -296,7 +296,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_values_of_different_type() {
-        let operator = NotEqual::build(
+        let operator = NotEquals::build(
             AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
             AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
         )

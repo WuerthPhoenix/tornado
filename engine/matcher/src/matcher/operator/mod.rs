@@ -15,7 +15,7 @@ use tornado_common_api::Value;
 pub mod and;
 pub mod contains;
 pub mod contains_ignore_case;
-pub mod equal;
+pub mod equals;
 pub mod ge;
 pub mod gt;
 pub mod le;
@@ -78,7 +78,7 @@ impl OperatorBuilder {
     /// use tornado_engine_matcher::config::rule;
     /// use tornado_common_api::Value;
     ///
-    /// let ops = rule::Operator::Equal {
+    /// let ops = rule::Operator::Equals {
     ///              first: Value::Text("${event.type}".to_owned()),
     ///              second: Value::Text("email".to_owned()),
     ///           };
@@ -101,14 +101,14 @@ impl OperatorBuilder {
             rule::Operator::Not { operator } => {
                 Ok(Box::new(crate::matcher::operator::not::Not::build("", &operator, self)?))
             }
-            rule::Operator::Equal { first, second } => {
-                Ok(Box::new(crate::matcher::operator::equal::Equal::build(
+            rule::Operator::Equals { first, second } => {
+                Ok(Box::new(crate::matcher::operator::equals::Equals::build(
                     self.accessor.build_from_value(rule_name, first)?,
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
             }
-            rule::Operator::NotEqual { first, second } => {
-                Ok(Box::new(crate::matcher::operator::ne::NotEqual::build(
+            rule::Operator::NotEquals { first, second } => {
+                Ok(Box::new(crate::matcher::operator::ne::NotEquals::build(
                     self.accessor.build_from_value(rule_name, first)?,
                     self.accessor.build_from_value(rule_name, second)?,
                 )?))
@@ -173,7 +173,7 @@ mod test {
 
     #[test]
     fn build_should_return_error_if_wrong_operator() {
-        let ops = rule::Operator::Equal {
+        let ops = rule::Operator::Equals {
             first: Value::Text("${WRONG_ARG}".to_owned()),
             second: Value::Text("second_arg".to_owned()),
         };
@@ -184,7 +184,7 @@ mod test {
 
     #[test]
     fn build_should_return_the_equal_operator() {
-        let ops = rule::Operator::Equal {
+        let ops = rule::Operator::Equals {
             first: Value::Text("first_arg=".to_owned()),
             second: Value::Text("second_arg".to_owned()),
         };
@@ -192,12 +192,12 @@ mod test {
         let builder = OperatorBuilder::new();
         let operator = builder.build_option("", &Some(ops)).unwrap();
 
-        assert_eq!("equal", operator.name());
+        assert_eq!("equals", operator.name());
     }
 
     #[test]
     fn build_should_return_the_not_equal_operator() {
-        let ops = rule::Operator::NotEqual {
+        let ops = rule::Operator::NotEquals {
             first: Value::Text("first_arg=".to_owned()),
             second: Value::Text("second_arg".to_owned()),
         };
@@ -287,7 +287,7 @@ mod test {
     #[test]
     fn build_should_return_the_and_operator() {
         let ops = rule::Operator::And {
-            operators: vec![rule::Operator::Equal {
+            operators: vec![rule::Operator::Equals {
                 first: Value::Text("first_arg".to_owned()),
                 second: Value::Text("second_arg".to_owned()),
             }],
@@ -312,7 +312,7 @@ mod test {
     #[test]
     fn build_should_return_the_not_operator() {
         let ops = rule::Operator::Not {
-            operator: Box::new(rule::Operator::Equal {
+            operator: Box::new(rule::Operator::Equals {
                 first: Value::Text("first_arg".to_owned()),
                 second: Value::Text("second_arg".to_owned()),
             }),

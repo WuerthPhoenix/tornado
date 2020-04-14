@@ -10,7 +10,7 @@ pub fn bench(c: &mut Criterion) {
     let rule = {
         let mut rule = new_rule(
             "rule_name",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },

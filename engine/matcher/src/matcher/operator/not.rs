@@ -44,7 +44,7 @@ mod test {
     fn should_return_the_operator_name() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("first_arg=".to_owned()),
                 second: Value::Text("second_arg".to_owned()),
             },
@@ -58,21 +58,21 @@ mod test {
     fn should_build_the_not_with_expected_arguments() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("first_arg=".to_owned()),
                 second: Value::Text("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         )
         .unwrap();
-        assert_eq!("equal", operator.operator.name());
+        assert_eq!("equals", operator.operator.name());
     }
 
     #[test]
     fn build_should_fail_if_wrong_nested_operator() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("${NOT_EXISTING}".to_owned()),
                 second: Value::Text("second_arg".to_owned()),
             },
@@ -85,7 +85,7 @@ mod test {
     fn build_should_be_recursive() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("2".to_owned()),
             },
@@ -94,12 +94,12 @@ mod test {
         .unwrap();
 
         assert_eq!("not", operator.name());
-        assert_eq!("equal", operator.operator.name());
+        assert_eq!("equals", operator.operator.name());
 
         println!("{:?}", operator.operator);
 
         assert!(format!("{:?}", operator.operator).contains(
-            r#"Equal { first_arg: Constant { value: Text("1") }, second_arg: Constant { value: Text("2") } }"#
+            r#"Equals { first_arg: Constant { value: Text("1") }, second_arg: Constant { value: Text("2") } }"#
         ))
     }
 
@@ -107,7 +107,7 @@ mod test {
     fn should_evaluate_to_true_if_child_is_fales() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("2".to_owned()),
             },
@@ -124,7 +124,7 @@ mod test {
     fn should_evaluate_to_false_if_child_is_true() {
         let operator = Not::build(
             "",
-            &config::rule::Operator::Equal {
+            &config::rule::Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -142,7 +142,7 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Not {
-                operator: Box::new(config::rule::Operator::Equal {
+                operator: Box::new(config::rule::Operator::Equals {
                     first: Value::Text("4".to_owned()),
                     second: Value::Text("4".to_owned()),
                 }),
@@ -162,11 +162,11 @@ mod test {
             "",
             &config::rule::Operator::And {
                 operators: vec![
-                    config::rule::Operator::Equal {
+                    config::rule::Operator::Equals {
                         first: Value::Text("4".to_owned()),
                         second: Value::Text("4".to_owned()),
                     },
-                    config::rule::Operator::Equal {
+                    config::rule::Operator::Equals {
                         first: Value::Text("${event.type}".to_owned()),
                         second: Value::Text("type".to_owned()),
                     },
@@ -187,11 +187,11 @@ mod test {
             "",
             &config::rule::Operator::And {
                 operators: vec![
-                    config::rule::Operator::Equal {
+                    config::rule::Operator::Equals {
                         first: Value::Text("4".to_owned()),
                         second: Value::Text("4".to_owned()),
                     },
-                    config::rule::Operator::Equal {
+                    config::rule::Operator::Equals {
                         first: Value::Text("${event.type}".to_owned()),
                         second: Value::Text("type1".to_owned()),
                     },
