@@ -130,9 +130,13 @@ An event matches a rule if and only if the WHERE clause evaluates to `true` and 
 expressions in the WITH clause return non-empty values.
 
 The following operators are available in the __WHERE__ clause:
-- __'contain'__: Evaluates whether the first argument contains the second one.
-- __'equal'__:  Compares two values and returns whether or not they are equal. If one or both of
-  the values do not exist, it returns `false`.
+- __'contains'__: Evaluates whether the first argument contains the second one. 
+  The operator can also be called with the alias __'contain'__.
+- __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
+  way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
+- __'equals'__:  Compares two values and returns whether or not they are equal. An alias for this operator is '__equal__'.
+- __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
+  The operator can also be called with the alias __'equalIgnoreCase'__.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
@@ -141,11 +145,15 @@ The following operators are available in the __WHERE__ clause:
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'lt'__:  Compares two values and returns whether the first value is less 
   than the second one. If one or both of the values do not exist, it returns `false`.
+- __'ne'__:  This is the negation of the __'equals'__ operator. Compares two values and returns whether 
+  or not they are different. It can also be called with the aliases __'notEquals'__ and __'notEqual'__.
 - __'regex'__:  Evaluates whether a field of an event matches a given regular expression.
 - __'AND'__:  Receives an array of operator clauses and returns `true` if and only if all of them
   evaluate to `true`.
 - __'OR'__:  Receives an array of operator clauses and returns `true` if at least one of the
   operators evaluates to `true`.
+- __'NOT'__:  Receives one operator clause and returns `true` if the operator evaluates to `false`,
+  while it returns `false` if the operator evaluates to `true`.
 
 We use the Rust Regex library (see its [github project here](https://github.com/rust-lang/regex) )
 to evaluate regular expressions provided by the _WITH_ clause and by the _regex_ operator.
@@ -276,7 +284,7 @@ Content of *only_email_filter.json*:
   "description": "This filter allows events of type 'email'",
   "active": true,
   "filter": {
-    "type": "equal",
+    "type": "equals",
     "first": "${event.type}",
     "second": "email"
   }
@@ -289,7 +297,7 @@ Content of *only_trapd_filter.json*:
   "description": "This filter allows events of type 'trapd'",
   "active": true,
   "filter": {
-    "type": "equal",
+    "type": "equals",
     "first": "${event.type}",
     "second": "trapd"
   }
@@ -300,9 +308,9 @@ Content of *only_trapd_filter.json*:
 ## Rule Examples
 
 
-### The 'contain' Operator
+### The 'contains' Operator
 
-The _contain_ operator is used to check whether the first argument contains the second one.
+The _contains_ operator is used to check whether the first argument contains the second one.
 
 It applies in three different situations:
 - The arguments are both strings:  Returns true if the second string is a substring of the first one.
@@ -320,7 +328,7 @@ Rule example:
   "active": true,
   "constraint": {
     "WHERE": {
-      "type": "contain",
+      "type": "contains",
       "first": "${event.payload.hostname}",
       "second": "linux"
     },
@@ -344,10 +352,56 @@ A matching Event is:
 }
 ```
 
+### The 'containsIgnoreCase' Operator
 
-### The 'equal', 'ge', 'gt', 'le' and 'lt' Operators
+The _containsIgnoreCase_ operator is used to check whether the first argument contains, in a _case-insensitive_
+ way, the string passed as second argument.
 
-The _equal_, _ge_, _gt_, _le_, _lt_ operators are used to compare two values.
+It applies in three different situations:
+- The arguments are both strings:  Returns true if the second string is a _case-insensitive substring_ of the first one.
+- The first argument is an array and the second is a string:  Returns true if the array passed as first parameter 
+ contains a (string) element which is equal, in a _case-insensitive_ way, to the string passed as second argument.
+- The first argument is a map and the second is a string:
+  Returns true if the second argument is equal, in a _case-insensitive_ way, to an existing key of the map.
+
+In any other case, it will return false.
+
+Rule example:
+```json
+{
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "containsIgnoreCase",
+      "first": "${event.payload.hostname}",
+      "second": "Linux"
+    },
+    "WITH": {}
+  },
+  "actions": []
+}
+```
+An event matches this rule if in its payload it has
+an entry with key "hostname" and whose value is a string that contains
+"linux", __ignoring the case__ of the strings.
+
+A matching Event is:
+```json
+{
+    "type": "trap",
+    "created_ms": 1554130814854,
+    "payload":{
+        "hostname": "LINUX-server-01"
+    }
+}
+```
+
+
+### The 'equals', 'ge', 'gt', 'le', 'lt' and 'ne' Operators
+
+The _equals_, _ge_, _gt_, _le_, _lt_, __ne_ operators are used to compare two values.
 
 All these operators can work with values of type Number, String, Bool, null and Array. 
 
@@ -362,11 +416,11 @@ Example:
   "continue": true,
   "active": true,
   "constraint": {
-      "WHERE": {
+    "WHERE": {
       "type": "OR",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.payload.value}",
           "second": 1000
         },
@@ -382,6 +436,16 @@ Example:
               "type": "le",
               "first": "${event.payload.value}",
               "second": 200
+            },
+            {
+              "type": "ne",
+              "first": "${event.payload.value}",
+              "second": 150
+            },
+            {
+              "type": "notEquals",
+              "first": "${event.payload.value}",
+              "second": 160
             }
           ]
         },
@@ -405,7 +469,7 @@ Example:
 An event matches this rule if _event.payload.value_ exists and one or more of the following
 conditions hold:
 - It is equal to _1000_
-- It is between _100_ (inclusive) and _200_ (inclusive)
+- It is between _100_ (inclusive) and _200_ (inclusive), but not equal to _150_ or to _160_
 - It is less than _0_ (exclusive)
 - It is greater than _2000_ (exclusive)
 
@@ -415,7 +479,7 @@ A matching Event is:
     "type": "email",
     "created_ms": 1554130814854,
     "payload":{
-      "value": 150
+      "value": 110
     }
 }
 ```
@@ -434,6 +498,45 @@ Here are some examples showing how these operators behave:
 - "twelve" _gt_ "two": _false_ (strings are compared lexically, and 'e' comes before
   'o', not after it) 
 
+### The 'equalsIgnoreCase' Operator
+
+The _equalsIgnoreCase_ operator is used to check whether the strings passed as arguments are equal in a
+_case-insensitive_ way.
+
+It applies only if both the first and the second arguments are strings. In any other case, the operator will return 
+false.
+
+Rule example:
+```json
+{
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "equalsIgnoreCase",
+      "first": "${event.payload.hostname}",
+      "second": "Linux"
+    },
+    "WITH": {}
+  },
+  "actions": []
+}
+```
+An event matches this rule if in its payload it has
+an entry with key "hostname" and whose value is a string that is equal to
+"linux", __ignoring the case__ of the strings.
+
+A matching Event is:
+```json
+{
+    "type": "trap",
+    "created_ms": 1554130814854,
+    "payload":{
+        "hostname": "LINUX"
+    }
+}
+```
 
 ### The 'regex' Operator
 
@@ -471,14 +574,17 @@ A matching Event is:
 ```
 
 
-### The 'and' And 'or' Operator
+### The 'AND', 'OR', and 'NOT' Operators
 
-The _and_ and _or_ operators work on a set of operators.
+The _and_ and _or_ operators work on a set of operators, while the _not_ operator
+works on one single operator.
 They can be nested recursively to define complex matching rules.
 
 As you would expect:
 - The _and_ operator evaluates to true if all inner operators match
 - The _or_ operator evaluates to true if at least an inner operator matches
+- The _not_ operator evaluates to true if the inner operator does not match,
+  and evaluates to false if the inner operator matches
 
 
 Example:
@@ -492,7 +598,7 @@ Example:
       "type": "AND",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "rsyslog"
         },
@@ -500,16 +606,24 @@ Example:
           "type": "OR",
           "operators": [
             {
-              "type": "equal",
+              "type": "equals",
               "first": "${event.payload.body}",
               "second": "something"
             },
             {
-              "type": "equal",
+              "type": "equals",
               "first": "${event.payload.body}",
               "second": "other"
             }
           ]
+        },
+        {
+          "type": "NOT",
+          "operator": {
+              "type": "equals",
+              "first": "${event.payload.body}",
+              "second": "forbidden"
+          }
         }
       ]
     },
@@ -521,6 +635,7 @@ Example:
 ```
 An event matches this rule if:
 - In its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
+- __AND__ its payload does __NOT__ have an entry with key "body" whose value is "forbidden"
 - __AND__ its type is "rsyslog"
 
 A matching Event is:
@@ -592,7 +707,7 @@ Example:
   "active": true,
   "constraint": {
     "WHERE": {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "trap"
     },
@@ -882,7 +997,7 @@ An example of a valid Rule in a JSON file is:
       "type": "AND",
       "operators": [
         {
-          "type": "equal",
+          "type": "equals",
           "first": "${event.type}",
           "second": "email"
         }

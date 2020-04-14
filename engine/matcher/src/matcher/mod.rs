@@ -257,7 +257,7 @@ mod test {
         // Arrange
         let rule = new_rule(
             "rule_name",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("1".to_owned()),
                 second: Value::Text("1".to_owned()),
             },
@@ -282,7 +282,7 @@ mod test {
     #[test]
     fn should_build_the_matcher_with_a_filter() {
         // Arrange
-        let filter = new_filter(Operator::Equal {
+        let filter = new_filter(Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         });
@@ -335,7 +335,7 @@ mod test {
     #[test]
     fn should_build_the_matcher_with_a_filter_recursively() {
         // Arrange
-        let filter = new_filter(Operator::Equal {
+        let filter = new_filter(Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         });
@@ -398,7 +398,7 @@ mod test {
     #[test]
     fn build_should_fail_if_not_unique_name() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -443,7 +443,7 @@ mod test {
     #[test]
     fn should_sort_the_rules_based_on_input_order() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -476,7 +476,7 @@ mod test {
     #[test]
     fn should_ignore_non_active_rules() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("1".to_owned()),
             second: Value::Text("1".to_owned()),
         };
@@ -514,7 +514,7 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -522,7 +522,7 @@ mod test {
 
         let rule_2 = new_rule(
             "rule2_sms",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("sms".to_owned()),
             },
@@ -530,7 +530,7 @@ mod test {
 
         let rule_3 = new_rule(
             "rule3_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -569,7 +569,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -635,7 +635,7 @@ mod test {
         // Arrange
         let rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -669,7 +669,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -718,7 +718,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -781,7 +781,7 @@ mod test {
     #[test]
     fn should_stop_execution_if_continue_is_false() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -821,7 +821,7 @@ mod test {
     #[test]
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -830,7 +830,7 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_sms",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("sms".to_owned()),
             },
@@ -869,7 +869,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -923,7 +923,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -943,7 +943,7 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -1009,7 +1009,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -1029,7 +1029,7 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2_email",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.type}".to_owned()),
                 second: Value::Text("email".to_owned()),
             },
@@ -1091,7 +1091,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.payload.array[0]}".to_owned()),
                 second: Value::Text("aaa".to_owned()),
             },
@@ -1151,7 +1151,7 @@ mod test {
         // Arrange
         let mut rule_1 = new_rule(
             "rule1",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${event.payload.map.key0}".to_owned()),
                 second: Value::Text("aaa".to_owned()),
             },
@@ -1209,7 +1209,7 @@ mod test {
     #[test]
     fn should_process_rulesets_if_filter_has_no_operator() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -1266,7 +1266,7 @@ mod test {
     #[test]
     fn should_process_all_filter_rulesets() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -1345,7 +1345,7 @@ mod test {
     #[test]
     fn should_process_filter_rulesets_recursively() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -1363,7 +1363,7 @@ mod test {
             },
             MatcherConfig::Filter {
                 name: "node1".to_owned(),
-                filter: new_filter(Operator::Equal {
+                filter: new_filter(Operator::Equals {
                     first: Value::Text("${event.type}".to_owned()),
                     second: Value::Text("trap".to_owned()),
                 }),
@@ -1469,7 +1469,7 @@ mod test {
     #[test]
     fn should_process_no_rulesets_if_filter_is_inactive() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -1509,12 +1509,12 @@ mod test {
     #[test]
     fn should_process_no_rulesets_if_filter_does_not_match() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
 
-        let filter = new_filter(Operator::Equal {
+        let filter = new_filter(Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("trapd".to_owned()),
         });
@@ -1551,7 +1551,7 @@ mod test {
     #[test]
     fn should_process_rulesets_independently() {
         // Arrange
-        let op = Operator::Equal {
+        let op = Operator::Equals {
             first: Value::Text("${event.type}".to_owned()),
             second: Value::Text("email".to_owned()),
         };
@@ -1851,7 +1851,7 @@ mod test {
         // Value between 100 and 200 (included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(110)));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert
@@ -1870,6 +1870,336 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(200)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+        // Value equal to 140 should not match
+        // test for `NOT` operator
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(140)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value equal to 150 should not match
+        // test for `ne` operator
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // Value equal to 160 should not match
+        // test for `notEqual` alias
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Number(Number::PosInt(160)));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // equalsIgnoreCase should match "Warning"
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
+            payload.insert("message".to_owned(), Value::Text("WaRnInG".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        // equalsIgnoreCase should not match "WaRnInGs"
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
+            payload.insert("message".to_owned(), Value::Text("WaRnInGs".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // Value containing (case insentitive) "something" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("The word Something should match".to_owned()),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_not_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // Value not containing (case insentitive) "something" should not match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Text("Some".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_match_with_arrays() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // Array containing a string equal to (case insentivive) "something" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Array(vec![
+                    Value::Text("Something else".to_owned()),
+                    Value::Text("Something".to_owned()),
+                ]),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_not_match_with_arrays() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // Array not containing a string equal to (case insentivive) "something" should not match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Array(vec![
+                    Value::Text("This is Something".to_owned()),
+                    Value::Text("Something else".to_owned()),
+                ]),
+            );
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contains_should_correctly_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // contains operator should work
+        // Value containing "Contains test" should match
+        {
+            // Act
+            payload.insert("value".to_owned(), Value::Text("This is a Contains test!".to_owned()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+
+            // Assert
+            match result.result {
+                ProcessedNode::Ruleset { name, rules } => {
+                    assert_eq!(name, "ruleset");
+                    assert_eq!(1, rules.rules.len());
+                    assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
+                    assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
+                }
+                _ => assert!(false),
+            };
+        }
+    }
+
+    #[test]
+    fn contain_alias_should_correctly_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
+
+        // contain alias operator should still work
+        // Value containing "Contain alias test" should match
+        {
+            // Act
+            payload.insert(
+                "value".to_owned(),
+                Value::Text("This is a Contain alias test!".to_owned()),
+            );
             let result = matcher.process(Event::new_with_payload("email", payload.clone()));
 
             // Assert
@@ -1904,7 +2234,7 @@ mod test {
 
         let mut rule_2 = new_rule(
             "rule2",
-            Operator::Equal {
+            Operator::Equals {
                 first: Value::Text("${_variables.rule1.extracted}".to_owned()),
                 second: Value::Text("aaa".to_owned()),
             },

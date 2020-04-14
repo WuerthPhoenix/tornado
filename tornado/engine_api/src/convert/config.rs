@@ -72,11 +72,22 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
                 .map(operator_into_dto)
                 .collect::<Result<Vec<_>, _>>()?,
         },
-        Operator::Contain { first, second } => OperatorDto::Contain {
+        Operator::Not { operator } => {
+            OperatorDto::Not { operator: Box::new(operator_into_dto(*operator)?) }
+        }
+        Operator::Contains { first, second } => OperatorDto::Contains {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
-        Operator::Equal { first, second } => OperatorDto::Equal {
+        Operator::ContainsIgnoreCase { first, second } => OperatorDto::ContainsIgnoreCase {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
+        Operator::Equals { first, second } => OperatorDto::Equals {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
+        Operator::EqualsIgnoreCase { first, second } => OperatorDto::EqualsIgnoreCase {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
@@ -93,6 +104,10 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
             second: serde_json::to_value(&second)?,
         },
         Operator::LessThan { first, second } => OperatorDto::LessThan {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
+        Operator::NotEquals { first, second } => OperatorDto::NotEquals {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },

@@ -36,12 +36,16 @@ export type MatcherConfigDto =
 export type OperatorDto = 
  | { type: "AND"; operators: OperatorDto [] } 
  | { type: "OR"; operators: OperatorDto [] } 
- | { type: "contain"; first: Value; second: Value } 
- | { type: "equal"; first: Value; second: Value } 
+ | { type: "NOT"; operator: OperatorDto } 
+ | { type: "contains"; first: Value; second: Value } 
+ | { type: "containsIgnoreCase"; first: Value; second: Value } 
+ | { type: "equals"; first: Value; second: Value } 
+ | { type: "equalsIgnoreCase"; first: Value; second: Value } 
  | { type: "ge"; first: Value; second: Value } 
  | { type: "gt"; first: Value; second: Value } 
  | { type: "le"; first: Value; second: Value } 
  | { type: "lt"; first: Value; second: Value } 
+ | { type: "ne"; first: Value; second: Value } 
  | { type: "regex"; regex: string; target: string };
 
 export type RuleDto = {     name: string; description: string; continue: boolean; active:     boolean; constraint: ConstraintDto; actions: ActionDto [] };
