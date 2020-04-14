@@ -56,7 +56,7 @@ impl Operator for ContainsIgnoreCase {
                         }
                     }
                     None => {
-                        debug!("ContainsIgnoreCase - The second argument must be of type Value::Text, found: {:#?}. Evaluating to false", second_arg_value);
+                        trace!("ContainsIgnoreCase - The second argument must be of type Value::Text, found: {:#?}. Evaluating to false", second_arg_value);
                         false
                     }
                 }
