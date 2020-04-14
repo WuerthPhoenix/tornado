@@ -87,6 +87,10 @@ pub fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,
         },
+        Operator::EqualsIgnoreCase { first, second } => OperatorDto::EqualsIgnoreCase {
+            first: serde_json::to_value(&first)?,
+            second: serde_json::to_value(&second)?,
+        },
         Operator::GreaterEqualThan { first, second } => OperatorDto::GreaterEqualThan {
             first: serde_json::to_value(&first)?,
             second: serde_json::to_value(&second)?,

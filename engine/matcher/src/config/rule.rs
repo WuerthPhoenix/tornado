@@ -73,6 +73,9 @@ pub enum Operator {
     #[serde(rename = "equals")]
     #[serde(alias = "equal")]
     Equals { first: Value, second: Value },
+    #[serde(rename = "equalsIgnoreCase")]
+    #[serde(alias = "equalIgnoreCase")]
+    EqualsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "ge")]
     GreaterEqualThan { first: Value, second: Value },
     #[serde(rename = "gt")]
