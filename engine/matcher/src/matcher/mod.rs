@@ -1942,7 +1942,7 @@ mod test {
     }
 
     #[test]
-    fn should_match_contains_operators() {
+    fn contains_ignore_case_should_correctly_match() {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
@@ -1977,6 +1977,23 @@ mod test {
                 _ => assert!(false),
             };
         }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_not_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
 
         // Value not containing (case insentitive) "something" should not match
         {
@@ -1995,6 +2012,23 @@ mod test {
                 _ => assert!(false),
             };
         }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_match_with_arrays() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
 
         // Array containing a string equal to (case insentivive) "something" should match
         {
@@ -2019,6 +2053,23 @@ mod test {
                 _ => assert!(false),
             };
         }
+    }
+
+    #[test]
+    fn contains_ignore_case_should_correctly_not_match_with_arrays() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
 
         // Array not containing a string equal to (case insentivive) "something" should not match
         {
@@ -2043,6 +2094,23 @@ mod test {
                 _ => assert!(false),
             };
         }
+    }
+
+    #[test]
+    fn contains_should_correctly_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
 
         // contains operator should work
         // Value containing "Contains test" should match
@@ -2062,6 +2130,23 @@ mod test {
                 _ => assert!(false),
             };
         }
+    }
+
+    #[test]
+    fn contain_alias_should_correctly_match() {
+        // Arrange
+        let filename = "./test_resources/rules/005_contains_operators.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let mut rule = Rule::from_json(&json).unwrap();
+        rule.name = "ccontains_operators".to_owned();
+
+        let mut payload = Payload::new();
+        let matcher = new_matcher(&MatcherConfig::Ruleset {
+            name: "ruleset".to_owned(),
+            rules: vec![rule.clone()],
+        })
+        .unwrap();
 
         // contain alias operator should still work
         // Value containing "Contain alias test" should match
