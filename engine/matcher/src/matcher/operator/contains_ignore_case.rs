@@ -29,39 +29,32 @@ impl Operator for ContainsIgnoreCase {
 
     fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         match self.second.get(event, extracted_vars) {
-            Some(second_arg_value) => match second_arg_value.as_ref() {
-                Value::Text(second_arg_string) => {
+            Some(second_arg_value) => match second_arg_value.get_text() {
+                Some(second_arg_string) => {
                     let option_first = self.first.get(event, extracted_vars);
+                    let second_arg_lowercased_string = &second_arg_string.to_lowercase();
                     match option_first {
                         Some(first_arg_value) => match first_arg_value.borrow() {
                             Value::Text(first_arg_string) => (first_arg_string.to_lowercase())
                                 .contains(&second_arg_string.to_lowercase()),
-                            Value::Array(first_arg_array) => {
-                                let second_arg_lowercased_string =
-                                    &second_arg_string.to_lowercase();
-                                first_arg_array.iter().any(|arr_el| {
-                                    arr_el
-                                        .get_text()
-                                        .map(|arr_str| {
-                                            arr_str.to_lowercase().eq(second_arg_lowercased_string)
-                                        })
-                                        .unwrap_or(false)
-                                })
-                            }
+                            Value::Array(first_arg_array) => first_arg_array.iter().any(|arr_el| {
+                                arr_el
+                                    .get_text()
+                                    .map(|arr_str| {
+                                        arr_str.to_lowercase().eq(second_arg_lowercased_string)
+                                    })
+                                    .unwrap_or(false)
+                            }),
                             Value::Map(map) => map.iter().any(|entry| {
-                                entry.0.to_lowercase().eq(&second_arg_string.to_lowercase())
+                                entry.0.to_lowercase().eq(second_arg_lowercased_string)
                             }),
                             Value::Null | Value::Bool(_) | Value::Number(_) => false,
                         },
                         None => false,
                     }
                 }
-                Value::Null
-                | Value::Bool(_)
-                | Value::Number(_)
-                | Value::Array(_)
-                | Value::Map(_) => {
-                    debug!("ContainsIgnoreCase - The second argument {:#?} must be of type Value::Text, evaluating to false", second_arg_value);
+                None => {
+                    debug!("ContainsIgnoreCase - The second argument must be of type Value::Text, found: {:#?}. Evaluating to false", second_arg_value);
                     false
                 }
             },

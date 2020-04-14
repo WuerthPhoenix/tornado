@@ -133,7 +133,7 @@ The following operators are available in the __WHERE__ clause:
 - __'contains'__: Evaluates whether the first argument contains the second one. 
   The operator can also be called with the alias __'contain'__.
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
-  way, the string passed as second argument. 
+  way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
 - __'equal'__:  Compares two values and returns whether or not they are equal.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.

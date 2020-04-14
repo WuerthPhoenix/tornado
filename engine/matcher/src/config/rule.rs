@@ -68,6 +68,7 @@ pub enum Operator {
     #[serde(alias = "contain")]
     Contains { first: Value, second: Value },
     #[serde(rename = "containsIgnoreCase")]
+    #[serde(alias = "containIgnoreCase")]
     ContainsIgnoreCase { first: Value, second: Value },
     #[serde(rename = "equal")]
     Equal { first: Value, second: Value },
