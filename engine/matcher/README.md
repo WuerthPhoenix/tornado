@@ -135,6 +135,7 @@ The following operators are available in the __WHERE__ clause:
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
   way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
 - __'equals'__:  Compares two values and returns whether or not they are equal. An alias for this operator is '__equal__'.
+- __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
   to the second one. If one or both of the values do not exist, it returns `false`.
 - __'gt'__:  Compares two values and returns whether the first value is greater 
@@ -496,6 +497,45 @@ Here are some examples showing how these operators behave:
 - "twelve" _gt_ "two": _false_ (strings are compared lexically, and 'e' comes before
   'o', not after it) 
 
+### The 'equalsIgnoreCase' Operator
+
+The _equalsIgnoreCase_ operator is used to check whether the strings passed as arguments are equal in a
+_case-insensitive_ way.
+
+It applies only if both the first and the second arguments are strings. In any other case, the operator will return 
+false.
+
+Rule example:
+```json
+{
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "equalsIgnoreCase",
+      "first": "${event.payload.hostname}",
+      "second": "Linux"
+    },
+    "WITH": {}
+  },
+  "actions": []
+}
+```
+An event matches this rule if in its payload it has
+an entry with key "hostname" and whose value is a string that is equal to
+"linux", __ignoring the case__ of the strings.
+
+A matching Event is:
+```json
+{
+    "type": "trap",
+    "created_ms": 1554130814854,
+    "payload":{
+        "hostname": "LINUX"
+    }
+}
+```
 
 ### The 'regex' Operator
 
