@@ -29,23 +29,19 @@ impl Operator for EqualsIgnoreCase {
 
     fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         match self.first.get(event, extracted_vars) {
-            Some(first_value) => match first_value.as_ref() {
-                Value::Text(first) => {
+            Some(first_value) => match first_value.get_text() {
+                Some(first) => {
                     let option_substring = self.second.get(event, extracted_vars);
                     match cow_to_str(&option_substring) {
                         Some(substring) => (&first.to_lowercase()).eq(&substring.to_lowercase()),
                         None => {
-                            debug!("EqualsIgnoreCase - The second argument must be of type Value::Text, found instead {:#?}, evaluating to false", option_substring);
+                            trace!("EqualsIgnoreCase - The second argument must be of type Value::Text, found instead {:#?}, evaluating to false", option_substring);
                             false
                         }
                     }
                 }
-                Value::Array(..)
-                | Value::Map(..)
-                | Value::Number(..)
-                | Value::Bool(..)
-                | Value::Null => {
-                    debug!("EqualsIgnoreCase - The first argument must be of type Value::Text, found instead {:#?}, evaluating to false", first_value);
+                None => {
+                    trace!("EqualsIgnoreCase - The first argument must be of type Value::Text, found instead {:#?}, evaluating to false", first_value);
                     false
                 }
             },
