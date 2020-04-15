@@ -3,7 +3,7 @@
 The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. 
 It defines the logic for parsing Rules and Filters as well as for matching Events.
 
-  * [ ] The Matcher implementation details are [available here](./implementation.md).
+The Matcher implementation details are [available here](./implementation.md).
 
 
 ## The Processing Tree
@@ -189,7 +189,7 @@ For example, given the incoming event:
 }
 ```
 
-The rule can access its fields as follows:
+The rule can access the event's fields as follows:
 - `${event.type}`:  Returns **trap**
 - `${event.payload.protocol}`:  Returns **UDP**
 - `${event.payload.oids."key.with.dots"}`:  Returns **38:10:38:30.98**
