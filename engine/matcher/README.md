@@ -135,7 +135,7 @@ remainder of this document to see how to use them.
   strings, arrays, and maps. The operator can also be called with the alias __'contain'__.
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
   way, the **string** passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
-- __'equals'__: Compares any two values (including,perfetto,  but not limited to, arrays, maps) and returns
+- __'equals'__: Compares any two values (including, but not limited to, arrays, maps) and returns
   whether or not they are equal. An alias for this operator is '__equal__'.
 - __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
   The operator can also be called with the alias __'equalIgnoreCase'__.
