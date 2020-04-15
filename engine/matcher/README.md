@@ -3,7 +3,7 @@
 The *tornado_engine_matcher* crate contains the core functions of the Tornado Engine. 
 It defines the logic for parsing Rules and Filters as well as for matching Events.
 
-The Matcher implementation details are [available here](./implementation.md)
+The Matcher implementation details are [available here](./implementation.md).
 
 
 ## The Processing Tree
@@ -28,8 +28,10 @@ root
 All identifiers of the processing tree (i.e. rule names, filter names, and node names) can be
 composed only of letters, numbers and the "_" (underscore) character.
 
-When the configuration of the processing tree is read from the file system, the filter and rule
-names are automatically inferred from the filename and the node names from the directory names.
+The configuration of the processing tree is stored on the file system in small structures composed
+of directories and files in *json* format; when the processing tree is read to be processed, the
+filter and rule names are automatically inferred from the filenames--excluding the *json extension*,
+and the node names from the directory names.
 
 In the tree above, the root node is of type __Filter__. In fact, it contains the definition of
 a filter named *filter_one* and has two child nodes called *node_0* and *node_1*.
@@ -55,15 +57,13 @@ event verifies the filter condition in order to decide whether to process its in
 A __Filter__ contains these properties:
 
 - `filter name`:  A string value representing a unique filter identifier. 
-  It can be composed only of letters, numbers and the "_" (underscore) character.
-- `description`:  A string value providing a high-level description of the filter.
+  It can be composed only of letters, numbers and the "_" (underscore)
+  character; it corresponds to the filename, stripped from its *.json* extension.
+- `description`:  A string providing a high-level description of the filter.
 - `active`:  A boolean value; if `false`, the filter's children will be ignored.
-- `filter`:  An operator that, when applied to an event, returns `true` or `false`.
+- `filter`:  A boolean operator that, when applied to an event, returns `true` or `false`.
   This operator determines whether an __Event__ matches the __Filter__; consequently, 
   it determines whether an __Event__ will be processed by the filter's inner nodes.
-
-When the configuration is read from the file system, the filter name is automatically inferred
-from the filename by removing its '.json' extension.
 
 
 ### Implicit Filters
@@ -122,19 +122,21 @@ from the filename by removing the extension and everything that precedes the fir
 The constraint section contains the tests that determine whether or not an event matches the rule.
 There are two types of constraints:
 
-- __WHERE__:  A set of operators that when applied to an event returns `true` or `false`.
+- __WHERE__:  A set of operators that when applied to an event returns `true` or `false`
 - __WITH__:  A set of regular expressions that extract values from an Event and associate them
-  with named variables.
+  with named variables
 
 An event matches a rule if and only if the WHERE clause evaluates to `true` and all regular
 expressions in the WITH clause return non-empty values.
 
-The following operators are available in the __WHERE__ clause:
-- __'contains'__: Evaluates whether the first argument contains the second one. 
-  The operator can also be called with the alias __'contain'__.
+The following operators are available in the __WHERE__ clause. Check also the examples in the
+remainder of this document to see how to use them.
+- __'contains'__: Evaluates whether the first argument contains the second one. It can be applied to
+  strings, arrays, and maps. The operator can also be called with the alias __'contain'__.
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
-  way, the string passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
-- __'equals'__:  Compares two values and returns whether or not they are equal. An alias for this operator is '__equal__'.
+  way, the **string** passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
+- __'equals'__: Compares any two values (including, but not limited to, arrays, maps) and returns
+  whether or not they are equal. An alias for this operator is '__equal__'.
 - __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
   The operator can also be called with the alias __'equalIgnoreCase'__.
 - __'ge'__:  Compares two values and returns whether the first value is greater than or equal 
@@ -152,10 +154,10 @@ The following operators are available in the __WHERE__ clause:
   evaluate to `true`.
 - __'OR'__:  Receives an array of operator clauses and returns `true` if at least one of the
   operators evaluates to `true`.
-- __'NOT'__:  Receives one operator clause and returns `true` if the operator evaluates to `false`,
-  while it returns `false` if the operator evaluates to `true`.
+- __'NOT'__: Receives one operator clause and returns `true` if the operator clause evaluates to
+  `false`, while it returns `false` if the operator clause evaluates to `true`.
 
-We use the Rust Regex library (see its [github project here](https://github.com/rust-lang/regex) )
+We use the Rust Regex library (see its [github project home page](https://github.com/rust-lang/regex) )
 to evaluate regular expressions provided by the _WITH_ clause and by the _regex_ operator.
 You can also refer to its [dedicated documentation](https://docs.rs/regex) for details about its
 features and limitations.
@@ -188,24 +190,20 @@ For example, given the incoming event:
 }
 ```
 
-The following accessors are valid:
-- `${event.type}`:  Returns "trap"
-- `${event.payload.protocol}`:  Returns "UDP"
-- `${event.payload.oids."key.with.dots"}`:  Returns "38:10:38:30.98"
+The rule can access the event's fields as follows:
+- `${event.type}`:  Returns **trap**
+- `${event.payload.protocol}`:  Returns **UDP**
+- `${event.payload.oids."key.with.dots"}`:  Returns **38:10:38:30.98**
 - `${event.payload}`:  Returns the entire payload
 - `${event}`: Returns the entire event
 
 
 ### String interpolation
 
-An action payload can also contain
-text with placeholders that Tornado will replace at runtime. 
-The values to be used for the substitution are extracted
-from the incoming _Events_ following the accessor rules 
-mentioned earlier.
-
-For example, if the Event is the one of the previous paragraph, 
-this definition in the action payload:
+An action payload can also contain text with placeholders that Tornado will replace at runtime.  The
+values to be used for the substitution are extracted from the incoming _Events_ following the
+conventions mentioned in the previous section; for example, using that Event definition, this string
+in the action payload
  
 `Received a ${event.type} with protocol ${event.payload.protocol}`
  
@@ -213,16 +211,13 @@ produces:
  
 *Received a trap with protocol UDP*
 
-Only values of type _String_, _Number_, _Boolean_ and _null_ are valid.
-Consequently, the interpolation will fail, and the action
-will not be executed, if the value associated with the placeholder 
-extracted from the Event is:
-- _undefined_
-- an _Array_
-- a _Map_
+> ### Note.
 
+> Only values of type _String_, _Number_, _Boolean_ and _null_ are valid.  Consequently, the
+> interpolation will fail, and the action will not be executed, if the value associated with the
+> placeholder extracted from the Event is an _Array_, a _Map_, or _undefined_.
 
-## Filter Examples
+## Example of Filters
 
 
 ### Using a Filter to Create Independent Pipelines
@@ -250,8 +245,8 @@ This processing tree has a root filter *filter_all* that matches all events. We 
 two inner filters; the first, *only_email_filter*, only matches events of type 'email'. The other,
 *only_trapd_filter*, matches just events of type 'trap'.
 
-With this configuration, the rules defined in *email/ruleset* receive only email events, while
-those in *trapd/ruleset* receive only trapd events.
+Therefore, with this configuration, the rules defined in *email/ruleset* receive only email events,
+while those in *trapd/ruleset* receive only trapd events.
 
 This configuration can be further simplified by removing the *filter_all.json* file:
 ```
@@ -305,7 +300,7 @@ Content of *only_trapd_filter.json*:
 ```
 
 
-## Rule Examples
+## Examples of Rules and operators
 
 
 ### The 'contains' Operator
@@ -337,9 +332,8 @@ Rule example:
   "actions": []
 }
 ```
-An event matches this rule if in its payload it has
-an entry with key "hostname" and whose value is a string that contains
-"linux".
+An event matches this rule if in its payload appears an entry with key **hostname** and whose value is
+a string that contains **linux**.
 
 A matching Event is:
 ```json
@@ -354,17 +348,20 @@ A matching Event is:
 
 ### The 'containsIgnoreCase' Operator
 
-The _containsIgnoreCase_ operator is used to check whether the first argument contains, in a _case-insensitive_
- way, the string passed as second argument.
+The _containsIgnoreCase_ operator is used to check whether the first argument contains the
+**string** passed as second argument, regardless of their capital and small letters. In other words,
+the arguments are compared in a *case-insensitive* way.
 
 It applies in three different situations:
-- The arguments are both strings:  Returns true if the second string is a _case-insensitive substring_ of the first one.
-- The first argument is an array and the second is a string:  Returns true if the array passed as first parameter 
- contains a (string) element which is equal, in a _case-insensitive_ way, to the string passed as second argument.
-- The first argument is a map and the second is a string:
-  Returns true if the second argument is equal, in a _case-insensitive_ way, to an existing key of the map.
+- The arguments are both strings:  Returns true if the second string is a _case-insensitive
+  substring_ of the first one
+- The first argument is an array: Returns true if the array passed as first parameter contains a
+ (string) element which is equal to the string passed as second argument, regardless of uppercase
+ and lowercase letters
+- The first argument is a map: Returns true if the second argument contains, an existing,
+  _case-insensitive_, key of the map
 
-In any other case, it will return false.
+In any other case, this operator will return false.
 
 Rule example:
 ```json
@@ -383,9 +380,8 @@ Rule example:
   "actions": []
 }
 ```
-An event matches this rule if in its payload it has
-an entry with key "hostname" and whose value is a string that contains
-"linux", __ignoring the case__ of the strings.
+An event matches this rule if in its payload it has an entry with key "hostname" and whose value is
+a string that contains "linux", __ignoring the case__ of the strings. 
 
 A matching Event is:
 ```json
@@ -397,17 +393,21 @@ A matching Event is:
     }
 }
 ```
+Additional values for *hostname* that match the rule include: **linuX-SERVER-02**,
+**LInux-Host-12**,  **Old-LiNuX-FileServer**, and so on.
 
 
 ### The 'equals', 'ge', 'gt', 'le', 'lt' and 'ne' Operators
 
-The _equals_, _ge_, _gt_, _le_, _lt_, __ne_ operators are used to compare two values.
+The _equals_, _ge_, _gt_, _le_, _lt_, _ne_ operators are used to compare two values.
 
 All these operators can work with values of type Number, String, Bool, null and Array. 
 
-Please be extremely careful when using these operators with numbers of type float. The
-representation of floating point numbers is often slightly imprecise and can lead to
-unexpected results (for example, see: https://www.floating-point-gui.de/errors/comparison/).
+> ### Warning! 
+>
+> Please be extremely careful when using these operators with numbers of type **float**. The
+> representation of floating point numbers is often slightly imprecise and can lead to unexpected
+> results (for example, see: https://www.floating-point-gui.de/errors/comparison/).
 
 Example:
 ```json
@@ -503,8 +503,8 @@ Here are some examples showing how these operators behave:
 The _equalsIgnoreCase_ operator is used to check whether the strings passed as arguments are equal in a
 _case-insensitive_ way.
 
-It applies only if both the first and the second arguments are strings. In any other case, the operator will return 
-false.
+It applies **only if** both the first and the second arguments are strings. In any other case, the
+operator will return false.
 
 Rule example:
 ```json
@@ -523,9 +523,8 @@ Rule example:
   "actions": []
 }
 ```
-An event matches this rule if in its payload it has
-an entry with key "hostname" and whose value is a string that is equal to
-"linux", __ignoring the case__ of the strings.
+An event matches this rule if in its payload it has an entry with key "hostname" and whose value is
+a string that is equal to "linux", __ignoring the case__ of the strings.
 
 A matching Event is:
 ```json
@@ -542,7 +541,7 @@ A matching Event is:
 
 The _regex_ operator is used to check if a string matches a regular expression.
 The evaluation is performed with the Rust Regex library
-(see its [github project here](https://github.com/rust-lang/regex) )
+(see its [github project home page](https://github.com/rust-lang/regex) )
 
 
 Rule example:
@@ -633,10 +632,11 @@ Example:
 }
 
 ```
-An event matches this rule if:
-- In its payload it has an entry with key "body" and whose value is "something" __OR__ "other"
-- __AND__ its payload does __NOT__ have an entry with key "body" whose value is "forbidden"
-- __AND__ its type is "rsyslog"
+An event matches this rule if in its payload:
+- The type is "rsyslog"
+- __AND__ an entry with key *body* whose value is wither "something" __OR__ "other"
+- __AND__ an entry with key *body*  is __NOT__  "forbidden"
+
 
 A matching Event is:
 ```json
