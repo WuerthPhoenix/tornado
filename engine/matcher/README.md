@@ -28,9 +28,10 @@ root
 All identifiers of the processing tree (i.e. rule names, filter names, and node names) can be
 composed only of letters, numbers and the "_" (underscore) character.
 
-The configuration of the processing tree stored on the file system in *json* format; when it is read
-to be processed, the filter and rule names are automatically inferred from the filename and the node
-names from the directory names.
+The configuration of the processing tree is stored on the file system in small structures composed
+of directories and files in *json* format; when the processing tree is read to be processed, the
+filter and rule names are automatically inferred from the filenames--excluding the *json extension*,
+and the node names from the directory names.
 
 In the tree above, the root node is of type __Filter__. In fact, it contains the definition of
 a filter named *filter_one* and has two child nodes called *node_0* and *node_1*.
@@ -134,7 +135,7 @@ remainder of this document to see how to use them.
   strings, arrays, and maps. The operator can also be called with the alias __'contain'__.
 - __'containsIgnoreCase'__: Evaluates whether the first argument contains, in a case-insensitive
   way, the **string** passed as second argument. This operator can also be called with the alias __'containIgnoreCase'__.
-- __'equals'__: Compares any two values (including. but not limited to, arrays, maps) and returns
+- __'equals'__: Compares any two values (including,perfetto,  but not limited to, arrays, maps) and returns
   whether or not they are equal. An alias for this operator is '__equal__'.
 - __'equalsIgnoreCase'__:  Compares two strings and returns whether or not they are equal in a case-insensitive way.
   The operator can also be called with the alias __'equalIgnoreCase'__.
