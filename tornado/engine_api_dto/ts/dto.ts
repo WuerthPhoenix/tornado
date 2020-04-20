@@ -14,6 +14,13 @@ export type Value = any;
 
 
 /* -------------- */
+/* 'auth' types   */
+/* -------------- */
+
+export type Auth = { user: string; roles: string [] };
+
+
+/* -------------- */
 /* 'config' types */
 /* -------------- */
 

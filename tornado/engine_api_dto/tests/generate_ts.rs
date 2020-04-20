@@ -89,6 +89,16 @@ export type Value = any;"#;
         &mut ts_code,
         r#"
 /* -------------- */
+/* 'auth' types   */
+/* -------------- */"#,
+    );
+    push_ts(&mut ts_code, &auth::Auth::type_script_ify());
+
+    // Push 'config' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* -------------- */
 /* 'config' types */
 /* -------------- */"#,
     );
