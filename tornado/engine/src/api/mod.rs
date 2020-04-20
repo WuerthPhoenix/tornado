@@ -2,7 +2,7 @@ use crate::engine::{EventMessageWithReply, MatcherActor};
 use actix::Addr;
 use async_trait::async_trait;
 use std::sync::Arc;
-use tornado_engine_api::api::handler::{ApiHandler, SendEventRequest};
+use tornado_engine_api::event::handler::{EventApiHandler, SendEventRequest};
 use tornado_engine_api::error::ApiError;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
 use tornado_engine_matcher::model::ProcessedEvent;
@@ -14,7 +14,7 @@ pub struct MatcherApiHandler {
 }
 
 #[async_trait]
-impl ApiHandler for MatcherApiHandler {
+impl EventApiHandler for MatcherApiHandler {
     async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
         self.config_manager.read().map_err(ApiError::from)
     }
@@ -45,7 +45,7 @@ mod test {
     use actix::{Arbiter, SyncArbiter, System};
     use std::sync::Arc;
     use tornado_common_api::Event;
-    use tornado_engine_api::api::handler::ProcessType;
+    use tornado_engine_api::event::handler::ProcessType;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::dispatcher::Dispatcher;
     use tornado_engine_matcher::matcher::Matcher;

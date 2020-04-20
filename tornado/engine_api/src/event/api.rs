@@ -1,23 +1,21 @@
-use self::handler::ApiHandler;
-use crate::convert::config::matcher_config_into_dto;
-use crate::convert::event::{dto_into_send_event_request, processed_event_into_dto};
 use actix_web::web::{Data, Json};
 use actix_web::{web, Scope};
 use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::config::MatcherConfigDto;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
+use crate::event::handler::EventApiHandler;
+use crate::config::convert::matcher_config_into_dto;
+use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
 
-pub mod handler;
-
-pub fn new_endpoints<T: ApiHandler + 'static>(scope: Scope, api_handler: T) -> Scope {
+pub fn build_event_endpoints<T: EventApiHandler + 'static>(scope: Scope, api_handler: T) -> Scope {
     scope
         .data(api_handler)
         .service(web::resource("/config").route(web::get().to(get_config::<T>)))
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
 }
 
-async fn get_config<T: ApiHandler + 'static>(
+async fn get_config<T: EventApiHandler + 'static>(
     api_handler: Data<T>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("API - received get_config request");
@@ -27,7 +25,7 @@ async fn get_config<T: ApiHandler + 'static>(
     Ok(Json(matcher_config_dto))
 }
 
-async fn send_event<T: ApiHandler + 'static>(
+async fn send_event<T: EventApiHandler + 'static>(
     api_handler: Data<T>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
@@ -44,7 +42,7 @@ async fn send_event<T: ApiHandler + 'static>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::handler::SendEventRequest;
+    use crate::event::handler::SendEventRequest;
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},
@@ -60,7 +58,7 @@ mod test {
     struct TestApiHandler {}
 
     #[async_trait]
-    impl ApiHandler for TestApiHandler {
+    impl EventApiHandler for TestApiHandler {
         async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
         }
@@ -83,7 +81,7 @@ mod test {
     async fn should_return_status_code_ok() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
         )
         .await;
 
@@ -100,7 +98,7 @@ mod test {
     async fn should_return_the_matcher_config() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
         )
         .await;
 
@@ -124,7 +122,7 @@ mod test {
     async fn should_return_the_processed_event() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
         )
         .await;
 

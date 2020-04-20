@@ -217,7 +217,7 @@ pub async fn daemon(
         let daemon_config = daemon_config.clone();
         App::new()
             .wrap(Cors::new().max_age(3600).finish())
-            .service({ tornado_engine_api::api::new_endpoints(web::scope("/api"), api_handler) })
+            .service(tornado_engine_api::event::api::build_event_endpoints(web::scope("/api"), api_handler) )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
     .bind(format!("{}:{}", web_server_ip, web_server_port))
