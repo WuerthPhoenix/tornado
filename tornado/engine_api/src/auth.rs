@@ -107,3 +107,123 @@ impl AuthService {
     }
 
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn auth_service_should_decode_base64_token() -> Result<(), ApiError> {
+        // Arrange
+        let expected_auth = Auth {
+            user: "12456abc".to_owned(),
+            roles: vec!["role_a".to_owned(), "role_b".to_owned()]
+        };
+
+        let token = "ewogInVzZXIiOiAiMTI0NTZhYmMiLAogInJvbGVzIjogWyJyb2xlX2EiLCAicm9sZV9iIl0KfQ==";
+
+        let mut permission_roles_map = HashMap::new();
+        permission_roles_map.insert("EDIT".to_owned(), vec!["role_a".to_owned()]);
+
+        let auth_service = AuthService::new(permission_roles_map.clone());
+
+        // Act
+        let auth_context = auth_service.auth_from_token_string(token)?;
+
+        // Assert
+        assert_eq!(expected_auth, auth_context.auth);
+        assert_eq!(&permission_roles_map, auth_context.permission_roles_map);
+        assert!(auth_context.is_authenticated().is_ok());
+        assert!(auth_context.has_permission("EDIT").is_ok());
+        assert!(auth_context.has_permission("VIEW").is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn auth_service_should_return_error_for_wrong_base64_token() -> Result<(), ApiError> {
+        // Arrange
+        let token = "MickeyMouseLovesMinnie";
+        let auth_service = AuthService::new(HashMap::new());
+
+        // Act
+        let result = auth_service.auth_from_token_string(token);
+
+        // Assert
+        assert!(result.is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn auth_context_should_be_valid() {
+        let auth = Auth {
+            user: "username".to_owned(),
+            roles: vec![]
+        };
+        let permission_roles_map = HashMap::new();
+        let auth_context = AuthContext::new(auth, &permission_roles_map);
+
+        assert!(auth_context.valid);
+        assert!(auth_context.is_authenticated().is_ok());
+
+    }
+
+    #[test]
+    fn auth_context_should_be_not_valid_if_missing_username() {
+        let auth = Auth {
+            user: "".to_owned(),
+            roles: vec![]
+        };
+        let permission_roles_map = HashMap::new();
+        let auth_context = AuthContext::new(auth, &permission_roles_map);
+
+        assert!(!auth_context.valid);
+        assert!(auth_context.is_authenticated().is_err());
+
+    }
+
+    #[test]
+    fn auth_context_should_return_whether_user_has_permissions() -> Result<(), ApiError> {
+        let auth = Auth {
+            user: "user".to_owned(),
+            roles: vec!["role1".to_owned(), "role2".to_owned()]
+        };
+        let mut permission_roles_map = HashMap::new();
+        permission_roles_map.insert("EDIT".to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert("VIEW".to_owned(), vec!["role1".to_owned(), "role2".to_owned()]);
+        permission_roles_map.insert("ADMIN".to_owned(), vec!["role3".to_owned()]);
+
+        let auth_context = AuthContext::new(auth, &permission_roles_map);
+
+        assert!(auth_context.valid);
+        assert!(auth_context.is_authenticated().is_ok());
+        assert!(auth_context.has_permission("EDIT").is_ok());
+        assert!(auth_context.has_permission("VIEW").is_ok());
+        assert!(auth_context.has_permission("EDIT")?.has_permission("VIEW").is_ok());
+        assert!(auth_context.has_permission("ADMIN").is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_auth_context_should_never_have_permissions() -> Result<(), ApiError> {
+        let auth = Auth {
+            user: "".to_owned(),
+            roles: vec!["role1".to_owned(), "role2".to_owned()]
+        };
+        let mut permission_roles_map = HashMap::new();
+        permission_roles_map.insert("EDIT".to_owned(), vec!["role1".to_owned()]);
+
+        let auth_context = AuthContext::new(auth, &permission_roles_map);
+
+        assert!(!auth_context.valid);
+        assert!(auth_context.is_authenticated().is_err());
+        assert!(auth_context.has_permission("EDIT").is_err());
+        assert!(auth_context.has_permission("VIEW").is_err());
+        assert!(auth_context.has_permission("ADMIN").is_err());
+
+        Ok(())
+    }
+
+}
