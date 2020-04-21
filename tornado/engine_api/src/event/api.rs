@@ -1,5 +1,5 @@
 use actix_web::web::{Data, Json};
-use actix_web::{web, Scope};
+use actix_web::{web, Scope, HttpRequest};
 use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::config::MatcherConfigDto;
@@ -16,9 +16,10 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static>(scope: Scope, api_han
 }
 
 async fn get_config<T: EventApiHandler + 'static>(
+    req: HttpRequest,
     api_handler: Data<T>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
-    debug!("API - received get_config request");
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let matcher_config = api_handler.get_config().await?;
 
     let matcher_config_dto = matcher_config_into_dto(matcher_config)?;
@@ -26,10 +27,12 @@ async fn get_config<T: EventApiHandler + 'static>(
 }
 
 async fn send_event<T: EventApiHandler + 'static>(
+    req: HttpRequest,
     api_handler: Data<T>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
     if log_enabled!(Level::Debug) {
+        debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
         let json_string = serde_json::to_string(body.deref()).unwrap();
         debug!("API - received send_event request: {}", json_string);
     }
