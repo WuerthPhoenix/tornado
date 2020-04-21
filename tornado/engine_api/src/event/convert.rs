@@ -10,13 +10,13 @@ use tornado_engine_matcher::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
-use crate::event::handler::SendEventRequest;
+use crate::event::api::SendEventRequest;
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {
         process_type: match dto.process_type {
-            ProcessType::Full => crate::event::handler::ProcessType::Full,
-            ProcessType::SkipActions => crate::event::handler::ProcessType::SkipActions,
+            ProcessType::Full => crate::event::api::ProcessType::Full,
+            ProcessType::SkipActions => crate::event::api::ProcessType::SkipActions,
         },
         event: serde_json::from_value(serde_json::to_value(dto.event)?)?,
     })
