@@ -9,6 +9,7 @@ use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
+use std::collections::BTreeMap;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -42,6 +43,8 @@ pub struct DaemonCommandConfig {
     pub web_server_port: u16,
 
     pub message_queue_size: usize,
+
+    pub auth: AuthConfig,
 }
 
 impl DaemonCommandConfig {
@@ -52,6 +55,11 @@ impl DaemonCommandConfig {
     pub fn is_nats_enabled(&self) -> bool {
         self.nats_enabled.unwrap_or(false)
     }
+}
+
+#[derive(Deserialize, Serialize, Clone)]
+pub struct AuthConfig {
+    pub role_permissions: BTreeMap<String, Vec<String>>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -137,10 +145,10 @@ mod test {
         let path = "./config/";
 
         // Act
-        let config = build_config(path);
+        let config = build_config(path).unwrap();
 
         // Assert
-        assert!(config.is_ok())
+        assert_eq!(vec!["config_edit".to_owned(), "config_view".to_owned()], config.tornado.daemon.auth.role_permissions["ADMIN"])
     }
 
     #[test]
@@ -219,6 +227,9 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig {
+                role_permissions: BTreeMap::new()
+            },
         };
 
         // Act
@@ -242,6 +253,9 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig {
+                role_permissions: BTreeMap::new()
+            }
         };
 
         // Act

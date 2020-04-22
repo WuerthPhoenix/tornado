@@ -10,7 +10,7 @@ actix-rt = "1"
 actix-web = "2"
 chrono = "0.4"
 clap = "2.33"
-config_rs = { version = "0.9", package = "config" }
+config_rs = { version = "0.10", package = "config" }
 log = "0.4"
 serde = "1.0"
 serde_derive = "1.0"
