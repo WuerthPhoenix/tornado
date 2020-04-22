@@ -1,13 +1,15 @@
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
-use tornado_engine_api_dto::auth::Auth;
 use std::collections::BTreeMap;
+use std::sync::Arc;
+use tornado_engine_api_dto::auth::Auth;
 
 pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
 pub const JWT_TOKEN_HEADER_SUFFIX_LEN: usize = JWT_TOKEN_HEADER_SUFFIX.len();
 
+#[derive(Debug)]
 pub struct AuthContext<'a> {
     pub auth: Auth,
     pub valid: bool,
@@ -54,9 +56,10 @@ impl<'a> AuthContext<'a> {
     }
 }
 
-
 // Reverts a role->permissions map to a permission->roles map
-pub fn roles_map_to_permissions_map(role_permissions: BTreeMap<String, Vec<String>>) -> BTreeMap<String, Vec<String>> {
+pub fn roles_map_to_permissions_map(
+    role_permissions: BTreeMap<String, Vec<String>>,
+) -> BTreeMap<String, Vec<String>> {
     let mut result = BTreeMap::new();
     for (role, permissions) in role_permissions {
         for permission in permissions {
@@ -68,11 +71,11 @@ pub fn roles_map_to_permissions_map(role_permissions: BTreeMap<String, Vec<Strin
 
 #[derive(Clone)]
 pub struct AuthService {
-    pub permission_roles_map: BTreeMap<String, Vec<String>>,
+    pub permission_roles_map: Arc<BTreeMap<String, Vec<String>>>,
 }
 
 impl AuthService {
-    pub fn new(permission_roles_map: BTreeMap<String, Vec<String>>) -> Self {
+    pub fn new(permission_roles_map: Arc<BTreeMap<String, Vec<String>>>) -> Self {
         Self { permission_roles_map }
     }
 
@@ -131,7 +134,7 @@ mod test {
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert("EDIT".to_owned(), vec!["role_a".to_owned()]);
 
-        let auth_service = AuthService::new(permission_roles_map.clone());
+        let auth_service = AuthService::new(Arc::new(permission_roles_map.clone()));
 
         // Act
         let auth_context = auth_service.auth_from_token_string(token)?;
@@ -150,7 +153,7 @@ mod test {
     fn auth_service_should_return_error_for_wrong_base64_token() -> Result<(), ApiError> {
         // Arrange
         let token = "MickeyMouseLovesMinnie";
-        let auth_service = AuthService::new(BTreeMap::new());
+        let auth_service = AuthService::new(Arc::new(BTreeMap::new()));
 
         // Act
         let result = auth_service.auth_from_token_string(token);
@@ -245,16 +248,28 @@ mod test {
 
     #[test]
     fn should_create_a_permission_roles_map() {
-
         // Arrange
         let mut role_permissions = BTreeMap::new();
-        role_permissions.insert("ROLE_1".to_owned(), vec!["PERMISSION_1".to_owned(),"PERMISSION_2".to_owned(), "PERMISSION_3".to_owned()]);
-        role_permissions.insert("ROLE_2".to_owned(), vec!["PERMISSION_1".to_owned(),"PERMISSION_2".to_owned()]);
-        role_permissions.insert("ROLE_3".to_owned(), vec!["PERMISSION_1".to_owned(),"PERMISSION_4".to_owned()]);
+        role_permissions.insert(
+            "ROLE_1".to_owned(),
+            vec!["PERMISSION_1".to_owned(), "PERMISSION_2".to_owned(), "PERMISSION_3".to_owned()],
+        );
+        role_permissions.insert(
+            "ROLE_2".to_owned(),
+            vec!["PERMISSION_1".to_owned(), "PERMISSION_2".to_owned()],
+        );
+        role_permissions.insert(
+            "ROLE_3".to_owned(),
+            vec!["PERMISSION_1".to_owned(), "PERMISSION_4".to_owned()],
+        );
 
         let mut permission_roles = BTreeMap::new();
-        permission_roles.insert("PERMISSION_1".to_owned(), vec!["ROLE_1".to_owned(),"ROLE_2".to_owned(), "ROLE_3".to_owned()]);
-        permission_roles.insert("PERMISSION_2".to_owned(), vec!["ROLE_1".to_owned(),"ROLE_2".to_owned()]);
+        permission_roles.insert(
+            "PERMISSION_1".to_owned(),
+            vec!["ROLE_1".to_owned(), "ROLE_2".to_owned(), "ROLE_3".to_owned()],
+        );
+        permission_roles
+            .insert("PERMISSION_2".to_owned(), vec!["ROLE_1".to_owned(), "ROLE_2".to_owned()]);
         permission_roles.insert("PERMISSION_3".to_owned(), vec!["ROLE_1".to_owned()]);
         permission_roles.insert("PERMISSION_4".to_owned(), vec!["ROLE_3".to_owned()]);
 

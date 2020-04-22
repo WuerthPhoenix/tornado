@@ -2,6 +2,7 @@ use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
@@ -9,7 +10,6 @@ use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
-use std::collections::BTreeMap;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -148,7 +148,10 @@ mod test {
         let config = build_config(path).unwrap();
 
         // Assert
-        assert_eq!(vec!["config_edit".to_owned(), "config_view".to_owned()], config.tornado.daemon.auth.role_permissions["ADMIN"])
+        assert_eq!(
+            vec!["config_edit".to_owned(), "config_view".to_owned()],
+            config.tornado.daemon.auth.role_permissions["ADMIN"]
+        )
     }
 
     #[test]
@@ -227,9 +230,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
-            auth: AuthConfig {
-                role_permissions: BTreeMap::new()
-            },
+            auth: AuthConfig { role_permissions: BTreeMap::new() },
         };
 
         // Act
@@ -253,9 +254,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
-            auth: AuthConfig {
-                role_permissions: BTreeMap::new()
-            }
+            auth: AuthConfig { role_permissions: BTreeMap::new() },
         };
 
         // Act

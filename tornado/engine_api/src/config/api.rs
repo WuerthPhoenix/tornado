@@ -6,6 +6,7 @@ use tornado_engine_matcher::config::MatcherConfig;
 pub const CONFIG_EDIT_PERMISSION: &str = "config_edit";
 pub const CONFIG_VIEW_PERMISSION: &str = "config_view";
 
+#[derive(Default)]
 pub struct ConfigApi {
     //  auth_service: AuthService
 }

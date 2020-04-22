@@ -8,6 +8,7 @@ use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMes
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
+use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
 use std::sync::Arc;
@@ -15,6 +16,9 @@ use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
+use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
+use tornado_engine_api::config::api::ConfigApi;
+use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::matcher::Matcher;
 
@@ -208,6 +212,9 @@ pub async fn daemon(
     let web_server_port = daemon_config.web_server_port;
     let matcher_config = configs.matcher_config;
 
+    let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
+        daemon_config.auth.role_permissions.clone(),
+    )));
     let api_handler = MatcherApiHandler::new(matcher_config, matcher_addr);
     let daemon_config = daemon_config.clone();
 
@@ -215,9 +222,16 @@ pub async fn daemon(
     HttpServer::new(move || {
         let api_handler = api_handler.clone();
         let daemon_config = daemon_config.clone();
+        let config_api = ApiData { auth: auth_service.clone(), api: ConfigApi::default() };
+
         App::new()
+            .wrap(Logger::default())
             .wrap(Cors::new().max_age(3600).finish())
-            .service(tornado_engine_api::event::web::build_event_endpoints(web::scope("/api"), api_handler) )
+            .service(
+                web::scope("/api")
+                    .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
+                    .service(tornado_engine_api::event::web::build_event_endpoints(api_handler)),
+            )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
     .bind(format!("{}:{}", web_server_ip, web_server_port))

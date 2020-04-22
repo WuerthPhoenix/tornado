@@ -7,19 +7,18 @@ use log::*;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::MatcherConfigDto;
 
-pub fn build_config_endpoints(scope: Scope, data: ApiData<ConfigApi>) -> Scope {
-    scope.data(data).service(
-        web::scope("/v1/config")
-            .service(web::resource("/drafts").route(web::get().to(get_drafts)))
-            .service(web::resource("/draft").route(web::post().to(create_draft)))
-            .service(
-                web::resource("/draft/{draft_id}")
-                    .route(web::post().to(create_draft))
-                    .route(web::get().to(get_draft))
-                    .route(web::put().to(update_draft))
-                    .route(web::delete().to(delete_draft)),
-            ),
-    )
+pub fn build_config_endpoints(data: ApiData<ConfigApi>) -> Scope {
+    web::scope("/v1/config")
+        .data(data)
+        .service(web::resource("/drafts").route(web::get().to(get_drafts)))
+        .service(web::resource("/draft").route(web::post().to(create_draft)))
+        .service(
+            web::resource("/draft/{draft_id}")
+                .route(web::post().to(create_draft))
+                .route(web::get().to(get_draft))
+                .route(web::put().to(update_draft))
+                .route(web::delete().to(delete_draft)),
+        )
 }
 
 async fn get_drafts(
@@ -63,8 +62,8 @@ async fn update_draft(
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let config = dto_into_matcher_config(body.into_inner())?;
-    let result = data.api.update_draft(auth_ctx, draft_id.into_inner(), config).await?;
-    Ok(Json(result))
+    data.api.update_draft(auth_ctx, draft_id.into_inner(), config).await?;
+    Ok(Json(()))
 }
 
 async fn delete_draft(
@@ -74,8 +73,8 @@ async fn delete_draft(
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.delete_draft(auth_ctx, draft_id.into_inner()).await?;
-    Ok(Json(result))
+    data.api.delete_draft(auth_ctx, draft_id.into_inner()).await?;
+    Ok(Json(()))
 }
 
 /*

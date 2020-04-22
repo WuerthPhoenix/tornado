@@ -8,8 +8,8 @@ use std::ops::Deref;
 use tornado_engine_api_dto::config::MatcherConfigDto;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 
-pub fn build_event_endpoints<T: EventApi + 'static>(scope: Scope, api_handler: T) -> Scope {
-    scope
+pub fn build_event_endpoints<T: EventApi + 'static>(api_handler: T) -> Scope {
+    web::scope("")
         .data(api_handler)
         .service(web::resource("/config").route(web::get().to(get_config::<T>)))
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
@@ -83,13 +83,11 @@ mod test {
     #[actix_rt::test]
     async fn should_return_status_code_ok() {
         // Arrange
-        let mut srv = test::init_service(
-            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
-        )
-        .await;
+        let mut srv =
+            test::init_service(App::new().service(build_event_endpoints(TestApiHandler {}))).await;
 
         // Act
-        let request = test::TestRequest::get().uri("/api/config").to_request();
+        let request = test::TestRequest::get().uri("/config").to_request();
 
         let response = test::call_service(&mut srv, request).await;
 
@@ -101,7 +99,8 @@ mod test {
     async fn should_return_the_matcher_config() {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
+            App::new()
+                .service(web::scope("/api").service(build_event_endpoints(TestApiHandler {}))),
         )
         .await;
 
@@ -124,10 +123,8 @@ mod test {
     #[actix_rt::test]
     async fn should_return_the_processed_event() {
         // Arrange
-        let mut srv = test::init_service(
-            App::new().service(build_event_endpoints(web::scope("/api"), TestApiHandler {})),
-        )
-        .await;
+        let mut srv =
+            test::init_service(App::new().service(build_event_endpoints(TestApiHandler {}))).await;
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -140,7 +137,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .uri("/api/send_event")
+            .uri("/send_event")
             .header(header::CONTENT_TYPE, "application/json")
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();

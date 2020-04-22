@@ -32,11 +32,11 @@ impl<T: Serialize + Clone> Into<Option<T>> for Defaultable<T> {
     }
 }
 
-impl <T: Serialize + Clone> From<Option<T>> for  Defaultable<T> {
+impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
     fn from(source: Option<T>) -> Self {
         match source {
             Some(value) => Defaultable::Value(value),
-            None => Defaultable::Default {}
+            None => Defaultable::Default {},
         }
     }
 }
