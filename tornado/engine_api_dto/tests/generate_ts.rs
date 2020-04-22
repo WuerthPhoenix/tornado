@@ -84,7 +84,21 @@ export type Value = any;"#;
     // Push custom ts types
     push_ts(&mut ts_code, custom_types);
 
-    // Push 'config' ts types
+
+
+    // Push 'common' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* ---------------- */
+/* 'common' types   */
+/* ---------------- */"#,
+    );
+    push_ts(&mut ts_code, &common::Id::<()>::type_script_ify());
+
+
+
+    // Push 'auth' ts types
     push_ts(
         &mut ts_code,
         r#"
@@ -93,6 +107,8 @@ export type Value = any;"#;
 /* -------------- */"#,
     );
     push_ts(&mut ts_code, &auth::Auth::type_script_ify());
+
+
 
     // Push 'config' ts types
     push_ts(
@@ -110,6 +126,8 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &config::MatcherConfigDto::type_script_ify());
     push_ts(&mut ts_code, &config::OperatorDto::type_script_ify());
     push_ts(&mut ts_code, &config::RuleDto::type_script_ify());
+
+
 
     // Push 'event' ts types
     push_ts(

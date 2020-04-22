@@ -1,12 +1,12 @@
+use crate::config::convert::matcher_config_into_dto;
+use crate::event::api::EventApi;
+use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
 use actix_web::web::{Data, Json};
-use actix_web::{web, Scope, HttpRequest};
+use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::config::MatcherConfigDto;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
-use crate::event::api::EventApi;
-use crate::config::convert::matcher_config_into_dto;
-use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
 
 pub fn build_event_endpoints<T: EventApi + 'static>(scope: Scope, api_handler: T) -> Scope {
     scope
@@ -45,8 +45,8 @@ async fn send_event<T: EventApi + 'static>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::event::api::SendEventRequest;
     use crate::error::ApiError;
+    use crate::event::api::SendEventRequest;
     use actix_web::{
         http::{header, StatusCode},
         test, App,

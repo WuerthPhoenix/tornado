@@ -1,3 +1,4 @@
+use crate::event::api::SendEventRequest;
 use serde_json::Error;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
@@ -10,7 +11,6 @@ use tornado_engine_matcher::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
-use crate::event::api::SendEventRequest;
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {

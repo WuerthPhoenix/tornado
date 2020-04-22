@@ -13,6 +13,13 @@
 export type Value = any;
 
 
+/* ---------------- */
+/* 'common' types   */
+/* ---------------- */
+
+export type Id<T> = { id: T };
+
+
 /* -------------- */
 /* 'auth' types   */
 /* -------------- */

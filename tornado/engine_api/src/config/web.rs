@@ -1,31 +1,32 @@
-use actix_web::web::{Data, Json, Path};
-use actix_web::{web, Scope, HttpRequest};
-use log::*;
-use tornado_engine_api_dto::config::MatcherConfigDto;
-use crate::config::convert::{matcher_config_into_dto, dto_into_matcher_config};
 use crate::config::api::ConfigApi;
+use crate::config::convert::{dto_into_matcher_config, matcher_config_into_dto};
 use crate::model::ApiData;
+use actix_web::web::{Data, Json, Path};
+use actix_web::{web, HttpRequest, Scope};
+use log::*;
+use tornado_engine_api_dto::common::Id;
+use tornado_engine_api_dto::config::MatcherConfigDto;
 
 pub fn build_config_endpoints(scope: Scope, data: ApiData<ConfigApi>) -> Scope {
-    scope
-        .data(data)
-        .service(
-            web::scope("/v1/config")
-                .service(web::resource("/drafts").route(web::get().to(get_drafts)))
-                .service(web::resource("/draft").route(web::post().to(create_draft)))
-                .service(web::resource("/draft/{draft_id}").route(web::post().to(create_draft))
+    scope.data(data).service(
+        web::scope("/v1/config")
+            .service(web::resource("/drafts").route(web::get().to(get_drafts)))
+            .service(web::resource("/draft").route(web::post().to(create_draft)))
+            .service(
+                web::resource("/draft/{draft_id}")
+                    .route(web::post().to(create_draft))
                     .route(web::get().to(get_draft))
                     .route(web::put().to(update_draft))
-                    .route(web::delete().to(delete_draft))
-                )
-        )
+                    .route(web::delete().to(delete_draft)),
+            ),
+    )
 }
 
 async fn get_drafts(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi>>,
 ) -> actix_web::Result<Json<Vec<String>>> {
-     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.get_drafts(auth_ctx).await?;
     Ok(Json(result))
@@ -36,7 +37,7 @@ async fn get_draft(
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi>>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
-     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.get_draft(auth_ctx, draft_id.into_inner()).await?;
     let matcher_config_dto = matcher_config_into_dto(result)?;
@@ -46,8 +47,8 @@ async fn get_draft(
 async fn create_draft(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi>>,
-) -> actix_web::Result<Json<String>> {
-     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+) -> actix_web::Result<Json<Id<String>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.create_draft(auth_ctx).await?;
     Ok(Json(result))
@@ -59,7 +60,7 @@ async fn update_draft(
     body: Json<MatcherConfigDto>,
     data: Data<ApiData<ConfigApi>>,
 ) -> actix_web::Result<Json<()>> {
-     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let config = dto_into_matcher_config(body.into_inner())?;
     let result = data.api.update_draft(auth_ctx, draft_id.into_inner(), config).await?;
@@ -71,7 +72,7 @@ async fn delete_draft(
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi>>,
 ) -> actix_web::Result<Json<()>> {
-     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.delete_draft(auth_ctx, draft_id.into_inner()).await?;
     Ok(Json(result))

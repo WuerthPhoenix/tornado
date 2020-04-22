@@ -59,12 +59,8 @@ impl actix_web::error::ResponseError for ApiError {
             | ApiError::ExpiredTokenError { .. }
             | ApiError::MissingAuthTokenError { .. }
             | ApiError::ParseAuthHeaderError { .. }
-            | ApiError::UnauthenticatedError => {
-                HttpResponse::Unauthorized().finish()
-            },
-            ApiError::ForbiddenError { .. } => {
-                HttpResponse::Forbidden().finish()
-            }
+            | ApiError::UnauthenticatedError => HttpResponse::Unauthorized().finish(),
+            ApiError::ForbiddenError { .. } => HttpResponse::Forbidden().finish(),
         }
     }
 }

@@ -7,7 +7,7 @@ use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
     Action, Constraint, Extractor, ExtractorRegex, Operator, Rule,
 };
-use tornado_engine_matcher::config::{MatcherConfig};
+use tornado_engine_matcher::config::MatcherConfig;
 
 pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto, Error> {
     Ok(match config {
@@ -164,7 +164,6 @@ fn dto_into_rule(rule: RuleDto) -> Result<Rule, Error> {
         name: rule.name,
     })
 }
-
 
 fn dto_into_action(action: ActionDto) -> Result<Action, Error> {
     Ok(Action { id: action.id, payload: serde_json::from_value(action.payload)? })
