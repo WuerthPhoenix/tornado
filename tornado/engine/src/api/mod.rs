@@ -7,6 +7,7 @@ use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApi, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_api::config::api::ConfigApiHandler;
 
 #[derive(Clone)]
 pub struct MatcherApiHandler {
@@ -30,9 +31,17 @@ impl EventApi for MatcherApiHandler {
         Ok(request?)
     }
 
+}
+
+#[async_trait]
+impl ConfigApiHandler for MatcherApiHandler {
+    async fn get_current_config(&self) -> Result<MatcherConfig, ApiError> {
+        let request = self.matcher.send(GetCurrentConfigMessage {}).await?;
+        Ok(request.as_ref().clone())
+    }
+
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
-
         Ok(request?.as_ref().clone())
     }
 }
@@ -120,7 +129,7 @@ mod test {
             Arbiter::spawn(async move {
 
                 // Act
-                let res = api.get_config().await;
+                let res = api.get_current_config().await;
                 // Verify
                 assert!(res.is_ok());
                 match res.unwrap() {
