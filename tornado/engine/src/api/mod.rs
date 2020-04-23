@@ -3,11 +3,11 @@ use crate::engine::{
 };
 use actix::Addr;
 use async_trait::async_trait;
+use tornado_engine_api::config::api::ConfigApiHandler;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApi, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
-use tornado_engine_api::config::api::ConfigApiHandler;
 
 #[derive(Clone)]
 pub struct MatcherApiHandler {
@@ -30,7 +30,6 @@ impl EventApi for MatcherApiHandler {
 
         Ok(request?)
     }
-
 }
 
 #[async_trait]
@@ -127,7 +126,6 @@ mod test {
             .unwrap();
 
             Arbiter::spawn(async move {
-
                 // Act
                 let res = api.get_current_config().await;
                 // Verify

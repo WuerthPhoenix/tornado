@@ -15,10 +15,7 @@ pub fn build_event_endpoints<T: EventApi + 'static>(api_handler: T) -> Scope {
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
 }
 
-#[deprecated(
-    since = "0.33.0",
-    note = "Please use the ConfigApi instead"
-)]
+#[deprecated(since = "0.33.0", note = "Please use the ConfigApi instead")]
 async fn get_config<T: EventApi + 'static>(
     req: HttpRequest,
     api_handler: Data<T>,
@@ -82,7 +79,6 @@ mod test {
                 },
             })
         }
-
     }
 
     #[actix_rt::test]
@@ -152,5 +148,4 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
     }
-
 }

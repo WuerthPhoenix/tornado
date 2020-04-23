@@ -125,9 +125,10 @@ impl AuthService {
 
     /// Generates the auth token
     pub fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
-        let auth_str = serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
-            cause: format!("Cannot serialize auth into string. Err: {}", err),
-        })?;
+        let auth_str =
+            serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
+                cause: format!("Cannot serialize auth into string. Err: {}", err),
+            })?;
         Ok(base64::encode(auth_str.as_bytes()))
     }
 
@@ -136,7 +137,6 @@ impl AuthService {
     pub fn auth_to_token_header(auth: &Auth) -> Result<String, ApiError> {
         Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthService::auth_to_token_string(&auth)?))
     }
-
 }
 
 #[cfg(test)]
@@ -170,7 +170,8 @@ mod test {
             roles: vec!["role_a".to_owned(), "role_b".to_owned()],
         };
 
-        let expected_token_header = "Bearer eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
+        let expected_token_header =
+            "Bearer eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
 
         // Act
         let token_header = AuthService::auth_to_token_header(&auth)?;

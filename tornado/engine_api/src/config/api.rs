@@ -13,19 +13,19 @@ pub trait ConfigApiHandler: Send + Sync {
 }
 
 pub struct ConfigApi<A: ConfigApiHandler> {
-    handler: A
+    handler: A,
 }
 
-impl <A: ConfigApiHandler> ConfigApi<A> {
-
+impl<A: ConfigApiHandler> ConfigApi<A> {
     pub fn new(handler: A) -> Self {
-        Self {
-            handler
-        }
+        Self { handler }
     }
 
     /// Returns the current configuration of tornado
-    pub async fn get_current_configuration(&self, auth: AuthContext<'_>) -> Result<MatcherConfig, ApiError> {
+    pub async fn get_current_configuration(
+        &self,
+        auth: AuthContext<'_>,
+    ) -> Result<MatcherConfig, ApiError> {
         auth.has_permission(Permission::ConfigView)?;
         self.handler.get_current_config().await
     }
@@ -69,7 +69,6 @@ impl <A: ConfigApiHandler> ConfigApi<A> {
         auth: AuthContext<'_>,
         _draft_id: String,
     ) -> Result<MatcherConfig, ApiError> {
-
         // Todo: add deploy logic
 
         auth.has_permission(Permission::ConfigEdit)?;

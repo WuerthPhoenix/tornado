@@ -213,7 +213,8 @@ pub async fn daemon(
     HttpServer::new(move || {
         let api_handler = api_handler.clone();
         let daemon_config = daemon_config.clone();
-        let config_api = ApiData { auth: auth_service.clone(), api: ConfigApi::new(api_handler.clone()) };
+        let config_api =
+            ApiData { auth: auth_service.clone(), api: ConfigApi::new(api_handler.clone()) };
 
         App::new()
             .wrap(Logger::default())
