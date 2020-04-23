@@ -43,7 +43,7 @@ async fn send_event<T: EventApi + 'static>(
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
-async fn reconfigure<T: ApiHandler + 'static>(
+async fn reconfigure<T: EventApi + 'static>(
     api_handler: Data<T>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     info!("API - received reconfigure request");
@@ -166,13 +166,11 @@ mod test {
     #[actix_rt::test]
     async fn should_return_the_reloaded_matcher_config() {
         // Arrange
-        let mut srv = test::init_service(
-            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
-        )
-        .await;
+        let mut srv =
+            test::init_service(App::new().service(build_event_endpoints(TestApiHandler {}))).await;
 
         // Act
-        let request = test::TestRequest::post().uri("/api/reconfigure").to_request();
+        let request = test::TestRequest::post().uri("/reconfigure").to_request();
 
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =

@@ -3,10 +3,9 @@ use crate::engine::{
 };
 use actix::Addr;
 use async_trait::async_trait;
-use std::sync::Arc;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApi, SendEventRequest};
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
+use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
 #[derive(Clone)]

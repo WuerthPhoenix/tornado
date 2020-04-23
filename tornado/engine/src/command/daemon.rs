@@ -203,12 +203,10 @@ pub async fn daemon(
     let web_server_ip = daemon_config.web_server_ip.clone();
     let web_server_port = daemon_config.web_server_port;
 
-    let matcher_config = configs.matcher_config;
-
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
         daemon_config.auth.role_permissions.clone(),
     )));
-    let api_handler = MatcherApiHandler::new(matcher_config, matcher_addr);
+    let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
 
     // Start API and monitoring endpoint
@@ -222,7 +220,7 @@ pub async fn daemon(
             .wrap(Cors::new().max_age(3600).finish())
             .service(
                 web::scope("/api")
-                    //.service(tornado_engine_api::config::web::build_config_endpoints(config_api))
+                    .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(api_handler)),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
