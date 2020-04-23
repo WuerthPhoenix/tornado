@@ -13,6 +13,7 @@ pub fn build_event_endpoints<T: EventApi + 'static>(api_handler: T) -> Scope {
         .data(api_handler)
         .service(web::resource("/config").route(web::get().to(get_config::<T>)))
         .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
+        .service(web::resource("/reconfigure").route(web::post().to(reconfigure::<T>)))
 }
 
 async fn get_config<T: EventApi + 'static>(
@@ -40,6 +41,16 @@ async fn send_event<T: EventApi + 'static>(
     let send_event_request = dto_into_send_event_request(body.into_inner())?;
     let processed_event = api_handler.send_event(send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
+}
+
+async fn reconfigure<T: ApiHandler + 'static>(
+    api_handler: Data<T>,
+) -> actix_web::Result<Json<MatcherConfigDto>> {
+    info!("API - received reconfigure request");
+    let matcher_config = api_handler.reload_configuration().await?;
+
+    let matcher_config_dto = matcher_config_into_dto(matcher_config)?;
+    Ok(Json(matcher_config_dto))
 }
 
 #[cfg(test)]
@@ -77,6 +88,10 @@ mod test {
                     },
                 },
             })
+        }
+
+        async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
+            Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
         }
     }
 
@@ -146,5 +161,29 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
+    }
+
+    #[actix_rt::test]
+    async fn should_return_the_reloaded_matcher_config() {
+        // Arrange
+        let mut srv = test::init_service(
+            App::new().service(new_endpoints(web::scope("/api"), TestApiHandler {})),
+        )
+        .await;
+
+        // Act
+        let request = test::TestRequest::post().uri("/api/reconfigure").to_request();
+
+        // Assert
+        let dto: tornado_engine_api_dto::config::MatcherConfigDto =
+            test::read_response_json(&mut srv, request).await;
+
+        assert_eq!(
+            tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
+                name: "ruleset_new".to_owned(),
+                rules: vec![]
+            },
+            dto
+        );
     }
 }

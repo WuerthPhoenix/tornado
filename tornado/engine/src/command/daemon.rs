@@ -20,7 +20,6 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use tornado_engine_matcher::matcher::Matcher;
 
 pub async fn daemon(
     config_dir: &str,
@@ -30,12 +29,7 @@ pub async fn daemon(
 
     setup_logger(&configs.tornado.logger)?;
 
-    // Start matcher
-    let matcher =
-        Arc::new(configs.matcher_config.read().and_then(|config| Matcher::build(&config))?);
-
     // start system
-
     let cpus = num_cpus::get();
     debug!("Available CPUs: {}", cpus);
 
@@ -49,7 +43,7 @@ pub async fn daemon(
     });
 
     // Start script executor actor
-    let script_executor_addr = SyncArbiter::start(1, move || {
+    let script_executor_addr = SyncArbiter::start(cpus, move || {
         let executor = tornado_executor_script::ScriptExecutor::new();
         ExecutorActor { executor }
     });
@@ -64,7 +58,7 @@ pub async fn daemon(
     let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
     // Start ForEach executor actor
-    let foreach_executor_addr = SyncArbiter::start(1, move || LazyExecutorActor::<
+    let foreach_executor_addr = SyncArbiter::start(cpus, move || LazyExecutorActor::<
         tornado_executor_foreach::ForEachExecutor,
     > {
         executor: None,
@@ -72,7 +66,7 @@ pub async fn daemon(
 
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr = SyncArbiter::start(1, move || {
+    let elasticsearch_executor_addr = SyncArbiter::start(cpus, move || {
         let es_authentication = es_authentication.clone();
         let executor =
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
@@ -81,7 +75,7 @@ pub async fn daemon(
     });
 
     // Start icinga2 executor actor
-    let icinga2_executor_addr = SyncArbiter::start(1, move || {
+    let icinga2_executor_addr = SyncArbiter::start(cpus, move || {
         let icinga2_client_addr_clone = icinga2_client_addr.clone();
         let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
             icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
@@ -120,16 +114,14 @@ pub async fn daemon(
     });
 
     // Start dispatcher actor
-    let dispatcher_addr = SyncArbiter::start(1, move || {
+    let dispatcher_addr = SyncArbiter::start(cpus, move || {
         let dispatcher = Dispatcher::build(event_bus.clone()).expect("Cannot build the dispatcher");
         DispatcherActor { dispatcher }
     });
 
     // Start matcher actor
-    let matcher_addr = SyncArbiter::start(cpus, move || MatcherActor {
-        matcher: matcher.clone(),
-        dispatcher_addr: dispatcher_addr.clone(),
-    });
+    let matcher_addr =
+        MatcherActor::start(dispatcher_addr.clone(), configs.matcher_config.clone())?;
 
     if daemon_config.is_nats_enabled() {
         info!("NATS connection is enabled. Starting it...");
@@ -210,6 +202,7 @@ pub async fn daemon(
 
     let web_server_ip = daemon_config.web_server_ip.clone();
     let web_server_port = daemon_config.web_server_port;
+
     let matcher_config = configs.matcher_config;
 
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(

@@ -11,6 +11,7 @@ use tornado_engine_matcher::model::ProcessedEvent;
 pub trait EventApi: Send + Sync {
     async fn get_config(&self) -> Result<MatcherConfig, ApiError>;
     async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError>;
+    async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError>;
 }
 
 pub struct SendEventRequest {
