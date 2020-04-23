@@ -2,9 +2,11 @@ use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde_derive::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
+use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
@@ -42,6 +44,8 @@ pub struct DaemonCommandConfig {
     pub web_server_port: u16,
 
     pub message_queue_size: usize,
+
+    pub auth: AuthConfig,
 }
 
 impl DaemonCommandConfig {
@@ -52,6 +56,11 @@ impl DaemonCommandConfig {
     pub fn is_nats_enabled(&self) -> bool {
         self.nats_enabled.unwrap_or(false)
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Default)]
+pub struct AuthConfig {
+    pub role_permissions: BTreeMap<String, Vec<Permission>>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -137,10 +146,13 @@ mod test {
         let path = "./config/";
 
         // Act
-        let config = build_config(path);
+        let config = build_config(path).unwrap();
 
         // Assert
-        assert!(config.is_ok())
+        assert_eq!(
+            vec![Permission::ConfigEdit, Permission::ConfigView],
+            config.tornado.daemon.auth.role_permissions["ADMIN"]
+        )
     }
 
     #[test]
@@ -219,6 +231,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig::default(),
         };
 
         // Act
@@ -242,6 +255,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig::default(),
         };
 
         // Act

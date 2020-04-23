@@ -84,6 +84,26 @@ export type Value = any;"#;
     // Push custom ts types
     push_ts(&mut ts_code, custom_types);
 
+    // Push 'common' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* ---------------- */
+/* 'common' types   */
+/* ---------------- */"#,
+    );
+    push_ts(&mut ts_code, &common::Id::<()>::type_script_ify());
+
+    // Push 'auth' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* -------------- */
+/* 'auth' types   */
+/* -------------- */"#,
+    );
+    push_ts(&mut ts_code, &auth::Auth::type_script_ify());
+
     // Push 'config' ts types
     push_ts(
         &mut ts_code,

@@ -13,6 +13,20 @@
 export type Value = any;
 
 
+/* ---------------- */
+/* 'common' types   */
+/* ---------------- */
+
+export type Id<T> = { id: T };
+
+
+/* -------------- */
+/* 'auth' types   */
+/* -------------- */
+
+export type Auth = { user: string; roles: string [] };
+
+
 /* -------------- */
 /* 'config' types */
 /* -------------- */

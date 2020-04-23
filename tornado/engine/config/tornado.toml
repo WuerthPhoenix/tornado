@@ -49,3 +49,7 @@ web_server_port = 4748
 
 # Set the size of the in-memory queue where messages will be stored before being processed
 message_queue_size = 10000
+
+[tornado.daemon.auth.role_permissions]
+ADMIN = ["ConfigEdit", "ConfigView"]
+VIEWER = ["ConfigView"]

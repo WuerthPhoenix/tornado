@@ -13,6 +13,20 @@ pub enum ApiError {
     JsonError { cause: String },
     #[error("InternalServerError: [{cause}]")]
     InternalServerError { cause: String },
+
+    #[error("MissingAuthTokenError")]
+    MissingAuthTokenError,
+    #[error("ParseAuthHeaderError: [{message}]")]
+    ParseAuthHeaderError { message: String },
+    #[error("InvalidTokenError: [{message}]")]
+    InvalidTokenError { message: String },
+    #[error("ExpiredTokenError: [{message}]")]
+    ExpiredTokenError { message: String },
+    #[error("UnauthenticatedError")]
+    UnauthenticatedError,
+
+    #[error("ForbiddenError [{message}]")]
+    ForbiddenError { message: String },
 }
 
 impl From<MatcherError> for ApiError {
@@ -41,6 +55,12 @@ impl actix_web::error::ResponseError for ApiError {
             ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::InvalidTokenError { .. }
+            | ApiError::ExpiredTokenError { .. }
+            | ApiError::MissingAuthTokenError { .. }
+            | ApiError::ParseAuthHeaderError { .. }
+            | ApiError::UnauthenticatedError => HttpResponse::Unauthorized().finish(),
+            ApiError::ForbiddenError { .. } => HttpResponse::Forbidden().finish(),
         }
     }
 }

@@ -59,6 +59,7 @@ pub struct CommunicationChannelConfig {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::config::AuthConfig;
     use actix_web::{test, App};
     use chrono::DateTime;
 
@@ -74,6 +75,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -104,6 +106,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -134,6 +137,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
