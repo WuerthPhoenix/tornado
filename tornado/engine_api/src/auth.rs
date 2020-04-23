@@ -1,6 +1,7 @@
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_engine_api_dto::auth::Auth;
@@ -9,15 +10,21 @@ pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
 pub const JWT_TOKEN_HEADER_SUFFIX_LEN: usize = JWT_TOKEN_HEADER_SUFFIX.len();
 
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum Permission {
+    ConfigEdit,
+    ConfigView,
+}
+
 #[derive(Debug)]
 pub struct AuthContext<'a> {
     pub auth: Auth,
     pub valid: bool,
-    permission_roles_map: &'a BTreeMap<String, Vec<String>>,
+    permission_roles_map: &'a BTreeMap<Permission, Vec<String>>,
 }
 
 impl<'a> AuthContext<'a> {
-    pub fn new(auth: Auth, permission_roles_map: &'a BTreeMap<String, Vec<String>>) -> Self {
+    pub fn new(auth: Auth, permission_roles_map: &'a BTreeMap<Permission, Vec<String>>) -> Self {
         AuthContext { valid: !auth.user.is_empty(), auth, permission_roles_map }
     }
 
@@ -30,16 +37,16 @@ impl<'a> AuthContext<'a> {
     }
 
     // Returns an error if user does not have the permission
-    pub fn has_permission(&self, permission: &str) -> Result<&AuthContext, ApiError> {
+    pub fn has_permission(&self, permission: Permission) -> Result<&AuthContext, ApiError> {
         self.has_any_permission(&[permission])
     }
 
     // Returns an error if user does not have at least one of the permissions
-    pub fn has_any_permission(&self, permissions: &[&str]) -> Result<&AuthContext, ApiError> {
+    pub fn has_any_permission(&self, permissions: &[Permission]) -> Result<&AuthContext, ApiError> {
         self.is_authenticated()?;
 
         for permission in permissions {
-            if let Some(roles_with_permission) = self.permission_roles_map.get(*permission) {
+            if let Some(roles_with_permission) = self.permission_roles_map.get(permission) {
                 for user_role in &self.auth.roles {
                     if roles_with_permission.contains(user_role) {
                         return Ok(&self);
@@ -58,8 +65,8 @@ impl<'a> AuthContext<'a> {
 
 // Reverts a role->permissions map to a permission->roles map
 pub fn roles_map_to_permissions_map(
-    role_permissions: BTreeMap<String, Vec<String>>,
-) -> BTreeMap<String, Vec<String>> {
+    role_permissions: BTreeMap<String, Vec<Permission>>,
+) -> BTreeMap<Permission, Vec<String>> {
     let mut result = BTreeMap::new();
     for (role, permissions) in role_permissions {
         for permission in permissions {
@@ -71,11 +78,11 @@ pub fn roles_map_to_permissions_map(
 
 #[derive(Clone)]
 pub struct AuthService {
-    pub permission_roles_map: Arc<BTreeMap<String, Vec<String>>>,
+    pub permission_roles_map: Arc<BTreeMap<Permission, Vec<String>>>,
 }
 
 impl AuthService {
-    pub fn new(permission_roles_map: Arc<BTreeMap<String, Vec<String>>>) -> Self {
+    pub fn new(permission_roles_map: Arc<BTreeMap<Permission, Vec<String>>>) -> Self {
         Self { permission_roles_map }
     }
 
@@ -132,7 +139,7 @@ mod test {
         let token = "ewogInVzZXIiOiAiMTI0NTZhYmMiLAogInJvbGVzIjogWyJyb2xlX2EiLCAicm9sZV9iIl0KfQ==";
 
         let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert("EDIT".to_owned(), vec!["role_a".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["role_a".to_owned()]);
 
         let auth_service = AuthService::new(Arc::new(permission_roles_map.clone()));
 
@@ -143,8 +150,8 @@ mod test {
         assert_eq!(expected_auth, auth_context.auth);
         assert_eq!(&permission_roles_map, auth_context.permission_roles_map);
         assert!(auth_context.is_authenticated().is_ok());
-        assert!(auth_context.has_permission("EDIT").is_ok());
-        assert!(auth_context.has_permission("VIEW").is_err());
+        assert!(auth_context.has_permission(Permission::ConfigEdit).is_ok());
+        assert!(auth_context.has_permission(Permission::ConfigView).is_err());
 
         Ok(())
     }
@@ -188,20 +195,22 @@ mod test {
     fn auth_context_should_return_whether_user_has_permissions() -> Result<(), ApiError> {
         let auth =
             Auth { user: "user".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
+
         let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert("EDIT".to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["role1".to_owned()]);
         permission_roles_map
-            .insert("VIEW".to_owned(), vec!["role1".to_owned(), "role2".to_owned()]);
-        permission_roles_map.insert("ADMIN".to_owned(), vec!["role3".to_owned()]);
+            .insert(Permission::ConfigView, vec!["role1".to_owned(), "role2".to_owned()]);
 
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
         assert!(auth_context.valid);
         assert!(auth_context.is_authenticated().is_ok());
-        assert!(auth_context.has_permission("EDIT").is_ok());
-        assert!(auth_context.has_permission("VIEW").is_ok());
-        assert!(auth_context.has_permission("EDIT")?.has_permission("VIEW").is_ok());
-        assert!(auth_context.has_permission("ADMIN").is_err());
+        assert!(auth_context.has_permission(Permission::ConfigEdit).is_ok());
+        assert!(auth_context.has_permission(Permission::ConfigView).is_ok());
+        assert!(auth_context
+            .has_permission(Permission::ConfigEdit)?
+            .has_permission(Permission::ConfigView)
+            .is_ok());
 
         Ok(())
     }
@@ -209,21 +218,27 @@ mod test {
     #[test]
     fn auth_context_should_return_whether_user_has_any_permissions() -> Result<(), ApiError> {
         let auth = Auth { user: "user".to_owned(), roles: vec!["role1".to_owned()] };
+
         let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert("EDIT".to_owned(), vec!["role1".to_owned()]);
-        permission_roles_map
-            .insert("VIEW".to_owned(), vec!["role1".to_owned(), "role2".to_owned()]);
-        permission_roles_map.insert("ADMIN".to_owned(), vec!["role3".to_owned()]);
-        permission_roles_map.insert("MANAGER".to_owned(), vec!["role3".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigEdit.to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView.to_owned(), vec!["role2".to_owned()]);
 
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
         assert!(auth_context.valid);
         assert!(auth_context.is_authenticated().is_ok());
-        assert!(auth_context.has_any_permission(&["EDIT", "ADMIN"]).is_ok());
-        assert!(auth_context.has_any_permission(&["MANAGER", "VIEW"]).is_ok());
-        assert!(auth_context.has_any_permission(&["EDIT", "VIEW"]).is_ok());
-        assert!(auth_context.has_any_permission(&["ADMIN", "MANAGER"]).is_err());
+        assert!(auth_context
+            .has_any_permission(&[Permission::ConfigEdit, Permission::ConfigEdit])
+            .is_ok());
+        assert!(auth_context
+            .has_any_permission(&[Permission::ConfigView, Permission::ConfigEdit])
+            .is_ok());
+        assert!(auth_context
+            .has_any_permission(&[Permission::ConfigEdit, Permission::ConfigView])
+            .is_ok());
+        assert!(auth_context
+            .has_any_permission(&[Permission::ConfigView, Permission::ConfigView])
+            .is_err());
 
         Ok(())
     }
@@ -233,15 +248,14 @@ mod test {
         let auth =
             Auth { user: "".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
         let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert("EDIT".to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView, vec!["role1".to_owned()]);
 
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
         assert!(!auth_context.valid);
         assert!(auth_context.is_authenticated().is_err());
-        assert!(auth_context.has_permission("EDIT").is_err());
-        assert!(auth_context.has_permission("VIEW").is_err());
-        assert!(auth_context.has_permission("ADMIN").is_err());
+        assert!(auth_context.has_permission(Permission::ConfigView).is_err());
+        assert!(auth_context.has_permission(Permission::ConfigEdit).is_err());
 
         Ok(())
     }
@@ -250,28 +264,16 @@ mod test {
     fn should_create_a_permission_roles_map() {
         // Arrange
         let mut role_permissions = BTreeMap::new();
-        role_permissions.insert(
-            "ROLE_1".to_owned(),
-            vec!["PERMISSION_1".to_owned(), "PERMISSION_2".to_owned(), "PERMISSION_3".to_owned()],
-        );
-        role_permissions.insert(
-            "ROLE_2".to_owned(),
-            vec!["PERMISSION_1".to_owned(), "PERMISSION_2".to_owned()],
-        );
-        role_permissions.insert(
-            "ROLE_3".to_owned(),
-            vec!["PERMISSION_1".to_owned(), "PERMISSION_4".to_owned()],
-        );
+        role_permissions
+            .insert("ROLE_1".to_owned(), vec![Permission::ConfigEdit, Permission::ConfigView]);
+        role_permissions.insert("ROLE_2".to_owned(), vec![Permission::ConfigEdit]);
+        role_permissions.insert("ROLE_3".to_owned(), vec![Permission::ConfigView]);
 
         let mut permission_roles = BTreeMap::new();
-        permission_roles.insert(
-            "PERMISSION_1".to_owned(),
-            vec!["ROLE_1".to_owned(), "ROLE_2".to_owned(), "ROLE_3".to_owned()],
-        );
         permission_roles
-            .insert("PERMISSION_2".to_owned(), vec!["ROLE_1".to_owned(), "ROLE_2".to_owned()]);
-        permission_roles.insert("PERMISSION_3".to_owned(), vec!["ROLE_1".to_owned()]);
-        permission_roles.insert("PERMISSION_4".to_owned(), vec!["ROLE_3".to_owned()]);
+            .insert(Permission::ConfigEdit, vec!["ROLE_1".to_owned(), "ROLE_2".to_owned()]);
+        permission_roles
+            .insert(Permission::ConfigView, vec!["ROLE_1".to_owned(), "ROLE_3".to_owned()]);
 
         // Act
         let result = roles_map_to_permissions_map(role_permissions);

@@ -51,5 +51,5 @@ web_server_port = 4748
 message_queue_size = 10000
 
 [tornado.daemon.auth.role_permissions]
-ADMIN = ["config_edit", "config_view"]
-VIEWER = ["config_view"]
+ADMIN = ["ConfigEdit", "ConfigView"]
+VIEWER = ["ConfigView"]

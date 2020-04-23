@@ -62,7 +62,6 @@ mod test {
     use crate::config::AuthConfig;
     use actix_web::{test, App};
     use chrono::DateTime;
-    use std::collections::BTreeMap;
 
     #[actix_rt::test]
     async fn index_should_have_links_to_the_endpoints() {
@@ -76,7 +75,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
-            auth: AuthConfig { role_permissions: BTreeMap::new() },
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -107,7 +106,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
-            auth: AuthConfig { role_permissions: BTreeMap::new() },
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -138,7 +137,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
-            auth: AuthConfig { role_permissions: BTreeMap::new() },
+            auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
