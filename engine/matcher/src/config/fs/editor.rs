@@ -42,13 +42,13 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         Ok(draft_id)
     }
 
-    fn update_draft(&self, draft_id: &str, config: MatcherConfig) -> Result<(), MatcherError> {
+    fn update_draft(&self, draft_id: &str, config: &MatcherConfig) -> Result<(), MatcherError> {
         info!("Update draft with id {}", draft_id);
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
             message: format!("Cannot create temporary directory. Err: {}", err),
         })?;
-        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), &config)?;
+        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
 
         let draft_path = self.get_draft_path(&draft_id);
         FsMatcherConfigManager::copy_and_override(tempdir.path(), &draft_path)
@@ -299,39 +299,6 @@ mod test {
     }
 
     #[test]
-    fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
-        // Arrange
-        let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
-
-        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let config_before_deploy = config_manager.get_config().unwrap();
-
-        let new_rules_path = "./test_resources/config_implicit_filter";
-
-        // Copy a different config into the draft
-        FsMatcherConfigManager::copy_and_override(
-            new_rules_path,
-            &config_manager.get_draft_path(DRAFT_ID),
-        )
-        .unwrap();
-
-        // Act
-        let deploy_draft_content = config_manager.deploy_draft(DRAFT_ID).unwrap();
-        let config_after_deploy = config_manager.get_config().unwrap();
-
-        // Assert
-        assert_ne!(config_before_deploy, config_after_deploy);
-        assert_eq!(deploy_draft_content, config_after_deploy);
-        assert_eq!(
-            FsMatcherConfigManager::new(new_rules_path, drafts_dir).get_config().unwrap(),
-            config_after_deploy
-        );
-
-        Ok(())
-    }
-
-    #[test]
     fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
         let test_configurations = vec![
             "./test_resources/config_01",
@@ -368,6 +335,62 @@ mod test {
             // Assert
             assert_eq!(src_config, converted_config);
         }
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_update_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+
+        let new_config =
+            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+                .get_config()
+                .unwrap();
+
+        // Act
+        let draft_id = config_manager.create_draft().unwrap();
+        let draft_before_update = config_manager.get_draft(&draft_id).unwrap();
+        config_manager.update_draft(&draft_id, &new_config).unwrap();
+        let draft_after_update = config_manager.get_draft(&draft_id).unwrap();
+
+        // Assert
+        assert_ne!(draft_after_update, draft_before_update);
+        assert_eq!(new_config, draft_after_update);
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+        let config_before_deploy = config_manager.get_config().unwrap();
+
+        let new_config =
+            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+                .get_config()
+                .unwrap();
+
+        // Act
+        let draft_id = config_manager.create_draft().unwrap();
+        config_manager.update_draft(&draft_id, &new_config).unwrap();
+
+        // Act
+        let deploy_draft_content = config_manager.deploy_draft(&draft_id).unwrap();
+        let config_after_deploy = config_manager.get_config().unwrap();
+
+        // Assert
+        assert_ne!(config_before_deploy, config_after_deploy);
+        assert_eq!(deploy_draft_content, config_after_deploy);
+        assert_eq!(new_config, config_after_deploy);
 
         Ok(())
     }

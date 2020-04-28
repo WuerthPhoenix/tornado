@@ -53,17 +53,17 @@ pub trait MatcherConfigEditor: Sync + Send {
     fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
 
     /// Returns a draft by id
-    fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError>;
+    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
 
     /// Creats a new draft and returns the id
     fn create_draft(&self) -> Result<String, MatcherError>;
 
     /// Update a draft
-    fn update_draft(&self, _draft_id: &str, _config: MatcherConfig) -> Result<(), MatcherError>;
+    fn update_draft(&self, draft_id: &str, config: &MatcherConfig) -> Result<(), MatcherError>;
 
     /// Deploy a draft by id replacing the current tornado configuration
-    fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError>;
+    fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
 
     /// Deletes a draft by id
-    fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError>;
+    fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError>;
 }
