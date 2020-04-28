@@ -2,7 +2,6 @@ use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
-use tornado_common_api;
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;

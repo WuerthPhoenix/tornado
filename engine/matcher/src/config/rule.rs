@@ -4,7 +4,6 @@
 
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::collections::HashMap;
 use tornado_common_api::{Payload, Value};
 

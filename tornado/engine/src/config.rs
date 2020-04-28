@@ -134,8 +134,15 @@ pub fn parse_config_files(
     })
 }
 
-fn build_matcher_config(config_dir: &str, rules_dir: &str, drafts_dir: &str) -> impl MatcherConfigReader {
-    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir), format!("{}/{}", config_dir, drafts_dir))
+fn build_matcher_config(
+    config_dir: &str,
+    rules_dir: &str,
+    drafts_dir: &str,
+) -> impl MatcherConfigReader {
+    FsMatcherConfigManager::new(
+        format!("{}/{}", config_dir, rules_dir),
+        format!("{}/{}", config_dir, drafts_dir),
+    )
 }
 
 #[cfg(test)]

@@ -16,7 +16,6 @@ pub struct MatcherApiHandler {
 
 #[async_trait]
 impl EventApi for MatcherApiHandler {
-
     async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
         self.get_current_config().await
     }
