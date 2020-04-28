@@ -46,3 +46,38 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
 pub trait MatcherConfigManager: Sync + Send {
     fn read(&self) -> Result<MatcherConfig, MatcherError>;
 }
+
+/// A MatcherConfigEditor permits to edit Tornado Configuration drafts
+pub trait MatcherConfigEditor: Sync + Send {
+
+    /// Returns the list of available drafts
+    fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
+
+    /// Returns a draft by id
+    fn get_draft(
+        &self,
+        _draft_id: String,
+    ) -> Result<MatcherConfig, MatcherError>;
+
+    /// Creats a new draft and returns the id
+    fn create_draft(&self) -> Result<String, MatcherError>;
+
+    /// Update a draft
+    fn update_draft(
+        &self,
+        _draft_id: String,
+        _config: MatcherConfig,
+    ) -> Result<(), MatcherError>;
+
+    /// Deploy a draft by id replacing the current tornado configuration
+    fn deploy_draft(
+        &self,
+        _draft_id: String,
+    ) -> Result<MatcherConfig, MatcherError>;
+
+    /// Deletes a draft by id
+    fn delete_draft(
+        &self,
+        _draft_id: String,
+    ) -> Result<(), MatcherError>;
+}
