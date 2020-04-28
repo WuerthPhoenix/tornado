@@ -24,6 +24,10 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
             .long("rules-dir")
             .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
             .default_value("/rules.d/"))
+        .arg(Arg::with_name("drafts-dir")
+            .long("drafts-dir")
+            .help("The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`")
+            .default_value("/drafts/"))
         .subcommand(SubCommand::with_name("daemon" )
             .help("Starts the Tornado daemon"))
         .subcommand(SubCommand::with_name("check" )
@@ -114,8 +118,9 @@ pub struct ComponentsConfig {
 pub fn parse_config_files(
     config_dir: &str,
     rules_dir: &str,
+    drafts_dir: &str,
 ) -> Result<ComponentsConfig, Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir));
+    let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir, drafts_dir));
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
@@ -129,8 +134,8 @@ pub fn parse_config_files(
     })
 }
 
-fn build_matcher_config(config_dir: &str, rules_dir: &str) -> impl MatcherConfigManager {
-    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir))
+fn build_matcher_config(config_dir: &str, rules_dir: &str, drafts_dir: &str) -> impl MatcherConfigManager {
+    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir), format!("{}/{}", config_dir, drafts_dir))
 }
 
 #[cfg(test)]
@@ -159,9 +164,10 @@ mod test {
     fn should_read_all_rule_configurations_from_file() {
         // Arrange
         let path = "./config/rules.d";
+        let drafts_path = "./config/drafts";
 
         // Act
-        let config = FsMatcherConfigManager::new(path).read().unwrap();
+        let config = FsMatcherConfigManager::new(path, drafts_path).read().unwrap();
 
         // Assert
         match config {
@@ -184,9 +190,10 @@ mod test {
         // Arrange
         let config_dir = "./config";
         let rules_dir = "/rules.d";
+        let drafts_dir = "/drafts";
 
         // Act
-        let config = parse_config_files(config_dir, rules_dir).unwrap();
+        let config = parse_config_files(config_dir, rules_dir, drafts_dir).unwrap();
 
         // Assert
         assert_eq!(

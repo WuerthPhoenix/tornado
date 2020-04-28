@@ -16,10 +16,9 @@ pub struct MatcherApiHandler {
 
 #[async_trait]
 impl EventApi for MatcherApiHandler {
-    async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
-        let request = self.matcher.send(GetCurrentConfigMessage {}).await?;
 
-        Ok(request.as_ref().clone())
+    async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
+        self.get_current_config().await
     }
 
     async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {

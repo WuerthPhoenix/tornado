@@ -24,8 +24,9 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
+    drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let configs = config::parse_config_files(config_dir, rules_dir)?;
+    let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
     setup_logger(&configs.tornado.logger)?;
 

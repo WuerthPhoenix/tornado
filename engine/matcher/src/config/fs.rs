@@ -12,11 +12,12 @@ pub const ROOT_NODE_NAME: &str = "root";
 
 pub struct FsMatcherConfigManager {
     root_path: String,
+    drafts_path: String,
 }
 
 impl FsMatcherConfigManager {
-    pub fn new<P: Into<String>>(root_path: P) -> FsMatcherConfigManager {
-        FsMatcherConfigManager { root_path: root_path.into() }
+    pub fn new<P: Into<String>>(root_path: P, drafts_path: P) -> FsMatcherConfigManager {
+        FsMatcherConfigManager { root_path: root_path.into(), drafts_path: drafts_path.into() }
     }
 }
 
