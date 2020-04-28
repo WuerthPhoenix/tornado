@@ -3,7 +3,7 @@ use crate::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 use crate::error::MatcherError;
 use fs_extra::dir::*;
 use log::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 const DRAFT_ID: &str = "draft_001";
 
@@ -42,9 +42,16 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         Ok(draft_id)
     }
 
-    fn update_draft(&self, draft_id: &str, _config: MatcherConfig) -> Result<(), MatcherError> {
+    fn update_draft(&self, draft_id: &str, config: MatcherConfig) -> Result<(), MatcherError> {
         info!("Update draft with id {}", draft_id);
-        unimplemented!()
+
+        let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
+            message: format!("Cannot create temporary directory. Err: {}", err),
+        })?;
+        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), &config)?;
+
+        let draft_path = self.get_draft_path(&draft_id);
+        FsMatcherConfigManager::copy_and_override(tempdir.path(), &draft_path)
     }
 
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
@@ -79,30 +86,105 @@ impl FsMatcherConfigManager {
         format!("{}/{}", self.drafts_path, draft_id)
     }
 
-    fn copy_and_override(source_dir: &str, dest_dir: &str) -> Result<(), MatcherError> {
-
-        if Path::new(&dest_dir).exists() {
-            std::fs::remove_dir_all(&dest_dir).map_err(|err| {
+    fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
+        source_dir: S,
+        dest_dir: D,
+    ) -> Result<(), MatcherError> {
+        if dest_dir.as_ref().exists() {
+            std::fs::remove_dir_all(dest_dir.as_ref()).map_err(|err| {
                 MatcherError::InternalSystemError {
-                    message: format!("Cannot delete directory [{}]. Err: {}", dest_dir, err),
+                    message: format!(
+                        "Cannot delete directory [{}]. Err: {}",
+                        dest_dir.as_ref().display(),
+                        err
+                    ),
                 }
             })?;
         }
 
         let mut copy_options = CopyOptions::new();
         copy_options.copy_inside = true;
-        copy(source_dir, dest_dir, &copy_options).map_err(|err| {
-            MatcherError::InternalSystemError {
+        copy(source_dir.as_ref(), dest_dir.as_ref(), &copy_options)
+            .map_err(|err| MatcherError::InternalSystemError {
                 message: format!(
                     "Cannot copy configuration from [{}] [{}]. Err: {}",
-                    source_dir, dest_dir, err
+                    source_dir.as_ref().display(),
+                    dest_dir.as_ref().display(),
+                    err
                 ),
-            }
-        }).map(|_| ())
-
-
+            })
+            .map(|_| ())
     }
 
+    fn matcher_config_to_fs<P: AsRef<Path>>(
+        is_root_node: bool,
+        root_path: P,
+        config: &MatcherConfig,
+    ) -> Result<(), MatcherError> {
+        match config {
+            MatcherConfig::Ruleset { name, rules } => {
+                let current_path =
+                    FsMatcherConfigManager::create_node_dir(is_root_node, root_path, name)?;
+
+                for (index, rule) in rules.iter().enumerate() {
+                    let rule_path = current_path.join(&format!("{:12}0_{}.json", index, rule.name));
+                    let rule_json = serde_json::to_string_pretty(rule).map_err(|err| {
+                        MatcherError::InternalSystemError {
+                            message: format!("Cannot convert rule body to JSON. Err: {}", err),
+                        }
+                    })?;
+                    fs_extra::file::write_all(&rule_path, &rule_json).map_err(|err| {
+                        MatcherError::InternalSystemError {
+                            message: format!("Cannot save JSON rule to filesystem. Err: {}", err),
+                        }
+                    })?
+                }
+            }
+            MatcherConfig::Filter { name, filter, nodes } => {
+                let current_path =
+                    FsMatcherConfigManager::create_node_dir(is_root_node, root_path, name)?;
+
+                let filter_json = serde_json::to_string_pretty(filter).map_err(|err| {
+                    MatcherError::InternalSystemError {
+                        message: format!("Cannot convert filter body to JSON. Err: {}", err),
+                    }
+                })?;
+                fs_extra::file::write_all(&current_path.join("filter.json"), &filter_json)
+                    .map_err(|err| MatcherError::InternalSystemError {
+                        message: format!("Cannot save JSON filter to filesystem. Err: {}", err),
+                    })?;
+
+                for node in nodes {
+                    FsMatcherConfigManager::matcher_config_to_fs(false, &current_path, node)?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn create_node_dir<P: AsRef<Path>>(
+        is_root_node: bool,
+        root_path: P,
+        node_name: &str,
+    ) -> Result<PathBuf, MatcherError> {
+        let current_path = if is_root_node {
+            root_path.as_ref().to_path_buf()
+        } else {
+            root_path.as_ref().join(&node_name)
+        };
+
+        std::fs::create_dir_all(&current_path).map_err(|err| {
+            MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot create directory [{}]. Err: {}",
+                    current_path.display(),
+                    err
+                ),
+            }
+        })?;
+
+        Ok(current_path)
+    }
 }
 
 #[cfg(test)]
@@ -112,7 +194,8 @@ mod test {
     use tempfile::TempDir;
 
     #[test]
-    fn should_create_a_new_draft_cloning_from_rules_dir() -> Result<(), Box<dyn std::error::Error>> {
+    fn should_create_a_new_draft_cloning_from_rules_dir() -> Result<(), Box<dyn std::error::Error>>
+    {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -227,7 +310,11 @@ mod test {
         let new_rules_path = "./test_resources/config_implicit_filter";
 
         // Copy a different config into the draft
-        FsMatcherConfigManager::copy_and_override(new_rules_path, &config_manager.get_draft_path(DRAFT_ID)).unwrap();
+        FsMatcherConfigManager::copy_and_override(
+            new_rules_path,
+            &config_manager.get_draft_path(DRAFT_ID),
+        )
+        .unwrap();
 
         // Act
         let deploy_draft_content = config_manager.deploy_draft(DRAFT_ID).unwrap();
@@ -236,7 +323,51 @@ mod test {
         // Assert
         assert_ne!(config_before_deploy, config_after_deploy);
         assert_eq!(deploy_draft_content, config_after_deploy);
-        assert_eq!(FsMatcherConfigManager::new(new_rules_path, drafts_dir).get_config().unwrap(), config_after_deploy);
+        assert_eq!(
+            FsMatcherConfigManager::new(new_rules_path, drafts_dir).get_config().unwrap(),
+            config_after_deploy
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
+        let test_configurations = vec![
+            "./test_resources/config_01",
+            "./test_resources/config_03",
+            "./test_resources/config_04",
+            "./test_resources/config_empty",
+            "./test_resources/config_implicit_filter",
+            "./test_resources/rules",
+        ];
+
+        for test_configuration in test_configurations {
+            // Arrange
+            let tempdir = tempfile::tempdir()?;
+            let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, test_configuration);
+            let converted_matcher_config_path = tempdir.path().join("matcher_config_to_fs");
+
+            // Act
+            let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+            let src_config = config_manager.get_config().unwrap();
+
+            FsMatcherConfigManager::matcher_config_to_fs(
+                true,
+                &converted_matcher_config_path,
+                &src_config,
+            )
+            .unwrap();
+
+            let config_manager = FsMatcherConfigManager::new(
+                converted_matcher_config_path.to_str().unwrap(),
+                drafts_dir,
+            );
+            let converted_config = config_manager.get_config().unwrap();
+
+            // Assert
+            assert_eq!(src_config, converted_config);
+        }
 
         Ok(())
     }
