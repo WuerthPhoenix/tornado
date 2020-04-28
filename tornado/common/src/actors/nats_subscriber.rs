@@ -4,7 +4,7 @@ use crate::TornadoError;
 use actix::prelude::*;
 use futures::StreamExt;
 use log::*;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tornado_common_api::Event;
 
 #[derive(Deserialize, Serialize, Clone)]

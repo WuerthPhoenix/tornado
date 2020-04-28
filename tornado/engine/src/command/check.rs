@@ -8,7 +8,7 @@ pub fn check(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     println!("Check Tornado configuration");
     let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
-    let _matcher = configs.matcher_config.read().and_then(|config| Matcher::build(&config))?;
+    let _matcher = configs.matcher_config.get_config().and_then(|config| Matcher::build(&config))?;
     println!("The configuration is correct.");
     Ok(())
 }

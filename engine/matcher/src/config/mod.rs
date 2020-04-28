@@ -7,7 +7,7 @@ pub mod filter;
 pub mod fs;
 pub mod rule;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
@@ -41,10 +41,10 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
     }
 }
 
-/// A MatcherConfigManager permits to read and manipulate the Tornado Configuration
+/// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
-pub trait MatcherConfigManager: Sync + Send {
-    fn read(&self) -> Result<MatcherConfig, MatcherError>;
+pub trait MatcherConfigReader: Sync + Send {
+    fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
 }
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts

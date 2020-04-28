@@ -1,6 +1,6 @@
 use chrono::prelude::Local;
 use num_cmp::NumCmp;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;

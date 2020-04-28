@@ -1,9 +1,9 @@
 use crate::config::rule::Operator;
 use crate::config::Defaultable;
 use crate::error::MatcherError;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Filter {
     pub description: String,

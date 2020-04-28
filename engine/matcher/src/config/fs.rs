@@ -1,12 +1,14 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
-use crate::config::{Defaultable, MatcherConfig, MatcherConfigManager};
+use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use log::*;
 use std::ffi::OsStr;
 use std::fs;
 use std::fs::DirEntry;
 use std::path::{Path, PathBuf};
+
+pub mod editor;
 
 pub const ROOT_NODE_NAME: &str = "root";
 
@@ -27,8 +29,8 @@ pub enum DirType {
     Ruleset,
 }
 
-impl MatcherConfigManager for FsMatcherConfigManager {
-    fn read(&self) -> Result<MatcherConfig, MatcherError> {
+impl MatcherConfigReader for FsMatcherConfigManager {
+    fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         FsMatcherConfigManager::read_from_root_dir(&self.root_path)
     }
 }
@@ -267,7 +269,7 @@ mod test {
     #[test]
     fn should_read_rules_from_folder_sorting_by_filename() {
         let path = "./test_resources/rules";
-        let config = FsMatcherConfigManager::new(path).read().unwrap();
+        let config = FsMatcherConfigManager::new(path, "").get_config().unwrap();
 
         match config {
             MatcherConfig::Ruleset { name, rules } => {
@@ -288,7 +290,7 @@ mod test {
     #[test]
     fn should_read_rules_from_empty_folder() {
         let path = "./test_resources/config_empty";
-        let config = FsMatcherConfigManager::new(path).read().unwrap();
+        let config = FsMatcherConfigManager::new(path, "").get_config().unwrap();
 
         match config {
             MatcherConfig::Ruleset { name, rules } => {

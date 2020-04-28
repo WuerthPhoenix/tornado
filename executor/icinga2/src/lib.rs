@@ -1,5 +1,5 @@
 use log::*;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;

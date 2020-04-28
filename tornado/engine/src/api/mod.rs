@@ -65,7 +65,7 @@ mod test {
     fn should_send_an_event_to_the_matcher_and_return_the_processed_event() {
         // Arrange
         let path = "./config/rules.d";
-        let config_manager = Arc::new(FsMatcherConfigManager::new(path));
+        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
 
         System::run(move || {
             let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
@@ -102,7 +102,7 @@ mod test {
         // Arrange
         let temp_dir = tempfile::TempDir::new().unwrap();
         let temp_path = temp_dir.path().as_os_str().to_str().unwrap().to_owned();
-        let config_manager = Arc::new(FsMatcherConfigManager::new(&temp_path));
+        let config_manager = Arc::new(FsMatcherConfigManager::new(&temp_path, &temp_path));
 
         System::run(move || {
             let event_bus = Arc::new(ActixEventBus { callback: |_| {} });

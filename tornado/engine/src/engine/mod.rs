@@ -4,7 +4,7 @@ use log::*;
 use std::sync::Arc;
 use tornado_common_api;
 use tornado_engine_api::event::api::ProcessType;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigManager};
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::ProcessedEvent;
@@ -33,7 +33,7 @@ pub struct GetCurrentConfigMessage {}
 
 pub struct MatcherActor {
     dispatcher_addr: Addr<DispatcherActor>,
-    matcher_config_manager: Arc<dyn MatcherConfigManager>,
+    matcher_config_manager: Arc<dyn MatcherConfigReader>,
     matcher_config: Arc<MatcherConfig>,
     matcher: Arc<matcher::Matcher>,
 }
@@ -41,9 +41,9 @@ pub struct MatcherActor {
 impl MatcherActor {
     pub fn start(
         dispatcher_addr: Addr<DispatcherActor>,
-        matcher_config_manager: Arc<dyn MatcherConfigManager>,
+        matcher_config_manager: Arc<dyn MatcherConfigReader>,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
-        let matcher_config = Arc::new(matcher_config_manager.read()?);
+        let matcher_config = Arc::new(matcher_config_manager.get_config()?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
         Ok(actix::Supervisor::start(move |_ctx: &mut Context<MatcherActor>| MatcherActor {
             dispatcher_addr,
@@ -117,7 +117,7 @@ impl Handler<ReconfigureMessage> for MatcherActor {
     fn handle(&mut self, _msg: ReconfigureMessage, _: &mut Context<Self>) -> Self::Result {
         info!("MatcherActor - received ReconfigureMessage.");
 
-        let matcher_config = Arc::new(self.matcher_config_manager.read()?);
+        let matcher_config = Arc::new(self.matcher_config_manager.get_config()?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
         self.matcher_config = matcher_config.clone();
         self.matcher = matcher;

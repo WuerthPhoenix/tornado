@@ -13,8 +13,7 @@ config_rs = { version = "0.10", package = "config" }
 http = "0.1"
 log = "0.4"
 reqwest = "0.9"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "0.2" }

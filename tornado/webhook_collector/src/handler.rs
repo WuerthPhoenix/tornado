@@ -1,6 +1,6 @@
 use actix_web::{error, http, HttpResponse};
 use log::*;
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use thiserror::Error;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;

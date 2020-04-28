@@ -1,4 +1,4 @@
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tornado_common_api::Payload;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

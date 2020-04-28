@@ -1,14 +1,14 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
-use tornado_engine_matcher::config::MatcherConfigManager;
+use tornado_engine_matcher::config::MatcherConfigReader;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 
@@ -108,7 +108,7 @@ fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, C
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Arc<dyn MatcherConfigManager>,
+    pub matcher_config: Arc<dyn MatcherConfigReader>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
@@ -134,7 +134,7 @@ pub fn parse_config_files(
     })
 }
 
-fn build_matcher_config(config_dir: &str, rules_dir: &str, drafts_dir: &str) -> impl MatcherConfigManager {
+fn build_matcher_config(config_dir: &str, rules_dir: &str, drafts_dir: &str) -> impl MatcherConfigReader {
     FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir), format!("{}/{}", config_dir, drafts_dir))
 }
 
@@ -167,7 +167,7 @@ mod test {
         let drafts_path = "./config/drafts";
 
         // Act
-        let config = FsMatcherConfigManager::new(path, drafts_path).read().unwrap();
+        let config = FsMatcherConfigManager::new(path, drafts_path).get_config().unwrap();
 
         // Assert
         match config {
