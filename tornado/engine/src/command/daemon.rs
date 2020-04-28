@@ -209,13 +209,16 @@ pub async fn daemon(
     )));
     let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
+    let matcher_config = configs.matcher_config.clone();
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
         let api_handler = api_handler.clone();
         let daemon_config = daemon_config.clone();
-        let config_api =
-            ApiData { auth: auth_service.clone(), api: ConfigApi::new(api_handler.clone()) };
+        let config_api = ApiData {
+            auth: auth_service.clone(),
+            api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
+        };
 
         App::new()
             .wrap(Logger::default())

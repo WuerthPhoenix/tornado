@@ -8,7 +8,6 @@ use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
-use tornado_engine_matcher::config::MatcherConfigReader;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 
@@ -108,7 +107,7 @@ fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, C
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Arc<dyn MatcherConfigReader>,
+    pub matcher_config: Arc<FsMatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
@@ -138,7 +137,7 @@ fn build_matcher_config(
     config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
-) -> impl MatcherConfigReader {
+) -> FsMatcherConfigManager {
     FsMatcherConfigManager::new(
         format!("{}/{}", config_dir, rules_dir),
         format!("{}/{}", config_dir, drafts_dir),
@@ -150,7 +149,7 @@ mod test {
 
     use super::*;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
-    use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 
     #[test]
     fn should_read_configuration_from_file() {

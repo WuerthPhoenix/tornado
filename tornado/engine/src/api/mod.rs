@@ -17,7 +17,8 @@ pub struct MatcherApiHandler {
 #[async_trait]
 impl EventApi for MatcherApiHandler {
     async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
-        self.get_current_config().await
+        let request = self.matcher.send(GetCurrentConfigMessage {}).await?;
+        Ok(request.as_ref().clone())
     }
 
     async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
@@ -32,11 +33,6 @@ impl EventApi for MatcherApiHandler {
 
 #[async_trait]
 impl ConfigApiHandler for MatcherApiHandler {
-    async fn get_current_config(&self) -> Result<MatcherConfig, ApiError> {
-        let request = self.matcher.send(GetCurrentConfigMessage {}).await?;
-        Ok(request.as_ref().clone())
-    }
-
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
         Ok(request?.as_ref().clone())
@@ -58,6 +54,7 @@ mod test {
     use tornado_common_api::Event;
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+    use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
 
     #[test]
@@ -112,9 +109,18 @@ mod test {
             });
 
             let matcher_addr =
-                MatcherActor::start(dispatcher_addr.clone(), config_manager).unwrap();
+                MatcherActor::start(dispatcher_addr.clone(), config_manager.clone()).unwrap();
 
             let api = MatcherApiHandler { matcher: matcher_addr };
+
+            // Act
+            let res = config_manager.get_config();
+            // Verify
+            assert!(res.is_ok());
+            match res.unwrap() {
+                MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
+                MatcherConfig::Filter { .. } => assert!(false),
+            }
 
             // Add one rule after the tornado start
             std::fs::copy(
@@ -124,15 +130,6 @@ mod test {
             .unwrap();
 
             Arbiter::spawn(async move {
-                // Act
-                let res = api.get_current_config().await;
-                // Verify
-                assert!(res.is_ok());
-                match res.unwrap() {
-                    MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
-                    MatcherConfig::Filter { .. } => assert!(false),
-                }
-
                 // Act
                 let res = api.reload_configuration().await;
                 // Verify

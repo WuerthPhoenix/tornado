@@ -6,25 +6,34 @@ use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::MatcherConfigDto;
+use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
-pub fn build_config_endpoints<C: ConfigApiHandler + 'static>(data: ApiData<ConfigApi<C>>) -> Scope {
+pub fn build_config_endpoints<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    data: ApiData<ConfigApi<A, CM>>,
+) -> Scope {
     web::scope("/v1/config")
         .data(data)
-        .service(web::resource("/current").route(web::get().to(get_current_configuration::<C>)))
-        .service(web::resource("/deploy/{draft_id}").route(web::post().to(deploy_draft::<C>)))
-        .service(web::resource("/drafts").route(web::get().to(get_drafts::<C>)))
-        .service(web::resource("/draft").route(web::post().to(create_draft::<C>)))
+        .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
+        .service(web::resource("/deploy/{draft_id}").route(web::post().to(deploy_draft::<A, CM>)))
+        .service(web::resource("/drafts").route(web::get().to(get_drafts::<A, CM>)))
+        .service(web::resource("/draft").route(web::post().to(create_draft::<A, CM>)))
         .service(
             web::resource("/draft/{draft_id}")
-                .route(web::get().to(get_draft::<C>))
-                .route(web::put().to(update_draft::<C>))
-                .route(web::delete().to(delete_draft::<C>)),
+                .route(web::get().to(get_draft::<A, CM>))
+                .route(web::put().to(update_draft::<A, CM>))
+                .route(web::delete().to(delete_draft::<A, CM>)),
         )
 }
 
-async fn get_current_configuration<C: ConfigApiHandler + 'static>(
+async fn get_current_configuration<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
@@ -33,9 +42,12 @@ async fn get_current_configuration<C: ConfigApiHandler + 'static>(
     Ok(Json(matcher_config_dto))
 }
 
-async fn get_drafts<C: ConfigApiHandler + 'static>(
+async fn get_drafts<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
@@ -43,21 +55,27 @@ async fn get_drafts<C: ConfigApiHandler + 'static>(
     Ok(Json(result))
 }
 
-async fn get_draft<C: ConfigApiHandler + 'static>(
+async fn get_draft<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
     draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_draft(auth_ctx, draft_id.into_inner()).await?;
+    let result = data.api.get_draft(auth_ctx, &draft_id.into_inner()).await?;
     let matcher_config_dto = matcher_config_into_dto(result)?;
     Ok(Json(matcher_config_dto))
 }
 
-async fn create_draft<C: ConfigApiHandler + 'static>(
+async fn create_draft<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Id<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
@@ -65,38 +83,47 @@ async fn create_draft<C: ConfigApiHandler + 'static>(
     Ok(Json(result))
 }
 
-async fn update_draft<C: ConfigApiHandler + 'static>(
+async fn update_draft<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
     draft_id: Path<String>,
     body: Json<MatcherConfigDto>,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let config = dto_into_matcher_config(body.into_inner())?;
-    data.api.update_draft(auth_ctx, draft_id.into_inner(), config).await?;
+    data.api.update_draft(auth_ctx, &draft_id.into_inner(), config).await?;
     Ok(Json(()))
 }
 
-async fn delete_draft<C: ConfigApiHandler + 'static>(
+async fn delete_draft<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
     draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    data.api.delete_draft(auth_ctx, draft_id.into_inner()).await?;
+    data.api.delete_draft(auth_ctx, &draft_id.into_inner()).await?;
     Ok(Json(()))
 }
 
-async fn deploy_draft<C: ConfigApiHandler + 'static>(
+async fn deploy_draft<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
     draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<C>>>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.deploy_draft(auth_ctx, draft_id.into_inner()).await?;
+    let result = data.api.deploy_draft(auth_ctx, &draft_id.into_inner()).await?;
     let matcher_config_dto = matcher_config_into_dto(result)?;
     Ok(Json(matcher_config_dto))
 }
@@ -115,15 +142,50 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::error::MatcherError;
+
+    struct ConfigManager {}
+
+    impl MatcherConfigReader for ConfigManager {
+        fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
+            Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
+        }
+    }
+
+    impl MatcherConfigEditor for ConfigManager {
+        fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
+            unimplemented!()
+        }
+
+        fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+            unimplemented!()
+        }
+
+        fn create_draft(&self) -> Result<String, MatcherError> {
+            unimplemented!()
+        }
+
+        fn update_draft(
+            &self,
+            _draft_id: &str,
+            _config: &MatcherConfig,
+        ) -> Result<(), MatcherError> {
+            unimplemented!()
+        }
+
+        fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+            Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
+        }
+
+        fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
+            unimplemented!()
+        }
+    }
 
     struct TestApiHandler {}
 
     #[async_trait]
     impl ConfigApiHandler for TestApiHandler {
-        async fn get_current_config(&self) -> Result<MatcherConfig, ApiError> {
-            Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
-        }
-
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
         }
@@ -144,7 +206,7 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
             auth: auth_service(),
-            api: ConfigApi::new(TestApiHandler {}),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
 
@@ -164,7 +226,7 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
             auth: auth_service(),
-            api: ConfigApi::new(TestApiHandler {}),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
 
@@ -189,7 +251,7 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
             auth: auth_service(),
-            api: ConfigApi::new(TestApiHandler {}),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
 
@@ -214,7 +276,7 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
             auth: auth_service(),
-            api: ConfigApi::new(TestApiHandler {}),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
 
@@ -247,7 +309,7 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
             auth: auth_service(),
-            api: ConfigApi::new(TestApiHandler {}),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
 
