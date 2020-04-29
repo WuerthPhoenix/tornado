@@ -2,7 +2,9 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader, MatcherConfigDraft};
+use tornado_engine_matcher::config::{
+    MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
+};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.

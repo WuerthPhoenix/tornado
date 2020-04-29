@@ -1,11 +1,13 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{dto_into_matcher_config, matcher_config_into_dto, matcher_config_draft_into_dto};
+use crate::config::convert::{
+    dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
+};
 use crate::model::ApiData;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::{MatcherConfigDto, MatcherConfigDraftDto};
+use tornado_engine_api_dto::config::{MatcherConfigDraftDto, MatcherConfigDto};
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub fn build_config_endpoints<

@@ -79,6 +79,18 @@ pub enum Number {
 }
 
 impl Number {
+    pub fn from_serde_number(n: &serde_json::Number) -> Option<Self> {
+        if let Some(num) = n.as_u64() {
+            Some(Number::PosInt(num))
+        } else if let Some(num) = n.as_i64() {
+            Some(Number::NegInt(num))
+        } else if let Some(num) = n.as_f64() {
+            Some(Number::Float(num))
+        } else {
+            None
+        }
+    }
+
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self {

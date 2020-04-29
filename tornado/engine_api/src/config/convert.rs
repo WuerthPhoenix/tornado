@@ -1,19 +1,24 @@
 use serde_json::Error;
-use tornado_engine_api_dto::config::{ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto, MatcherConfigDto, OperatorDto, RuleDto, MatcherConfigDraftDto, MatcherConfigDraftDataDto};
+use tornado_engine_api_dto::config::{
+    ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
+    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, OperatorDto, RuleDto,
+};
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
     Action, Constraint, Extractor, ExtractorRegex, Operator, Rule,
 };
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
 
-pub fn matcher_config_draft_into_dto(draft: MatcherConfigDraft) -> Result<MatcherConfigDraftDto, Error> {
+pub fn matcher_config_draft_into_dto(
+    draft: MatcherConfigDraft,
+) -> Result<MatcherConfigDraftDto, Error> {
     Ok(MatcherConfigDraftDto {
         data: MatcherConfigDraftDataDto {
             user: draft.data.user,
             created_ts_ms: draft.data.created_ts_ms,
             updated_ts_ms: draft.data.updated_ts_ms,
         },
-        config: matcher_config_into_dto(draft.config)?
+        config: matcher_config_into_dto(draft.config)?,
     })
 }
 
@@ -139,14 +144,16 @@ fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDt
     }
 }
 
-pub fn dto_into_matcher_config_draft(draft: MatcherConfigDraftDto) -> Result<MatcherConfigDraft, Error> {
-    Ok(MatcherConfigDraft{
-        data: MatcherConfigDraftData{
+pub fn dto_into_matcher_config_draft(
+    draft: MatcherConfigDraftDto,
+) -> Result<MatcherConfigDraft, Error> {
+    Ok(MatcherConfigDraft {
+        data: MatcherConfigDraftData {
             user: draft.data.user,
             created_ts_ms: draft.data.created_ts_ms,
             updated_ts_ms: draft.data.updated_ts_ms,
         },
-        config: dto_into_matcher_config(draft.config)?
+        config: dto_into_matcher_config(draft.config)?,
     })
 }
 

@@ -74,7 +74,12 @@ pub trait MatcherConfigEditor: Sync + Send {
     fn create_draft(&self, user: String) -> Result<String, MatcherError>;
 
     /// Update a draft
-    fn update_draft(&self, draft_id: &str, user: String, config: &MatcherConfig) -> Result<(), MatcherError>;
+    fn update_draft(
+        &self,
+        draft_id: &str,
+        user: String,
+        config: &MatcherConfig,
+    ) -> Result<(), MatcherError>;
 
     /// Deploy a draft by id replacing the current tornado configuration
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;

@@ -1,17 +1,19 @@
 use crate::config::fs::FsMatcherConfigManager;
-use crate::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader, MatcherConfigDraft, MatcherConfigDraftData};
+use crate::config::{
+    MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
+    MatcherConfigReader,
+};
 use crate::error::MatcherError;
+use chrono::Local;
 use fs_extra::dir::*;
 use log::*;
 use std::path::{Path, PathBuf};
-use chrono::Local;
 
 const DRAFT_ID: &str = "draft_001";
 const DRAFT_CONFIG_DIR: &str = "config";
 const DRAFT_DATA_FILE: &str = "data.json";
 
 impl MatcherConfigEditor for FsMatcherConfigManager {
-
     fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let path = Path::new(&self.drafts_path);
 
@@ -35,13 +37,11 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
     fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         debug!("Get draft with id {}", draft_id);
 
-        let config = FsMatcherConfigManager::read_from_root_dir(&self.get_draft_config_dir_path(draft_id))?;
+        let config =
+            FsMatcherConfigManager::read_from_root_dir(&self.get_draft_config_dir_path(draft_id))?;
         let data = self.read_draft_data(draft_id)?;
 
-        Ok(MatcherConfigDraft{
-            config,
-            data
-        })
+        Ok(MatcherConfigDraft { config, data })
     }
 
     fn create_draft(&self, user: String) -> Result<String, MatcherError> {
@@ -51,26 +51,39 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         let draft_path = self.get_draft_path(&draft_id);
         if Path::new(&draft_path).exists() {
-            std::fs::remove_dir_all(&draft_path).map_err(|err| MatcherError::InternalSystemError {
-                message: format!("Cannot delete directory [{}]. Err: {}", draft_path, err),
+            std::fs::remove_dir_all(&draft_path).map_err(|err| {
+                MatcherError::InternalSystemError {
+                    message: format!("Cannot delete directory [{}]. Err: {}", draft_path, err),
+                }
             })?;
         }
 
         let current_ts_ms = current_ts_ms();
 
-        FsMatcherConfigManager::copy_and_override(&self.root_path, &self.get_draft_config_dir_path(&draft_id))?;
+        FsMatcherConfigManager::copy_and_override(
+            &self.root_path,
+            &self.get_draft_config_dir_path(&draft_id),
+        )?;
 
-        self.write_draft_data(&draft_id, MatcherConfigDraftData {
-            user,
-            updated_ts_ms: current_ts_ms,
-            created_ts_ms: current_ts_ms
-        })?;
+        self.write_draft_data(
+            &draft_id,
+            MatcherConfigDraftData {
+                user,
+                updated_ts_ms: current_ts_ms,
+                created_ts_ms: current_ts_ms,
+            },
+        )?;
 
         debug!("Created new draft with id {}", draft_id);
         Ok(draft_id)
     }
 
-    fn update_draft(&self, draft_id: &str, user: String, config: &MatcherConfig) -> Result<(), MatcherError> {
+    fn update_draft(
+        &self,
+        draft_id: &str,
+        user: String,
+        config: &MatcherConfig,
+    ) -> Result<(), MatcherError> {
         info!("Update draft with id {}", draft_id);
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
@@ -78,14 +91,16 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         })?;
         FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
 
-        FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.get_draft_config_dir_path(&draft_id))?;
+        FsMatcherConfigManager::copy_and_override(
+            tempdir.path(),
+            &self.get_draft_config_dir_path(&draft_id),
+        )?;
 
         let mut data = self.read_draft_data(draft_id)?;
         data.user = user;
         data.updated_ts_ms = current_ts_ms();
 
         self.write_draft_data(&draft_id, data)
-
     }
 
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
@@ -116,7 +131,6 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 }
 
 impl FsMatcherConfigManager {
-
     fn get_draft_path(&self, draft_id: &str) -> String {
         format!("{}/{}", self.drafts_path, draft_id)
     }
@@ -230,24 +244,35 @@ impl FsMatcherConfigManager {
     }
 
     fn read_draft_data(&self, draft_id: &str) -> Result<MatcherConfigDraftData, MatcherError> {
-        let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id)).map_err(|err| MatcherError::ConfigurationError {
-            message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err)
-        })?;
+        let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id))
+            .map_err(|err| MatcherError::ConfigurationError {
+                message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err),
+            })?;
         serde_json::from_str(&data_json).map_err(|err| MatcherError::ConfigurationError {
-            message: format!("Cannot parse JSON data for draft id [{}]. Err: {}", draft_id, err)
+            message: format!("Cannot parse JSON data for draft id [{}]. Err: {}", draft_id, err),
         })
     }
 
-    fn write_draft_data(&self, draft_id: &str, data: MatcherConfigDraftData) -> Result<(), MatcherError> {
-        let data_json = serde_json::to_string_pretty(&data).map_err(|err| MatcherError::ConfigurationError {
-            message: format!("Cannot create JSON data for draft id [{}]. Err: {}", draft_id, err)
+    fn write_draft_data(
+        &self,
+        draft_id: &str,
+        data: MatcherConfigDraftData,
+    ) -> Result<(), MatcherError> {
+        let data_json = serde_json::to_string_pretty(&data).map_err(|err| {
+            MatcherError::ConfigurationError {
+                message: format!(
+                    "Cannot create JSON data for draft id [{}]. Err: {}",
+                    draft_id, err
+                ),
+            }
         })?;
 
-        fs_extra::file::write_all(&self.get_draft_data_file_path(draft_id), &data_json).map_err(|err| MatcherError::ConfigurationError {
-            message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err)
-        })
+        fs_extra::file::write_all(&self.get_draft_data_file_path(draft_id), &data_json).map_err(
+            |err| MatcherError::ConfigurationError {
+                message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err),
+            },
+        )
     }
-
 }
 
 fn current_ts_ms() -> i64 {

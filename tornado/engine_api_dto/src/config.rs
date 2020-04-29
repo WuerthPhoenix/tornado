@@ -99,7 +99,7 @@ pub enum MatcherConfigDto {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct MatcherConfigDraftDto {
     pub data: MatcherConfigDraftDataDto,
-    pub config: MatcherConfigDto
+    pub config: MatcherConfigDto,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
