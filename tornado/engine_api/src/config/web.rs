@@ -1,11 +1,11 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{dto_into_matcher_config, matcher_config_into_dto};
+use crate::config::convert::{dto_into_matcher_config, matcher_config_into_dto, matcher_config_draft_into_dto};
 use crate::model::ApiData;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::MatcherConfigDto;
+use tornado_engine_api_dto::config::{MatcherConfigDto, MatcherConfigDraftDto};
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub fn build_config_endpoints<
@@ -62,11 +62,11 @@ async fn get_draft<
     req: HttpRequest,
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDto>> {
+) -> actix_web::Result<Json<MatcherConfigDraftDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.get_draft(auth_ctx, &draft_id.into_inner()).await?;
-    let matcher_config_dto = matcher_config_into_dto(result)?;
+    let matcher_config_dto = matcher_config_draft_into_dto(result)?;
     Ok(Json(matcher_config_dto))
 }
 
@@ -141,7 +141,7 @@ mod test {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft};
     use tornado_engine_matcher::error::MatcherError;
 
     struct ConfigManager {}
@@ -157,17 +157,18 @@ mod test {
             unimplemented!()
         }
 
-        fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+        fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
             unimplemented!()
         }
 
-        fn create_draft(&self) -> Result<String, MatcherError> {
+        fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
             unimplemented!()
         }
 
         fn update_draft(
             &self,
             _draft_id: &str,
+            _user: String,
             _config: &MatcherConfig,
         ) -> Result<(), MatcherError> {
             unimplemented!()

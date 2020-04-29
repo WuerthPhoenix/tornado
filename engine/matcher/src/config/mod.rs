@@ -9,6 +9,21 @@ pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
+pub struct MatcherConfigDraft {
+    pub data: MatcherConfigDraftData,
+    pub config: MatcherConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MatcherConfigDraftData {
+    pub created_ts_ms: i64,
+    pub updated_ts_ms: i64,
+    pub user: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
     Ruleset { name: String, rules: Vec<Rule> },
@@ -53,13 +68,13 @@ pub trait MatcherConfigEditor: Sync + Send {
     fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
 
     /// Returns a draft by id
-    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
+    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError>;
 
     /// Creats a new draft and returns the id
-    fn create_draft(&self) -> Result<String, MatcherError>;
+    fn create_draft(&self, user: String) -> Result<String, MatcherError>;
 
     /// Update a draft
-    fn update_draft(&self, draft_id: &str, config: &MatcherConfig) -> Result<(), MatcherError>;
+    fn update_draft(&self, draft_id: &str, user: String, config: &MatcherConfig) -> Result<(), MatcherError>;
 
     /// Deploy a draft by id replacing the current tornado configuration
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;

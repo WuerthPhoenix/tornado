@@ -95,3 +95,16 @@ pub enum MatcherConfigDto {
     Filter { name: String, filter: FilterDto, nodes: Vec<MatcherConfigDto> },
     Ruleset { name: String, rules: Vec<RuleDto> },
 }
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct MatcherConfigDraftDto {
+    pub data: MatcherConfigDraftDataDto,
+    pub config: MatcherConfigDto
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct MatcherConfigDraftDataDto {
+    pub user: String,
+    pub created_ts_ms: i64,
+    pub updated_ts_ms: i64,
+}

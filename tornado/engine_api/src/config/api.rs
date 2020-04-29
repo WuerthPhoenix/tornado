@@ -2,7 +2,7 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader, MatcherConfigDraft};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -42,7 +42,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         &self,
         auth: AuthContext<'_>,
         draft_id: &str,
-    ) -> Result<MatcherConfig, ApiError> {
+    ) -> Result<MatcherConfigDraft, ApiError> {
         auth.has_permission(Permission::ConfigView)?;
         Ok(self.config_manager.get_draft(draft_id)?)
     }
@@ -50,7 +50,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     /// Creats a new draft and returns the id
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(Permission::ConfigEdit)?;
-        Ok(self.config_manager.create_draft().map(|id| Id { id })?)
+        Ok(self.config_manager.create_draft(auth.auth.user).map(|id| Id { id })?)
     }
 
     /// Update a draft
@@ -61,7 +61,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         config: MatcherConfig,
     ) -> Result<(), ApiError> {
         auth.has_permission(Permission::ConfigEdit)?;
-        Ok(self.config_manager.update_draft(draft_id, &config)?)
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config)?)
     }
 
     /// Deploy a draft by id and reload the tornado configuration

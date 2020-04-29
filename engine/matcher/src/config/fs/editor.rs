@@ -1,13 +1,17 @@
 use crate::config::fs::FsMatcherConfigManager;
-use crate::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
+use crate::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader, MatcherConfigDraft, MatcherConfigDraftData};
 use crate::error::MatcherError;
 use fs_extra::dir::*;
 use log::*;
 use std::path::{Path, PathBuf};
+use chrono::Local;
 
 const DRAFT_ID: &str = "draft_001";
+const DRAFT_CONFIG_DIR: &str = "config";
+const DRAFT_DATA_FILE: &str = "data.json";
 
 impl MatcherConfigEditor for FsMatcherConfigManager {
+
     fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let path = Path::new(&self.drafts_path);
 
@@ -28,21 +32,45 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         }
     }
 
-    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         debug!("Get draft with id {}", draft_id);
-        FsMatcherConfigManager::read_from_root_dir(&self.get_draft_path(draft_id))
+
+        let config = FsMatcherConfigManager::read_from_root_dir(&self.get_draft_config_dir_path(draft_id))?;
+        let data = self.read_draft_data(draft_id)?;
+
+        Ok(MatcherConfigDraft{
+            config,
+            data
+        })
     }
 
-    fn create_draft(&self) -> Result<String, MatcherError> {
+    fn create_draft(&self, user: String) -> Result<String, MatcherError> {
         info!("Create new draft");
+
         let draft_id = DRAFT_ID.to_owned();
+
         let draft_path = self.get_draft_path(&draft_id);
-        FsMatcherConfigManager::copy_and_override(&self.root_path, &draft_path)?;
+        if Path::new(&draft_path).exists() {
+            std::fs::remove_dir_all(&draft_path).map_err(|err| MatcherError::InternalSystemError {
+                message: format!("Cannot delete directory [{}]. Err: {}", draft_path, err),
+            })?;
+        }
+
+        let current_ts_ms = current_ts_ms();
+
+        FsMatcherConfigManager::copy_and_override(&self.root_path, &self.get_draft_config_dir_path(&draft_id))?;
+
+        self.write_draft_data(&draft_id, MatcherConfigDraftData {
+            user,
+            updated_ts_ms: current_ts_ms,
+            created_ts_ms: current_ts_ms
+        })?;
+
         debug!("Created new draft with id {}", draft_id);
         Ok(draft_id)
     }
 
-    fn update_draft(&self, draft_id: &str, config: &MatcherConfig) -> Result<(), MatcherError> {
+    fn update_draft(&self, draft_id: &str, user: String, config: &MatcherConfig) -> Result<(), MatcherError> {
         info!("Update draft with id {}", draft_id);
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
@@ -50,15 +78,21 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         })?;
         FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
 
-        let draft_path = self.get_draft_path(&draft_id);
-        FsMatcherConfigManager::copy_and_override(tempdir.path(), &draft_path)
+        FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.get_draft_config_dir_path(&draft_id))?;
+
+        let mut data = self.read_draft_data(draft_id)?;
+        data.user = user;
+        data.updated_ts_ms = current_ts_ms();
+
+        self.write_draft_data(&draft_id, data)
+
     }
 
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy draft with id {}", draft_id);
-        let draft_id = DRAFT_ID.to_owned();
-        let draft_path = self.get_draft_path(&draft_id);
-        FsMatcherConfigManager::copy_and_override(&draft_path, &self.root_path)?;
+        let draft_id = DRAFT_ID;
+        let draft_config_dir_path = self.get_draft_config_dir_path(draft_id);
+        FsMatcherConfigManager::copy_and_override(&draft_config_dir_path, &self.root_path)?;
         self.get_config()
     }
 
@@ -82,8 +116,17 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 }
 
 impl FsMatcherConfigManager {
+
     fn get_draft_path(&self, draft_id: &str) -> String {
         format!("{}/{}", self.drafts_path, draft_id)
+    }
+
+    fn get_draft_config_dir_path(&self, draft_id: &str) -> String {
+        format!("{}/{}/{}", self.drafts_path, draft_id, DRAFT_CONFIG_DIR)
+    }
+
+    fn get_draft_data_file_path(&self, draft_id: &str) -> String {
+        format!("{}/{}/{}", self.drafts_path, draft_id, DRAFT_DATA_FILE)
     }
 
     fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
@@ -185,6 +228,30 @@ impl FsMatcherConfigManager {
 
         Ok(current_path)
     }
+
+    fn read_draft_data(&self, draft_id: &str) -> Result<MatcherConfigDraftData, MatcherError> {
+        let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id)).map_err(|err| MatcherError::ConfigurationError {
+            message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err)
+        })?;
+        serde_json::from_str(&data_json).map_err(|err| MatcherError::ConfigurationError {
+            message: format!("Cannot parse JSON data for draft id [{}]. Err: {}", draft_id, err)
+        })
+    }
+
+    fn write_draft_data(&self, draft_id: &str, data: MatcherConfigDraftData) -> Result<(), MatcherError> {
+        let data_json = serde_json::to_string_pretty(&data).map_err(|err| MatcherError::ConfigurationError {
+            message: format!("Cannot create JSON data for draft id [{}]. Err: {}", draft_id, err)
+        })?;
+
+        fs_extra::file::write_all(&self.get_draft_data_file_path(draft_id), &data_json).map_err(|err| MatcherError::ConfigurationError {
+            message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err)
+        })
+    }
+
+}
+
+fn current_ts_ms() -> i64 {
+    Local::now().timestamp_millis()
 }
 
 #[cfg(test)]
@@ -203,16 +270,17 @@ mod test {
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().unwrap();
 
+        let user_1 = "user_1".to_owned();
+
         // Act
-        let result = config_manager.create_draft().unwrap();
-        let draft_path = config_manager.get_draft_path(&result);
+        let result = config_manager.create_draft(user_1.clone()).unwrap();
+        let draft_config_path = config_manager.get_draft_config_dir_path(&result);
 
         // Assert
         assert_eq!(DRAFT_ID, &result);
-        assert_eq!(format!("{}/{}", drafts_dir, DRAFT_ID), draft_path);
         assert_eq!(
             current_config,
-            FsMatcherConfigManager::new(draft_path.as_str(), "").get_config()?
+            FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config()?
         );
 
         Ok(())
@@ -221,18 +289,24 @@ mod test {
     #[test]
     fn should_return_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
+        let current_ts_ms = current_ts_ms();
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().unwrap();
 
+        let user_1 = "user_1".to_owned();
+
         // Act
-        let result = config_manager.create_draft().unwrap();
+        let result = config_manager.create_draft(user_1.clone()).unwrap();
         let draft_content = config_manager.get_draft(&result)?;
 
         // Assert
-        assert_eq!(current_config, draft_content);
+        assert_eq!(current_config, draft_content.config);
+        assert_eq!(user_1, draft_content.data.user);
+        assert!(draft_content.data.created_ts_ms >= current_ts_ms);
+        assert_eq!(draft_content.data.updated_ts_ms, draft_content.data.created_ts_ms);
 
         Ok(())
     }
@@ -263,9 +337,11 @@ mod test {
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
+        let user_1 = "user_1".to_owned();
+
         // Act
         let drafts_before_create = config_manager.get_drafts().unwrap();
-        let created_draft_id = config_manager.create_draft().unwrap();
+        let created_draft_id = config_manager.create_draft(user_1).unwrap();
         let drafts_after_create = config_manager.get_drafts().unwrap();
         config_manager.delete_draft(&created_draft_id).unwrap();
         let drafts_after_delete = config_manager.get_drafts().unwrap();
@@ -285,7 +361,10 @@ mod test {
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let created_draft_id = config_manager.create_draft().unwrap();
+
+        let user_1 = "user_1".to_owned();
+
+        let created_draft_id = config_manager.create_draft(user_1).unwrap();
 
         // Act
         config_manager.delete_draft(&created_draft_id).unwrap();
@@ -352,15 +431,25 @@ mod test {
                 .get_config()
                 .unwrap();
 
+        let user_1 = "user_1".to_owned();
+        let user_2 = "user_2".to_owned();
+
         // Act
-        let draft_id = config_manager.create_draft().unwrap();
+        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
         let draft_before_update = config_manager.get_draft(&draft_id).unwrap();
-        config_manager.update_draft(&draft_id, &new_config).unwrap();
+
+        std::thread::sleep(std::time::Duration::from_millis(1));
+
+        config_manager.update_draft(&draft_id, user_2.clone(), &new_config).unwrap();
         let draft_after_update = config_manager.get_draft(&draft_id).unwrap();
 
         // Assert
-        assert_ne!(draft_after_update, draft_before_update);
-        assert_eq!(new_config, draft_after_update);
+        assert_eq!(&user_1, &draft_before_update.data.user);
+        assert_eq!(&user_2, &draft_after_update.data.user);
+        assert_eq!(draft_after_update.data.created_ts_ms, draft_before_update.data.created_ts_ms);
+        assert!(draft_after_update.data.updated_ts_ms > draft_before_update.data.updated_ts_ms);
+        assert_ne!(draft_after_update.config, draft_before_update.config);
+        assert_eq!(new_config, draft_after_update.config);
 
         Ok(())
     }
@@ -379,9 +468,12 @@ mod test {
                 .get_config()
                 .unwrap();
 
+        let user_1 = "user_1".to_owned();
+        let user_2 = "user_2".to_owned();
+
         // Act
-        let draft_id = config_manager.create_draft().unwrap();
-        config_manager.update_draft(&draft_id, &new_config).unwrap();
+        let draft_id = config_manager.create_draft(user_2.clone()).unwrap();
+        config_manager.update_draft(&draft_id, user_1.clone(), &new_config).unwrap();
 
         // Act
         let deploy_draft_content = config_manager.deploy_draft(&draft_id).unwrap();
