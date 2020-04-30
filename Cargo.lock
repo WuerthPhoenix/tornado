@@ -3460,7 +3460,7 @@ version = "0.0.1"
 dependencies = [
  "serde 1.0.106",
  "serde_json",
- "typescript-definitions",
+ "typescript-definitions-ufo-patch",
 ]
 
 [[package]]
@@ -3716,20 +3716,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "373c8a200f9e67a0c95e62a4f52fbf80c23b4381c05a17845531982fa99e6b33"
 
 [[package]]
-name = "typescript-definitions"
+name = "typescript-definitions-derive-ufo-patch"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "352629d5465cef9f3ad1b4ae24ca580a2e8f8e8b80ef8a448380d87e9e7d4a4d"
-dependencies = [
- "serde 1.0.106",
- "typescript-definitions-derive",
-]
-
-[[package]]
-name = "typescript-definitions-derive"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49c12ccd443e3c246a02411809291a00187ba66e20b941932170f2dd4a68ba1d"
+checksum = "809a6b4922a35b12b6436364c1fdcee22a695a3db1b96a5ca8a70aea6a502228"
 dependencies = [
  "cfg-if",
  "failure",
@@ -3741,6 +3731,16 @@ dependencies = [
  "regex",
  "serde_derive_internals",
  "syn 0.15.44",
+]
+
+[[package]]
+name = "typescript-definitions-ufo-patch"
+version = "0.1.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eaf4340b7331742176820559acbb7074662e93b64f4fa1f39b8e1bc021f26190"
+dependencies = [
+ "serde 1.0.106",
+ "typescript-definitions-derive-ufo-patch",
 ]
 
 [[package]]
