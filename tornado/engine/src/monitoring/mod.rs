@@ -3,7 +3,7 @@ use actix_web::web::Data;
 use actix_web::web::Json;
 use actix_web::{web, HttpRequest, HttpResponse, Result, Scope};
 use chrono::prelude::Local;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig) -> Scope {
     scope

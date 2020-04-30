@@ -72,7 +72,13 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, ParserError> {
     match var.as_ref() {
         jmespath::Variable::String(s) => Ok(Value::Text(s.to_owned())),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
-        jmespath::Variable::Number(n) => Ok(Value::Number(Number::Float(*n))),
+        jmespath::Variable::Number(n) => {
+            Ok(Value::Number(Number::from_serde_number(n).ok_or_else(|| {
+                ParserError::ParsingError {
+                    message: "Cannot map jmespath::Variable::Number to a Value::Number".to_owned(),
+                }
+            })?))
+        }
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
             for (key, value) in values {
@@ -272,7 +278,7 @@ mod test {
             &Value::Array(vec![
                 Value::Text("one".to_owned()),
                 Value::Bool(true),
-                Value::Number(Number::Float(13 as f64))
+                Value::Number(Number::PosInt(13))
             ]),
             result.unwrap().as_ref()
         );
@@ -287,7 +293,7 @@ mod test {
         {
             "key": {
                 "one": true,
-                "two": 13
+                "two": 13.0
             }
         }
         "#;

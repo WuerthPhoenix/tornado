@@ -117,6 +117,8 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &config::ExtractorDto::type_script_ify());
     push_ts(&mut ts_code, &config::ExtractorRegexDto::type_script_ify());
     push_ts(&mut ts_code, &config::FilterDto::type_script_ify());
+    push_ts(&mut ts_code, &config::MatcherConfigDraftDataDto::type_script_ify());
+    push_ts(&mut ts_code, &config::MatcherConfigDraftDto::type_script_ify());
     push_ts(&mut ts_code, &config::MatcherConfigDto::type_script_ify());
     push_ts(&mut ts_code, &config::OperatorDto::type_script_ify());
     push_ts(&mut ts_code, &config::RuleDto::type_script_ify());

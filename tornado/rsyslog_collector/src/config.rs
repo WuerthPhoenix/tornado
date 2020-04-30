@@ -1,6 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common_logger::LoggerConfig;
 

@@ -1,6 +1,6 @@
 #[cfg(feature = "nats")]
 use crate::actors::nats_publisher::NatsPublisherConfig;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 
 pub mod json_event_reader;
 pub mod message;

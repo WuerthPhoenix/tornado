@@ -122,11 +122,65 @@ impl AuthService {
         trace!("Auth built from request: [{:?}]", auth);
         Ok(AuthContext::new(auth, &self.permission_roles_map))
     }
+
+    /// Generates the auth token
+    pub fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
+        let auth_str =
+            serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
+                cause: format!("Cannot serialize auth into string. Err: {}", err),
+            })?;
+        Ok(base64::encode(auth_str.as_bytes()))
+    }
+
+    /// Generates the auth HTTP header in the form:
+    /// Bearer: <TOKEN>
+    pub fn auth_to_token_header(auth: &Auth) -> Result<String, ApiError> {
+        Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthService::auth_to_token_string(&auth)?))
+    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn auth_service_should_create_base64_token() -> Result<(), ApiError> {
+        // Arrange
+        let auth = Auth {
+            user: "12456abc".to_owned(),
+            roles: vec!["role_a".to_owned(), "role_b".to_owned()],
+        };
+
+        let expected_token = "eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
+
+        // Act
+        let token = AuthService::auth_to_token_string(&auth)?;
+
+        // Assert
+        assert_eq!(expected_token, token);
+
+        Ok(())
+    }
+
+    #[test]
+    fn auth_service_should_create_authorization_token() -> Result<(), ApiError> {
+        // Arrange
+        let auth = Auth {
+            user: "12456abc".to_owned(),
+            roles: vec!["role_a".to_owned(), "role_b".to_owned()],
+        };
+
+        let expected_token_header =
+            "Bearer eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
+
+        // Act
+        let token_header = AuthService::auth_to_token_header(&auth)?;
+
+        // Assert
+        assert_eq!(expected_token_header, token_header);
+
+        Ok(())
+    }
 
     #[test]
     fn auth_service_should_decode_base64_token() -> Result<(), ApiError> {
@@ -136,7 +190,7 @@ mod test {
             roles: vec!["role_a".to_owned(), "role_b".to_owned()],
         };
 
-        let token = "ewogInVzZXIiOiAiMTI0NTZhYmMiLAogInJvbGVzIjogWyJyb2xlX2EiLCAicm9sZV9iIl0KfQ==";
+        let token = AuthService::auth_to_token_string(&expected_auth)?;
 
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["role_a".to_owned()]);
@@ -144,7 +198,7 @@ mod test {
         let auth_service = AuthService::new(Arc::new(permission_roles_map.clone()));
 
         // Act
-        let auth_context = auth_service.auth_from_token_string(token)?;
+        let auth_context = auth_service.auth_from_token_string(&token)?;
 
         // Assert
         assert_eq!(expected_auth, auth_context.auth);
