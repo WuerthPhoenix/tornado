@@ -154,11 +154,11 @@ of the _Tornado.toml_ configuration file.
 thread_pool_config = {type = "CPU", factor = 1.0}
 ```
 
-In this case, the size of the thread pool will equal to: **number of available logical CPUs** multiplied by **factor**. 
+In this case, the size of the thread pool will be equal to: **number of available logical CPUs** multiplied by **factor**. 
 
 For example, if there are 16 available CPUs, then:
  - `{type: "CPU", factor: 0.5}` => thread pool size is 8
- - `{type: "CPU", factor: 2}` => thread pool size is 32
+ - `{type: "CPU", factor: 2.0}` => thread pool size is 32
 
 
 #### Example of how to statically configure the thread pool based:
