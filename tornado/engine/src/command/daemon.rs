@@ -34,8 +34,10 @@ pub async fn daemon(
     let daemon_config = configs.tornado.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
-    info!("Starting Tornado daemon with {} threads per queue. Thread config: {:?}", threads_per_queue, thread_pool_config);
-
+    info!(
+        "Starting Tornado daemon with {} threads per queue. Thread config: {:?}",
+        threads_per_queue, thread_pool_config
+    );
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
