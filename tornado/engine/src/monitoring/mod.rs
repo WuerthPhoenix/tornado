@@ -75,6 +75,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
@@ -106,6 +107,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
@@ -137,6 +139,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
