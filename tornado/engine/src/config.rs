@@ -29,6 +29,33 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
         .get_matches()
 }
 
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+pub enum ThreadPoolConfig {
+    CPU{factor: f64},
+    Fixed{size: usize},
+}
+
+impl Default for ThreadPoolConfig {
+    fn default() -> Self {
+        ThreadPoolConfig::CPU{factor: 1.0}
+    }
+}
+
+impl ThreadPoolConfig {
+    pub fn get_threads_count(&self) -> usize {
+        let count = match self {
+            ThreadPoolConfig::CPU {factor} => ((num_cpus::get() as f64) * *factor).ceil() as usize,
+            ThreadPoolConfig::Fixed {size} => *size
+        };
+        if count > 0 {
+            count
+        } else {
+            1
+        }
+    }
+}
+
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DaemonCommandConfig {
     pub event_tcp_socket_enabled: Option<bool>,
@@ -42,6 +69,9 @@ pub struct DaemonCommandConfig {
     pub web_server_port: u16,
 
     pub message_queue_size: usize,
+
+    pub thread_pool_config: Option<ThreadPoolConfig>,
+
 }
 
 impl DaemonCommandConfig {
@@ -219,6 +249,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
         };
 
         // Act
@@ -242,6 +273,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
         };
 
         // Act
@@ -252,4 +284,31 @@ mod test {
         assert_eq!(event_tcp_socket_enabled, true);
         assert_eq!(nats_enabled, false);
     }
+
+    #[test]
+    fn thread_pool_config_should_never_return_zero() {
+        assert_eq!(1, ThreadPoolConfig::Fixed {size: 0}.get_threads_count());
+        assert_eq!(1, ThreadPoolConfig::CPU {factor: 0.0}.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_fixed_should_return_size() {
+        let random = rand::random();
+        assert_eq!(random, ThreadPoolConfig::Fixed {size: random}.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_cpu_should_return_count_by_factor() {
+        let cpus = num_cpus::get();
+        assert_eq!(cpus, ThreadPoolConfig::CPU {factor: 1.0}.get_threads_count());
+        assert_eq!((cpus/2) as usize, ThreadPoolConfig::CPU {factor: 0.5}.get_threads_count());
+        assert_eq!((cpus*3) as usize, ThreadPoolConfig::CPU {factor: 3.0}.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_should_default_tocpu_count() {
+        let cpus = num_cpus::get();
+        assert_eq!(cpus, ThreadPoolConfig::default().get_threads_count());
+    }
+
 }
