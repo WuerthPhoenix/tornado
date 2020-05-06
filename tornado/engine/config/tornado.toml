@@ -15,7 +15,8 @@ stdout_output = true
 
 [tornado.daemon]
 
-thread_pool_config = {type = "CPU", factor = 0.211243457833457}
+#thread_pool_config = {type = "CPU", factor = 0.211243457833457}
+#thread_pool_config = {type = "Fixed", size = 128}
 
 # Whether to enable the TCP listener
 event_tcp_socket_enabled = true

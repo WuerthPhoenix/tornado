@@ -74,6 +74,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -104,6 +105,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
@@ -134,6 +136,7 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
         };
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
