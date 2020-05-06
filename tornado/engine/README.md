@@ -155,7 +155,8 @@ thread_pool_config = {type = "CPU", factor = 1.0}
 ```
 
 In this case, the size of the thread pool will be equal to `(number of available logical CPUs) multiplied by (factor)` 
-rounded to the nearest integer value. If the resulting value is less than _1_, then _1_ will be used be default.
+rounded to the smallest integer greater than or equal to a number. 
+If the resulting value is less than _1_, then _1_ will be used be default.
 
 For example, if there are 16 available CPUs, then:
  - `{type: "CPU", factor: 0.5}` => thread pool size is 8
