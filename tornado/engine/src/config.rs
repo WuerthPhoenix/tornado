@@ -323,11 +323,9 @@ mod test {
 
     #[test]
     fn thread_pool_config_fixed_should_return_size() {
-        let random = rand::random::<isize>().abs();
-        let random = if random == 0 {
-            1
-        } else {
-            random
+        let random = match rand::random::<isize>().abs() {
+            0 => 1,
+            x => x,
         };
         assert_eq!(random as usize, ThreadPoolConfig::Fixed { size: random }.get_threads_count());
     }
