@@ -1,4 +1,4 @@
-use crate::api::handler::SendEventRequest;
+use crate::event::api::SendEventRequest;
 use serde_json::Error;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
@@ -15,8 +15,8 @@ use tornado_engine_matcher::model::{
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {
         process_type: match dto.process_type {
-            ProcessType::Full => crate::api::handler::ProcessType::Full,
-            ProcessType::SkipActions => crate::api::handler::ProcessType::SkipActions,
+            ProcessType::Full => crate::event::api::ProcessType::Full,
+            ProcessType::SkipActions => crate::event::api::ProcessType::SkipActions,
         },
         event: serde_json::from_value(serde_json::to_value(dto.event)?)?,
     })

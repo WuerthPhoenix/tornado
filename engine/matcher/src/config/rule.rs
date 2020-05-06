@@ -3,12 +3,11 @@
 //! serialize/deserialize them to/from json format.
 
 use crate::error::MatcherError;
-use serde_derive::{Deserialize, Serialize};
-use serde_json;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tornado_common_api::{Payload, Value};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Rule {
     #[serde(default)]
@@ -21,7 +20,7 @@ pub struct Rule {
     pub actions: Vec<Action>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Constraint {
     #[serde(rename = "WHERE")]
@@ -30,14 +29,14 @@ pub struct Constraint {
     pub with: HashMap<String, Extractor>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Extractor {
     pub from: String,
     pub regex: ExtractorRegex,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 #[serde(deny_unknown_fields)]
 pub enum ExtractorRegex {
@@ -92,7 +91,7 @@ pub enum Operator {
     Regex { regex: String, target: String },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,

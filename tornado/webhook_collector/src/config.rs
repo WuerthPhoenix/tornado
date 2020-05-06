@@ -1,7 +1,7 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use log::*;
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::fs;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::actors::TornadoConnectionChannel;

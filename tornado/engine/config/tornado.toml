@@ -14,6 +14,8 @@ stdout_output = true
 [tornado]
 
 [tornado.daemon]
+#thread_pool_config = {type = "CPU", factor = 1.0}
+#thread_pool_config = {type = "Fixed", size = 18}
 
 # Whether to enable the TCP listener
 event_tcp_socket_enabled = true
@@ -49,3 +51,7 @@ web_server_port = 4748
 
 # Set the size of the in-memory queue where messages will be stored before being processed
 message_queue_size = 10000
+
+[tornado.daemon.auth.role_permissions]
+ADMIN = ["ConfigEdit", "ConfigView"]
+VIEWER = ["ConfigView"]

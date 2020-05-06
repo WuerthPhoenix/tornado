@@ -7,7 +7,22 @@ pub mod filter;
 pub mod fs;
 pub mod rule;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MatcherConfigDraft {
+    pub data: MatcherConfigDraftData,
+    pub config: MatcherConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct MatcherConfigDraftData {
+    pub created_ts_ms: i64,
+    pub updated_ts_ms: i64,
+    pub user: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
@@ -32,8 +47,43 @@ impl<T: Serialize + Clone> Into<Option<T>> for Defaultable<T> {
     }
 }
 
-/// A MatcherConfigManager permits to read and manipulate the Tornado Configuration
+impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
+    fn from(source: Option<T>) -> Self {
+        match source {
+            Some(value) => Defaultable::Value(value),
+            None => Defaultable::Default {},
+        }
+    }
+}
+
+/// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
-pub trait MatcherConfigManager: Sync + Send {
-    fn read(&self) -> Result<MatcherConfig, MatcherError>;
+pub trait MatcherConfigReader: Sync + Send {
+    fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
+}
+
+/// A MatcherConfigEditor permits to edit Tornado Configuration drafts
+pub trait MatcherConfigEditor: Sync + Send {
+    /// Returns the list of available drafts
+    fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
+
+    /// Returns a draft by id
+    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError>;
+
+    /// Creats a new draft and returns the id
+    fn create_draft(&self, user: String) -> Result<String, MatcherError>;
+
+    /// Update a draft
+    fn update_draft(
+        &self,
+        draft_id: &str,
+        user: String,
+        config: &MatcherConfig,
+    ) -> Result<(), MatcherError>;
+
+    /// Deploy a draft by id replacing the current tornado configuration
+    fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
+
+    /// Deletes a draft by id
+    fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError>;
 }

@@ -8,7 +8,8 @@ use tornado_engine_matcher::model::ProcessedEvent;
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
 #[async_trait]
-pub trait ApiHandler: Send + Sync {
+pub trait EventApi: Send + Sync {
+    #[deprecated(since = "0.33.0", note = "Please use the ConfigApi instead")]
     async fn get_config(&self) -> Result<MatcherConfig, ApiError>;
     async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError>;
 }

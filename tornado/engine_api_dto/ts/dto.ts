@@ -13,6 +13,20 @@
 export type Value = any;
 
 
+/* ---------------- */
+/* 'common' types   */
+/* ---------------- */
+
+export type Id<T> = { id: T };
+
+
+/* -------------- */
+/* 'auth' types   */
+/* -------------- */
+
+export type Auth = { user: string; roles: string [] };
+
+
 /* -------------- */
 /* 'config' types */
 /* -------------- */
@@ -28,6 +42,10 @@ export type ExtractorRegexDto =
  | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null };
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
+
+export type MatcherConfigDraftDataDto = { user: string; created_ts_ms: number; updated_ts_ms: number };
+
+export type MatcherConfigDraftDto = { data: MatcherConfigDraftDataDto; config: MatcherConfigDto };
 
 export type MatcherConfigDto = 
  | {     type: "Filter"; name: string; filter: FilterDto; nodes:     MatcherConfigDto [] } 

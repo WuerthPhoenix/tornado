@@ -1,12 +1,13 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
-use serde_derive::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
+use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
-use tornado_engine_matcher::config::MatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 
@@ -22,11 +23,44 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
             .long("rules-dir")
             .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
             .default_value("/rules.d/"))
+        .arg(Arg::with_name("drafts-dir")
+            .long("drafts-dir")
+            .help("The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`")
+            .default_value("/drafts/"))
         .subcommand(SubCommand::with_name("daemon" )
             .help("Starts the Tornado daemon"))
         .subcommand(SubCommand::with_name("check" )
             .help("Checks that the configuration is valid"))
         .get_matches()
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
+#[serde(tag = "type")]
+pub enum ThreadPoolConfig {
+    CPU { factor: f64 },
+    Fixed { size: isize },
+}
+
+impl Default for ThreadPoolConfig {
+    fn default() -> Self {
+        ThreadPoolConfig::CPU { factor: 1.0 }
+    }
+}
+
+impl ThreadPoolConfig {
+    pub fn get_threads_count(&self) -> usize {
+        let count = match self {
+            ThreadPoolConfig::CPU { factor } => {
+                ((num_cpus::get() as f64) * *factor).ceil() as isize
+            }
+            ThreadPoolConfig::Fixed { size } => *size,
+        };
+        if count > 0 {
+            count as usize
+        } else {
+            1
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -42,6 +76,10 @@ pub struct DaemonCommandConfig {
     pub web_server_port: u16,
 
     pub message_queue_size: usize,
+
+    pub thread_pool_config: Option<ThreadPoolConfig>,
+
+    pub auth: AuthConfig,
 }
 
 impl DaemonCommandConfig {
@@ -52,6 +90,11 @@ impl DaemonCommandConfig {
     pub fn is_nats_enabled(&self) -> bool {
         self.nats_enabled.unwrap_or(false)
     }
+}
+
+#[derive(Deserialize, Serialize, Clone, Default)]
+pub struct AuthConfig {
+    pub role_permissions: BTreeMap<String, Vec<Permission>>,
 }
 
 #[derive(Deserialize, Serialize, Clone)]
@@ -95,7 +138,7 @@ fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, C
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Arc<dyn MatcherConfigManager>,
+    pub matcher_config: Arc<FsMatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
@@ -105,8 +148,9 @@ pub struct ComponentsConfig {
 pub fn parse_config_files(
     config_dir: &str,
     rules_dir: &str,
+    drafts_dir: &str,
 ) -> Result<ComponentsConfig, Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir));
+    let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir, drafts_dir));
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
@@ -120,8 +164,15 @@ pub fn parse_config_files(
     })
 }
 
-fn build_matcher_config(config_dir: &str, rules_dir: &str) -> impl MatcherConfigManager {
-    FsMatcherConfigManager::new(format!("{}/{}", config_dir, rules_dir))
+fn build_matcher_config(
+    config_dir: &str,
+    rules_dir: &str,
+    drafts_dir: &str,
+) -> FsMatcherConfigManager {
+    FsMatcherConfigManager::new(
+        format!("{}/{}", config_dir, rules_dir),
+        format!("{}/{}", config_dir, drafts_dir),
+    )
 }
 
 #[cfg(test)]
@@ -129,7 +180,7 @@ mod test {
 
     use super::*;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
-    use tornado_engine_matcher::config::MatcherConfig;
+    use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 
     #[test]
     fn should_read_configuration_from_file() {
@@ -137,19 +188,23 @@ mod test {
         let path = "./config/";
 
         // Act
-        let config = build_config(path);
+        let config = build_config(path).unwrap();
 
         // Assert
-        assert!(config.is_ok())
+        assert_eq!(
+            vec![Permission::ConfigEdit, Permission::ConfigView],
+            config.tornado.daemon.auth.role_permissions["ADMIN"]
+        )
     }
 
     #[test]
     fn should_read_all_rule_configurations_from_file() {
         // Arrange
         let path = "./config/rules.d";
+        let drafts_path = "./config/drafts";
 
         // Act
-        let config = FsMatcherConfigManager::new(path).read().unwrap();
+        let config = FsMatcherConfigManager::new(path, drafts_path).get_config().unwrap();
 
         // Assert
         match config {
@@ -172,9 +227,10 @@ mod test {
         // Arrange
         let config_dir = "./config";
         let rules_dir = "/rules.d";
+        let drafts_dir = "/drafts";
 
         // Act
-        let config = parse_config_files(config_dir, rules_dir).unwrap();
+        let config = parse_config_files(config_dir, rules_dir, drafts_dir).unwrap();
 
         // Assert
         assert_eq!(
@@ -219,6 +275,8 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
+            auth: AuthConfig::default(),
         };
 
         // Act
@@ -242,6 +300,8 @@ mod test {
             web_server_ip: "".to_string(),
             web_server_port: 0,
             message_queue_size: 0,
+            thread_pool_config: None,
+            auth: AuthConfig::default(),
         };
 
         // Act
@@ -251,5 +311,38 @@ mod test {
         // Assert
         assert_eq!(event_tcp_socket_enabled, true);
         assert_eq!(nats_enabled, false);
+    }
+
+    #[test]
+    fn thread_pool_config_should_never_return_less_than_one() {
+        assert_eq!(1, ThreadPoolConfig::Fixed { size: -3 }.get_threads_count());
+        assert_eq!(1, ThreadPoolConfig::Fixed { size: 0 }.get_threads_count());
+        assert_eq!(1, ThreadPoolConfig::CPU { factor: 0.0 }.get_threads_count());
+        assert_eq!(1, ThreadPoolConfig::CPU { factor: -10.0 }.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_fixed_should_return_size() {
+        let random = rand::random::<isize>().abs();
+        let random = if random == 0 {
+            1
+        } else {
+            random
+        };
+        assert_eq!(random as usize, ThreadPoolConfig::Fixed { size: random }.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_cpu_should_return_count_by_factor() {
+        let cpus = num_cpus::get();
+        assert_eq!(cpus, ThreadPoolConfig::CPU { factor: 1.0 }.get_threads_count());
+        assert_eq!((cpus / 2) as usize, ThreadPoolConfig::CPU { factor: 0.5 }.get_threads_count());
+        assert_eq!((cpus * 3) as usize, ThreadPoolConfig::CPU { factor: 3.0 }.get_threads_count());
+    }
+
+    #[test]
+    fn thread_pool_config_should_default_tocpu_count() {
+        let cpus = num_cpus::get();
+        assert_eq!(cpus, ThreadPoolConfig::default().get_threads_count());
     }
 }
