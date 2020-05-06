@@ -81,6 +81,9 @@ file _'config-dir'/tornado.toml_:
     - **file_output_path**:  A file path in the file system; if provided, the Logger will
       append any output to it.
 - **tornado.daemon**
+    - **thread_pool_config**: The configuration of the thread pools bound to the internal queues.
+    This entry is optional and should be rarely configured manually. For more details
+    see the following _Structure and Configuration: The Thread Pool Configuration_ section.     
     - **event_tcp_socket_enabled**: Whether to enable the TCP server for incoming events
       (Optional. Valid values are `true` and `false`. Defaults to `true` if not provided).
     - **event_socket_ip**:  The IP address where Tornado will listen for incoming events 
@@ -130,6 +133,45 @@ configuration read from the _./tornado/engine/config_ directory. In addition,
 it will search for Filter and Rule definitions in the _./tornado/engine/config/rules.d_ 
 directory in order to build the processing tree.
 
+### Structure and Configuration: The Thread Pool Configuration
+Even if the default configuration should suit most of the use cases,
+in some particular situations it could be useful to customise the size of the internal queues 
+used by Tornado. 
+Tornado utilizes these queues to process incoming events and to dispatch triggered actions.
+
+Tornado uses a dedicated thread pool per queue; 
+the size of each queue is by default equal to the number of available logical CPUs. 
+Consequently, in case of an action of type _script_, for example, 
+Tornado will be able to run in parallel at max as many scripts as the number of CPUs. 
+
+This default behaviour can be overridden by providing a custom configuration for the thread pools size. 
+This is achieved through the optional **tornado_pool_config** entry in the **tornado.daemon** section 
+of the _Tornado.toml_ configuration file.
+
+#### Example of how to dynamically configure the thread pool based on the available CPUs:
+```toml
+[tornado.daemon]
+thread_pool_config = {type = "CPU", factor = 1.0}
+```
+
+In this case, the size of the thread pool will be equal to `(number of available logical CPUs) multiplied by (factor)` 
+rounded to the smallest integer greater than or equal to a number. 
+If the resulting value is less than _1_, then _1_ will be used be default.
+
+For example, if there are 16 available CPUs, then:
+ - `{type: "CPU", factor: 0.5}` => thread pool size is 8
+ - `{type: "CPU", factor: 2.0}` => thread pool size is 32
+
+
+
+#### Example of how to statically configure the thread pool based:
+```toml
+[tornado.daemon]
+thread_pool_config = {type = "Fixed", size = 20}
+```
+
+In this case, the size of the thread pool is statically fixed at 20.
+If the provided size is less than _1_, then _1_ will be used be default.
 
 ### Structure and Configuration: The JSON Collector
 

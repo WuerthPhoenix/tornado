@@ -3415,6 +3415,7 @@ dependencies = [
  "maplit",
  "num_cpus",
  "openssl",
+ "rand 0.7.3",
  "serde 1.0.106",
  "serde_json",
  "tempfile",

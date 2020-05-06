@@ -28,7 +28,7 @@ impl<'a> AuthContext<'a> {
         AuthContext { valid: !auth.user.is_empty(), auth, permission_roles_map }
     }
 
-    // Returns an error if user is not autheticated
+    // Returns an error if user is not authenticated
     pub fn is_authenticated(&self) -> Result<&AuthContext, ApiError> {
         if !self.valid {
             return Err(ApiError::UnauthenticatedError {});

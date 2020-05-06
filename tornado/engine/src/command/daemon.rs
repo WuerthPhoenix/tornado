@@ -31,26 +31,29 @@ pub async fn daemon(
     setup_logger(&configs.tornado.logger)?;
 
     // start system
-    let cpus = num_cpus::get();
-    debug!("Available CPUs: {}", cpus);
-
     let daemon_config = configs.tornado.tornado.daemon;
+    let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
+    let threads_per_queue = thread_pool_config.get_threads_count();
+    info!(
+        "Starting Tornado daemon with {} threads per queue. Thread config: {:?}",
+        threads_per_queue, thread_pool_config
+    );
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
-    let archive_executor_addr = SyncArbiter::start(1, move || {
+    let archive_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
         ExecutorActor { executor }
     });
 
     // Start script executor actor
-    let script_executor_addr = SyncArbiter::start(cpus, move || {
+    let script_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_script::ScriptExecutor::new();
         ExecutorActor { executor }
     });
 
     // Start logger executor actor
-    let logger_executor_addr = SyncArbiter::start(1, move || {
+    let logger_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_logger::LoggerExecutor::new();
         ExecutorActor { executor }
     });
@@ -59,7 +62,7 @@ pub async fn daemon(
     let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
     // Start ForEach executor actor
-    let foreach_executor_addr = SyncArbiter::start(cpus, move || LazyExecutorActor::<
+    let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
         tornado_executor_foreach::ForEachExecutor,
     > {
         executor: None,
@@ -67,7 +70,7 @@ pub async fn daemon(
 
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr = SyncArbiter::start(cpus, move || {
+    let elasticsearch_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let es_authentication = es_authentication.clone();
         let executor =
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
@@ -76,7 +79,7 @@ pub async fn daemon(
     });
 
     // Start icinga2 executor actor
-    let icinga2_executor_addr = SyncArbiter::start(cpus, move || {
+    let icinga2_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let icinga2_client_addr_clone = icinga2_client_addr.clone();
         let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
             icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
@@ -115,7 +118,7 @@ pub async fn daemon(
     });
 
     // Start dispatcher actor
-    let dispatcher_addr = SyncArbiter::start(cpus, move || {
+    let dispatcher_addr = SyncArbiter::start(threads_per_queue, move || {
         let dispatcher = Dispatcher::build(event_bus.clone()).expect("Cannot build the dispatcher");
         DispatcherActor { dispatcher }
     });
