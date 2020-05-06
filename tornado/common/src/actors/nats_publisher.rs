@@ -5,7 +5,6 @@ use log::*;
 use native_tls::{Certificate, Identity, TlsConnector};
 use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde::{Deserialize, Serialize};
-use serde_json;
 use std::io::Error;
 use std::sync::Arc;
 use tokio::fs::File;

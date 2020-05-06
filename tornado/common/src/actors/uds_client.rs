@@ -1,7 +1,6 @@
 use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use actix::prelude::*;
 use log::*;
-use serde_json;
 use std::io::Error;
 use std::path::PathBuf;
 use tokio::io::WriteHalf;

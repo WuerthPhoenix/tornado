@@ -38,7 +38,7 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 #[serde(tag = "type")]
 pub enum ThreadPoolConfig {
     CPU { factor: f64 },
-    Fixed { size: usize },
+    Fixed { size: isize },
 }
 
 impl Default for ThreadPoolConfig {
@@ -51,12 +51,12 @@ impl ThreadPoolConfig {
     pub fn get_threads_count(&self) -> usize {
         let count = match self {
             ThreadPoolConfig::CPU { factor } => {
-                ((num_cpus::get() as f64) * *factor).ceil() as usize
+                ((num_cpus::get() as f64) * *factor).ceil() as isize
             }
             ThreadPoolConfig::Fixed { size } => *size,
         };
         if count > 0 {
-            count
+            count as usize
         } else {
             1
         }
@@ -314,15 +314,17 @@ mod test {
     }
 
     #[test]
-    fn thread_pool_config_should_never_return_zero() {
+    fn thread_pool_config_should_never_return_less_than_one() {
+        assert_eq!(1, ThreadPoolConfig::Fixed { size: -3 }.get_threads_count());
         assert_eq!(1, ThreadPoolConfig::Fixed { size: 0 }.get_threads_count());
         assert_eq!(1, ThreadPoolConfig::CPU { factor: 0.0 }.get_threads_count());
+        assert_eq!(1, ThreadPoolConfig::CPU { factor: -10.0 }.get_threads_count());
     }
 
     #[test]
     fn thread_pool_config_fixed_should_return_size() {
-        let random = rand::random();
-        assert_eq!(random, ThreadPoolConfig::Fixed { size: random }.get_threads_count());
+        let random: usize = rand::random();
+        assert_eq!(random, ThreadPoolConfig::Fixed { size: (random as isize) }.get_threads_count());
     }
 
     #[test]
