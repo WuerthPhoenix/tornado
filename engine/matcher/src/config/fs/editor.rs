@@ -406,6 +406,7 @@ mod test {
     fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
         let test_configurations = vec![
             "./test_resources/config_01",
+            "./test_resources/config_02",
             "./test_resources/config_03",
             "./test_resources/config_04",
             "./test_resources/config_empty",
