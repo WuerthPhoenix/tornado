@@ -182,7 +182,7 @@ impl FsMatcherConfigManager {
                     FsMatcherConfigManager::create_node_dir(is_root_node, root_path, name)?;
 
                 for (index, rule) in rules.iter().enumerate() {
-                    let rule_path = current_path.join(&format!("{:12}0_{}.json", index, rule.name));
+                    let rule_path = current_path.join(&format!("{:09}0_{}.json", index, rule.name));
                     let rule_json = serde_json::to_string_pretty(rule).map_err(|err| {
                         MatcherError::InternalSystemError {
                             message: format!("Cannot convert rule body to JSON. Err: {}", err),
