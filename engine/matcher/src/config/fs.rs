@@ -27,6 +27,8 @@ impl FsMatcherConfigManager {
 pub enum DirType {
     Filter,
     Ruleset,
+    // If there is a single JSON file in a folder, we are not able to detect whether it is a filter or a rule without parsing its content.
+    // In this case we parse it as a rule and, if it fails, we try again to parse it as a filter.
     FilterOrRuleset,
 }
 
