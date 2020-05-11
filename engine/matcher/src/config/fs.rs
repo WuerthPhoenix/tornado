@@ -121,30 +121,6 @@ impl FsMatcherConfigManager {
             Ok(DirType::Ruleset)
         }
 
-        /*
-        if subdirectories_count > 0 {
-            if json_files_count <= 1 {
-                Ok(DirType::Filter)
-            } else {
-                Err(MatcherError::ConfigurationError {
-                    message: format!(
-                        r#"Path {} contains {} file(s) and {} directories. Expected:\n
-                 for a valid filter: max one json file and at least one directory;\n
-                 for a valid rule set: zero or more json files and no directories."#,
-                        dir.as_ref().display(),
-                        json_files_count,
-                        subdirectories_count
-                    ),
-                })
-            }
-        } else {
-            if json_files_count == 1 {
-                Ok(DirType::FilterOrRuleset)
-            } else {
-                Ok(DirType::Ruleset)
-            }
-        }
-        */
     }
 
     fn read_ruleset_from_dir<P: AsRef<Path>>(
