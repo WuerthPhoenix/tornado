@@ -27,6 +27,9 @@ impl FsMatcherConfigManager {
 pub enum DirType {
     Filter,
     Ruleset,
+    // If there is a single JSON file in a folder, we are not able to detect whether it is a filter or a rule without parsing its content.
+    // In this case we parse it as a rule and, if it fails, we try again to parse it as a filter.
+    FilterOrRuleset,
 }
 
 impl MatcherConfigReader for FsMatcherConfigManager {
@@ -50,6 +53,19 @@ impl FsMatcherConfigManager {
             }
             DirType::Ruleset => {
                 FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref())
+            }
+            DirType::FilterOrRuleset => {
+                match FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref()) {
+                    Ok(result) => Ok(result),
+                    Err(err) => {
+                        debug!(
+                            "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {}",
+                            dir.as_ref().display(),
+                            err
+                        );
+                        FsMatcherConfigManager::read_filter_from_dir(node_name, dir.as_ref())
+                    }
+                }
             }
         }
     }
@@ -99,7 +115,12 @@ impl FsMatcherConfigManager {
                 ),
             });
         }
-        Ok(DirType::Ruleset)
+        if json_files_count == 1 {
+            Ok(DirType::FilterOrRuleset)
+        } else {
+            Ok(DirType::Ruleset)
+        }
+
     }
 
     fn read_ruleset_from_dir<P: AsRef<Path>>(
@@ -205,13 +226,13 @@ impl FsMatcherConfigManager {
             return Ok(MatcherConfig::Filter { name, filter, nodes });
         }
 
-        if filters.len() == 1 && !nodes.is_empty() {
+        if filters.len() == 1 {
             let filter = filters.remove(0);
             return Ok(MatcherConfig::Filter { name, filter, nodes });
         }
 
         Err(MatcherError::ConfigurationError {
-            message: format!("Config path [{}] contains {} json files and {} subdirectories. Expected exactly one json filter file and at least one subdirectory.",
+            message: format!("Config path [{}] contains {} json files and {} subdirectories. Expected exactly one json filter file or at least one subdirectory.",
                              dir.as_ref().display(), filters.len(), nodes.len()),
         })
     }
@@ -332,11 +353,11 @@ mod test {
     }
 
     #[test]
-    fn should_read_from_folder_and_return_error_if_not_a_rule() {
+    fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
         let path = "./test_resources/config_02";
-        let config = FsMatcherConfigManager::read_from_root_dir(path);
+        let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
 
-        assert!(config.is_err());
+        assert!(is_filter(&config, "root", 0));
     }
 
     #[test]
@@ -435,7 +456,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_dir_type_rules_if_one_file_and_no_subdir() {
+    fn should_return_undetermined_dir_type_if_one_file_and_no_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -446,7 +467,7 @@ mod test {
         let result = FsMatcherConfigManager::detect_dir_type(&dir);
 
         // Assert
-        assert_eq!(Ok(DirType::Ruleset), result);
+        assert_eq!(Ok(DirType::FilterOrRuleset), result);
     }
 
     #[test]

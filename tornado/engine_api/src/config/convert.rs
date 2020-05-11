@@ -17,6 +17,7 @@ pub fn matcher_config_draft_into_dto(
             user: draft.data.user,
             created_ts_ms: draft.data.created_ts_ms,
             updated_ts_ms: draft.data.updated_ts_ms,
+            draft_id: draft.data.draft_id,
         },
         config: matcher_config_into_dto(draft.config)?,
     })
@@ -152,6 +153,7 @@ pub fn dto_into_matcher_config_draft(
             user: draft.data.user,
             created_ts_ms: draft.data.created_ts_ms,
             updated_ts_ms: draft.data.updated_ts_ms,
+            draft_id: draft.data.draft_id,
         },
         config: dto_into_matcher_config(draft.config)?,
     })
