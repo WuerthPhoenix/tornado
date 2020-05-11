@@ -65,14 +65,12 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
             &self.get_draft_config_dir_path(&draft_id),
         )?;
 
-        self.write_draft_data(
-            &draft_id,
-            MatcherConfigDraftData {
-                user,
-                updated_ts_ms: current_ts_ms,
-                created_ts_ms: current_ts_ms,
-            },
-        )?;
+        self.write_draft_data(MatcherConfigDraftData {
+            user,
+            updated_ts_ms: current_ts_ms,
+            created_ts_ms: current_ts_ms,
+            draft_id: draft_id.clone(),
+        })?;
 
         debug!("Created new draft with id {}", draft_id);
         Ok(draft_id)
@@ -100,7 +98,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         data.user = user;
         data.updated_ts_ms = current_ts_ms();
 
-        self.write_draft_data(&draft_id, data)
+        self.write_draft_data(data)
     }
 
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
@@ -253,25 +251,20 @@ impl FsMatcherConfigManager {
         })
     }
 
-    fn write_draft_data(
-        &self,
-        draft_id: &str,
-        data: MatcherConfigDraftData,
-    ) -> Result<(), MatcherError> {
+    fn write_draft_data(&self, data: MatcherConfigDraftData) -> Result<(), MatcherError> {
         let data_json = serde_json::to_string_pretty(&data).map_err(|err| {
             MatcherError::ConfigurationError {
                 message: format!(
                     "Cannot create JSON data for draft id [{}]. Err: {}",
-                    draft_id, err
+                    data.draft_id, err
                 ),
             }
         })?;
 
-        fs_extra::file::write_all(&self.get_draft_data_file_path(draft_id), &data_json).map_err(
-            |err| MatcherError::ConfigurationError {
-                message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err),
-            },
-        )
+        fs_extra::file::write_all(&self.get_draft_data_file_path(&data.draft_id), &data_json)
+            .map_err(|err| MatcherError::ConfigurationError {
+                message: format!("Cannot read data for draft id [{}]. Err: {}", data.draft_id, err),
+            })
     }
 }
 
@@ -406,6 +399,7 @@ mod test {
     fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
         let test_configurations = vec![
             "./test_resources/config_01",
+            "./test_resources/config_02",
             "./test_resources/config_03",
             "./test_resources/config_04",
             "./test_resources/config_empty",

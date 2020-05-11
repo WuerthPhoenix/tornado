@@ -20,6 +20,7 @@ pub struct MatcherConfigDraftData {
     pub created_ts_ms: i64,
     pub updated_ts_ms: i64,
     pub user: String,
+    pub draft_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
