@@ -107,4 +107,5 @@ pub struct MatcherConfigDraftDataDto {
     pub user: String,
     pub created_ts_ms: i64,
     pub updated_ts_ms: i64,
+    pub draft_id: String,
 }
