@@ -58,7 +58,7 @@ impl FsMatcherConfigManager {
                 match FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref()) {
                     Ok(result) => Ok(result),
                     Err(err) => {
-                        warn!(
+                        debug!(
                             "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {}",
                             dir.as_ref().display(),
                             err
