@@ -222,12 +222,17 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
+        let auth_api = ApiData {
+            auth: auth_service.clone(),
+            api: (),
+        };
 
         App::new()
             .wrap(Logger::default())
             .wrap(Cors::new().max_age(3600).finish())
             .service(
                 web::scope("/api")
+                    .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(api_handler)),
             )
