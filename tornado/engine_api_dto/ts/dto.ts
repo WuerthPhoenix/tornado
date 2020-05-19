@@ -26,6 +26,10 @@ export type Id<T> = { id: T };
 
 export type Auth = { user: string; roles: string [] };
 
+export type AuthWithPermissionsDto = { user: string; permissions: PermissionDto [] };
+
+export enum PermissionDto { ConfigEdit = "ConfigEdit", ConfigView = "ConfigView" };
+
 
 /* -------------- */
 /* 'config' types */

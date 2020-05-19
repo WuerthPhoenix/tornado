@@ -1,3 +1,6 @@
+pub mod convert;
+pub mod web;
+
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
@@ -37,12 +40,15 @@ impl<'a> AuthContext<'a> {
     }
 
     // Returns an error if user does not have the permission
-    pub fn has_permission(&self, permission: Permission) -> Result<&AuthContext, ApiError> {
+    pub fn has_permission(&self, permission: &Permission) -> Result<&AuthContext, ApiError> {
         self.has_any_permission(&[permission])
     }
 
     // Returns an error if user does not have at least one of the permissions
-    pub fn has_any_permission(&self, permissions: &[Permission]) -> Result<&AuthContext, ApiError> {
+    pub fn has_any_permission(
+        &self,
+        permissions: &[&Permission],
+    ) -> Result<&AuthContext, ApiError> {
         self.is_authenticated()?;
 
         for permission in permissions {
@@ -60,6 +66,21 @@ impl<'a> AuthContext<'a> {
                 self.auth.user, permissions
             ),
         })
+    }
+
+    // Returns an error if user does not have the permission
+    pub fn get_all_permissions(&self) -> Vec<&Permission> {
+        let mut permissions = vec![];
+
+        if self.is_authenticated().is_ok() {
+            for permission in self.permission_roles_map.keys() {
+                if self.has_permission(permission).is_ok() {
+                    permissions.push(permission);
+                }
+            }
+        }
+
+        permissions
     }
 }
 
@@ -204,8 +225,8 @@ mod test {
         assert_eq!(expected_auth, auth_context.auth);
         assert_eq!(&permission_roles_map, auth_context.permission_roles_map);
         assert!(auth_context.is_authenticated().is_ok());
-        assert!(auth_context.has_permission(Permission::ConfigEdit).is_ok());
-        assert!(auth_context.has_permission(Permission::ConfigView).is_err());
+        assert!(auth_context.has_permission(&Permission::ConfigEdit).is_ok());
+        assert!(auth_context.has_permission(&Permission::ConfigView).is_err());
 
         Ok(())
     }
@@ -259,11 +280,11 @@ mod test {
 
         assert!(auth_context.valid);
         assert!(auth_context.is_authenticated().is_ok());
-        assert!(auth_context.has_permission(Permission::ConfigEdit).is_ok());
-        assert!(auth_context.has_permission(Permission::ConfigView).is_ok());
+        assert!(auth_context.has_permission(&Permission::ConfigEdit).is_ok());
+        assert!(auth_context.has_permission(&Permission::ConfigView).is_ok());
         assert!(auth_context
-            .has_permission(Permission::ConfigEdit)?
-            .has_permission(Permission::ConfigView)
+            .has_permission(&Permission::ConfigEdit)?
+            .has_permission(&Permission::ConfigView)
             .is_ok());
 
         Ok(())
@@ -282,16 +303,16 @@ mod test {
         assert!(auth_context.valid);
         assert!(auth_context.is_authenticated().is_ok());
         assert!(auth_context
-            .has_any_permission(&[Permission::ConfigEdit, Permission::ConfigEdit])
+            .has_any_permission(&[&Permission::ConfigEdit, &Permission::ConfigEdit])
             .is_ok());
         assert!(auth_context
-            .has_any_permission(&[Permission::ConfigView, Permission::ConfigEdit])
+            .has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])
             .is_ok());
         assert!(auth_context
-            .has_any_permission(&[Permission::ConfigEdit, Permission::ConfigView])
+            .has_any_permission(&[&Permission::ConfigEdit, &Permission::ConfigView])
             .is_ok());
         assert!(auth_context
-            .has_any_permission(&[Permission::ConfigView, Permission::ConfigView])
+            .has_any_permission(&[&Permission::ConfigView, &Permission::ConfigView])
             .is_err());
 
         Ok(())
@@ -308,8 +329,83 @@ mod test {
 
         assert!(!auth_context.valid);
         assert!(auth_context.is_authenticated().is_err());
-        assert!(auth_context.has_permission(Permission::ConfigView).is_err());
-        assert!(auth_context.has_permission(Permission::ConfigEdit).is_err());
+        assert!(auth_context.has_permission(&Permission::ConfigView).is_err());
+        assert!(auth_context.has_permission(&Permission::ConfigEdit).is_err());
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_return_all_user_permissions() -> Result<(), ApiError> {
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(
+            Permission::ConfigEdit.to_owned(),
+            vec!["role1".to_owned(), "role3".to_owned()],
+        );
+        permission_roles_map.insert(
+            Permission::ConfigView.to_owned(),
+            vec!["role2".to_owned(), "role3".to_owned()],
+        );
+
+        {
+            let auth = Auth { user: "user".to_owned(), roles: vec!["role1".to_owned()] };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert_eq!(vec![&Permission::ConfigEdit], auth_context.get_all_permissions());
+        }
+
+        {
+            let auth = Auth { user: "user".to_owned(), roles: vec!["role2".to_owned()] };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert_eq!(vec![&Permission::ConfigView], auth_context.get_all_permissions());
+        }
+
+        {
+            let auth = Auth {
+                user: "user".to_owned(),
+                roles: vec!["role1".to_owned(), "role2".to_owned()],
+            };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert_eq!(
+                vec![&Permission::ConfigEdit, &Permission::ConfigView],
+                auth_context.get_all_permissions()
+            );
+        }
+
+        {
+            let auth = Auth { user: "user".to_owned(), roles: vec!["role3".to_owned()] };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert_eq!(
+                vec![&Permission::ConfigEdit, &Permission::ConfigView],
+                auth_context.get_all_permissions()
+            );
+        }
+
+        {
+            let auth = Auth { user: "user".to_owned(), roles: vec!["role4".to_owned()] };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert!(auth_context.get_all_permissions().is_empty());
+        }
+
+        {
+            let auth = Auth { user: "user".to_owned(), roles: vec![] };
+            let auth_context = AuthContext::new(auth, &permission_roles_map);
+            assert!(auth_context.get_all_permissions().is_empty());
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn invalid_auth_context_should_return_empty_all_permissions() -> Result<(), ApiError> {
+        let auth =
+            Auth { user: "".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigView, vec!["role1".to_owned()]);
+
+        let auth_context = AuthContext::new(auth, &permission_roles_map);
+
+        assert!(auth_context.is_authenticated().is_err());
+        assert!(auth_context.get_all_permissions().is_empty());
 
         Ok(())
     }

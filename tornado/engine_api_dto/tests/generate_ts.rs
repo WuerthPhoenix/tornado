@@ -103,6 +103,8 @@ export type Value = any;"#;
 /* -------------- */"#,
     );
     push_ts(&mut ts_code, &auth::Auth::type_script_ify());
+    push_ts(&mut ts_code, &auth::AuthWithPermissionsDto::type_script_ify());
+    push_ts(&mut ts_code, &auth::PermissionDto::type_script_ify());
 
     // Push 'config' ts types
     push_ts(

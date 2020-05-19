@@ -120,7 +120,6 @@ impl FsMatcherConfigManager {
         } else {
             Ok(DirType::Ruleset)
         }
-
     }
 
     fn read_ruleset_from_dir<P: AsRef<Path>>(
