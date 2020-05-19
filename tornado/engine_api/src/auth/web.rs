@@ -18,7 +18,7 @@ async fn who_am_i(
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     auth_ctx.is_authenticated()?;
-    let all_permissions = auth_ctx.get_all_permissions();
+    let all_permissions = auth_ctx.get_permissions();
     Ok(Json(to_auth_with_permissions_dto(auth_ctx.auth.user.clone(), &all_permissions)))
 }
 

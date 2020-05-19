@@ -79,7 +79,7 @@ impl<'a> AuthContext<'a> {
     }
 
     // Returns an error if user does not have the permission
-    pub fn get_all_permissions(&self) -> Vec<&Permission> {
+    pub fn get_permissions(&self) -> Vec<&Permission> {
         let mut permissions = vec![];
 
         if self.is_authenticated().is_ok() {
@@ -391,13 +391,13 @@ mod test {
         {
             let auth = Auth { user: "user".to_owned(), roles: vec!["role1".to_owned()] };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
-            assert_eq!(vec![&Permission::ConfigEdit], auth_context.get_all_permissions());
+            assert_eq!(vec![&Permission::ConfigEdit], auth_context.get_permissions());
         }
 
         {
             let auth = Auth { user: "user".to_owned(), roles: vec!["role2".to_owned()] };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
-            assert_eq!(vec![&Permission::ConfigView], auth_context.get_all_permissions());
+            assert_eq!(vec![&Permission::ConfigView], auth_context.get_permissions());
         }
 
         {
@@ -408,7 +408,7 @@ mod test {
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert_eq!(
                 vec![&Permission::ConfigEdit, &Permission::ConfigView],
-                auth_context.get_all_permissions()
+                auth_context.get_permissions()
             );
         }
 
@@ -417,20 +417,20 @@ mod test {
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert_eq!(
                 vec![&Permission::ConfigEdit, &Permission::ConfigView],
-                auth_context.get_all_permissions()
+                auth_context.get_permissions()
             );
         }
 
         {
             let auth = Auth { user: "user".to_owned(), roles: vec!["role4".to_owned()] };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
-            assert!(auth_context.get_all_permissions().is_empty());
+            assert!(auth_context.get_permissions().is_empty());
         }
 
         {
             let auth = Auth { user: "user".to_owned(), roles: vec![] };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
-            assert!(auth_context.get_all_permissions().is_empty());
+            assert!(auth_context.get_permissions().is_empty());
         }
 
         Ok(())
@@ -446,7 +446,7 @@ mod test {
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
         assert!(auth_context.is_authenticated().is_err());
-        assert!(auth_context.get_all_permissions().is_empty());
+        assert!(auth_context.get_permissions().is_empty());
 
         Ok(())
     }
