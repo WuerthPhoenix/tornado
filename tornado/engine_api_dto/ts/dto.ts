@@ -19,7 +19,7 @@ export type Value = any;
 
 export type Id<T> = { id: T };
 
-export type WebError = { code: string; message: string | null };
+export type WebError = {     code: string; params: { [key: string]: string }; message: string |     null };
 
 
 /* -------------- */

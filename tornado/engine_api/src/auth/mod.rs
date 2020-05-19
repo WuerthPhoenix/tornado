@@ -5,7 +5,7 @@ use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tornado_engine_api_dto::auth::Auth;
 use tornado_engine_matcher::config::MatcherConfigDraft;
@@ -70,6 +70,7 @@ impl<'a> AuthContext<'a> {
         }
         Err(ApiError::ForbiddenError {
             code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
+            params: HashMap::new(),
             message: format!(
                 "User [{}] does not have the required permissions [{:?}]",
                 self.auth.user, permissions
@@ -95,12 +96,16 @@ impl<'a> AuthContext<'a> {
     // Returns an error if the user is not the owner of the object
     pub fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&AuthContext, ApiError> {
         self.is_authenticated()?;
-        if self.auth.user == obj.get_owner_id() {
+        let owner = obj.get_owner_id();
+        if self.auth.user == owner {
             Ok(&self)
         } else {
+            let mut params = HashMap::new();
+            params.insert("OWNER".to_owned(), owner.to_owned());
             Err(ApiError::ForbiddenError {
                 code: FORBIDDEN_NOT_OWNER.to_owned(),
-                message: format!("User [{}] is not the owner of the object", self.auth.user),
+                params,
+                message: format!("User [{}] is not the owner of the object. The owner is [{}]", self.auth.user, owner),
             })
         }
     }
@@ -493,7 +498,11 @@ mod test {
         assert!(result.is_err());
 
         match &result {
-            Err(ApiError::ForbiddenError { code, .. }) => assert_eq!(FORBIDDEN_NOT_OWNER, code),
+            Err(ApiError::ForbiddenError { code, params, .. }) => {
+                assert_eq!(FORBIDDEN_NOT_OWNER, code);
+                assert_eq!(1, params.len());
+                assert_eq!("USER_567", params["OWNER"]);
+            },
             _ => assert!(false),
         }
     }
