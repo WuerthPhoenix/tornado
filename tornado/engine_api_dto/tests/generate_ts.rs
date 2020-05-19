@@ -6,6 +6,7 @@ use typescript_definitions::TypeScriptifyTrait;
 use std::fs::*;
 use std::io::Write;
 use std::str::FromStr;
+use tornado_engine_api_dto::common::WebError;
 use tornado_engine_api_dto::*;
 
 const TS_OUTPUT_DIR: &str = "./ts";
@@ -93,6 +94,7 @@ export type Value = any;"#;
 /* ---------------- */"#,
     );
     push_ts(&mut ts_code, &common::Id::<()>::type_script_ify());
+    push_ts(&mut ts_code, &common::WebError::type_script_ify());
 
     // Push 'auth' ts types
     push_ts(

@@ -222,10 +222,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let auth_api = ApiData {
-            auth: auth_service.clone(),
-            api: (),
-        };
+        let auth_api = ApiData { auth: auth_service.clone(), api: () };
 
         App::new()
             .wrap(Logger::default())

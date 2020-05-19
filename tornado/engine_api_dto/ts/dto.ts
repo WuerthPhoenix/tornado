@@ -19,6 +19,8 @@ export type Value = any;
 
 export type Id<T> = { id: T };
 
+export type WebError = { code: string; message: string | null };
+
 
 /* -------------- */
 /* 'auth' types   */

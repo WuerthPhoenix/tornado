@@ -5,3 +5,9 @@ use typescript_definitions::TypeScriptify;
 pub struct Id<T> {
     pub id: T,
 }
+
+#[derive(Serialize, TypeScriptify)]
+pub struct WebError {
+    pub code: String,
+    pub message: Option<String>,
+}

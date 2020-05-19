@@ -8,10 +8,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use tornado_engine_api_dto::auth::Auth;
+use tornado_engine_matcher::config::MatcherConfigDraft;
 
 pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
 pub const JWT_TOKEN_HEADER_SUFFIX_LEN: usize = JWT_TOKEN_HEADER_SUFFIX.len();
+
+pub const FORBIDDEN_NOT_OWNER: &str = "NOT_OWNER";
+pub const FORBIDDEN_MISSING_REQUIRED_PERMISSIONS: &str = "MISSING_REQUIRED_PERMISSIONS";
+
+pub trait WithOwner {
+    fn get_owner_id(&self) -> &str;
+}
 
 #[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Permission {
@@ -61,6 +69,7 @@ impl<'a> AuthContext<'a> {
             }
         }
         Err(ApiError::ForbiddenError {
+            code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
             message: format!(
                 "User [{}] does not have the required permissions [{:?}]",
                 self.auth.user, permissions
@@ -81,6 +90,19 @@ impl<'a> AuthContext<'a> {
         }
 
         permissions
+    }
+
+    // Returns an error if the user is not the owner of the object
+    pub fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&AuthContext, ApiError> {
+        self.is_authenticated()?;
+        if self.auth.user == obj.get_owner_id() {
+            Ok(&self)
+        } else {
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_NOT_OWNER.to_owned(),
+                message: format!("User [{}] is not the owner of the object", self.auth.user),
+            })
+        }
     }
 }
 
@@ -157,6 +179,12 @@ impl AuthService {
     /// Bearer: <TOKEN>
     pub fn auth_to_token_header(auth: &Auth) -> Result<String, ApiError> {
         Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthService::auth_to_token_string(&auth)?))
+    }
+}
+
+impl WithOwner for MatcherConfigDraft {
+    fn get_owner_id(&self) -> &str {
+        &self.data.user
     }
 }
 
@@ -315,6 +343,14 @@ mod test {
             .has_any_permission(&[&Permission::ConfigView, &Permission::ConfigView])
             .is_err());
 
+        match &auth_context.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigView])
+        {
+            Err(ApiError::ForbiddenError { code, .. }) => {
+                assert_eq!(FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, code)
+            }
+            _ => assert!(false),
+        }
+
         Ok(())
     }
 
@@ -430,5 +466,45 @@ mod test {
 
         // Assert
         assert_eq!(permission_roles, result)
+    }
+
+    #[test]
+    fn should_be_the_owner() {
+        let auth = Auth {
+            user: "USER_123".to_owned(),
+            roles: vec!["role1".to_owned(), "role2".to_owned()],
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContext::new(auth, &role_permissions);
+
+        assert!(auth_context.is_owner(&Ownable { owner_id: "USER_123".to_owned() }).is_ok());
+    }
+
+    #[test]
+    fn should_not_be_the_owner() {
+        let auth = Auth {
+            user: "USER_123".to_owned(),
+            roles: vec!["role1".to_owned(), "role2".to_owned()],
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContext::new(auth, &role_permissions);
+
+        let result = auth_context.is_owner(&Ownable { owner_id: "USER_567".to_owned() });
+        assert!(result.is_err());
+
+        match &result {
+            Err(ApiError::ForbiddenError { code, .. }) => assert_eq!(FORBIDDEN_NOT_OWNER, code),
+            _ => assert!(false),
+        }
+    }
+
+    struct Ownable {
+        owner_id: String,
+    }
+
+    impl WithOwner for Ownable {
+        fn get_owner_id(&self) -> &str {
+            &self.owner_id
+        }
     }
 }

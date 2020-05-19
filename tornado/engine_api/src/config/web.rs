@@ -143,7 +143,9 @@ mod test {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft};
+    use tornado_engine_matcher::config::{
+        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+    };
     use tornado_engine_matcher::error::MatcherError;
 
     struct ConfigManager {}
@@ -159,8 +161,16 @@ mod test {
             unimplemented!()
         }
 
-        fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
-            unimplemented!()
+        fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+            Ok(MatcherConfigDraft {
+                data: MatcherConfigDraftData {
+                    user: "user".to_owned(),
+                    draft_id: draft_id.to_owned(),
+                    created_ts_ms: 0,
+                    updated_ts_ms: 0,
+                },
+                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+            })
         }
 
         fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
