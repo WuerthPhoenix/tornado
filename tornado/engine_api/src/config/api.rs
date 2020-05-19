@@ -29,13 +29,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         &self,
         auth: AuthContext<'_>,
     ) -> Result<MatcherConfig, ApiError> {
-        auth.has_permission(Permission::ConfigView)?;
+        auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_config()?)
     }
 
     /// Returns the list of available drafts
     pub async fn get_drafts(&self, auth: AuthContext<'_>) -> Result<Vec<String>, ApiError> {
-        auth.has_permission(Permission::ConfigView)?;
+        auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_drafts()?)
     }
 
@@ -45,13 +45,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: AuthContext<'_>,
         draft_id: &str,
     ) -> Result<MatcherConfigDraft, ApiError> {
-        auth.has_permission(Permission::ConfigView)?;
+        auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_draft(draft_id)?)
     }
 
     /// Creats a new draft and returns the id
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
-        auth.has_permission(Permission::ConfigEdit)?;
+        auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.auth.user).map(|id| Id { id })?)
     }
 
@@ -62,7 +62,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         draft_id: &str,
         config: MatcherConfig,
     ) -> Result<(), ApiError> {
-        auth.has_permission(Permission::ConfigEdit)?;
+        auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config)?)
     }
 
@@ -72,7 +72,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: AuthContext<'_>,
         draft_id: &str,
     ) -> Result<MatcherConfig, ApiError> {
-        auth.has_permission(Permission::ConfigEdit)?;
+        auth.has_permission(&Permission::ConfigEdit)?;
         self.config_manager.deploy_draft(draft_id)?;
         self.handler.reload_configuration().await
     }
@@ -83,7 +83,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: AuthContext<'_>,
         draft_id: &str,
     ) -> Result<(), ApiError> {
-        auth.has_permission(Permission::ConfigEdit)?;
+        auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.delete_draft(draft_id)?)
     }
 }

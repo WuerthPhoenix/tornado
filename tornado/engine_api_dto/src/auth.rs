@@ -7,6 +7,18 @@ pub struct Auth {
     pub roles: Vec<String>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, PartialOrd, Ord, Serialize, Deserialize, TypeScriptify)]
+pub enum PermissionDto {
+    ConfigEdit,
+    ConfigView,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct AuthWithPermissionsDto {
+    pub user: String,
+    pub permissions: Vec<PermissionDto>,
+}
+
 impl Auth {
     pub fn new<S: Into<String>, R: Into<String>>(user: S, roles: Vec<R>) -> Self {
         Auth { user: user.into(), roles: roles.into_iter().map(|role| role.into()).collect() }
