@@ -10,9 +10,9 @@ The Tornado backend contains endpoints that allow you to interact with Tornado t
 In the long run it will provide services to inspect, and let you alter the configuration
 of Tornado and trigger custom events.
 
-## Tornado 'Config' Backend API
+## Tornado 'Auth' Backend API
 
-The 'config' APIs require the caller to pass an authorization token in the headers in the format:
+The 'auth' APIs require the caller to pass an authorization token in the headers in the format:
 
 `Authorization : Bearer TOKEN_HERE`
 
@@ -26,6 +26,28 @@ The token should be a base64 encoded JSON with this user data:
 
 In the coming releases the current token format will be replaced by a 
 [JSON Web Token (JWT)](https://en.wikipedia.org/wiki/JSON_Web_Token).
+ 
+
+### Auth endpoints
+
+Endpoint: get list of draft ids
+- HTTP Method: __GET__
+- path : **/api/v1/auth/who_am_i**
+- response type: __JSON__
+- response: a AuthWithPermissionDto with the current user profile  
+- response example:
+  ```json
+  {
+     "user": "USERNAME",
+     "permissions": ["ConfigEdit", "ConfigView"]
+  }
+  ```
+  
+  
+## Tornado 'Config' Backend API
+
+The 'config' APIs require the caller to pass an authorization token in the headers as in the 'auth' API.
+
  
 
 ### Working with configuration drafts
