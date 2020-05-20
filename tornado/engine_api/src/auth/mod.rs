@@ -18,6 +18,7 @@ pub const FORBIDDEN_NOT_OWNER: &str = "NOT_OWNER";
 pub const FORBIDDEN_MISSING_REQUIRED_PERMISSIONS: &str = "MISSING_REQUIRED_PERMISSIONS";
 
 pub trait WithOwner {
+    fn get_id(&self) -> &str;
     fn get_owner_id(&self) -> &str;
 }
 
@@ -102,6 +103,7 @@ impl<'a> AuthContext<'a> {
         } else {
             let mut params = HashMap::new();
             params.insert("OWNER".to_owned(), owner.to_owned());
+            params.insert("ID".to_owned(), obj.get_id().to_owned());
             Err(ApiError::ForbiddenError {
                 code: FORBIDDEN_NOT_OWNER.to_owned(),
                 params,
@@ -191,6 +193,9 @@ impl AuthService {
 }
 
 impl WithOwner for MatcherConfigDraft {
+    fn get_id(&self) -> &str {
+        &self.data.draft_id
+    }
     fn get_owner_id(&self) -> &str {
         &self.data.user
     }
@@ -485,7 +490,9 @@ mod test {
         let role_permissions = BTreeMap::new();
         let auth_context = AuthContext::new(auth, &role_permissions);
 
-        assert!(auth_context.is_owner(&Ownable { owner_id: "USER_123".to_owned() }).is_ok());
+        assert!(auth_context
+            .is_owner(&Ownable { owner_id: "USER_123".to_owned(), id: "abc".to_owned() })
+            .is_ok());
     }
 
     #[test]
@@ -497,24 +504,31 @@ mod test {
         let role_permissions = BTreeMap::new();
         let auth_context = AuthContext::new(auth, &role_permissions);
 
-        let result = auth_context.is_owner(&Ownable { owner_id: "USER_567".to_owned() });
+        let result = auth_context
+            .is_owner(&Ownable { owner_id: "USER_567".to_owned(), id: "abc".to_owned() });
         assert!(result.is_err());
 
         match &result {
             Err(ApiError::ForbiddenError { code, params, .. }) => {
                 assert_eq!(FORBIDDEN_NOT_OWNER, code);
-                assert_eq!(1, params.len());
+                assert_eq!(2, params.len());
                 assert_eq!("USER_567", params["OWNER"]);
+                assert_eq!("abc", params["ID"]);
             }
             _ => assert!(false),
         }
     }
 
     struct Ownable {
+        id: String,
         owner_id: String,
     }
 
     impl WithOwner for Ownable {
+        fn get_id(&self) -> &str {
+            &self.id
+        }
+
         fn get_owner_id(&self) -> &str {
             &self.owner_id
         }
