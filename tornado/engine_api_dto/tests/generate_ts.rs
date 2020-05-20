@@ -93,6 +93,7 @@ export type Value = any;"#;
 /* ---------------- */"#,
     );
     push_ts(&mut ts_code, &common::Id::<()>::type_script_ify());
+    push_ts(&mut ts_code, &common::WebError::type_script_ify());
 
     // Push 'auth' ts types
     push_ts(

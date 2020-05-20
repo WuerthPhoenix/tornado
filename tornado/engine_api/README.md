@@ -120,6 +120,13 @@ Endpoint: delete an existing draft
 - response type: __JSON__
 - response: an empty json object
   
+  
+Endpoint: take over an existing draft
+- HTTP Method: __POST__
+- path : __/api/v1/config/draft_take_over/{draft_id}__
+- response type: __JSON__
+- response: an empty json object
+
 
 ## Tornado 'Event' Backend API
 

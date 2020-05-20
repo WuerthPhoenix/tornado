@@ -21,6 +21,10 @@ pub fn build_config_endpoints<
         .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
         .service(web::resource("/deploy/{draft_id}").route(web::post().to(deploy_draft::<A, CM>)))
         .service(web::resource("/drafts").route(web::get().to(get_drafts::<A, CM>)))
+        .service(
+            web::resource("/draft_take_over/{draft_id}")
+                .route(web::post().to(draft_take_over::<A, CM>)),
+        )
         .service(web::resource("/draft").route(web::post().to(create_draft::<A, CM>)))
         .service(
             web::resource("/draft/{draft_id}")
@@ -130,6 +134,20 @@ async fn deploy_draft<
     Ok(Json(matcher_config_dto))
 }
 
+async fn draft_take_over<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    draft_id: Path<String>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    data.api.draft_take_over(auth_ctx, &draft_id.into_inner()).await?;
+    Ok(Json(()))
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -143,7 +161,9 @@ mod test {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft};
+    use tornado_engine_matcher::config::{
+        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+    };
     use tornado_engine_matcher::error::MatcherError;
 
     struct ConfigManager {}
@@ -159,8 +179,16 @@ mod test {
             unimplemented!()
         }
 
-        fn get_draft(&self, _draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
-            unimplemented!()
+        fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+            Ok(MatcherConfigDraft {
+                data: MatcherConfigDraftData {
+                    user: "user".to_owned(),
+                    draft_id: draft_id.to_owned(),
+                    created_ts_ms: 0,
+                    updated_ts_ms: 0,
+                },
+                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+            })
         }
 
         fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
@@ -182,6 +210,10 @@ mod test {
 
         fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
             unimplemented!()
+        }
+
+        fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
+            Ok(())
         }
     }
 
@@ -337,6 +369,31 @@ mod test {
             dto
         );
 
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn should_have_a_draft_take_over_post_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
+            auth: auth_service(),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+        })))
+        .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .header(
+                header::AUTHORIZATION,
+                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
+            )
+            .uri("/v1/config/draft_take_over/draft123")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
         Ok(())
     }
 }
