@@ -19,12 +19,18 @@ export type Value = any;
 
 export type Id<T> = { id: T };
 
+export type WebError = {     code: string; params: { [key: string]: string }; message: string |     null };
+
 
 /* -------------- */
 /* 'auth' types   */
 /* -------------- */
 
 export type Auth = { user: string; roles: string [] };
+
+export type AuthWithPermissionsDto = { user: string; permissions: PermissionDto [] };
+
+export enum PermissionDto { ConfigEdit = "ConfigEdit", ConfigView = "ConfigView" };
 
 
 /* -------------- */

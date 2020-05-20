@@ -1,6 +1,9 @@
 use actix::MailboxError;
-use actix_web::HttpResponse;
+use actix_web::dev::HttpResponseBuilder;
+use actix_web::{http, HttpResponse};
+use std::collections::HashMap;
 use thiserror::Error;
+use tornado_engine_api_dto::common::WebError;
 use tornado_engine_matcher::error::MatcherError;
 
 #[derive(Error, Debug, PartialEq)]
@@ -26,7 +29,7 @@ pub enum ApiError {
     UnauthenticatedError,
 
     #[error("ForbiddenError [{message}]")]
-    ForbiddenError { message: String },
+    ForbiddenError { code: String, message: String, params: HashMap<String, String> },
 }
 
 impl From<MatcherError> for ApiError {
@@ -50,7 +53,7 @@ impl From<serde_json::Error> for ApiError {
 // Use default implementation for `error_response()` method.
 impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
-        match *self {
+        match self {
             ApiError::MatcherError { .. } => HttpResponse::BadRequest().finish(),
             ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
@@ -60,7 +63,14 @@ impl actix_web::error::ResponseError for ApiError {
             | ApiError::MissingAuthTokenError { .. }
             | ApiError::ParseAuthHeaderError { .. }
             | ApiError::UnauthenticatedError => HttpResponse::Unauthorized().finish(),
-            ApiError::ForbiddenError { .. } => HttpResponse::Forbidden().finish(),
+            ApiError::ForbiddenError { code, params, .. } => {
+                let http_code = http::StatusCode::FORBIDDEN;
+                HttpResponseBuilder::new(http_code).json(WebError {
+                    code: code.to_owned(),
+                    message: None,
+                    params: params.clone(),
+                })
+            }
         }
     }
 }

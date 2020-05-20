@@ -87,4 +87,7 @@ pub trait MatcherConfigEditor: Sync + Send {
 
     /// Deletes a draft by id
     fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError>;
+
+    /// Sets the ownership of a draft to a user
+    fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError>;
 }

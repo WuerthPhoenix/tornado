@@ -35,3 +35,4 @@ tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 default = []
 
 nats = ["rants"]
+nats_integration_tests = ["nats"]

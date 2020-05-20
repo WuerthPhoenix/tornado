@@ -1,4 +1,4 @@
-#![cfg(feature = "nats")]
+#![cfg(feature = "nats_integration_tests")]
 
 //
 // This tests require docker on the host machine
