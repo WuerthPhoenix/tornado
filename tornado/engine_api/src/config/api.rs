@@ -90,6 +90,15 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.delete_draft(draft_id)?)
     }
 
+    pub async fn draft_take_over(
+        &self,
+        auth: AuthContext<'_>,
+        draft_id: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user)?)
+    }
+
     async fn get_draft_and_check_owner(
         &self,
         auth: &AuthContext<'_>,
@@ -104,12 +113,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{AuthService, Permission};
+    use crate::auth::Permission;
     use crate::error::ApiError;
-    use actix_web::{
-        http::{header, StatusCode},
-        test, App,
-    };
     use async_trait::async_trait;
     use std::collections::BTreeMap;
     use std::sync::Arc;
@@ -164,6 +169,10 @@ mod test {
         }
 
         fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
+            Ok(())
+        }
+
+        fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
             Ok(())
         }
     }
@@ -344,5 +353,20 @@ mod test {
         assert!(api.deploy_draft(owner_view, "id").await.is_err());
         assert!(api.deploy_draft(owner_edit, "id").await.is_ok());
         assert!(api.deploy_draft(owner_edit_and_view, "id").await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn draft_take_over_should_require_edit_permission() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
+            create_users(&permissions_map);
+
+        // Act & Assert
+        assert!(api.draft_take_over(not_owner_edit_and_view, "id").await.is_ok());
+        assert!(api.draft_take_over(owner_view, "id").await.is_err());
+        assert!(api.draft_take_over(owner_edit, "id").await.is_ok());
+        assert!(api.draft_take_over(owner_edit_and_view, "id").await.is_ok());
     }
 }

@@ -6,7 +6,6 @@ use typescript_definitions::TypeScriptifyTrait;
 use std::fs::*;
 use std::io::Write;
 use std::str::FromStr;
-use tornado_engine_api_dto::common::WebError;
 use tornado_engine_api_dto::*;
 
 const TS_OUTPUT_DIR: &str = "./ts";

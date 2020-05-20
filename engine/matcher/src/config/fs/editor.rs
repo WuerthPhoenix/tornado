@@ -126,6 +126,13 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
             })
         }
     }
+
+    fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError> {
+        info!("User [{}] asks to take over draft with id {}", user, draft_id);
+        let mut data = self.read_draft_data(draft_id)?;
+        data.user = user;
+        self.write_draft_data(data)
+    }
 }
 
 impl FsMatcherConfigManager {
@@ -502,6 +509,32 @@ mod test {
         assert_ne!(config_before_deploy, config_after_deploy);
         assert_eq!(deploy_draft_content, config_after_deploy);
         assert_eq!(new_config, config_after_deploy);
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_take_over_a_draft() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+
+        let user_1 = "user_1".to_owned();
+        let user_2 = "user_2".to_owned();
+
+        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
+
+        // Act
+        let draft_before_take_over = config_manager.get_draft(&draft_id)?;
+        config_manager.draft_take_over(&draft_id, user_2.clone())?;
+        let draft_after_take_over = config_manager.get_draft(&draft_id)?;
+
+        // Assert
+        assert_eq!(user_1, draft_before_take_over.data.user);
+        assert_eq!(user_2, draft_after_take_over.data.user);
+        assert_eq!(draft_before_take_over.config, draft_after_take_over.config);
 
         Ok(())
     }

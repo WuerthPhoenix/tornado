@@ -105,7 +105,10 @@ impl<'a> AuthContext<'a> {
             Err(ApiError::ForbiddenError {
                 code: FORBIDDEN_NOT_OWNER.to_owned(),
                 params,
-                message: format!("User [{}] is not the owner of the object. The owner is [{}]", self.auth.user, owner),
+                message: format!(
+                    "User [{}] is not the owner of the object. The owner is [{}]",
+                    self.auth.user, owner
+                ),
             })
         }
     }
@@ -502,7 +505,7 @@ mod test {
                 assert_eq!(FORBIDDEN_NOT_OWNER, code);
                 assert_eq!(1, params.len());
                 assert_eq!("USER_567", params["OWNER"]);
-            },
+            }
             _ => assert!(false),
         }
     }
