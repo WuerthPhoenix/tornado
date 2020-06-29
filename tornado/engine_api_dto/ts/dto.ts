@@ -26,11 +26,13 @@ export type WebError = {     code: string; params: { [key: string]: string }; me
 /* 'auth' types   */
 /* -------------- */
 
-export type Auth = { user: string; roles: string [] };
+export type Auth = { user: string; roles: string []; preferences: UserPreferences | null };
 
-export type AuthWithPermissionsDto = { user: string; permissions: PermissionDto [] };
+export type AuthWithPermissionsDto = {     user: string; permissions: PermissionDto []; preferences:     UserPreferences | null };
 
 export enum PermissionDto { ConfigEdit = "ConfigEdit", ConfigView = "ConfigView" };
+
+export type UserPreferences = { language: string | null };
 
 
 /* -------------- */
