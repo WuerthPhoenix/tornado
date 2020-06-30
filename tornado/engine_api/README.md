@@ -39,7 +39,10 @@ Endpoint: get list of draft ids
   ```json
   {
      "user": "USERNAME",
-     "permissions": ["ConfigEdit", "ConfigView"]
+     "permissions": ["ConfigEdit", "ConfigView"],
+     "preferences": {
+        "language": "en_US"
+     }
   }
   ```
   

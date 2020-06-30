@@ -197,17 +197,29 @@ mod test {
         permissions_map: &BTreeMap<Permission, Vec<String>>,
     ) -> (AuthContext, AuthContext, AuthContext, AuthContext) {
         let not_owner_edit_and_view = AuthContext::new(
-            Auth { user: "a_user".to_owned(), roles: vec!["edit".to_owned(), "view".to_owned()] },
+            Auth {
+                user: "a_user".to_owned(),
+                roles: vec!["edit".to_owned(), "view".to_owned()],
+                preferences: None,
+            },
             permissions_map,
         );
 
         let owner_view = AuthContext::new(
-            Auth { user: DRAFT_OWNER_ID.to_owned(), roles: vec!["view".to_owned()] },
+            Auth {
+                user: DRAFT_OWNER_ID.to_owned(),
+                roles: vec!["view".to_owned()],
+                preferences: None,
+            },
             permissions_map,
         );
 
         let owner_edit = AuthContext::new(
-            Auth { user: DRAFT_OWNER_ID.to_owned(), roles: vec!["edit".to_owned()] },
+            Auth {
+                user: DRAFT_OWNER_ID.to_owned(),
+                roles: vec!["edit".to_owned()],
+                preferences: None,
+            },
             permissions_map,
         );
 
@@ -215,6 +227,7 @@ mod test {
             Auth {
                 user: DRAFT_OWNER_ID.to_owned(),
                 roles: vec!["edit".to_owned(), "view".to_owned()],
+                preferences: None,
             },
             permissions_map,
         );
