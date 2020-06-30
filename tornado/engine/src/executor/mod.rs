@@ -4,6 +4,7 @@ use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
 
+pub mod director;
 pub mod icinga2;
 
 #[derive(Message)]

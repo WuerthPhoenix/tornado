@@ -3429,6 +3429,7 @@ dependencies = [
  "tornado_engine_matcher",
  "tornado_executor_archive",
  "tornado_executor_common",
+ "tornado_executor_director",
  "tornado_executor_elasticsearch",
  "tornado_executor_foreach",
  "tornado_executor_icinga2",
@@ -3507,6 +3508,18 @@ version = "0.0.1"
 dependencies = [
  "thiserror",
  "tornado_common_api",
+]
+
+[[package]]
+name = "tornado_executor_director"
+version = "0.0.1"
+dependencies = [
+ "log",
+ "maplit",
+ "serde 1.0.106",
+ "serde_json",
+ "tornado_common_api",
+ "tornado_executor_common",
 ]
 
 [[package]]

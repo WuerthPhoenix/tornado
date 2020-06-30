@@ -1,3 +1,4 @@
+use crate::executor::director::DirectorClientConfig;
 use crate::executor::icinga2::Icinga2ClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
@@ -130,6 +131,13 @@ fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, 
     s.try_into()
 }
 
+fn build_director_client_config(config_dir: &str) -> Result<DirectorClientConfig, ConfigError> {
+    let config_file_path = format!("{}/director_client_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
 fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, ConfigError> {
     let config_file_path = format!("{}/elasticsearch_executor.toml", config_dir);
     let mut s = Config::new();
@@ -142,6 +150,7 @@ pub struct ComponentsConfig {
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
+    pub director_executor_config: DirectorClientConfig,
     pub elasticsearch_executor_config: ElasticsearchConfig,
 }
 
@@ -154,12 +163,14 @@ pub fn parse_config_files(
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
+    let director_executor_config = build_director_client_config(config_dir)?;
     let elasticsearch_executor_config = build_elasticsearch_config(config_dir)?;
     Ok(ComponentsConfig {
         matcher_config,
         tornado,
         archive_executor_config,
         icinga2_executor_config,
+        director_executor_config,
         elasticsearch_executor_config,
     })
 }
@@ -210,7 +221,7 @@ mod test {
         match config {
             MatcherConfig::Ruleset { name, rules } => {
                 assert_eq!("root", name);
-                assert_eq!(6, rules.len());
+                assert_eq!(7, rules.len());
                 assert_eq!(1, rules.iter().filter(|val| "all_emails".eq(&val.name)).count());
                 assert_eq!(
                     1,
@@ -261,6 +272,18 @@ mod test {
 
         // Assert
         assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+    }
+
+    #[test]
+    fn should_read_director_client_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_director_client_config(config_dir).unwrap();
+
+        // Assert
+        assert_eq!("https://127.0.0.1/neteye/director", config.server_api_url)
     }
 
     #[test]
