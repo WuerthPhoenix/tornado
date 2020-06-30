@@ -47,7 +47,7 @@ impl Actor for DirectorApiClientActor {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
-        debug!("Icinga2ApiClientActor started.");
+        debug!("DirectorApiClientActor started.");
     }
 }
 
@@ -82,7 +82,7 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
     type Result = Result<(), DirectorApiClientActorError>;
 
     fn handle(&mut self, msg: DirectorApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
-        debug!("Icinga2ApiClientMessage - received new message");
+        debug!("DirectorApiClientMessage - received new message");
 
         let mut url =
             format!("{}/{}", &self.director_api_url, msg.message.name.to_director_api_subpath());

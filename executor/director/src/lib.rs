@@ -174,9 +174,9 @@ mod test {
     fn should_call_the_callback_if_valid_action() {
         // Arrange
         let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = DirectorExecutor::new(|icinga2action| {
+        let mut executor = DirectorExecutor::new(|director_action| {
             let mut called = callback_called.lock().unwrap();
-            *called = Some(icinga2action);
+            *called = Some(director_action);
             Ok(())
         });
 
