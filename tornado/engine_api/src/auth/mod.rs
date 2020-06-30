@@ -123,7 +123,7 @@ pub fn roles_map_to_permissions_map(
     let mut result = BTreeMap::new();
     for (role, permissions) in role_permissions {
         for permission in permissions {
-            result.entry(permission).or_insert_with(|| vec![]).push(role.to_owned())
+            result.entry(permission).or_insert_with(Vec::new).push(role.to_owned())
         }
     }
     result
@@ -210,10 +210,11 @@ mod test {
         // Arrange
         let auth = Auth {
             user: "12456abc".to_owned(),
+            preferences: None,
             roles: vec!["role_a".to_owned(), "role_b".to_owned()],
         };
 
-        let expected_token = "eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
+        let expected_token = "eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXSwicHJlZmVyZW5jZXMiOm51bGx9";
 
         // Act
         let token = AuthService::auth_to_token_string(&auth)?;
@@ -229,11 +230,12 @@ mod test {
         // Arrange
         let auth = Auth {
             user: "12456abc".to_owned(),
+            preferences: None,
             roles: vec!["role_a".to_owned(), "role_b".to_owned()],
         };
 
         let expected_token_header =
-            "Bearer eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXX0=";
+            "Bearer eyJ1c2VyIjoiMTI0NTZhYmMiLCJyb2xlcyI6WyJyb2xlX2EiLCJyb2xlX2IiXSwicHJlZmVyZW5jZXMiOm51bGx9";
 
         // Act
         let token_header = AuthService::auth_to_token_header(&auth)?;
@@ -249,6 +251,7 @@ mod test {
         // Arrange
         let expected_auth = Auth {
             user: "12456abc".to_owned(),
+            preferences: None,
             roles: vec!["role_a".to_owned(), "role_b".to_owned()],
         };
 
@@ -289,7 +292,7 @@ mod test {
 
     #[test]
     fn auth_context_should_be_valid() {
-        let auth = Auth { user: "username".to_owned(), roles: vec![] };
+        let auth = Auth { user: "username".to_owned(), preferences: None, roles: vec![] };
         let permission_roles_map = BTreeMap::new();
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
@@ -299,7 +302,7 @@ mod test {
 
     #[test]
     fn auth_context_should_be_not_valid_if_missing_username() {
-        let auth = Auth { user: "".to_owned(), roles: vec![] };
+        let auth = Auth { user: "".to_owned(), preferences: None, roles: vec![] };
         let permission_roles_map = BTreeMap::new();
         let auth_context = AuthContext::new(auth, &permission_roles_map);
 
@@ -309,8 +312,11 @@ mod test {
 
     #[test]
     fn auth_context_should_return_whether_user_has_permissions() -> Result<(), ApiError> {
-        let auth =
-            Auth { user: "user".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
+        let auth = Auth {
+            user: "user".to_owned(),
+            preferences: None,
+            roles: vec!["role1".to_owned(), "role2".to_owned()],
+        };
 
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["role1".to_owned()]);
@@ -333,7 +339,8 @@ mod test {
 
     #[test]
     fn auth_context_should_return_whether_user_has_any_permissions() -> Result<(), ApiError> {
-        let auth = Auth { user: "user".to_owned(), roles: vec!["role1".to_owned()] };
+        let auth =
+            Auth { user: "user".to_owned(), preferences: None, roles: vec!["role1".to_owned()] };
 
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit.to_owned(), vec!["role1".to_owned()]);
@@ -369,8 +376,11 @@ mod test {
 
     #[test]
     fn invalid_auth_context_should_never_have_permissions() -> Result<(), ApiError> {
-        let auth =
-            Auth { user: "".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
+        let auth = Auth {
+            user: "".to_owned(),
+            preferences: None,
+            roles: vec!["role1".to_owned(), "role2".to_owned()],
+        };
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigView, vec!["role1".to_owned()]);
 
@@ -397,13 +407,21 @@ mod test {
         );
 
         {
-            let auth = Auth { user: "user".to_owned(), roles: vec!["role1".to_owned()] };
+            let auth = Auth {
+                user: "user".to_owned(),
+                preferences: None,
+                roles: vec!["role1".to_owned()],
+            };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert_eq!(vec![&Permission::ConfigEdit], auth_context.get_permissions());
         }
 
         {
-            let auth = Auth { user: "user".to_owned(), roles: vec!["role2".to_owned()] };
+            let auth = Auth {
+                user: "user".to_owned(),
+                preferences: None,
+                roles: vec!["role2".to_owned()],
+            };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert_eq!(vec![&Permission::ConfigView], auth_context.get_permissions());
         }
@@ -411,6 +429,7 @@ mod test {
         {
             let auth = Auth {
                 user: "user".to_owned(),
+                preferences: None,
                 roles: vec!["role1".to_owned(), "role2".to_owned()],
             };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
@@ -421,7 +440,11 @@ mod test {
         }
 
         {
-            let auth = Auth { user: "user".to_owned(), roles: vec!["role3".to_owned()] };
+            let auth = Auth {
+                user: "user".to_owned(),
+                preferences: None,
+                roles: vec!["role3".to_owned()],
+            };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert_eq!(
                 vec![&Permission::ConfigEdit, &Permission::ConfigView],
@@ -430,13 +453,17 @@ mod test {
         }
 
         {
-            let auth = Auth { user: "user".to_owned(), roles: vec!["role4".to_owned()] };
+            let auth = Auth {
+                user: "user".to_owned(),
+                preferences: None,
+                roles: vec!["role4".to_owned()],
+            };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert!(auth_context.get_permissions().is_empty());
         }
 
         {
-            let auth = Auth { user: "user".to_owned(), roles: vec![] };
+            let auth = Auth { user: "user".to_owned(), preferences: None, roles: vec![] };
             let auth_context = AuthContext::new(auth, &permission_roles_map);
             assert!(auth_context.get_permissions().is_empty());
         }
@@ -446,8 +473,11 @@ mod test {
 
     #[test]
     fn invalid_auth_context_should_return_empty_all_permissions() -> Result<(), ApiError> {
-        let auth =
-            Auth { user: "".to_owned(), roles: vec!["role1".to_owned(), "role2".to_owned()] };
+        let auth = Auth {
+            user: "".to_owned(),
+            preferences: None,
+            roles: vec!["role1".to_owned(), "role2".to_owned()],
+        };
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigView, vec!["role1".to_owned()]);
 
@@ -485,6 +515,7 @@ mod test {
     fn should_be_the_owner() {
         let auth = Auth {
             user: "USER_123".to_owned(),
+            preferences: None,
             roles: vec!["role1".to_owned(), "role2".to_owned()],
         };
         let role_permissions = BTreeMap::new();
@@ -500,6 +531,7 @@ mod test {
         let auth = Auth {
             user: "USER_123".to_owned(),
             roles: vec!["role1".to_owned(), "role2".to_owned()],
+            preferences: None,
         };
         let role_permissions = BTreeMap::new();
         let auth_context = AuthContext::new(auth, &role_permissions);
