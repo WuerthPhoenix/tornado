@@ -21,6 +21,7 @@ This specific Tornado Engine executable is composed of the following components:
 - The Elasticsearch Executor
 - The foreach executor
 - The Icinga2 executor
+- The Director executor
 - The logger executor
 - The script executor
 
@@ -381,7 +382,7 @@ are supported.
 
 In case the `default_auth` section is omitted, no default authentication is available.
 
-#### Defining default Authentication in elasticsearch_execute.toml
+#### Defining default Authentication in elasticsearch_executor.toml
 * Connect without authentication:      
     ```toml
     [default_auth]
@@ -431,6 +432,26 @@ The icinga2_client_executor.toml has the following configuration options:
 More details about the executor can be found in the
 [Icinga2 executor documentation](../../executor/icinga2/README.md).
 
+### Structure and Configuration:  The Director Executor
+
+The [Director executor](../../executor/director/README.md) processes and executes Actions
+of type "director". The configuration for this executor is specified in the `director_client_executor.toml`
+file into the Tornado config folder.
+
+For instance, if Tornado is started with the command:
+```bash
+tornado --config-dir=/tornado/config
+```
+then the configuration file's full path will be `/tornado/config/director_client_executor.toml`.
+
+The director_client_executor.toml has the following configuration options:
+- __server_api_url__: The complete URL of the Director APIs.
+- __username__: The username used to connect to the Director APIs.
+- __password__: The password used to connect to the Director APIs.
+- __disable_ssl_verification__: If true, the client will not verify the SSL certificate of the Director REST API server.
+
+More details about the executor can be found in the
+[Director executor documentation](../../executor/director/README.md).
 
 
 ### Structure and Configuration:  The Logger Executor
