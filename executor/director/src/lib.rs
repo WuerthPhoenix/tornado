@@ -72,28 +72,25 @@ impl<F: Fn(DirectorAction) -> Result<(), ExecutorError>> Executor for DirectorEx
     fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        match action
+        let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
             .and_then(tornado_common_api::Value::get_text)
-        {
-            Some(director_action_name) => {
-                trace!("DirectorExecutor - perform DirectorAction: \n[{:?}]", director_action_name);
-
-                let action_payload = self.get_payload(&action.payload);
-
-                let live_creation = self.get_live_creation_setting(&action.payload);
-
-                (self.callback)(DirectorAction {
-                    name: DirectorActionName::from_str(director_action_name)?,
-                    payload: action_payload,
-                    live_creation: live_creation.to_owned(),
-                })
-            }
-            None => Err(ExecutorError::MissingArgumentError {
+            .ok_or(ExecutorError::MissingArgumentError {
                 message: "Director Action not specified".to_string(),
-            }),
-        }
+            })?;
+
+        trace!("DirectorExecutor - perform DirectorAction: \n[{:?}]", director_action_name);
+
+        let action_payload = self.get_payload(&action.payload);
+
+        let live_creation = self.get_live_creation_setting(&action.payload);
+
+        (self.callback)(DirectorAction {
+            name: DirectorActionName::from_str(director_action_name)?,
+            payload: action_payload,
+            live_creation: live_creation.to_owned(),
+        })
     }
 }
 

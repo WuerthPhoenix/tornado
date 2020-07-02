@@ -1,11 +1,11 @@
 use actix::prelude::*;
-use actix_web::client::{Client, ClientBuilder, Connector};
 use http::header;
 use log::*;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
+use tornado_executor_common::ExecutorError;
 use tornado_executor_director::DirectorAction;
 
 pub struct DirectorApiClientMessage {
@@ -57,17 +57,17 @@ impl DirectorApiClientActor {
             let auth = format!("{}:{}", config.username, config.password);
             let http_auth_header = format!("Basic {}", base64::encode(&auth));
 
-            // Build client connector with OpenSSL
-            let client_connector = {
-                let mut ssl_conn_builder = SslConnector::builder(SslMethod::tls()).unwrap();
-                if config.disable_ssl_verification {
-                    ssl_conn_builder.set_verify(SslVerifyMode::NONE);
-                }
-                let ssl_connector = ssl_conn_builder.build();
-                Connector::new().ssl(ssl_connector).finish()
-            };
+            let mut client_builder = Client::builder().use_native_tls();
+            if config.disable_ssl_verification {
+                client_builder = client_builder.danger_accept_invalid_certs(true)
+            }
 
-            let client = ClientBuilder::new().connector(client_connector).finish();
+            let client = client_builder
+                .build()
+                .map_err(|err| ExecutorError::ConfigurationError {
+                    message: format!("Error while building reqwest client. Err: {}", err),
+                })
+                .unwrap();
 
             DirectorApiClientActor {
                 director_api_url: config.server_api_url,
@@ -99,12 +99,13 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
         actix::spawn(async move {
             trace!("DirectorApiClientMessage - calling url: {}", url);
 
-            let mut response = client
-                .post(url)
+            let response = client
+                .post(&url)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
-                .send_json(&msg.message.payload)
+                .json(&msg.message.payload)
+                .send()
                 .await
                 .map_err(|err| {
                     error!("DirectorApiClientActor - Connection failed. Err: {}", err);
@@ -114,18 +115,24 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
                 })
                 .expect("DirectorApiClientActor - cannot connect to Director server");
 
-            response.body().await
-                    .map_err(|err| {
-                        error!("DirectorApiClientActor - Cannot extract response body. Err: {}", err);
-                        DirectorApiClientActorError::ServerNotAvailableError {message: format!("{:?}", err)}
-                    })
-                    .map(move |bytes| {
-                    if !response.status().is_success() {
-                        error!("DirectorApiClientActor - Director API returned an error. Response: \n{:?}. Response body: {:?}", response, bytes)
-                    } else {
-                        debug!("DirectorApiClientActor - Director API request completed successfully. Response body: {:?}", bytes);
+            let response_status = response.status();
+
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|err| {
+                    error!("DirectorApiClientActor - Cannot extract response body. Err: {}", err);
+                    DirectorApiClientActorError::ServerNotAvailableError {
+                        message: format!("{:?}", err),
                     }
-                }).expect("DirectorApiClientActor - received an error from Director server");
+                })
+                .expect("DirectorApiClientActor - received an error from Director server");
+
+            if !response_status.is_success() {
+                error!("DirectorApiClientActor - Director API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
+            } else {
+                debug!("DirectorApiClientActor - Director API request completed successfully. Response body: {:?}", bytes);
+            }
         });
         Ok(())
     }

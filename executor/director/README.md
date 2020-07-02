@@ -18,7 +18,7 @@ Valid values for __action_name__ are:
 * __create_service__: creates an object of type `service` in the Director
 
 The __action_payload__ should contain at least all mandatory parameters expected by the
-Icinga Director REST API for the type of object you are want to create.
+Icinga Director REST API for the type of object you want to create.
 
 
 An example of a valid Tornado Action is:
