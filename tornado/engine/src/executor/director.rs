@@ -1,11 +1,8 @@
+use crate::executor::{ApiClientActor, ApiClientActorError};
 use actix::prelude::*;
 use http::header;
 use log::*;
-use reqwest::Client;
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use thiserror::Error;
-use tornado_executor_common::ExecutorError;
 use tornado_executor_director::DirectorAction;
 
 pub struct DirectorApiClientMessage {
@@ -13,79 +10,17 @@ pub struct DirectorApiClientMessage {
 }
 
 impl Message for DirectorApiClientMessage {
-    type Result = Result<(), DirectorApiClientActorError>;
+    type Result = Result<(), ApiClientActorError>;
 }
 
-#[derive(Error, Debug)]
-pub enum DirectorApiClientActorError {
-    #[error("ServerNotAvailableError: cannot connect to [{message}]")]
-    ServerNotAvailableError { message: String },
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct DirectorClientConfig {
-    /// The complete URL of the Director APIs
-    pub server_api_url: String,
-
-    /// Username used to connect to the Director APIs
-    pub username: String,
-
-    /// Password used to connect to the Director APIs
-    pub password: String,
-
-    /// If true, the client will not verify the SSL certificate
-    pub disable_ssl_verification: bool,
-}
-
-pub struct DirectorApiClientActor {
-    director_api_url: String,
-    http_auth_header: String,
-    client: Client,
-}
-
-impl Actor for DirectorApiClientActor {
-    type Context = Context<Self>;
-
-    fn started(&mut self, _ctx: &mut Self::Context) {
-        debug!("DirectorApiClientActor started.");
-    }
-}
-
-impl DirectorApiClientActor {
-    pub fn start_new(config: DirectorClientConfig) -> Addr<Self> {
-        DirectorApiClientActor::create(move |_ctx: &mut Context<DirectorApiClientActor>| {
-            let auth = format!("{}:{}", config.username, config.password);
-            let http_auth_header = format!("Basic {}", base64::encode(&auth));
-
-            let mut client_builder = Client::builder().use_native_tls();
-            if config.disable_ssl_verification {
-                client_builder = client_builder.danger_accept_invalid_certs(true)
-            }
-
-            let client = client_builder
-                .build()
-                .map_err(|err| ExecutorError::ConfigurationError {
-                    message: format!("Error while building reqwest client. Err: {}", err),
-                })
-                .unwrap();
-
-            DirectorApiClientActor {
-                director_api_url: config.server_api_url,
-                http_auth_header,
-                client,
-            }
-        })
-    }
-}
-
-impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
-    type Result = Result<(), DirectorApiClientActorError>;
+impl Handler<DirectorApiClientMessage> for ApiClientActor {
+    type Result = Result<(), ApiClientActorError>;
 
     fn handle(&mut self, msg: DirectorApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("DirectorApiClientMessage - received new message");
 
         let mut url =
-            format!("{}/{}", &self.director_api_url, msg.message.name.to_director_api_subpath());
+            format!("{}/{}", &self.server_api_url, msg.message.name.to_director_api_subpath());
 
         trace!(
             "DirectorApiClientMessage - icinga2 live creation is set to: {}",
@@ -108,12 +43,10 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
                 .send()
                 .await
                 .map_err(|err| {
-                    error!("DirectorApiClientActor - Connection failed. Err: {}", err);
-                    DirectorApiClientActorError::ServerNotAvailableError {
-                        message: format!("{:?}", err),
-                    }
+                    error!("ApiClientActor - Director - Connection failed. Err: {}", err);
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{:?}", err) }
                 })
-                .expect("DirectorApiClientActor - cannot connect to Director server");
+                .expect("ApiClientActor - Director - cannot connect to Director server");
 
             let response_status = response.status();
 
@@ -121,17 +54,18 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
                 .bytes()
                 .await
                 .map_err(|err| {
-                    error!("DirectorApiClientActor - Cannot extract response body. Err: {}", err);
-                    DirectorApiClientActorError::ServerNotAvailableError {
-                        message: format!("{:?}", err),
-                    }
+                    error!(
+                        "ApiClientActor - Director - Cannot extract response body. Err: {}",
+                        err
+                    );
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{:?}", err) }
                 })
-                .expect("DirectorApiClientActor - received an error from Director server");
+                .expect("ApiClientActor - received an error from Director server");
 
             if !response_status.is_success() {
-                error!("DirectorApiClientActor - Director API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
+                error!("ApiClientActor - Director API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
             } else {
-                debug!("DirectorApiClientActor - Director API request completed successfully. Response body: {:?}", bytes);
+                debug!("ApiClientActor - Director API request completed successfully. Response body: {:?}", bytes);
             }
         });
         Ok(())
@@ -140,9 +74,8 @@ impl Handler<DirectorApiClientMessage> for DirectorApiClientActor {
 
 #[cfg(test)]
 mod test {
-    use crate::executor::director::{
-        DirectorApiClientActor, DirectorApiClientMessage, DirectorClientConfig,
-    };
+    use crate::executor::director::DirectorApiClientMessage;
+    use crate::executor::{ApiClientActor, ApiClientConfig};
     use actix::prelude::*;
     use actix_web::web::{Data, Json};
     use actix_web::{web, App, HttpServer};
@@ -184,30 +117,30 @@ mod test {
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
                 println!("Client connecting to: {}", url);
 
-                let config = DirectorClientConfig {
+                let config = ApiClientConfig {
                     server_api_url: url,
                     disable_ssl_verification: true,
                     password: "".to_owned(),
                     username: "".to_owned(),
                 };
-                let client_address = DirectorApiClientActor::start_new(config);
+                let client_address = ApiClientActor::start_new(config);
 
-                println!("DirectorApiClientActor created");
+                println!("ApiClientActor for Director created");
 
                 client_address.do_send(DirectorApiClientMessage {
                     message: DirectorAction {
                         name: DirectorActionName::CreateHost,
-                        payload: hashmap![
+                        payload: Value::Map(hashmap![
                             "object_type".to_owned() => Value::Text("host".to_owned()),
                             "object_name".to_owned() => Value::Text("my_host".to_owned()),
                             "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
                             "check_command".to_owned() => Value::Text("hostalive".to_owned())
-                        ],
+                        ]),
                         live_creation: false
                     },
                 });
 
-                println!("DirectorApiClientActor message sent");
+                println!("DirectorApiClientMessage message sent");
 
                 Ok(server)
             })

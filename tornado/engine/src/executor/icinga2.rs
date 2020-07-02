@@ -1,11 +1,8 @@
+use crate::executor::{ApiClientActor, ApiClientActorError};
 use actix::prelude::*;
-use actix_web::client::{Client, ClientBuilder, Connector};
 use http::header;
 use log::*;
-use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use thiserror::Error;
 use tornado_executor_icinga2::Icinga2Action;
 
 pub struct Icinga2ApiClientMessage {
@@ -13,129 +10,51 @@ pub struct Icinga2ApiClientMessage {
 }
 
 impl Message for Icinga2ApiClientMessage {
-    type Result = Result<(), Icinga2ApiClientActorError>;
+    type Result = Result<(), ApiClientActorError>;
 }
 
-#[derive(Error, Debug)]
-pub enum Icinga2ApiClientActorError {
-    #[error("ServerNotAvailableError: cannot connect to [{message}]")]
-    ServerNotAvailableError { message: String },
-}
-
-#[derive(Deserialize, Serialize, Clone)]
-pub struct Icinga2ClientConfig {
-    /// The complete URL of the Icinga2 APIs
-    pub server_api_url: String,
-
-    /// Username used to connect to the Icinga2 APIs
-    pub username: String,
-
-    /// Password used to connect to the Icinga2 APIs
-    pub password: String,
-
-    /// If true, the client will not verify the SSL certificate
-    pub disable_ssl_verification: bool,
-}
-
-pub struct Icinga2ApiClientActor {
-    //username: String,
-    //password: String,
-    icinga2_api_url: String,
-    http_auth_header: String,
-    client: Client,
-}
-
-impl Actor for Icinga2ApiClientActor {
-    type Context = Context<Self>;
-
-    fn started(&mut self, _ctx: &mut Self::Context) {
-        debug!("Icinga2ApiClientActor started.");
-    }
-}
-
-impl Icinga2ApiClientActor {
-    pub fn start_new(config: Icinga2ClientConfig) -> Addr<Self> {
-        Icinga2ApiClientActor::create(move |_ctx: &mut Context<Icinga2ApiClientActor>| {
-            let auth = format!("{}:{}", config.username, config.password);
-            let http_auth_header = format!("Basic {}", base64::encode(&auth));
-
-            // Build client connector with native-tls
-            // Simpler cross platform build, but currently not supported by actix-web 1.0
-            /*
-            let client_connector = {
-                let mut ssl_conn_builder = native_tls::TlsConnector::builder();
-
-                if config.disable_ssl_verification {
-                    ssl_conn_builder.danger_accept_invalid_certs(true);
-                }
-                let ssl_connector = ssl_conn_builder.build().unwrap();
-
-                ClientConnector::with_connector(tokio_tls::TlsConnector::from(ssl_connector)).start()
-            };
-            */
-
-            // Build client connector with OpenSSL
-            let client_connector = {
-                let mut ssl_conn_builder = SslConnector::builder(SslMethod::tls()).unwrap();
-                if config.disable_ssl_verification {
-                    ssl_conn_builder.set_verify(SslVerifyMode::NONE);
-                }
-                let ssl_connector = ssl_conn_builder.build();
-                Connector::new().ssl(ssl_connector).finish()
-            };
-
-            let client = ClientBuilder::new().connector(client_connector).finish();
-
-            Icinga2ApiClientActor {
-                //username: config.username,
-                //password: config.password,
-                icinga2_api_url: config.server_api_url,
-                http_auth_header,
-                client,
-            }
-        })
-    }
-}
-
-impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
-    type Result = Result<(), Icinga2ApiClientActorError>;
+impl Handler<Icinga2ApiClientMessage> for ApiClientActor {
+    type Result = Result<(), ApiClientActorError>;
 
     fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("Icinga2ApiClientMessage - received new message");
 
-        let url = format!("{}/{}", &self.icinga2_api_url, msg.message.name);
+        let url = format!("{}/{}", &self.server_api_url, msg.message.name);
         let http_auth_header = self.http_auth_header.to_owned();
         let client = self.client.clone();
         actix::spawn(async move {
             trace!("Icinga2ApiClientMessage - calling url: {}", url);
 
-            let mut response = client
-                .post(url)
+            let response = client
+                .post(&url)
                 .header(header::ACCEPT, "application/json")
                 .header(header::AUTHORIZATION, http_auth_header.as_str())
                 .timeout(Duration::from_secs(10))
-                .send_json(&msg.message.payload)
+                .json(&msg.message.payload)
+                .send()
                 .await
                 .map_err(|err| {
-                    error!("Icinga2ApiClientActor - Connection failed. Err: {}", err);
-                    Icinga2ApiClientActorError::ServerNotAvailableError {
-                        message: format!("{}", err),
-                    }
+                    error!("ApiClientActor - Icinga2 - Connection failed. Err: {}", err);
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{}", err) }
                 })
-                .expect("Icinga2ApiClientActor - cannot connect to Icinga server");
+                .expect("ApiClientActor - cannot connect to Icinga server");
 
-            response.body().await
-                    .map_err(|err| {
-                        error!("Icinga2ApiClientActor - Cannot extract response body. Err: {}", err);
-                        Icinga2ApiClientActorError::ServerNotAvailableError {message: format!("{}", err)}
-                    })
-                    .map(move |bytes| {
-                    if !response.status().is_success() {
-                        error!("Icinga2ApiClientActor - Icinga2 API returned an error. Response: \n{:?}. Response body: {:?}", response, bytes)
-                    } else {
-                        debug!("Icinga2ApiClientActor - Icinga2 API request completed successfully. Response body: {:?}", bytes);
-                    }
-                }).expect("Icinga2ApiClientActor - received an error from Icinga server");
+            let response_status = response.status();
+
+            let bytes = response
+                .bytes()
+                .await
+                .map_err(|err| {
+                    error!("ApiClientActor - Icinga2 - Cannot extract response body. Err: {}", err);
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{}", err) }
+                })
+                .expect("ApiClientActor - received an error from Icinga server");
+
+            if !response_status.is_success() {
+                error!("ApiClientActor - Icinga2 API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
+            } else {
+                debug!("ApiClientActor - Icinga2 API request completed successfully. Response body: {:?}", bytes);
+            }
         });
         Ok(())
     }
@@ -143,9 +62,9 @@ impl Handler<Icinga2ApiClientMessage> for Icinga2ApiClientActor {
 
 #[cfg(test)]
 mod test {
-    use crate::executor::icinga2::Icinga2ApiClientActor;
     use crate::executor::icinga2::Icinga2ApiClientMessage;
-    use crate::executor::icinga2::Icinga2ClientConfig;
+    use crate::executor::ApiClientActor;
+    use crate::executor::ApiClientConfig;
     use actix::prelude::*;
     use actix_web::web::{Data, Json};
     use actix_web::{web, App, HttpServer};
@@ -188,15 +107,15 @@ mod test {
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
                 println!("Client connecting to: {}", url);
 
-                let config = Icinga2ClientConfig {
+                let config = ApiClientConfig {
                     server_api_url: url,
                     disable_ssl_verification: true,
                     password: "".to_owned(),
                     username: "".to_owned(),
                 };
-                let client_address = Icinga2ApiClientActor::start_new(config);
+                let client_address = ApiClientActor::start_new(config);
 
-                println!("Icinga2ApiClientActor created");
+                println!("ApiClientActor created");
 
                 client_address.do_send(Icinga2ApiClientMessage {
                     message: Icinga2Action {

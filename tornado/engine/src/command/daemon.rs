@@ -2,8 +2,9 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
-use crate::executor::director::{DirectorApiClientActor, DirectorApiClientMessage};
-use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
+use crate::executor::director::DirectorApiClientMessage;
+use crate::executor::icinga2::Icinga2ApiClientMessage;
+use crate::executor::ApiClientActor;
 use crate::executor::ExecutorActor;
 use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
@@ -59,11 +60,11 @@ pub async fn daemon(
         ExecutorActor { executor }
     });
 
-    // Start Icinga2 Client Actor
-    let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
+    // Start Api Client Actor for Icinga2
+    let icinga2_client_addr = ApiClientActor::start_new(configs.icinga2_executor_config);
 
-    // Start Director Client Actor
-    let director_client_addr = DirectorApiClientActor::start_new(configs.director_executor_config);
+    // Start Api Client Actor for Director
+    let director_client_addr = ApiClientActor::start_new(configs.director_executor_config);
 
     // Start ForEach executor actor
     let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<

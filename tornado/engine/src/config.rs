@@ -1,5 +1,4 @@
-use crate::executor::director::DirectorClientConfig;
-use crate::executor::icinga2::Icinga2ClientConfig;
+use crate::executor::ApiClientConfig;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
@@ -124,14 +123,14 @@ fn build_archive_config(config_dir: &str) -> Result<ArchiveConfig, ConfigError> 
     s.try_into()
 }
 
-fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, ConfigError> {
+fn build_icinga2_client_config(config_dir: &str) -> Result<ApiClientConfig, ConfigError> {
     let config_file_path = format!("{}/icinga2_client_executor.toml", config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
-fn build_director_client_config(config_dir: &str) -> Result<DirectorClientConfig, ConfigError> {
+fn build_director_client_config(config_dir: &str) -> Result<ApiClientConfig, ConfigError> {
     let config_file_path = format!("{}/director_client_executor.toml", config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
@@ -149,8 +148,8 @@ pub struct ComponentsConfig {
     pub matcher_config: Arc<FsMatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
-    pub icinga2_executor_config: Icinga2ClientConfig,
-    pub director_executor_config: DirectorClientConfig,
+    pub icinga2_executor_config: ApiClientConfig,
+    pub director_executor_config: ApiClientConfig,
     pub elasticsearch_executor_config: ElasticsearchConfig,
 }
 
