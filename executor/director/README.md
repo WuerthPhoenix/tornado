@@ -1,6 +1,6 @@
 # Director Executor
 
-The Director Executor is an executor that extracts data from a Tornado Action and prepares it to be
+The Director Executor is an application that extracts data from a Tornado Action and prepares it to be
 sent to the [Icinga Director REST API](https://icinga.com/docs/director/latest/doc/70-REST-API/).
 
 
