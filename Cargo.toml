@@ -11,6 +11,7 @@ members = [
    "engine/matcher",
    "executor/common",
    "executor/archive",
+   "executor/director",
    "executor/elasticsearch",
    "executor/foreach",
    "executor/icinga2",
