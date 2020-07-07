@@ -94,13 +94,13 @@ pub async fn daemon(
         let event_bus = ActixEventBus {
             callback: move |action| {
                 match action.id.as_ref() {
-                    "archive" => archive_executor_addr.do_send(ActionMessage { action }),
-                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
-                    "script" => script_executor_addr.do_send(ActionMessage { action }),
-                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action }),
-                    "logger" => logger_executor_addr.do_send(ActionMessage { action }),
+                    "archive" => archive_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "script" => script_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "logger" => logger_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
                     "elasticsearch" => {
-                        elasticsearch_executor_addr.do_send(ActionMessage { action })
+                        elasticsearch_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 })
                     }
                     _ => error!("There are not executors for action id [{}]", &action.id),
                 };

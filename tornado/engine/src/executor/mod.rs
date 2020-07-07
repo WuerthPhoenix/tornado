@@ -5,11 +5,13 @@ use tornado_common_api::Action;
 use tornado_executor_common::Executor;
 
 pub mod icinga2;
+pub mod retry;
 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct ActionMessage {
     pub action: Action,
+    pub failed_attempts: u32,
 }
 
 pub struct ExecutorActor<E: Executor + Display + Unpin> {
