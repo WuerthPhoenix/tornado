@@ -1,9 +1,9 @@
+use crate::executor::retry::RetryStrategy;
 use actix::prelude::*;
 use log::*;
 use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
-use crate::executor::retry::RetryStrategy;
 
 pub mod icinga2;
 pub mod retry;
@@ -32,13 +32,10 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for Executo
 
     fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
         trace!("ExecutorActor - received new action [{:?}]", &msg.action);
-        match self.executor.execute(msg.action) {
+        match self.executor.execute(&msg.action) {
             Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
             Err(e) => {
                 error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e);
-
-
-
             }
         };
     }
@@ -72,7 +69,7 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for LazyExe
         trace!("LazyExecutorActor - received new action [{:?}]", &msg.action);
 
         if let Some(executor) = &mut self.executor {
-            match executor.execute(msg.action) {
+            match executor.execute(&msg.action) {
                 Ok(_) => debug!("LazyExecutorActor - {} - Action executed successfully", &executor),
                 Err(e) => {
                     error!("LazyExecutorActor - {} - Failed to execute action: {}", &executor, e)

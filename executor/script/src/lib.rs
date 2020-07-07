@@ -61,7 +61,7 @@ impl fmt::Display for ScriptExecutor {
 }
 
 impl Executor for ScriptExecutor {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let mut script = action
@@ -292,7 +292,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -316,7 +316,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());

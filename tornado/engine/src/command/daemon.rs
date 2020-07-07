@@ -40,9 +40,7 @@ pub async fn daemon(
     );
 
     let retry_strategy = daemon_config.retry_strategy.clone();
-    info!(
-        "Tornado global retry strategy: {:?}", retry_strategy
-    );
+    info!("Tornado global retry strategy: {:?}", retry_strategy);
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
@@ -74,7 +72,8 @@ pub async fn daemon(
     let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
         tornado_executor_foreach::ForEachExecutor,
     > {
-        executor: None, retry_strategy: retry_strategy_clone.clone()
+        executor: None,
+        retry_strategy: retry_strategy_clone.clone(),
     });
 
     // Start elasticsearch executor actor

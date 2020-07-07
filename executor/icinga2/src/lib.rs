@@ -36,7 +36,7 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Icinga2Executor<F> {
 }
 
 impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Executor<F> {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
 
         match action
@@ -89,7 +89,7 @@ mod test {
         let action = Action::new("");
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -118,7 +118,7 @@ mod test {
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -152,7 +152,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());

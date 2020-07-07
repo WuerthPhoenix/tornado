@@ -30,14 +30,14 @@ impl ForEachExecutor {
 }
 
 impl Executor for ForEachExecutor {
-    fn execute(&mut self, mut action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        match action.payload.remove(FOREACH_TARGET_KEY) {
+        match action.payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
-                let actions: Vec<Action> = match action.payload.remove(FOREACH_ACTIONS_KEY) {
+                let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
                     Some(Value::Array(actions)) => {
-                        actions.into_iter().map(to_action).filter_map(Result::ok).collect()
+                        actions.iter().map(to_action).filter_map(Result::ok).collect()
                     }
                     _ => {
                         return Err(ExecutorError::MissingArgumentError {
@@ -49,7 +49,7 @@ impl Executor for ForEachExecutor {
                     }
                 };
 
-                actions.iter().for_each(|action| {
+                actions.into_iter().for_each(|action| {
                     for value in values.iter() {
                         //let mut cloned_action = action.clone();
                         //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
@@ -77,11 +77,13 @@ impl Executor for ForEachExecutor {
     }
 }
 
-fn to_action(value: Value) -> Result<Action, ExecutorError> {
+fn to_action(value: &Value) -> Result<Action, ExecutorError> {
     match value {
-        Value::Map(mut action) => match action.remove(FOREACH_ACTION_ID_KEY) {
-            Some(Value::Text(id)) => match action.remove(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Map(payload)) => Ok(Action { id, payload }),
+        Value::Map(action) => match action.get(FOREACH_ACTION_ID_KEY) {
+            Some(Value::Text(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
+                Some(Value::Map(payload)) => {
+                    Ok(Action { id: id.to_owned(), payload: payload.clone() })
+                }
                 _ => {
                     let message =
                         "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
@@ -141,7 +143,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let action = to_action(action_value).unwrap();
+        let action = to_action(&action_value).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
@@ -151,7 +153,7 @@ mod test {
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action(Value::Array(vec![]));
+        let result = to_action(&Value::Array(vec![]));
 
         // Assert
         assert!(result.is_err());
@@ -169,7 +171,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -188,7 +190,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -203,7 +205,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -221,7 +223,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -308,7 +310,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -430,7 +432,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -513,7 +515,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
