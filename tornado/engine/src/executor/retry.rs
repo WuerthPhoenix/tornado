@@ -9,6 +9,12 @@ pub struct RetryStrategy {
     pub backoff_policy: BackoffPolicy,
 }
 
+impl Default for RetryStrategy {
+    fn default() -> Self {
+        Self { retry_policy: RetryPolicy::None, backoff_policy: BackoffPolicy::None }
+    }
+}
+
 impl RetryStrategy {
     /// Returns whether a retry attempt should be performed and an optional backoff time
     pub fn should_retry(&self, failed_attempts: u32) -> (bool, Option<Duration>) {
@@ -52,11 +58,13 @@ impl RetryPolicy {
 pub enum BackoffPolicy {
     /// No backoff, the retry will be attempted without waiting
     None,
-    /// Fixed amount ot time between each retry attempt will be waited
+    /// A fixed amount ot time will be waited between each retry attempt
     Fixed { ms: u32 },
     /// Permits to specify the amount of time between two following retry attempts.
     /// The time to wait after 'i' retries is specified in the vector at position 'i'.
-    /// If the number of retries is bigger than the vector lenght, then the last value in the vector is used.
+    /// If the number of retries is bigger than the vector length, then the last value in the vector is used.
+    /// For example:
+    /// ms = [111,222,333] -> It waits 111 ms after the first failure, 222 ms after the second failure and then 333 ms for all following failures.
     Variable { ms: Vec<u32> },
     // Exponential
 }

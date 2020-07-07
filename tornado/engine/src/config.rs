@@ -1,4 +1,5 @@
 use crate::executor::icinga2::Icinga2ClientConfig;
+use crate::executor::retry::RetryStrategy;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
@@ -78,6 +79,8 @@ pub struct DaemonCommandConfig {
     pub message_queue_size: usize,
 
     pub thread_pool_config: Option<ThreadPoolConfig>,
+    #[serde(default)]
+    pub retry_strategy: RetryStrategy,
 
     pub auth: AuthConfig,
 }
@@ -276,6 +279,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 
@@ -301,6 +305,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 
