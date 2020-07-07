@@ -47,21 +47,21 @@ pub async fn daemon(
     let retry_strategy_clone = retry_strategy.clone();
     let archive_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-        ExecutorActor { executor, retry_strategy: retry_strategy_clone.clone() }
+        ExecutorActor { executor }
     });
 
     // Start script executor actor
     let retry_strategy_clone = retry_strategy.clone();
     let script_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_script::ScriptExecutor::new();
-        ExecutorActor { executor, retry_strategy: retry_strategy_clone.clone() }
+        ExecutorActor { executor }
     });
 
     // Start logger executor actor
     let retry_strategy_clone = retry_strategy.clone();
     let logger_executor_addr = SyncArbiter::start(threads_per_queue, move || {
         let executor = tornado_executor_logger::LoggerExecutor::new();
-        ExecutorActor { executor, retry_strategy: retry_strategy_clone.clone() }
+        ExecutorActor { executor }
     });
 
     // Start Icinga2 Client Actor
@@ -73,7 +73,6 @@ pub async fn daemon(
         tornado_executor_foreach::ForEachExecutor,
     > {
         executor: None,
-        retry_strategy: retry_strategy_clone.clone(),
     });
 
     // Start elasticsearch executor actor
@@ -84,7 +83,7 @@ pub async fn daemon(
         let executor =
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
                 .expect("Cannot start the Elasticsearch Executor");
-        ExecutorActor { executor, retry_strategy: retry_strategy_clone.clone() }
+        ExecutorActor { executor }
     });
 
     // Start icinga2 executor actor
@@ -95,7 +94,7 @@ pub async fn daemon(
             icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
             Ok(())
         });
-        ExecutorActor { executor, retry_strategy: retry_strategy_clone.clone() }
+        ExecutorActor { executor }
     });
 
     // Configure action dispatcher

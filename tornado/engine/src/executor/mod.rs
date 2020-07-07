@@ -1,4 +1,3 @@
-use crate::executor::retry::RetryStrategy;
 use actix::prelude::*;
 use log::*;
 use std::fmt::Display;
@@ -16,7 +15,6 @@ pub struct ActionMessage {
 }
 
 pub struct ExecutorActor<E: Executor + Display + Unpin> {
-    pub retry_strategy: RetryStrategy,
     pub executor: E,
 }
 
@@ -55,7 +53,6 @@ where
 }
 
 pub struct LazyExecutorActor<E: Executor + Display + Unpin> {
-    pub retry_strategy: RetryStrategy,
     pub executor: Option<E>,
 }
 
