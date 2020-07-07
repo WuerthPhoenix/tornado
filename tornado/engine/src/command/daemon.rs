@@ -91,21 +91,26 @@ pub async fn daemon(
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
-        let event_bus = ActixEventBus {
-            callback: move |action| {
-                match action.id.as_ref() {
-                    "archive" => archive_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "script" => script_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "logger" => logger_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "elasticsearch" => {
-                        elasticsearch_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 })
-                    }
-                    _ => error!("There are not executors for action id [{}]", &action.id),
-                };
-            },
-        };
+        let event_bus =
+            ActixEventBus {
+                callback: move |action| {
+                    match action.id.as_ref() {
+                        "archive" => archive_executor_addr
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        "icinga2" => icinga2_executor_addr
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        "script" => script_executor_addr
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        "foreach" => foreach_executor_addr_clone
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        "logger" => logger_executor_addr
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        "elasticsearch" => elasticsearch_executor_addr
+                            .do_send(ActionMessage { action, failed_attempts: 0 }),
+                        _ => error!("There are not executors for action id [{}]", &action.id),
+                    };
+                },
+            };
         Arc::new(event_bus)
     };
 
