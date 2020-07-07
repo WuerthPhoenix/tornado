@@ -1,5 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tornado_executor_common::{Executor, ExecutorError};
+use crate::executor::{ExecutorActor, ActionMessage};
+use actix::{Actor, Context, Addr, SyncArbiter, Handler};
+use log::*;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -101,6 +105,42 @@ impl BackoffPolicy {
         }
     }
 }
+
+pub struct RetryActor<E: Executor + std::fmt::Display + Unpin + 'static> {
+    executor_addr: Addr<ExecutorActor<E>>,
+    retry_strategy: RetryStrategy,
+}
+
+impl <E: Executor + std::fmt::Display + Unpin + 'static> Actor for RetryActor<E> {
+    type Context = Context<Self>;
+}
+
+impl <E: Executor + std::fmt::Display + Unpin> RetryActor<E> {
+    pub fn start_new<F>(threads: usize, retry_strategy: RetryStrategy, factory: F) -> Addr<Self>
+        where
+            F: Fn() -> ExecutorActor<E> + Send + Sync + 'static {
+
+        let executor_addr = SyncArbiter::start(threads, move || {
+            factory()
+        });
+
+        Self {
+            retry_strategy,
+            executor_addr,
+        }.start()
+    }
+}
+
+impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> for RetryActor<E> {
+    type Result = Result<(), ExecutorError>;
+
+    fn handle(&mut self, msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
+        debug!("RetryActor - received new message");
+
+        Ok(())
+    }
+}
+
 
 #[cfg(test)]
 pub mod test {

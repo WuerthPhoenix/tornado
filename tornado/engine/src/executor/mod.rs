@@ -3,13 +3,13 @@ use actix::prelude::*;
 use log::*;
 use std::fmt::Display;
 use tornado_common_api::Action;
-use tornado_executor_common::Executor;
+use tornado_executor_common::{Executor, ExecutorError};
 
 pub mod icinga2;
 pub mod retry;
 
 #[derive(Message)]
-#[rtype(result = "()")]
+#[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
     pub action: Action,
     pub failed_attempts: u32,
@@ -28,16 +28,20 @@ impl<E: Executor + Display + Unpin + 'static> Actor for ExecutorActor<E> {
 }
 
 impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for ExecutorActor<E> {
-    type Result = ();
+    type Result = Result<(), ExecutorError>;
 
-    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, mut msg: ActionMessage, ctx: &mut SyncContext<Self>) -> Self::Result {
         trace!("ExecutorActor - received new action [{:?}]", &msg.action);
         match self.executor.execute(&msg.action) {
-            Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
+            Ok(_) => {
+                debug!("ExecutorActor - {} - Action executed successfully", &self.executor);
+                Ok(())
+            },
             Err(e) => {
-                error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e);
+                error!("ExecutorActor - {} - Failed {} times to execute action: {}", &self.executor, msg.failed_attempts, e);
+                Err(e)
             }
-        };
+        }
     }
 }
 
@@ -63,20 +67,26 @@ impl<E: Executor + Display + Unpin + 'static> Actor for LazyExecutorActor<E> {
 }
 
 impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for LazyExecutorActor<E> {
-    type Result = ();
+    type Result = Result<(), ExecutorError>;
 
-    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) {
+    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) -> Self::Result {
         trace!("LazyExecutorActor - received new action [{:?}]", &msg.action);
 
         if let Some(executor) = &mut self.executor {
             match executor.execute(&msg.action) {
-                Ok(_) => debug!("LazyExecutorActor - {} - Action executed successfully", &executor),
+                Ok(_) => {
+                    debug!("LazyExecutorActor - {} - Action executed successfully", &executor);
+                    Ok(())
+                },
                 Err(e) => {
-                    error!("LazyExecutorActor - {} - Failed to execute action: {}", &executor, e)
+                    error!("LazyExecutorActor - {} - Failed to execute action: {}", &executor, e);
+                    Err(e)
                 }
-            };
+            }
         } else {
-            error!("LazyExecutorActor received a message when it was not yet initialized!");
+            let message = "LazyExecutorActor received a message when it was not yet initialized!".to_owned();
+            error!("{}", message);
+            Err(ExecutorError::ConfigurationError {message})
         }
     }
 }
