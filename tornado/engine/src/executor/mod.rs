@@ -8,7 +8,7 @@ use tornado_executor_common::{Executor, ExecutorError};
 pub mod icinga2;
 pub mod retry;
 
-#[derive(Message)]
+#[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
     pub action: Action,
@@ -30,7 +30,7 @@ impl<E: Executor + Display + Unpin + 'static> Actor for ExecutorActor<E> {
 impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for ExecutorActor<E> {
     type Result = Result<(), ExecutorError>;
 
-    fn handle(&mut self, mut msg: ActionMessage, ctx: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) -> Self::Result {
         trace!("ExecutorActor - received new action [{:?}]", &msg.action);
         match self.executor.execute(&msg.action) {
             Ok(_) => {

@@ -4,6 +4,7 @@ use tornado_executor_common::{Executor, ExecutorError};
 use crate::executor::{ExecutorActor, ActionMessage};
 use actix::{Actor, Context, Addr, SyncArbiter, Handler};
 use log::*;
+use std::sync::Arc;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -108,7 +109,7 @@ impl BackoffPolicy {
 
 pub struct RetryActor<E: Executor + std::fmt::Display + Unpin + 'static> {
     executor_addr: Addr<ExecutorActor<E>>,
-    retry_strategy: RetryStrategy,
+    retry_strategy: Arc<RetryStrategy>,
 }
 
 impl <E: Executor + std::fmt::Display + Unpin + 'static> Actor for RetryActor<E> {
@@ -116,7 +117,7 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Actor for RetryActor<E>
 }
 
 impl <E: Executor + std::fmt::Display + Unpin> RetryActor<E> {
-    pub fn start_new<F>(threads: usize, retry_strategy: RetryStrategy, factory: F) -> Addr<Self>
+    pub fn start_new<F>(threads: usize, retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
         where
             F: Fn() -> ExecutorActor<E> + Send + Sync + 'static {
 
@@ -134,9 +135,35 @@ impl <E: Executor + std::fmt::Display + Unpin> RetryActor<E> {
 impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> for RetryActor<E> {
     type Result = Result<(), ExecutorError>;
 
-    fn handle(&mut self, msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, mut msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("RetryActor - received new message");
-
+        let executor_addr = self.executor_addr.clone();
+        let retry_strategy = self.retry_strategy.clone();
+        actix::spawn(async move {
+            let mut should_retry = true;
+            while should_retry {
+                should_retry = false;
+                let result = executor_addr.send(msg.clone()).await;
+                match result {
+                    Ok(response) => {
+                        if let Err(_) = response {
+                            msg.failed_attempts = msg.failed_attempts + 1;
+                            let (new_should_retry, should_wait) = retry_strategy.should_retry(msg.failed_attempts);
+                            should_retry = new_should_retry;
+                            if should_retry {
+                                debug!("The failed message will be reprocessed based on the current RetryPolicy. Message: {:?}", msg);
+                                if let Some(delay_for) = should_wait {
+                                    actix::clock::delay_for(delay_for).await;
+                                }
+                            } else {
+                                warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Message: {:?}", msg)
+                            }
+                        }
+                    },
+                    Err(e) => error!("MailboxError: {}", e)
+                }
+            }
+        });
         Ok(())
     }
 }
