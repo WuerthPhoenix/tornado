@@ -3,6 +3,7 @@ use log::*;
 use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::Executor;
+use crate::executor::retry::RetryStrategy;
 
 pub mod icinga2;
 pub mod retry;
@@ -15,6 +16,7 @@ pub struct ActionMessage {
 }
 
 pub struct ExecutorActor<E: Executor + Display + Unpin> {
+    pub retry_strategy: RetryStrategy,
     pub executor: E,
 }
 
@@ -33,7 +35,10 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for Executo
         match self.executor.execute(msg.action) {
             Ok(_) => debug!("ExecutorActor - {} - Action executed successfully", &self.executor),
             Err(e) => {
-                error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e)
+                error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e);
+
+
+
             }
         };
     }
@@ -49,6 +54,7 @@ where
 }
 
 pub struct LazyExecutorActor<E: Executor + Display + Unpin> {
+    pub retry_strategy: RetryStrategy,
     pub executor: Option<E>,
 }
 
