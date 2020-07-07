@@ -17,7 +17,7 @@ stdout_output = true
 #thread_pool_config = {type = "CPU", factor = 1.0}
 #thread_pool_config = {type = "Fixed", size = 18}
 
-retry_strategy.retry_policy = {type = "MaxAttempts", max = 5}
+retry_strategy.retry_policy = {type = "MaxAttempts", attempts = 5}
 retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
 
 # Whether to enable the TCP listener
