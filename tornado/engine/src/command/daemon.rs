@@ -3,6 +3,7 @@ use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
+use crate::executor::retry::RetryActor;
 use crate::executor::ExecutorActor;
 use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
@@ -20,7 +21,6 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use crate::executor::retry::RetryActor;
 
 pub async fn daemon(
     config_dir: &str,
@@ -45,28 +45,33 @@ pub async fn daemon(
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
-    let archive_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
-        let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-        ExecutorActor { executor }
+    let archive_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
+            ExecutorActor { executor }
+        })
     });
 
     // Start script executor actor
-    let script_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
-        let executor = tornado_executor_script::ScriptExecutor::new();
-        ExecutorActor { executor }
+    let script_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_script::ScriptExecutor::new();
+            ExecutorActor { executor }
+        })
     });
 
     // Start logger executor actor
-    let logger_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
-        let executor = tornado_executor_logger::LoggerExecutor::new();
-        ExecutorActor { executor }
+    let logger_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_logger::LoggerExecutor::new();
+            ExecutorActor { executor }
+        })
     });
 
     // Start Icinga2 Client Actor
     let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
 
     // Start ForEach executor actor
-    let retry_strategy_clone = retry_strategy.clone();
     let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
         tornado_executor_foreach::ForEachExecutor,
     > {
@@ -75,22 +80,27 @@ pub async fn daemon(
 
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
-        let es_authentication = es_authentication.clone();
-        let executor =
-            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
-                .expect("Cannot start the Elasticsearch Executor");
-        ExecutorActor { executor }
+    let elasticsearch_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let es_authentication = es_authentication.clone();
+            let executor =
+                tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+                    .expect("Cannot start the Elasticsearch Executor");
+            ExecutorActor { executor }
+        })
     });
 
     // Start icinga2 executor actor
-    let icinga2_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
-        let icinga2_client_addr_clone = icinga2_client_addr.clone();
-        let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
-            icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
-            Ok(())
-        });
-        ExecutorActor { executor }
+    let icinga2_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let icinga2_client_addr_clone = icinga2_client_addr.clone();
+            let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
+                icinga2_client_addr_clone
+                    .do_send(Icinga2ApiClientMessage { message: icinga2action });
+                Ok(())
+            });
+            ExecutorActor { executor }
+        })
     });
 
     // Configure action dispatcher

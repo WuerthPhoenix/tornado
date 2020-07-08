@@ -1,10 +1,11 @@
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
-use tornado_executor_common::{Executor, ExecutorError};
-use crate::executor::{ExecutorActor, ActionMessage};
-use actix::{Actor, Context, Addr, SyncArbiter, Handler};
+use crate::executor::ActionMessage;
+use actix::dev::ToEnvelope;
+use actix::{Actor, Addr, Context, Handler};
 use log::*;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
+use std::time::Duration;
+use tornado_executor_common::ExecutorError;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -107,32 +108,38 @@ impl BackoffPolicy {
     }
 }
 
-pub struct RetryActor<E: Executor + std::fmt::Display + Unpin + 'static> {
-    executor_addr: Addr<ExecutorActor<E>>,
+pub struct RetryActor<A: Actor + actix::Handler<ActionMessage>>
+where
+    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+{
+    executor_addr: Addr<A>,
     retry_strategy: Arc<RetryStrategy>,
 }
 
-impl <E: Executor + std::fmt::Display + Unpin + 'static> Actor for RetryActor<E> {
+impl<A: Actor + actix::Handler<ActionMessage>> Actor for RetryActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+{
     type Context = Context<Self>;
 }
 
-impl <E: Executor + std::fmt::Display + Unpin> RetryActor<E> {
-    pub fn start_new<F>(threads: usize, retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
-        where
-            F: Fn() -> ExecutorActor<E> + Send + Sync + 'static {
-
-        let executor_addr = SyncArbiter::start(threads, move || {
-            factory()
-        });
-
-        Self {
-            retry_strategy,
-            executor_addr,
-        }.start()
+impl<A: Actor + actix::Handler<ActionMessage>> RetryActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+{
+    pub fn start_new<F>(retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
+    where
+        F: FnOnce() -> Addr<A>,
+    {
+        let executor_addr = factory();
+        Self { retry_strategy, executor_addr }.start()
     }
 }
 
-impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> for RetryActor<E> {
+impl<A: Actor + actix::Handler<ActionMessage>> Handler<ActionMessage> for RetryActor<A>
+where
+    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+{
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, mut msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
@@ -148,9 +155,10 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
                 let result = executor_addr.send(msg.clone()).await;
                 match result {
                     Ok(response) => {
-                        if let Err(_) = response {
-                            msg.failed_attempts = msg.failed_attempts + 1;
-                            let (new_should_retry, should_wait) = retry_strategy.should_retry(msg.failed_attempts);
+                        if response.is_err() {
+                            msg.failed_attempts += 1;
+                            let (new_should_retry, should_wait) =
+                                retry_strategy.should_retry(msg.failed_attempts);
                             should_retry = new_should_retry;
                             if should_retry {
                                 debug!("The failed message will be reprocessed based on the current RetryPolicy. Message: {:?}", msg);
@@ -162,8 +170,8 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
                                 warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Message: {:?}", msg)
                             }
                         }
-                    },
-                    Err(e) => error!("MailboxError: {}", e)
+                    }
+                    Err(e) => error!("MailboxError: {}", e),
                 }
             }
         });
@@ -171,7 +179,6 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 pub mod test {

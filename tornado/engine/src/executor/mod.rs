@@ -1,9 +1,9 @@
 use actix::prelude::*;
 use log::*;
 use std::fmt::Display;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
-use std::sync::Arc;
 
 pub mod icinga2;
 pub mod retry;
@@ -35,9 +35,12 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for Executo
             Ok(_) => {
                 debug!("ExecutorActor - {} - Action executed successfully", &self.executor);
                 Ok(())
-            },
+            }
             Err(e) => {
-                error!("ExecutorActor - {} - Failed {} times to execute action: {}", &self.executor, msg.failed_attempts, e);
+                error!(
+                    "ExecutorActor - {} - Failed {} times to execute action: {}",
+                    &self.executor, msg.failed_attempts, e
+                );
                 Err(e)
             }
         }
@@ -75,16 +78,17 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for LazyExe
                 Ok(_) => {
                     debug!("LazyExecutorActor - {} - Action executed successfully", &executor);
                     Ok(())
-                },
+                }
                 Err(e) => {
                     error!("LazyExecutorActor - {} - Failed to execute action: {}", &executor, e);
                     Err(e)
                 }
             }
         } else {
-            let message = "LazyExecutorActor received a message when it was not yet initialized!".to_owned();
+            let message =
+                "LazyExecutorActor received a message when it was not yet initialized!".to_owned();
             error!("{}", message);
-            Err(ExecutorError::ConfigurationError {message})
+            Err(ExecutorError::ConfigurationError { message })
         }
     }
 }
