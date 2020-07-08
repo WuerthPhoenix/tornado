@@ -40,7 +40,9 @@ tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
 [dev-dependencies]
+chrono = "0.4"
 lazy_static = "1.4"
 maplit = "1.0"
 tempfile = "3"
 rand = "0.7"
+tokio = { version = "0.2", features = ["sync"] }

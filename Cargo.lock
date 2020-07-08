@@ -3486,6 +3486,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio 0.2.21",
  "tornado_collector_common",
  "tornado_collector_json",
  "tornado_common",

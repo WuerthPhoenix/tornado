@@ -182,8 +182,13 @@ where
 
 #[cfg(test)]
 pub mod test {
-
     use super::*;
+    use crate::executor::ExecutorActor;
+    use actix::SyncArbiter;
+    use rand::Rng;
+    use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+    use tornado_common_api::Action;
+    use tornado_executor_common::Executor;
 
     #[test]
     fn retry_policy_should_return_when_to_retry() {
@@ -305,5 +310,138 @@ pub mod test {
         assert_eq!((true, None), retry_strategy.should_retry(0));
         assert_eq!((true, Some(Duration::from_millis(34))), retry_strategy.should_retry(1));
         assert_eq!((false, Some(Duration::from_millis(34))), retry_strategy.should_retry(2));
+    }
+
+    #[actix_rt::test]
+    async fn should_retry_if_failure() {
+        let (sender, mut receiver) = unbounded_channel();
+        let attempts = rand::thread_rng().gen_range(10, 250);
+        let retry_strategy = RetryStrategy {
+            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            backoff_policy: BackoffPolicy::None,
+        };
+
+        let action = Arc::new(Action::new("hello"));
+
+        let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
+            SyncArbiter::start(2, move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                ExecutorActor { executor }
+            })
+        });
+
+        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+
+        for _i in 0..=attempts {
+            let received = receiver.recv().await.unwrap();
+            assert_eq!("hello", received.id);
+        }
+
+        std::thread::sleep(Duration::from_millis(25));
+        // there should be no other messages on the channel
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[actix_rt::test]
+    async fn should_not_retry_if_ok() {
+        let (sender, mut receiver) = unbounded_channel();
+        let attempts = rand::thread_rng().gen_range(10, 250);
+        let retry_strategy = RetryStrategy {
+            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            backoff_policy: BackoffPolicy::None,
+        };
+
+        let action = Arc::new(Action::new("hello"));
+
+        let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
+            SyncArbiter::start(2, move || {
+                let executor = AlwaysOkExecutor { sender: sender.clone() };
+                ExecutorActor { executor }
+            })
+        });
+
+        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+
+        let received = receiver.recv().await.unwrap();
+        assert_eq!("hello", received.id);
+
+        std::thread::sleep(Duration::from_millis(25));
+        // there should be no other messages on the channel
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[actix_rt::test]
+    async fn should_apply_the_backoff_policy_on_failure() {
+        let (sender, mut receiver) = unbounded_channel();
+        let wait_times = vec![10, 30, 20, 40, 50];
+        let retry_strategy = RetryStrategy {
+            retry_policy: RetryPolicy::MaxAttempts { attempts: 3 },
+            backoff_policy: BackoffPolicy::Variable {ms: wait_times.clone()},
+        };
+
+        let action = Arc::new(Action::new("hello_world"));
+
+        let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
+            SyncArbiter::start(2, move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                ExecutorActor { executor }
+            })
+        });
+
+
+        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+
+        for i in 0..=3 {
+            let before_ms = chrono::Local::now().timestamp_millis();
+            let received = receiver.recv().await.unwrap();
+            let after_ms = chrono::Local::now().timestamp_millis();
+
+            assert_eq!("hello_world", received.id);
+            if i > 0 {
+                let passed = after_ms - before_ms;
+                let expected = wait_times[i-1] as i64;
+                println!( "passed: {} - expected: {}", passed, expected );
+                assert!(  passed >= expected  );
+            }
+        }
+
+
+        std::thread::sleep(Duration::from_millis(25));
+        // there should be no other messages on the channel
+        assert!(receiver.try_recv().is_err());
+    }
+
+    struct AlwaysFailExecutor {
+        sender: UnboundedSender<Action>,
+    }
+
+    impl Executor for AlwaysFailExecutor {
+        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+            self.sender.send(action.clone()).unwrap();
+            Err(ExecutorError::ActionExecutionError { message: "".to_owned() })
+        }
+    }
+
+    impl std::fmt::Display for AlwaysFailExecutor {
+        fn fmt(&self, _fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+            Ok(())
+        }
+    }
+
+    struct AlwaysOkExecutor {
+        sender: UnboundedSender<Action>,
+    }
+
+    impl Executor for AlwaysOkExecutor {
+        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+            self.sender.send(action.clone()).unwrap();
+            Ok(())
+        }
+    }
+
+    impl std::fmt::Display for AlwaysOkExecutor {
+        fn fmt(&self, _fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+            Ok(())
+        }
     }
 }
