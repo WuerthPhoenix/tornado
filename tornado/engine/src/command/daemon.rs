@@ -20,6 +20,7 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use crate::executor::retry::RetryActor;
 
 pub async fn daemon(
     config_dir: &str,
@@ -39,27 +40,24 @@ pub async fn daemon(
         threads_per_queue, thread_pool_config
     );
 
-    let retry_strategy = daemon_config.retry_strategy.clone();
+    let retry_strategy = Arc::new(daemon_config.retry_strategy.clone());
     info!("Tornado global retry strategy: {:?}", retry_strategy);
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
-    let retry_strategy_clone = retry_strategy.clone();
-    let archive_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+    let archive_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
         let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
         ExecutorActor { executor }
     });
 
     // Start script executor actor
-    let retry_strategy_clone = retry_strategy.clone();
-    let script_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+    let script_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
         let executor = tornado_executor_script::ScriptExecutor::new();
         ExecutorActor { executor }
     });
 
     // Start logger executor actor
-    let retry_strategy_clone = retry_strategy.clone();
-    let logger_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+    let logger_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
         let executor = tornado_executor_logger::LoggerExecutor::new();
         ExecutorActor { executor }
     });
@@ -76,9 +74,8 @@ pub async fn daemon(
     });
 
     // Start elasticsearch executor actor
-    let retry_strategy_clone = retry_strategy.clone();
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+    let elasticsearch_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
         let es_authentication = es_authentication.clone();
         let executor =
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
@@ -87,8 +84,7 @@ pub async fn daemon(
     });
 
     // Start icinga2 executor actor
-    let retry_strategy_clone = retry_strategy.clone();
-    let icinga2_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+    let icinga2_executor_addr = RetryActor::start_new(threads_per_queue, retry_strategy.clone(), move || {
         let icinga2_client_addr_clone = icinga2_client_addr.clone();
         let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
             icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
