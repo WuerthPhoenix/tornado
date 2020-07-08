@@ -337,7 +337,7 @@ pub mod test {
             assert_eq!("hello", received.id);
         }
 
-        std::thread::sleep(Duration::from_millis(25));
+        actix::clock::delay_for(Duration::from_millis(25)).await;
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
@@ -365,7 +365,7 @@ pub mod test {
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
 
-        std::thread::sleep(Duration::from_millis(25));
+        actix::clock::delay_for(Duration::from_millis(25)).await;
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
@@ -374,9 +374,10 @@ pub mod test {
     async fn should_apply_the_backoff_policy_on_failure() {
         let (sender, mut receiver) = unbounded_channel();
         let wait_times = vec![10, 30, 20, 40, 50];
+        let attempts = 4;
         let retry_strategy = RetryStrategy {
-            retry_policy: RetryPolicy::MaxAttempts { attempts: 3 },
-            backoff_policy: BackoffPolicy::Variable {ms: wait_times.clone()},
+            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
         let action = Arc::new(Action::new("hello_world"));
@@ -388,10 +389,9 @@ pub mod test {
             })
         });
 
-
         executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
 
-        for i in 0..=3 {
+        for i in 0..=(attempts as usize) {
             let before_ms = chrono::Local::now().timestamp_millis();
             let received = receiver.recv().await.unwrap();
             let after_ms = chrono::Local::now().timestamp_millis();
@@ -399,14 +399,13 @@ pub mod test {
             assert_eq!("hello_world", received.id);
             if i > 0 {
                 let passed = after_ms - before_ms;
-                let expected = wait_times[i-1] as i64;
-                println!( "passed: {} - expected: {}", passed, expected );
-                assert!(  passed >= expected  );
+                let expected = wait_times[i - 1] as i64;
+                println!("passed: {} - expected: {}", passed, expected);
+                assert!(passed >= expected);
             }
         }
 
-
-        std::thread::sleep(Duration::from_millis(25));
+        actix::clock::delay_for(Duration::from_millis(25)).await;
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
