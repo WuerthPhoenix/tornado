@@ -66,7 +66,7 @@ pub enum BackoffPolicy {
     None,
     /// A fixed amount ot time will be waited between each retry attempt
     Fixed { ms: u32 },
-    /// Permits to specify the amount of time between two following retry attempts.
+    /// Permits to specify the amount of time between two consecutive retry attempts.
     /// The time to wait after 'i' retries is specified in the vector at position 'i'.
     /// If the number of retries is bigger than the vector length, then the last value in the vector is used.
     /// For example:
