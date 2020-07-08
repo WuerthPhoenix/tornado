@@ -3,6 +3,7 @@ use log::*;
 use std::fmt::Display;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
+use std::sync::Arc;
 
 pub mod icinga2;
 pub mod retry;
@@ -10,7 +11,7 @@ pub mod retry;
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
-    pub action: Action,
+    pub action: Arc<Action>,
     pub failed_attempts: u32,
 }
 

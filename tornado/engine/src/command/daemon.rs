@@ -103,6 +103,7 @@ pub async fn daemon(
         let event_bus =
             ActixEventBus {
                 callback: move |action| {
+                    let action = Arc::new(action);
                     match action.id.as_ref() {
                         "archive" => archive_executor_addr
                             .do_send(ActionMessage { action, failed_attempts: 0 }),

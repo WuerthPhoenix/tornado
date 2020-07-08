@@ -137,8 +137,10 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
 
     fn handle(&mut self, mut msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("RetryActor - received new message");
+
         let executor_addr = self.executor_addr.clone();
         let retry_strategy = self.retry_strategy.clone();
+
         actix::spawn(async move {
             let mut should_retry = true;
             while should_retry {
@@ -153,6 +155,7 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
                             if should_retry {
                                 debug!("The failed message will be reprocessed based on the current RetryPolicy. Message: {:?}", msg);
                                 if let Some(delay_for) = should_wait {
+                                    debug!("Wait for {:?} before retrying.", delay_for);
                                     actix::clock::delay_for(delay_for).await;
                                 }
                             } else {
@@ -164,6 +167,7 @@ impl <E: Executor + std::fmt::Display + Unpin + 'static> Handler<ActionMessage> 
                 }
             }
         });
+
         Ok(())
     }
 }
