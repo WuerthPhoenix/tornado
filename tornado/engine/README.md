@@ -84,11 +84,11 @@ file _'config-dir'/tornado.toml_:
     - **thread_pool_config**: The configuration of the thread pools bound to the internal queues.
     This entry is optional and should be rarely configured manually. For more details
     see the following _Structure and Configuration: The Thread Pool Configuration_ section.
-    - **retry_strategy.retry_policy**:  The global retry policy for reprocessing failing actions.
+    - **retry_strategy.retry_policy**:  The global retry policy for reprocessing failed actions.
     (Optional. Defaults to `None` if not provided).
     For more details see the following _Structure and Configuration: Retry Strategy Configuration_ section.
-    - **retry_strategy.backoff_policy**: The global backoff policy for reprocessing failing actions.
-    (Mandatory if `retry_strategy.retry_policy` is provided).
+    - **retry_strategy.backoff_policy**: The global back-off policy for reprocessing failed actions.
+    (Mandatory only if `retry_strategy.retry_policy` is provided).
     For more details see the following _Structure and Configuration: Retry Strategy Configuration_ section.
     - **event_tcp_socket_enabled**: Whether to enable the TCP server for incoming events
       (Optional. Valid values are `true` and `false`. Defaults to `true` if not provided).
