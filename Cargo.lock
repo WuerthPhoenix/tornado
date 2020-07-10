@@ -3499,6 +3499,7 @@ dependencies = [
  "tornado_executor_foreach",
  "tornado_executor_icinga2",
  "tornado_executor_logger",
+ "tornado_executor_monitoring",
  "tornado_executor_script",
  "tornado_network_common",
 ]
@@ -3628,6 +3629,18 @@ name = "tornado_executor_logger"
 version = "0.0.1"
 dependencies = [
  "log",
+ "tornado_common_api",
+ "tornado_executor_common",
+]
+
+[[package]]
+name = "tornado_executor_monitoring"
+version = "0.0.1"
+dependencies = [
+ "log",
+ "maplit",
+ "serde 1.0.106",
+ "serde_json",
  "tornado_common_api",
  "tornado_executor_common",
 ]
