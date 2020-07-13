@@ -156,8 +156,6 @@ pub struct DirectorAction {
 mod test {
     use super::*;
     use maplit::*;
-    use std::sync::Arc;
-    use std::sync::Mutex;
     use tornado_common_api::Value;
 
     #[test]

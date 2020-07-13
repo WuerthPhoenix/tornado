@@ -79,16 +79,11 @@ impl Executor for Icinga2Executor {
 
         let response_status = response.status();
 
-            let response_body =
-                response.text().map_err(|err| ExecutorError::ActionExecutionError {
-                    message: format!(
-                        "Icinga2Executor - Cannot extract response body. Err: {}",
-                        err
-                    ),
-                })?;
+        let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
+            message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
+        })?;
 
         if !response_status.is_success() {
-
             Err(ExecutorError::ActionExecutionError {
                 message: format!(
                     "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
