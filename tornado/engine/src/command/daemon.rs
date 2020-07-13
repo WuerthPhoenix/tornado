@@ -99,11 +99,13 @@ pub async fn daemon(
 
     // Start director executor actor
     let director_client_config = configs.director_executor_config.clone();
-    let director_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let executor =
-            tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
-                .expect("Cannot start the DirectorExecutor Executor");
-        ExecutorActor { executor }
+    let director_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor =
+                tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
+                    .expect("Cannot start the DirectorExecutor Executor");
+            ExecutorActor { executor }
+        })
     });
 
     // Configure action dispatcher
