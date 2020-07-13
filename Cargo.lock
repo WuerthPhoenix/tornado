@@ -3646,8 +3646,10 @@ dependencies = [
 name = "tornado_executor_director"
 version = "0.0.1"
 dependencies = [
+ "base64 0.12.3",
  "log",
  "maplit",
+ "reqwest 0.9.24",
  "serde 1.0.114",
  "serde_json",
  "tornado_common_api",
@@ -3683,8 +3685,10 @@ dependencies = [
 name = "tornado_executor_icinga2"
 version = "0.0.1"
 dependencies = [
+ "base64 0.12.3",
  "log",
  "maplit",
+ "reqwest 0.9.24",
  "serde 1.0.114",
  "tornado_common_api",
  "tornado_executor_common",

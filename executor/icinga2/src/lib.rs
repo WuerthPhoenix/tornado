@@ -5,26 +5,29 @@ use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_common_api::Value;
 use tornado_executor_common::{Executor, ExecutorError};
+use crate::config::{ApiClient, Icinga2ClientConfig};
+
+pub mod config;
 
 pub const ICINGA2_ACTION_NAME_KEY: &str = "icinga2_action_name";
 pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 
 /// An executor that logs received actions at the 'info' level
-#[derive(Default)]
-pub struct Icinga2Executor<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> {
-    callback: F,
+pub struct Icinga2Executor {
+    api_client : ApiClient,
 }
 
-impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> std::fmt::Display for Icinga2Executor<F> {
+impl std::fmt::Display for Icinga2Executor {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         fmt.write_str("Icinga2Executor")?;
         Ok(())
     }
 }
 
-impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Icinga2Executor<F> {
-    pub fn new(callback: F) -> Icinga2Executor<F> {
-        Icinga2Executor { callback }
+impl Icinga2Executor {
+
+    pub fn new(config: Icinga2ClientConfig) -> Result<Icinga2Executor, ExecutorError> {
+        Ok(Icinga2Executor {api_client: config.new_client()?})
     }
 
     fn get_payload(&self, payload: &Payload) -> HashMap<String, Value> {
@@ -33,12 +36,8 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Icinga2Executor<F> {
             None => HashMap::new(),
         }
     }
-}
 
-impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Executor<F> {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        trace!("Icinga2Executor - received action: \n[{:?}]", action);
-
+    fn get_action(&mut self, action: &Action) -> Result<Icinga2Action, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -49,7 +48,7 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Exec
 
                 let action_payload = self.get_payload(&action.payload);
 
-                (self.callback)(Icinga2Action {
+                Ok(Icinga2Action {
                     name: icinga2_action.to_owned(),
                     payload: action_payload,
                 })
@@ -58,6 +57,51 @@ impl<F: Fn(Icinga2Action) -> Result<(), ExecutorError>> Executor for Icinga2Exec
                 message: "Icinga2 Action not specified".to_string(),
             }),
         }
+    }
+
+}
+
+impl Executor for Icinga2Executor {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+        trace!("Icinga2Executor - received action: \n[{:?}]", action);
+        let action = self.get_action(action)?;
+
+        let url = format!("{}/{}", &self.api_client.server_api_url, action.name);
+        let http_auth_header = &self.api_client.http_auth_header;
+        let client = &self.api_client.client;
+
+        trace!("Icinga2Executor - calling url: {}", url);
+
+        let mut response = client
+            .post(&url)
+            .header(reqwest::header::ACCEPT, "application/json")
+            .header(reqwest::header::AUTHORIZATION, http_auth_header)
+            .json(&action.payload)
+            .send()
+            .map_err(|err| {
+                ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Connection failed. Err: {}", err) }
+            })?;
+
+        let response_status = response.status();
+
+        if !response_status.is_success() {
+
+            let response_body = response
+                .text()
+                .map_err(|err| {
+                    ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err) }
+                })?;
+
+            Err(ExecutorError::ActionExecutionError {
+                message: format!(
+                    "Icinga2Executor - Icinga2 API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, response_body
+                ),
+            })
+        } else {
+            debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
+            Ok(())
+        }
+
     }
 }
 

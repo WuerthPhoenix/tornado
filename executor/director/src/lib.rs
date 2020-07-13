@@ -4,6 +4,9 @@ use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_common_api::Value;
 use tornado_executor_common::{Executor, ExecutorError};
+use crate::config::{ApiClient, DirectorClientConfig};
+
+pub mod config;
 
 pub const DIRECTOR_ACTION_NAME_KEY: &str = "action_name";
 pub const DIRECTOR_ACTION_PAYLOAD_KEY: &str = "action_payload";
@@ -33,8 +36,8 @@ impl DirectorActionName {
 }
 
 /// An executor that calls the APIs of the IcingaWeb2 Director
-#[derive(Default)]
 pub struct DirectorExecutor<F: Fn(DirectorAction) -> Result<(), ExecutorError>> {
+    api_client : ApiClient,
     callback: F,
 }
 
@@ -46,8 +49,9 @@ impl<F: Fn(DirectorAction) -> Result<(), ExecutorError>> std::fmt::Display for D
 }
 
 impl<F: Fn(DirectorAction) -> Result<(), ExecutorError>> DirectorExecutor<F> {
-    pub fn new(callback: F) -> DirectorExecutor<F> {
-        DirectorExecutor { callback }
+
+    pub fn new(config: DirectorClientConfig, callback: F) -> Result<DirectorExecutor<F>, ExecutorError> {
+        Ok(DirectorExecutor { callback , api_client: config.new_client()?})
     }
 
     fn get_payload(&self, payload: &mut Payload) -> Result<Value, ExecutorError> {
