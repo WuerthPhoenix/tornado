@@ -189,7 +189,7 @@ A _retry strategy_ is composed by:
 
 Valid values for the _retry policy_ are:
  - `{type = "None"}` => No retries are performed. This is the default value.
- - `{type = "MaxAttempts", attempts = 5}` => A predefined maximum amount of attempts.
+ - `{type = "MaxRetries", retries = 5}` => A predefined maximum amount of retry attempts.
  - `{type = "Infinite"}` => The operation will be retried an infinite number of times.
  This setting must be used with extreme caution as it could fill the entire memory buffer
  preventing Tornado from processing incoming events.
@@ -209,7 +209,7 @@ Valid values for the _backoff policy_ are:
 #### Example of a complete Retry Strategy configuration:
 ```toml
 [tornado.daemon]
-retry_strategy.retry_policy = {type = "MaxAttempts", attempts = 5}
+retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
 retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
 ```
 

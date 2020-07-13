@@ -38,7 +38,7 @@ pub enum RetryPolicy {
     /// No Retry attempts defined
     None,
     /// The operation will be retried for a max number of times.
-    MaxAttempts { attempts: u32 },
+    MaxRetries { retries: u32 },
     /// The operation will be retried an infinite number of times.
     Infinite,
     // Timeout,
@@ -52,7 +52,7 @@ impl RetryPolicy {
             match self {
                 RetryPolicy::None => false,
                 RetryPolicy::Infinite => true,
-                RetryPolicy::MaxAttempts { attempts } => *attempts + 1 > failed_attempts,
+                RetryPolicy::MaxRetries { retries: attempts } => *attempts + 1 > failed_attempts,
             }
         }
     }
@@ -199,22 +199,22 @@ pub mod test {
         assert!(!RetryPolicy::None.should_retry(100));
 
         // Max
-        assert!(RetryPolicy::MaxAttempts { attempts: 0 }.should_retry(0));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 0 }.should_retry(1));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 0 }.should_retry(10));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 0 }.should_retry(100));
+        assert!(RetryPolicy::MaxRetries { retries: 0 }.should_retry(0));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(1));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(10));
+        assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(100));
 
-        assert!(RetryPolicy::MaxAttempts { attempts: 1 }.should_retry(0));
-        assert!(RetryPolicy::MaxAttempts { attempts: 1 }.should_retry(1));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 1 }.should_retry(2));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 1 }.should_retry(10));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 1 }.should_retry(100));
+        assert!(RetryPolicy::MaxRetries { retries: 1 }.should_retry(0));
+        assert!(RetryPolicy::MaxRetries { retries: 1 }.should_retry(1));
+        assert!(!RetryPolicy::MaxRetries { retries: 1 }.should_retry(2));
+        assert!(!RetryPolicy::MaxRetries { retries: 1 }.should_retry(10));
+        assert!(!RetryPolicy::MaxRetries { retries: 1 }.should_retry(100));
 
-        assert!(RetryPolicy::MaxAttempts { attempts: 10 }.should_retry(0));
-        assert!(RetryPolicy::MaxAttempts { attempts: 10 }.should_retry(1));
-        assert!(RetryPolicy::MaxAttempts { attempts: 10 }.should_retry(10));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 10 }.should_retry(11));
-        assert!(!RetryPolicy::MaxAttempts { attempts: 10 }.should_retry(100));
+        assert!(RetryPolicy::MaxRetries { retries: 10 }.should_retry(0));
+        assert!(RetryPolicy::MaxRetries { retries: 10 }.should_retry(1));
+        assert!(RetryPolicy::MaxRetries { retries: 10 }.should_retry(10));
+        assert!(!RetryPolicy::MaxRetries { retries: 10 }.should_retry(11));
+        assert!(!RetryPolicy::MaxRetries { retries: 10 }.should_retry(100));
 
         // Infinite
         assert!(RetryPolicy::Infinite.should_retry(0));
@@ -304,7 +304,7 @@ pub mod test {
     #[test]
     fn retry_policy_should_return_whether_to_retry() {
         let retry_strategy = RetryStrategy {
-            retry_policy: RetryPolicy::MaxAttempts { attempts: 1 },
+            retry_policy: RetryPolicy::MaxRetries { retries: 1 },
             backoff_policy: BackoffPolicy::Fixed { ms: 34 },
         };
         assert_eq!((true, None), retry_strategy.should_retry(0));
@@ -317,7 +317,7 @@ pub mod test {
         let (sender, mut receiver) = unbounded_channel();
         let attempts = rand::thread_rng().gen_range(10, 250);
         let retry_strategy = RetryStrategy {
-            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::None,
         };
 
@@ -347,7 +347,7 @@ pub mod test {
         let (sender, mut receiver) = unbounded_channel();
         let attempts = rand::thread_rng().gen_range(10, 250);
         let retry_strategy = RetryStrategy {
-            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::None,
         };
 
@@ -376,7 +376,7 @@ pub mod test {
         let wait_times = vec![10, 30, 20, 40, 50];
         let attempts = 4;
         let retry_strategy = RetryStrategy {
-            retry_policy: RetryPolicy::MaxAttempts { attempts },
+            retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
