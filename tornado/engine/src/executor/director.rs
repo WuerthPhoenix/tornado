@@ -3,27 +3,36 @@ use actix::prelude::*;
 use http::header;
 use log::*;
 use std::time::Duration;
-use tornado_executor_icinga2::Icinga2Action;
+use tornado_executor_director::DirectorAction;
 
-pub struct Icinga2ApiClientMessage {
-    pub message: Icinga2Action,
+pub struct DirectorApiClientMessage {
+    pub message: DirectorAction,
 }
 
-impl Message for Icinga2ApiClientMessage {
+impl Message for DirectorApiClientMessage {
     type Result = Result<(), ApiClientActorError>;
 }
 
-impl Handler<Icinga2ApiClientMessage> for ApiClientActor {
+impl Handler<DirectorApiClientMessage> for ApiClientActor {
     type Result = Result<(), ApiClientActorError>;
 
-    fn handle(&mut self, msg: Icinga2ApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
-        debug!("Icinga2ApiClientMessage - received new message");
+    fn handle(&mut self, msg: DirectorApiClientMessage, _ctx: &mut Context<Self>) -> Self::Result {
+        debug!("DirectorApiClientMessage - received new message");
 
-        let url = format!("{}/{}", &self.server_api_url, msg.message.name);
+        let mut url =
+            format!("{}/{}", &self.server_api_url, msg.message.name.to_director_api_subpath());
+
+        trace!(
+            "DirectorApiClientMessage - icinga2 live creation is set to: {}",
+            msg.message.live_creation
+        );
+        if msg.message.live_creation {
+            url.push_str("?live-creation=true");
+        }
         let http_auth_header = self.http_auth_header.to_owned();
         let client = self.client.clone();
         actix::spawn(async move {
-            trace!("Icinga2ApiClientMessage - calling url: {}", url);
+            trace!("DirectorApiClientMessage - calling url: {}", url);
 
             let response = client
                 .post(&url)
@@ -34,10 +43,10 @@ impl Handler<Icinga2ApiClientMessage> for ApiClientActor {
                 .send()
                 .await
                 .map_err(|err| {
-                    error!("ApiClientActor - Icinga2 - Connection failed. Err: {}", err);
-                    ApiClientActorError::ServerNotAvailableError { message: format!("{}", err) }
+                    error!("ApiClientActor - Director - Connection failed. Err: {}", err);
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{:?}", err) }
                 })
-                .expect("ApiClientActor - cannot connect to Icinga server");
+                .expect("ApiClientActor - Director - cannot connect to Director server");
 
             let response_status = response.status();
 
@@ -45,15 +54,18 @@ impl Handler<Icinga2ApiClientMessage> for ApiClientActor {
                 .bytes()
                 .await
                 .map_err(|err| {
-                    error!("ApiClientActor - Icinga2 - Cannot extract response body. Err: {}", err);
-                    ApiClientActorError::ServerNotAvailableError { message: format!("{}", err) }
+                    error!(
+                        "ApiClientActor - Director - Cannot extract response body. Err: {}",
+                        err
+                    );
+                    ApiClientActorError::ServerNotAvailableError { message: format!("{:?}", err) }
                 })
-                .expect("ApiClientActor - received an error from Icinga server");
+                .expect("ApiClientActor - received an error from Director server");
 
             if !response_status.is_success() {
-                error!("ApiClientActor - Icinga2 API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
+                error!("ApiClientActor - Director API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, bytes)
             } else {
-                debug!("ApiClientActor - Icinga2 API request completed successfully. Response body: {:?}", bytes);
+                debug!("ApiClientActor - Director API request completed successfully. Response body: {:?}", bytes);
             }
         });
         Ok(())
@@ -62,9 +74,8 @@ impl Handler<Icinga2ApiClientMessage> for ApiClientActor {
 
 #[cfg(test)]
 mod test {
-    use crate::executor::icinga2::Icinga2ApiClientMessage;
-    use crate::executor::ApiClientActor;
-    use crate::executor::ApiClientConfig;
+    use crate::executor::director::DirectorApiClientMessage;
+    use crate::executor::{ApiClientActor, ApiClientConfig};
     use actix::prelude::*;
     use actix_web::web::{Data, Json};
     use actix_web::{web, App, HttpServer};
@@ -72,8 +83,7 @@ mod test {
     use std::sync::Arc;
     use std::sync::Mutex;
     use tornado_common_api::Value;
-    use tornado_executor_icinga2::Icinga2Action;
-    //    use tornado_common_logger::{LoggerConfig, setup_logger};
+    use tornado_executor_director::{DirectorAction, DirectorActionName};
 
     #[test]
     fn should_perform_a_post_request() {
@@ -83,12 +93,12 @@ mod test {
 
         let act_received = received.clone();
         System::run(move || {
-            let api = "/v1/events";
+            let api = "/director";
             let api_clone = api.clone();
 
             HttpServer::new(move || {
                 let app_received = act_received.clone();
-                let url = format!("{}{}", api, "/icinga2-api-action");
+                let url = format!("{}{}", api, "/host");
 
                 App::new().data(app_received).service(web::resource(&url).route(web::post().to(
                     move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
@@ -115,18 +125,22 @@ mod test {
                 };
                 let client_address = ApiClientActor::start_new(config);
 
-                println!("ApiClientActor created");
+                println!("ApiClientActor for Director created");
 
-                client_address.do_send(Icinga2ApiClientMessage {
-                    message: Icinga2Action {
-                        name: "icinga2-api-action".to_owned(),
-                        payload: hashmap![
-                            "filter".to_owned() => Value::Text("my_service".to_owned())
-                        ],
+                client_address.do_send(DirectorApiClientMessage {
+                    message: DirectorAction {
+                        name: DirectorActionName::CreateHost,
+                        payload: Value::Map(hashmap![
+                            "object_type".to_owned() => Value::Text("host".to_owned()),
+                            "object_name".to_owned() => Value::Text("my_host".to_owned()),
+                            "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
+                            "check_command".to_owned() => Value::Text("hostalive".to_owned())
+                        ]),
+                        live_creation: false
                     },
                 });
 
-                println!("Icinga2ApiClientActor message sent");
+                println!("DirectorApiClientMessage message sent");
 
                 Ok(server)
             })
@@ -139,7 +153,10 @@ mod test {
 
         assert_eq!(
             Some(Value::Map(hashmap![
-                "filter".to_owned() => Value::Text("my_service".to_owned())
+                "object_type".to_owned() => Value::Text("host".to_owned()),
+                "object_name".to_owned() => Value::Text("my_host".to_owned()),
+                "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
+                "check_command".to_owned() => Value::Text("hostalive".to_owned())
             ])),
             *received.lock().unwrap()
         );

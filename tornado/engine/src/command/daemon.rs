@@ -2,7 +2,9 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
-use crate::executor::icinga2::{Icinga2ApiClientActor, Icinga2ApiClientMessage};
+use crate::executor::director::DirectorApiClientMessage;
+use crate::executor::icinga2::Icinga2ApiClientMessage;
+use crate::executor::ApiClientActor;
 use crate::executor::retry::RetryActor;
 use crate::executor::ExecutorActor;
 use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
@@ -68,8 +70,11 @@ pub async fn daemon(
         })
     });
 
-    // Start Icinga2 Client Actor
-    let icinga2_client_addr = Icinga2ApiClientActor::start_new(configs.icinga2_executor_config);
+    // Start Api Client Actor for Icinga2
+    let icinga2_client_addr = ApiClientActor::start_new(configs.icinga2_executor_config);
+
+    // Start Api Client Actor for Director
+    let director_client_addr = ApiClientActor::start_new(configs.director_executor_config);
 
     // Start ForEach executor actor
     let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
@@ -103,30 +108,37 @@ pub async fn daemon(
         })
     });
 
+    // Start director executor actor
+    let director_executor_addr = SyncArbiter::start(threads_per_queue, move || {
+        let director_client_addr_clone = director_client_addr.clone();
+        let executor = tornado_executor_director::DirectorExecutor::new(move |director_action| {
+            director_client_addr_clone
+                .do_send(DirectorApiClientMessage { message: director_action });
+            Ok(())
+        });
+        ExecutorActor { executor }
+    });
+
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
-        let event_bus =
-            ActixEventBus {
-                callback: move |action| {
-                    let action = Arc::new(action);
-                    match action.id.as_ref() {
-                        "archive" => archive_executor_addr
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        "icinga2" => icinga2_executor_addr
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        "script" => script_executor_addr
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        "foreach" => foreach_executor_addr_clone
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        "logger" => logger_executor_addr
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        "elasticsearch" => elasticsearch_executor_addr
-                            .do_send(ActionMessage { action, failed_attempts: 0 }),
-                        _ => error!("There are not executors for action id [{}]", &action.id),
-                    };
-                },
-            };
+        let event_bus = ActixEventBus {
+            callback: move |action| {
+            	let action = Arc::new(action);
+                match action.id.as_ref() {
+                    "archive" => archive_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "director" => director_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "script" => script_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "logger" => logger_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "elasticsearch" => {
+                        elasticsearch_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 })
+                    }
+                    _ => error!("There are not executors for action id [{}]", &action.id),
+                };
+            },
+        };
         Arc::new(event_bus)
     };
 
