@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use reqwest::Client;
-use tornado_executor_common::ExecutorError;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tornado_executor_common::ExecutorError;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct Icinga2ClientConfig {
@@ -18,18 +18,16 @@ pub struct Icinga2ClientConfig {
     pub disable_ssl_verification: bool,
 
     /// The call timeout in seconds. Default is 10 seconds
-    pub timeout_secs: Option<u64>
+    pub timeout_secs: Option<u64>,
 }
 
 pub struct ApiClient {
     pub server_api_url: String,
     pub http_auth_header: String,
-    pub client: Client
+    pub client: Client,
 }
 
-
 impl Icinga2ClientConfig {
-
     pub fn new_client(&self) -> Result<ApiClient, ExecutorError> {
         let auth = format!("{}:{}", self.username, self.password);
         let http_auth_header = format!("Basic {}", base64::encode(&auth));
