@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use tornado_executor_common::ExecutorError;
 use reqwest::Client;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use tornado_executor_common::ExecutorError;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct DirectorClientConfig {
@@ -18,7 +18,7 @@ pub struct DirectorClientConfig {
     pub disable_ssl_verification: bool,
 
     /// The call timeout in seconds. Default is 10 seconds
-    pub timeout_secs: Option<u64>
+    pub timeout_secs: Option<u64>,
 }
 
 pub struct ApiClient {
@@ -27,9 +27,7 @@ pub struct ApiClient {
     pub client: Client,
 }
 
-
 impl DirectorClientConfig {
-
     pub fn new_client(&self) -> Result<ApiClient, ExecutorError> {
         let auth = format!("{}:{}", self.username, self.password);
         let http_auth_header = format!("Basic {}", base64::encode(&auth));

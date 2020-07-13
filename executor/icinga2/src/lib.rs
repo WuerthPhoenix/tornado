@@ -36,7 +36,7 @@ impl Icinga2Executor {
         }
     }
 
-    fn get_action(&mut self, action: &Action) -> Result<Icinga2Action, ExecutorError> {
+    fn parse_action(&mut self, action: &Action) -> Result<Icinga2Action, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -59,7 +59,7 @@ impl Icinga2Executor {
 impl Executor for Icinga2Executor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
-        let action = self.get_action(action)?;
+        let action = self.parse_action(action)?;
 
         let url = format!("{}/{}", &self.api_client.server_api_url, action.name);
         let http_auth_header = &self.api_client.http_auth_header;
@@ -79,7 +79,6 @@ impl Executor for Icinga2Executor {
 
         let response_status = response.status();
 
-        if !response_status.is_success() {
             let response_body =
                 response.text().map_err(|err| ExecutorError::ActionExecutionError {
                     message: format!(
@@ -88,9 +87,11 @@ impl Executor for Icinga2Executor {
                     ),
                 })?;
 
+        if !response_status.is_success() {
+
             Err(ExecutorError::ActionExecutionError {
                 message: format!(
-                    "Icinga2Executor - Icinga2 API returned an error. Response status: \n{:?}. Response body: {:?}", response_status, response_body
+                    "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
             })
         } else {
@@ -128,7 +129,7 @@ mod test {
         let action = Action::new("");
 
         // Act
-        let result = executor.get_action(&action);
+        let result = executor.parse_action(&action);
 
         // Assert
         assert!(result.is_err());
@@ -158,7 +159,7 @@ mod test {
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
 
         // Act
-        let result = executor.get_action(&action);
+        let result = executor.parse_action(&action);
 
         // Assert
         assert_eq!(
@@ -168,7 +169,7 @@ mod test {
     }
 
     #[test]
-    fn should_call_the_callback_if_valid_action() {
+    fn should_parse_valid_action() {
         // Arrange
         let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
@@ -193,7 +194,7 @@ mod test {
         );
 
         // Act
-        let result = executor.get_action(&action);
+        let result = executor.parse_action(&action);
 
         // Assert
         assert_eq!(
