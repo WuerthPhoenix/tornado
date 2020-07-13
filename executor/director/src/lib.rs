@@ -66,9 +66,11 @@ impl<F: Fn(DirectorAction) -> Result<(), ExecutorError>> DirectorExecutor<F> {
 }
 
 impl<F: Fn(DirectorAction) -> Result<(), ExecutorError>> Executor for DirectorExecutor<F> {
-    fn execute(&mut self, mut action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
+        // ToDo: clone to be removed in TOR-226
+        let mut action = action.clone();
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -121,7 +123,7 @@ mod test {
         let action = Action::new("");
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -151,7 +153,7 @@ mod test {
         action.payload.insert(DIRECTOR_ACTION_LIVE_CREATION_KEY.to_owned(), Value::Bool(true));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -180,7 +182,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         println!("{:?}", result);
         // Assert

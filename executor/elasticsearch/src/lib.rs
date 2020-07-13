@@ -130,7 +130,7 @@ impl std::fmt::Display for ElasticsearchExecutor {
 }
 
 impl Executor for ElasticsearchExecutor {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {
@@ -284,7 +284,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -307,7 +307,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -332,7 +332,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -358,7 +358,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -382,7 +382,7 @@ mod test {
         action.payload.insert("endpoint".to_owned(), Value::Bool(false));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {

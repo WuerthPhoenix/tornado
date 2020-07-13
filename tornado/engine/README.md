@@ -84,7 +84,13 @@ file _'config-dir'/tornado.toml_:
 - **tornado.daemon**
     - **thread_pool_config**: The configuration of the thread pools bound to the internal queues.
     This entry is optional and should be rarely configured manually. For more details
-    see the following _Structure and Configuration: The Thread Pool Configuration_ section.     
+    see the following _Structure and Configuration: The Thread Pool Configuration_ section.
+    - **retry_strategy.retry_policy**:  The global retry policy for reprocessing failed actions.
+    (Optional. Defaults to `None` if not provided).
+    For more details see the following _Structure and Configuration: Retry Strategy Configuration_ section.
+    - **retry_strategy.backoff_policy**: The global back-off policy for reprocessing failed actions.
+    (Mandatory only if `retry_strategy.retry_policy` is provided).
+    For more details see the following _Structure and Configuration: Retry Strategy Configuration_ section.
     - **event_tcp_socket_enabled**: Whether to enable the TCP server for incoming events
       (Optional. Valid values are `true` and `false`. Defaults to `true` if not provided).
     - **event_socket_ip**:  The IP address where Tornado will listen for incoming events 
@@ -173,6 +179,40 @@ thread_pool_config = {type = "Fixed", size = 20}
 
 In this case, the size of the thread pool is statically fixed at 20.
 If the provided size is less than _1_, then _1_ will be used be default.
+
+### Structure and Configuration: Retry Strategy Configuration
+Tornado allows the configuration of a global _retry strategy_ to be applied when the execution of
+an Action fails. 
+
+A _retry strategy_ is composed by:
+- _retry policy_: the policy that defines whether an action execution should be retried after an execution failure;
+- _backoff policy_: the policy that defines the sleep time between retries.
+
+Valid values for the _retry policy_ are:
+ - `{type = "None"}` => No retries are performed. This is the default value.
+ - `{type = "MaxRetries", retries = 5}` => A predefined maximum amount of retry attempts.
+ - `{type = "Infinite"}` => The operation will be retried an infinite number of times.
+ This setting must be used with extreme caution as it could fill the entire memory buffer
+ preventing Tornado from processing incoming events.
+
+Valid values for the _backoff policy_ are:
+- `{type = "None"}`: No sleep time between retries. This is the default value. 
+- `{type = "Fixed", ms = 1000 }`: A fixed amount of milliseconds to sleep between each retry attempt. 
+- `{type = "Variable", ms = [1000, 5000, 10000]}`: The amount of milliseconds between two consecutive retry attempts.
+
+  The time to wait after 'i' retries is specified in the vector at position 'i'.
+  
+  If the number of retries is bigger than the vector length, then the last value in the vector is used.
+  For example:
+  
+  `ms = [111,222,333]` -> It waits 111 ms after the first failure, 222 ms after the second failure and then 333 ms for all following failures.
+
+#### Example of a complete Retry Strategy configuration:
+```toml
+[tornado.daemon]
+retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
+retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
+```
 
 ### Structure and Configuration: The JSON Collector
 

@@ -104,7 +104,7 @@ impl ArchiveExecutor {
 }
 
 impl Executor for ArchiveExecutor {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action
@@ -182,7 +182,7 @@ mod test {
         action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
 
         // Act
-        let result = archiver.execute(action);
+        let result = archiver.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -227,7 +227,7 @@ mod test {
             action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
             action.payload.insert("key_one".to_owned(), Value::Text("first".to_owned()));
             action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
-            archiver.execute(action).unwrap()
+            archiver.execute(&action).unwrap()
         }
 
         let file = fs::File::open(&expected_path).unwrap();
@@ -273,7 +273,7 @@ mod test {
         action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
 
         // Act
-        let result = archiver.execute(action);
+        let result = archiver.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -302,7 +302,7 @@ mod test {
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
 
         // Act
-        let result = archiver.execute(action);
+        let result = archiver.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -331,7 +331,7 @@ mod test {
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("two".to_owned()));
 
         // Act
-        let result = archiver.execute(action);
+        let result = archiver.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -360,7 +360,7 @@ mod test {
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
 
         // Act
-        let result = archiver.execute(action);
+        let result = archiver.execute(&action);
 
         // Assert
         assert!(result.is_ok());

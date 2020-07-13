@@ -5,7 +5,7 @@ use tornado_common_api::Action;
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
 pub trait Executor {
     /// Executes the operation linked to the received Action.
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError>;
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError>;
 }
 
 #[derive(Error, Debug, PartialEq)]

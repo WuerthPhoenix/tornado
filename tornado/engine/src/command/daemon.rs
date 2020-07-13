@@ -5,6 +5,7 @@ use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::director::DirectorApiClientMessage;
 use crate::executor::icinga2::Icinga2ApiClientMessage;
 use crate::executor::ApiClientActor;
+use crate::executor::retry::RetryActor;
 use crate::executor::ExecutorActor;
 use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
@@ -41,23 +42,32 @@ pub async fn daemon(
         threads_per_queue, thread_pool_config
     );
 
+    let retry_strategy = Arc::new(daemon_config.retry_strategy.clone());
+    info!("Tornado global retry strategy: {:?}", retry_strategy);
+
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
-    let archive_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-        ExecutorActor { executor }
+    let archive_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
+            ExecutorActor { executor }
+        })
     });
 
     // Start script executor actor
-    let script_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let executor = tornado_executor_script::ScriptExecutor::new();
-        ExecutorActor { executor }
+    let script_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_script::ScriptExecutor::new();
+            ExecutorActor { executor }
+        })
     });
 
     // Start logger executor actor
-    let logger_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let executor = tornado_executor_logger::LoggerExecutor::new();
-        ExecutorActor { executor }
+    let logger_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_logger::LoggerExecutor::new();
+            ExecutorActor { executor }
+        })
     });
 
     // Start Api Client Actor for Icinga2
@@ -75,22 +85,27 @@ pub async fn daemon(
 
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let es_authentication = es_authentication.clone();
-        let executor =
-            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
-                .expect("Cannot start the Elasticsearch Executor");
-        ExecutorActor { executor }
+    let elasticsearch_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let es_authentication = es_authentication.clone();
+            let executor =
+                tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+                    .expect("Cannot start the Elasticsearch Executor");
+            ExecutorActor { executor }
+        })
     });
 
     // Start icinga2 executor actor
-    let icinga2_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let icinga2_client_addr_clone = icinga2_client_addr.clone();
-        let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
-            icinga2_client_addr_clone.do_send(Icinga2ApiClientMessage { message: icinga2action });
-            Ok(())
-        });
-        ExecutorActor { executor }
+    let icinga2_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let icinga2_client_addr_clone = icinga2_client_addr.clone();
+            let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
+                icinga2_client_addr_clone
+                    .do_send(Icinga2ApiClientMessage { message: icinga2action });
+                Ok(())
+            });
+            ExecutorActor { executor }
+        })
     });
 
     // Start director executor actor
@@ -109,15 +124,16 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |action| {
+            	let action = Arc::new(action);
                 match action.id.as_ref() {
-                    "archive" => archive_executor_addr.do_send(ActionMessage { action }),
-                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action }),
-                    "director" => director_executor_addr.do_send(ActionMessage { action }),
-                    "script" => script_executor_addr.do_send(ActionMessage { action }),
-                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action }),
-                    "logger" => logger_executor_addr.do_send(ActionMessage { action }),
+                    "archive" => archive_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "director" => director_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "script" => script_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action, failed_attempts: 0 }),
+                    "logger" => logger_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
                     "elasticsearch" => {
-                        elasticsearch_executor_addr.do_send(ActionMessage { action })
+                        elasticsearch_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 })
                     }
                     _ => error!("There are not executors for action id [{}]", &action.id),
                 };
