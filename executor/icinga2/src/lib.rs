@@ -12,6 +12,9 @@ pub mod config;
 pub const ICINGA2_ACTION_NAME_KEY: &str = "icinga2_action_name";
 pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 
+const ICINGA2_OBJECT_NOT_EXISTING_RESPONSE: &str = "No objects found";
+const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
+
 /// An executor that logs received actions at the 'info' level
 pub struct Icinga2Executor {
     api_client: ApiClient,
@@ -54,14 +57,9 @@ impl Icinga2Executor {
             }),
         }
     }
-}
 
-impl Executor for Icinga2Executor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        trace!("Icinga2Executor - received action: \n[{:?}]", action);
-        let action = self.parse_action(action)?;
-
-        let url = format!("{}/{}", &self.api_client.server_api_url, action.name);
+    pub fn perform_request(&self, icinga2_action: &Icinga2Action) -> Result<(), ExecutorError> {
+        let url = format!("{}/{}", &self.api_client.server_api_url, icinga2_action.name);
         let http_auth_header = &self.api_client.http_auth_header;
         let client = &self.api_client.client;
 
@@ -71,7 +69,7 @@ impl Executor for Icinga2Executor {
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
-            .json(&action.payload)
+            .json(&icinga2_action.payload)
             .send()
             .map_err(|err| ExecutorError::ActionExecutionError {
                 message: format!("Icinga2Executor - Connection failed. Err: {}", err),
@@ -83,7 +81,11 @@ impl Executor for Icinga2Executor {
             message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
         })?;
 
-        if !response_status.is_success() {
+        if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
+            && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
+        {
+            Err(ExecutorError::IcingaObjectNotFoundError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ) })
+        } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 message: format!(
                     "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
@@ -93,6 +95,15 @@ impl Executor for Icinga2Executor {
             debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
             Ok(())
         }
+    }
+}
+
+impl Executor for Icinga2Executor {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+        trace!("Icinga2Executor - received action: \n[{:?}]", action);
+        let action = self.parse_action(action)?;
+
+        self.perform_request(&action)
     }
 }
 

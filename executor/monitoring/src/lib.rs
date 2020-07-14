@@ -3,10 +3,15 @@ use serde::{Deserialize, Serialize};
 use tornado_common_api::Payload;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_director::config::DirectorClientConfig;
+use tornado_executor_director::{DirectorAction, DirectorActionName, DirectorExecutor};
+use tornado_executor_icinga2::config::Icinga2ClientConfig;
+use tornado_executor_icinga2::{Icinga2Action, Icinga2Executor};
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
 pub const ICINGA_FIELD_FOR_SPECIFYING_SERVICE: &str = "service";
+const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 #[serde(tag = "action_name")]
@@ -15,49 +20,134 @@ pub enum MonitoringAction {
     Host {
         process_check_result_payload: Payload,
         host_creation_payload: Value,
-        #[serde(default = "live_creation_default")]
-        icinga2_live_creation: bool,
     },
     #[serde(rename = "create_and_or_process_service_passive_check_result")]
     Service {
         process_check_result_payload: Payload,
         host_creation_payload: Value,
         service_creation_payload: Value,
-        #[serde(default = "live_creation_default")]
-        icinga2_live_creation: bool,
     },
 }
 
-fn live_creation_default() -> bool {
-    false
+impl MonitoringAction {
+    fn into_sub_actions(self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
+        match self {
+            MonitoringAction::Host {
+                process_check_result_payload,
+                host_creation_payload,
+            } => (
+                Icinga2Action {
+                    name: PROCESS_CHECK_RESULT_SUBURL.to_string(),
+                    payload: process_check_result_payload,
+                },
+                DirectorAction {
+                    name: DirectorActionName::CreateHost,
+                    payload: host_creation_payload,
+                    live_creation: true,
+                },
+                None,
+            ),
+            MonitoringAction::Service {
+                process_check_result_payload,
+                host_creation_payload,
+                service_creation_payload,
+            } => (
+                Icinga2Action {
+                    name: PROCESS_CHECK_RESULT_SUBURL.to_string(),
+                    payload: process_check_result_payload,
+                },
+                DirectorAction {
+                    name: DirectorActionName::CreateHost,
+                    payload: host_creation_payload,
+                    live_creation: true,
+                },
+                Some(DirectorAction {
+                    name: DirectorActionName::CreateService,
+                    payload: service_creation_payload,
+                    live_creation: true,
+                }),
+            ),
+        }
+    }
 }
 
-/// An executor that prepares the Monitoring action and sends it to the Monitoring Api Client executor
-#[derive(Default)]
-pub struct MonitoringExecutor<F: Fn(MonitoringAction) -> Result<(), ExecutorError>> {
-    callback: F,
+/// An executor that performs a process check result and, if needed creates the underneath host/service
+pub struct MonitoringExecutor {
+    icinga_executor: Icinga2Executor,
+    director_executor: DirectorExecutor,
 }
 
-impl<F: Fn(MonitoringAction) -> Result<(), ExecutorError>> std::fmt::Display
-    for MonitoringExecutor<F>
-{
+impl std::fmt::Display for MonitoringExecutor {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
         fmt.write_str("MonitoringExecutor")?;
         Ok(())
     }
 }
 
-impl<F: Fn(MonitoringAction) -> Result<(), ExecutorError>> MonitoringExecutor<F> {
-    pub fn new(callback: F) -> MonitoringExecutor<F> {
-        MonitoringExecutor { callback }
+impl MonitoringExecutor {
+    pub fn new(
+        icinga2_client_config: Icinga2ClientConfig,
+        director_client_config: DirectorClientConfig,
+    ) -> Result<MonitoringExecutor, ExecutorError> {
+        Ok(MonitoringExecutor {
+            icinga_executor: Icinga2Executor::new(icinga2_client_config)?,
+            director_executor: DirectorExecutor::new(director_client_config)?,
+        })
+    }
+
+    fn perform_creation_of_icinga_objects(
+        &self,
+        director_host_creation_action: DirectorAction,
+        director_service_creation_action: Option<DirectorAction>,
+    ) -> Result<(), ExecutorError> {
+        let host_creation_result =
+            self.director_executor.perform_request(director_host_creation_action);
+        match host_creation_result {
+            Ok(()) => {
+                debug!("MonitoringExecutor - Director host creation action successfully performed");
+                Ok(())
+            }
+            Err(ExecutorError::IcingaObjectAlreadyExistingError { message }) => {
+                debug!("MonitoringExecutor - Director host creation action failed with message {:?}. Looks like the host already exists in Icinga.", message);
+                Ok(())
+            }
+            Err(err) => {
+                error!(
+                    "MonitoringExecutor - Director host creation action failed with error {:?}.",
+                    err
+                );
+                Err(err)
+            }
+        }?;
+
+        if let Some(director_service_creation_action) = director_service_creation_action {
+            let service_creation_result =
+                self.director_executor.perform_request(director_service_creation_action);
+            match service_creation_result {
+                Ok(()) => {
+                    debug!("MonitoringExecutor - Director service creation action successfully performed");
+                    Ok(())
+                }
+                Err(ExecutorError::IcingaObjectAlreadyExistingError { message }) => {
+                    debug!("MonitoringExecutor - Director service creation action failed with message {:?}. Looks like the host already exists in Icinga.", message);
+                    Ok(())
+                }
+                Err(err) => {
+                    error!("MonitoringExecutor - Director service creation action failed with error {:?}.", err);
+                    Err(err)
+                }
+            }?;
+        };
+        Ok(())
     }
 }
 
-impl<F: Fn(MonitoringAction) -> Result<(), ExecutorError>> Executor for MonitoringExecutor<F> {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+impl Executor for MonitoringExecutor {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
-
-        // TODO: do I really have to convert the Action to serde value and then back to MonitoringAction, in order to transform with serde?
+        // FIXME: try to avoid this clone
+        let action = action.clone();
+        // FIXME(?): do I really have to convert the Action to serde value and then back to MonitoringAction, in order to transform with serde?
         let monitoring_action: MonitoringAction =
             serde_json::to_value(tornado_common_api::Value::Map(action.payload))
                 .and_then(serde_json::from_value)
@@ -80,7 +170,31 @@ impl<F: Fn(MonitoringAction) -> Result<(), ExecutorError>> Executor for Monitori
             }
         };
 
-        (self.callback)(monitoring_action)
+        let (icinga2_action, director_host_creation_action, director_service_creation_action) =
+            monitoring_action.into_sub_actions();
+        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
+
+        match icinga2_action_result {
+            Ok(_) => {
+                debug!("MonitoringExecutor - Process check result correctly performed");
+                Ok(())
+            }
+            Err(ExecutorError::IcingaObjectNotFoundError { message }) => {
+                debug!("MonitoringExecutor - Process check result action failed with message {:?}. Looks like Icinga2 object does not exist yet. Proceeding with the creation of the object..", message);
+                self.perform_creation_of_icinga_objects(
+                    director_host_creation_action,
+                    director_service_creation_action,
+                )?;
+                self.icinga_executor.perform_request(&icinga2_action)
+            }
+            Err(err) => {
+                error!(
+                    "MonitoringExecutor - Process check result action failed with error {:?}.",
+                    err
+                );
+                Err(err)
+            }
+        }
     }
 }
 
@@ -96,18 +210,28 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let action = Action::new("");
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -119,18 +243,28 @@ mod test {
             }),
             result
         );
-        assert_eq!(None, *callback_called.lock().unwrap());
     }
 
     #[test]
     fn should_throw_error_if_action_name_is_not_valid() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action
@@ -146,7 +280,7 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -155,12 +289,23 @@ mod test {
     #[test]
     fn should_throw_error_if_service_action_but_service_creation_payload_not_given() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -176,7 +321,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_err());
@@ -185,12 +330,23 @@ mod test {
     #[test]
     fn should_return_ok_if_action_name_is_valid() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -207,7 +363,7 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         println!("{:?}", result);
 
@@ -218,12 +374,23 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_host_not_specified_with_host_field() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -239,7 +406,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         println!("{:?}", result);
 
@@ -251,12 +418,23 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_service_not_specified_with_service_field() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -273,7 +451,7 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         println!("{:?}", result);
 
@@ -282,16 +460,26 @@ mod test {
         assert_eq!(result, Err(ExecutorError::ConfigurationError { message: "Monitoring action expects that Icinga objects affected by the action are specified with field 'service' inside 'process_check_result_payload' for action 'create_and_or_process_service_passive_check_result'".to_string() }))
     }
 
-
     #[test]
     fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
         // Arrange
-        let callback_called = Arc::new(Mutex::new(None));
-        let mut executor = MonitoringExecutor::new(|monitoring_action| {
-            let mut called = callback_called.lock().unwrap();
-            *called = Some(monitoring_action);
-            Ok(())
-        });
+        let mut executor = MonitoringExecutor::new(
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+            DirectorClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
+        )
+        .unwrap();
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -307,7 +495,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         println!("{:?}", result);
 

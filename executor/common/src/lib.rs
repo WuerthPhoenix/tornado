@@ -18,4 +18,8 @@ pub enum ExecutorError {
     UnknownArgumentError { message: String },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
+    #[error("IcingaObjectNotFoundError: [{message}]")]
+    IcingaObjectNotFoundError { message: String },
+    #[error("IcingaObjectAlreadyExistingError: [{message}]")]
+    IcingaObjectAlreadyExistingError { message: String },
 }
