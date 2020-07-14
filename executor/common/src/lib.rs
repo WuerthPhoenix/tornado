@@ -19,3 +19,13 @@ pub enum ExecutorError {
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
 }
+
+pub trait RetriableError {
+    fn can_retry(&self) -> bool;
+}
+
+impl RetriableError for ExecutorError {
+    fn can_retry(&self) -> bool {
+        true
+    }
+}
