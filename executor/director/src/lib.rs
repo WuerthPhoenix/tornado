@@ -52,8 +52,8 @@ impl DirectorExecutor {
         Ok(DirectorExecutor { api_client: config.new_client()? })
     }
 
-    fn get_payload(&self, payload: &mut Payload) -> Result<Value, ExecutorError> {
-        payload.remove(DIRECTOR_ACTION_PAYLOAD_KEY).ok_or(ExecutorError::MissingArgumentError {
+    fn get_payload<'a>(&self, payload: &'a Payload) -> Result<&'a Value, ExecutorError> {
+        payload.get(DIRECTOR_ACTION_PAYLOAD_KEY).ok_or(ExecutorError::MissingArgumentError {
             message: "Director Action Payload not specified".to_string(),
         })
     }
@@ -66,9 +66,8 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action(&mut self, action: &Action) -> Result<DirectorAction, ExecutorError> {
-        // ToDo: clone to be removed in TOR-226
-        let mut action = action.clone();
+    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
+
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -80,14 +79,14 @@ impl DirectorExecutor {
 
         trace!("DirectorExecutor - perform DirectorAction: \n[{:?}]", director_action_name);
 
-        let action_payload = self.get_payload(&mut action.payload)?;
+        let action_payload = self.get_payload(&action.payload)?;
 
         let live_creation = self.get_live_creation_setting(&action.payload);
 
         Ok(DirectorAction {
             name: director_action_name,
             payload: action_payload,
-            live_creation: live_creation.to_owned(),
+            live_creation,
         })
     }
 }
@@ -145,10 +144,10 @@ impl Executor for DirectorExecutor {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct DirectorAction {
+#[derive(Debug, PartialEq, Serialize)]
+struct DirectorAction<'a> {
     pub name: DirectorActionName,
-    pub payload: Value,
+    pub payload: &'a Value,
     pub live_creation: bool,
 }
 
@@ -240,7 +239,7 @@ mod test {
         assert_eq!(
             Ok(DirectorAction {
                 name: DirectorActionName::CreateHost,
-                payload: Value::Map(hashmap![
+                payload: &Value::Map(hashmap![
                     "filter".to_owned() => Value::Text("filter_value".to_owned()),
                     "type".to_owned() => Value::Text("Host".to_owned())
                 ]),
