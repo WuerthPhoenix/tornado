@@ -1,6 +1,6 @@
 use crate::config::{ApiClient, Icinga2ClientConfig};
 use log::*;
-use serde::{Serialize};
+use serde::Serialize;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{Executor, ExecutorError};
@@ -152,10 +152,7 @@ mod test {
         let result = executor.parse_action(&action);
 
         // Assert
-        assert_eq!(
-            Ok(Icinga2Action { name: "action-test", payload: None }),
-            result
-        );
+        assert_eq!(Ok(Icinga2Action { name: "action-test", payload: None }), result);
     }
 
     #[test]

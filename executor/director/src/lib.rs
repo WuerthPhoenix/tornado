@@ -66,8 +66,10 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
-
+    fn parse_action<'a>(
+        &mut self,
+        action: &'a Action,
+    ) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -83,11 +85,7 @@ impl DirectorExecutor {
 
         let live_creation = self.get_live_creation_setting(&action.payload);
 
-        Ok(DirectorAction {
-            name: director_action_name,
-            payload: action_payload,
-            live_creation,
-        })
+        Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 }
 
