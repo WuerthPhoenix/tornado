@@ -1,10 +1,8 @@
 use crate::config::{ApiClient, Icinga2ClientConfig};
 use log::*;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use serde::{Serialize};
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_common_api::Value;
 use tornado_executor_common::{Executor, ExecutorError};
 
 pub mod config;
@@ -29,14 +27,11 @@ impl Icinga2Executor {
         Ok(Icinga2Executor { api_client: config.new_client()? })
     }
 
-    fn get_payload(&self, payload: &Payload) -> HashMap<String, Value> {
-        match payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map) {
-            Some(icinga2_payload) => icinga2_payload.clone(),
-            None => HashMap::new(),
-        }
+    fn get_payload<'a>(&self, payload: &'a Payload) -> Option<&'a Payload> {
+        payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
     }
 
-    fn parse_action(&mut self, action: &Action) -> Result<Icinga2Action, ExecutorError> {
+    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -47,7 +42,7 @@ impl Icinga2Executor {
 
                 let action_payload = self.get_payload(&action.payload);
 
-                Ok(Icinga2Action { name: icinga2_action.to_owned(), payload: action_payload })
+                Ok(Icinga2Action { name: icinga2_action, payload: action_payload })
             }
             None => Err(ExecutorError::MissingArgumentError {
                 message: "Icinga2 Action not specified".to_string(),
@@ -96,10 +91,10 @@ impl Executor for Icinga2Executor {
     }
 }
 
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct Icinga2Action {
-    pub name: String,
-    pub payload: Payload,
+#[derive(Debug, PartialEq, Serialize)]
+struct Icinga2Action<'a> {
+    pub name: &'a str,
+    pub payload: Option<&'a Payload>,
 }
 
 #[cfg(test)]
@@ -158,7 +153,7 @@ mod test {
 
         // Assert
         assert_eq!(
-            Ok(Icinga2Action { name: "action-test".to_owned(), payload: HashMap::new() }),
+            Ok(Icinga2Action { name: "action-test", payload: None }),
             result
         );
     }
@@ -194,11 +189,11 @@ mod test {
         // Assert
         assert_eq!(
             Ok(Icinga2Action {
-                name: "process-check-result".to_owned(),
-                payload: hashmap![
+                name: "process-check-result",
+                payload: Some(&hashmap![
                     "filter".to_owned() => Value::Text("filter_value".to_owned()),
                     "type".to_owned() => Value::Text("Host".to_owned())
-                ]
+                ])
             }),
             result
         );
