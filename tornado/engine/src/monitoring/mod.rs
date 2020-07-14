@@ -76,6 +76,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
@@ -108,6 +109,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
@@ -140,6 +142,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(

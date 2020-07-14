@@ -1,4 +1,4 @@
-use crate::executor::ApiClientConfig;
+use crate::executor::retry::RetryStrategy;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,9 @@ use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
+use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
+use tornado_executor_icinga2::config::Icinga2ClientConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -78,6 +80,8 @@ pub struct DaemonCommandConfig {
     pub message_queue_size: usize,
 
     pub thread_pool_config: Option<ThreadPoolConfig>,
+    #[serde(default)]
+    pub retry_strategy: RetryStrategy,
 
     pub auth: AuthConfig,
 }
@@ -123,14 +127,14 @@ fn build_archive_config(config_dir: &str) -> Result<ArchiveConfig, ConfigError> 
     s.try_into()
 }
 
-fn build_icinga2_client_config(config_dir: &str) -> Result<ApiClientConfig, ConfigError> {
+fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, ConfigError> {
     let config_file_path = format!("{}/icinga2_client_executor.toml", config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
     s.try_into()
 }
 
-fn build_director_client_config(config_dir: &str) -> Result<ApiClientConfig, ConfigError> {
+fn build_director_client_config(config_dir: &str) -> Result<DirectorClientConfig, ConfigError> {
     let config_file_path = format!("{}/director_client_executor.toml", config_dir);
     let mut s = Config::new();
     s.merge(File::with_name(&config_file_path))?;
@@ -148,8 +152,8 @@ pub struct ComponentsConfig {
     pub matcher_config: Arc<FsMatcherConfigManager>,
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
-    pub icinga2_executor_config: ApiClientConfig,
-    pub director_executor_config: ApiClientConfig,
+    pub icinga2_executor_config: Icinga2ClientConfig,
+    pub director_executor_config: DirectorClientConfig,
     pub elasticsearch_executor_config: ElasticsearchConfig,
 }
 
@@ -298,6 +302,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 
@@ -323,6 +328,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 
