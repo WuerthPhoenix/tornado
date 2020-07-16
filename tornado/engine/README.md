@@ -468,6 +468,7 @@ The icinga2_client_executor.toml has the following configuration options:
 - __username__: The username used to connect to the Icinga2 APIs.
 - __password__: The password used to connect to the Icinga2 APIs.
 - __disable_ssl_verification__: If true, the client will not verify the SSL certificate of the Icinga2 server.
+- (**optional**) **timeout_secs**: The timeout in seconds for a call to the Icinga2 APIs. If not provided, it defaults to 10 seconds.
 
 More details about the executor can be found in the
 [Icinga2 executor documentation](../../executor/icinga2/README.md).
@@ -489,6 +490,7 @@ The director_client_executor.toml has the following configuration options:
 - __username__: The username used to connect to the Director APIs.
 - __password__: The password used to connect to the Director APIs.
 - __disable_ssl_verification__: If true, the client will not verify the SSL certificate of the Director REST API server.
+- (**optional**) **timeout_secs**: The timeout in seconds for a call to the Icinga2 APIs. If not provided, it defaults to 10 seconds.
 
 More details about the executor can be found in the
 [Director executor documentation](../../executor/director/README.md).

@@ -12,14 +12,11 @@ actix-cors = "0.2"
 actix-rt = "1"
 actix-web = { version = "2.0" }
 async-trait = "0.1"
-base64 = "0.11"
 chrono = "0.4"
 clap = "2.33"
 config_rs = { version = "0.10", package = "config" }
-http = "0.2"
 log = "0.4"
 num_cpus = "1.12"
-reqwest = { version="0.10", features=["native-tls", "json"]}
 serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
 thiserror = "1.0"
