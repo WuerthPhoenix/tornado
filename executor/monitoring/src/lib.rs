@@ -97,11 +97,11 @@ impl MonitoringExecutor {
     }
 
     pub fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(&action.payload)
-            .and_then(serde_json::from_value)
-            .map_err(|err| ExecutorError::ConfigurationError {
+        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
+            |err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
-            })?)
+            },
+        )?)
     }
 
     fn perform_creation_of_icinga_objects(
