@@ -177,7 +177,7 @@ where
                     Ok(response) => {
                         if let Err(err) = response {
                             if !err.can_retry() {
-                                warn!("The failed message will not be retried as the error is not a recoverable one. Err: {}", err)
+                                warn!("The failed message will not be retried as the error is not recoverable. Err: {}", err)
                             } else {
                                 failed_attempts += 1;
                                 let (new_should_retry, should_wait) =
