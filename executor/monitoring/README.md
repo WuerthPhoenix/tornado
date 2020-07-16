@@ -12,18 +12,17 @@ the underlying Icinga objects do not yet exist in Icinga.
 
 This executor expects a Tornado Action to include the following elements in its payload:
 
-1. An __action_name__: The Monitorin action to perform.
-1. An __process_check_result_payload__: The payload of the Director action.
-1. An __host_creation_payload__: Boolean value, which determines whether to create the
-1. An __service_creation_payload__: The payload of the Director action.
- specified Icinga Object also in Icinga2 (mandatory only in case __action_name__ is 
- `create_and_or_process_service_passive_check_result`). 
+1. An __action_name__: The Monitoring action to perform.
+1. A __process_check_result_payload__: The payload for the Icinga2 `process check result` action.
+1. A __host_creation_payload__: The payload which will be sent to the Icinga Director REST API for the host creation.
+1. A __service_creation_payload__: The payload which will be sent to the Icinga Director REST API for the service creation
+(mandatory only in case __action_name__ is `create_and_or_process_service_passive_check_result`). 
 
 Valid values for __action_name__ are:
-* __create_and_or_process_host_passive_check_result__: sets the `passive check result` for a `host`, and creates the
-host if necessary
-* __create_and_or_process_service_passive_check_result__: sets the `passive check result` for a `service`, and creates
-the underlying host and service if necessary
+* __create_and_or_process_host_passive_check_result__: sets the `passive check result` for a `host`, and, if necessary, 
+it also creates the host.
+* __create_and_or_process_service_passive_check_result__: sets the `passive check result` for a `service`, and, if
+necessary, it also creates the service.
 
 The __process_check_result_payload__ should contain at least all mandatory parameters expected by the
 Icinga API to perform the action. The object on which you want to set the `passive check result` must be specified
