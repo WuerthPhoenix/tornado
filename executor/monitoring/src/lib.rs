@@ -17,10 +17,7 @@ const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 #[serde(tag = "action_name")]
 pub enum MonitoringAction {
     #[serde(rename = "create_and_or_process_host_passive_check_result")]
-    Host {
-        process_check_result_payload: Payload,
-        host_creation_payload: Value,
-    },
+    Host { process_check_result_payload: Payload, host_creation_payload: Value },
     #[serde(rename = "create_and_or_process_service_passive_check_result")]
     Service {
         process_check_result_payload: Payload,
@@ -32,10 +29,7 @@ pub enum MonitoringAction {
 impl MonitoringAction {
     fn into_sub_actions(self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
         match self {
-            MonitoringAction::Host {
-                process_check_result_payload,
-                host_creation_payload,
-            } => (
+            MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
                 Icinga2Action {
                     name: PROCESS_CHECK_RESULT_SUBURL.to_string(),
                     payload: process_check_result_payload,
@@ -95,6 +89,14 @@ impl MonitoringExecutor {
         })
     }
 
+    pub fn parse_monitoring_action(action: Action) -> Result<MonitoringAction, ExecutorError> {
+        Ok(serde_json::to_value(tornado_common_api::Value::Map(action.payload))
+            .and_then(serde_json::from_value)
+            .map_err(|err| ExecutorError::ConfigurationError {
+                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+            })?)
+    }
+
     fn perform_creation_of_icinga_objects(
         &self,
         director_host_creation_action: DirectorAction,
@@ -116,7 +118,7 @@ impl MonitoringExecutor {
                     "MonitoringExecutor - Director host creation action failed with error {:?}.",
                     err
                 );
-                Err(err)
+                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err) })
             }
         }?;
 
@@ -134,7 +136,7 @@ impl MonitoringExecutor {
                 }
                 Err(err) => {
                     error!("MonitoringExecutor - Director service creation action failed with error {:?}.", err);
-                    Err(err)
+                    Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err) })
                 }
             }?;
         };
@@ -148,12 +150,7 @@ impl Executor for MonitoringExecutor {
         // FIXME: try to avoid this clone
         let action = action.clone();
         // FIXME(?): do I really have to convert the Action to serde value and then back to MonitoringAction, in order to transform with serde?
-        let monitoring_action: MonitoringAction =
-            serde_json::to_value(tornado_common_api::Value::Map(action.payload))
-                .and_then(serde_json::from_value)
-                .map_err(|err| ExecutorError::ConfigurationError {
-                    message: format!("Invalid Monitoring Action configuration. Err: {}", err),
-                })?;
+        let monitoring_action = MonitoringExecutor::parse_monitoring_action(action)?;
 
         // we need to be sure that the icinga2 action specifies the object on which to apply the action
         // with the fields "host" or "service", and not, e.g. with "filter"
@@ -185,14 +182,14 @@ impl Executor for MonitoringExecutor {
                     director_host_creation_action,
                     director_service_creation_action,
                 )?;
-                self.icinga_executor.perform_request(&icinga2_action)
+                self.icinga_executor.perform_request(&icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err) })
             }
             Err(err) => {
                 error!(
                     "MonitoringExecutor - Process check result action failed with error {:?}.",
                     err
                 );
-                Err(err)
+                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err) })
             }
         }
     }
@@ -201,10 +198,10 @@ impl Executor for MonitoringExecutor {
 #[cfg(test)]
 mod test {
     use super::*;
+    use httpmock::Method::POST;
+    use httpmock::{Mock, MockServer};
     use maplit::*;
     use std::collections::HashMap;
-    use std::sync::Arc;
-    use std::sync::Mutex;
     use tornado_common_api::Value;
 
     #[test]
@@ -284,6 +281,12 @@ mod test {
 
         // Assert
         assert!(result.is_err());
+        assert_eq!(
+            Err(ExecutorError::ConfigurationError {
+                message: "Invalid Monitoring Action configuration. Err: unknown variant `my_invalid_action`, expected `create_and_or_process_host_passive_check_result` or `create_and_or_process_service_passive_check_result`".to_owned()
+            }),
+            result
+        );
     }
 
     #[test]
@@ -325,18 +328,32 @@ mod test {
 
         // Assert
         assert!(result.is_err());
+        assert_eq!(
+            Err(ExecutorError::ConfigurationError {
+                message: "Invalid Monitoring Action configuration. Err: missing field `service_creation_payload`".to_owned()
+            }),
+            result
+        );
     }
 
     #[test]
     fn should_return_ok_if_action_name_is_valid() {
         // Arrange
+        let mock_server = MockServer::start();
+
+        Mock::new()
+            .expect_method(POST)
+            .expect_path("/process-check-result")
+            .return_status(200)
+            .create_on(&mock_server);
+
         let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
                 password: "".to_owned(),
                 disable_ssl_verification: true,
-                server_api_url: "".to_owned(),
+                server_api_url: mock_server.url(""),
             },
             DirectorClientConfig {
                 timeout_secs: None,
@@ -463,13 +480,21 @@ mod test {
     #[test]
     fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
         // Arrange
+        let mock_server = MockServer::start();
+
+        Mock::new()
+            .expect_method(POST)
+            .expect_path("/process-check-result")
+            .return_status(200)
+            .create_on(&mock_server);
+
         let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
                 password: "".to_owned(),
                 disable_ssl_verification: true,
-                server_api_url: "".to_owned(),
+                server_api_url: mock_server.url(""),
             },
             DirectorClientConfig {
                 timeout_secs: None,
