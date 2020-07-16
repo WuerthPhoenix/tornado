@@ -1,5 +1,5 @@
 # The complete URL of the Director APIs (leave out the trailing /)
-server_api_url = "https://127.0.0.1/neteye/director"
+server_api_url = "https://localhost/neteye/director"
 # Username used to connect to the Director APIs
 username = "root"
 # Password used to connect to the Director APIs
