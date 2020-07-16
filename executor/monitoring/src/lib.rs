@@ -27,6 +27,13 @@ pub enum MonitoringAction {
 }
 
 impl MonitoringAction {
+    // Transforms the MonitoringAction into the actions needed to call the IcingaExecutor and the
+    // DirectorExecutor.
+    // Returns a triple, with these elements:
+    // 1. Icinga2Action that will perform the process-check-result through the IcingaExecutor
+    // 2. DirectorAction that will perform the creation of the host through the DirectorAction
+    // 3. Option<DirectorAction> that will perform the creation of the service through the
+    // DirectorAction. This is Some if MonitoringAction is of type Service, None otherwise
     fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
         match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
@@ -65,7 +72,7 @@ impl MonitoringAction {
     }
 }
 
-/// An executor that performs a process check result and, if needed creates the underneath host/service
+/// An executor that performs a process check result and, if needed, creates the underneath host/service
 pub struct MonitoringExecutor {
     icinga_executor: Icinga2Executor,
     director_executor: DirectorExecutor,
@@ -89,8 +96,8 @@ impl MonitoringExecutor {
         })
     }
 
-    pub fn parse_monitoring_action(action: Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(tornado_common_api::Value::Map(action.payload))
+    pub fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
+        Ok(serde_json::to_value(&action.payload)
             .and_then(serde_json::from_value)
             .map_err(|err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
@@ -147,10 +154,8 @@ impl MonitoringExecutor {
 impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
-        // FIXME: try to avoid this clone
-        let action = action.clone();
-        // FIXME(?): do I really have to convert the Action to serde value and then back to MonitoringAction, in order to transform with serde?
-        let monitoring_action = MonitoringExecutor::parse_monitoring_action(action)?;
+
+        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;
 
         // we need to be sure that the icinga2 action specifies the object on which to apply the action
         // with the fields "host" or "service", and not, e.g. with "filter"
