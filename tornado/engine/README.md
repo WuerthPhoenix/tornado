@@ -22,6 +22,7 @@ This specific Tornado Engine executable is composed of the following components:
 - The foreach executor
 - The Icinga2 executor
 - The Director executor
+- The Monitoring executor
 - The logger executor
 - The script executor
 
