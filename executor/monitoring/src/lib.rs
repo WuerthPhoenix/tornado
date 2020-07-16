@@ -27,12 +27,14 @@ pub enum MonitoringAction {
 }
 
 impl MonitoringAction {
-    fn into_sub_actions(self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
-        match self {
+    fn to_sub_actions<'a>(
+        &'a self,
+    ) -> (Icinga2Action<'a>, DirectorAction<'a>, Option<DirectorAction<'a>>) {
+        match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
                 Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL.to_string(),
-                    payload: process_check_result_payload,
+                    name: PROCESS_CHECK_RESULT_SUBURL,
+                    payload: Some(process_check_result_payload),
                 },
                 DirectorAction {
                     name: DirectorActionName::CreateHost,
@@ -47,8 +49,8 @@ impl MonitoringAction {
                 service_creation_payload,
             } => (
                 Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL.to_string(),
-                    payload: process_check_result_payload,
+                    name: PROCESS_CHECK_RESULT_SUBURL,
+                    payload: Some(process_check_result_payload),
                 },
                 DirectorAction {
                     name: DirectorActionName::CreateHost,
@@ -90,7 +92,7 @@ impl MonitoringExecutor {
     }
 
     pub fn parse_monitoring_action(action: Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(tornado_common_api::Value::Map(action.payload))
+        Ok(serde_json::t(tornado_common_api::Value::Map(action.payload))
             .and_then(serde_json::from_value)
             .map_err(|err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
@@ -168,7 +170,7 @@ impl Executor for MonitoringExecutor {
         };
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
-            monitoring_action.into_sub_actions();
+            monitoring_action.to_sub_actions();
         let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
 
         match icinga2_action_result {
