@@ -1,6 +1,6 @@
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr, Context, Handler, Message};
-use core::fmt::Debug;
+use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
 use log::*;
 use serde::{Deserialize, Serialize};
@@ -112,7 +112,7 @@ impl BackoffPolicy {
 pub struct RetryActor<
     A: Actor + actix::Handler<M>,
     M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-    Err: 'static + Send + Unpin + RetriableError,
+    Err: 'static + Send + Unpin + RetriableError + Display,
 > where
     <A as Actor>::Context: ToEnvelope<A, M>,
 {
@@ -125,7 +125,7 @@ pub struct RetryActor<
 impl<
         A: Actor + actix::Handler<M>,
         M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError,
+        Err: 'static + Send + Unpin + RetriableError + Display,
     > Actor for RetryActor<A, M, Err>
 where
     <A as Actor>::Context: ToEnvelope<A, M>,
@@ -136,7 +136,7 @@ where
 impl<
         A: Actor + actix::Handler<M>,
         M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError,
+        Err: 'static + Send + Unpin + RetriableError + Display,
     > RetryActor<A, M, Err>
 where
     <A as Actor>::Context: ToEnvelope<A, M>,
@@ -154,7 +154,7 @@ where
 impl<
         A: Actor + actix::Handler<M>,
         M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError,
+        Err: 'static + Send + Unpin + RetriableError + Display,
     > Handler<M> for RetryActor<A, M, Err>
 where
     <A as Actor>::Context: ToEnvelope<A, M>,
@@ -175,19 +175,24 @@ where
                 let result = executor_addr.send(msg.clone()).await;
                 match result {
                     Ok(response) => {
-                        if response.is_err() {
-                            failed_attempts += 1;
-                            let (new_should_retry, should_wait) =
-                                retry_strategy.should_retry(failed_attempts);
-                            should_retry = new_should_retry;
-                            if should_retry {
-                                debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg);
-                                if let Some(delay_for) = should_wait {
-                                    debug!("Wait for {:?} before retrying.", delay_for);
-                                    actix::clock::delay_for(delay_for).await;
-                                }
+                        if let Err(err) = response {
+                            if !err.can_retry() {
+                                warn!("The failed message will not be retried as the error is not a recoverable one. Err: {}", err)
                             } else {
-                                warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg)
+                                failed_attempts += 1;
+                                let (new_should_retry, should_wait) =
+                                    retry_strategy.should_retry(failed_attempts);
+                                should_retry = new_should_retry;
+
+                                if should_retry {
+                                    debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg);
+                                    if let Some(delay_for) = should_wait {
+                                        debug!("Wait for {:?} before retrying.", delay_for);
+                                        actix::clock::delay_for(delay_for).await;
+                                    }
+                                } else {
+                                    warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg)
+                                }
                             }
                         }
                     }
@@ -345,7 +350,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                 ExecutorActor { executor }
             })
         });
@@ -391,6 +396,34 @@ pub mod test {
     }
 
     #[actix_rt::test]
+    async fn should_not_retry_if_unrecoverable_error() {
+        let (sender, mut receiver) = unbounded_channel();
+        let attempts = rand::thread_rng().gen_range(10, 250);
+        let retry_strategy = RetryStrategy {
+            retry_policy: RetryPolicy::MaxRetries { retries: attempts },
+            backoff_policy: BackoffPolicy::None,
+        };
+
+        let action = Arc::new(Action::new("hello"));
+
+        let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
+            SyncArbiter::start(2, move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
+                ExecutorActor { executor }
+            })
+        });
+
+        executor_addr.do_send(ActionMessage { action });
+
+        let received = receiver.recv().await.unwrap();
+        assert_eq!("hello", received.id);
+
+        actix::clock::delay_for(Duration::from_millis(25)).await;
+        // there should be no other messages on the channel
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[actix_rt::test]
     async fn should_apply_the_backoff_policy_on_failure() {
         let (sender, mut receiver) = unbounded_channel();
         let wait_times = vec![10, 30, 20, 40, 50];
@@ -404,7 +437,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                 ExecutorActor { executor }
             })
         });
@@ -431,13 +464,17 @@ pub mod test {
     }
 
     struct AlwaysFailExecutor {
+        can_retry: bool,
         sender: UnboundedSender<Action>,
     }
 
     impl Executor for AlwaysFailExecutor {
         fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
-            Err(ExecutorError::ActionExecutionError { message: "".to_owned() })
+            Err(ExecutorError::ActionExecutionError {
+                message: "".to_owned(),
+                can_retry: self.can_retry,
+            })
         }
     }
 

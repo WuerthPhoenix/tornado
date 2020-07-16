@@ -68,6 +68,7 @@ impl ArchiveExecutor {
             Entry::Vacant(vacant) => {
                 if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
                     return Err(ExecutorError::ActionExecutionError {
+                        can_retry: false,
                         message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
                     });
                 }
@@ -76,6 +77,7 @@ impl ArchiveExecutor {
 
                 if let Some(parent) = path.parent() {
                     create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
+                        can_retry: true,
                         message: format!(
                             "Cannot create required directories for path [{:?}]: {}",
                             &path, err
@@ -86,6 +88,7 @@ impl ArchiveExecutor {
                 let file =
                     OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
                         ExecutorError::ActionExecutionError {
+                            can_retry: true,
                             message: format!(
                                 "Cannot open file [{}]: {}",
                                 &absolute_path_string, err
@@ -98,6 +101,7 @@ impl ArchiveExecutor {
         };
 
         file.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
+            can_retry: true,
             message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
         })
     }
@@ -115,6 +119,7 @@ impl Executor for ArchiveExecutor {
             Some(archive_type) => match self.paths.get(archive_type) {
                 Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
                 None => Err(ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: format!(
                         "Cannot find mapping for {} value: [{}]",
                         ARCHIVE_TYPE_KEY, archive_type
@@ -128,10 +133,12 @@ impl Executor for ArchiveExecutor {
             .payload
             .get(EVENT_KEY)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
+                can_retry: false,
                 message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
             })
             .and_then(|value| {
                 serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: format!("Cannot deserialize event:{}", err),
                 })
             })?;

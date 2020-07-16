@@ -11,7 +11,7 @@ pub trait Executor {
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
     #[error("ActionExecutionError: [{message}]")]
-    ActionExecutionError { message: String },
+    ActionExecutionError { message: String, can_retry: bool },
     #[error("MissingArgumentError: [{message}]")]
     MissingArgumentError { message: String },
     #[error("UnknownArgumentError: [{message}]")]
@@ -26,6 +26,9 @@ pub trait RetriableError {
 
 impl RetriableError for ExecutorError {
     fn can_retry(&self) -> bool {
-        true
+        match self {
+            ExecutorError::ActionExecutionError { can_retry, .. } => *can_retry,
+            _ => false,
+        }
     }
 }
