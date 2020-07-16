@@ -27,9 +27,7 @@ pub enum MonitoringAction {
 }
 
 impl MonitoringAction {
-    fn to_sub_actions<'a>(
-        &'a self,
-    ) -> (Icinga2Action<'a>, DirectorAction<'a>, Option<DirectorAction<'a>>) {
+    fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
         match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
                 Icinga2Action {
@@ -92,7 +90,7 @@ impl MonitoringExecutor {
     }
 
     pub fn parse_monitoring_action(action: Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::t(tornado_common_api::Value::Map(action.payload))
+        Ok(serde_json::to_value(tornado_common_api::Value::Map(action.payload))
             .and_then(serde_json::from_value)
             .map_err(|err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
