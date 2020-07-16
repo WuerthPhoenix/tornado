@@ -248,7 +248,7 @@ mod test {
 
         // Assert
         assert_eq!(
-            "https://127.0.0.1:5665/v1/actions",
+            "https://localhost:5665/v1/actions",
             config.icinga2_executor_config.server_api_url
         )
     }
@@ -274,7 +274,7 @@ mod test {
         let config = build_icinga2_client_config(config_dir).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+        assert_eq!("https://localhost:5665/v1/actions", config.server_api_url)
     }
 
     #[test]
@@ -286,7 +286,7 @@ mod test {
         let config = build_director_client_config(config_dir).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1/neteye/director", config.server_api_url)
+        assert_eq!("https://localhost/neteye/director", config.server_api_url)
     }
 
     #[test]
