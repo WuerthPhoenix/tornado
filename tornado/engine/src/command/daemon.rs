@@ -2,9 +2,6 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
-use crate::executor::director::DirectorApiClientMessage;
-use crate::executor::icinga2::Icinga2ApiClientMessage;
-use crate::executor::ApiClientActor;
 use crate::executor::retry::RetryActor;
 use crate::executor::ExecutorActor;
 use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
@@ -70,12 +67,6 @@ pub async fn daemon(
         })
     });
 
-    // Start Api Client Actor for Icinga2
-    let icinga2_client_addr = ApiClientActor::start_new(configs.icinga2_executor_config);
-
-    // Start Api Client Actor for Director
-    let director_client_addr = ApiClientActor::start_new(configs.director_executor_config);
-
     // Start ForEach executor actor
     let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
         tornado_executor_foreach::ForEachExecutor,
@@ -96,27 +87,25 @@ pub async fn daemon(
     });
 
     // Start icinga2 executor actor
+    let icinga2_client_config = configs.icinga2_executor_config.clone();
     let icinga2_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
         SyncArbiter::start(threads_per_queue, move || {
-            let icinga2_client_addr_clone = icinga2_client_addr.clone();
-            let executor = tornado_executor_icinga2::Icinga2Executor::new(move |icinga2action| {
-                icinga2_client_addr_clone
-                    .do_send(Icinga2ApiClientMessage { message: icinga2action });
-                Ok(())
-            });
+            let executor =
+                tornado_executor_icinga2::Icinga2Executor::new(icinga2_client_config.clone())
+                    .expect("Cannot start the Icinga2Executor Executor");
             ExecutorActor { executor }
         })
     });
 
     // Start director executor actor
-    let director_executor_addr = SyncArbiter::start(threads_per_queue, move || {
-        let director_client_addr_clone = director_client_addr.clone();
-        let executor = tornado_executor_director::DirectorExecutor::new(move |director_action| {
-            director_client_addr_clone
-                .do_send(DirectorApiClientMessage { message: director_action });
-            Ok(())
-        });
-        ExecutorActor { executor }
+    let director_client_config = configs.director_executor_config.clone();
+    let director_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor =
+                tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
+                    .expect("Cannot start the DirectorExecutor Executor");
+            ExecutorActor { executor }
+        })
     });
 
     // Configure action dispatcher
@@ -124,19 +113,51 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |action| {
-            	let action = Arc::new(action);
-                match action.id.as_ref() {
-                    "archive" => archive_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "icinga2" => icinga2_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "director" => director_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "script" => script_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "foreach" => foreach_executor_addr_clone.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "logger" => logger_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 }),
-                    "elasticsearch" => {
-                        elasticsearch_executor_addr.do_send(ActionMessage { action, failed_attempts: 0 })
-                    }
-                    _ => error!("There are not executors for action id [{}]", &action.id),
+                let action = Arc::new(action);
+                let send_result = match action.id.as_ref() {
+                    "archive" => archive_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'archive' executor. Err: {:?}", err)
+                        }),
+                    "icinga2" => icinga2_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
+                        }),
+                    "director" => director_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'director' executor. Err: {:?}", err)
+                        }),
+                    "script" => script_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'script' executor. Err: {:?}", err)
+                        }),
+                    "foreach" => foreach_executor_addr_clone
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'foreach' executor. Err: {:?}", err)
+                        }),
+                    "logger" => logger_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!("Error sending message to 'logger' executor. Err: {:?}", err)
+                        }),
+                    "elasticsearch" => elasticsearch_executor_addr
+                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .map_err(|err| {
+                            format!(
+                                "Error sending message to 'elasticsearch' executor. Err: {:?}",
+                                err
+                            )
+                        }),
+                    _ => Err(format!("There are not executors for action id [{}]", &action.id)),
                 };
+                if let Err(error_message) = send_result {
+                    error!("{}", error_message)
+                }
             },
         };
         Arc::new(event_bus)
