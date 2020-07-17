@@ -11,11 +11,24 @@ pub trait Executor {
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
     #[error("ActionExecutionError: [{message}]")]
-    ActionExecutionError { message: String },
+    ActionExecutionError { message: String, can_retry: bool },
     #[error("MissingArgumentError: [{message}]")]
     MissingArgumentError { message: String },
     #[error("UnknownArgumentError: [{message}]")]
     UnknownArgumentError { message: String },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
+}
+
+pub trait RetriableError {
+    fn can_retry(&self) -> bool;
+}
+
+impl RetriableError for ExecutorError {
+    fn can_retry(&self) -> bool {
+        match self {
+            ExecutorError::ActionExecutionError { can_retry, .. } => *can_retry,
+            _ => false,
+        }
+    }
 }

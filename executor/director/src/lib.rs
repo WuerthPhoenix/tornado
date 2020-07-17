@@ -117,17 +117,20 @@ impl Executor for DirectorExecutor {
             .json(&action.payload)
             .send()
             .map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
             })?;
 
         let response_status = response.status();
 
         let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
+            can_retry: true,
             message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
         })?;
 
         if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
                     message: format!(
                         "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
                     ),

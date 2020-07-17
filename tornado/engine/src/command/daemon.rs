@@ -115,38 +115,38 @@ pub async fn daemon(
             callback: move |action| {
                 let action = Arc::new(action);
                 let send_result = match action.id.as_ref() {
-                    "archive" => archive_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
-                        .map_err(|err| {
+                    "archive" => {
+                        archive_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'archive' executor. Err: {:?}", err)
-                        }),
-                    "icinga2" => icinga2_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
-                        .map_err(|err| {
+                        })
+                    }
+                    "icinga2" => {
+                        icinga2_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
-                        }),
-                    "director" => director_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
-                        .map_err(|err| {
+                        })
+                    }
+                    "director" => {
+                        director_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
-                        }),
-                    "script" => script_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
-                        .map_err(|err| {
+                        })
+                    }
+                    "script" => {
+                        script_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'script' executor. Err: {:?}", err)
-                        }),
+                        })
+                    }
                     "foreach" => foreach_executor_addr_clone
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .try_send(ActionMessage { action })
                         .map_err(|err| {
                             format!("Error sending message to 'foreach' executor. Err: {:?}", err)
                         }),
-                    "logger" => logger_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
-                        .map_err(|err| {
+                    "logger" => {
+                        logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'logger' executor. Err: {:?}", err)
-                        }),
+                        })
+                    }
                     "elasticsearch" => elasticsearch_executor_addr
-                        .try_send(ActionMessage { action, failed_attempts: 0 })
+                        .try_send(ActionMessage { action })
                         .map_err(|err| {
                             format!(
                                 "Error sending message to 'elasticsearch' executor. Err: {:?}",

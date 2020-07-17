@@ -159,6 +159,7 @@ impl Executor for ElasticsearchExecutor {
             let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
                 .and_then(serde_json::from_value)
                 .map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
                 })?;
             Cow::Owned(es_authentication.new_client()?)
@@ -166,6 +167,7 @@ impl Executor for ElasticsearchExecutor {
             debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
             Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
                 ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: "Missing both default client and auth data from payload".to_string(),
                 }
             })?)
@@ -173,12 +175,14 @@ impl Executor for ElasticsearchExecutor {
 
         let res = client.post(&endpoint).json(&data).send().map_err(|err| {
             ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {}", err),
             }
         })?;
 
         if !res.status().is_success() {
             Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!(
                     "Error while sending document to Elasticsearch. Response: {:?}",
                     res
