@@ -40,7 +40,3 @@ An example of a valid Tornado Action is:
     }
 }
 ```
-
-The Director Executor is only in charge of extracting the required data from the Tornado Action
-payload. It will not perform any HTTP calls to the Director API, which instead should be taken care
-of by those using the executor.

@@ -11,7 +11,6 @@ pub mod retry;
 #[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
     pub action: Arc<Action>,
-    pub failed_attempts: u32,
 }
 
 pub struct ExecutorActor<E: Executor + Display + Unpin> {
@@ -36,10 +35,7 @@ impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for Executo
                 Ok(())
             }
             Err(e) => {
-                error!(
-                    "ExecutorActor - {} - Failed {} times to execute action: {}",
-                    &self.executor, msg.failed_attempts, e
-                );
+                error!("ExecutorActor - {} - Failed to execute action: {}", &self.executor, e);
                 Err(e)
             }
         }

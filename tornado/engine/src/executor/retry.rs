@@ -1,11 +1,12 @@
-use crate::executor::ActionMessage;
 use actix::dev::ToEnvelope;
-use actix::{Actor, Addr, Context, Handler};
+use actix::{Actor, Addr, Context, Handler, Message};
+use core::fmt::{Debug, Display};
+use core::marker::PhantomData;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tornado_executor_common::ExecutorError;
+use tornado_executor_common::RetriableError;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -108,41 +109,59 @@ impl BackoffPolicy {
     }
 }
 
-pub struct RetryActor<A: Actor + actix::Handler<ActionMessage>>
-where
-    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+pub struct RetryActor<
+    A: Actor + actix::Handler<M>,
+    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+    Err: 'static + Send + Unpin + RetriableError + Display,
+> where
+    <A as Actor>::Context: ToEnvelope<A, M>,
 {
     executor_addr: Addr<A>,
     retry_strategy: Arc<RetryStrategy>,
+    phantom_m: PhantomData<M>,
+    phantom_err: PhantomData<Err>,
 }
 
-impl<A: Actor + actix::Handler<ActionMessage>> Actor for RetryActor<A>
+impl<
+        A: Actor + actix::Handler<M>,
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display,
+    > Actor for RetryActor<A, M, Err>
 where
-    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+    <A as Actor>::Context: ToEnvelope<A, M>,
 {
     type Context = Context<Self>;
 }
 
-impl<A: Actor + actix::Handler<ActionMessage>> RetryActor<A>
+impl<
+        A: Actor + actix::Handler<M>,
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display,
+    > RetryActor<A, M, Err>
 where
-    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+    <A as Actor>::Context: ToEnvelope<A, M>,
 {
     pub fn start_new<F>(retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
     where
         F: FnOnce() -> Addr<A>,
     {
         let executor_addr = factory();
-        Self { retry_strategy, executor_addr }.start()
+        Self { retry_strategy, executor_addr, phantom_m: PhantomData, phantom_err: PhantomData }
+            .start()
     }
 }
 
-impl<A: Actor + actix::Handler<ActionMessage>> Handler<ActionMessage> for RetryActor<A>
+impl<
+        A: Actor + actix::Handler<M>,
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display,
+    > Handler<M> for RetryActor<A, M, Err>
 where
-    <A as Actor>::Context: ToEnvelope<A, ActionMessage>,
+    <A as Actor>::Context: ToEnvelope<A, M>,
 {
-    type Result = Result<(), ExecutorError>;
+    type Result = Result<(), Err>;
 
-    fn handle(&mut self, mut msg: ActionMessage, _ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: M, _ctx: &mut Context<Self>) -> Self::Result {
         debug!("RetryActor - received new message");
 
         let executor_addr = self.executor_addr.clone();
@@ -150,24 +169,30 @@ where
 
         actix::spawn(async move {
             let mut should_retry = true;
+            let mut failed_attempts = 0;
             while should_retry {
                 should_retry = false;
                 let result = executor_addr.send(msg.clone()).await;
                 match result {
                     Ok(response) => {
-                        if response.is_err() {
-                            msg.failed_attempts += 1;
-                            let (new_should_retry, should_wait) =
-                                retry_strategy.should_retry(msg.failed_attempts);
-                            should_retry = new_should_retry;
-                            if should_retry {
-                                debug!("The failed message will be reprocessed based on the current RetryPolicy. Message: {:?}", msg);
-                                if let Some(delay_for) = should_wait {
-                                    debug!("Wait for {:?} before retrying.", delay_for);
-                                    actix::clock::delay_for(delay_for).await;
-                                }
+                        if let Err(err) = response {
+                            if !err.can_retry() {
+                                warn!("The failed message will not be retried as the error is not recoverable. Err: {}", err)
                             } else {
-                                warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Message: {:?}", msg)
+                                failed_attempts += 1;
+                                let (new_should_retry, should_wait) =
+                                    retry_strategy.should_retry(failed_attempts);
+                                should_retry = new_should_retry;
+
+                                if should_retry {
+                                    debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg);
+                                    if let Some(delay_for) = should_wait {
+                                        debug!("Wait for {:?} before retrying.", delay_for);
+                                        actix::clock::delay_for(delay_for).await;
+                                    }
+                                } else {
+                                    warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, msg)
+                                }
                             }
                         }
                     }
@@ -183,12 +208,12 @@ where
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::executor::ExecutorActor;
+    use crate::executor::{ActionMessage, ExecutorActor};
     use actix::SyncArbiter;
     use rand::Rng;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
-    use tornado_executor_common::Executor;
+    use tornado_executor_common::{Executor, ExecutorError};
 
     #[test]
     fn retry_policy_should_return_when_to_retry() {
@@ -325,12 +350,12 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                 ExecutorActor { executor }
             })
         });
 
-        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+        executor_addr.do_send(ActionMessage { action });
 
         for _i in 0..=attempts {
             let received = receiver.recv().await.unwrap();
@@ -360,7 +385,35 @@ pub mod test {
             })
         });
 
-        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+        executor_addr.do_send(ActionMessage { action });
+
+        let received = receiver.recv().await.unwrap();
+        assert_eq!("hello", received.id);
+
+        actix::clock::delay_for(Duration::from_millis(25)).await;
+        // there should be no other messages on the channel
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[actix_rt::test]
+    async fn should_not_retry_if_unrecoverable_error() {
+        let (sender, mut receiver) = unbounded_channel();
+        let attempts = rand::thread_rng().gen_range(10, 250);
+        let retry_strategy = RetryStrategy {
+            retry_policy: RetryPolicy::MaxRetries { retries: attempts },
+            backoff_policy: BackoffPolicy::None,
+        };
+
+        let action = Arc::new(Action::new("hello"));
+
+        let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
+            SyncArbiter::start(2, move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
+                ExecutorActor { executor }
+            })
+        });
+
+        executor_addr.do_send(ActionMessage { action });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
@@ -384,12 +437,12 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone() };
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                 ExecutorActor { executor }
             })
         });
 
-        executor_addr.do_send(ActionMessage { action, failed_attempts: 0 });
+        executor_addr.do_send(ActionMessage { action });
 
         for i in 0..=(attempts as usize) {
             let before_ms = chrono::Local::now().timestamp_millis();
@@ -411,13 +464,17 @@ pub mod test {
     }
 
     struct AlwaysFailExecutor {
+        can_retry: bool,
         sender: UnboundedSender<Action>,
     }
 
     impl Executor for AlwaysFailExecutor {
         fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
-            Err(ExecutorError::ActionExecutionError { message: "".to_owned() })
+            Err(ExecutorError::ActionExecutionError {
+                message: "".to_owned(),
+                can_retry: self.can_retry,
+            })
         }
     }
 

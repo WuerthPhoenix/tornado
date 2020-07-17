@@ -117,12 +117,14 @@ impl DirectorExecutor {
             .json(&director_action.payload)
             .send()
             .map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
             })?;
 
         let response_status = response.status();
 
         let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
+            can_retry: true,
             message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
         })?;
 
@@ -132,6 +134,7 @@ impl DirectorExecutor {
             Err(ExecutorError::IcingaObjectAlreadyExistingError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ) })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!(
                     "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),

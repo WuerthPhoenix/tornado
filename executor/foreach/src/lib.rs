@@ -110,6 +110,7 @@ fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorE
         if let Value::Text(text) = element {
             if let Some(parse_result) = Parser::build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {}", text, err),
                 })?
                 .parse_value(item)
