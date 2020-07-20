@@ -71,6 +71,7 @@ impl Executor for ScriptExecutor {
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 can_retry: false,
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
+                code: None,
             })?
             .to_owned();
 
@@ -85,6 +86,7 @@ impl Executor for ScriptExecutor {
                 ExecutorError::ActionExecutionError {
                     can_retry: true,
                     message: format!("Cannot execute script [{}]: {}", &script, err),
+                    code: None,
                 }
             })?;
 

@@ -112,6 +112,7 @@ fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorE
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {}", text, err),
+                    code: None,
                 })?
                 .parse_value(item)
             {

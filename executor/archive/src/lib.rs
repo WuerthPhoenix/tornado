@@ -70,6 +70,7 @@ impl ArchiveExecutor {
                     return Err(ExecutorError::ActionExecutionError {
                         can_retry: false,
                         message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
+                        code: None
                     });
                 }
 
@@ -82,6 +83,7 @@ impl ArchiveExecutor {
                             "Cannot create required directories for path [{:?}]: {}",
                             &path, err
                         ),
+                        code: None,
                     })?;
                 }
 
@@ -93,6 +95,7 @@ impl ArchiveExecutor {
                                 "Cannot open file [{}]: {}",
                                 &absolute_path_string, err
                             ),
+                            code: None,
                         }
                     })?;
 
@@ -103,6 +106,7 @@ impl ArchiveExecutor {
         file.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
+            code: None,
         })
     }
 }
@@ -124,6 +128,7 @@ impl Executor for ArchiveExecutor {
                         "Cannot find mapping for {} value: [{}]",
                         ARCHIVE_TYPE_KEY, archive_type
                     ),
+                    code: None,
                 }),
             },
             None => Ok(None),
@@ -135,11 +140,13 @@ impl Executor for ArchiveExecutor {
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 can_retry: false,
                 message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
+                code: None,
             })
             .and_then(|value| {
                 serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot deserialize event:{}", err),
+                    code: None,
                 })
             })?;
 

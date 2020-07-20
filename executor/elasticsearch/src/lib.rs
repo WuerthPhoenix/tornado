@@ -161,6 +161,7 @@ impl Executor for ElasticsearchExecutor {
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
+                    code: None,
                 })?;
             Cow::Owned(es_authentication.new_client()?)
         } else {
@@ -169,6 +170,7 @@ impl Executor for ElasticsearchExecutor {
                 ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: "Missing both default client and auth data from payload".to_string(),
+                    code: None,
                 }
             })?)
         };
@@ -177,6 +179,7 @@ impl Executor for ElasticsearchExecutor {
             ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {}", err),
+                code: None,
             }
         })?;
 
@@ -187,6 +190,7 @@ impl Executor for ElasticsearchExecutor {
                     "Error while sending document to Elasticsearch. Response: {:?}",
                     res
                 ),
+                code: None,
             })
         } else {
             debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");

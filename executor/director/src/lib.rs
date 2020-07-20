@@ -12,6 +12,10 @@ pub const DIRECTOR_ACTION_NAME_KEY: &str = "action_name";
 pub const DIRECTOR_ACTION_PAYLOAD_KEY: &str = "action_payload";
 pub const DIRECTOR_ACTION_LIVE_CREATION_KEY: &str = "icinga2_live_creation";
 
+const ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE: u16 = 422;
+const ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE: &str = "Trying to recreate";
+pub const ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectAlreadyExisting";
+
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum DirectorActionName {
     CreateHost,
@@ -87,22 +91,19 @@ impl DirectorExecutor {
 
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
-}
 
-impl Executor for DirectorExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
-        trace!("DirectorExecutor - received action: \n[{:?}]", action);
-
-        let action = self.parse_action(action)?;
-
+    pub fn perform_request(&self, director_action: DirectorAction) -> Result<(), ExecutorError> {
         let mut url = format!(
             "{}/{}",
             &self.api_client.server_api_url,
-            action.name.to_director_api_subpath()
+            director_action.name.to_director_api_subpath()
         );
 
-        trace!("DirectorExecutor - icinga2 live creation is set to: {}", action.live_creation);
-        if action.live_creation {
+        trace!(
+            "DirectorExecutor - icinga2 live creation is set to: {}",
+            director_action.live_creation
+        );
+        if director_action.live_creation {
             url.push_str("?live-creation=true");
         }
         let http_auth_header = &self.api_client.http_auth_header;
@@ -114,11 +115,12 @@ impl Executor for DirectorExecutor {
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
-            .json(&action.payload)
+            .json(&director_action.payload)
             .send()
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
+                code: None,
             })?;
 
         let response_status = response.status();
@@ -126,15 +128,21 @@ impl Executor for DirectorExecutor {
         let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
+            code: None,
         })?;
 
-        if !response_status.is_success() {
+        if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
+            && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
+        {
+            Err(ExecutorError::ActionExecutionError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), can_retry: true, code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) })
+        } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
-                    message: format!(
-                        "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
-                    ),
-                })
+                message: format!(
+                    "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
+                ),
+                code: None
+            })
         } else {
             debug!(
                 "DirectorExecutor API request completed successfully. Response body: {}",
@@ -145,8 +153,18 @@ impl Executor for DirectorExecutor {
     }
 }
 
+impl Executor for DirectorExecutor {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+        trace!("DirectorExecutor - received action: \n[{:?}]", action);
+
+        let action = self.parse_action(action)?;
+
+        self.perform_request(action)
+    }
+}
+
 #[derive(Debug, PartialEq, Serialize)]
-struct DirectorAction<'a> {
+pub struct DirectorAction<'a> {
     pub name: DirectorActionName,
     pub payload: &'a Value,
     pub live_creation: bool,
