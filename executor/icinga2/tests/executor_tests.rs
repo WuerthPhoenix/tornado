@@ -11,6 +11,7 @@ use tornado_executor_common::{Executor, ExecutorError};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,
+    ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
 
 #[test]
@@ -130,5 +131,5 @@ fn should_return_object_not_existing_error_in_case_of_404_status_code() {
 
     // Assert
     assert!(result.is_err());
-    assert_eq!(result, Err(ExecutorError::IcingaObjectNotFoundError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response)  }))
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) }))
 }

@@ -474,6 +474,7 @@ pub mod test {
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
+                code: None,
             })
         }
     }

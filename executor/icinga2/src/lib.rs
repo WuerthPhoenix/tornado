@@ -12,6 +12,7 @@ pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 
 const ICINGA2_OBJECT_NOT_EXISTING_RESPONSE: &str = "No objects found";
 const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
+pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
 
 /// An executor that logs received actions at the 'info' level
 pub struct Icinga2Executor {
@@ -69,6 +70,7 @@ impl Icinga2Executor {
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {}", err),
+                code: None,
             })?;
 
         let response_status = response.status();
@@ -76,18 +78,20 @@ impl Icinga2Executor {
         let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
+            code: None,
         })?;
 
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::IcingaObjectNotFoundError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ) })
+            Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
                     "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
+                code: None
             })
         } else {
             debug!("Icinga2Executor - Data correctly sent to Icinga2 API");

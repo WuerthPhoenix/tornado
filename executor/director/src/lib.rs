@@ -14,6 +14,7 @@ pub const DIRECTOR_ACTION_LIVE_CREATION_KEY: &str = "icinga2_live_creation";
 
 const ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE: u16 = 422;
 const ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE: &str = "Trying to recreate";
+pub const ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectAlreadyExisting";
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum DirectorActionName {
@@ -119,6 +120,7 @@ impl DirectorExecutor {
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
+                code: None,
             })?;
 
         let response_status = response.status();
@@ -126,18 +128,20 @@ impl DirectorExecutor {
         let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
+            code: None,
         })?;
 
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::IcingaObjectAlreadyExistingError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ) })
+            Err(ExecutorError::ActionExecutionError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), can_retry: true, code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
                     "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
+                code: None
             })
         } else {
             debug!(

@@ -57,7 +57,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     // Assert
     assert!(result.is_err());
     assert_eq!(icinga_mock.times_called(), 1);
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}\" }}", "500 Internal Server Error", "")  }))
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}", "500 Internal Server Error", ""), can_retry: true, code: None }))
 }
 
 #[test]
@@ -172,7 +172,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     assert_eq!(icinga_mock.times_called(), 2);
     // director server should be called once to create the host, and once to create the service
     assert_eq!(director_mock.times_called(), 2);
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: IcingaObjectNotFoundError {{ message: \"Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}\" }}", "404 Not Found", icinga_server_response.escape_debug())  }))
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}\", can_retry: true, code: Some(\"IcingaObjectNotExisting\") }}", "404 Not Found", icinga_server_response.escape_debug()), can_retry: true, code: None  }))
 }
 
 #[test]
@@ -243,9 +243,11 @@ fn should_return_return_error_on_object_creation_failure() {
         result,
         Err(ExecutorError::ActionExecutionError {
             message: format!(
-                "MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: ActionExecutionError {{ message: \"DirectorExecutor API returned an error. Response status: {}. Response body: {}\" }}",
+                "MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: ActionExecutionError {{ message: \"DirectorExecutor API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}",
                 "500 Internal Server Error", director_server_response.escape_debug()
-            )
+            ),
+            can_retry: true,
+            code: None
         })
     )
 }

@@ -2,11 +2,16 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use tornado_common_api::Payload;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{Executor, ExecutorError, RetriableError};
 use tornado_executor_director::config::DirectorClientConfig;
-use tornado_executor_director::{DirectorAction, DirectorActionName, DirectorExecutor};
+use tornado_executor_director::{
+    DirectorAction, DirectorActionName, DirectorExecutor,
+    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
+};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
-use tornado_executor_icinga2::{Icinga2Action, Icinga2Executor};
+use tornado_executor_icinga2::{
+    Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
+};
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -116,7 +121,9 @@ impl MonitoringExecutor {
                 debug!("MonitoringExecutor - Director host creation action successfully performed");
                 Ok(())
             }
-            Err(ExecutorError::IcingaObjectAlreadyExistingError { message }) => {
+            Err(ExecutorError::ActionExecutionError { message, code: Some(code), .. })
+                if code.eq(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) =>
+            {
                 debug!("MonitoringExecutor - Director host creation action failed with message {:?}. Looks like the host already exists in Icinga.", message);
                 Ok(())
             }
@@ -125,7 +132,7 @@ impl MonitoringExecutor {
                     "MonitoringExecutor - Director host creation action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err) })
+                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
         }?;
 
@@ -137,13 +144,15 @@ impl MonitoringExecutor {
                     debug!("MonitoringExecutor - Director service creation action successfully performed");
                     Ok(())
                 }
-                Err(ExecutorError::IcingaObjectAlreadyExistingError { message }) => {
+                Err(ExecutorError::ActionExecutionError { message, code: Some(code), .. })
+                    if code.eq(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) =>
+                {
                     debug!("MonitoringExecutor - Director service creation action failed with message {:?}. Looks like the host already exists in Icinga.", message);
                     Ok(())
                 }
                 Err(err) => {
                     error!("MonitoringExecutor - Director service creation action failed with error {:?}.", err);
-                    Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err) })
+                    Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
                 }
             }?;
         };
@@ -181,20 +190,22 @@ impl Executor for MonitoringExecutor {
                 debug!("MonitoringExecutor - Process check result correctly performed");
                 Ok(())
             }
-            Err(ExecutorError::IcingaObjectNotFoundError { message }) => {
+            Err(ExecutorError::ActionExecutionError { message, code: Some(code), .. })
+                if code.eq(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) =>
+            {
                 debug!("MonitoringExecutor - Process check result action failed with message {:?}. Looks like Icinga2 object does not exist yet. Proceeding with the creation of the object..", message);
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
                 )?;
-                self.icinga_executor.perform_request(&icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err) })
+                self.icinga_executor.perform_request(&icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
             Err(err) => {
                 error!(
                     "MonitoringExecutor - Process check result action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err) })
+                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
         }
     }

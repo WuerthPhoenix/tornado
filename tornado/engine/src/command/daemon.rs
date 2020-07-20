@@ -145,14 +145,12 @@ pub async fn daemon(
                         })
                     }
                     "monitoring" => {
-                        monitoring_executor_addr
-                            .try_send(ActionMessage { action, failed_attempts: 0 })
-                            .map_err(|err| {
-                                format!(
-                                    "Error sending message to 'monitoring' executor. Err: {:?}",
-                                    err
-                                )
-                            })
+                        monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                            format!(
+                                "Error sending message to 'monitoring' executor. Err: {:?}",
+                                err
+                            )
+                        })
                     }
                     "script" => {
                         script_executor_addr.try_send(ActionMessage { action }).map_err(|err| {

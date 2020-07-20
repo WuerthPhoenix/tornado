@@ -11,6 +11,7 @@ use tornado_executor_common::{Executor, ExecutorError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
+    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 
 #[test]
@@ -154,5 +155,5 @@ fn should_return_object_already_existing_error_in_case_of_422_status_code() {
 
     // Assert
     assert!(result.is_err());
-    assert_eq!(result, Err(ExecutorError::IcingaObjectAlreadyExistingError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", "422 Unprocessable Entity", server_response)  }))
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", "422 Unprocessable Entity", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) }))
 }

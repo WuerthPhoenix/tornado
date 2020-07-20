@@ -10,18 +10,14 @@ pub trait Executor {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
-    #[error("ActionExecutionError: [{message}]")]
-    ActionExecutionError { message: String, can_retry: bool },
+    #[error("ActionExecutionError: [{message}], can_retry: {can_retry}, code: {code:?}")]
+    ActionExecutionError { message: String, can_retry: bool, code: Option<&'static str> },
     #[error("MissingArgumentError: [{message}]")]
     MissingArgumentError { message: String },
     #[error("UnknownArgumentError: [{message}]")]
     UnknownArgumentError { message: String },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
-    #[error("IcingaObjectNotFoundError: [{message}]")]
-    IcingaObjectNotFoundError { message: String },
-    #[error("IcingaObjectAlreadyExistingError: [{message}]")]
-    IcingaObjectAlreadyExistingError { message: String },
 }
 
 pub trait RetriableError {
