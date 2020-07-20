@@ -18,7 +18,10 @@ pub struct RetryStrategy {
 
 impl Default for RetryStrategy {
     fn default() -> Self {
-        Self { retry_policy: RetryPolicy::None, backoff_policy: BackoffPolicy::None }
+        Self {
+            retry_policy: RetryPolicy::MaxRetries { retries: 20 },
+            backoff_policy: BackoffPolicy::Exponential { ms: 1000, multiplier: 2 },
+        }
     }
 }
 
@@ -73,7 +76,13 @@ pub enum BackoffPolicy {
     /// For example:
     /// ms = [111,222,333] -> It waits 111 ms after the first failure, 222 ms after the second failure and then 333 ms for all following failures.
     Variable { ms: Vec<u32> },
-    // Exponential
+    /// Implementation of BackoffPolicy that increases the back off period for each retry attempt in a given set using the exponential function.
+    Exponential {
+        /// The period to sleep on the first backoff.
+        ms: u32,
+        // The multiplier to use to generate the next backoff interval from the last.
+        multiplier: u64,
+    },
 }
 
 impl BackoffPolicy {
@@ -102,6 +111,15 @@ impl BackoffPolicy {
                             }
                         }
                         None => None,
+                    }
+                }
+                BackoffPolicy::Exponential { ms, multiplier } => {
+                    if *ms > 0 {
+                        let multiplier = multiplier.saturating_pow(failed_attempts - 1);
+                        let wait_ms = multiplier.saturating_mul(*ms as u64);
+                        Some(Duration::from_millis(wait_ms))
+                    } else {
+                        None
                     }
                 }
             }
@@ -216,14 +234,15 @@ pub mod test {
     use tornado_executor_common::{Executor, ExecutorError};
 
     #[test]
-    fn retry_policy_should_return_when_to_retry() {
-        // None
+    fn retry_policy_none_should_never_retry() {
         assert!(RetryPolicy::None.should_retry(0));
         assert!(!RetryPolicy::None.should_retry(1));
         assert!(!RetryPolicy::None.should_retry(10));
         assert!(!RetryPolicy::None.should_retry(100));
+    }
 
-        // Max
+    #[test]
+    fn retry_policy_max_should_return_when_to_retry() {
         assert!(RetryPolicy::MaxRetries { retries: 0 }.should_retry(0));
         assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(1));
         assert!(!RetryPolicy::MaxRetries { retries: 0 }.should_retry(10));
@@ -240,8 +259,10 @@ pub mod test {
         assert!(RetryPolicy::MaxRetries { retries: 10 }.should_retry(10));
         assert!(!RetryPolicy::MaxRetries { retries: 10 }.should_retry(11));
         assert!(!RetryPolicy::MaxRetries { retries: 10 }.should_retry(100));
+    }
 
-        // Infinite
+    #[test]
+    fn retry_policy_infinite_should_return_when_to_retry() {
         assert!(RetryPolicy::Infinite.should_retry(0));
         assert!(RetryPolicy::Infinite.should_retry(1));
         assert!(RetryPolicy::Infinite.should_retry(10));
@@ -249,14 +270,15 @@ pub mod test {
     }
 
     #[test]
-    fn backoff_policy_should_return_the_wait_time() {
-        // None
+    fn backoff_policy_none_should_never_wait() {
         assert_eq!(None, BackoffPolicy::None.should_wait(0));
         assert_eq!(None, BackoffPolicy::None.should_wait(1));
         assert_eq!(None, BackoffPolicy::None.should_wait(10));
         assert_eq!(None, BackoffPolicy::None.should_wait(100));
+    }
 
-        // Fixed
+    #[test]
+    fn backoff_policy_fixed_should_return_the_wait_time() {
         assert_eq!(None, BackoffPolicy::Fixed { ms: 100 }.should_wait(0));
         assert_eq!(
             Some(Duration::from_millis(100)),
@@ -270,12 +292,13 @@ pub mod test {
             Some(Duration::from_millis(1123)),
             BackoffPolicy::Fixed { ms: 1123 }.should_wait(100)
         );
-
         assert_eq!(None, BackoffPolicy::Fixed { ms: 0 }.should_wait(0));
         assert_eq!(None, BackoffPolicy::Fixed { ms: 0 }.should_wait(1));
         assert_eq!(None, BackoffPolicy::Fixed { ms: 0 }.should_wait(10));
+    }
 
-        // Variable
+    #[test]
+    fn backoff_policy_variable_should_return_the_wait_time() {
         assert_eq!(None, BackoffPolicy::Variable { ms: vec!() }.should_wait(0));
         assert_eq!(None, BackoffPolicy::Variable { ms: vec!() }.should_wait(1));
         assert_eq!(None, BackoffPolicy::Variable { ms: vec!() }.should_wait(200));
@@ -323,6 +346,37 @@ pub mod test {
         assert_eq!(
             Some(Duration::from_millis(444)),
             BackoffPolicy::Variable { ms: vec!(111, 222, 0, 444) }.should_wait(100_000)
+        );
+    }
+
+    #[test]
+    fn backoff_policy_exponential_should_return_the_wait_time() {
+        assert_eq!(None, BackoffPolicy::Exponential { ms: 123, multiplier: 2 }.should_wait(0));
+        assert_eq!(
+            Some(Duration::from_millis(123)),
+            BackoffPolicy::Exponential { ms: 123, multiplier: 2 }.should_wait(1)
+        );
+        assert_eq!(
+            Some(Duration::from_millis(246)),
+            BackoffPolicy::Exponential { ms: 123, multiplier: 2 }.should_wait(2)
+        );
+        assert_eq!(
+            Some(Duration::from_millis(492)),
+            BackoffPolicy::Exponential { ms: 123, multiplier: 2 }.should_wait(3)
+        );
+
+        assert_eq!(None, BackoffPolicy::Exponential { ms: 1000, multiplier: 3 }.should_wait(0));
+        assert_eq!(
+            Some(Duration::from_millis(1000)),
+            BackoffPolicy::Exponential { ms: 1000, multiplier: 3 }.should_wait(1)
+        );
+        assert_eq!(
+            Some(Duration::from_millis(3000)),
+            BackoffPolicy::Exponential { ms: 1000, multiplier: 3 }.should_wait(2)
+        );
+        assert_eq!(
+            Some(Duration::from_millis(9000)),
+            BackoffPolicy::Exponential { ms: 1000, multiplier: 3 }.should_wait(3)
         );
     }
 
