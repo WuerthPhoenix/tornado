@@ -3674,6 +3674,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_nats_json_collector"
+version = "0.0.1"
+dependencies = [
+ "actix",
+ "actix-rt",
+ "chrono",
+ "clap",
+ "config",
+ "log",
+ "serde 1.0.114",
+ "serde_json",
+ "thiserror",
+ "tornado_collector_common",
+ "tornado_collector_jmespath",
+ "tornado_common",
+ "tornado_common_api",
+ "tornado_common_logger",
+]
+
+[[package]]
 name = "tornado_network_common"
 version = "0.0.1"
 dependencies = [
