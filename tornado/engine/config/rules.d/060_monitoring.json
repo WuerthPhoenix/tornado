@@ -29,7 +29,7 @@
         "host_creation_payload": {
           "object_type": "Object",
           "object_name": "${event.payload.data.hostname}",
-          "address": "127.0.0.1",
+          "address": "localhost",
           "check_command": "hostalive",
           "vars": {
             "location": "${event.payload.data.location}"
