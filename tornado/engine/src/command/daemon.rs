@@ -200,12 +200,11 @@ pub async fn daemon(
                 Ok(())
             })
             .await
-            .and_then(|_| {
+            .map(|_| {
                 info!(
                     "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
                     addresses, subject
                 );
-                Ok(())
             })
             .unwrap_or_else(|err| {
                 error!(
@@ -244,9 +243,8 @@ pub async fn daemon(
                 });
             })
             .await
-            .and_then(|_| {
+            .map(|_| {
                 info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
-                Ok(())
             })
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {
