@@ -20,6 +20,7 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use tornado_common::actors::message::TornadoCommonActorError;
 
 pub async fn daemon(
     config_dir: &str,
@@ -217,7 +218,10 @@ pub async fn daemon(
         let matcher_addr_clone = matcher_addr.clone();
 
         actix::spawn(async move {
-            subscribe_to_nats(nats_config, message_queue_size, move |event| {
+            subscribe_to_nats(nats_config, message_queue_size, move |msg| {
+                let event = serde_json::from_slice(&msg.msg)
+                    .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
+                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
                 matcher_addr_clone.do_send(EventMessage { event });
                 Ok(())
             })

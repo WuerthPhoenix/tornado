@@ -93,12 +93,13 @@ async fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient
             };
 
             let recipient_clone = recipient.clone();
-            subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data: Value| {
+            subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data| {
                 trace!("Topic [{}] called", topic);
-                debug!("Received call with body [{:?}]", data);
 
-                let event = jmespath_collector
-                    .to_event(data)
+                let event = std::str::from_utf8(&data.msg)
+                    .map_err(|err| CollectorError::EventCreationError { message: format!("{}", err) })
+                    .and_then(|text| jmespath_collector
+                        .to_event(text))
                     .map_err(|err| TornadoCommonActorError::GenericError { message: format!("{}", err) })?;
 
                 recipient_clone.do_send(EventMessage { event });
