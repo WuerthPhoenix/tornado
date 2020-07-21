@@ -8,6 +8,12 @@ This is done by means of executing the action `process check result` with the Ic
 and by executing the actions `create_host`/`create_service` with the Director Executor, in case
 the underlying Icinga objects do not yet exist in Icinga.
 
+> ### Important!
+>
+> The Monitoring Executor requires the live-creation feature of the Icinga Director to be exposed in the REST API.
+> If this is not the case, the actions of this executor will always fail in case the Icinga Objects are not already
+> present in Icinga2.
+
 ## How It Works
 
 This executor expects a Tornado Action to include the following elements in its payload:
@@ -66,3 +72,8 @@ An example of a valid Tornado Action is:
   }
 }
 ```
+
+Below is a flowchart that helps to understand the behaviour of the Monitoring Executor in relation to Icinga2 and Icinga
+Director REST APIs.
+
+![Import source](images/monitoring-executor-flowchart.png)
