@@ -43,22 +43,22 @@ pub async fn subscribe_to_nats<
 }
 
 struct NatsSubscriberActor<F>
-    where
-        F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+where
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     callback: F,
 }
 
 impl<F> Actor for NatsSubscriberActor<F>
-    where
-        F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+where
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
 impl<F> Handler<BytesMessage> for NatsSubscriberActor<F>
-    where
-        F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+where
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Result = Result<(), TornadoCommonActorError>;
 

@@ -3,11 +3,10 @@ use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
-use tornado_common::TornadoError;
-use tornado_common_logger::LoggerConfig;
-use tornado_common_api::{Payload, Value};
 use tornado_common::actors::nats_publisher::NatsClientConfig;
+use tornado_common::TornadoError;
+use tornado_common_api::Payload;
+use tornado_common_logger::LoggerConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT");
@@ -44,13 +43,8 @@ pub struct NatsJsonCollectorConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(untagged)]
 pub enum TornadoConnectionChannel {
-    Nats {
-        nats_subject: String,
-    },
-    TCP {
-        tcp_socket_ip: String,
-        tcp_socket_port: u16,
-    },
+    Nats { nats_subject: String },
+    TCP { tcp_socket_ip: String, tcp_socket_port: u16 },
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
@@ -136,7 +130,11 @@ mod test {
         assert_eq!(1 topics_config.len());
         assert_eq!(
             1,
-            topics_config.iter().filter(|val| vec!["vsphere".to_owned(), "another_topic".to_owned()].eq(&val.nats_topics)).count()
+            topics_config
+                .iter()
+                .filter(|val| vec!["vsphere".to_owned(), "another_topic".to_owned()]
+                    .eq(&val.nats_topics))
+                .count()
         );
     }
 }

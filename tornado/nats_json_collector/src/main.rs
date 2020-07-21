@@ -1,19 +1,18 @@
-use crate::config::{TopicConfig, TornadoConnectionChannel, EventConfig};
-use actix::dev::ToEnvelope;
-use actix::{Actor, Addr, System, Recipient};
-use chrono::prelude::Local;
+use crate::config::{EventConfig, TopicConfig, TornadoConnectionChannel};
+use actix::{Recipient, System};
 use log::*;
+use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
+use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::{EventMessage, TornadoCommonActorError};
-use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig, NatsClientConfig};
+use tornado_common::actors::nats_publisher::{
+    NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
+};
+use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
-use tornado_common::TornadoError;
-use tornado_common_api::{Event, Value};
+use tornado_common_api::Value;
 use tornado_common_logger::setup_logger;
-use tornado_common::actors::nats_subscriber::{NatsSubscriberConfig, subscribe_to_nats};
-use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
-use std::collections::HashMap;
 
 mod config;
 
@@ -22,8 +21,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let arg_matches = config::arg_matches();
 
     let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
-    let topics_dir =
-        arg_matches.value_of("topics-dir").expect("topics-dir should be provided");
+    let topics_dir = arg_matches.value_of("topics-dir").expect("topics-dir should be provided");
 
     let collector_config = config::build_config(&config_dir)?;
 
@@ -35,34 +33,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let nats_config = collector_config.nats_json_collector.nats_client;
 
     let recipient = match collector_config.nats_json_collector.tornado_connection_channel {
-            TornadoConnectionChannel::Nats { nats_subject } => {
-                info!("Connect to Tornado through NATS subject [{}]", nats_subject);
+        TornadoConnectionChannel::Nats { nats_subject } => {
+            info!("Connect to Tornado through NATS subject [{}]", nats_subject);
 
-                let nats_publisher_config = NatsPublisherConfig {
-                    client: nats_config.clone(),
-                    subject: nats_subject
-                };
+            let nats_publisher_config =
+                NatsPublisherConfig { client: nats_config.clone(), subject: nats_subject };
 
-                let actor_address = NatsPublisherActor::start_new(
-                    nats_publisher_config,
-                    collector_config.nats_json_collector.message_queue_size,
-                )?;
-                actor_address.recipient()
-            }
-            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
-                info!("Connect to Tornado through TCP socket");
-                // Start TcpWriter
-                let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
+            let actor_address = NatsPublisherActor::start_new(
+                nats_publisher_config,
+                collector_config.nats_json_collector.message_queue_size,
+            )?;
+            actor_address.recipient()
+        }
+        TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+            info!("Connect to Tornado through TCP socket");
+            // Start TcpWriter
+            let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
 
-                let actor_address = TcpClientActor::start_new(
-                    tornado_tcp_address,
-                    collector_config.nats_json_collector.message_queue_size,
-                );
-                actor_address.recipient()
-            }
-        };
+            let actor_address = TcpClientActor::start_new(
+                tornado_tcp_address,
+                collector_config.nats_json_collector.message_queue_size,
+            );
+            actor_address.recipient()
+        }
+    };
 
-    subscribe_to_topics(nats_config, recipient, collector_config.nats_json_collector.message_queue_size, topics_config).await?;
+    subscribe_to_topics(
+        nats_config,
+        recipient,
+        collector_config.nats_json_collector.message_queue_size,
+        topics_config,
+    )
+    .await?;
 
     tokio::signal::ctrl_c().await.unwrap();
     println!("Ctrl-C received, shutting down");
@@ -71,53 +73,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     Ok(())
 }
 
-async fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient<EventMessage>, message_queue_size: usize, topics_config: Vec<TopicConfig>) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-
+async fn subscribe_to_topics(
+    nats_config: NatsClientConfig,
+    recipient: Recipient<EventMessage>,
+    message_queue_size: usize,
+    topics_config: Vec<TopicConfig>,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     for topic_config in topics_config {
         for topic in topic_config.nats_topics {
             info!("Subscribe to NATS topic [{}]", topic);
 
-            let jmespath_collector_config = build_jmespath_collector_config(topic_config.collector_config.clone(), &topic);
-            let jmespath_collector = JMESPathEventCollector::build(jmespath_collector_config).map_err(|err| {
-                CollectorError::CollectorCreationError {
-                    message: format!(
-                        "Cannot create collector for topic [{}]. Err: {}",
-                        topic, err
-                    ),
-                }
-            })?;
+            let jmespath_collector_config =
+                build_jmespath_collector_config(topic_config.collector_config.clone(), &topic);
+            let jmespath_collector = JMESPathEventCollector::build(jmespath_collector_config)
+                .map_err(|err| CollectorError::CollectorCreationError {
+                    message: format!("Cannot create collector for topic [{}]. Err: {}", topic, err),
+                })?;
 
-            let nats_subscriber_config = NatsSubscriberConfig {
-                subject: topic.clone(),
-                client: nats_config.clone()
-            };
+            let nats_subscriber_config =
+                NatsSubscriberConfig { subject: topic.clone(), client: nats_config.clone() };
 
             let recipient_clone = recipient.clone();
             subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data| {
                 trace!("Topic [{}] called", topic);
 
                 let event = std::str::from_utf8(&data.msg)
-                    .map_err(|err| CollectorError::EventCreationError { message: format!("{}", err) })
-                    .and_then(|text| jmespath_collector
-                        .to_event(text))
-                    .map_err(|err| TornadoCommonActorError::GenericError { message: format!("{}", err) })?;
+                    .map_err(|err| CollectorError::EventCreationError {
+                        message: format!("{}", err),
+                    })
+                    .and_then(|text| jmespath_collector.to_event(text))
+                    .map_err(|err| TornadoCommonActorError::GenericError {
+                        message: format!("{}", err),
+                    })?;
 
-                recipient_clone.do_send(EventMessage { event });
-
-                Ok(())
-            }).await?;
+                recipient_clone.try_send(EventMessage { event }).map_err(|err| {
+                    TornadoCommonActorError::GenericError { message: format!("{}", err) }
+                })
+            })
+            .await?;
         }
     }
 
     Ok(())
 }
 
-fn build_jmespath_collector_config(collector_config: Option<EventConfig>, topic: &str) -> JMESPathEventCollectorConfig {
-
-    let collector_config = collector_config.unwrap_or_else(|| EventConfig {
-        event_type: None,
-        payload: None,
-    });
+fn build_jmespath_collector_config(
+    collector_config: Option<EventConfig>,
+    topic: &str,
+) -> JMESPathEventCollectorConfig {
+    let collector_config =
+        collector_config.unwrap_or_else(|| EventConfig { event_type: None, payload: None });
 
     JMESPathEventCollectorConfig {
         event_type: collector_config.event_type.unwrap_or_else(|| topic.to_owned()),
@@ -128,94 +133,6 @@ fn build_jmespath_collector_config(collector_config: Option<EventConfig>, topic:
         }),
     }
 }
-
-/*
-fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
-    webhooks_config: Vec<TopicConfig>,
-    factory: F,
-) -> Result<Scope, CollectorError> {
-    let mut scope = web::scope("");
-    scope = scope.service(web::resource("/ping").route(web::get().to(pong)));
-
-    for config in webhooks_config {
-        let id = config.id.clone();
-        let handler = handler::Handler {
-            id: config.id.clone(),
-            token: config.token,
-            collector: JMESPathEventCollector::build(config.collector_config).map_err(|err| {
-                CollectorError::CollectorCreationError {
-                    message: format!(
-                        "Cannot create collector for webhook with id [{}]. Err: {}",
-                        id, err
-                    ),
-                }
-            })?,
-            callback: factory(),
-        };
-
-        let path = format!("/event/{}", config.id);
-        debug!("Creating endpoint: [{}]", &path);
-
-        let new_scope = web::scope(&path)
-            .data(handler)
-            .service(web::resource("").route(web::post().to(handle::<R>)));
-
-        scope = scope.service(new_scope);
-    }
-
-    Ok(scope)
-}
-
-async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
-    actor_address: Addr<A>,
-    webhooks_config: Vec<TopicConfig>,
-    bind_address: String,
-    port: u32,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
-where
-    <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
-{
-    HttpServer::new(move || {
-        App::new().service(
-            create_app(webhooks_config.clone(), || {
-                let clone = actor_address.clone();
-                move |event| clone.do_send(EventMessage { event })
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot create the webhook handlers. Err: {}", err);
-                std::process::exit(1);
-            }),
-        )
-    })
-    .bind(format!("{}:{}", bind_address, port))
-    // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-    .unwrap_or_else(|err| {
-        error!("Server cannot start on port {}. Err: {}", port, err);
-        std::process::exit(1);
-    })
-    .run()
-    .await?;
-
-    Ok(())
-}
-
-async fn pong() -> impl Responder {
-    let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
-    let created_ms: String = dt.to_rfc3339();
-    format!("pong - {}", created_ms)
-}
-
-async fn handle<F: Fn(Event) + 'static>(
-    body: String,
-    query: Query<TokenQuery>,
-    handler: Data<Handler<F>>,
-) -> Result<String, HandlerError> {
-    let received_token = &query.token;
-    handler.handle(&body, received_token)
-}
-
- */
 
 #[cfg(test)]
 mod test {

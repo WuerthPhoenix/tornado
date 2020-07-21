@@ -13,6 +13,7 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
+use tornado_common::actors::message::TornadoCommonActorError;
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
@@ -20,7 +21,6 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use tornado_common::actors::message::TornadoCommonActorError;
 
 pub async fn daemon(
     config_dir: &str,
