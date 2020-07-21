@@ -10,7 +10,7 @@ use tokio::net::{UnixListener, UnixStream};
 
 pub fn listen_to_uds_socket<
     P: 'static + Into<String>,
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) + Sized + Unpin,
 >(
     path: P,
     socket_permissions: Option<u32>,
@@ -44,7 +44,7 @@ pub fn listen_to_uds_socket<
 
 struct UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) + Sized + Unpin,
 {
     path: String,
     socket_permissions: Option<u32>,
@@ -53,7 +53,7 @@ where
 
 impl<F> Actor for UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) + Sized + Unpin,
 {
     type Context = Context<Self>;
 
@@ -71,7 +71,7 @@ where
 /// Handle a stream of UnixStream elements
 impl<F> Handler<AsyncReadMessage<UnixStream>> for UdsServerActor<F>
 where
-    F: 'static + FnMut(AsyncReadMessage<UnixStream>) -> () + Sized + Unpin,
+    F: 'static + FnMut(AsyncReadMessage<UnixStream>) + Sized + Unpin,
 {
     type Result = ();
 

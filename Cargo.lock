@@ -4034,6 +4034,7 @@ dependencies = [
  "clap",
  "config",
  "log",
+ "maplit",
  "serde 1.0.114",
  "serde_json",
  "thiserror",

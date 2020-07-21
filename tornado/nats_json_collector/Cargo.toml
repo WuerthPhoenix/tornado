@@ -22,3 +22,4 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
+maplit = "1.0"

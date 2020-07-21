@@ -140,8 +140,7 @@ mod test {
             1,
             topics_config
                 .iter()
-                .filter(|val| vec!["vsphere_simple".to_owned()]
-                    .eq(&val.nats_topics))
+                .filter(|val| vec!["vsphere_simple".to_owned()].eq(&val.nats_topics))
                 .count()
         );
     }
