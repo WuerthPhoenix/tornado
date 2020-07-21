@@ -1,0 +1,8 @@
+# The complete URL of the Director APIs (leave out the trailing /)
+server_api_url = "https://localhost/neteye/director"
+# Username used to connect to the Director APIs
+username = "root"
+# Password used to connect to the Director APIs
+password = ""
+# If true, the client will not verify the SSL certificate
+disable_ssl_verification = true

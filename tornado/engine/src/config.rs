@@ -1,4 +1,4 @@
-use crate::executor::icinga2::Icinga2ClientConfig;
+use crate::executor::retry::RetryStrategy;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,9 @@ use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
+use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
+use tornado_executor_icinga2::config::Icinga2ClientConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -78,6 +80,8 @@ pub struct DaemonCommandConfig {
     pub message_queue_size: usize,
 
     pub thread_pool_config: Option<ThreadPoolConfig>,
+    #[serde(default)]
+    pub retry_strategy: RetryStrategy,
 
     pub auth: AuthConfig,
 }
@@ -130,6 +134,13 @@ fn build_icinga2_client_config(config_dir: &str) -> Result<Icinga2ClientConfig, 
     s.try_into()
 }
 
+fn build_director_client_config(config_dir: &str) -> Result<DirectorClientConfig, ConfigError> {
+    let config_file_path = format!("{}/director_client_executor.toml", config_dir);
+    let mut s = Config::new();
+    s.merge(File::with_name(&config_file_path))?;
+    s.try_into()
+}
+
 fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, ConfigError> {
     let config_file_path = format!("{}/elasticsearch_executor.toml", config_dir);
     let mut s = Config::new();
@@ -142,6 +153,7 @@ pub struct ComponentsConfig {
     pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
+    pub director_executor_config: DirectorClientConfig,
     pub elasticsearch_executor_config: ElasticsearchConfig,
 }
 
@@ -154,12 +166,14 @@ pub fn parse_config_files(
     let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
+    let director_executor_config = build_director_client_config(config_dir)?;
     let elasticsearch_executor_config = build_elasticsearch_config(config_dir)?;
     Ok(ComponentsConfig {
         matcher_config,
         tornado,
         archive_executor_config,
         icinga2_executor_config,
+        director_executor_config,
         elasticsearch_executor_config,
     })
 }
@@ -208,15 +222,32 @@ mod test {
 
         // Assert
         match config {
-            MatcherConfig::Ruleset { name, rules } => {
+            MatcherConfig::Filter { name, nodes, .. } => {
                 assert_eq!("root", name);
-                assert_eq!(6, rules.len());
-                assert_eq!(1, rules.iter().filter(|val| "all_emails".eq(&val.name)).count());
-                assert_eq!(
-                    1,
-                    rules.iter().filter(|val| "emails_with_temperature".eq(&val.name)).count()
-                );
-                assert_eq!(1, rules.iter().filter(|val| "archive_all".eq(&val.name)).count());
+                assert_eq!(1, nodes.len());
+
+                match nodes.get(0) {
+                    Some(MatcherConfig::Ruleset { name, rules }) => {
+                        assert_eq!("ruleset_01", name);
+                        assert_eq!(8, rules.len());
+                        assert_eq!(
+                            1,
+                            rules.iter().filter(|val| "all_emails".eq(&val.name)).count()
+                        );
+                        assert_eq!(
+                            1,
+                            rules
+                                .iter()
+                                .filter(|val| "emails_with_temperature".eq(&val.name))
+                                .count()
+                        );
+                        assert_eq!(
+                            1,
+                            rules.iter().filter(|val| "archive_all".eq(&val.name)).count()
+                        );
+                    }
+                    _ => assert!(false),
+                }
             }
             _ => assert!(false),
         }
@@ -234,7 +265,7 @@ mod test {
 
         // Assert
         assert_eq!(
-            "https://127.0.0.1:5665/v1/actions",
+            "https://localhost:5665/v1/actions",
             config.icinga2_executor_config.server_api_url
         )
     }
@@ -260,7 +291,19 @@ mod test {
         let config = build_icinga2_client_config(config_dir).unwrap();
 
         // Assert
-        assert_eq!("https://127.0.0.1:5665/v1/actions", config.server_api_url)
+        assert_eq!("https://localhost:5665/v1/actions", config.server_api_url)
+    }
+
+    #[test]
+    fn should_read_director_client_configurations_from_file() {
+        // Arrange
+        let config_dir = "./config";
+
+        // Act
+        let config = build_director_client_config(config_dir).unwrap();
+
+        // Assert
+        assert_eq!("https://localhost/neteye/director", config.server_api_url)
     }
 
     #[test]
@@ -276,6 +319,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 
@@ -301,6 +345,7 @@ mod test {
             web_server_port: 0,
             message_queue_size: 0,
             thread_pool_config: None,
+            retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
 

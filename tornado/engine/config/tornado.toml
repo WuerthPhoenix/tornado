@@ -17,6 +17,9 @@ stdout_output = true
 #thread_pool_config = {type = "CPU", factor = 1.0}
 #thread_pool_config = {type = "Fixed", size = 18}
 
+#retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
+#retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
+
 # Whether to enable the TCP listener
 event_tcp_socket_enabled = true
 # The IP address where we will listen for incoming events.

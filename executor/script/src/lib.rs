@@ -61,7 +61,7 @@ impl fmt::Display for ScriptExecutor {
 }
 
 impl Executor for ScriptExecutor {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let mut script = action
@@ -69,7 +69,9 @@ impl Executor for ScriptExecutor {
             .get(SCRIPT_TYPE_KEY)
             .and_then(tornado_common_api::Value::get_text)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
+                can_retry: false,
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
+                code: None,
             })?
             .to_owned();
 
@@ -82,7 +84,9 @@ impl Executor for ScriptExecutor {
         let output =
             Command::new(SHELL[0]).args(&SHELL[1..]).arg(&script).output().map_err(|err| {
                 ExecutorError::ActionExecutionError {
+                    can_retry: true,
                     message: format!("Cannot execute script [{}]: {}", &script, err),
+                    code: None,
                 }
             })?;
 
@@ -292,7 +296,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());
@@ -316,7 +320,7 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         assert!(result.is_ok());

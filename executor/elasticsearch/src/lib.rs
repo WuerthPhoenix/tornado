@@ -130,7 +130,7 @@ impl std::fmt::Display for ElasticsearchExecutor {
 }
 
 impl Executor for ElasticsearchExecutor {
-    fn execute(&mut self, action: Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {
@@ -159,30 +159,38 @@ impl Executor for ElasticsearchExecutor {
             let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
                 .and_then(serde_json::from_value)
                 .map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
+                    code: None,
                 })?;
             Cow::Owned(es_authentication.new_client()?)
         } else {
             debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
             Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
                 ExecutorError::ActionExecutionError {
+                    can_retry: false,
                     message: "Missing both default client and auth data from payload".to_string(),
+                    code: None,
                 }
             })?)
         };
 
         let res = client.post(&endpoint).json(&data).send().map_err(|err| {
             ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {}", err),
+                code: None,
             }
         })?;
 
         if !res.status().is_success() {
             Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
                 message: format!(
                     "Error while sending document to Elasticsearch. Response: {:?}",
                     res
                 ),
+                code: None,
             })
         } else {
             debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");
@@ -284,7 +292,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -307,7 +315,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -332,7 +340,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -358,7 +366,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {
@@ -382,7 +390,7 @@ mod test {
         action.payload.insert("endpoint".to_owned(), Value::Bool(false));
 
         // Act
-        let result = executor.execute(action);
+        let result = executor.execute(&action);
 
         // Assert
         match result {

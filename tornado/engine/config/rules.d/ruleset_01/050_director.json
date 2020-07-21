@@ -1,0 +1,36 @@
+{
+  "description": "An example rule that triggers the director action",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "webhook_bitbucket"
+        }
+      ]
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "director",
+      "payload": {
+        "action_name": "create_host",
+        "action_payload": {
+          "object_type": "object",
+          "object_name": "${event.payload.data.hostname}",
+          "address": "127.0.0.1",
+          "check_command": "hostalive",
+          "vars": {
+            "location": "${event.payload.data.location}"
+          }
+        },
+        "icinga2_live_creation": true
+      }
+    }
+  ]
+}

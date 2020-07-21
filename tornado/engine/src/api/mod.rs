@@ -124,7 +124,7 @@ mod test {
 
             // Add one rule after the tornado start
             std::fs::copy(
-                "./config/rules.d/001_all_emails.json",
+                "./config/rules.d/ruleset_01/001_all_emails.json",
                 format!("{}/001_all_emails.json", temp_path),
             )
             .unwrap();
