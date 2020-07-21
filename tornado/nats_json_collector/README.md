@@ -92,11 +92,11 @@ More information about the logger configuration
 [is available here](../../common/logger/README.md).
 
 The default __config-dir__ value can be customized at build time by specifying
-the environment variable *TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT*. 
+the environment variable *TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT*. 
 For example, this will build an executable that uses */my/custom/path* 
 as the default value:
 ```bash
-TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
 ```
 
 An example of a full startup command is:

@@ -1,74 +1,51 @@
-use crate::config::WebhookConfig;
-use crate::handler::{Handler, HandlerError, TokenQuery};
+use crate::config::{TopicConfig, TornadoConnectionChannel};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
-use actix_web::web::{Data, Query};
-use actix_web::{web, App, HttpServer, Responder, Scope};
 use chrono::prelude::Local;
 use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_publisher::NatsPublisherActor;
+use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
-use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
 
 mod config;
-mod handler;
 
 #[actix_rt::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let arg_matches = config::arg_matches();
 
     let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
-    let webhooks_dir =
-        arg_matches.value_of("webhooks-dir").expect("webhooks-dir should be provided");
+    let topics_dir =
+        arg_matches.value_of("topics-dir").expect("topics-dir should be provided");
 
     let collector_config = config::build_config(&config_dir)?;
 
     setup_logger(&collector_config.logger)?;
 
-    let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
-    let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)?;
+    let full_topics_dir = format!("{}/{}", &config_dir, &topics_dir);
+    let topics_config = config::read_topics_from_config(&full_topics_dir)?;
 
-    let port = collector_config.webhook_collector.server_port;
-    let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
+    let nats_config = collector_config.nats_json_collector.nats_client;
 
-    info!("Starting web server at port {}", port);
+    let recipient = match collector_config.nats_json_collector.tornado_connection_channel {
+            TornadoConnectionChannel::Nats { nats_subject } => {
+                info!("Connect to Tornado through NATS subject [{}]", nats_subject);
 
-    //
-    // WARN:
-    // This 'if' block contains some duplicated code to allow temporary compatibility with the config file format of the previous release.
-    // It will be removed in the next release when the `tornado_connection_channel` will be mandatory.
-    //
-    if let (Some(tornado_event_socket_ip), Some(tornado_event_socket_port)) = (
-        collector_config.webhook_collector.tornado_event_socket_ip,
-        collector_config.webhook_collector.tornado_event_socket_port,
-    ) {
-        info!("Connect to Tornado through TCP socket");
-        // Start TcpWriter
-        let tornado_tcp_address =
-            format!("{}:{}", tornado_event_socket_ip, tornado_event_socket_port,);
+                let nats_publisher_config = NatsPublisherConfig {
+                    client: nats_config.clone(),
+                    subject: nats_subject
+                };
 
-        let actor_address = TcpClientActor::start_new(
-            tornado_tcp_address,
-            collector_config.webhook_collector.message_queue_size,
-        );
-        start_http_server(actor_address, webhooks_config, bind_address, port).await?;
-    } else if let Some(connection_channel) =
-        collector_config.webhook_collector.tornado_connection_channel
-    {
-        match connection_channel {
-            TornadoConnectionChannel::Nats { nats } => {
-                info!("Connect to Tornado through NATS");
                 let actor_address = NatsPublisherActor::start_new(
-                    nats,
-                    collector_config.webhook_collector.message_queue_size,
+                    nats_publisher_config,
+                    collector_config.nats_json_collector.message_queue_size,
                 )?;
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                actor_address.recipient()
+                //start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -77,23 +54,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
                 let actor_address = TcpClientActor::start_new(
                     tornado_tcp_address,
-                    collector_config.webhook_collector.message_queue_size,
+                    collector_config.nats_json_collector.message_queue_size,
                 );
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                actor_address.recipient()
+                //start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
         };
-    } else {
-        return Err(TornadoError::ConfigurationError {
-            message: "A communication channel must be specified.".to_owned(),
-        }
-        .into());
-    }
+
+    recipient.s
 
     Ok(())
 }
 
+/*
 fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
-    webhooks_config: Vec<WebhookConfig>,
+    webhooks_config: Vec<TopicConfig>,
     factory: F,
 ) -> Result<Scope, CollectorError> {
     let mut scope = web::scope("");
@@ -130,7 +105,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
 
 async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     actor_address: Addr<A>,
-    webhooks_config: Vec<WebhookConfig>,
+    webhooks_config: Vec<TopicConfig>,
     bind_address: String,
     port: u32,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
@@ -177,6 +152,8 @@ async fn handle<F: Fn(Event) + 'static>(
     handler.handle(&body, received_token)
 }
 
+ */
+
 #[cfg(test)]
 mod test {
 
@@ -207,7 +184,7 @@ mod test {
     async fn should_create_a_path_per_webhook() {
         // Arrange
         let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -215,7 +192,7 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_2".to_owned(),
             token: "hook_2_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -255,7 +232,7 @@ mod test {
     async fn should_accept_calls_only_if_token_matches() {
         // Arrange
         let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -263,7 +240,7 @@ mod test {
                 payload: HashMap::new(),
             },
         });
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_2".to_owned(),
             token: "hook_2_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -301,7 +278,7 @@ mod test {
         // Arrange
         let mut webhooks_config = vec![];
 
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -354,7 +331,7 @@ mod test {
         // Arrange
         let mut webhooks_config = vec![];
 
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -385,7 +362,7 @@ mod test {
         // Arrange
         let mut webhooks_config = vec![];
 
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
@@ -415,7 +392,7 @@ mod test {
         // Arrange
         let mut webhooks_config = vec![];
 
-        webhooks_config.push(WebhookConfig {
+        webhooks_config.push(TopicConfig {
             id: "hook with space".to_owned(),
             token: "token&#?=".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
