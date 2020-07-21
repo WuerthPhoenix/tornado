@@ -9,8 +9,9 @@ use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig, NatsClientConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::TornadoError;
-use tornado_common_api::Event;
+use tornado_common_api::{Event, Value};
 use tornado_common_logger::setup_logger;
+use tornado_common::actors::nats_subscriber::{NatsSubscriberConfig, subscribe_to_nats};
 
 mod config;
 
@@ -59,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             }
         };
 
-    subscribe_to_topics(nats_config, recipient, topics_config)?;
+    subscribe_to_topics(nats_config, recipient, collector_config.nats_json_collector.message_queue_size, topics_config).await?;
 
     tokio::signal::ctrl_c().await.unwrap();
     println!("Ctrl-C received, shutting down");
@@ -68,13 +69,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     Ok(())
 }
 
-fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient<EventMessage>, topics_config: Vec<TopicConfig>) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+async fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient<EventMessage>, message_queue_size: usize, topics_config: Vec<TopicConfig>) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 
     for topic_config in topics_config {
         for topic in topic_config.nats_topics {
             info!("Subscribe to NATS topic [{}]", topic);
         topic_config.collector_config.clone();
-
+            let nats_subscriber_config = NatsSubscriberConfig {
+                subject: topic,
+                client: nats_config.clone()
+            };
+            subscribe_to_nats(nats_subscriber_config, message_queue_size, |_: Value| {
+                Ok(())
+            }).await?;
         }
     }
 

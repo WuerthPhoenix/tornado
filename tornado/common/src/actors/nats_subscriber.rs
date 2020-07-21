@@ -5,7 +5,9 @@ use actix::prelude::*;
 use futures::StreamExt;
 use log::*;
 use serde::{Deserialize, Serialize};
-use tornado_common_api::Event;
+use serde::de::DeserializeOwned;
+use std::marker::PhantomData;
+use std::fmt::Debug;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct NatsSubscriberConfig {
@@ -13,8 +15,8 @@ pub struct NatsSubscriberConfig {
     pub subject: String,
 }
 
-pub async fn subscribe_to_nats<
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+pub async fn subscribe_to_nats<Data: 'static + DeserializeOwned + Unpin + Debug,
+    F: 'static + FnMut(Data) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 >(
     config: NatsSubscriberConfig,
     message_mailbox_capacity: usize,
@@ -37,29 +39,30 @@ pub async fn subscribe_to_nats<
             Box::leak(Box::new(subscription))
                 .map(|message| BytesMessage { msg: message.into_payload() }),
         );
-        NatsSubscriberActor { callback }
+        NatsSubscriberActor { callback, phantom_data: PhantomData }
     });
 
     Ok(())
 }
 
-struct NatsSubscriberActor<F>
+struct NatsSubscriberActor<Data: 'static + DeserializeOwned + Unpin + Debug, F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(Data) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     callback: F,
+    phantom_data: PhantomData<Data>,
 }
 
-impl<F> Actor for NatsSubscriberActor<F>
+impl<Data: 'static + DeserializeOwned + Unpin + Debug, F> Actor for NatsSubscriberActor<Data, F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(Data) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
-impl<F> Handler<BytesMessage> for NatsSubscriberActor<F>
+impl<Data: 'static + DeserializeOwned + Unpin + Debug, F> Handler<BytesMessage> for NatsSubscriberActor<Data, F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(Data) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Result = Result<(), TornadoCommonActorError>;
 
@@ -67,7 +70,7 @@ where
         trace!("NatsSubscriberActor - message received");
         let event = serde_json::from_slice(&msg.msg)
             .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
-        trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+        trace!("NatsSubscriberActor - data from message received: {:#?}", event);
         (&mut self.callback)(event)
     }
 }
