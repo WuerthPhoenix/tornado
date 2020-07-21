@@ -127,12 +127,20 @@ mod test {
         let topics_config = read_topics_from_config(path).unwrap();
 
         // Assert
-        assert_eq!(1, topics_config.len());
+        assert_eq!(2, topics_config.len());
         assert_eq!(
             1,
             topics_config
                 .iter()
                 .filter(|val| vec!["vsphere".to_owned(), "another_topic".to_owned()]
+                    .eq(&val.nats_topics))
+                .count()
+        );
+        assert_eq!(
+            1,
+            topics_config
+                .iter()
+                .filter(|val| vec!["vsphere_simple".to_owned()]
                     .eq(&val.nats_topics))
                 .count()
         );

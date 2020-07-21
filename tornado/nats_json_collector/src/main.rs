@@ -95,7 +95,7 @@ async fn subscribe_to_topics(
 
             let recipient_clone = recipient.clone();
             subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data| {
-                trace!("Topic [{}] called", topic);
+                debug!("Topic [{}] called", topic);
 
                 let event = std::str::from_utf8(&data.msg)
                     .map_err(|err| CollectorError::EventCreationError {

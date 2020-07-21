@@ -3,7 +3,7 @@
   "collector_config": {
     "event_type": "vmd",
     "payload": {
-      "data": "${@}"
+      "metrics": "${@}"
     }
   }
 }
