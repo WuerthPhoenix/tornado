@@ -1,12 +1,12 @@
 use crate::config::{TopicConfig, TornadoConnectionChannel};
 use actix::dev::ToEnvelope;
-use actix::{Actor, Addr};
+use actix::{Actor, Addr, System, Recipient};
 use chrono::prelude::Local;
 use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::EventMessage;
-use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig};
+use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig, NatsClientConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
@@ -45,7 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     collector_config.nats_json_collector.message_queue_size,
                 )?;
                 actor_address.recipient()
-                //start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -57,11 +56,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     collector_config.nats_json_collector.message_queue_size,
                 );
                 actor_address.recipient()
-                //start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
         };
 
-    recipient.s
+    subscribe_to_topics(nats_config, recipient, topics_config)?;
+
+    tokio::signal::ctrl_c().await.unwrap();
+    println!("Ctrl-C received, shutting down");
+    System::current().stop();
+
+    Ok(())
+}
+
+fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient<EventMessage>, topics_config: Vec<TopicConfig>) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+
+    for topic_config in topics_config {
+        for topic in topic_config.nats_topics {
+            info!("Subscribe to NATS topic [{}]", topic);
+        topic_config.collector_config.clone();
+
+        }
+    }
 
     Ok(())
 }

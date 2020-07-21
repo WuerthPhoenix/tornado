@@ -4037,6 +4037,7 @@ dependencies = [
  "serde 1.0.114",
  "serde_json",
  "thiserror",
+ "tokio 0.2.21",
  "tornado_collector_common",
  "tornado_collector_jmespath",
  "tornado_common",
