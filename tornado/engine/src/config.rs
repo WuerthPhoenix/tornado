@@ -229,7 +229,7 @@ mod test {
                 match nodes.get(0) {
                     Some(MatcherConfig::Ruleset { name, rules }) => {
                         assert_eq!("ruleset_01", name);
-                        assert_eq!(7, rules.len());
+                        assert_eq!(8, rules.len());
                         assert_eq!(
                             1,
                             rules.iter().filter(|val| "all_emails".eq(&val.name)).count()

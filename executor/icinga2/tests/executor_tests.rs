@@ -1,14 +1,17 @@
 use actix::prelude::*;
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
+use httpmock::Method::POST;
+use httpmock::{Mock, MockServer};
 use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::Executor;
+use tornado_executor_common::{Executor, ExecutorError};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,
+    ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
 
 #[test]
@@ -88,4 +91,45 @@ fn should_perform_a_post_request() {
         ])),
         *received.lock().unwrap()
     );
+}
+
+#[test]
+fn should_return_object_not_existing_error_in_case_of_404_status_code() {
+    // Arrange
+    let mock_server = MockServer::start();
+    let server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
+
+    Mock::new()
+        .expect_method(POST)
+        .expect_path("/icinga2-api-action")
+        .return_body(server_response)
+        .return_status(404)
+        .create_on(&mock_server);
+
+    let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        timeout_secs: None,
+        username: "".to_owned(),
+        password: "".to_owned(),
+        disable_ssl_verification: true,
+        server_api_url: mock_server.url(""),
+    })
+    .unwrap();
+
+    let mut action = Action::new("");
+    action
+        .payload
+        .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("icinga2-api-action".to_owned()));
+    action.payload.insert(
+        ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
+        Value::Map(hashmap![
+            "filter".to_owned() => Value::Text("my_service".to_owned()),
+        ]),
+    );
+
+    // Act
+    let result = executor.execute(&action);
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) }))
 }

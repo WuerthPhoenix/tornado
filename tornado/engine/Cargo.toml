@@ -34,6 +34,7 @@ tornado_executor_elasticsearch = { path = "../../executor/elasticsearch", versio
 tornado_executor_foreach = { path = "../../executor/foreach", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" }
 tornado_executor_logger = { path = "../../executor/logger", version = "0.0.1" }
+tornado_executor_monitoring = { path = "../../executor/monitoring", version = "0.0.1" }
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 

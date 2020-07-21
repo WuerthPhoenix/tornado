@@ -1,21 +1,20 @@
 [package]
-name = "tornado_executor_icinga2"
+name = "tornado_executor_monitoring"
 version = "0.0.1"
 authors = [
-    "Francesco Cina <mr.francesco.cina@gmail.com>"
+    "Damiano Chini <damiano.chini@wuerth-phoenix.com>"
 ]
 edition = "2018"
 
 [dependencies]
-base64 = "0.12"
 log = "0.4"
-reqwest = { version="0.9", features=["rustls-tls"]}
 serde = { version = "1.0", features = ['derive'] }
+serde_json = { version = "1.0" }
 tornado_executor_common = { path = "../common", version = "0.0.1" }
+tornado_executor_icinga2 = { path = "../icinga2", version = "0.0.1" }
+tornado_executor_director = { path = "../director", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
-actix = "0.9"
-actix-web = "2.0"
 maplit = "1.0"
 httpmock = "0.4"

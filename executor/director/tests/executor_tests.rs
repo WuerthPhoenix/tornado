@@ -1,14 +1,17 @@
 use actix::prelude::*;
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
+use httpmock::Method::POST;
+use httpmock::{Mock, MockServer};
 use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::Executor;
+use tornado_executor_common::{Executor, ExecutorError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
+    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 
 #[test]
@@ -109,4 +112,48 @@ fn should_perform_a_post_request() {
         ])),
         *received.lock().unwrap()
     );
+}
+
+#[test]
+fn should_return_object_already_existing_error_in_case_of_422_status_code() {
+    // Arrange
+    let director_server = MockServer::start();
+    let server_response = "{\"error\": \"Trying to recreate icinga_host (\"some host\")\"}";
+
+    Mock::new()
+        .expect_method(POST)
+        .expect_path("/host")
+        .return_body(server_response)
+        .return_status(422)
+        .create_on(&director_server);
+
+    let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        timeout_secs: None,
+        username: "".to_owned(),
+        password: "".to_owned(),
+        disable_ssl_verification: true,
+        server_api_url: director_server.url(""),
+    })
+    .unwrap();
+
+    let mut action = Action::new("");
+    action
+        .payload
+        .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));
+    action.payload.insert(
+        DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
+        Value::Map(hashmap![
+                        "object_type".to_owned() => Value::Text("host".to_owned()),
+                        "object_name".to_owned() => Value::Text("my_host".to_owned()),
+                        "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
+                        "check_command".to_owned() => Value::Text("hostalive".to_owned())
+        ]),
+    );
+
+    // Act
+    let result = executor.execute(&action);
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", "422 Unprocessable Entity", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) }))
 }

@@ -108,6 +108,20 @@ pub async fn daemon(
         })
     });
 
+    // Start monitoring executor actor
+    let icinga2_client_config = configs.icinga2_executor_config.clone();
+    let director_client_config = configs.director_executor_config.clone();
+    let monitoring_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
+        SyncArbiter::start(threads_per_queue, move || {
+            let executor = tornado_executor_monitoring::MonitoringExecutor::new(
+                icinga2_client_config.clone(),
+                director_client_config.clone(),
+            )
+            .expect("Cannot start the MonitoringExecutor Executor");
+            ExecutorActor { executor }
+        })
+    });
+
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
@@ -128,6 +142,14 @@ pub async fn daemon(
                     "director" => {
                         director_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
+                        })
+                    }
+                    "monitoring" => {
+                        monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                            format!(
+                                "Error sending message to 'monitoring' executor. Err: {:?}",
+                                err
+                            )
                         })
                     }
                     "script" => {
