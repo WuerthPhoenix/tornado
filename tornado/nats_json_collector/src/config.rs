@@ -104,7 +104,7 @@ pub struct TopicConfig {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct EventConfig {
     pub event_type: Option<String>,
-    pub payload: Option<Value>,
+    pub payload: Option<Payload>,
 }
 
 #[cfg(test)]

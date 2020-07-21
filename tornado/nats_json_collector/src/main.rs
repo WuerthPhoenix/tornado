@@ -1,17 +1,19 @@
-use crate::config::{TopicConfig, TornadoConnectionChannel};
+use crate::config::{TopicConfig, TornadoConnectionChannel, EventConfig};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr, System, Recipient};
 use chrono::prelude::Local;
 use log::*;
-use tornado_collector_common::CollectorError;
+use tornado_collector_common::{Collector, CollectorError};
 use tornado_collector_jmespath::JMESPathEventCollector;
-use tornado_common::actors::message::EventMessage;
+use tornado_common::actors::message::{EventMessage, TornadoCommonActorError};
 use tornado_common::actors::nats_publisher::{NatsPublisherActor, NatsPublisherConfig, NatsClientConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::TornadoError;
 use tornado_common_api::{Event, Value};
 use tornado_common_logger::setup_logger;
 use tornado_common::actors::nats_subscriber::{NatsSubscriberConfig, subscribe_to_nats};
+use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+use std::collections::HashMap;
 
 mod config;
 
@@ -74,18 +76,56 @@ async fn subscribe_to_topics(nats_config: NatsClientConfig, recipient: Recipient
     for topic_config in topics_config {
         for topic in topic_config.nats_topics {
             info!("Subscribe to NATS topic [{}]", topic);
-        topic_config.collector_config.clone();
+
+            let jmespath_collector_config = build_jmespath_collector_config(topic_config.collector_config.clone(), &topic);
+            let jmespath_collector = JMESPathEventCollector::build(jmespath_collector_config).map_err(|err| {
+                CollectorError::CollectorCreationError {
+                    message: format!(
+                        "Cannot create collector for topic [{}]. Err: {}",
+                        topic, err
+                    ),
+                }
+            })?;
+
             let nats_subscriber_config = NatsSubscriberConfig {
-                subject: topic,
+                subject: topic.clone(),
                 client: nats_config.clone()
             };
-            subscribe_to_nats(nats_subscriber_config, message_queue_size, |_: Value| {
+
+            let recipient_clone = recipient.clone();
+            subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data: Value| {
+                trace!("Topic [{}] called", topic);
+                debug!("Received call with body [{:?}]", data);
+
+                let event = jmespath_collector
+                    .to_event(data)
+                    .map_err(|err| TornadoCommonActorError::GenericError { message: format!("{}", err) })?;
+
+                recipient_clone.do_send(EventMessage { event });
+
                 Ok(())
             }).await?;
         }
     }
 
     Ok(())
+}
+
+fn build_jmespath_collector_config(collector_config: Option<EventConfig>, topic: &str) -> JMESPathEventCollectorConfig {
+
+    let collector_config = collector_config.unwrap_or_else(|| EventConfig {
+        event_type: None,
+        payload: None,
+    });
+
+    JMESPathEventCollectorConfig {
+        event_type: collector_config.event_type.unwrap_or_else(|| topic.to_owned()),
+        payload: collector_config.payload.unwrap_or_else(|| {
+            let mut payload = HashMap::new();
+            payload.insert("data".to_owned(), Value::Text("${@}".to_owned()));
+            payload
+        }),
+    }
 }
 
 /*
