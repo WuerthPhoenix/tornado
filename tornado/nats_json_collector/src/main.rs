@@ -133,7 +133,7 @@ fn build_jmespath_collector_config(
         }),
     }
 }
-
+/*
 #[cfg(test)]
 mod test {
 
@@ -398,3 +398,4 @@ mod test {
         assert_eq!(http::StatusCode::OK, response.status());
     }
 }
+*/
