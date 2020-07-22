@@ -16,7 +16,7 @@ that uses them to produce Tornado Events. In the final step, the Events are forw
 Tornado Engine through the configured connection type.
 
 For each topic, you must provide three values in order to successfully configure them:
-- _topics_:  A list of Nats topics to which the collector will subscribe.
+- _nats_topics_:  A list of Nats topics to which the collector will subscribe.
 - *collector_config*:  The transformation logic that converts a JSON object received from Nats into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
   [specific documentation](../../collector/jmespath/README.md).
@@ -92,83 +92,51 @@ the configuration from the _/tornado-nats-json-collector/config_ directory.
 
 ## Topics Configuration
 
-As described before, the two startup parameters _config-dir_ and _webhooks-dir_ determine the path
-to the Webhook configurations, and each webhook is configured by providing _id_, _token_ and
+As described before, the two startup parameters _config-dir_ and _topics-dir_ determine the path
+to the topic configurations, and each topic is configured by providing _nats_topics_ and
 _collector_config_.
 
-As an example, consider how to configure a webhook for a repository hosted on
-[Github](https://github.com/).
+As an example, consider how to configure a "simple_test" topic.
 
-If we start the application using the command line provided in the previous section, the webhook
-configuration files should be located in the _/tornado-webhook-collector/config/webhooks_
+If we start the application using the command line provided in the previous section, the topics
+configuration files should be located in the _/tornado-nats-json-collector/config/topics_
 directory. Each configuration is saved in a separate file in that directory in JSON format
-(the order shown in the directory is not necessarily the order in which the hooks are processed):
+(the order shown in the directory is not necessarily the order in which the topics are processed):
 ```
-/tornado-webhook-collector/config/webhooks
-                 |- github.json
-                 |- bitbucket_first_repository.json
-                 |- bitbucket_second_repository.json
+/tornado-nats-json-collector/config/topics
+                 |- simple_test.json
+                 |- something_else.json
                  |- ...
 ```
 
-An example of valid content for a Webhook configuration JSON file is:
+An example of valid content for a Topic configuration JSON file is:
 ```json
 {
-  "id": "github_repository",
-  "token": "secret_token",
+  "nats_topics": ["subject_one", "subject_two"],
   "collector_config": {
-    "event_type": "${commits[0].committer.name}",
+    "event_type": "${content.type}",
     "payload": {
-      "source": "github",
-      "ref": "${ref}",
-      "repository_name": "${repository.name}"
+      "ref": "${content.ref}",
+      "repository_name": "${repository}"
     }
   }
 }
 ```
 
-This configuration assumes that this endpoint has been created:
+With this configuration, two subscriptions are created to the Nats topics *subject_one* and *subject_two*.
+Messages received by those topics are processed using the *collector_config* that determines the content 
+of the tornado Event associated with them.
 
-__http(s)://collector_ip:collector_port/event/github_repository__
-
-However, the Github webhook issuer must pass the token at each call. Consequently, the actual URL
-to be called will have this structure:
-
-__http(s)://collector_ip:collector_port/event/github_repository?token=secret_token__
-
-__Security warning:__  Since the security token is present in the query string, it is extremely
-important that the webhook collector is always deployed with HTTPS in production. Otherwise, the
-token will be sent unencrypted along with the entire URL.
-
-Consequently, if the public IP of the collector is, for example, 35.35.35.35 and the server
-port is 1234, in Github, the webhook settings page should look like this:
-
-![github_webhook_settings](./github_webhook_01.png)
-
-Finally, the *collector_config* configuration entry determines the content of the tornado Event
-associated with each webhook input.
-
-So for example, if Github sends this JSON (only the relevant parts shown here):
+So for example, if this JSON message is received:
 ```json
 {
-  "ref": "refs/heads/master",
-  ...
-  "commits": [
-    {
-      "id": "33ad3a6df86748011ee8d5cef13d206322abc68e",
-      ...
-      "committer": {
-        "name": "GitHub",
-        "email": "noreply@github.com",
-        "username": "web-flow"
-      }
-    }
-  ],
-  ...
+  "content": {
+    "type": "content_type",
+    "ref": "refs/heads/master"
+  },
   "repository": {
     "id": 123456789,
-    "name": "webhook-test",
-    ...
+    "name": "webhook-test"
   }
 }
 ```
@@ -176,12 +144,14 @@ So for example, if Github sends this JSON (only the relevant parts shown here):
 then the resulting Event will be:
 ```json
 {
-  "type": "GitHub",
+  "type": "content_type",
   "created_ms": 1554130814854,
   "payload": {
-    "source": "github",
     "ref": "refs/heads/master",
-    "repository_name": "webhook-test"
+    "repository": {
+        "id": 123456789,
+        "name": "webhook-test"
+      }
   }
 }
 ```
@@ -189,3 +159,35 @@ then the resulting Event will be:
 The Event creation logic is handled internally by the JMESPath collector, a
 detailed description of which is available in its
 [specific documentation](../../collector/jmespath/README.md).
+
+
+### Default values
+The *collector_configuration* section and all of its internal entries are optional. 
+When not provided, the collector will use predefined default values.
+
+When the *collector_configuration.event_type* is not provided, the name of the Nats topic that received the message
+is used as Event type.
+
+When the *collector_configuration.payload* is not provided, the entire source JSON is included in the payload of the
+generated Event with the key *data*.
+
+Consequently, the simplest valid topic configuration contains only the *nats_topics*:
+```json
+{
+  "nats_topics": ["subject_one", "subject_two"]
+}
+```
+
+The above one is the equivalent of:
+```json
+{
+  "nats_topics": ["subject_one", "subject_two"],
+  "collector_config": {
+    "payload": {
+      "data": "${@}"
+    }
+  }
+}
+```
+
+In this case the generated Tornado Event has the topic name as type and contains the whole source data in the payload.
