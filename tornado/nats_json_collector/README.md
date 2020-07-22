@@ -1,6 +1,6 @@
 # Tornado Nats JSON Collector (executable)
 
-The Nats JSON Collector is a standalone collector that listens for JSON messages from Nats subjects, 
+The Nats JSON Collector is a standalone collector that listens for JSON messages on Nats topics, 
 generates Tornado Events, and sends them to the Tornado Engine.
 
 
@@ -9,13 +9,13 @@ generates Tornado Events, and sends them to the Tornado Engine.
 
 The Nats JSON collector executable is built on [actix](https://github.com/actix/actix).
 
-On startup, it connects to a set of subjects on a Nats server. Calls received by
- are processed by the embedded
+On startup, it connects to a set of topics on a Nats server. Calls received
+ are then processed by the embedded
 [jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
 Tornado Engine through the configured connection type.
 
-For each topic, you must provide three values in order to successfully configure them:
+For each topic, you must provide two values in order to successfully configure them:
 - _nats_topics_:  A list of Nats topics to which the collector will subscribe.
 - *collector_config*:  The transformation logic that converts a JSON object received from Nats into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
@@ -112,7 +112,7 @@ directory. Each configuration is saved in a separate file in that directory in J
 An example of valid content for a Topic configuration JSON file is:
 ```json
 {
-  "nats_topics": ["subject_one", "subject_two"],
+  "nats_topics": ["simple_test_one", "simple_test_two"],
   "collector_config": {
     "event_type": "${content.type}",
     "payload": {
@@ -123,7 +123,7 @@ An example of valid content for a Topic configuration JSON file is:
 }
 ```
 
-With this configuration, two subscriptions are created to the Nats topics *subject_one* and *subject_two*.
+With this configuration, two subscriptions are created to the Nats topics *simple_test_one* and *simple_test_two*.
 Messages received by those topics are processed using the *collector_config* that determines the content 
 of the tornado Event associated with them.
 
@@ -163,12 +163,10 @@ detailed description of which is available in its
 
 ### Default values
 The *collector_configuration* section and all of its internal entries are optional. 
-When not provided, the collector will use predefined default values.
-
-When the *collector_configuration.event_type* is not provided, the name of the Nats topic that received the message
+If not provided explicitly, the collector will use these predefined values:
+- When the *collector_configuration.event_type* is not provided, the name of the Nats topic that sent the message
 is used as Event type.
-
-When the *collector_configuration.payload* is not provided, the entire source JSON is included in the payload of the
+- When the *collector_configuration.payload* is not provided, the entire source message is included in the payload of the
 generated Event with the key *data*.
 
 Consequently, the simplest valid topic configuration contains only the *nats_topics*:
@@ -178,7 +176,7 @@ Consequently, the simplest valid topic configuration contains only the *nats_top
 }
 ```
 
-The above one is the equivalent of:
+The above one is equivalent to:
 ```json
 {
   "nats_topics": ["subject_one", "subject_two"],
@@ -190,4 +188,5 @@ The above one is the equivalent of:
 }
 ```
 
-In this case the generated Tornado Event has the topic name as type and contains the whole source data in the payload.
+In this case the generated Tornado Events have *type* equals to the topic name 
+and the whole source data in their payload.
