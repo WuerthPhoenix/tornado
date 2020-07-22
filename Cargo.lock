@@ -3375,6 +3375,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "testcontainers"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "af06783709f5254b087f0a1ea4557e372a5c2c597ca4a1157fbe536b1de2fb19"
+dependencies = [
+ "derivative",
+ "hex",
+ "hmac",
+ "log",
+ "rand 0.7.3",
+ "serde 1.0.114",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "textwrap"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3731,7 +3747,7 @@ dependencies = [
  "serde 1.0.114",
  "serde_json",
  "serial_test",
- "testcontainers",
+ "testcontainers 0.8.1",
  "thiserror",
  "tokio 0.2.21",
  "tokio-util 0.2.0",
@@ -4035,8 +4051,10 @@ dependencies = [
  "config",
  "log",
  "maplit",
+ "rand 0.7.3",
  "serde 1.0.114",
  "serde_json",
+ "testcontainers 0.9.1",
  "thiserror",
  "tokio 0.2.21",
  "tornado_collector_common",
