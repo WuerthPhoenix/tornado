@@ -1,30 +1,23 @@
-# Tornado Webhook Collector (executable)
+# Tornado Nats JSON Collector (executable)
 
-The Webhook Collector is a standalone HTTP server that listens for REST calls from a generic
-webhook, generates Tornado Events from the webhook JSON body, and sends them to the
-Tornado Engine.
+The Nats JSON Collector is a standalone collector that listens for JSON messages from Nats subjects, 
+generates Tornado Events, and sends them to the Tornado Engine.
 
 
 
 ## How It Works
 
-The webhook collector executable is an HTTP server built on
-[actix-web](https://github.com/actix/actix-web).
+The Nats JSON collector executable is built on [actix](https://github.com/actix/actix).
 
-On startup, it creates a dedicated REST endpoint for each configured webhook. Calls received by
-an endpoint are processed by the embedded
+On startup, it connects to a set of subjects on a Nats server. Calls received by
+ are processed by the embedded
 [jmespath collector](../../collector/jmespath/README.md)
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
 Tornado Engine through the configured connection type.
 
-For each webhook, you must provide three values in order to successfully create an endpoint:
-- _id_:  The webhook identifier. This will determine the path of the endpoint; it must be
-  unique per webhook.
-- _token_:  A security token that the webhook issuer has to include in the URL as part of the
-  query string (see the example at the bottom of this page for details). If the token provided
-  by the issuer is missing or does not match the one owned by the collector, then the call will
-  be rejected and an HTTP 401 code (UNAUTHORIZED) will be returned.
-- *collector_config*:  The transformation logic that converts a webhook JSON object into a Tornado
+For each topic, you must provide three values in order to successfully configure them:
+- _topics_:  A list of Nats topics to which the collector will subscribe.
+- *collector_config*:  The transformation logic that converts a JSON object received from Nats into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
   [specific documentation](../../collector/jmespath/README.md).
 
@@ -37,12 +30,12 @@ line parameters.
 
 The available startup parameters are:
 - __config-dir__:  The filesystem folder from which the collector configuration is read.
-  The default path is _/etc/tornado_webhook_collector/_.
-- __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
-  this folder is relative to the `config_dir`. The default value is _/webhooks/_.
+  The default path is _/etc/tornado_nats_json_collector/_.
+- __topics-dir__:  The folder where the topic configurations are saved in JSON format;
+  this folder is relative to the `config_dir`. The default value is _/topics/_.
 
 In addition to these parameters, the following configuration entries are available in the 
-file _'config-dir'/webhook_collector.toml_:
+file _'config-dir'/nats_json_collector.toml_:
 - __logger__:
     - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
       _error_.
@@ -50,37 +43,25 @@ file _'config-dir'/webhook_collector.toml_:
       Valid values are `true` and `false`.
     - __file_output_path__:  A file path in the file system; if provided, the Logger will
       append any output to it.
-- **webhook_collector**:
-    - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
-      This should be the address where the Tornado Engine listens for incoming events.
-      If present, this value overrides what specified by the `tornado_connection_channel` entry.
-      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
-    - **tornado_event_socket_port**:  The port where outgoing events will be written.
-      This should be the port where the Tornado Engine listens for incoming events.
-      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
-      If present, this value overrides what specified by the `tornado_connection_channel` entry.
-      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
+- **nats_json_collector**:
     - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
       resilient to errors or temporary unavailability of the Tornado connection channel.
       When the connection on the channel is restored, all messages in the buffer will be sent.
       When the buffer is full, the collector will start discarding older messages first.
-    - **server_bind_address**:  The IP to bind the HTTP server to.
-    - **server_port**:  The port to be used by the HTTP Server.
+    - **nats_client.addresses**: The addresses of the  NATS server.
+    - **nats_client.auth.type**:  The type of authentication used to authenticate to NATS
+    (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
+    - **nats_client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
+    (Mandatory if `nats_client.auth.type` is set to `Tls`).
+    - **nats_client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
+    (Mandatory if `nats_client.auth.type` is set to `Tls`).
+    - **nats_client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
+    addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
+    (Optional, valid if `nats_client.auth.type` is set to `Tls`).
     - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries
     required to configure a *Nats* or a *TCP* connection.
-    *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
         - In case of connection using *Nats*, these entries are mandatory:
-            - **nats.client.addresses**: The addresses of the  NATS server.
-            - **nats.client.auth.type**:  The type of authentication used to authenticate to NATS
-            (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
-            - **nats.client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
-            (Mandatory if `nats.client.auth.type` is set to `Tls`).
-            - **nats.client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
-            (Mandatory if `nats.client.auth.type` is set to `Tls`).
-            - **nats.client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
-            addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
-            (Optional, valid if `nats.client.auth.type` is set to `Tls`).
-            - **nats.subject**: The NATS Subject where tornado will subscribe and listen for incoming events.
+            - **nats_subject**: The NATS Subject where tornado will subscribe and listen for incoming events.
         - In case of connection using *TCP*, these entries are mandatory:
             - **tcp_socket_ip**:  The IP address where outgoing events will be written.
               This should be the address where the Tornado Engine listens for incoming events.
@@ -101,15 +82,15 @@ TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build
 
 An example of a full startup command is:
 ```bash
-./tornado_webhook_collector \
-      --config-dir=/tornado-webhook-collector/config
+./tornado_nats_json_collector \
+      --config-dir=/tornado-nats-json-collector/config
 ```
 
-In this example the Webhook Collector starts up and then reads 
-the configuration from the _/tornado-webhook-collector/config_ directory.
+In this example the Nats JSON Collector starts up and then reads 
+the configuration from the _/tornado-nats-json-collector/config_ directory.
 
 
-## Webhooks Configuration
+## Topics Configuration
 
 As described before, the two startup parameters _config-dir_ and _webhooks-dir_ determine the path
 to the Webhook configurations, and each webhook is configured by providing _id_, _token_ and

@@ -19,8 +19,6 @@ message_queue_size = 10000
 
 # The addresses of the NATS server
 nats_client.addresses = ["127.0.0.1:4222"]
-# The NATS Subject where tornado will subscribe and listen for incoming events
-#nats.subject = "tornado.events"
 # The type of authentication used when connecting to the NATS server
 nats_client.auth.type = "None"
 #nats_client.auth.type = "Tls"
