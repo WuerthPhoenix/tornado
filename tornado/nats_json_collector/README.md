@@ -17,7 +17,7 @@ Tornado Engine through the configured connection type.
 
 For each topic, you must provide two values in order to successfully configure them:
 - _nats_topics_:  A list of Nats topics to which the collector will subscribe.
-- *collector_config*:  The transformation logic that converts a JSON object received from Nats into a Tornado
+- *collector_config*:  (Optional) The transformation logic that converts a JSON object received from Nats into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
   [specific documentation](../../collector/jmespath/README.md).
 
@@ -162,11 +162,11 @@ detailed description of which is available in its
 
 
 ### Default values
-The *collector_configuration* section and all of its internal entries are optional. 
+The *collector_config* section and all of its internal entries are optional. 
 If not provided explicitly, the collector will use these predefined values:
-- When the *collector_configuration.event_type* is not provided, the name of the Nats topic that sent the message
+- When the *collector_config.event_type* is not provided, the name of the Nats topic that sent the message
 is used as Event type.
-- When the *collector_configuration.payload* is not provided, the entire source message is included in the payload of the
+- When the *collector_config.payload* is not provided, the entire source message is included in the payload of the
 generated Event with the key *data*.
 
 Consequently, the simplest valid topic configuration contains only the *nats_topics*:
