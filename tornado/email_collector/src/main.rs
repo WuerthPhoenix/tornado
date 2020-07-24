@@ -99,9 +99,8 @@ where
     listen_to_uds_socket(uds_path.clone(), Some(0o770), move |msg| {
         email_addr.do_send(msg);
     })
-    .and_then(|_| {
+    .map(|_| {
         info!("Started UDS server at [{}]. Listening for incoming events", uds_path);
-        Ok(())
     })
     .unwrap_or_else(|err| {
         error!("Cannot start UDS server at [{}]. Err: {}", uds_path, err);

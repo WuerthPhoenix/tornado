@@ -13,6 +13,7 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
+use tornado_common::actors::message::TornadoCommonActorError;
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
@@ -217,7 +218,10 @@ pub async fn daemon(
         let matcher_addr_clone = matcher_addr.clone();
 
         actix::spawn(async move {
-            subscribe_to_nats(nats_config, message_queue_size, move |event| {
+            subscribe_to_nats(nats_config, message_queue_size, move |msg| {
+                let event = serde_json::from_slice(&msg.msg)
+                    .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
+                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
                 matcher_addr_clone.do_send(EventMessage { event });
                 Ok(())
             })

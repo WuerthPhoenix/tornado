@@ -1,0 +1,9 @@
+{
+  "nats_topics": ["vsphere", "another_topic"],
+  "collector_config": {
+    "event_type": "vmd",
+    "payload": {
+      "metrics": "${@}"
+    }
+  }
+}

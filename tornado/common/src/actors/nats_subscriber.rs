@@ -5,7 +5,6 @@ use actix::prelude::*;
 use futures::StreamExt;
 use log::*;
 use serde::{Deserialize, Serialize};
-use tornado_common_api::Event;
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct NatsSubscriberConfig {
@@ -14,7 +13,7 @@ pub struct NatsSubscriberConfig {
 }
 
 pub async fn subscribe_to_nats<
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 >(
     config: NatsSubscriberConfig,
     message_mailbox_capacity: usize,
@@ -45,29 +44,26 @@ pub async fn subscribe_to_nats<
 
 struct NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     callback: F,
 }
 
 impl<F> Actor for NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
 impl<F> Handler<BytesMessage> for NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(Event) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: BytesMessage, _: &mut Context<Self>) -> Self::Result {
         trace!("NatsSubscriberActor - message received");
-        let event = serde_json::from_slice(&msg.msg)
-            .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
-        trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-        (&mut self.callback)(event)
+        (&mut self.callback)(msg)
     }
 }
