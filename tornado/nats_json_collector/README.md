@@ -127,6 +127,10 @@ With this configuration, two subscriptions are created to the Nats topics *simpl
 Messages received by those topics are processed using the *collector_config* that determines the content 
 of the tornado Event associated with them.
 
+It is important to note that, if a Nats topic name is used more than once, then the collector will perfom multiple
+subscriptions accordingly. This can happen if a topic name is duplicated into the *nats_topics* array or in multiple
+JSON files.  
+
 So for example, if this JSON message is received:
 ```json
 {
