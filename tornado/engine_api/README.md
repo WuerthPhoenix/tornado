@@ -32,7 +32,7 @@ In the coming releases the current token format will be replaced by a
 
 Endpoint: get list of draft ids
 - HTTP Method: __GET__
-- path : **/api/v1/auth/who_am_i**
+- path : **/api/v1_beta/auth/who_am_i**
 - response type: __JSON__
 - response: a AuthWithPermissionDto with the current user profile  
 - response example:
@@ -58,7 +58,7 @@ These endpoints allow working with the configuration and the drafts
 
 Endpoint: get the current Tornado configuration
 - HTTP Method: __GET__
-- path : __/api/v1/config/current__
+- path : __/api/v1_beta/config/current__
 - response type: __JSON__ 
 - response example:
   ```json
@@ -99,7 +99,7 @@ Endpoint: get the current Tornado configuration
 
 Endpoint: get list of draft ids
 - HTTP Method: __GET__
-- path : __/api/v1/config/drafts__
+- path : __/api/v1_beta/config/drafts__
 - response type: __JSON__
 - response: An array of _String_ ids  
 - response example:
@@ -110,7 +110,7 @@ Endpoint: get list of draft ids
   
 Endpoint: get a draft by id
 - HTTP Method: __GET__
-- path : __/api/v1/config/drafts/{draft_id}__
+- path : __/api/v1_beta/config/drafts/{draft_id}__
 - response type: __JSON__
 - response: the draft content
 - response example:
@@ -136,7 +136,7 @@ Endpoint: get a draft by id
 
 Endpoint: create a new and return the draft id
 - HTTP Method: __POST__
-- path : __/api/v1/config/drafts__
+- path : __/api/v1_beta/config/drafts__
 - response type: __JSON__
 - response: the draft content
 - response example:
@@ -149,31 +149,31 @@ Endpoint: create a new and return the draft id
   
 Endpoint: update an existing draft
 - HTTP Method: __PUT__
-- path : __/api/v1/config/drafts/{draft_id}__
+- path : __/api/v1_beta/config/drafts/{draft_id}__
 - request body type: __JSON__
 - request body: The draft content in the same JSON format returned by the 
-  __GET__ __/api/v1/config/drafts/{draft_id}__ endpoint 
+  __GET__ __/api/v1_beta/config/drafts/{draft_id}__ endpoint 
 - response type: __JSON__
 - response: an empty json object
 
 
 Endpoint: delete an existing draft
 - HTTP Method: __DELETE__
-- path : __/api/v1/config/drafts/{draft_id}__
+- path : __/api/v1_beta/config/drafts/{draft_id}__
 - response type: __JSON__
 - response: an empty json object
   
   
 Endpoint: take over an existing draft
 - HTTP Method: __POST__
-- path : __/api/v1/config/drafts/{draft_id}/take_over__
+- path : __/api/v1_beta/config/drafts/{draft_id}/take_over__
 - response type: __JSON__
 - response: an empty json object
 
 
 Endpoint: deploy an existing draft
 - HTTP Method: __POST__
-- path : __/api/v1/config/drafts/{draft_id}/deploy__
+- path : __/api/v1_beta/config/drafts/{draft_id}/deploy__
 - response type: __JSON__
 - response: an empty json object
 
@@ -187,7 +187,7 @@ processing that event.
 
 Details:
 - HTTP Method: __POST__
-- path : __/api/v1/event/current/send__
+- path : __/api/v1_beta/event/current/send__
 - request type: __JSON__
 - request example:
   ```json
