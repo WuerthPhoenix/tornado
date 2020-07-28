@@ -10,10 +10,10 @@ use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 pub fn build_event_endpoints<T: EventApiHandler + 'static>(data: ApiData<EventApi<T>>) -> Scope {
     web::scope("/v1_beta/event")
         .data(data)
-        .service(web::resource("/current/send").route(web::post().to(send_event::<T>)))
+        .service(web::resource("/current/send").route(web::post().to(send_event_to_current_config::<T>)))
 }
 
-async fn send_event<T: EventApiHandler + 'static>(
+async fn send_event_to_current_config<T: EventApiHandler + 'static>(
     req: HttpRequest,
     data: Data<ApiData<EventApi<T>>>,
     body: Json<SendEventRequestDto>,
@@ -21,7 +21,7 @@ async fn send_event<T: EventApiHandler + 'static>(
     if log_enabled!(Level::Debug) {
         debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
         let json_string = serde_json::to_string(body.deref()).unwrap();
-        debug!("API - received send_event request: {}", json_string);
+        debug!("API - received send_event_to_current_config request: {}", json_string);
     }
 
     let auth_ctx = data.auth.auth_from_request(&req)?;
