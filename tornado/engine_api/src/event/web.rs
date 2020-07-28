@@ -8,9 +8,9 @@ use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 
 pub fn build_event_endpoints<T: EventApiHandler + 'static>(data: ApiData<EventApi<T>>) -> Scope {
-    web::scope("/v1_beta/event")
-        .data(data)
-        .service(web::resource("/current/send").route(web::post().to(send_event_to_current_config::<T>)))
+    web::scope("/v1_beta/event").data(data).service(
+        web::resource("/current/send").route(web::post().to(send_event_to_current_config::<T>)),
+    )
 }
 
 async fn send_event_to_current_config<T: EventApiHandler + 'static>(
