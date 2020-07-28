@@ -151,14 +151,13 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{AuthService, Permission};
+    use crate::auth::{AuthService, test_auth_service};
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},
         test, App,
     };
     use async_trait::async_trait;
-    use std::collections::BTreeMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::{
@@ -226,21 +225,12 @@ mod test {
         }
     }
 
-    fn auth_service() -> AuthService {
-        let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map
-            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-
-        AuthService::new(Arc::new(permission_roles_map))
-    }
-
     #[actix_rt::test]
     async fn current_config_should_return_status_code_unauthorized_if_no_token(
     ) -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -260,7 +250,7 @@ mod test {
     ) -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -285,7 +275,7 @@ mod test {
     async fn should_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -310,7 +300,7 @@ mod test {
     async fn should_return_the_matcher_config() -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -343,7 +333,7 @@ mod test {
     async fn should_return_the_reloaded_matcher_config() -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -376,7 +366,7 @@ mod test {
     async fn should_have_a_draft_take_over_post_endpoint() -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: auth_service(),
+            auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;

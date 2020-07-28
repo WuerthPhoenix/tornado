@@ -1,11 +1,11 @@
 use crate::engine::{
-    EventMessageWithReply, GetCurrentConfigMessage, MatcherActor, ReconfigureMessage,
+    EventMessageWithReply, MatcherActor, ReconfigureMessage,
 };
 use actix::Addr;
 use async_trait::async_trait;
 use tornado_engine_api::config::api::ConfigApiHandler;
 use tornado_engine_api::error::ApiError;
-use tornado_engine_api::event::api::{EventApi, SendEventRequest};
+use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -15,13 +15,8 @@ pub struct MatcherApiHandler {
 }
 
 #[async_trait]
-impl EventApi for MatcherApiHandler {
-    async fn get_config(&self) -> Result<MatcherConfig, ApiError> {
-        let request = self.matcher.send(GetCurrentConfigMessage {}).await?;
-        Ok(request.as_ref().clone())
-    }
-
-    async fn send_event(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+impl EventApiHandler for MatcherApiHandler {
+    async fn send_event_to_current_config(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
         let request = self
             .matcher
             .send(EventMessageWithReply { event: event.event, process_type: event.process_type })
@@ -83,7 +78,7 @@ mod test {
 
             // Act
             Arbiter::spawn(async move {
-                let res = api.send_event(send_event_request).await;
+                let res = api.send_event_to_current_config(send_event_request).await;
                 // Verify
                 assert!(res.is_ok());
                 assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
