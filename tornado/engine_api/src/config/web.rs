@@ -19,18 +19,23 @@ pub fn build_config_endpoints<
     web::scope("/v1_beta/config")
         .data(data)
         .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
-        .service(web::resource("/deploy/{draft_id}").route(web::post().to(deploy_draft::<A, CM>)))
-        .service(web::resource("/drafts").route(web::get().to(get_drafts::<A, CM>)))
         .service(
-            web::resource("/draft_take_over/{draft_id}")
-                .route(web::post().to(draft_take_over::<A, CM>)),
+            web::resource("/drafts")
+                .route(web::get().to(get_drafts::<A, CM>))
+                .route(web::post().to(create_draft::<A, CM>)),
         )
-        .service(web::resource("/draft").route(web::post().to(create_draft::<A, CM>)))
         .service(
-            web::resource("/draft/{draft_id}")
+            web::resource("/drafts/{draft_id}")
                 .route(web::get().to(get_draft::<A, CM>))
                 .route(web::put().to(update_draft::<A, CM>))
                 .route(web::delete().to(delete_draft::<A, CM>)),
+        )
+        .service(
+            web::resource("/drafts/{draft_id}/deploy").route(web::post().to(deploy_draft::<A, CM>)),
+        )
+        .service(
+            web::resource("/drafts/{draft_id}/take_over")
+                .route(web::post().to(draft_take_over::<A, CM>)),
         )
 }
 
@@ -236,7 +241,7 @@ mod test {
         .await;
 
         // Act
-        let request = test::TestRequest::get().uri("/v1/config/current").to_request();
+        let request = test::TestRequest::get().uri("/v1_beta/config/current").to_request();
 
         let response = test::call_service(&mut srv, request).await;
 
@@ -261,7 +266,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec![""]))?,
             )
-            .uri("/v1/config/current")
+            .uri("/v1_beta/config/current")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
@@ -286,7 +291,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             )
-            .uri("/v1/config/current")
+            .uri("/v1_beta/config/current")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
@@ -311,7 +316,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             )
-            .uri("/v1/config/current")
+            .uri("/v1_beta/config/current")
             .to_request();
 
         // Assert
@@ -344,7 +349,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             )
-            .uri("/v1/config/deploy/1")
+            .uri("/v1_beta/config/drafts/1/deploy")
             .to_request();
 
         // Assert
@@ -377,7 +382,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             )
-            .uri("/v1/config/draft_take_over/draft123")
+            .uri("/v1_beta/config/drafts/draft123/take_over")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;

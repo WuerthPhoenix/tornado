@@ -86,7 +86,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .uri("/send_event")
+            .uri("/v1_beta/event/current/send")
             .header(header::CONTENT_TYPE, "application/json")
             .header(
                 header::AUTHORIZATION,
