@@ -16,7 +16,7 @@ pub fn build_config_endpoints<
 >(
     data: ApiData<ConfigApi<A, CM>>,
 ) -> Scope {
-    web::scope("/v1/config")
+    web::scope("/v1_beta/config")
         .data(data)
         .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
         .service(web::resource("/deploy/{draft_id}").route(web::post().to(deploy_draft::<A, CM>)))
@@ -151,7 +151,7 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{AuthService, test_auth_service};
+    use crate::auth::{test_auth_service, AuthService};
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},

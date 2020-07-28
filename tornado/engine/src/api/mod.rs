@@ -1,6 +1,4 @@
-use crate::engine::{
-    EventMessageWithReply, MatcherActor, ReconfigureMessage,
-};
+use crate::engine::{EventMessageWithReply, MatcherActor, ReconfigureMessage};
 use actix::Addr;
 use async_trait::async_trait;
 use tornado_engine_api::config::api::ConfigApiHandler;
@@ -16,7 +14,10 @@ pub struct MatcherApiHandler {
 
 #[async_trait]
 impl EventApiHandler for MatcherApiHandler {
-    async fn send_event_to_current_config(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+    async fn send_event_to_current_config(
+        &self,
+        event: SendEventRequest,
+    ) -> Result<ProcessedEvent, ApiError> {
         let request = self
             .matcher
             .send(EventMessageWithReply { event: event.event, process_type: event.process_type })

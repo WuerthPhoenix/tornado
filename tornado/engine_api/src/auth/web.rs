@@ -6,7 +6,7 @@ use log::*;
 use tornado_engine_api_dto::auth::AuthWithPermissionsDto;
 
 pub fn build_auth_endpoints(data: ApiData<()>) -> Scope {
-    web::scope("/v1/auth")
+    web::scope("/v1_beta/auth")
         .data(data)
         .service(web::resource("/who_am_i").route(web::get().to(who_am_i)))
 }

@@ -15,8 +15,8 @@ use tornado_common_api::Value;
 
 pub mod config;
 
-const DEFAULT_PAYLOAD_DATA_KEY: &'static str = "data";
-const DEFAULT_PAYLOAD_DATA_EXPRESSION: &'static str = "${@}";
+const DEFAULT_PAYLOAD_DATA_KEY: &str = "data";
+const DEFAULT_PAYLOAD_DATA_EXPRESSION: &str = "${@}";
 
 pub async fn start(
     nats_json_collector_config: NatsJsonCollectorConfig,
@@ -114,7 +114,10 @@ fn build_jmespath_collector_config(
         event_type: collector_config.event_type.unwrap_or_else(|| topic.to_owned()),
         payload: collector_config.payload.unwrap_or_else(|| {
             let mut payload = HashMap::new();
-            payload.insert(DEFAULT_PAYLOAD_DATA_KEY.to_owned(), Value::Text(DEFAULT_PAYLOAD_DATA_EXPRESSION.to_owned()));
+            payload.insert(
+                DEFAULT_PAYLOAD_DATA_KEY.to_owned(),
+                Value::Text(DEFAULT_PAYLOAD_DATA_EXPRESSION.to_owned()),
+            );
             payload
         }),
     }

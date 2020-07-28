@@ -1,15 +1,18 @@
+use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
 use tornado_common_api::Event;
 use tornado_engine_matcher::model::ProcessedEvent;
-use crate::auth::{AuthContext, Permission};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
 #[async_trait]
 pub trait EventApiHandler: Send + Sync {
-    async fn send_event_to_current_config(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError>;
+    async fn send_event_to_current_config(
+        &self,
+        event: SendEventRequest,
+    ) -> Result<ProcessedEvent, ApiError>;
 }
 
 #[derive(Clone)]
@@ -29,7 +32,6 @@ pub struct EventApi<A: EventApiHandler> {
 }
 
 impl<A: EventApiHandler> EventApi<A> {
-
     pub fn new(handler: A) -> Self {
         Self { handler }
     }
@@ -52,15 +54,18 @@ mod test {
     use crate::error::ApiError;
     use async_trait::async_trait;
     use std::collections::{BTreeMap, HashMap};
+    use tornado_common_api::Value;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
-    use tornado_common_api::Value;
 
     struct TestApiHandler {}
 
     #[async_trait]
     impl EventApiHandler for TestApiHandler {
-        async fn send_event_to_current_config(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+        async fn send_event_to_current_config(
+            &self,
+            event: SendEventRequest,
+        ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {
@@ -84,25 +89,15 @@ mod test {
     fn create_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
     ) -> (AuthContext, AuthContext) {
-
         let user_view = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["view".to_owned()],
-                preferences: None,
-            },
+            Auth { user: "user_id".to_owned(), roles: vec!["view".to_owned()], preferences: None },
             permissions_map,
         );
 
         let user_edit = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["edit".to_owned()],
-                preferences: None,
-            },
+            Auth { user: "user_id".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
             permissions_map,
         );
-
 
         (user_view, user_edit)
     }
@@ -113,13 +108,10 @@ mod test {
         let api = EventApi::new(TestApiHandler {});
         let permissions_map = auth_permissions();
 
-        let (user_view, user_edit) =
-            create_users(&permissions_map);
+        let (user_view, user_edit) = create_users(&permissions_map);
 
-        let request = SendEventRequest {
-            event: Event::new("event"),
-            process_type: ProcessType::Full
-        };
+        let request =
+            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());

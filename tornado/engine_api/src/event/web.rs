@@ -1,18 +1,17 @@
-use crate::event::api::{EventApiHandler, EventApi};
+use crate::event::api::{EventApi, EventApiHandler};
 use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
+use crate::model::ApiData;
 use actix_web::web::{Data, Json};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
-use crate::model::ApiData;
 
 pub fn build_event_endpoints<T: EventApiHandler + 'static>(data: ApiData<EventApi<T>>) -> Scope {
-    web::scope("")
+    web::scope("/v1_beta/event")
         .data(data)
-        .service(web::resource("/send_event").route(web::post().to(send_event::<T>)))
+        .service(web::resource("/current/send").route(web::post().to(send_event::<T>)))
 }
-
 
 async fn send_event<T: EventApiHandler + 'static>(
     req: HttpRequest,
@@ -27,33 +26,33 @@ async fn send_event<T: EventApiHandler + 'static>(
 
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let send_event_request = dto_into_send_event_request(body.into_inner())?;
-    let processed_event = data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
+    let processed_event =
+        data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::{test_auth_service, AuthService};
     use crate::error::ApiError;
     use crate::event::api::SendEventRequest;
-    use actix_web::{
-        http::{header},
-        test, App,
-    };
+    use actix_web::{http::header, test, App};
     use async_trait::async_trait;
     use std::collections::HashMap;
     use tornado_common_api::Value;
+    use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
     use tornado_engine_matcher::model::{ProcessedEvent, ProcessedNode, ProcessedRules};
-    use crate::auth::{AuthService, test_auth_service};
-    use tornado_engine_api_dto::auth::Auth;
 
     struct TestApiHandler {}
 
     #[async_trait]
     impl EventApiHandler for TestApiHandler {
-
-        async fn send_event_to_current_config(&self, event: SendEventRequest) -> Result<ProcessedEvent, ApiError> {
+        async fn send_event_to_current_config(
+            &self,
+            event: SendEventRequest,
+        ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
                 event: event.event.into(),
                 result: ProcessedNode::Ruleset {
@@ -70,11 +69,11 @@ mod test {
     #[actix_rt::test]
     async fn should_return_the_processed_event() {
         // Arrange
-        let mut srv =
-            test::init_service(App::new().service(build_event_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: EventApi::new(TestApiHandler {}),
-            }))).await;
+        let mut srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: EventApi::new(TestApiHandler {}),
+        })))
+        .await;
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {

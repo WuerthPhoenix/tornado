@@ -19,9 +19,9 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
+use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use tornado_engine_api::event::api::EventApi;
 
 pub async fn daemon(
     config_dir: &str,
@@ -302,10 +302,8 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let event_api = ApiData {
-            auth: auth_service.clone(),
-            api: EventApi::new(api_handler.clone())
-        };
+        let event_api =
+            ApiData { auth: auth_service.clone(), api: EventApi::new(api_handler.clone()) };
 
         App::new()
             .wrap(Logger::default())
