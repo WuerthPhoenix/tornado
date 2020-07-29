@@ -64,99 +64,146 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::dispatcher::{ActixEventBus, DispatcherActor};
-    use actix::{Arbiter, SyncArbiter, System};
+    use actix::SyncArbiter;
+    use std::collections::HashMap;
     use std::sync::Arc;
-    use tornado_common_api::Event;
+    use tornado_common_api::{Event, Value};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+    use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
+    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRuleStatus};
 
-    #[test]
-    fn should_send_an_event_to_the_matcher_and_return_the_processed_event() {
+    #[actix_rt::test]
+    async fn should_send_an_event_to_the_current_config_and_return_the_processed_event() {
         // Arrange
         let path = "./config/rules.d";
         let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
 
-        System::run(move || {
-            let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
+        let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-            let dispatcher_addr = SyncArbiter::start(1, move || {
-                let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
-                DispatcherActor { dispatcher }
-            });
+        let dispatcher_addr = SyncArbiter::start(1, move || {
+            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
+            DispatcherActor { dispatcher }
+        });
 
-            let matcher_addr =
-                MatcherActor::start(dispatcher_addr.clone(), config_manager).unwrap();
+        let matcher_addr = MatcherActor::start(dispatcher_addr.clone(), config_manager).unwrap();
 
-            let api = MatcherApiHandler { matcher: matcher_addr };
+        let api = MatcherApiHandler { matcher: matcher_addr };
 
-            let send_event_request = SendEventRequest {
-                process_type: ProcessType::SkipActions,
-                event: Event::new("test-type"),
-            };
+        let send_event_request = SendEventRequest {
+            process_type: ProcessType::SkipActions,
+            event: Event::new("test-type"),
+        };
 
-            // Act
-            Arbiter::spawn(async move {
-                let res = api.send_event_to_current_config(send_event_request).await;
-                // Verify
-                assert!(res.is_ok());
-                assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
-                System::current().stop();
-            });
-        })
-        .unwrap();
+        // Act
+        let res = api.send_event_to_current_config(send_event_request).await;
+
+        // Assert
+        assert!(res.is_ok());
+        assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
     }
 
-    #[test]
-    fn should_reconfigure_the_matcher_and_send_new_config() {
+    #[actix_rt::test]
+    async fn should_reconfigure_the_matcher_and_send_new_config() {
         // Arrange
         let temp_dir = tempfile::TempDir::new().unwrap();
         let temp_path = temp_dir.path().as_os_str().to_str().unwrap().to_owned();
         let config_manager = Arc::new(FsMatcherConfigManager::new(&temp_path, &temp_path));
 
-        System::run(move || {
-            let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
+        let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-            let dispatcher_addr = SyncArbiter::start(1, move || {
-                let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
-                DispatcherActor { dispatcher }
-            });
+        let dispatcher_addr = SyncArbiter::start(1, move || {
+            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
+            DispatcherActor { dispatcher }
+        });
 
-            let matcher_addr =
-                MatcherActor::start(dispatcher_addr.clone(), config_manager.clone()).unwrap();
+        let matcher_addr =
+            MatcherActor::start(dispatcher_addr.clone(), config_manager.clone()).unwrap();
 
-            let api = MatcherApiHandler { matcher: matcher_addr };
+        let api = MatcherApiHandler { matcher: matcher_addr };
 
-            // Act
-            let res = config_manager.get_config();
-            // Verify
-            assert!(res.is_ok());
-            match res.unwrap() {
-                MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
-                MatcherConfig::Filter { .. } => assert!(false),
-            }
+        // Act
+        let res = config_manager.get_config();
+        // Verify
+        assert!(res.is_ok());
+        match res.unwrap() {
+            MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
+            MatcherConfig::Filter { .. } => assert!(false),
+        }
 
-            // Add one rule after the tornado start
-            std::fs::copy(
-                "./config/rules.d/ruleset_01/001_all_emails.json",
-                format!("{}/001_all_emails.json", temp_path),
-            )
-            .unwrap();
-
-            Arbiter::spawn(async move {
-                // Act
-                let res = api.reload_configuration().await;
-                // Verify
-                assert!(res.is_ok());
-                match res.unwrap() {
-                    MatcherConfig::Ruleset { rules, .. } => assert_eq!(1, rules.len()),
-                    MatcherConfig::Filter { .. } => assert!(false),
-                }
-
-                System::current().stop();
-            });
-        })
+        // Add one rule after the tornado start
+        std::fs::copy(
+            "./config/rules.d/ruleset_01/001_all_emails.json",
+            format!("{}/001_all_emails.json", temp_path),
+        )
         .unwrap();
+
+        // Act
+        let res = api.reload_configuration().await;
+
+        // Assert
+        assert!(res.is_ok());
+        match res.unwrap() {
+            MatcherConfig::Ruleset { rules, .. } => assert_eq!(1, rules.len()),
+            MatcherConfig::Filter { .. } => assert!(false),
+        }
+    }
+
+    #[actix_rt::test]
+    async fn should_send_an_event_to_the_draft_and_return_the_processed_event() {
+        // Arrange
+        let path = "./config/rules.d";
+        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
+
+        let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
+
+        let dispatcher_addr = SyncArbiter::start(1, move || {
+            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
+            DispatcherActor { dispatcher }
+        });
+
+        let matcher_addr = MatcherActor::start(dispatcher_addr.clone(), config_manager).unwrap();
+
+        let api = MatcherApiHandler { matcher: matcher_addr };
+
+        let send_event_request = SendEventRequest {
+            process_type: ProcessType::SkipActions,
+            event: Event::new("test-type-custom"),
+        };
+
+        let config = MatcherConfig::Ruleset {
+            name: "custom_ruleset".to_owned(),
+            rules: vec![Rule {
+                name: "rule_1".to_owned(),
+                actions: vec![],
+                active: true,
+                description: "".to_owned(),
+                do_continue: true,
+                constraint: Constraint {
+                    where_operator: Some(Operator::Equals {
+                        first: Value::Text("${event.type}".to_owned()),
+                        second: Value::Text("test-type-custom".to_owned()),
+                    }),
+                    with: HashMap::new(),
+                },
+            }],
+        };
+
+        // Act
+        let res = api.send_event_to_config(send_event_request, config).await.unwrap();
+
+        // Assert
+        assert_eq!(Some("test-type-custom"), res.event.event_type.get_text());
+
+        match res.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("custom_ruleset", &name);
+                assert_eq!(1, rules.rules.len());
+                assert_eq!(ProcessedRuleStatus::Matched, rules.rules[0].status)
+            }
+            _ => assert!(false),
+        }
     }
 }
