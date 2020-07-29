@@ -1,4 +1,6 @@
-use crate::engine::{EventMessageWithReply, MatcherActor, ReconfigureMessage};
+use crate::engine::{
+    EventMessageAndConfigWithReply, EventMessageWithReply, MatcherActor, ReconfigureMessage,
+};
 use actix::Addr;
 use async_trait::async_trait;
 use tornado_engine_api::config::api::ConfigApiHandler;
@@ -26,8 +28,21 @@ impl EventApiHandler for MatcherApiHandler {
         Ok(request?)
     }
 
-    async fn send_event_to_config(&self, event: SendEventRequest, config: MatcherConfig) -> Result<ProcessedEvent, ApiError> {
-        unimplemented!()
+    async fn send_event_to_config(
+        &self,
+        event: SendEventRequest,
+        matcher_config: MatcherConfig,
+    ) -> Result<ProcessedEvent, ApiError> {
+        let request = self
+            .matcher
+            .send(EventMessageAndConfigWithReply {
+                event: event.event,
+                process_type: event.process_type,
+                matcher_config,
+            })
+            .await?;
+
+        Ok(request?)
     }
 }
 

@@ -8,11 +8,14 @@ use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 use tornado_engine_matcher::config::MatcherConfigEditor;
 
-pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(data: ApiData<EventApi<T, CM>>) -> Scope {
+pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+    data: ApiData<EventApi<T, CM>>,
+) -> Scope {
     web::scope("/v1_beta/event")
         .data(data)
         .service(
-        web::resource("/current/send").route(web::post().to(send_event_to_current_config::<T, CM>)),
+            web::resource("/current/send")
+                .route(web::post().to(send_event_to_current_config::<T, CM>)),
         )
         .service(
             web::resource("/drafts/{draft_id}/send")
@@ -20,7 +23,10 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
         )
 }
 
-async fn send_event_to_current_config<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+async fn send_event_to_current_config<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + 'static,
+>(
     req: HttpRequest,
     data: Data<ApiData<EventApi<T, CM>>>,
     body: Json<SendEventRequestDto>,
@@ -45,7 +51,6 @@ async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEdit
     draft_id: Path<String>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
-
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let draft_id = draft_id.into_inner();
 
@@ -65,19 +70,19 @@ async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 mod test {
     use super::*;
     use crate::auth::{test_auth_service, AuthService};
+    use crate::event::api::test::{TestApiHandler, TestConfigManager, DRAFT_OWNER_ID};
     use actix_web::{http::header, test, App};
     use std::collections::HashMap;
+    use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
-    use crate::event::api::test::{TestApiHandler, TestConfigManager, DRAFT_OWNER_ID};
-    use std::sync::Arc;
 
     #[actix_rt::test]
     async fn should_send_event_to_current_config() {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
             auth: test_auth_service(),
-            api: EventApi::new(TestApiHandler{}, Arc::new(TestConfigManager{})),
+            api: EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
         .await;
 
@@ -112,9 +117,9 @@ mod test {
         // Arrange
         let mut srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
             auth: test_auth_service(),
-            api: EventApi::new(TestApiHandler{}, Arc::new(TestConfigManager{})),
+            api: EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
-            .await;
+        .await;
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -130,7 +135,8 @@ mod test {
             .header(header::CONTENT_TYPE, "application/json")
             .header(
                 header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new(DRAFT_OWNER_ID, vec!["edit"])).unwrap(),
+                AuthService::auth_to_token_header(&Auth::new(DRAFT_OWNER_ID, vec!["edit"]))
+                    .unwrap(),
             )
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
@@ -139,6 +145,5 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
-
     }
 }

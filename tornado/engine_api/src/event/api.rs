@@ -1,17 +1,16 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
-use tornado_common_api::Event;
-use tornado_engine_matcher::model::ProcessedEvent;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use std::sync::Arc;
+use tornado_common_api::Event;
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
+use tornado_engine_matcher::model::ProcessedEvent;
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
 #[async_trait]
 pub trait EventApiHandler: Send + Sync {
-
     /// Executes an Event on the current Tornado Configuration
     async fn send_event_to_current_config(
         &self,
@@ -22,7 +21,7 @@ pub trait EventApiHandler: Send + Sync {
     async fn send_event_to_config(
         &self,
         event: SendEventRequest,
-        config: MatcherConfig
+        config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError>;
 }
 
@@ -32,7 +31,7 @@ pub struct SendEventRequest {
     pub process_type: ProcessType,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum ProcessType {
     Full,
     SkipActions,
@@ -80,9 +79,9 @@ pub mod test {
     use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::Value;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
-    use tornado_engine_matcher::error::MatcherError;
     use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::error::MatcherError;
+    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
 
     pub struct TestApiHandler {}
 
@@ -104,7 +103,11 @@ pub mod test {
             })
         }
 
-        async fn send_event_to_config(&self, event: SendEventRequest, _config: MatcherConfig) -> Result<ProcessedEvent, ApiError> {
+        async fn send_event_to_config(
+            &self,
+            event: SendEventRequest,
+            _config: MatcherConfig,
+        ) -> Result<ProcessedEvent, ApiError> {
             self.send_event_to_current_config(event).await
         }
     }
@@ -203,19 +206,19 @@ pub mod test {
 
         let (mut user_view, mut user_edit) = create_users(&permissions_map);
 
-        let request =
-            SendEventRequest { event: Event::new("event_for_draft"), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event_for_draft"),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act & Assert
-        assert!(api.send_event_to_draft(user_edit.clone(), "id",request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(user_view.clone(), "id",request.clone()).await.is_err());
+        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
+        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
 
         // Set the users as owners of the draft
         user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
         user_view.auth.user = DRAFT_OWNER_ID.to_owned();
-        assert!(api.send_event_to_draft(user_edit.clone(), "id",request.clone()).await.is_ok());
-        assert!(api.send_event_to_draft(user_view.clone(), "id",request.clone()).await.is_err());
-
-
+        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_ok());
+        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
     }
 }
