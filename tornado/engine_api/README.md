@@ -182,10 +182,7 @@ Endpoint: deploy an existing draft
 
 ### Send Test Event Endpoint 
 
-This endpoint receives an _Event_, processes it, and returns the result of the Tornado Engine 
-processing that event.
-
-Details:
+Endpoint: match an event on the current Tornado Engine configuration
 - HTTP Method: __POST__
 - path : __/api/v1_beta/event/current/send__
 - request type: __JSON__
@@ -260,3 +257,9 @@ Details:
     }
   }
    ```
+
+Endpoint: match an event on a specific Tornado draft
+- HTTP Method: __POST__
+- path : __/api/v1_beta/event/drafts/{draft_id}/send__
+- request type: __JSON__
+- request/response example: same request and response of the __/api/v1_beta/event/current/send__ endpoint
