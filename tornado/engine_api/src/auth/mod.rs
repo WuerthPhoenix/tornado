@@ -28,7 +28,7 @@ pub enum Permission {
     ConfigView,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AuthContext<'a> {
     pub auth: Auth,
     pub valid: bool,
