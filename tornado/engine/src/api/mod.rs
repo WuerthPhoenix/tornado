@@ -25,6 +25,10 @@ impl EventApiHandler for MatcherApiHandler {
 
         Ok(request?)
     }
+
+    async fn send_event_to_config(&self, event: SendEventRequest, config: MatcherConfig) -> Result<ProcessedEvent, ApiError> {
+        unimplemented!()
+    }
 }
 
 #[async_trait]

@@ -303,7 +303,7 @@ pub async fn daemon(
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
         let event_api =
-            ApiData { auth: auth_service.clone(), api: EventApi::new(api_handler.clone()) };
+            ApiData { auth: auth_service.clone(), api: EventApi::new(api_handler.clone(), matcher_config.clone()) };
 
         App::new()
             .wrap(Logger::default())
