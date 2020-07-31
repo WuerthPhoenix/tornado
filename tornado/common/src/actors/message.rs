@@ -8,6 +8,8 @@ pub enum TornadoCommonActorError {
     ServerNotAvailableError { address: String },
     #[error("SerdeError: [{message}]")]
     SerdeError { message: String },
+    #[error("GenericError: [{message}]")]
+    GenericError { message: String },
 }
 
 #[derive(Message)]

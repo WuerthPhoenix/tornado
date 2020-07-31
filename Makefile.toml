@@ -99,3 +99,19 @@ args = [
     "--",
     "--config-dir=./tornado/email_collector/config"
 ]
+
+
+# Starts the nats-json-collector.
+#
+# Execute with:
+# > cargo make run-nats-json-collector
+[tasks.run-nats-json-collector]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado_nats_json_collector",
+    "--",
+    "--config-dir=./tornado/nats_json_collector/config"
+]

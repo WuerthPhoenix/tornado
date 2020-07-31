@@ -30,6 +30,7 @@ members = [
    "tornado/engine_api",
    "tornado/engine_api_dto",
    "tornado/icinga2_collector",
+   "tornado/nats_json_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
 ]

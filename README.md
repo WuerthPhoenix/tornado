@@ -71,7 +71,7 @@ Event structure, and forward them to the Tornado Engine.
 collector that knows how to manipulate the datasource's Events and generate Tornado Events.
 
 Out of the box, Tornado provides a number of Collectors for handling inputs from snmptrapd,
-rsyslog and generic Webhooks.
+rsyslog, JSON from Nats channels and generic Webhooks.
 
 Because all Collectors are defined with a simple format, Collectors for new event types
 can easily be added or extended from existing types for:
@@ -136,9 +136,10 @@ user-friendly installable packages such as .rpm's.
 ### Prerequisites
 
 The following prerequisites must be met in order to compile and run Tornado:
-- You must have Rust version 1.32 or later installed.
+- You must have Rust version 1.44 or later installed.
 - To build the Tornado executables, the *openssl-dev* library should be present in your build
   environment.
+- Some tests require Docker to be installed on the localhost.
 
 
 
@@ -175,6 +176,7 @@ The repository structure is shown here:
       |     |-- engine # The Tornado Engine executable with embedded Tornado Executors
       |     |-- email_collector # A Tornado Collector to handle MIME emails
       |     |-- icinga2_collector # A Tornado Collector to subscribe to the Icinga2 API event streams
+      |     |-- nats_json_collector # A Tornado Collector to handle generic JSON message from Nats channels
       |     |-- rsyslog_collector # A Tornado Collector to handle rsyslog events
       |     |-- snmptrapd_collector # A Tornado Collector written in Perl to handle snmptrapd events
       |     |-- webhook_collector # A Tornado Collector to handle generic Webhook events
@@ -216,8 +218,11 @@ The elements of the Tornado build process can be grouped into three categories:
 To run Tornado, follow the configuration instructions of the Tornado executables provided by
 their respective documentation pages:
 * [tornado_engine documentation](tornado/engine/README.md)
+* [tornado_email_collector documentation](tornado/email_collector/README.md)
+* [tornado_icinga2_collector documentation](tornado/icinga2_collector/README.md)
 * [tornado_rsyslog_collector documentation](tornado/rsyslog_collector/README.md)
-* [tornado_web_collector documentation](tornado/webhook_collector/README.md)
+* [tornado_nats_json_collector documentation](tornado/nats_json_collector/README.md)
+* [tornado_webhook_collector documentation](tornado/webhook_collector/README.md)
 
 
 
@@ -353,6 +358,9 @@ An executable that processes incoming emails and generates Tornado Events.
 
 An executable that subscribes to Icinga2 Event Streams API and generates Tornado Events.
 - [tornado_icinga2_collector](tornado/icinga2_collector/README.md)
+
+An executable that subscribes to Nats channels and generates Tornado Events.
+- [tornado_nats_json_collector](tornado/nats_json_collector/README.md)
 
 The description of a binary executable that generates Tornado Events from _rsyslog_ inputs.
 - [tornado_rsyslog_collector](tornado/rsyslog_collector/README.md)

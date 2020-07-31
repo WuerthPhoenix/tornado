@@ -35,7 +35,7 @@ cargo make run-engine
 ```
 
 This builds and starts a Tornado Engine on the local machine configured to receive events
-on the UDS path _/tmp/tornado_.
+on the TCP port 4747.
 
 
 ## Start Tornado Icinga2 Collector
@@ -48,7 +48,22 @@ cargo make run-icinga2-collector
 
 This builds and starts the Tornado Icinga2 collector that, by default, connects to an Icinga2 server
 on the localhost at port 5665.
-For each incoming Icinga2 Event, it will send a Tornado Event on the UDS path _/tmp/tornado_.
+Produced events are sent to tornado to the TCP port 4747.
+
+
+## Start Tornado Nats JSON Collector
+Requirements: 
+- A Nats server running on the localhost on port 4222
+ 
+To start the [tornado_nats_json_collector](tornado/nats_json_collector/README.md),
+enter the _src_ folder and run:
+
+```bash
+cargo make run-nats-json-collector
+```
+
+This builds and starts the Tornado Nats JSON collector. 
+Produced events are sent to tornado to the TCP port 4747. 
 
 
 ## Start Tornado Webhook Collector
@@ -60,7 +75,7 @@ cargo make run-webhook-collector
 ```
 
 This builds and starts the Tornado Webhook collector Web Servet at port 8080.
-For each incoming webhook message, it will send a Tornado Event on the UDS path _/tmp/tornado_.
+Produced events are sent to tornado to the TCP port 4747.
 
 
 ## Start Tornado Rsyslog Collector
@@ -80,14 +95,14 @@ cargo make run-rsyslog-collector
 ```
 
 This builds and starts both the spike and the rsyslog-collector.
-The collector will send Tornado Events on the UDS path _/tmp/tornado_.
+The collector will send Tornado Events on the TCP port 4747.
 
 
 ## Start fake snmptrapd
 A spike that produces fake snmptrapd events is available for local testing
 (see ./spike/snmptrapd_collector_writer). This fake snmptrapd
 generates fake events and forwards them directly to the Engine
-on the UDS path _/tmp/tornado_snmptrapd_.
+on the TCP port 4747.
 
 To start the fake snmptrapd, enter the _src_ folder and run:
 
@@ -98,7 +113,7 @@ cargo make run-snmptrapd-writer
 
 ## Start Tornado Events Generator
 A spike that reads Tornado events from json files
-and forwards them to the Engine on the UDS path _/tmp/tornado_.
+and forwards them to the Engine on the TCP port 4747.
 
 To start the Tornado Events Generator, enter the _src_ folder and run:
 
