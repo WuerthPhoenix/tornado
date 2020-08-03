@@ -19,6 +19,7 @@ use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
+use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 
@@ -294,13 +295,15 @@ pub async fn daemon(
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
-        let api_handler = api_handler.clone();
         let daemon_config = daemon_config.clone();
+
+        let auth_api = ApiData { auth: auth_service.clone(), api: () };
         let config_api = ApiData {
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let auth_api = ApiData { auth: auth_service.clone(), api: () };
+        let event_api =
+            ApiData { auth: auth_service.clone(), api: EventApi::new(api_handler.clone()) };
 
         App::new()
             .wrap(Logger::default())
@@ -309,7 +312,7 @@ pub async fn daemon(
                 web::scope("/api")
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
-                    .service(tornado_engine_api::event::web::build_event_endpoints(api_handler)),
+                    .service(tornado_engine_api::event::web::build_event_endpoints(event_api)),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })

@@ -53,93 +53,12 @@ The 'config' APIs require the caller to pass an authorization token in the heade
 
  
 
-### Working with configuration drafts
-These endpoints allow the editing of configuration drafts
+### Working with configuration and drafts
+These endpoints allow working with the configuration and the drafts
 
-
-Endpoint: get list of draft ids
+Endpoint: get the current Tornado configuration
 - HTTP Method: __GET__
-- path : __/api/v1/config/drafts__
-- response type: __JSON__
-- response: An array of _String_ ids  
-- response example:
-  ```json
-  ["id1", "id2"]
-  ```
-  
-  
-Endpoint: get a draft by id
-- HTTP Method: __GET__
-- path : __/api/v1/config/draft/{draft_id}__
-- response type: __JSON__
-- response: the draft content
-- response example:
-  ```json
-   {
-     "type": "Rules",
-     "rules": [
-       {
-         "name": "all_emails",
-         "description": "This matches all emails",
-         "continue": true,
-         "active": true,
-         "constraint": {
-           "WHERE": {},
-           "WITH": {}
-         },
-         "actions": []
-       }
-     ]
-   }
-  ```
-
-
-Endpoint: create a new and return the draft id
-- HTTP Method: __POST__
-- path : __/api/v1/config/draft__
-- response type: __JSON__
-- response: the draft content
-- response example:
-  ```json
-  {
-    "id": "id3"
-  }
-  ```
-  
-  
-Endpoint: update an existing draft
-- HTTP Method: __PUT__
-- path : __/api/v1/config/draft/{draft_id}__
-- request body type: __JSON__
-- request body: The draft content in the same JSON format returned by the 
-  __GET__ __/api/v1/config/draft/{draft_id}__ endpoint 
-- response type: __JSON__
-- response: an empty json object
-
-
-Endpoint: delete an existing draft
-- HTTP Method: __DELETE__
-- path : __/api/v1/config/draft/{draft_id}__
-- response type: __JSON__
-- response: an empty json object
-  
-  
-Endpoint: take over an existing draft
-- HTTP Method: __POST__
-- path : __/api/v1/config/draft_take_over/{draft_id}__
-- response type: __JSON__
-- response: an empty json object
-
-
-## Tornado 'Event' Backend API
-
-### Get Configuration Endpoint 
-
-This endpoint returns the current Tornado configuration.
-
-Details:
-- HTTP Method: __GET__
-- path : __/api/config__
+- path : __/api/v1/config/current__
 - response type: __JSON__ 
 - response example:
   ```json
@@ -178,6 +97,88 @@ Details:
    }
   ```
 
+Endpoint: get list of draft ids
+- HTTP Method: __GET__
+- path : __/api/v1/config/drafts__
+- response type: __JSON__
+- response: An array of _String_ ids  
+- response example:
+  ```json
+  ["id1", "id2"]
+  ```
+  
+  
+Endpoint: get a draft by id
+- HTTP Method: __GET__
+- path : __/api/v1/config/drafts/{draft_id}__
+- response type: __JSON__
+- response: the draft content
+- response example:
+  ```json
+   {
+     "type": "Rules",
+     "rules": [
+       {
+         "name": "all_emails",
+         "description": "This matches all emails",
+         "continue": true,
+         "active": true,
+         "constraint": {
+           "WHERE": {},
+           "WITH": {}
+         },
+         "actions": []
+       }
+     ]
+   }
+  ```
+
+
+Endpoint: create a new and return the draft id
+- HTTP Method: __POST__
+- path : __/api/v1/config/drafts__
+- response type: __JSON__
+- response: the draft content
+- response example:
+  ```json
+  {
+    "id": "id3"
+  }
+  ```
+  
+  
+Endpoint: update an existing draft
+- HTTP Method: __PUT__
+- path : __/api/v1/config/drafts/{draft_id}__
+- request body type: __JSON__
+- request body: The draft content in the same JSON format returned by the 
+  __GET__ __/api/v1/config/drafts/{draft_id}__ endpoint 
+- response type: __JSON__
+- response: an empty json object
+
+
+Endpoint: delete an existing draft
+- HTTP Method: __DELETE__
+- path : __/api/v1/config/drafts/{draft_id}__
+- response type: __JSON__
+- response: an empty json object
+  
+  
+Endpoint: take over an existing draft
+- HTTP Method: __POST__
+- path : __/api/v1/config/drafts/{draft_id}/take_over__
+- response type: __JSON__
+- response: an empty json object
+
+
+Endpoint: deploy an existing draft
+- HTTP Method: __POST__
+- path : __/api/v1/config/drafts/{draft_id}/deploy__
+- response type: __JSON__
+- response: an empty json object
+
+
+## Tornado 'Event' Backend API
 
 ### Send Test Event Endpoint 
 
@@ -186,7 +187,7 @@ processing that event.
 
 Details:
 - HTTP Method: __POST__
-- path : __/api/send_event__
+- path : __/api/v1/event/current/send__
 - request type: __JSON__
 - request example:
   ```json
