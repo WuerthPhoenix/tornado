@@ -2,6 +2,7 @@ use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
+use tornado_common_api::Event;
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
@@ -13,6 +14,14 @@ use tornado_engine_matcher::{error, matcher};
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
     pub event: tornado_common_api::Event,
+    pub process_type: ProcessType,
+}
+
+#[derive(Debug, Message)]
+#[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
+pub struct EventMessageAndConfigWithReply {
+    pub event: tornado_common_api::Event,
+    pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
 }
 
@@ -51,6 +60,24 @@ impl MatcherActor {
             matcher,
         }))
     }
+
+    fn process_event_with_reply(
+        &self,
+        matcher: &Matcher,
+        event: Event,
+        process_type: ProcessType,
+    ) -> Result<ProcessedEvent, error::MatcherError> {
+        let processed_event = matcher.process(event);
+
+        match process_type {
+            ProcessType::Full => self
+                .dispatcher_addr
+                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
+            ProcessType::SkipActions => {}
+        }
+
+        Ok(processed_event)
+    }
 }
 
 impl Actor for MatcherActor {
@@ -87,17 +114,21 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+        self.process_event_with_reply(&self.matcher, msg.event, msg.process_type)
+    }
+}
 
-        let processed_event = self.matcher.process(msg.event);
+impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
+    type Result = Result<ProcessedEvent, error::MatcherError>;
 
-        match msg.process_type {
-            ProcessType::Full => self
-                .dispatcher_addr
-                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
-            ProcessType::SkipActions => {}
-        }
-
-        Ok(processed_event)
+    fn handle(
+        &mut self,
+        msg: EventMessageAndConfigWithReply,
+        _: &mut Context<Self>,
+    ) -> Self::Result {
+        trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
+        let matcher = Matcher::build(&msg.matcher_config)?;
+        self.process_event_with_reply(&matcher, msg.event, msg.process_type)
     }
 }
 
