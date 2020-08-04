@@ -6,7 +6,7 @@ use log::*;
 use tornado_engine_api_dto::auth::AuthWithPermissionsDto;
 
 pub fn build_auth_endpoints(data: ApiData<()>) -> Scope {
-    web::scope("/v1/auth")
+    web::scope("/v1_beta/auth")
         .data(data)
         .service(web::resource("/who_am_i").route(web::get().to(who_am_i)))
 }
@@ -59,7 +59,7 @@ mod test {
         .await;
 
         // Act
-        let request = test::TestRequest::get().uri("/v1/auth/who_am_i").to_request();
+        let request = test::TestRequest::get().uri("/v1_beta/auth/who_am_i").to_request();
 
         let response = test::call_service(&mut srv, request).await;
 
@@ -82,7 +82,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["view"]))?,
             )
-            .uri("/v1/auth/who_am_i")
+            .uri("/v1_beta/auth/who_am_i")
             .to_request();
 
         // Assert

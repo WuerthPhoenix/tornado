@@ -28,7 +28,7 @@ pub enum Permission {
     ConfigView,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct AuthContext<'a> {
     pub auth: Auth,
     pub valid: bool,
@@ -199,6 +199,15 @@ impl WithOwner for MatcherConfigDraft {
     fn get_owner_id(&self) -> &str {
         &self.data.user
     }
+}
+
+#[cfg(test)]
+pub fn test_auth_service() -> AuthService {
+    let mut permission_roles_map = BTreeMap::new();
+    permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
+    permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+
+    AuthService::new(Arc::new(permission_roles_map))
 }
 
 #[cfg(test)]
