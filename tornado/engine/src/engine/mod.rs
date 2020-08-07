@@ -76,7 +76,7 @@ impl Handler<EventMessage> for MatcherActor {
         let dispatcher_addr = self.dispatcher_addr.clone();
         actix::spawn(async move {
             let processed_event = matcher.process(msg.event);
-            dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event });
+            dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         });
         Ok(())
     }
@@ -93,7 +93,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
         match msg.process_type {
             ProcessType::Full => self
                 .dispatcher_addr
-                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
+                .try_send(ProcessedEventMessage { event: processed_event.clone() }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err)),
             ProcessType::SkipActions => {}
         }
 

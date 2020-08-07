@@ -107,7 +107,7 @@ where
                         info!("EOF received. Stopping Rsyslog collector.");
                         system.stop();
                     } else {
-                        rsyslog_addr.do_send(StringMessage { msg: input });
+                        rsyslog_addr.try_send(StringMessage { msg: input }).unwrap_or_else(|err| error!("RsyslogCollector -  Error while sending message to RsyslogCollectorActor. Error: {}", err));
                     }
                 }
                 Err(error) => {
