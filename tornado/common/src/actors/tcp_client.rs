@@ -88,7 +88,12 @@ impl Handler<EventMessage> for TcpClientActor {
             }
             None => {
                 warn!("TCP connection not available");
-                ctx.address().do_send(msg);
+                ctx.address().try_send(msg).unwrap_or_else(|err| {
+                    error!(
+                        "TcpClientActor -  Error while sending EventMessage to itself. Error: {}",
+                        err
+                    )
+                });
                 ctx.stop();
                 Err(TornadoCommonActorError::ServerNotAvailableError {
                     address: self.address.clone(),

@@ -188,12 +188,12 @@ pub async fn daemon(
     };
 
     let event_bus_clone = event_bus.clone();
-    foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<
+    foreach_executor_addr.try_send(LazyExecutorActorInitMessage::<
         tornado_executor_foreach::ForEachExecutor,
         _,
     > {
         init: move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()),
-    });
+    })?;
 
     // Start dispatcher actor
     let dispatcher_addr = SyncArbiter::start(threads_per_queue, move || {
@@ -223,7 +223,7 @@ pub async fn daemon(
                 let event = serde_json::from_slice(&msg.msg)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-                matcher_addr_clone.do_send(EventMessage { event });
+                matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {}", err));
                 Ok(())
             })
             .await
@@ -266,7 +266,7 @@ pub async fn daemon(
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
                 JsonEventReaderActor::start_new(msg, move |event| {
-                    json_matcher_addr_clone.do_send(EventMessage { event })
+                    json_matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {}", err));
                 });
             })
             .await

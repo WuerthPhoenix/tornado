@@ -105,7 +105,7 @@ fn start<A: Actor + actix::Handler<EventMessage>>(
                     .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {}", config.collector_config.clone(), e)),
                 stream_config: config.stream.clone(),
                 callback: move |event| {
-                    actor_address.do_send(EventMessage { event });
+                    actor_address.try_send(EventMessage { event }).unwrap_or_else(|err| error!("Icinga2StreamActor -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
                 },
             }
         });
