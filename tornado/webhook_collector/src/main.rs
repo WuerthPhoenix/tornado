@@ -141,7 +141,7 @@ where
         App::new().service(
             create_app(webhooks_config.clone(), || {
                 let clone = actor_address.clone();
-                move |event| clone.do_send(EventMessage { event })
+                move |event| clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
             })
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {

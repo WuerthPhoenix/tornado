@@ -97,7 +97,12 @@ where
 
     // Open UDS socket
     listen_to_uds_socket(uds_path.clone(), Some(0o770), move |msg| {
-        email_addr.do_send(msg);
+        email_addr.try_send(msg).unwrap_or_else(|err| {
+            error!(
+                "Email Collector -  Error while sending message to Email Reader Actor. Error: {}",
+                err
+            )
+        });
     })
     .map(|_| {
         info!("Started UDS server at [{}]. Listening for incoming events", uds_path);
