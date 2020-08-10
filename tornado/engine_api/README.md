@@ -134,7 +134,8 @@ Endpoint: get a draft by id
   ```
 
 
-Endpoint: create a new and return the draft id
+Endpoint: create a new draft and return the draft id. The new draft is an exact copy of the current configuration;
+anyway, a root Filter node is added if not present.  
 - HTTP Method: __POST__
 - path : __/api/v1_beta/config/drafts__
 - response type: __JSON__
