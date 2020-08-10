@@ -1,6 +1,7 @@
-use crate::config::fs::FsMatcherConfigManager;
+use crate::config::filter::Filter;
+use crate::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
 use crate::config::{
-    MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
+    Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
     MatcherConfigReader,
 };
 use crate::error::MatcherError;
@@ -60,9 +61,30 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         let current_ts_ms = current_ts_ms();
 
-        FsMatcherConfigManager::copy_and_override(
-            &self.root_path,
+        let current_config = self.get_config()?;
+        let current_config = match &current_config {
+            MatcherConfig::Ruleset { .. } => {
+                info!(
+                    "A root filter will be automatically added to the created draft with id {}",
+                    draft_id
+                );
+                MatcherConfig::Filter {
+                    name: ROOT_NODE_NAME.to_owned(),
+                    nodes: vec![current_config],
+                    filter: Filter {
+                        filter: Defaultable::Default {},
+                        description: "".to_owned(),
+                        active: true,
+                    },
+                }
+            }
+            MatcherConfig::Filter { .. } => current_config,
+        };
+
+        FsMatcherConfigManager::matcher_config_to_fs(
+            true,
             &self.get_draft_config_dir_path(&draft_id),
+            &current_config,
         )?;
 
         self.write_draft_data(MatcherConfigDraftData {
@@ -286,11 +308,11 @@ mod test {
     use tempfile::TempDir;
 
     #[test]
-    fn should_create_a_new_draft_cloning_from_rules_dir() -> Result<(), Box<dyn std::error::Error>>
-    {
+    fn should_create_a_new_draft_cloning_from_current_config_with_root_filter(
+    ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().unwrap();
@@ -308,6 +330,50 @@ mod test {
             FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config()?
         );
 
+        // current_config must be a filter for this test
+        match current_config {
+            MatcherConfig::Filter { .. } => {}
+            _ => assert!(false),
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_create_a_new_draft_cloning_current_config_with_root_ruleset(
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+        let current_config = config_manager.get_config().unwrap();
+
+        let user_1 = "user_1".to_owned();
+
+        // Act
+        let result = config_manager.create_draft(user_1.clone()).unwrap();
+        let draft_config_path = config_manager.get_draft_config_dir_path(&result);
+
+        // Assert
+        assert_eq!(DRAFT_ID, &result);
+
+        // A default root filter should be automatically added
+        match FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config()? {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(1, nodes.len());
+                assert_eq!(current_config, nodes[0]);
+            }
+            _ => assert!(false),
+        }
+
+        // current_config must be a ruleset for this test
+        match current_config {
+            MatcherConfig::Ruleset { .. } => {}
+            _ => assert!(false),
+        }
+
         Ok(())
     }
 
@@ -316,7 +382,7 @@ mod test {
         // Arrange
         let current_ts_ms = current_ts_ms();
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().unwrap();

@@ -244,7 +244,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                             warn!(
                                 "NatsPublisherActor - Connection not available. Resending message."
                             );
-                            address.do_send(ResetActorMessage { payload: Some(msg) });
+                            address.try_send(ResetActorMessage { payload: Some(msg) }).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending ResetActorMessage to itself. Error: {}", err));
                         }
                     };
                 });
@@ -252,7 +252,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
             }
             None => {
                 warn!("NatsPublisherActor - Connection not available. Restart Actor.");
-                ctx.address().do_send(ResetActorMessage { payload: Some(msg) });
+                ctx.address().try_send(ResetActorMessage { payload: Some(msg) }).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending ResetActorMessage to itself. Error: {}", err));
                 Ok(())
             }
         }
@@ -270,7 +270,12 @@ impl Handler<ResetActorMessage<Option<EventMessage>>> for NatsPublisherActor {
         trace!("NatsPublisherActor - Received reset actor message");
         ctx.stop();
         if let Some(message) = msg.payload {
-            ctx.address().do_send(message);
+            ctx.address().try_send(message).unwrap_or_else(|err| {
+                error!(
+                    "NatsPublisherActor -  Error while sending EventMessage to itself. Error: {}",
+                    err
+                )
+            });
         };
         Ok(())
     }
