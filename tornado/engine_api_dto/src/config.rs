@@ -43,6 +43,10 @@ pub enum ExtractorRegexDto {
         regex: String,
         all_matches: Option<bool>,
     },
+    KeyRegex {
+        #[serde(rename = "key_match")]
+        regex: String,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]

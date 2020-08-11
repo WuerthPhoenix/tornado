@@ -1,0 +1,23 @@
+{
+  "name": "use_oids",
+  "description": "df",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "equals",
+      "first": "${_variables.extractor_rule.netmasterAlarmNeIpv4Address[0].content}",
+      "second": "0.0.0.0"
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "archive",
+      "payload": {
+        "event": "${event}",
+        "archive_type": "one"
+      }
+    }
+  ]
+}

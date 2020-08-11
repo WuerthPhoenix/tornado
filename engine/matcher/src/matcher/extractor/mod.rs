@@ -176,6 +176,7 @@ enum RegexValueExtractor {
     AllMatchesAllGroups { regex: RustRegex, target: Accessor },
     SingleMatchNamedGroups { regex: RustRegex, target: Accessor },
     AllMatchesNamedGroups { regex: RustRegex, target: Accessor },
+    KeyMatch { regex: RustRegex, target: Accessor },
 }
 
 impl RegexValueExtractor {
@@ -255,6 +256,17 @@ impl RegexValueExtractor {
                 } else {
                     Ok(RegexValueExtractor::SingleMatchNamedGroups { regex: rust_regex, target })
                 }
+            }
+            ExtractorRegex::KeyRegex {regex} => {
+                let rust_regex =
+                    RustRegex::new(regex).map_err(|e| MatcherError::ExtractorBuildFailError {
+                        message: format!("Cannot parse regex [{}]", regex),
+                        cause: e.to_string(),
+                    })?;
+                Ok(RegexValueExtractor::KeyMatch {
+                    regex: rust_regex,
+                    target
+                })
             }
         }
     }
@@ -343,6 +355,21 @@ impl RegexValueExtractor {
                         result.push(Value::Map(groups));
                     } else {
                         return None;
+                    }
+                }
+                if !result.is_empty() {
+                    Some(Value::Array(result))
+                } else {
+                    None
+                }
+            }
+            RegexValueExtractor::KeyMatch {regex, target} => {
+                let cow_value = target.get(event, extracted_vars)?;
+                let values = cow_value.get_map()?;
+                let mut result = vec![];
+                for (key, value) in values {
+                    if regex.is_match(key) {
+                        result.push(value.clone())
                     }
                 }
                 if !result.is_empty() {

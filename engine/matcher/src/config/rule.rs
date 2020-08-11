@@ -51,6 +51,10 @@ pub enum ExtractorRegex {
         regex: String,
         all_matches: Option<bool>,
     },
+    KeyRegex {
+        #[serde(rename = "key_match")]
+        regex: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
