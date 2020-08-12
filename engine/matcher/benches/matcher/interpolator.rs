@@ -1,4 +1,3 @@
-use cpuprofiler::PROFILER;
 use criterion::Criterion;
 use tornado_common_api::{Event, Payload, Value};
 
@@ -20,11 +19,9 @@ pub fn bench(c: &mut Criterion) {
 
     let interpolator = StringInterpolator::build(template, "rule", &Default::default()).unwrap();
 
-    PROFILER.lock().unwrap().start("./target/interpolator.profile").unwrap();
     c.bench_function("String interpolator", move |b| {
         b.iter(|| execute_test(&interpolator, &event))
     });
-    PROFILER.lock().unwrap().stop().unwrap();
 }
 
 fn execute_test(interpolator: &StringInterpolator, event: &InternalEvent) {

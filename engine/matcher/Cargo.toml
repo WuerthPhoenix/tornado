@@ -22,7 +22,6 @@ tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
 [dev-dependencies]
 chrono = "0.4"
-cpuprofiler = "0.0.4"
 criterion = "0.3"
 maplit = "1.0"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
