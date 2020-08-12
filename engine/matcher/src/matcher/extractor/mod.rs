@@ -1378,6 +1378,42 @@ mod test {
         )
     }
 
+    #[test]
+    fn single_key_match_should_fail_if_value_is_not_a_map() {
+        // Arrange
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Array(vec![
+            Value::Text("MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned()),
+                        Value::Text("MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned()),
+        ]));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex {
+                    regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
+                },
+            },
+            &AccessorBuilder::new(),
+        )
+            .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None);
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(
+            Err(MatcherError::MissingExtractedVariableError { variable_name: "var".to_owned() }),
+            result
+        )
+    }
+
     fn new_event(event_type: &str) -> InternalEvent {
         InternalEvent::new(Event::new(event_type))
     }

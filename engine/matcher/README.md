@@ -790,9 +790,14 @@ to obtain the desired result.
 Essentially, three parameters combined will define the behavior of an extractor:
 - **all_matches**: whether the regex will loop through all the matches or only the first one will be considered. 
 Accepted values are _true_ and _false_. If omitted, it defaults to _false_
-- **match** or **named_match**: a string value representing the regex to be executed. **match** is
-used in case of an index-based regex, while **named_match** is used when named groups are
-present. Note that they are mutually exclusive.
+- **match**, **named_match** or **single_key_match**: a string value representing the regex to be executed. In detail:
+  - **match** is used in case of an index-based regex, 
+  - **named_match** is used when named groups are present.
+  - **single_key_match** is used to search in a map for a key that matches the regex. In case of a match,
+    the extracted variable will be the value of the map associated with that key that matched the regex.
+    This match will fail if more than one key matches the defined regex.    
+   
+  Note that all these values are mutually exclusive.
 - **group_match_idx**: valid only in case of an index-based regex.
 It is a positive numeric value that indicates which group of the match has to be extracted.
 If omitted, an array with **all** groups is returned.
@@ -982,7 +987,6 @@ for each match:
   },
 ]
 ```
-
 
 ### Complete Rule Example 1
 
