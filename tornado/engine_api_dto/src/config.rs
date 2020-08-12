@@ -44,7 +44,7 @@ pub enum ExtractorRegexDto {
         all_matches: Option<bool>,
     },
     KeyRegex {
-        #[serde(rename = "key_match")]
+        #[serde(rename = "single_key_match")]
         regex: String,
     },
 }

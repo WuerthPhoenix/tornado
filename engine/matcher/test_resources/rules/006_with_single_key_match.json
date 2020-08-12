@@ -1,5 +1,5 @@
 {
-  "name": "extractor_rule",
+  "name": "with_single_key_match",
   "description": "",
   "continue": true,
   "active": true,

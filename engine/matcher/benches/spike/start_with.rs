@@ -2,7 +2,6 @@ use criterion::Criterion;
 use regex::Regex;
 
 pub fn bench(c: &mut Criterion) {
-
     let texts = &vec![
         "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.201476692",
         "MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address.201476692",
@@ -17,8 +16,8 @@ pub fn bench(c: &mut Criterion) {
         "MWRM2-NMS-MIB::netmasterLedZeppelin",
     ];
 
-    let prefix = "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.";
-    let start_with_regex = Regex::new(&format!("{}[0-9]+", prefix)).unwrap();
+    let prefix = "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address";
+    let start_with_regex = Regex::new(&format!(r#"{}\."#, prefix)).unwrap();
 
     c.bench_function("String StartWith - Regex", |b| {
         b.iter(|| {
@@ -44,4 +43,3 @@ pub fn bench(c: &mut Criterion) {
         })
     });
 }
-

@@ -51,8 +51,8 @@ pub enum ExtractorRegex {
         regex: String,
         all_matches: Option<bool>,
     },
-    KeyRegex {
-        #[serde(rename = "key_match")]
+    SingleKeyRegex {
+        #[serde(rename = "single_key_match")]
         regex: String,
     },
 }
@@ -213,6 +213,14 @@ mod test {
     #[test]
     fn should_deserialize_rule_from_json_with_cmp_operators() {
         let json = file_to_string("./test_resources/rules/004_cmp_operators.json");
+        let rule = Rule::from_json(&json);
+
+        assert!(rule.is_ok());
+    }
+
+    #[test]
+    fn should_deserialize_rule_from_json_with_single_key_match() {
+        let json = file_to_string("./test_resources/rules/006_with_single_key_match.json");
         let rule = Rule::from_json(&json);
 
         assert!(rule.is_ok());
