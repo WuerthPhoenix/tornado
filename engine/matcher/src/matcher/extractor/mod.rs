@@ -1196,6 +1196,188 @@ mod test {
         assert!(extractor.is_err());
     }
 
+    #[test]
+    fn build_should_fail_if_single_key_match_has_not_valid_regex() {
+        // Arrange & Act
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.type}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex { regex: "[".to_string() },
+            },
+            &AccessorBuilder::new(),
+        );
+
+        // Assert
+        assert!(extractor.is_err());
+    }
+
+    #[test]
+    fn build_should_succeed_if_single_key_match_has_valid_regex() {
+        // Arrange & Act
+        let regex = r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?";
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.type}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex { regex: regex.to_string() },
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        // Assert
+        assert_eq!("key", &extractor.key);
+        match extractor.regex_extractor {
+            RegexValueExtractor::SingleKeyMatch { target: Accessor::Type, .. } => {}
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn single_key_match_should_match_single_entry() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.201476692".to_owned(),
+            Value::Text("0".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address.201476692".to_owned(),
+            Value::Text("1".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
+            Value::Text("2".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
+            Value::Text("3".to_owned()),
+        );
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex {
+                    regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
+                },
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None);
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(Value::Text("1".to_owned()), result.unwrap());
+    }
+
+    #[test]
+    fn single_key_match_should_fail_if_no_match() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
+            Value::Text("2".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
+            Value::Text("3".to_owned()),
+        );
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex {
+                    regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
+                },
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None);
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(
+            Err(MatcherError::MissingExtractedVariableError { variable_name: "var".to_owned() }),
+            result
+        )
+    }
+
+    #[test]
+    fn single_key_match_should_fail_if_more_than_one_match() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.201476692".to_owned(),
+            Value::Text("0".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address.201476692".to_owned(),
+            Value::Text("1".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
+            Value::Text("2".to_owned()),
+        );
+        oids.insert(
+            "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
+            Value::Text("3".to_owned()),
+        );
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex {
+                    regex: r#"MWRM2-NMS-MIB::netmasterAlarmNe[a-z.A-Z0.9]*"#.to_string(),
+                },
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None);
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(
+            Err(MatcherError::ExtractedVariableError {
+                variable_name: "var".to_owned(),
+                message: "Expected exactly one match but found more.".to_owned(),
+            }),
+            result
+        )
+    }
+
     fn new_event(event_type: &str) -> InternalEvent {
         InternalEvent::new(Event::new(event_type))
     }
