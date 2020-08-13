@@ -6,7 +6,7 @@
   "constraint": {
     "WHERE": {
       "type": "equals",
-      "first": "${_variables.extractor_rule.netmasterAlarmNeIpv4Address[0].content}",
+      "first": "${_variables.extractor_rule.netmasterAlarmNeIpv4Address.content}",
       "second": "0.0.0.0"
     },
     "WITH": {}
