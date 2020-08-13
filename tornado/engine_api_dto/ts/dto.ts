@@ -47,7 +47,8 @@ export type ExtractorDto = { from: string; regex: ExtractorRegexDto };
 
 export type ExtractorRegexDto = 
  | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean | null } 
- | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null };
+ | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null } 
+ | { type: "KeyRegex"; single_key_match: string };
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
 
