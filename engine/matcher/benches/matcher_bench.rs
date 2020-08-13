@@ -1,4 +1,5 @@
 pub mod matcher;
+pub mod spike;
 pub mod utils;
 
 use crate::matcher::*;
@@ -9,7 +10,8 @@ criterion_group!(
     full_match::bench,
     interpolator::bench,
     no_match::bench,
-    one_simple_rule::bench
+    one_simple_rule::bench,
+    spike::start_with::bench,
 );
 
 criterion_main!(benches);

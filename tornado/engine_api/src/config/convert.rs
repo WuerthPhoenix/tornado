@@ -142,6 +142,7 @@ fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDt
         ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
             ExtractorRegexDto::RegexNamedGroups { regex, all_matches }
         }
+        ExtractorRegex::SingleKeyRegex { regex } => ExtractorRegexDto::KeyRegex { regex },
     }
 }
 
@@ -278,5 +279,6 @@ fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRege
         ExtractorRegexDto::RegexNamedGroups { regex, all_matches } => {
             ExtractorRegex::RegexNamedGroups { regex, all_matches }
         }
+        ExtractorRegexDto::KeyRegex { regex } => ExtractorRegex::SingleKeyRegex { regex },
     }
 }

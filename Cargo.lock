@@ -781,17 +781,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3a71ab494c0b5b860bdc8407ae08978052417070c2ced38573a9157ad75b8ac"
 
 [[package]]
-name = "cpuprofiler"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43f8479dbcfd2bbaa0c0c26779b913052b375981cdf533091f2127ea3d42e52b"
-dependencies = [
- "error-chain",
- "lazy_static",
- "pkg-config",
-]
-
-[[package]]
 name = "crc32fast"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1074,7 +1063,6 @@ version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d371106cc88ffdfb1eabd7111e432da544f16f3e2d7bf1dfe8bf575f1df045cd"
 dependencies = [
- "backtrace",
  "version_check",
 ]
 
@@ -3883,7 +3871,6 @@ name = "tornado_engine_matcher"
 version = "0.0.1"
 dependencies = [
  "chrono",
- "cpuprofiler",
  "criterion",
  "fs_extra",
  "lazy_static",

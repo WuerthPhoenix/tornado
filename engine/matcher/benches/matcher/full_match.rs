@@ -1,4 +1,3 @@
-use cpuprofiler::PROFILER;
 use criterion::Criterion;
 use tornado_common_api::Event;
 use tornado_engine_matcher::matcher::Matcher;
@@ -21,9 +20,7 @@ pub fn bench(c: &mut Criterion) {
             .unwrap();
 
     // println!("result is : {:?}", matcher.process(event.clone()));
-    PROFILER.lock().unwrap().start("./target/full_match.profile").unwrap();
     c.bench_function("Full match", move |b| b.iter(|| execute_test(&matcher, event.clone())));
-    PROFILER.lock().unwrap().stop().unwrap();
 }
 
 fn execute_test(matcher: &Matcher, event: Event) {

@@ -224,30 +224,7 @@ mod test {
         match config {
             MatcherConfig::Filter { name, nodes, .. } => {
                 assert_eq!("root", name);
-                assert_eq!(1, nodes.len());
-
-                match nodes.get(0) {
-                    Some(MatcherConfig::Ruleset { name, rules }) => {
-                        assert_eq!("ruleset_01", name);
-                        assert_eq!(8, rules.len());
-                        assert_eq!(
-                            1,
-                            rules.iter().filter(|val| "all_emails".eq(&val.name)).count()
-                        );
-                        assert_eq!(
-                            1,
-                            rules
-                                .iter()
-                                .filter(|val| "emails_with_temperature".eq(&val.name))
-                                .count()
-                        );
-                        assert_eq!(
-                            1,
-                            rules.iter().filter(|val| "archive_all".eq(&val.name)).count()
-                        );
-                    }
-                    _ => assert!(false),
-                }
+                assert_eq!(2, nodes.len());
             }
             _ => assert!(false),
         }

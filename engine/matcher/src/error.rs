@@ -9,6 +9,9 @@ pub enum MatcherError {
     #[error("MissingExtractedVariableError: Cannot extract variable [{variable_name}].")]
     MissingExtractedVariableError { variable_name: String },
 
+    #[error("ExtractedVariableError: Error extracting variable [{variable_name}]: {message}.")]
+    ExtractedVariableError { variable_name: String, message: String },
+
     #[error("MissingOperatorError: No operator specified (the args array is empty)")]
     MissingOperatorError {},
 
