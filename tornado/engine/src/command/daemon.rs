@@ -202,7 +202,7 @@ pub async fn daemon(
 
     // Start matcher actor
     let matcher_addr =
-        MatcherActor::start(dispatcher_addr.clone(), configs.matcher_config.clone())?;
+        MatcherActor::start(dispatcher_addr.clone(), configs.matcher_config.clone(), daemon_config.message_queue_size)?;
 
     if daemon_config.is_nats_enabled() {
         info!("NATS connection is enabled. Starting it...");
