@@ -30,7 +30,8 @@ pub fn start_with_pool<F, M>(thread_pool: ThreadPool, channel_size: usize, callb
                     });
                 },
                 Err(err) => {
-                    error!("Error while receiving Message from channel. Error: {:?}", err);
+                    error!("Error while receiving Message from channel. The receiver will be stopped. Error: {:?}", err);
+                    break;
                 }
             }
 

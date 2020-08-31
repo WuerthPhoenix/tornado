@@ -20,7 +20,8 @@ pub fn start<F, M>(threads: usize, channel_size: usize, callback: Arc<F>) -> Sen
                         callback_clone(message);
                     },
                     Err(err) => {
-                        error!("Error while receiving Message from channel. Error: {:?}", err);
+                        error!("Error while receiving Message from channel. The receiver will be stopped. Error: {:?}", err);
+                        break;
                     }
                 }
 
