@@ -3,14 +3,17 @@ use std::thread;
 use std::sync::Arc;
 use log::*;
 use rayon::ThreadPool;
+use crate::TornadoError;
 
-pub fn start<F, M>(threads: usize, channel_size: usize, callback: Arc<F>) -> Sender<M>
+pub fn start<F, M>(threads: usize, channel_size: usize, callback: Arc<F>) -> Result<Sender<M>, TornadoError>
     where
         M: Send + Sync + 'static,
         F: Fn(M) + Send + Sync + 'static,
 {
-    let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().expect("REMOVE THE PANIC HERE!!");
-    start_with_pool(pool, channel_size, callback)
+    rayon::ThreadPoolBuilder::new().num_threads(threads).build()
+        .map_err(|err| TornadoError::ConfigurationError {
+            message: format!("{:?}", err)
+        }).map(|pool| start_with_pool(pool, channel_size, callback))
 }
 
 pub fn start_with_pool<F, M>(thread_pool: ThreadPool, channel_size: usize, callback: Arc<F>) -> Sender<M>
