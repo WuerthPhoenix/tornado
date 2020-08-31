@@ -46,7 +46,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             tornado_tcp_address,
             collector_config.email_collector.message_queue_size,
         );
-        start(collector_config.email_collector.uds_path, actor_address)?;
+        start(
+            collector_config.email_collector.uds_path,
+            actor_address,
+            collector_config.email_collector.message_queue_size,
+        )?;
     } else if let Some(connection_channel) =
         collector_config.email_collector.tornado_connection_channel
     {
@@ -57,7 +61,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     nats,
                     collector_config.email_collector.message_queue_size,
                 )?;
-                start(collector_config.email_collector.uds_path, actor_address)?;
+                start(
+                    collector_config.email_collector.uds_path,
+                    actor_address,
+                    collector_config.email_collector.message_queue_size,
+                )?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -68,7 +76,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     tornado_tcp_address,
                     collector_config.email_collector.message_queue_size,
                 );
-                start(collector_config.email_collector.uds_path, actor_address)?;
+                start(
+                    collector_config.email_collector.uds_path,
+                    actor_address,
+                    collector_config.email_collector.message_queue_size,
+                )?;
             }
         };
     } else {
@@ -88,15 +100,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 fn start<A: Actor + actix::Handler<EventMessage>>(
     uds_path: String,
     actor_address: Addr<A>,
+    message_mailbox_capacity: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     // Start Email collector
-    let email_addr = EmailReaderActor::start_new(actor_address);
+    let email_addr = EmailReaderActor::start_new(actor_address, message_mailbox_capacity);
 
     // Open UDS socket
-    listen_to_uds_socket(uds_path.clone(), Some(0o770), move |msg| {
+    listen_to_uds_socket(uds_path.clone(), Some(0o770), message_mailbox_capacity, move |msg| {
         email_addr.try_send(msg).unwrap_or_else(|err| {
             error!(
                 "Email Collector -  Error while sending message to Email Reader Actor. Error: {}",
