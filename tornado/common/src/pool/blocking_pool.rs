@@ -51,12 +51,13 @@ where
         let thread_pool = thread_pool.clone();
 
         actix::spawn(async move {
+            let (completion_tx, completion_rx) = unbounded();
             loop {
                 match receiver.recv().await {
                     Ok(message) => {
-                        let (completion_tx, completion_rx) = bounded(1);
 
                         let callback_clone = callback.clone();
+                        let completion_tx = completion_tx.clone();
                         thread_pool.spawn( move || {
                             callback_clone(message);
                             if let Err(err) = completion_tx.try_send(()) {
