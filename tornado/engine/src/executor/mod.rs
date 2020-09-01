@@ -4,6 +4,9 @@ use std::fmt::Display;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
+use tornado_common::pool::blocking_pool::start_blocking_runner;
+use tornado_common::pool::Sender;
+use tornado_common::TornadoError;
 
 pub mod foreach;
 pub mod retry;
@@ -14,21 +17,22 @@ pub struct ActionMessage {
     pub action: Arc<Action>,
 }
 
-pub struct ExecutorActor<E: Executor + Display + Unpin> {
+pub struct ExecutorRunner<E: Executor + Display + Unpin + Sync + Send> {
     pub executor: E,
 }
 
-impl<E: Executor + Display + Unpin + 'static> Actor for ExecutorActor<E> {
-    type Context = SyncContext<Self>;
-    fn started(&mut self, _ctx: &mut Self::Context) {
-        debug!("ExecutorActor started.");
+impl<E: Executor + Display + Unpin + Sync + Send + 'static> ExecutorRunner<E> {
+
+    pub fn start_new(max_parallel_executions: usize, buffer_size: usize, executor: E) -> Result<Sender<ActionMessage, Result<(), ExecutorError>>, TornadoError> {
+
+        let executor_runner = Arc::new(ExecutorRunner{executor});
+
+        start_blocking_runner(max_parallel_executions, buffer_size, Arc::new(move |message| {
+            executor_runner.handle(message)
+        }))
     }
-}
 
-impl<E: Executor + Display + Unpin + 'static> Handler<ActionMessage> for ExecutorActor<E> {
-    type Result = Result<(), ExecutorError>;
-
-    fn handle(&mut self, msg: ActionMessage, _: &mut SyncContext<Self>) -> Self::Result {
+    pub fn handle(&self, msg: ActionMessage) -> Result<(), ExecutorError> {
         trace!("ExecutorActor - received new action [{:?}]", &msg.action);
         match self.executor.execute(&msg.action) {
             Ok(_) => {

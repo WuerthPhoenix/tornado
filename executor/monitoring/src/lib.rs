@@ -161,7 +161,7 @@ impl MonitoringExecutor {
 }
 
 impl Executor for MonitoringExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;

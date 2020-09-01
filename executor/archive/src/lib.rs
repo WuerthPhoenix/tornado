@@ -7,6 +7,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
+use parking_lot::RwLock;
 
 pub mod config;
 mod paths;
@@ -18,7 +19,7 @@ pub struct ArchiveExecutor {
     pub base_path: String,
     pub default_path: String,
     paths: HashMap<String, paths::PathMatcher>,
-    file_cache: LruCache<String, File>,
+    file_cache: RwLock<LruCache<String, File>>,
 }
 
 impl std::fmt::Display for ArchiveExecutor {
@@ -40,10 +41,10 @@ impl ArchiveExecutor {
             .collect::<HashMap<String, paths::PathMatcher>>();
 
         let time_to_live = ::std::time::Duration::from_secs(config.file_cache_ttl_secs);
-        let file_cache = LruCache::<String, File>::with_expiry_duration_and_capacity(
+        let file_cache = RwLock::new(LruCache::<String, File>::with_expiry_duration_and_capacity(
             time_to_live,
             config.file_cache_size,
-        );
+        ));
 
         ArchiveExecutor {
             base_path: config.base_path.clone(),
@@ -53,7 +54,7 @@ impl ArchiveExecutor {
         }
     }
 
-    fn write(&mut self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
+    fn write(&self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
         let absolute_path_string = format!(
             "{}{}{}",
             self.base_path,
@@ -63,43 +64,48 @@ impl ArchiveExecutor {
                 .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
         );
 
-        let file = match self.file_cache.entry(absolute_path_string.clone()) {
-            Entry::Occupied(occupied) => occupied.into_mut(),
-            Entry::Vacant(vacant) => {
-                if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
-                    return Err(ExecutorError::ActionExecutionError {
-                        can_retry: false,
-                        message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
-                        code: None
-                    });
-                }
+        let mut file_cache_write = self.file_cache.write();
 
-                let path = Path::new(&absolute_path_string);
+        let file = {
 
-                if let Some(parent) = path.parent() {
-                    create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
-                        can_retry: true,
-                        message: format!(
-                            "Cannot create required directories for path [{:?}]: {}",
-                            &path, err
-                        ),
-                        code: None,
-                    })?;
-                }
+            match file_cache_write.entry(absolute_path_string.clone()) {
+                Entry::Occupied(occupied) => occupied.into_mut(),
+                Entry::Vacant(vacant) => {
+                    if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
+                        return Err(ExecutorError::ActionExecutionError {
+                            can_retry: false,
+                            message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
+                            code: None
+                        });
+                    }
 
-                let file =
-                    OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
-                        ExecutorError::ActionExecutionError {
+                    let path = Path::new(&absolute_path_string);
+
+                    if let Some(parent) = path.parent() {
+                        create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
                             can_retry: true,
                             message: format!(
-                                "Cannot open file [{}]: {}",
-                                &absolute_path_string, err
+                                "Cannot create required directories for path [{:?}]: {}",
+                                &path, err
                             ),
                             code: None,
-                        }
-                    })?;
+                        })?;
+                    }
 
-                vacant.insert(file)
+                    let file =
+                        OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
+                            ExecutorError::ActionExecutionError {
+                                can_retry: true,
+                                message: format!(
+                                    "Cannot open file [{}]: {}",
+                                    &absolute_path_string, err
+                                ),
+                                code: None,
+                            }
+                        })?;
+
+                    vacant.insert(file)
+                }
             }
         };
 
@@ -112,7 +118,7 @@ impl ArchiveExecutor {
 }
 
 impl Executor for ArchiveExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action

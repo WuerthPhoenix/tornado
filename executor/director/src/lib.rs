@@ -71,7 +71,7 @@ impl DirectorExecutor {
     }
 
     fn parse_action<'a>(
-        &mut self,
+        &self,
         action: &'a Action,
     ) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
@@ -154,7 +154,7 @@ impl DirectorExecutor {
 }
 
 impl Executor for DirectorExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
         let action = self.parse_action(action)?;

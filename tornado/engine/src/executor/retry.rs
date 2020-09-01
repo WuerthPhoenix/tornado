@@ -1,4 +1,3 @@
-use actix::dev::ToEnvelope;
 use actix::{Actor, Addr, Context, Handler, Message};
 use core::fmt::{Debug, Display};
 use core::marker::PhantomData;
@@ -7,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
 use tornado_executor_common::RetriableError;
+use tornado_common::pool::Sender;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -128,40 +128,32 @@ impl BackoffPolicy {
 }
 
 pub struct RetryActor<
-    A: Actor + actix::Handler<M>,
     M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-    Err: 'static + Send + Unpin + RetriableError + Display,
-> where
-    <A as Actor>::Context: ToEnvelope<A, M>,
+    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+>
 {
-    executor_addr: Addr<A>,
+    executor_addr: Sender<M, Result<(), Err>>,
     retry_strategy: Arc<RetryStrategy>,
     phantom_m: PhantomData<M>,
     phantom_err: PhantomData<Err>,
 }
 
 impl<
-        A: Actor + actix::Handler<M>,
-        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError + Display,
-    > Actor for RetryActor<A, M, Err>
-where
-    <A as Actor>::Context: ToEnvelope<A, M>,
+    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+> Actor for RetryActor<M, Err>
 {
     type Context = Context<Self>;
 }
 
 impl<
-        A: Actor + actix::Handler<M>,
-        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError + Display,
-    > RetryActor<A, M, Err>
-where
-    <A as Actor>::Context: ToEnvelope<A, M>,
+    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+> RetryActor<M, Err>
 {
     pub fn start_new<F>(retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
-    where
-        F: FnOnce() -> Addr<A>,
+        where
+            F: FnOnce() -> Sender<M, Result<(), Err>>,
     {
         let executor_addr = factory();
         Self { retry_strategy, executor_addr, phantom_m: PhantomData, phantom_err: PhantomData }
@@ -170,12 +162,9 @@ where
 }
 
 impl<
-        A: Actor + actix::Handler<M>,
-        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-        Err: 'static + Send + Unpin + RetriableError + Display,
-    > Handler<M> for RetryActor<A, M, Err>
-where
-    <A as Actor>::Context: ToEnvelope<A, M>,
+    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+> Handler<M> for RetryActor<M, Err>
 {
     type Result = Result<(), Err>;
 
@@ -226,8 +215,7 @@ where
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::executor::{ActionMessage, ExecutorActor};
-    use actix::SyncArbiter;
+    use crate::executor::{ActionMessage, ExecutorRunner};
     use rand::Rng;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
@@ -403,10 +391,8 @@ pub mod test {
         let action = Arc::new(Action::new("hello"));
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
-            SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-                ExecutorActor { executor }
-            })
+            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+            ExecutorRunner::start_new(2, 10, executor ).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -433,10 +419,8 @@ pub mod test {
         let action = Arc::new(Action::new("hello"));
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
-            SyncArbiter::start(2, move || {
-                let executor = AlwaysOkExecutor { sender: sender.clone() };
-                ExecutorActor { executor }
-            })
+            let executor = AlwaysOkExecutor { sender: sender.clone() };
+            ExecutorRunner::start_new(2, 10, executor ).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -461,10 +445,8 @@ pub mod test {
         let action = Arc::new(Action::new("hello"));
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
-            SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
-                ExecutorActor { executor }
-            })
+            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
+            ExecutorRunner::start_new(2, 10, executor ).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -490,10 +472,8 @@ pub mod test {
         let action = Arc::new(Action::new("hello_world"));
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
-            SyncArbiter::start(2, move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-                ExecutorActor { executor }
-            })
+            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+            ExecutorRunner::start_new(2, 10, executor ).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -517,13 +497,14 @@ pub mod test {
         assert!(receiver.try_recv().is_err());
     }
 
+
     struct AlwaysFailExecutor {
         can_retry: bool,
         sender: UnboundedSender<Action>,
     }
 
     impl Executor for AlwaysFailExecutor {
-        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+        fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
@@ -544,7 +525,7 @@ pub mod test {
     }
 
     impl Executor for AlwaysOkExecutor {
-        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+        fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Ok(())
         }

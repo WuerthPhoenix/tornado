@@ -30,7 +30,7 @@ impl ForEachExecutor {
 }
 
 impl Executor for ForEachExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {
