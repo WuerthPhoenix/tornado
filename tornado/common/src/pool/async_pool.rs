@@ -55,6 +55,7 @@ mod test {
 
     use super::*;
     use async_channel::unbounded;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use tokio::time;
 
     #[actix_rt::test]
@@ -124,23 +125,30 @@ mod test {
         );
 
         let (exec_tx, exec_rx) = unbounded();
+        let count = Arc::new(AtomicUsize::new(0));
 
         // Act
         for i in 0..3 {
             let exec_tx = exec_tx.clone();
             let sender = sender.clone();
+            let count = count.clone();
+
             actix::spawn(async move {
                 let message = format!("hello {}", i);
                 let response = sender.send(message.clone()).await.unwrap();
                 assert_eq!(message, response);
+                count.fetch_add(1, Ordering::SeqCst);
                 exec_tx.try_send(message).unwrap();
             })
         }
 
+        // Assert
         let expected_messages = vec!["hello 0", "hello 1", "hello 2"];
         for _ in 0..3 {
             let response = exec_rx.recv().await.unwrap();
             assert!(expected_messages.contains(&response.as_str()));
         }
+
+        assert_eq!(3, count.load(Ordering::SeqCst));
     }
 }

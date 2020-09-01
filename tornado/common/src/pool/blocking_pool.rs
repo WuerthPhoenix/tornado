@@ -96,6 +96,7 @@ where
 mod test {
 
     use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
     use tokio::time;
 
@@ -164,15 +165,19 @@ mod test {
         .unwrap();
 
         let (exec_tx, exec_rx) = unbounded();
+        let count = Arc::new(AtomicUsize::new(0));
 
         // Act
         for i in 0..3 {
             let exec_tx = exec_tx.clone();
             let sender = sender.clone();
+            let count = count.clone();
+
             actix::spawn(async move {
                 let message = format!("hello {}", i);
                 let response = sender.send(message.clone()).await.unwrap();
                 assert_eq!(message, response);
+                count.fetch_add(1, Ordering::SeqCst);
                 exec_tx.try_send(message).unwrap();
             })
         }
@@ -182,5 +187,7 @@ mod test {
             let response = exec_rx.recv().await.unwrap();
             assert!(expected_messages.contains(&response.as_str()));
         }
+
+        assert_eq!(3, count.load(Ordering::SeqCst));
     }
 }
