@@ -1,13 +1,13 @@
 use log::*;
 use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
+use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
-use parking_lot::RwLock;
 
 pub mod config;
 mod paths;
@@ -67,11 +67,11 @@ impl ArchiveExecutor {
         let mut file_cache_write = self.file_cache.write();
 
         let file = {
-
             match file_cache_write.entry(absolute_path_string.clone()) {
                 Entry::Occupied(occupied) => occupied.into_mut(),
                 Entry::Vacant(vacant) => {
-                    if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
+                    if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..")
+                    {
                         return Err(ExecutorError::ActionExecutionError {
                             can_retry: false,
                             message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
@@ -82,27 +82,28 @@ impl ArchiveExecutor {
                     let path = Path::new(&absolute_path_string);
 
                     if let Some(parent) = path.parent() {
-                        create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
-                            can_retry: true,
-                            message: format!(
-                                "Cannot create required directories for path [{:?}]: {}",
-                                &path, err
-                            ),
-                            code: None,
-                        })?;
-                    }
-
-                    let file =
-                        OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
+                        create_dir_all(&parent).map_err(|err| {
                             ExecutorError::ActionExecutionError {
                                 can_retry: true,
                                 message: format!(
-                                    "Cannot open file [{}]: {}",
-                                    &absolute_path_string, err
+                                    "Cannot create required directories for path [{:?}]: {}",
+                                    &path, err
                                 ),
                                 code: None,
                             }
                         })?;
+                    }
+
+                    let file = OpenOptions::new().create(true).append(true).open(&path).map_err(
+                        |err| ExecutorError::ActionExecutionError {
+                            can_retry: true,
+                            message: format!(
+                                "Cannot open file [{}]: {}",
+                                &absolute_path_string, err
+                            ),
+                            code: None,
+                        },
+                    )?;
 
                     vacant.insert(file)
                 }
@@ -192,7 +193,7 @@ mod test {
 
         println!("Expected file path: [{}]", &expected_path);
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
         let mut action = Action::new("action");
@@ -232,7 +233,7 @@ mod test {
 
         println!("Expected file path: [{}]", &expected_path);
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let attempts = 10;
         let mut sent_events = vec![];
@@ -283,7 +284,7 @@ mod test {
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
         let mut action = Action::new("action");
@@ -314,7 +315,7 @@ mod test {
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
         let mut action = Action::new("action");
@@ -343,7 +344,7 @@ mod test {
 
         config.paths.insert("one".to_owned(), "/one/${key_one}/${key_two}.log".to_owned());
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
         let mut action = Action::new("action");
@@ -373,7 +374,7 @@ mod test {
         let expected_path = format!("{}/{}", &dir, "/default/file.out");
         println!("Expected file path: [{}]", &expected_path);
 
-        let mut archiver = ArchiveExecutor::new(&config);
+        let archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
         let mut action = Action::new("action");

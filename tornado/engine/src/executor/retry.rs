@@ -5,8 +5,8 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::Duration;
-use tornado_executor_common::RetriableError;
 use tornado_common::pool::Sender;
+use tornado_executor_common::RetriableError;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails
@@ -130,8 +130,7 @@ impl BackoffPolicy {
 pub struct RetryActor<
     M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
     Err: 'static + Send + Unpin + RetriableError + Display + Clone,
->
-{
+> {
     executor_addr: Sender<M, Result<(), Err>>,
     retry_strategy: Arc<RetryStrategy>,
     phantom_m: PhantomData<M>,
@@ -139,21 +138,21 @@ pub struct RetryActor<
 }
 
 impl<
-    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
-> Actor for RetryActor<M, Err>
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+    > Actor for RetryActor<M, Err>
 {
     type Context = Context<Self>;
 }
 
 impl<
-    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
-> RetryActor<M, Err>
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+    > RetryActor<M, Err>
 {
     pub fn start_new<F>(retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
-        where
-            F: FnOnce() -> Sender<M, Result<(), Err>>,
+    where
+        F: FnOnce() -> Sender<M, Result<(), Err>>,
     {
         let executor_addr = factory();
         Self { retry_strategy, executor_addr, phantom_m: PhantomData, phantom_err: PhantomData }
@@ -162,9 +161,9 @@ impl<
 }
 
 impl<
-    M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
-    Err: 'static + Send + Unpin + RetriableError + Display + Clone,
-> Handler<M> for RetryActor<M, Err>
+        M: 'static + Send + Message<Result = Result<(), Err>> + Clone + Unpin + Debug,
+        Err: 'static + Send + Unpin + RetriableError + Display + Clone,
+    > Handler<M> for RetryActor<M, Err>
 {
     type Result = Result<(), Err>;
 
@@ -392,7 +391,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-            ExecutorRunner::start_new(2, 10, executor ).unwrap()
+            ExecutorRunner::start_new(2, 10, executor).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -420,7 +419,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             let executor = AlwaysOkExecutor { sender: sender.clone() };
-            ExecutorRunner::start_new(2, 10, executor ).unwrap()
+            ExecutorRunner::start_new(2, 10, executor).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -446,7 +445,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
-            ExecutorRunner::start_new(2, 10, executor ).unwrap()
+            ExecutorRunner::start_new(2, 10, executor).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -473,7 +472,7 @@ pub mod test {
 
         let executor_addr = RetryActor::start_new(Arc::new(retry_strategy.clone()), move || {
             let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-            ExecutorRunner::start_new(2, 10, executor ).unwrap()
+            ExecutorRunner::start_new(2, 10, executor).unwrap()
         });
 
         executor_addr.do_send(ActionMessage { action });
@@ -496,7 +495,6 @@ pub mod test {
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
-
 
     struct AlwaysFailExecutor {
         can_retry: bool,

@@ -5,7 +5,7 @@ use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::executor::retry::RetryActor;
 use crate::executor::ActionMessage;
-use crate::executor::ExecutorActor;
+use crate::executor::ExecutorRunner;
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
@@ -50,26 +50,23 @@ pub async fn daemon(
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
     let archive_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
-            ExecutorActor { executor }
-        })
+        let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start script executor actor
     let script_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor = tornado_executor_script::ScriptExecutor::new();
-            ExecutorActor { executor }
-        })
+        let executor = tornado_executor_script::ScriptExecutor::new();
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start logger executor actor
     let logger_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor = tornado_executor_logger::LoggerExecutor::new();
-            ExecutorActor { executor }
-        })
+        let executor = tornado_executor_logger::LoggerExecutor::new();
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start ForEach executor actor
@@ -78,49 +75,45 @@ pub async fn daemon(
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
     let elasticsearch_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let es_authentication = es_authentication.clone();
-            let executor =
-                tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
-                    .expect("Cannot start the Elasticsearch Executor");
-            ExecutorActor { executor }
-        })
+        let es_authentication = es_authentication.clone();
+        let executor =
+            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+                .expect("Cannot start the Elasticsearch Executor");
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start icinga2 executor actor
     let icinga2_client_config = configs.icinga2_executor_config.clone();
     let icinga2_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor =
-                tornado_executor_icinga2::Icinga2Executor::new(icinga2_client_config.clone())
-                    .expect("Cannot start the Icinga2Executor Executor");
-            ExecutorActor { executor }
-        })
+        let executor =
+            tornado_executor_icinga2::Icinga2Executor::new(icinga2_client_config.clone())
+                .expect("Cannot start the Icinga2Executor Executor");
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start director executor actor
     let director_client_config = configs.director_executor_config.clone();
     let director_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor =
-                tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
-                    .expect("Cannot start the DirectorExecutor Executor");
-            ExecutorActor { executor }
-        })
+        let executor =
+            tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
+                .expect("Cannot start the DirectorExecutor Executor");
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Start monitoring executor actor
     let icinga2_client_config = configs.icinga2_executor_config.clone();
     let director_client_config = configs.director_executor_config.clone();
     let monitoring_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
-        SyncArbiter::start(threads_per_queue, move || {
-            let executor = tornado_executor_monitoring::MonitoringExecutor::new(
-                icinga2_client_config.clone(),
-                director_client_config.clone(),
-            )
-            .expect("Cannot start the MonitoringExecutor Executor");
-            ExecutorActor { executor }
-        })
+        let executor = tornado_executor_monitoring::MonitoringExecutor::new(
+            icinga2_client_config.clone(),
+            director_client_config.clone(),
+        )
+        .expect("Cannot start the MonitoringExecutor Executor");
+        ExecutorRunner::start_new(threads_per_queue, message_queue_size, executor)
+            .expect("Should start the threadpool for the executor")
     });
 
     // Configure action dispatcher

@@ -223,7 +223,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -261,7 +261,7 @@ mod test {
     #[test]
     fn should_throw_error_if_action_name_is_not_valid() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -308,7 +308,7 @@ mod test {
     #[test]
     fn should_throw_error_if_service_action_but_service_creation_payload_not_given() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -363,7 +363,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -407,7 +407,7 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_host_not_specified_with_host_field() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -451,7 +451,7 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_service_not_specified_with_service_field() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -504,7 +504,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),

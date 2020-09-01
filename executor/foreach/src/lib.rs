@@ -270,7 +270,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -401,7 +401,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -483,7 +483,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(

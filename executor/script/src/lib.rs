@@ -293,7 +293,7 @@ mod test_unix {
         let mut action = Action::new("script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
         let result = executor.execute(&action);
@@ -317,7 +317,7 @@ mod test_unix {
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
         let result = executor.execute(&action);
