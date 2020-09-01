@@ -84,10 +84,8 @@ where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     // Start Rsyslog collector
-    let rsyslog_addr = actors::collector::RsyslogCollectorActor::start_new(
-        actor_address,
-        message_queue_size,
-    );
+    let rsyslog_addr =
+        actors::collector::RsyslogCollectorActor::start_new(actor_address, message_queue_size);
 
     let system = System::current();
     thread::spawn(move || {

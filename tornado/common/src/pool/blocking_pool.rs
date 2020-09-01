@@ -55,7 +55,6 @@ where
             loop {
                 match receiver.recv().await {
                     Ok(message) => {
-
                         let callback_clone = callback.clone();
                         let completion_tx = completion_tx.clone();
                         thread_pool.spawn( move || {
@@ -88,7 +87,7 @@ mod test {
     use tokio::time;
 
     #[actix_rt::test]
-    async fn should_execute_max_parallel_tasks() {
+    async fn should_execute_max_parallel_blocking_tasks() {
         // Arrange
         let threads = 5;
         let buffer_size = 10;
