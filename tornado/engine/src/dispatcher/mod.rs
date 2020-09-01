@@ -27,15 +27,15 @@ pub struct DispatcherActor {
 }
 
 impl DispatcherActor {
-
-    pub fn start_new(message_mailbox_capacity: usize,dispatcher: dispatcher::Dispatcher) -> Addr<Self>
-    {
+    pub fn start_new(
+        message_mailbox_capacity: usize,
+        dispatcher: dispatcher::Dispatcher,
+    ) -> Addr<Self> {
         Self::create(move |ctx| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-              Self { dispatcher }
+            Self { dispatcher }
         })
     }
-
 }
 
 impl Actor for DispatcherActor {

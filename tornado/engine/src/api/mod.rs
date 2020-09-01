@@ -82,7 +82,8 @@ mod test {
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-        let dispatcher_addr = DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
+        let dispatcher_addr =
+            DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
             MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).unwrap();
@@ -111,7 +112,8 @@ mod test {
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-        let dispatcher_addr = DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
+        let dispatcher_addr =
+            DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
             MatcherActor::start(dispatcher_addr.clone(), config_manager.clone(), 47).unwrap();

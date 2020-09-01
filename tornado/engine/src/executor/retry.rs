@@ -150,7 +150,11 @@ impl<
         Err: 'static + Send + Unpin + RetriableError + Display + Clone,
     > RetryActor<M, Err>
 {
-    pub fn start_new<F>(message_mailbox_capacity: usize, retry_strategy: Arc<RetryStrategy>, factory: F) -> Addr<Self>
+    pub fn start_new<F>(
+        message_mailbox_capacity: usize,
+        retry_strategy: Arc<RetryStrategy>,
+        factory: F,
+    ) -> Addr<Self>
     where
         F: FnOnce() -> Sender<M, Result<(), Err>>,
     {
@@ -391,10 +395,11 @@ pub mod test {
 
         let action = Arc::new(Action::new("hello"));
 
-        let executor_addr = RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-            ExecutorRunner::start_new(2, 10, executor).unwrap()
-        });
+        let executor_addr =
+            RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+                ExecutorRunner::start_new(2, 10, executor).unwrap()
+            });
 
         executor_addr.do_send(ActionMessage { action });
 
@@ -419,10 +424,11 @@ pub mod test {
 
         let action = Arc::new(Action::new("hello"));
 
-        let executor_addr = RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-            let executor = AlwaysOkExecutor { sender: sender.clone() };
-            ExecutorRunner::start_new(2, 10, executor).unwrap()
-        });
+        let executor_addr =
+            RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
+                let executor = AlwaysOkExecutor { sender: sender.clone() };
+                ExecutorRunner::start_new(2, 10, executor).unwrap()
+            });
 
         executor_addr.do_send(ActionMessage { action });
 
@@ -445,10 +451,11 @@ pub mod test {
 
         let action = Arc::new(Action::new("hello"));
 
-        let executor_addr = RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
-            ExecutorRunner::start_new(2, 10, executor).unwrap()
-        });
+        let executor_addr =
+            RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
+                ExecutorRunner::start_new(2, 10, executor).unwrap()
+            });
 
         executor_addr.do_send(ActionMessage { action });
 
@@ -472,10 +479,11 @@ pub mod test {
 
         let action = Arc::new(Action::new("hello_world"));
 
-        let executor_addr = RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-            let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-            ExecutorRunner::start_new(2, 10, executor).unwrap()
-        });
+        let executor_addr =
+            RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
+                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+                ExecutorRunner::start_new(2, 10, executor).unwrap()
+            });
 
         executor_addr.do_send(ActionMessage { action });
 
