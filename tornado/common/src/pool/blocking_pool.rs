@@ -1,10 +1,10 @@
 use crate::TornadoError;
 
+use crate::pool::{ReplyRequest, Sender};
+use async_channel::{bounded, unbounded};
 use log::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
 use std::sync::Arc;
-use crate::pool::{Sender, ReplyRequest};
-use async_channel::{bounded, unbounded};
 
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed in parallel with a fixed max_parallel_executions factor.
@@ -42,10 +42,10 @@ pub fn start_blocking_runner_with_pool<F, M, R>(
     buffer_size: usize,
     callback: Arc<F>,
 ) -> Sender<M, R>
-    where
-        M: Send + Sync + 'static,
-        F: Send + Sync + 'static + Fn(M) -> R,
-        R: Send + Sync + 'static,
+where
+    M: Send + Sync + 'static,
+    F: Send + Sync + 'static + Fn(M) -> R,
+    R: Send + Sync + 'static,
 {
     let (sender, receiver) = bounded::<ReplyRequest<M, R>>(buffer_size);
 
@@ -68,7 +68,7 @@ pub fn start_blocking_runner_with_pool<F, M, R>(
 
                             if let Some(responder) = message.responder {
                                 if let Err(err) = responder.try_send(response) {
-                                    error!("Pool executor cannot send the completion message. The executor will not process messages anymore. Err: {:?}", err);
+                                    error!("Pool executor cannot send the response message. Err: {:?}", err);
                                 };
                             }
 
@@ -161,7 +161,7 @@ mod test {
                 message
             }),
         )
-            .unwrap();
+        .unwrap();
 
         let (exec_tx, exec_rx) = unbounded();
 
@@ -177,11 +177,10 @@ mod test {
             })
         }
 
-        let expected_messages = vec!("hello 0", "hello 1", "hello 2");
+        let expected_messages = vec!["hello 0", "hello 1", "hello 2"];
         for _ in 0..3 {
             let response = exec_rx.recv().await.unwrap();
-            assert!(expected_messages.contains( &response.as_str() ));
+            assert!(expected_messages.contains(&response.as_str()));
         }
-
     }
 }
