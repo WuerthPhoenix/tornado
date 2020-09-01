@@ -14,7 +14,7 @@ where
 }
 
 pub struct ForEachExecutorActor {
-    pub executor: Option<ForEachExecutor>,
+    executor: Option<ForEachExecutor>,
 }
 
 impl ForEachExecutorActor {

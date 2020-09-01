@@ -9,8 +9,8 @@ use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
 
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static + Unpin> {
-    pub json_collector: JsonEventCollector,
-    pub callback: F,
+    json_collector: JsonEventCollector,
+    callback: F,
 }
 
 impl<F: Fn(Event) + 'static + Unpin> JsonEventReaderActor<F> {

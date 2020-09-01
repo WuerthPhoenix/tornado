@@ -11,8 +11,8 @@ pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub client_addr: Addr<A>,
-    pub email_collector: Arc<EmailEventCollector>,
+    client_addr: Addr<A>,
+    email_collector: Arc<EmailEventCollector>,
 }
 
 impl<A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
