@@ -2,9 +2,10 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
+use crate::executor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::executor::retry::RetryActor;
+use crate::executor::ActionMessage;
 use crate::executor::ExecutorActor;
-use crate::executor::{ActionMessage, LazyExecutorActor, LazyExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
 use actix::prelude::*;
 use actix_cors::Cors;
@@ -44,6 +45,8 @@ pub async fn daemon(
     let retry_strategy = Arc::new(daemon_config.retry_strategy.clone());
     info!("Tornado global retry strategy: {:?}", retry_strategy);
 
+    let message_queue_size = daemon_config.message_queue_size;
+
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
     let archive_executor_addr = RetryActor::start_new(retry_strategy.clone(), move || {
@@ -70,11 +73,7 @@ pub async fn daemon(
     });
 
     // Start ForEach executor actor
-    let foreach_executor_addr = SyncArbiter::start(threads_per_queue, move || LazyExecutorActor::<
-        tornado_executor_foreach::ForEachExecutor,
-    > {
-        executor: None,
-    });
+    let foreach_executor_addr = ForEachExecutorActor::start_new(message_queue_size);
 
     // Start elasticsearch executor actor
     let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
@@ -188,10 +187,7 @@ pub async fn daemon(
     };
 
     let event_bus_clone = event_bus.clone();
-    foreach_executor_addr.try_send(LazyExecutorActorInitMessage::<
-        tornado_executor_foreach::ForEachExecutor,
-        _,
-    > {
+    foreach_executor_addr.try_send(ForEachExecutorActorInitMessage {
         init: move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()),
     })?;
 
@@ -205,7 +201,7 @@ pub async fn daemon(
     let matcher_addr = MatcherActor::start(
         dispatcher_addr.clone(),
         configs.matcher_config.clone(),
-        daemon_config.message_queue_size,
+        message_queue_size,
     )?;
 
     if daemon_config.is_nats_enabled() {
@@ -218,7 +214,6 @@ pub async fn daemon(
 
         let addresses = nats_config.client.addresses.clone();
         let subject = nats_config.subject.clone();
-        let message_queue_size = daemon_config.message_queue_size;
         let matcher_addr_clone = matcher_addr.clone();
 
         actix::spawn(async move {
@@ -263,7 +258,6 @@ pub async fn daemon(
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();
-        let message_queue_size = daemon_config.message_queue_size;
 
         actix::spawn(async move {
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
