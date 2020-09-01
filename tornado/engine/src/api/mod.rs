@@ -64,7 +64,6 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::dispatcher::{ActixEventBus, DispatcherActor};
-    use actix::SyncArbiter;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_common_api::{Event, Value};
@@ -83,10 +82,7 @@ mod test {
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-        let dispatcher_addr = SyncArbiter::start(1, move || {
-            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
-            DispatcherActor { dispatcher }
-        });
+        let dispatcher_addr = DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
             MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).unwrap();
@@ -115,10 +111,7 @@ mod test {
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-        let dispatcher_addr = SyncArbiter::start(1, move || {
-            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
-            DispatcherActor { dispatcher }
-        });
+        let dispatcher_addr = DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
             MatcherActor::start(dispatcher_addr.clone(), config_manager.clone(), 47).unwrap();
@@ -160,10 +153,8 @@ mod test {
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
-        let dispatcher_addr = SyncArbiter::start(1, move || {
-            let dispatcher = Dispatcher::build(event_bus.clone()).unwrap();
-            DispatcherActor { dispatcher }
-        });
+        let dispatcher_addr =
+            DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
             MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).unwrap();

@@ -23,11 +23,23 @@ impl Message for ProcessedEventMessage {
 }
 
 pub struct DispatcherActor {
-    pub dispatcher: dispatcher::Dispatcher,
+    dispatcher: dispatcher::Dispatcher,
+}
+
+impl DispatcherActor {
+
+    pub fn start_new(message_mailbox_capacity: usize,dispatcher: dispatcher::Dispatcher) -> Addr<Self>
+    {
+        Self::create(move |ctx| {
+            ctx.set_mailbox_capacity(message_mailbox_capacity);
+              Self { dispatcher }
+        })
+    }
+
 }
 
 impl Actor for DispatcherActor {
-    type Context = SyncContext<Self>;
+    type Context = Context<Self>;
     fn started(&mut self, _ctx: &mut Self::Context) {
         debug!("DispatcherActor started.");
     }
@@ -36,7 +48,7 @@ impl Actor for DispatcherActor {
 impl Handler<ProcessedEventMessage> for DispatcherActor {
     type Result = Result<(), error::MatcherError>;
 
-    fn handle(&mut self, msg: ProcessedEventMessage, _: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
         trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }
