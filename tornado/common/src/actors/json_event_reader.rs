@@ -9,13 +9,19 @@ use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
 
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static + Unpin> {
-    pub json_collector: JsonEventCollector,
-    pub callback: F,
+    json_collector: JsonEventCollector,
+    callback: F,
 }
 
 impl<F: Fn(Event) + 'static + Unpin> JsonEventReaderActor<F> {
-    pub fn start_new<R: AsyncRead + 'static>(connect_msg: AsyncReadMessage<R>, callback: F) {
+    pub fn start_new<R: AsyncRead + 'static>(
+        connect_msg: AsyncReadMessage<R>,
+        message_mailbox_capacity: usize,
+        callback: F,
+    ) {
         JsonEventReaderActor::create(move |ctx| {
+            ctx.set_mailbox_capacity(message_mailbox_capacity);
+
             // Default constructor has no buffer size limits. To be used only with trusted sources.
             let codec = LinesCodec::new();
 

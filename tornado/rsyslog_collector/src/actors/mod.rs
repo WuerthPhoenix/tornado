@@ -1,1 +1,1 @@
-pub mod sync_collector;
+pub mod collector;

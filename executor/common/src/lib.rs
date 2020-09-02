@@ -8,7 +8,7 @@ pub trait Executor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError>;
 }
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Debug, PartialEq, Clone)]
 pub enum ExecutorError {
     #[error("ActionExecutionError: [{message}], can_retry: {can_retry}, code: {code:?}")]
     ActionExecutionError { message: String, can_retry: bool, code: Option<&'static str> },

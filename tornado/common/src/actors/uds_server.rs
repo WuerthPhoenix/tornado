@@ -14,6 +14,7 @@ pub fn listen_to_uds_socket<
 >(
     path: P,
     socket_permissions: Option<u32>,
+    message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
     let path_string = path.into();
@@ -33,6 +34,7 @@ pub fn listen_to_uds_socket<
     };
 
     UdsServerActor::create(move |ctx| {
+        ctx.set_mailbox_capacity(message_mailbox_capacity);
         ctx.add_message_stream(Box::leak(Box::new(listener)).incoming().map(|stream| {
             AsyncReadMessage { stream: stream.expect("Cannot read from UDS server stream") }
         }));
