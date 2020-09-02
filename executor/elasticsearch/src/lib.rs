@@ -130,7 +130,7 @@ impl std::fmt::Display for ElasticsearchExecutor {
 }
 
 impl Executor for ElasticsearchExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {
@@ -215,7 +215,7 @@ mod test {
     //                .to_string(),
     //            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string(),
     //        });
-    //        let executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
     //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //        let mut es_document = HashMap::new();
     //        es_document
@@ -240,7 +240,7 @@ mod test {
     //    fn should_build_client_from_payload() {
     //        // Arrange
     //        let es_authentication = Some(ElasticsearchAuthentication::None {});
-    //        let executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
     //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //        let mut es_document = HashMap::new();
     //        es_document
@@ -279,7 +279,7 @@ mod test {
     #[test]
     fn should_fail_if_index_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -304,7 +304,7 @@ mod test {
     #[test]
     fn should_fail_if_endpoint_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -327,7 +327,7 @@ mod test {
     #[test]
     fn should_fail_if_data_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -352,7 +352,7 @@ mod test {
     #[test]
     fn should_fail_if_index_is_not_text() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -378,7 +378,7 @@ mod test {
     #[test]
     fn should_fail_if_endpoint_is_not_text() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let mut executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document

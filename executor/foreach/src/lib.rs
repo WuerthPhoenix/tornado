@@ -30,7 +30,7 @@ impl ForEachExecutor {
 }
 
 impl Executor for ForEachExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {
@@ -270,7 +270,7 @@ mod test {
             );
         };
 
-        let executor = ForEachExecutor::new(Arc::new(bus));
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -401,7 +401,7 @@ mod test {
             );
         };
 
-        let executor = ForEachExecutor::new(Arc::new(bus));
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -483,7 +483,7 @@ mod test {
             );
         };
 
-        let executor = ForEachExecutor::new(Arc::new(bus));
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(

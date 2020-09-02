@@ -161,7 +161,7 @@ impl MonitoringExecutor {
 }
 
 impl Executor for MonitoringExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;
@@ -223,7 +223,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -261,7 +261,7 @@ mod test {
     #[test]
     fn should_throw_error_if_action_name_is_not_valid() {
         // Arrange
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -308,7 +308,7 @@ mod test {
     #[test]
     fn should_throw_error_if_service_action_but_service_creation_payload_not_given() {
         // Arrange
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -363,7 +363,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -407,7 +407,7 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_host_not_specified_with_host_field() {
         // Arrange
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -451,7 +451,7 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_service_not_specified_with_service_field() {
         // Arrange
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -504,7 +504,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let executor = MonitoringExecutor::new(
+        let mut executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),

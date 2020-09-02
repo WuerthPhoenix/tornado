@@ -20,7 +20,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
         .return_status(500)
         .create_on(&icinga_server);
 
-    let executor = MonitoringExecutor::new(
+    let mut executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -71,7 +71,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
         .return_status(201)
         .create_on(&icinga_server);
 
-    let executor = MonitoringExecutor::new(
+    let mut executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -131,7 +131,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
         .return_status(201)
         .create_on(&director_server);
 
-    let executor = MonitoringExecutor::new(
+    let mut executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -198,7 +198,7 @@ fn should_return_return_error_on_object_creation_failure() {
         .return_status(500)
         .create_on(&director_server);
 
-    let executor = MonitoringExecutor::new(
+    let mut executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),

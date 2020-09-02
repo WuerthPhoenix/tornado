@@ -42,3 +42,7 @@ pub struct ReplyRequest<M, R> {
     pub msg: M,
     pub responder: Option<async_channel::Sender<R>>,
 }
+
+pub trait Runner<M, O> {
+    fn execute(&mut self, msg: M) -> O;
+}

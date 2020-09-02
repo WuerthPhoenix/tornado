@@ -55,7 +55,7 @@ fn should_perform_a_post_request() {
             };
 
             std::thread::spawn(move || {
-                let executor = Icinga2Executor::new(config).unwrap();
+                let mut executor = Icinga2Executor::new(config).unwrap();
 
                 println!("Executor created");
 
@@ -106,7 +106,7 @@ fn should_return_object_not_existing_error_in_case_of_404_status_code() {
         .return_status(404)
         .create_on(&mock_server);
 
-    let executor = Icinga2Executor::new(Icinga2ClientConfig {
+    let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),

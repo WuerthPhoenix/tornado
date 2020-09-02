@@ -55,7 +55,7 @@ fn should_perform_a_post_request() {
             };
 
             std::thread::spawn(move || {
-                let executor = DirectorExecutor::new(config).unwrap();
+                let mut executor = DirectorExecutor::new(config).unwrap();
 
                 println!("Executor created");
 
@@ -127,7 +127,7 @@ fn should_return_object_already_existing_error_in_case_of_422_status_code() {
         .return_status(422)
         .create_on(&director_server);
 
-    let executor = DirectorExecutor::new(DirectorClientConfig {
+    let mut executor = DirectorExecutor::new(DirectorClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),

@@ -20,7 +20,7 @@ impl std::fmt::Display for LoggerExecutor {
 }
 
 impl Executor for LoggerExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:?}]", action);
         Ok(())
     }

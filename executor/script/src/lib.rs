@@ -61,7 +61,7 @@ impl fmt::Display for ScriptExecutor {
 }
 
 impl Executor for ScriptExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let mut script = action
@@ -293,7 +293,7 @@ mod test_unix {
         let mut action = Action::new("script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
-        let executor = ScriptExecutor::new();
+        let mut executor = ScriptExecutor::new();
 
         // Act
         let result = executor.execute(&action);
@@ -317,7 +317,7 @@ mod test_unix {
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
 
-        let executor = ScriptExecutor::new();
+        let mut executor = ScriptExecutor::new();
 
         // Act
         let result = executor.execute(&action);

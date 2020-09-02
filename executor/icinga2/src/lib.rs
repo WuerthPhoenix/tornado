@@ -35,7 +35,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
     }
 
-    fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
+    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -101,7 +101,7 @@ impl Icinga2Executor {
 }
 
 impl Executor for Icinga2Executor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(action)?;
 
@@ -125,7 +125,7 @@ mod test {
     fn should_fail_if_action_missing() {
         // Arrange
 
-        let executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -152,7 +152,7 @@ mod test {
     #[test]
     fn should_have_empty_payload_if_action_does_not_contains_one() {
         // Arrange
-        let executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -176,7 +176,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),

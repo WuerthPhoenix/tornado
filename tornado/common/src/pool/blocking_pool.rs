@@ -1,6 +1,6 @@
 use crate::TornadoError;
 
-use crate::pool::{ReplyRequest, Sender};
+use crate::pool::{ReplyRequest, Runner, Sender};
 use async_channel::{bounded, unbounded};
 use log::*;
 use rayon::{ThreadPool, ThreadPoolBuilder};
@@ -9,15 +9,16 @@ use std::sync::Arc;
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed in parallel with a fixed max_parallel_executions factor.
 /// If more messages then max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
-pub fn start_blocking_runner<F, M, R>(
+pub fn start_blocking_runner<F, M, R, Run>(
     max_parallel_executions: usize,
     buffer_size: usize,
-    callback: Arc<F>,
+    factory: F,
 ) -> Result<Sender<M, R>, TornadoError>
 where
     M: Send + Sync + 'static,
-    F: Send + Sync + 'static + Fn(M) -> R,
+    F: Fn() -> Run,
     R: Send + Sync + 'static,
+    Run: Send + 'static + Runner<M, R>,
 {
     ThreadPoolBuilder::new()
         .num_threads(max_parallel_executions)
@@ -28,7 +29,7 @@ where
                 pool.into(),
                 max_parallel_executions,
                 buffer_size,
-                callback,
+                factory,
             )
         })
 }
@@ -36,35 +37,36 @@ where
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed within the provided ThreadPool with a fixed max_parallel_executions factor.
 /// If more messages then max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
-pub fn start_blocking_runner_with_pool<F, M, R>(
+pub fn start_blocking_runner_with_pool<F, M, R, Run>(
     thread_pool: Arc<ThreadPool>,
     max_parallel_executions: usize,
     buffer_size: usize,
-    callback: Arc<F>,
+    factory: F,
 ) -> Sender<M, R>
 where
     M: Send + Sync + 'static,
-    F: Send + Sync + 'static + Fn(M) -> R,
+    F: Fn() -> Run,
     R: Send + Sync + 'static,
+    Run: Send + 'static + Runner<M, R>,
 {
     let (sender, receiver) = bounded::<ReplyRequest<M, R>>(buffer_size);
 
     for _ in 0..max_parallel_executions {
-        let callback = callback.clone();
         let receiver = receiver.clone();
         let thread_pool = thread_pool.clone();
+        let runner = factory();
 
         actix::spawn(async move {
             let (completion_tx, completion_rx) = unbounded();
+            let mut runner = runner;
             loop {
                 match receiver.recv().await {
                     Ok(message) => {
-                        let callback_clone = callback.clone();
                         let completion_tx = completion_tx.clone();
 
                         thread_pool.spawn( move || {
 
-                            let response = callback_clone(message.msg);
+                            let response = runner.execute(message.msg);
 
                             if let Some(responder) = message.responder {
                                 if let Err(err) = responder.try_send(response) {
@@ -72,12 +74,18 @@ where
                                 };
                             }
 
-                            if let Err(err) = completion_tx.try_send(()) {
+                            if let Err(err) = completion_tx.try_send(runner) {
                                 error!("Pool executor cannot send the completion message. The executor will not process messages anymore. Err: {:?}", err);
                             };
                         });
-                        if let Err(err) = completion_rx.recv().await {
-                            error!("Pool executor cannot receive the completion message. The executor will not process messages anymore. Err: {:?}", err);
+                        match completion_rx.recv().await {
+                            Ok(run) => {
+                                runner = run;
+                            }
+                            Err(err) => {
+                                error!("Pool executor cannot receive the completion message. The executor will not process messages anymore. Err: {:?}", err);
+                                break;
+                            }
                         }
                     }
                     Err(err) => {
@@ -108,18 +116,19 @@ mod test {
 
         let (exec_tx, exec_rx) = unbounded();
 
-        let sender = start_blocking_runner(
-            threads,
-            buffer_size,
-            Arc::new(move |message: String| {
-                println!("processing message: [{}]", message);
-                std::thread::sleep(Duration::from_millis(100));
-                println!("end processing message: [{}]", message);
+        let sender = start_blocking_runner(threads, buffer_size, move || {
+            let exec_tx = exec_tx.clone();
+            TestRunner {
+                callback: Arc::new(move |message: String| {
+                    println!("processing message: [{}]", message);
+                    std::thread::sleep(Duration::from_millis(100));
+                    println!("end processing message: [{}]", message);
 
-                // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
-                let _result = exec_tx.try_send(());
-            }),
-        )
+                    // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
+                    let _result = exec_tx.try_send(());
+                }),
+            }
+        })
         .unwrap();
 
         // Act
@@ -152,16 +161,14 @@ mod test {
         let threads = 5;
         let buffer_size = 10;
 
-        let sender = start_blocking_runner(
-            threads,
-            buffer_size,
-            Arc::new(move |message: String| {
+        let sender = start_blocking_runner(threads, buffer_size, move || TestRunner {
+            callback: Arc::new(move |message: String| {
                 println!("processing message: [{}]", message);
                 std::thread::sleep(Duration::from_millis(100));
                 println!("end processing message: [{}]", message);
                 message
             }),
-        )
+        })
         .unwrap();
 
         let (exec_tx, exec_rx) = unbounded();
@@ -189,5 +196,15 @@ mod test {
         }
 
         assert_eq!(3, count.load(Ordering::SeqCst));
+    }
+
+    struct TestRunner<M, R> {
+        pub callback: Arc<dyn Sync + Send + Fn(M) -> R>,
+    }
+
+    impl<M, R> Runner<M, R> for TestRunner<M, R> {
+        fn execute(&mut self, msg: M) -> R {
+            (self.callback)(msg)
+        }
     }
 }

@@ -223,6 +223,7 @@ pub mod test {
     use crate::executor::{ActionMessage, ExecutorRunner};
     use rand::Rng;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
+    use tornado_common::pool::blocking_pool::start_blocking_runner;
     use tornado_common_api::Action;
     use tornado_executor_common::{Executor, ExecutorError};
 
@@ -397,8 +398,11 @@ pub mod test {
 
         let executor_addr =
             RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-                ExecutorRunner::start_new(2, 10, executor).unwrap()
+                start_blocking_runner(2, 10, || {
+                    let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+                    ExecutorRunner { executor }
+                })
+                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -426,8 +430,11 @@ pub mod test {
 
         let executor_addr =
             RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                let executor = AlwaysOkExecutor { sender: sender.clone() };
-                ExecutorRunner::start_new(2, 10, executor).unwrap()
+                start_blocking_runner(2, 10, || {
+                    let executor = AlwaysOkExecutor { sender: sender.clone() };
+                    ExecutorRunner { executor }
+                })
+                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -453,8 +460,11 @@ pub mod test {
 
         let executor_addr =
             RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
-                ExecutorRunner::start_new(2, 10, executor).unwrap()
+                start_blocking_runner(2, 10, || {
+                    let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
+                    ExecutorRunner { executor }
+                })
+                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -481,8 +491,11 @@ pub mod test {
 
         let executor_addr =
             RetryActor::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-                ExecutorRunner::start_new(2, 10, executor).unwrap()
+                start_blocking_runner(2, 10, || {
+                    let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
+                    ExecutorRunner { executor }
+                })
+                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -512,7 +525,7 @@ pub mod test {
     }
 
     impl Executor for AlwaysFailExecutor {
-        fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
@@ -533,7 +546,7 @@ pub mod test {
     }
 
     impl Executor for AlwaysOkExecutor {
-        fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+        fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Ok(())
         }

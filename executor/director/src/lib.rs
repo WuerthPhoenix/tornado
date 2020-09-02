@@ -70,7 +70,10 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
+    fn parse_action<'a>(
+        &mut self,
+        action: &'a Action,
+    ) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -151,7 +154,7 @@ impl DirectorExecutor {
 }
 
 impl Executor for DirectorExecutor {
-    fn execute(&self, action: &Action) -> Result<(), ExecutorError> {
+    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
         let action = self.parse_action(action)?;
@@ -176,7 +179,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let executor = DirectorExecutor::new(DirectorClientConfig {
+        let mut executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -202,7 +205,7 @@ mod test {
     #[test]
     fn should_throw_error_if_action_payload_is_not_set() {
         // Arrange
-        let executor = DirectorExecutor::new(DirectorClientConfig {
+        let mut executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -227,7 +230,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let executor = DirectorExecutor::new(DirectorClientConfig {
+        let mut executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
