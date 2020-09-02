@@ -17,8 +17,11 @@ impl<A: Actor + actix::Handler<EventMessage>> RsyslogCollectorActor<A>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub fn new(writer_addr: Addr<A>) -> Self {
-        RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
+    pub fn start_new(writer_addr: Addr<A>, message_queue_size: usize) -> Addr<Self> {
+        Self::create(move |ctx| {
+            ctx.set_mailbox_capacity(message_queue_size);
+            RsyslogCollectorActor { collector: JsonPayloadCollector::new("syslog"), writer_addr }
+        })
     }
 }
 
@@ -26,7 +29,7 @@ impl<A: Actor + actix::Handler<EventMessage>> Actor for RsyslogCollectorActor<A>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    type Context = SyncContext<Self>;
+    type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
         info!("RsyslogCollectorActor started.");
@@ -39,7 +42,7 @@ where
 {
     type Result = ();
 
-    fn handle(&mut self, msg: StringMessage, _: &mut SyncContext<Self>) -> Self::Result {
+    fn handle(&mut self, msg: StringMessage, _: &mut Context<Self>) -> Self::Result {
         debug!("RsyslogCollectorActor - received msg: [{}]", &msg.msg);
 
         match self.collector.to_event(&msg.msg) {
