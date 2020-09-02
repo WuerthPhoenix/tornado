@@ -3,9 +3,9 @@ use async_channel::bounded;
 use log::*;
 use std::sync::Arc;
 
-/// Executes a blocking callback every time a message is sent to the returned Sender.
+/// Executes an async callback every time a message is sent to the returned Sender.
 /// The callback is executed in parallel with a fixed max_parallel_executions factor.
-/// If more messages then max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
+/// If more messages than max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
 pub fn start_async_runner<F, Fut, M, R>(
     max_parallel_executions: usize,
     buffer_size: usize,

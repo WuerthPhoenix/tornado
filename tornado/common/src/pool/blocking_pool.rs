@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed in parallel with a fixed max_parallel_executions factor.
-/// If more messages then max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
+/// If more messages than max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
 pub fn start_blocking_runner<F, M, R, Run>(
     max_parallel_executions: usize,
     buffer_size: usize,
@@ -36,7 +36,7 @@ where
 
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed within the provided ThreadPool with a fixed max_parallel_executions factor.
-/// If more messages then max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
+/// If more messages than max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
 pub fn start_blocking_runner_with_pool<F, M, R, Run>(
     thread_pool: Arc<ThreadPool>,
     max_parallel_executions: usize,
