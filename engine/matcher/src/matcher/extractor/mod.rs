@@ -1382,10 +1382,13 @@ mod test {
     fn single_key_match_should_fail_if_value_is_not_a_map() {
         // Arrange
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Array(vec![
-            Value::Text("MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned()),
-                        Value::Text("MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned()),
-        ]));
+        payload.insert(
+            "oids".to_owned(),
+            Value::Array(vec![
+                Value::Text("MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned()),
+                Value::Text("MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned()),
+            ]),
+        );
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1398,7 +1401,7 @@ mod test {
             },
             &AccessorBuilder::new(),
         )
-            .unwrap();
+        .unwrap();
 
         let mut event = new_event("event");
         event.payload = Value::Map(payload);

@@ -24,7 +24,7 @@ fn should_perform_a_tcp_request() {
         let tcp_create = listen_to_tcp(address.clone(), 10000, move |msg| {
             println!("Received a connection request");
             let json_act_received = act_received.clone();
-            JsonEventReaderActor::start_new(msg, move |event| {
+            JsonEventReaderActor::start_new(msg, 10000, move |event| {
                 println!("JsonEventReaderActor -  received an event");
                 let mut lock = json_act_received.lock().unwrap();
                 *lock = Some(event);

@@ -11,18 +11,18 @@ pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub client_addr: Addr<A>,
-    pub email_collector: Arc<EmailEventCollector>,
+    client_addr: Addr<A>,
+    email_collector: Arc<EmailEventCollector>,
 }
 
 impl<A: Actor + actix::Handler<EventMessage>> EmailReaderActor<A>
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    pub fn start_new(client_addr: Addr<A>) -> Addr<Self> {
-        EmailReaderActor::create(move |_ctx| EmailReaderActor {
-            email_collector: Arc::new(EmailEventCollector::new()),
-            client_addr,
+    pub fn start_new(client_addr: Addr<A>, message_mailbox_capacity: usize) -> Addr<Self> {
+        EmailReaderActor::create(move |ctx| {
+            ctx.set_mailbox_capacity(message_mailbox_capacity);
+            EmailReaderActor { email_collector: Arc::new(EmailEventCollector::new()), client_addr }
         })
     }
 }
