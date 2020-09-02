@@ -129,70 +129,45 @@ pub async fn daemon(
         let event_bus = ActixEventBus {
             callback: move |action| {
                 let action = Arc::new(action);
-                let send_result = match action.id.as_ref() {
+                match action.id.as_ref() {
                     "archive" => {
-                        archive_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!("Error sending message to 'archive' executor. Err: {:?}", err)
-                        })
+                        archive_executor_addr.do_send(ActionMessage { action })
                     }
                     "icinga2" => {
-                        icinga2_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
-                        })
+                        icinga2_executor_addr.do_send(ActionMessage { action })
                     }
                     "director" => {
-                        director_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!("Error sending message to 'director' executor. Err: {:?}", err)
-                        })
+                        director_executor_addr.do_send(ActionMessage { action })
                     }
                     "monitoring" => {
-                        monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!(
-                                "Error sending message to 'monitoring' executor. Err: {:?}",
-                                err
-                            )
-                        })
+                        monitoring_executor_addr.do_send(ActionMessage { action })
                     }
                     "script" => {
-                        script_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!("Error sending message to 'script' executor. Err: {:?}", err)
-                        })
+                        script_executor_addr.do_send(ActionMessage { action })
                     }
-                    "foreach" => foreach_executor_addr_clone
-                        .try_send(ActionMessage { action })
-                        .map_err(|err| {
-                            format!("Error sending message to 'foreach' executor. Err: {:?}", err)
-                        }),
+                    "foreach" => {
+                        foreach_executor_addr_clone.do_send(ActionMessage { action })
+                    },
                     "logger" => {
-                        logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
-                            format!("Error sending message to 'logger' executor. Err: {:?}", err)
-                        })
+                        logger_executor_addr.do_send(ActionMessage { action })
                     }
-                    "elasticsearch" => elasticsearch_executor_addr
-                        .try_send(ActionMessage { action })
-                        .map_err(|err| {
-                            format!(
-                                "Error sending message to 'elasticsearch' executor. Err: {:?}",
-                                err
-                            )
-                        }),
-                    _ => Err(format!("There are not executors for action id [{}]", &action.id)),
+                    "elasticsearch" => {
+                        elasticsearch_executor_addr.do_send(ActionMessage { action })
+                    },
+                    _ => error!("There are not executors for action id [{}]", &action.id),
                 };
-                if let Err(error_message) = send_result {
-                    error!("{}", error_message)
-                }
             },
         };
         Arc::new(event_bus)
     };
 
     let event_bus_clone = event_bus.clone();
-    foreach_executor_addr.try_send(LazyExecutorActorInitMessage::<
+    foreach_executor_addr.do_send(LazyExecutorActorInitMessage::<
         tornado_executor_foreach::ForEachExecutor,
         _,
     > {
         init: move || tornado_executor_foreach::ForEachExecutor::new(event_bus_clone.clone()),
-    })?;
+    });
 
     // Start dispatcher actor
     let dispatcher_addr = SyncArbiter::start(threads_per_queue, move || {
@@ -202,7 +177,7 @@ pub async fn daemon(
 
     // Start matcher actor
     let matcher_addr =
-        MatcherActor::start(dispatcher_addr.clone(), configs.matcher_config.clone())?;
+        MatcherActor::start(dispatcher_addr.clone(), configs.matcher_config.clone(), daemon_config.message_queue_size)?;
 
     if daemon_config.is_nats_enabled() {
         info!("NATS connection is enabled. Starting it...");

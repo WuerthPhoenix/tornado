@@ -41,14 +41,13 @@ impl MatcherActor {
     pub fn start(
         dispatcher_addr: Addr<DispatcherActor>,
         matcher_config_manager: Arc<dyn MatcherConfigReader>,
+        message_mailbox_capacity: usize,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
         let matcher_config = Arc::new(matcher_config_manager.get_config()?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
-        Ok(actix::Supervisor::start(move |_ctx: &mut Context<MatcherActor>| MatcherActor {
-            dispatcher_addr,
-            matcher_config_manager,
-            matcher_config,
-            matcher,
+        Ok(actix::Supervisor::start(move |ctx: &mut Context<MatcherActor>| {
+            ctx.set_mailbox_capacity(message_mailbox_capacity);
+            MatcherActor { dispatcher_addr, matcher_config_manager, matcher_config, matcher }
         }))
     }
 }
@@ -76,7 +75,7 @@ impl Handler<EventMessage> for MatcherActor {
         let dispatcher_addr = self.dispatcher_addr.clone();
         actix::spawn(async move {
             let processed_event = matcher.process(msg.event);
-            dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
+            dispatcher_addr.do_send(ProcessedEventMessage { event: processed_event });
         });
         Ok(())
     }
@@ -93,7 +92,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
         match msg.process_type {
             ProcessType::Full => self
                 .dispatcher_addr
-                .try_send(ProcessedEventMessage { event: processed_event.clone() }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err)),
+                .do_send(ProcessedEventMessage { event: processed_event.clone() }),
             ProcessType::SkipActions => {}
         }
 

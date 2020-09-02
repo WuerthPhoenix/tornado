@@ -26,6 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     info!("Rsyslog collector started");
 
+    let message_queue_size = collector_config.rsyslog_collector.message_queue_size;
     //
     // WARN:
     // This 'if' block contains some duplicated code to allow temporary compatibility with the config file format of the previous release.
@@ -44,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             tornado_tcp_address,
             collector_config.rsyslog_collector.message_queue_size,
         );
-        start(actor_address)?;
+        start(actor_address, message_queue_size)?;
     } else if let Some(connection_channel) =
         collector_config.rsyslog_collector.tornado_connection_channel
     {
@@ -55,7 +56,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     nats,
                     collector_config.rsyslog_collector.message_queue_size,
                 )?;
-                start(actor_address)?;
+                start(actor_address, message_queue_size)?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -66,7 +67,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     tornado_tcp_address,
                     collector_config.rsyslog_collector.message_queue_size,
                 );
-                start(actor_address)?;
+                start(actor_address, message_queue_size)?;
             }
         };
     } else {
@@ -85,14 +86,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
 fn start<A: Actor + actix::Handler<EventMessage>>(
     actor_address: Addr<A>,
+    message_queue_size: usize
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     // Start Rsyslog collector
-    let rsyslog_addr = SyncArbiter::start(1, move || {
-        actors::sync_collector::RsyslogCollectorActor::new(actor_address.clone())
-    });
+    let rsyslog_addr =
+        actors::sync_collector::RsyslogCollectorActor::start_new(actor_address.clone(), message_queue_size);
 
     let system = System::current();
     thread::spawn(move || {
