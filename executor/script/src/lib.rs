@@ -52,6 +52,38 @@ impl ScriptExecutor {
 
         Ok(())
     }
+
+    fn append_args(cmd: &mut Command, value: &Value) -> Result<(), ExecutorError> {
+        match value {
+            Value::Text(args) => {
+                cmd.arg(args);
+            }
+            Value::Bool(arg) => {
+                cmd.arg(&arg.to_string());
+            }
+            Value::Number(arg) => {
+                match arg {
+                    Number::NegInt(num) => cmd.arg(&num.to_string()),
+                    Number::PosInt(num) => cmd.arg(&num.to_string()),
+                    Number::Float(num) => cmd.arg(&num.to_string()),
+                };
+            }
+            Value::Array(args) => {
+                for value in args {
+                    ScriptExecutor::append_args(cmd, value)?;
+                }
+            }
+            Value::Map(args) => {
+                for (key, value) in args {
+                    cmd.arg(&format!("--{}", key));
+                    ScriptExecutor::append_args(cmd, value)?;
+                }
+            }
+            Value::Null => warn!("Args in payload is null. Ignore it."),
+        };
+
+        Ok(())
+    }
 }
 
 impl fmt::Display for ScriptExecutor {
@@ -75,12 +107,15 @@ impl Executor for ScriptExecutor {
             })?
             .to_owned();
 
+
+
+        // ORIGINAL CODE
+        /*
         if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
             ScriptExecutor::append_params(&mut script, value)?;
         } else {
             trace!("No args found in payload")
         };
-
         let output =
             Command::new(SHELL[0]).args(&SHELL[1..]).arg(&script).output().map_err(|err| {
                 ExecutorError::ActionExecutionError {
@@ -89,6 +124,33 @@ impl Executor for ScriptExecutor {
                     code: None,
                 }
             })?;
+
+         */
+
+        // NEW CODE
+        let output = {
+            println!("Script is: [{}]", script);
+            let mut cmd = Command::new(&script);
+
+            if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
+                ScriptExecutor::append_args(&mut cmd, value)?;
+            } else {
+                trace!("No args found in payload")
+            };
+
+            println!("Command is: [{:?}]", cmd);
+
+            cmd.output().map_err(|err| {
+                ExecutorError::ActionExecutionError {
+                    can_retry: true,
+                    message: format!("Cannot execute script [{}]: {}", &script, err),
+                    code: None,
+                }
+            })?
+        };
+
+        println!("stdout is: {}", String::from_utf8(output.stdout).unwrap());
+        println!("stderr is: {}", String::from_utf8(output.stderr).unwrap());
 
         if output.status.success() {
             debug!(
@@ -216,74 +278,76 @@ mod test {
 mod test_unix {
 
     use super::*;
-    use std::process::Command;
     use tornado_common_api::Value;
+    use std::collections::HashMap;
 
     #[test]
-    fn spike_command_script() {
-        let output = Command::new("./test_resources/echo.sh")
-            .arg("hello_world")
-            .output()
-            .expect("failed to execute process");
-
-        println!("status: {}", output.status);
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout).trim());
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr).trim());
-
-        assert_eq!("hello_world", String::from_utf8_lossy(&output.stdout).trim());
-        assert!(output.status.success());
-    }
-
-    #[test]
-    fn spike_command_failing_script() {
-        let output =
-            Command::new("./test_resources/fail.sh").output().expect("failed to execute process");
-
-        println!("status: {}", output.status);
-
-        assert!(!output.status.success());
-    }
-
-    #[test]
-    fn spike_command_script_with_inline_args() {
-        let shell: [&str; 2] = ["sh", "-c"];
-        let output = Command::new(shell[0])
-            .args(&shell[1..])
-            .arg("./test_resources/echo.sh hello_world")
-            .output()
-            .expect("failed to execute process");
-
-        println!("status: {}", output.status);
-        println!("stdout: {}", String::from_utf8_lossy(&output.stdout).trim());
-        println!("stderr: {}", String::from_utf8_lossy(&output.stderr).trim());
-
-        assert_eq!("hello_world", String::from_utf8_lossy(&output.stdout).trim());
-        assert!(output.status.success());
-    }
-
-    #[test]
-    fn spike_execute_script_write_file() {
+    fn should_return_error_if_script_not_found() {
         // Arrange
-        let tempdir = tempfile::tempdir().unwrap();
-        let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
-        let content = "HelloRustyWorld!";
+        let script = "NOT_EXISTING_SCRIPT.sh";
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
+
+        let mut executor = ScriptExecutor::new();
 
         // Act
-        let output = Command::new("./test_resources/write_file.sh")
-            .arg(&filename)
-            .arg(&content)
-            .output()
-            .expect("failed to execute process");
+        let result = executor.execute(&action);
 
         // Assert
-        assert!(output.status.success());
-
-        let file_content = std::fs::read_to_string(&filename).unwrap();
-        assert_eq!(content, file_content.trim())
+        assert!(result.is_err())
     }
 
     #[test]
-    fn should_execute_script_without_placeholders() {
+    fn should_execute_failing_script_and_return_error() {
+        // Arrange
+        let script = "./test_resources/fail.sh";
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        let result = executor.execute(&action);
+
+        // Assert
+        assert!(result.is_err())
+    }
+
+    #[test]
+    fn should_execute_echo_script() {
+        // Arrange
+        let script = format!("{}", "./test_resources/echo.sh");
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        executor.execute(&action).unwrap();
+
+    }
+
+    #[test]
+    fn should_execute_echo_script_with_args() {
+        // Arrange
+        let script = format!("{}", "./test_resources/echo.sh");
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text("hello_world!".to_owned()));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        executor.execute(&action).unwrap();
+
+    }
+
+    #[test]
+    fn should_execute_script_without_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
@@ -296,17 +360,15 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        executor.execute(&action).unwrap();
 
         // Assert
-        assert!(result.is_ok());
-
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
 
     #[test]
-    fn should_execute_script_with_placeholders() {
+    fn should_execute_script_with_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
@@ -320,12 +382,110 @@ mod test_unix {
         let mut executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        executor.execute(&action).unwrap();
 
         // Assert
-        assert!(result.is_ok());
-
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
+
+    #[test]
+    fn should_execute_script_with_array_of_arguments() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
+        let content = "HelloRustyWorld!";
+        let script = "./test_resources/write_file.sh".to_owned();
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Array(vec![
+            Value::Text(filename.to_owned()),
+            Value::Text(content.to_owned()),
+        ]));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        executor.execute(&action).unwrap();
+
+        // Assert
+        let file_content = std::fs::read_to_string(&filename).unwrap();
+        assert_eq!(content, file_content.trim())
+    }
+
+    #[test]
+    fn should_execute_script_escaping_arguments() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
+        let content = r#"Hello Rusty World!! 'single quote' "double quote" ""double double quote"""#;
+        let script = "./test_resources/write_file.sh".to_owned();
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Array(vec![
+            Value::Text(filename.to_owned()),
+            Value::Text(content.to_owned()),
+        ]));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        executor.execute(&action).unwrap();
+
+        // Assert
+        let file_content = std::fs::read_to_string(&filename).unwrap();
+        assert_eq!(content, file_content.trim())
+    }
+
+    #[test]
+    fn should_execute_script_with_map_of_arguments() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
+
+        let script = "./test_resources/write_all_args_to_file.sh".to_owned();
+
+        let mut action = Action::new("script");
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+
+        let first_content = "First_HelloRustyWorld!";
+        let second_content = "Second Hello Rusty World!";
+
+        let mut args = HashMap::new();
+        args.insert("first".to_owned(), Value::Text(first_content.to_owned()));
+        args.insert("second".to_owned(), Value::Text(second_content.to_owned()));
+
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Array(vec![
+            Value::Text(filename.to_owned()),
+            Value::Map(args),
+        ]));
+
+        let mut executor = ScriptExecutor::new();
+
+        // Act
+        executor.execute(&action).unwrap();
+
+        // Assert
+        let file_content = std::fs::read_to_string(&filename).unwrap();
+
+        // Arguments from a map are not ordered
+        let expected_1 = format!(r#"
+{}
+--first
+{}
+--second
+{}"#, filename, first_content, second_content).trim().to_owned();
+        let expected_2 = format!(r#"
+{}
+--second
+{}
+--first
+{}"#, filename, second_content, first_content).trim().to_owned();
+
+        println!("File content is : [{}]", file_content.trim());
+        assert!(file_content.trim().eq(&expected_1) || file_content.trim().eq(&expected_2))
+    }
+
 }
