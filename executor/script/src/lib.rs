@@ -15,7 +15,7 @@ impl ScriptExecutor {
         Default::default()
     }
 
-    fn append_args(cmd: &mut Command, value: &Value) -> Result<(), ExecutorError> {
+    fn append_args(cmd: &mut Command, value: &Value) {
         match value {
             Value::Text(args) => {
                 cmd.arg(args);
@@ -32,19 +32,17 @@ impl ScriptExecutor {
             }
             Value::Array(args) => {
                 for value in args {
-                    ScriptExecutor::append_args(cmd, value)?;
+                    ScriptExecutor::append_args(cmd, value);
                 }
             }
             Value::Map(args) => {
                 for (key, value) in args {
                     cmd.arg(&format!("--{}", key));
-                    ScriptExecutor::append_args(cmd, value)?;
+                    ScriptExecutor::append_args(cmd, value);
                 }
             }
             Value::Null => warn!("Args in payload is null. Ignore it."),
         };
-
-        Ok(())
     }
 }
 
@@ -70,8 +68,6 @@ impl Executor for ScriptExecutor {
             .to_owned();
 
         let output = {
-            println!("Script is: [{:?}]", script);
-
             let script_iter = script.split_whitespace().collect::<Vec<&str>>();
             let mut script_iter = script_iter.iter();
             let mut cmd = Command::new(script_iter.next().ok_or_else(|| {
@@ -87,12 +83,10 @@ impl Executor for ScriptExecutor {
             }
 
             if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
-                ScriptExecutor::append_args(&mut cmd, value)?;
+                ScriptExecutor::append_args(&mut cmd, value);
             } else {
                 trace!("No args found in payload")
             };
-
-            println!("Command is: [{:?}]", cmd);
 
             cmd.output().map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
@@ -101,22 +95,28 @@ impl Executor for ScriptExecutor {
             })?
         };
 
-        println!("stdout is: {}", String::from_utf8(output.stdout).unwrap());
-        println!("stderr is: {}", String::from_utf8(output.stderr).unwrap());
-
         if output.status.success() {
             debug!(
                 "ScriptExecutor - Script completed successfully with status: [{}] - script: [{:?}]",
                 output.status, script
             );
+            Ok(())
         } else {
+            let stderr = String::from_utf8(output.stdout).unwrap_or_default();
             error!(
-                "ScriptExecutor - Script returned error status: [{}] - script: [{:?}]",
-                output.status, script
+                "ScriptExecutor - Script returned error status: [{}] - script: [{:?}] - stderr: [{}]",
+                output.status, script, stderr
             );
-        }
 
-        Ok(())
+            Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!(
+                    "Script execution failed with status: [{}] - script: [{:?}] - stderr: [{}]",
+                    output.status, script, stderr
+                ),
+                code: None,
+            })
+        }
     }
 }
 
