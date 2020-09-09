@@ -50,11 +50,31 @@ impl From<serde_json::Error> for ApiError {
     }
 }
 
+const VALIDATION_ERROR: &str = "VALIDATION_ERROR";
+
 // Use default implementation for `error_response()` method.
 impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match self {
-            ApiError::MatcherError { .. } => HttpResponse::BadRequest().finish(),
+            ApiError::MatcherError { cause } => match cause {
+                MatcherError::NotUniqueRuleNameError { name } => {
+                    let mut params = HashMap::new();
+                    params.insert("RULE_NAME".to_owned(), name.to_owned());
+                    HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
+                        code: VALIDATION_ERROR.to_owned(),
+                        message: Some(format!("{}", cause)),
+                        params,
+                    })
+                }
+                MatcherError::NotValidIdOrNameError { message } => {
+                    HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
+                        code: VALIDATION_ERROR.to_owned(),
+                        message: Some(message.to_owned()),
+                        params: HashMap::new(),
+                    })
+                }
+                _ => HttpResponse::BadRequest().finish(),
+            },
             ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),

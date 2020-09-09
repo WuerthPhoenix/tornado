@@ -5,6 +5,7 @@ use crate::config::{
     MatcherConfigReader,
 };
 use crate::error::MatcherError;
+use crate::validator::MatcherConfigValidator;
 use chrono::Local;
 use fs_extra::dir::*;
 use log::*;
@@ -105,6 +106,8 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         config: &MatcherConfig,
     ) -> Result<(), MatcherError> {
         info!("Update draft with id {}", draft_id);
+
+        MatcherConfigValidator::new().validate(config)?;
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
             message: format!("Cannot create temporary directory. Err: {}", err),
@@ -543,6 +546,55 @@ mod test {
         assert_ne!(draft_after_update.config, draft_before_update.config);
         assert_eq!(new_config, draft_after_update.config);
 
+        Ok(())
+    }
+
+    #[test]
+    fn should_validate_draft_on_update() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+
+        let config_with_invalid_filter_name = MatcherConfig::Filter {
+            name: "filter name with space".to_owned(),
+            nodes: vec![],
+            filter: Filter {
+                filter: Defaultable::Default {},
+                active: true,
+                description: "".to_owned(),
+            },
+        };
+
+        let config_with_invalid_rule_name = MatcherConfig::Filter {
+            name: "filter".to_owned(),
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "rule name with space".to_owned(),
+                rules: vec![],
+            }],
+            filter: Filter {
+                filter: Defaultable::Default {},
+                active: true,
+                description: "".to_owned(),
+            },
+        };
+
+        let user_1 = "user_1".to_owned();
+        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
+
+        // Act
+        let update_result_1 = config_manager.update_draft(
+            &draft_id,
+            user_1.clone(),
+            &config_with_invalid_filter_name,
+        );
+        let update_result_2 =
+            config_manager.update_draft(&draft_id, user_1.clone(), &config_with_invalid_rule_name);
+
+        // Assert
+        assert!(update_result_1.is_err());
+        assert!(update_result_2.is_err());
         Ok(())
     }
 
