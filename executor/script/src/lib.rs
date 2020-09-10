@@ -102,7 +102,7 @@ impl Executor for ScriptExecutor {
             );
             Ok(())
         } else {
-            let stderr = String::from_utf8(output.stdout).unwrap_or_default();
+            let stderr = String::from_utf8(output.stderr).unwrap_or_default();
             error!(
                 "ScriptExecutor - Script returned error status: [{}] - script: [{:?}] - stderr: [{}]",
                 output.status, script, stderr
