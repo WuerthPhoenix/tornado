@@ -53,11 +53,11 @@ There are different ways to pass the arguments for a script:
   }
   ```
 
-  If __args__ is a String, the entire String is
-  appended to the script. In this case the resulting command will be:
+  If __args__ is a String, the entire String is appended as a single argument
+  to the script. In this case the resulting command will be:
   
   ```bash
-  ./usr/script/my_script.sh arg_one arg_two -a --something else 
+  ./usr/script/my_script.sh "arg_one arg_two -a --something else" 
   ```
 
 - Passing arguments in an array:
@@ -77,11 +77,11 @@ There are different ways to pass the arguments for a script:
   }
   ```
   
-  Here the argument's array elements are passed to the script in the exact order
+  Here the argument's array elements are passed as four arguments to the script in the exact order
   they are declared. In this case the resulting command will be:
   
   ```bash
-  ./usr/script/my_script.sh --arg_one tornado arg_two true 100 
+  ./usr/script/my_script.sh "--arg_one tornado" arg_two true 100 
   ```
 
 - Passing arguments in a map:
