@@ -11,7 +11,7 @@ use tokio_util::codec::{LinesCodec, LinesCodecError};
 pub struct UdsClientActor {
     restarted: bool,
     socket_path: PathBuf,
-    tx: Option<actix::io::FramedWrite<WriteHalf<UnixStream>, LinesCodec>>,
+    tx: Option<actix::io::FramedWrite<String, WriteHalf<UnixStream>, LinesCodec>>,
 }
 
 impl actix::io::WriteHandler<Error> for UdsClientActor {}
