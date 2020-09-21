@@ -9,7 +9,6 @@ edition = "2018"
 [dependencies]
 actix = "0.10"
 actix-cors = "0.3"
-actix-rt = "1.1.1"
 actix-web = "3.0"
 async-trait = "0.1"
 chrono = "0.4"
@@ -39,6 +38,7 @@ tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
 [dev-dependencies]
+actix-rt = "1.1.1"
 chrono = "0.4"
 lazy_static = "1.4"
 maplit = "1.0"

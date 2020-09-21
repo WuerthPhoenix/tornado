@@ -6,7 +6,6 @@ edition = "2018"
 
 [dependencies]
 actix = "0.10"
-actix-rt = "1.1.1"
 actix-web = "3"
 chrono = "0.4"
 clap = "2.33"
@@ -22,3 +21,4 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
+actix-rt = "1.1.1"

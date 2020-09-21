@@ -14,7 +14,7 @@ mod actor;
 mod config;
 mod error;
 
-#[actix_rt::main]
+#[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let arg_matches = config::arg_matches();
 
