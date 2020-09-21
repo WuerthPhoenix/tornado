@@ -4263,7 +4263,6 @@ dependencies = [
  "chrono",
  "clap",
  "config",
- "http 0.1.21",
  "log",
  "maplit",
  "reqwest",
