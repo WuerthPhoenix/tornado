@@ -12,13 +12,13 @@ pub enum TornadoCommonActorError {
     GenericError { message: String },
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "()")]
 pub struct StringMessage {
     pub msg: String,
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
@@ -30,7 +30,7 @@ pub struct ResetActorMessage<P> {
     pub payload: P,
 }
 
-#[derive(Message)]
+#[derive(Message, Debug)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
 pub struct BytesMessage {
     pub msg: Vec<u8>,

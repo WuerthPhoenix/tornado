@@ -12,7 +12,7 @@ use tokio_util::codec::{LinesCodec, LinesCodecError};
 pub struct TcpClientActor {
     restarted: bool,
     address: String,
-    tx: Option<actix::io::FramedWrite<WriteHalf<TcpStream>, LinesCodec>>,
+    tx: Option<actix::io::FramedWrite<String, WriteHalf<TcpStream>, LinesCodec>>,
 }
 
 impl actix::io::WriteHandler<Error> for TcpClientActor {}

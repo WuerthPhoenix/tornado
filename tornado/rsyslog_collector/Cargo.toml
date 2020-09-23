@@ -7,8 +7,8 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.9"
-actix-rt = "1.0"
+actix = "0.10"
+actix-rt = "1.1.1"
 clap = "2.33"
 config_rs = { version = "0.10", package = "config" }
 log = "0.4"

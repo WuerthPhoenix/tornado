@@ -1,9 +1,8 @@
 use crate::config::{Icinga2ClientConfig, Stream};
 use crate::error::Icinga2CollectorError;
 use actix::prelude::*;
-use http::header;
 use log::*;
-use reqwest::Client;
+use reqwest::{header, Client};
 use std::io::{BufRead, BufReader};
 use std::{thread, time};
 use tornado_collector_common::Collector;
