@@ -23,7 +23,8 @@ fn new_nats_docker_container(
 ) -> (Container<'_, clients::Cli, GenericImage>, u16) {
     let port = port.unwrap_or_else(|| port_check::free_local_port().unwrap());
 
-    let mut image = images::generic::GenericImage::new("nats:2.1-alpine");
+    let mut image =
+        images::generic::GenericImage::new("nats:2.1-alpine").with_mapped_port((port, 4222));
     if tls {
         image = image
             .with_volume(
@@ -42,10 +43,9 @@ fn new_nats_docker_container(
                 "/test_resources/nats-server.key".to_owned(),
             ]);
     }
-    let node = docker.run_with_options(
-        vec!["-d", "-p", &format!("{}:4222", port)],
-        image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")),
-    );
+
+    let node = docker
+        .run(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")));
 
     let nats_port = node.get_host_port(4222).unwrap();
     (node, nats_port)
@@ -89,7 +89,7 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(Some(event), receiver.recv().await);
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
 }
 
 #[actix_rt::test]
@@ -138,7 +138,7 @@ async fn should_publish_to_nats_with_tls() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(Some(event), receiver.recv().await);
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
 }
 
 #[actix_rt::test]
@@ -191,7 +191,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
     .await
     .unwrap();
 
-    assert_eq!(Some(event), receiver.recv().await);
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
 }
 
 #[actix_rt::test]

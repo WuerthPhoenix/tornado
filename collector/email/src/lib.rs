@@ -61,7 +61,7 @@ fn get_first_header_value_or_empty(
     email: &ParsedMail,
     header: &str,
 ) -> Result<String, CollectorError> {
-    Ok(email.headers.get_first_value(header).map_err(into_err)?.unwrap_or_else(|| "".to_owned()))
+    Ok(email.headers.get_first_value(header).unwrap_or_else(|| "".to_owned()))
 }
 
 fn extract_body_and_attachments(
@@ -69,7 +69,7 @@ fn extract_body_and_attachments(
     body: &mut Option<Value>,
     attachments: &mut Vec<Value>,
 ) -> Result<(), CollectorError> {
-    let content_disposition = email.get_content_disposition().map_err(into_err)?;
+    let content_disposition = email.get_content_disposition();
     match content_disposition.disposition {
         DispositionType::Inline => {
             if email.ctype.mimetype.contains("text") {
@@ -105,7 +105,7 @@ fn extract_body_and_attachments(
             } else {
                 attachment.insert("encoding".to_owned(), Value::Text("base64".to_owned()));
 
-                let base64_content = match &email.get_body_encoded().map_err(into_err)? {
+                let base64_content = match &email.get_body_encoded() {
                     Body::Base64(body) | Body::QuotedPrintable(body) => String::from_utf8(
                         body.get_raw()
                             .iter()

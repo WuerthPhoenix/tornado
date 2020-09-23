@@ -2,7 +2,7 @@ use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActor
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use native_tls::{Certificate, Identity, TlsConnector};
+use rants::native_tls::{Certificate, Identity, TlsConnector};
 use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde::{Deserialize, Serialize};
 use std::io::Error;
@@ -104,7 +104,7 @@ impl NatsClientConfig {
                         }
                     })?;
 
-                client.set_tls_connector(tls_connector).await;
+                client.set_tls_config(tls_connector).await;
                 client
             }
             NatsClientAuth::None => {
