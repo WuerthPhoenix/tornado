@@ -1,0 +1,54 @@
+{
+  "id": "foreach",
+  "payload": {
+    "actions": [
+      {
+        "id": "elasticsearch",
+        "payload": {
+          "data": {
+            "message": "${item}"
+          },
+          "endpoint": "[1]https://elasticsearch.neteyelocal:9200",
+          "index": "tornado"
+        }
+      }
+    ],
+    "target": [
+      {
+        "alert_entity": 4,
+        "srv_port": 8443,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 636,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 443,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 636,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 443,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 5666,
+        "l7_proto": 91
+      },
+      {
+        "alert_entity": 4,
+        "srv_port": 25,
+        "l7_proto": 3
+      }
+    ]
+  }
+}

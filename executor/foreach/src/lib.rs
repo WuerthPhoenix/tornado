@@ -56,10 +56,10 @@ impl Executor for ForEachExecutor {
 
                         let mut item = HashMap::new();
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_payload(&Value::Map(item), action.clone())
+                        if let Err(err) = resolve_action(&Value::Map(item), action.clone())
                             .map(|action| self.bus.publish_action(action)) {
                             warn!(
-                                "ForEachExecutor - Error while executiong internal action [{}]. Err: {}",
+                                "ForEachExecutor - Error while executing internal action [{}]. Err: {}",
                                 action.id, err
                             )
                         }
@@ -69,7 +69,7 @@ impl Executor for ForEachExecutor {
             }
             _ => Err(ExecutorError::MissingArgumentError {
                 message: format!(
-                    "ForEachExecutor - No [{}] key found in payload",
+                    "ForEachExecutor - No [{}] key found in payload, or it's value is not an array",
                     FOREACH_TARGET_KEY
                 ),
             }),
@@ -105,9 +105,16 @@ fn to_action(value: &Value) -> Result<Action, ExecutorError> {
     }
 }
 
-fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
+fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
     for (_key, element) in action.payload.iter_mut() {
-        if let Value::Text(text) = element {
+        resolve_payload(item, element)?;
+    }
+    Ok(action)
+}
+
+fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
+    match &mut value {
+        Value::Text(text) => {
             if let Some(parse_result) = Parser::build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
@@ -116,11 +123,22 @@ fn resolve_payload(item: &Value, mut action: Action) -> Result<Action, ExecutorE
                 })?
                 .parse_value(item)
             {
-                *element = parse_result.into_owned();
+                *value = parse_result.into_owned();
             }
         }
+        Value::Array(values) => {
+            for element in values.iter_mut() {
+                resolve_payload(item, element)?;
+            }
+        }
+        Value::Map(values) => {
+            for (_key, element) in values.iter_mut() {
+                resolve_payload(item, element)?;
+            }
+        }
+        _ => {}
     }
-    Ok(action)
+    Ok(())
 }
 
 #[cfg(test)]
@@ -541,5 +559,131 @@ mod test {
             payload.insert("value".to_owned(), Value::Text("third + fourth".to_owned()));
             assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(1).unwrap());
         }
+    }
+
+    #[test]
+    fn should_resolve_recursive_placeholders_in_maps() {
+        // Arrange
+
+        let execution_results = Arc::new(RwLock::new(vec![]));
+
+        let mut bus = SimpleEventBus::new();
+        {
+            let execution_results = execution_results.clone();
+            bus.subscribe_to_action(
+                "id_one",
+                Box::new(move |action| {
+                    let mut lock = execution_results.write().unwrap();
+                    lock.push(action);
+                }),
+            );
+        };
+
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
+
+        let mut action = Action::new("");
+        action.payload.insert(
+            "target".to_owned(),
+            Value::Array(vec![Value::Array(vec![
+                Value::Text("first".to_owned()),
+                Value::Text("second".to_owned()),
+            ])]),
+        );
+
+        let mut actions_array = vec![];
+
+        {
+            let mut action = HashMap::new();
+            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+
+            let mut inner_map = HashMap::new();
+            inner_map.insert("value".to_owned(), Value::Text("${item[0]}".to_owned()));
+
+            let mut payload_one = HashMap::new();
+            payload_one.insert("inner".to_owned(), Value::Map(inner_map));
+            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+
+            actions_array.push(Value::Map(action));
+        }
+
+        action.payload.insert("actions".to_owned(), Value::Array(actions_array));
+
+        // Act
+        let result = executor.execute(&action);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let lock = execution_results.read().unwrap();
+        assert_eq!(1, lock.len());
+
+        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_map().unwrap();
+        let mut expected_map = HashMap::new();
+        expected_map.insert("value".to_owned(), Value::Text("first".to_owned()));
+        assert_eq!(&expected_map, value);
+    }
+
+    #[test]
+    fn should_resolve_recursive_placeholders_in_arrays() {
+        // Arrange
+
+        let execution_results = Arc::new(RwLock::new(vec![]));
+
+        let mut bus = SimpleEventBus::new();
+        {
+            let execution_results = execution_results.clone();
+            bus.subscribe_to_action(
+                "id_one",
+                Box::new(move |action| {
+                    let mut lock = execution_results.write().unwrap();
+                    lock.push(action);
+                }),
+            );
+        };
+
+        let mut executor = ForEachExecutor::new(Arc::new(bus));
+
+        let mut action = Action::new("");
+        action.payload.insert(
+            "target".to_owned(),
+            Value::Array(vec![Value::Array(vec![
+                Value::Text("first".to_owned()),
+                Value::Text("second".to_owned()),
+            ])]),
+        );
+
+        let mut actions_array = vec![];
+
+        {
+            let mut action = HashMap::new();
+            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+
+            let mut inner_array = vec![];
+            inner_array.push(Value::Text("${item[0]}".to_owned()));
+            inner_array.push(Value::Text("${item[1]}".to_owned()));
+
+            let mut payload_one = HashMap::new();
+            payload_one.insert("inner".to_owned(), Value::Array(inner_array));
+            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+
+            actions_array.push(Value::Map(action));
+        }
+
+        action.payload.insert("actions".to_owned(), Value::Array(actions_array));
+
+        // Act
+        let result = executor.execute(&action);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let lock = execution_results.read().unwrap();
+        assert_eq!(1, lock.len());
+
+        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_array().unwrap();
+        let mut expected_array = vec![];
+        expected_array.push(Value::Text("first".to_owned()));
+        expected_array.push(Value::Text("second".to_owned()));
+        assert_eq!(&expected_array, value);
     }
 }
