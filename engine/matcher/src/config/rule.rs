@@ -35,7 +35,14 @@ pub struct Extractor {
     pub from: String,
     pub regex: ExtractorRegex,
     #[serde(default)]
-    pub modifiers_post: Vec<String>
+    pub modifiers_post: Vec<Modifier>
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
+pub enum Modifier {
+    Trim {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

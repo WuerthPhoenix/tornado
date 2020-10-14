@@ -12,6 +12,7 @@ use log::*;
 use regex::{Captures, Regex as RustRegex};
 use std::collections::HashMap;
 use tornado_common_api::Value;
+use crate::matcher::modifier::ValueModifier;
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -139,6 +140,7 @@ impl MatcherExtractor {
 struct ValueExtractor {
     pub key: String,
     pub regex_extractor: RegexValueExtractor,
+    pub modifiers_post: Vec<ValueModifier>,
 }
 
 impl ValueExtractor {
@@ -151,6 +153,7 @@ impl ValueExtractor {
         Ok(Self {
             key: key.to_owned(),
             regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
+            modifiers_post: ValueModifier::build(rule_name, &extractor.modifiers_post)?,
         })
     }
 

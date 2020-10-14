@@ -1,5 +1,6 @@
 pub mod action;
 pub mod extractor;
+pub mod modifier;
 pub mod operator;
 
 use crate::config::MatcherConfig;
