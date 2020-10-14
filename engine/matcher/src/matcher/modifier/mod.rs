@@ -1,7 +1,7 @@
 use crate::config::rule::Modifier;
 use crate::error::MatcherError;
-use tornado_common_api::Value;
 use log::*;
+use tornado_common_api::Value;
 
 #[derive(Debug, PartialEq)]
 pub enum ValueModifier {
@@ -9,12 +9,10 @@ pub enum ValueModifier {
 }
 
 impl ValueModifier {
-
     pub fn build(
         _rule_name: &str,
         modifiers: &[Modifier],
     ) -> Result<Vec<ValueModifier>, MatcherError> {
-
         let mut value_modifiers = vec![];
 
         for modifier in modifiers {
@@ -24,7 +22,7 @@ impl ValueModifier {
                     value_modifiers.push(ValueModifier::Trim);
                 }
             }
-        };
+        }
 
         Ok(value_modifiers)
     }
@@ -40,7 +38,9 @@ impl ValueModifier {
                     Ok(())
                 } else {
                     Err(MatcherError::ExtractedVariableError {
-                        message: "The 'trim' modifier can be used only with values of type 'string'".to_owned(),
+                        message:
+                            "The 'trim' modifier can be used only with values of type 'string'"
+                                .to_owned(),
                         variable_name: variable_name.to_owned(),
                     })
                 }
@@ -69,14 +69,8 @@ mod test {
     #[test]
     fn should_build_trim_value_modifiers() {
         // Arrange
-        let modifiers = vec![
-            Modifier::Trim {},
-            Modifier::Trim {},
-        ];
-        let expected_value_modifiers = vec![
-            ValueModifier::Trim,
-            ValueModifier::Trim,
-        ];
+        let modifiers = vec![Modifier::Trim {}, Modifier::Trim {}];
+        let expected_value_modifiers = vec![ValueModifier::Trim, ValueModifier::Trim];
 
         // Act
         let value_modifiers = ValueModifier::build("", &modifiers).unwrap();
@@ -95,30 +89,20 @@ mod test {
         {
             let mut input = Value::Text("".to_owned());
             value_modifier.apply("", &mut input).unwrap();
-            assert_eq!(
-                Value::Text("".to_owned()),
-                input
-            );
+            assert_eq!(Value::Text("".to_owned()), input);
         }
 
         {
             let mut input = Value::Text("not to trim".to_owned());
             value_modifier.apply("", &mut input).unwrap();
-            assert_eq!(
-                Value::Text("not to trim".to_owned()),
-                input
-            );
+            assert_eq!(Value::Text("not to trim".to_owned()), input);
         }
 
         {
             let mut input = Value::Text(" to be trimmed  ".to_owned());
             value_modifier.apply("", &mut input).unwrap();
-            assert_eq!(
-                Value::Text("to be trimmed".to_owned()),
-                input
-            );
+            assert_eq!(Value::Text("to be trimmed".to_owned()), input);
         }
-
     }
 
     #[test]
@@ -141,6 +125,5 @@ mod test {
             let mut input = Value::Bool(true);
             assert!(value_modifier.apply("", &mut input).is_err());
         }
-
     }
 }

@@ -35,7 +35,7 @@ pub struct Extractor {
     pub from: String,
     pub regex: ExtractorRegex,
     #[serde(default)]
-    pub modifiers_post: Vec<Modifier>
+    pub modifiers_post: Vec<Modifier>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

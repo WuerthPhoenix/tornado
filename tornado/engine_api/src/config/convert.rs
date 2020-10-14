@@ -272,7 +272,11 @@ fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
     // ToDo: to be replaced with modifiers from the DTO
     // See: https://siwuerthphoenix.atlassian.net/browse/TOR-271
     let modifiers_post = vec![];
-    Extractor { from: extractor.from, regex: dto_into_extractor_regex(extractor.regex), modifiers_post }
+    Extractor {
+        from: extractor.from,
+        regex: dto_into_extractor_regex(extractor.regex),
+        modifiers_post,
+    }
 }
 
 fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRegex {

@@ -7,12 +7,12 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::{Extractor, ExtractorRegex};
 use crate::error::MatcherError;
+use crate::matcher::modifier::ValueModifier;
 use crate::model::InternalEvent;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
 use std::collections::HashMap;
 use tornado_common_api::Value;
-use crate::matcher::modifier::ValueModifier;
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -163,7 +163,8 @@ impl ValueExtractor {
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
     ) -> Result<Value, MatcherError> {
-        let mut extracted_value = self.regex_extractor.extract(variable_name, event, extracted_vars)?;
+        let mut extracted_value =
+            self.regex_extractor.extract(variable_name, event, extracted_vars)?;
         for modifier in &self.modifiers_post {
             modifier.apply(variable_name, &mut extracted_value)?;
         }
@@ -554,16 +555,12 @@ mod test {
         };
 
         // Act
-        let extractor = ValueExtractor::build(
-            "rule_name",
-            "key",
-            &rule_extractor,
-            &AccessorBuilder::new(),
-        ).unwrap();
+        let extractor =
+            ValueExtractor::build("rule_name", "key", &rule_extractor, &AccessorBuilder::new())
+                .unwrap();
 
         // Assert
         assert_eq!(vec![ValueModifier::Trim], extractor.modifiers_post);
-
     }
 
     #[test]
@@ -1487,14 +1484,8 @@ mod test {
     fn should_apply_the_trim_post_modifier() {
         // Arrange
         let mut oids = HashMap::new();
-        oids.insert(
-            "1".to_owned(),
-            Value::Text("Hello not to be trimmed".to_owned()),
-        );
-        oids.insert(
-            "2".to_owned(),
-            Value::Text("Hello to be trimmed  ".to_owned()),
-        );
+        oids.insert("1".to_owned(), Value::Text("Hello not to be trimmed".to_owned()));
+        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
 
         let mut payload = HashMap::new();
         payload.insert("oids".to_owned(), Value::Map(oids));
@@ -1504,14 +1495,12 @@ mod test {
             "key",
             &Extractor {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex {
-                    regex: r#"1"#.to_string(),
-                },
+                regex: ExtractorRegex::SingleKeyRegex { regex: r#"1"#.to_string() },
                 modifiers_post: vec![Modifier::Trim {}, Modifier::Trim {}],
             },
             &AccessorBuilder::new(),
         )
-            .unwrap();
+        .unwrap();
 
         let extractor_2 = ValueExtractor::build(
             "rule_name",
@@ -1521,13 +1510,13 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r#".*"#.to_string(),
                     all_matches: Some(false),
-                    group_match_idx: Some(0)
+                    group_match_idx: Some(0),
                 },
                 modifiers_post: vec![Modifier::Trim {}],
             },
             &AccessorBuilder::new(),
         )
-            .unwrap();
+        .unwrap();
 
         let mut event = new_event("event");
         event.payload = Value::Map(payload);
@@ -1539,17 +1528,13 @@ mod test {
         // Assert
         assert_eq!(Value::Text("Hello not to be trimmed".to_owned()), result_1);
         assert_eq!(Value::Text("Hello to be trimmed".to_owned()), result_2);
-
     }
 
     #[test]
     fn extractor_should_fail_if_trim_post_modifier_is_not_applied_to_string() {
         // Arrange
         let mut oids = HashMap::new();
-        oids.insert(
-            "2".to_owned(),
-            Value::Text("Hello to be trimmed  ".to_owned()),
-        );
+        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
 
         let mut payload = HashMap::new();
         payload.insert("oids".to_owned(), Value::Map(oids));
@@ -1562,13 +1547,13 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r#".*"#.to_string(),
                     all_matches: Some(true),
-                    group_match_idx: None
+                    group_match_idx: None,
                 },
                 modifiers_post: vec![Modifier::Trim {}],
             },
             &AccessorBuilder::new(),
         )
-            .unwrap();
+        .unwrap();
 
         let mut event = new_event("event");
         event.payload = Value::Map(payload);
@@ -1578,7 +1563,6 @@ mod test {
 
         // Assert
         assert!(result.is_err());
-
     }
 
     fn new_event(event_type: &str) -> InternalEvent {
