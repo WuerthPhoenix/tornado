@@ -48,6 +48,7 @@ impl MatcherExtractorBuilder {
     ///                group_match_idx: Some(0),
     ///                all_matches: None,
     ///            },
+    ///            modifiers_post: vec![],
     ///        },
     ///    );
     ///
@@ -525,6 +526,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -543,6 +545,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -561,6 +564,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -586,6 +590,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -608,6 +613,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -633,6 +639,7 @@ mod test {
                     group_match_idx: Some(2),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -658,6 +665,7 @@ mod test {
                     group_match_idx: Some(10000),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -680,6 +688,7 @@ mod test {
                     group_match_idx: Some(10000),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -702,6 +711,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -725,6 +735,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -737,6 +748,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -772,6 +784,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -784,6 +797,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -807,6 +821,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -837,6 +852,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -875,6 +891,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -897,6 +914,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -919,6 +937,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -942,6 +961,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -972,6 +992,7 @@ mod test {
                         .to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1001,6 +1022,7 @@ mod test {
                         .to_string(),
                     all_matches: Some(false),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1028,6 +1050,7 @@ mod test {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1050,6 +1073,7 @@ mod test {
                         .to_string(),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1085,6 +1109,7 @@ mod test {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1106,7 +1131,8 @@ mod test {
                     regex: r#"(?P<PID>[0-9]+)\s+(?P<Time>[0-9:]+)\s+(?P<UserId>[0-9]+)\s+(?P<UserName>\w+)\s+(?P<ServerName>\w+)\s+(?P<Level>[0-9]+)"#
                     .to_string(),
                     all_matches: Some(true),
-                }
+                },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1190,6 +1216,7 @@ mod test {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -1205,6 +1232,7 @@ mod test {
             &Extractor {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::SingleKeyRegex { regex: "[".to_string() },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -1223,6 +1251,7 @@ mod test {
             &Extractor {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::SingleKeyRegex { regex: regex.to_string() },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1267,6 +1296,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1306,6 +1336,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1356,6 +1387,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNe[a-z.A-Z0.9]*"#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1398,6 +1430,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
