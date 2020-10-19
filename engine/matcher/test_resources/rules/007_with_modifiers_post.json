@@ -1,0 +1,32 @@
+{
+  "name": "with_modifiers",
+  "description": "",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": null,
+    "WITH": {
+      "variable_1": {
+        "from": "${event.payload.some}",
+        "regex": {
+          "match": "([0-9]+)",
+          "all_matches": true
+        },
+        "modifiers_post": [
+          {
+            "type": "Lowercase"
+          },
+          {
+            "type": "ReplaceAll",
+            "find": "to be found",
+            "replace": "to be replaced with"
+          },
+          {
+            "type": "Trim"
+          }
+        ]
+      }
+    }
+  },
+  "actions": []
+}

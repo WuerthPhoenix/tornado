@@ -4,11 +4,13 @@ use log::*;
 use tornado_common_api::Value;
 
 pub mod lowercase;
+pub mod replace;
 pub mod trim;
 
 #[derive(Debug, PartialEq)]
 pub enum ValueModifier {
     Lowercase,
+    ReplaceAll { find: String, replace: String },
     Trim,
 }
 
@@ -25,6 +27,13 @@ impl ValueModifier {
                     trace!("Add post modifier to extractor: lowercase");
                     value_modifiers.push(ValueModifier::Lowercase);
                 }
+                Modifier::ReplaceAll { find, replace } => {
+                    trace!("Add post modifier to extractor: replace");
+                    value_modifiers.push(ValueModifier::ReplaceAll {
+                        find: find.clone(),
+                        replace: replace.clone(),
+                    });
+                }
                 Modifier::Trim {} => {
                     trace!("Add post modifier to extractor: trim");
                     value_modifiers.push(ValueModifier::Trim);
@@ -38,6 +47,9 @@ impl ValueModifier {
     pub fn apply(&self, variable_name: &str, value: &mut Value) -> Result<(), MatcherError> {
         match self {
             ValueModifier::Lowercase => lowercase::lowercase(variable_name, value),
+            ValueModifier::ReplaceAll { find, replace } => {
+                replace::replace_all(variable_name, value, find, replace)
+            }
             ValueModifier::Trim => trim::trim(variable_name, value),
         }
     }
@@ -134,6 +146,20 @@ mod test {
             let mut input = Value::Text("OK".to_owned());
             value_modifier.apply("", &mut input).unwrap();
             assert_eq!(Value::Text("ok".to_owned()), input);
+        }
+    }
+
+    #[test]
+    fn replace_modifier_should_replace_a_string() {
+        // Arrange
+        let value_modifier =
+            ValueModifier::ReplaceAll { find: "Hello".to_owned(), replace: "World".to_owned() };
+
+        // Act & Assert
+        {
+            let mut input = Value::Text("Hello World".to_owned());
+            value_modifier.apply("", &mut input).unwrap();
+            assert_eq!(Value::Text("World World".to_owned()), input);
         }
     }
 }
