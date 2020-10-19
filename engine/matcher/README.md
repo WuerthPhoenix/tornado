@@ -788,11 +788,11 @@ There are multiple ways of configuring those regexes
 to obtain the desired result.
 
 Common entries to all configurations:
-- **from**: An expression that determines to value to which to apply the extractor regex;
-- **modifiers_post**: A list of String modifiers to post process the extracted value. They can be:
+- **from**: An expression that determines to which value to apply the extractor regex;
+- **modifiers_post**: A list of String modifiers to post-process the extracted value. They can be:
 
   - *Lowercase*: it converts the resulting String to lower case; 
-  - *ReplaceAll*: it returns a new string with all matches of a substring replaced by a replacement;
+  - *ReplaceAll*: it returns a new string with all matches of a substring replaced by the new text;
   - *Trim*: it trims the resulting String;
 
 In addition, three parameters combined will define the behavior of an extractor:
@@ -1023,8 +1023,9 @@ for each match:
     }
 ```
 This extractor has three modifiers that will be applied to the extracted value.
-The modifiers are applied by the order they are declared. 
-
+The modifiers are applied in the order they are declared, 
+so the extracted string will be transformed in lowercase, then some text replaced, 
+and finally, the string will be trimmed.
 
 ### Complete Rule Example 1
 
