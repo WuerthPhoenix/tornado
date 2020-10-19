@@ -787,7 +787,15 @@ variables extracted from the Event using regular expressions.
 There are multiple ways of configuring those regexes
 to obtain the desired result.
 
-Essentially, three parameters combined will define the behavior of an extractor:
+Common entries to all configurations:
+- **from**: An expression that determines to value to which to apply the extractor regex;
+- **modifiers_post**: A list of String modifiers to post process the extracted value. These can be:
+
+  - *Lowercase*: it converts the resulting String to lower case; 
+  - *ReplaceAll*: it returns a new string with all matches of a substring replaced by a replacement;
+  - *Trim*: it trims the resulting String;
+
+In addition, three parameters combined will define the behavior of an extractor:
 - **all_matches**: whether the regex will loop through all the matches or only the first one will be considered. 
 Accepted values are _true_ and _false_. If omitted, it defaults to _false_
 - **match**, **named_match** or **single_key_match**: a string value representing the regex to be executed. In detail:
@@ -987,6 +995,36 @@ for each match:
   },
 ]
 ```
+
+**Option 7 - Using the WITH modifiers_post** 
+```json
+"WITH": {
+      "server_info": {
+        "from": "${event.payload.email.body}",
+        "regex": {
+          "all_matches": false,
+          "match": "STATUS:\s+(.*)\s+HOSTNAME:\s+(.*)SERVICENAME:\s+(.*)",
+          "group_match_idx": 1
+        },
+        "modifiers_post": [
+            {
+              "type": "Lowercase"
+            },
+            {
+              "type": "ReplaceAll",
+              "find": "to be found",
+              "replace": "to be replaced with"
+            },
+            {
+              "type": "Trim"
+            }
+        ]
+      }
+    }
+```
+This extractor has three modifiers that will be applied to the extracted value.
+The modifiers are applied by the order they are declared. 
+
 
 ### Complete Rule Example 1
 
