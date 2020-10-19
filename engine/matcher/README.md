@@ -789,7 +789,7 @@ to obtain the desired result.
 
 Common entries to all configurations:
 - **from**: An expression that determines to value to which to apply the extractor regex;
-- **modifiers_post**: A list of String modifiers to post process the extracted value. These can be:
+- **modifiers_post**: A list of String modifiers to post process the extracted value. They can be:
 
   - *Lowercase*: it converts the resulting String to lower case; 
   - *ReplaceAll*: it returns a new string with all matches of a substring replaced by a replacement;
