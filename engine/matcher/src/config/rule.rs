@@ -43,6 +43,7 @@ pub struct Extractor {
 #[serde(deny_unknown_fields)]
 pub enum Modifier {
     Trim {},
+    Lowercase {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

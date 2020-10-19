@@ -1565,6 +1565,44 @@ mod test {
         assert!(result.is_err());
     }
 
+    #[test]
+    fn should_apply_chained_modifiers() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert(
+            "1".to_owned(),
+            Value::Text("    Hello to be trimmed AND LOWERCASED    ".to_owned()),
+        );
+
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids.1}".to_string(),
+                regex: ExtractorRegex::Regex {
+                    regex: r#".*"#.to_string(),
+                    all_matches: Some(false),
+                    group_match_idx: Some(0),
+                },
+                modifiers_post: vec![Modifier::Trim {}, Modifier::Lowercase {}],
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None).unwrap();
+
+        // Assert
+        assert_eq!(Value::Text("hello to be trimmed and lowercased".to_owned()), result);
+    }
+
     fn new_event(event_type: &str) -> InternalEvent {
         InternalEvent::new(Event::new(event_type))
     }
