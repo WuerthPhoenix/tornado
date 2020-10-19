@@ -58,6 +58,24 @@ mod test {
     }
 
     #[test]
+    fn replace_all_modifier_should_be_case_sensitive() {
+        let find_text = "TexT";
+        let replace_text = "new_TexT";
+
+        {
+            let mut input = Value::Text("text".to_owned());
+            replace_all("", &mut input, find_text, replace_text).unwrap();
+            assert_eq!(Value::Text("text".to_owned()), input);
+        }
+
+        {
+            let mut input = Value::Text("TexT".to_owned());
+            replace_all("", &mut input, find_text, replace_text).unwrap();
+            assert_eq!(Value::Text("new_TexT".to_owned()), input);
+        }
+    }
+
+    #[test]
     fn replace_all_modifier_should_fail_if_value_not_a_string() {
         let find_text = "text";
         let replace_text = "new_text";
