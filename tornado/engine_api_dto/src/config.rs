@@ -27,6 +27,16 @@ pub struct ConstraintDto {
 pub struct ExtractorDto {
     pub from: String,
     pub regex: ExtractorRegexDto,
+    #[serde(default)]
+    pub modifiers_post: Vec<ModifierDto>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+pub enum ModifierDto {
+    Lowercase {},
+    ReplaceAll { find: String, replace: String },
+    Trim {},
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
