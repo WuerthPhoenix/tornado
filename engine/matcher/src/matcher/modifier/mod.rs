@@ -3,6 +3,8 @@ use crate::error::MatcherError;
 use log::*;
 use tornado_common_api::Value;
 
+pub mod trim;
+
 #[derive(Debug, PartialEq)]
 pub enum ValueModifier {
     Trim,
@@ -29,22 +31,7 @@ impl ValueModifier {
 
     pub fn apply(&self, variable_name: &str, value: &mut Value) -> Result<(), MatcherError> {
         match self {
-            ValueModifier::Trim => {
-                if let Some(text) = value.get_text() {
-                    let trimmed = text.trim();
-                    if trimmed.len() < text.len() {
-                        *value = Value::Text(trimmed.to_owned());
-                    }
-                    Ok(())
-                } else {
-                    Err(MatcherError::ExtractedVariableError {
-                        message:
-                            "The 'trim' modifier can be used only with values of type 'string'"
-                                .to_owned(),
-                        variable_name: variable_name.to_owned(),
-                    })
-                }
-            }
+            ValueModifier::Trim => trim::trim(variable_name, value),
         }
     }
 }
@@ -102,28 +89,6 @@ mod test {
             let mut input = Value::Text(" to be trimmed  ".to_owned());
             value_modifier.apply("", &mut input).unwrap();
             assert_eq!(Value::Text("to be trimmed".to_owned()), input);
-        }
-    }
-
-    #[test]
-    fn trim_modifier_should_fail_if_value_not_a_string() {
-        // Arrange
-        let value_modifier = ValueModifier::Trim;
-
-        // Act & Assert
-        {
-            let mut input = Value::Array(vec![]);
-            assert!(value_modifier.apply("", &mut input).is_err());
-        }
-
-        {
-            let mut input = Value::Map(HashMap::new());
-            assert!(value_modifier.apply("", &mut input).is_err());
-        }
-
-        {
-            let mut input = Value::Bool(true);
-            assert!(value_modifier.apply("", &mut input).is_err());
         }
     }
 }
