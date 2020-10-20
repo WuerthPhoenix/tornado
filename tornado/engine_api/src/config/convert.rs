@@ -268,7 +268,15 @@ fn dto_into_operator(operator: OperatorDto) -> Result<Operator, Error> {
 }
 
 fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
-    Extractor { from: extractor.from, regex: dto_into_extractor_regex(extractor.regex) }
+    let remove_me = 1;
+    // ToDo: to be replaced with modifiers from the DTO
+    // See: https://siwuerthphoenix.atlassian.net/browse/TOR-271
+    let modifiers_post = vec![];
+    Extractor {
+        from: extractor.from,
+        regex: dto_into_extractor_regex(extractor.regex),
+        modifiers_post,
+    }
 }
 
 fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRegex {

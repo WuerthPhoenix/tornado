@@ -262,6 +262,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 

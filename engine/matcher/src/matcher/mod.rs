@@ -1,5 +1,6 @@
 pub mod action;
 pub mod extractor;
+pub mod modifier;
 pub mod operator;
 
 use crate::config::MatcherConfig;
@@ -584,6 +585,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -684,6 +686,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -733,6 +736,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -884,6 +888,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -938,6 +943,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -958,6 +964,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1024,6 +1031,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1044,6 +1052,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1106,6 +1115,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1166,6 +1176,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1653,6 +1664,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -1667,6 +1679,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -2229,6 +2242,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -2249,6 +2263,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -2313,6 +2328,7 @@ mod test {
                         group_match_idx: Some(0),
                         all_matches: None,
                     },
+                    modifiers_post: vec![],
                 },
             );
 
@@ -2334,6 +2350,7 @@ mod test {
                         regex: String::from(r"(?P<VALUE>[0-9]+)"),
                         all_matches: None,
                     },
+                    modifiers_post: vec![],
                 },
             );
 

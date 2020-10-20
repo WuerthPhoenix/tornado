@@ -7,6 +7,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::{Extractor, ExtractorRegex};
 use crate::error::MatcherError;
+use crate::matcher::modifier::ValueModifier;
 use crate::model::InternalEvent;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
@@ -48,6 +49,7 @@ impl MatcherExtractorBuilder {
     ///                group_match_idx: Some(0),
     ///                all_matches: None,
     ///            },
+    ///            modifiers_post: vec![],
     ///        },
     ///    );
     ///
@@ -138,6 +140,7 @@ impl MatcherExtractor {
 struct ValueExtractor {
     pub key: String,
     pub regex_extractor: RegexValueExtractor,
+    pub modifiers_post: Vec<ValueModifier>,
 }
 
 impl ValueExtractor {
@@ -150,6 +153,7 @@ impl ValueExtractor {
         Ok(Self {
             key: key.to_owned(),
             regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
+            modifiers_post: ValueModifier::build(rule_name, &extractor.modifiers_post)?,
         })
     }
 
@@ -159,7 +163,12 @@ impl ValueExtractor {
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
     ) -> Result<Value, MatcherError> {
-        self.regex_extractor.extract(variable_name, event, extracted_vars)
+        let mut extracted_value =
+            self.regex_extractor.extract(variable_name, event, extracted_vars)?;
+        for modifier in &self.modifiers_post {
+            modifier.apply(variable_name, &mut extracted_value)?;
+        }
+        Ok(extracted_value)
     }
 }
 
@@ -508,7 +517,7 @@ fn has_named_groups(regex: &RustRegex) -> bool {
 mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use crate::config::rule::ExtractorRegex;
+    use crate::config::rule::{ExtractorRegex, Modifier};
     use maplit::*;
     use std::collections::HashMap;
     use tornado_common_api::Event;
@@ -525,10 +534,33 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
         assert!(extractor.is_ok());
+    }
+
+    #[test]
+    fn should_build_an_extractor_with_trim_modifier() {
+        // Arrange
+        let rule_extractor = Extractor {
+            from: "".to_string(),
+            regex: ExtractorRegex::Regex {
+                regex: "".to_string(),
+                group_match_idx: Some(0),
+                all_matches: None,
+            },
+            modifiers_post: vec![Modifier::Trim {}],
+        };
+
+        // Act
+        let extractor =
+            ValueExtractor::build("rule_name", "key", &rule_extractor, &AccessorBuilder::new())
+                .unwrap();
+
+        // Assert
+        assert_eq!(vec![ValueModifier::Trim], extractor.modifiers_post);
     }
 
     #[test]
@@ -543,6 +575,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -561,6 +594,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -586,6 +620,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -608,6 +643,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -633,6 +669,7 @@ mod test {
                     group_match_idx: Some(2),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -658,6 +695,7 @@ mod test {
                     group_match_idx: Some(10000),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -680,6 +718,7 @@ mod test {
                     group_match_idx: Some(10000),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -702,6 +741,7 @@ mod test {
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -725,6 +765,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -737,6 +778,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -772,6 +814,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -784,6 +827,7 @@ mod test {
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
         );
 
@@ -807,6 +851,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -837,6 +882,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -875,6 +921,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -897,6 +944,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -919,6 +967,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -942,6 +991,7 @@ mod test {
                     group_match_idx: None,
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -972,6 +1022,7 @@ mod test {
                         .to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1001,6 +1052,7 @@ mod test {
                         .to_string(),
                     all_matches: Some(false),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1028,6 +1080,7 @@ mod test {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1050,6 +1103,7 @@ mod test {
                         .to_string(),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1085,6 +1139,7 @@ mod test {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: Some(true),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1106,7 +1161,8 @@ mod test {
                     regex: r#"(?P<PID>[0-9]+)\s+(?P<Time>[0-9:]+)\s+(?P<UserId>[0-9]+)\s+(?P<UserName>\w+)\s+(?P<ServerName>\w+)\s+(?P<Level>[0-9]+)"#
                     .to_string(),
                     all_matches: Some(true),
-                }
+                },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1190,6 +1246,7 @@ mod test {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
                     all_matches: None,
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -1205,6 +1262,7 @@ mod test {
             &Extractor {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::SingleKeyRegex { regex: "[".to_string() },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         );
@@ -1223,6 +1281,7 @@ mod test {
             &Extractor {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::SingleKeyRegex { regex: regex.to_string() },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1267,6 +1326,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1306,6 +1366,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1356,6 +1417,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNe[a-z.A-Z0.9]*"#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1398,6 +1460,7 @@ mod test {
                 regex: ExtractorRegex::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
+                modifiers_post: vec![],
             },
             &AccessorBuilder::new(),
         )
@@ -1415,6 +1478,91 @@ mod test {
             Err(MatcherError::MissingExtractedVariableError { variable_name: "var".to_owned() }),
             result
         )
+    }
+
+    #[test]
+    fn should_apply_the_trim_post_modifier() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert("1".to_owned(), Value::Text("Hello not to be trimmed".to_owned()));
+        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
+
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor_1 = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids}".to_string(),
+                regex: ExtractorRegex::SingleKeyRegex { regex: r#"1"#.to_string() },
+                modifiers_post: vec![Modifier::Trim {}, Modifier::Trim {}],
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let extractor_2 = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids.2}".to_string(),
+                regex: ExtractorRegex::Regex {
+                    regex: r#".*"#.to_string(),
+                    all_matches: Some(false),
+                    group_match_idx: Some(0),
+                },
+                modifiers_post: vec![Modifier::Trim {}],
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result_1 = extractor_1.extract("var", &event, None).unwrap();
+        let result_2 = extractor_2.extract("var", &event, None).unwrap();
+
+        // Assert
+        assert_eq!(Value::Text("Hello not to be trimmed".to_owned()), result_1);
+        assert_eq!(Value::Text("Hello to be trimmed".to_owned()), result_2);
+    }
+
+    #[test]
+    fn extractor_should_fail_if_trim_post_modifier_is_not_applied_to_string() {
+        // Arrange
+        let mut oids = HashMap::new();
+        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
+
+        let mut payload = HashMap::new();
+        payload.insert("oids".to_owned(), Value::Map(oids));
+
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor {
+                from: "${event.payload.oids.2}".to_string(),
+                regex: ExtractorRegex::Regex {
+                    regex: r#".*"#.to_string(),
+                    all_matches: Some(true),
+                    group_match_idx: None,
+                },
+                modifiers_post: vec![Modifier::Trim {}],
+            },
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut event = new_event("event");
+        event.payload = Value::Map(payload);
+
+        // Act
+        let result = extractor.extract("var", &event, None);
+
+        // Assert
+        assert!(result.is_err());
     }
 
     fn new_event(event_type: &str) -> InternalEvent {
