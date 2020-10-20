@@ -1587,7 +1587,14 @@ mod test {
                     all_matches: Some(false),
                     group_match_idx: Some(0),
                 },
-                modifiers_post: vec![Modifier::Trim {}, Modifier::Lowercase {}],
+                modifiers_post: vec![
+                    Modifier::Trim {},
+                    Modifier::Lowercase {},
+                    Modifier::ReplaceAll {
+                        find: "and".to_owned(),
+                        replace: "replaced_and".to_owned(),
+                    },
+                ],
             },
             &AccessorBuilder::new(),
         )
@@ -1600,7 +1607,7 @@ mod test {
         let result = extractor.extract("var", &event, None).unwrap();
 
         // Assert
-        assert_eq!(Value::Text("hello to be trimmed and lowercased".to_owned()), result);
+        assert_eq!(Value::Text("hello to be trimmed replaced_and lowercased".to_owned()), result);
     }
 
     fn new_event(event_type: &str) -> InternalEvent {
