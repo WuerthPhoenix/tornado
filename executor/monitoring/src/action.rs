@@ -103,9 +103,27 @@ mod test {
     }
 
     #[test]
-    fn should_parse_a_simple_create_and_or_process_passive_check_result_action() {
+    fn should_parse_a_simple_create_and_or_process_passive_check_result_action_for_a_host() {
         // Arrange
-        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result.json";
+        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = MonitoringAction::new(&action).unwrap();
+
+        // Assert
+        match action {
+            MonitoringAction::SimpleCreateAndProcess { .. } => {}
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_or_process_passive_check_result_action_for_a_service() {
+        // Arrange
+        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
         let action: Action = serde_json::from_str(&json).unwrap();
