@@ -1,21 +1,17 @@
+use action::MonitoringAction;
 use log::*;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError, RetriableError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
-    DirectorAction, DirectorExecutor,
-    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
+    DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
-use tornado_executor_icinga2::{
-    Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
-};
-use action::MonitoringAction;
+use tornado_executor_icinga2::{Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE};
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
 pub const ICINGA_FIELD_FOR_SPECIFYING_SERVICE: &str = "service";
-
 
 mod action;
 
@@ -41,14 +37,6 @@ impl MonitoringExecutor {
             icinga_executor: Icinga2Executor::new(icinga2_client_config)?,
             director_executor: DirectorExecutor::new(director_client_config)?,
         })
-    }
-
-    fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
-            |err| ExecutorError::ConfigurationError {
-                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
-            },
-        )?)
     }
 
     fn perform_creation_of_icinga_objects(
@@ -106,7 +94,7 @@ impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;
+        let monitoring_action = MonitoringAction::new(&action)?;
 
         // we need to be sure that the icinga2 action specifies the object on which to apply the action
         // with the fields "host" or "service", and not, e.g. with "filter"
@@ -243,10 +231,10 @@ mod test {
 
         // Assert
         match result {
-            Err(ExecutorError::ConfigurationError{message}) => {
+            Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("unknown variant `my_invalid_action`"))
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -488,39 +476,4 @@ mod test {
         // Assert
         assert!(result.is_ok());
     }
-
-    #[test]
-    fn should_parse_a_create_and_or_process_service_passive_check_result_action() {
-        // Arrange
-        let filename = "./tests_resources/create_and_or_process_service_passive_check_result.json";
-        let json = std::fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
-        let action: Action = serde_json::from_str(&json).unwrap();
-
-        // Act
-        let action = MonitoringExecutor::parse_monitoring_action(&action).unwrap();
-
-        // Assert
-        match action {
-            MonitoringAction::Service {..} => {},
-            _ => assert!(false)
-        }
-    }
-
-    #[test]
-    fn should_parse_a_simple_create_and_or_process_passive_check_result_action() {
-        // Arrange
-        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result.json";
-        let json = std::fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
-        let action: Action = serde_json::from_str(&json).unwrap();
-
-        // Act
-        let action = MonitoringExecutor::parse_monitoring_action(&action).unwrap();
-
-        // Assert
-        match action {
-            MonitoringAction::SimpleCreateAndProcess {..} => {},
-            _ => assert!(false)
-        }
-    }
-
 }

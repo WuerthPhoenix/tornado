@@ -1,7 +1,8 @@
-use tornado_common_api::{Payload, Value};
-use tornado_executor_icinga2::Icinga2Action;
-use tornado_executor_director::{DirectorAction, DirectorActionName};
 use serde::{Deserialize, Serialize};
+use tornado_common_api::{Action, Payload, Value};
+use tornado_executor_common::ExecutorError;
+use tornado_executor_director::{DirectorAction, DirectorActionName};
+use tornado_executor_icinga2::Icinga2Action;
 
 const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 
@@ -21,6 +22,14 @@ pub enum MonitoringAction {
 }
 
 impl MonitoringAction {
+    pub fn new(action: &Action) -> Result<MonitoringAction, ExecutorError> {
+        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
+            |err| ExecutorError::ConfigurationError {
+                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+            },
+        )?)
+    }
+
     // Transforms the MonitoringAction into the actions needed to call the IcingaExecutor and the
     // DirectorExecutor.
     // Returns a triple, with these elements:
@@ -66,6 +75,48 @@ impl MonitoringAction {
                 let remove_me = 0;
                 unimplemented!()
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn should_parse_a_create_and_or_process_service_passive_check_result_action() {
+        // Arrange
+        let filename = "./tests_resources/create_and_or_process_service_passive_check_result.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = MonitoringAction::new(&action).unwrap();
+
+        // Assert
+        match action {
+            MonitoringAction::Service { .. } => {}
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_or_process_passive_check_result_action() {
+        // Arrange
+        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = MonitoringAction::new(&action).unwrap();
+
+        // Assert
+        match action {
+            MonitoringAction::SimpleCreateAndProcess { .. } => {}
+            _ => assert!(false),
         }
     }
 }
