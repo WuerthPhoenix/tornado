@@ -10,8 +10,6 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE};
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
-pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
-pub const ICINGA_FIELD_FOR_SPECIFYING_SERVICE: &str = "service";
 
 mod action;
 
@@ -96,27 +94,9 @@ impl Executor for MonitoringExecutor {
 
         let monitoring_action = MonitoringAction::new(&action)?;
 
-        // we need to be sure that the icinga2 action specifies the object on which to apply the action
-        // with the fields "host" or "service", and not, e.g. with "filter"
-        match &monitoring_action {
-            MonitoringAction::Host { process_check_result_payload, .. } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_HOST, "process_check_result_payload", "create_and_or_process_host_passive_check_result" ) });
-                }
-            }
-            MonitoringAction::Service { process_check_result_payload, .. } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_SERVICE).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_SERVICE, "process_check_result_payload", "create_and_or_process_service_passive_check_result" ) });
-                }
-            }
-            MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
-                let remove_me = 0;
-                unimplemented!()
-            }
-        };
-
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
-            monitoring_action.to_sub_actions();
+            monitoring_action.to_sub_actions()?;
+
         let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
 
         match icinga2_action_result {
@@ -377,8 +357,12 @@ mod test {
         println!("{:?}", result);
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(result, Err(ExecutorError::ConfigurationError { message: "Monitoring action expects that Icinga objects affected by the action are specified with field 'host' inside 'process_check_result_payload' for action 'create_and_or_process_host_passive_check_result'".to_string() }))
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Monitoring action expects that Icinga objects affected by the action are specified with field 'host'"))
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
@@ -422,8 +406,12 @@ mod test {
         println!("{:?}", result);
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(result, Err(ExecutorError::ConfigurationError { message: "Monitoring action expects that Icinga objects affected by the action are specified with field 'service' inside 'process_check_result_payload' for action 'create_and_or_process_service_passive_check_result'".to_string() }))
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Monitoring action expects that Icinga objects affected by the action are specified with field 'service'"))
+            }
+            _ => assert!(false),
+        }
     }
 
     #[test]
