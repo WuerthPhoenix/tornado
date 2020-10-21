@@ -7,7 +7,7 @@
       "plugin_output": "Output message"
     },
     "host": {
-      "name": "my_host",
+      "object_name": "my_host",
       "address": "127.1.2.3",
       "imports": "my_host_template",
       "vars": {
@@ -15,7 +15,7 @@
       }
     },
     "service": {
-      "name": "my_service",
+      "object_name": "my_service",
       "imports": "my_service_template",
       "check_command": "ping"
     }

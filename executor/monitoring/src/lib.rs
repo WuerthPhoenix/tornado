@@ -92,7 +92,7 @@ impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let monitoring_action = MonitoringAction::new(&action)?;
+        let mut monitoring_action = MonitoringAction::new(&action)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.to_sub_actions()?;

@@ -12,12 +12,12 @@ pub const ICINGA_FIELD_FOR_SPECIFYING_SERVICE: &str = "service";
 #[serde(tag = "action_name")]
 pub enum MonitoringAction {
     #[serde(rename = "create_and_or_process_host_passive_check_result")]
-    Host { process_check_result_payload: Payload, host_creation_payload: Value },
+    Host { process_check_result_payload: Payload, host_creation_payload: Payload },
     #[serde(rename = "create_and_or_process_service_passive_check_result")]
     Service {
         process_check_result_payload: Payload,
-        host_creation_payload: Value,
-        service_creation_payload: Value,
+        host_creation_payload: Payload,
+        service_creation_payload: Payload,
     },
     #[serde(rename = "simple_create_and_or_process_passive_check_result")]
     SimpleCreateAndProcess { check_result: Payload, host: Payload, service: Option<Payload> },
@@ -40,9 +40,9 @@ impl MonitoringAction {
     // 3. Option<DirectorAction> that will perform the creation of the service through the
     // DirectorAction. This is Some if MonitoringAction is of type Service, None otherwise
     pub fn to_sub_actions(
-        &self,
+        &mut self,
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
-        match &self {
+        match self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => {
                 if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
                     return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_HOST, "process_check_result_payload", "create_and_or_process_host_passive_check_result" ) });
@@ -86,8 +86,29 @@ impl MonitoringAction {
                 ))
             }
             MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
-                let remove_me = 0;
-                unimplemented!()
+
+                host.insert("object_type".to_owned(), Value::Text("Object".to_owned()));
+                let host_object_name = host.get("object_name").and_then(|value| value.get_text()).ok_or_else(||
+                    ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}' for action '{}' is of type text", "object_name", "host", "simple_create_and_or_process_passive_check_result" ) }
+                )?;
+
+                let create_host_director_action = DirectorAction {
+                    name: DirectorActionName::CreateHost,
+                    payload: host,
+                    live_creation: true,
+                };
+
+                check_result.insert("type".to_owned(), Value::Text("Host".to_owned()));
+                check_result.insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
+
+                Ok((Icinga2Action {
+                    name: PROCESS_CHECK_RESULT_SUBURL,
+                    payload: Some(check_result),
+                }, DirectorAction {
+                    name: DirectorActionName::CreateHost,
+                    payload: host,
+                    live_creation: true,
+                }, None))
             }
         }
     }
@@ -99,6 +120,7 @@ mod test {
     use super::*;
     use maplit::*;
     use std::collections::HashMap;
+    use tornado_common_api::Value;
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
@@ -117,7 +139,7 @@ mod test {
         );
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
-        let monitoring_action = MonitoringAction::new(&action).unwrap();
+        let mut monitoring_action = MonitoringAction::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.to_sub_actions();
@@ -150,7 +172,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
-        let monitoring_action = MonitoringAction::new(&action).unwrap();
+        let mut monitoring_action = MonitoringAction::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.to_sub_actions();
@@ -220,5 +242,27 @@ mod test {
             MonitoringAction::SimpleCreateAndProcess { .. } => {}
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn simple_create_should_be_equivalent_to_full_create_host_01() {
+        // Arrange
+        let filename_full = "./tests_resources/monitoring_host_01_full.json";
+        let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
+
+        let action_full: Action = serde_json::from_str(&std::fs::read_to_string(filename_full)
+            .expect(&format!("Unable to open the file [{}]", filename_full))).unwrap();
+
+        let action_simple: Action = serde_json::from_str(&std::fs::read_to_string(filename_simple)
+            .expect(&format!("Unable to open the file [{}]", filename_simple))).unwrap();
+
+        // Act
+        let mut monitoring_action_full = MonitoringAction::new(&action_full).unwrap();
+        let sub_actions_full = monitoring_action_full.to_sub_actions().unwrap();
+
+        let mut monitoring_action_simple = MonitoringAction::new(&action_simple).unwrap();
+        let sub_actions_simple = monitoring_action_simple.to_sub_actions().unwrap();
+        // Assert
+        assert_eq!(sub_actions_full, sub_actions_simple)
     }
 }

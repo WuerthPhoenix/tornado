@@ -3,7 +3,6 @@ use log::*;
 use serde::*;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_common_api::Value;
 use tornado_executor_common::{Executor, ExecutorError};
 
 pub mod config;
@@ -56,8 +55,8 @@ impl DirectorExecutor {
         Ok(DirectorExecutor { api_client: config.new_client()? })
     }
 
-    fn get_payload<'a>(&self, payload: &'a Payload) -> Result<&'a Value, ExecutorError> {
-        payload.get(DIRECTOR_ACTION_PAYLOAD_KEY).ok_or(ExecutorError::MissingArgumentError {
+    fn get_payload<'a>(&self, payload: &'a Payload) -> Result<&'a Payload, ExecutorError> {
+        payload.get(DIRECTOR_ACTION_PAYLOAD_KEY).and_then(|value| value.get_map()).ok_or(ExecutorError::MissingArgumentError {
             message: "Director Action Payload not specified".to_string(),
         })
     }
@@ -166,7 +165,7 @@ impl Executor for DirectorExecutor {
 #[derive(Debug, PartialEq, Serialize)]
 pub struct DirectorAction<'a> {
     pub name: DirectorActionName,
-    pub payload: &'a Value,
+    pub payload: &'a Payload,
     pub live_creation: bool,
 }
 
@@ -258,10 +257,10 @@ mod test {
         assert_eq!(
             Ok(DirectorAction {
                 name: DirectorActionName::CreateHost,
-                payload: &Value::Map(hashmap![
+                payload: &hashmap![
                     "filter".to_owned() => Value::Text("filter_value".to_owned()),
                     "type".to_owned() => Value::Text("Host".to_owned())
-                ]),
+                ],
                 live_creation: false
             }),
             result

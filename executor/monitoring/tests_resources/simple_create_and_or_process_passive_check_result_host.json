@@ -8,7 +8,7 @@
       "performance_data": "blablabla | 1,2,3"
     },
     "host": {
-      "name": "my_host",
+      "object_name": "my_host",
       "address": "127.0.0.2",
       "imports": "my_host_template",
       "vars": {}
