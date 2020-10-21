@@ -56,9 +56,11 @@ impl DirectorExecutor {
     }
 
     fn get_payload<'a>(&self, payload: &'a Payload) -> Result<&'a Payload, ExecutorError> {
-        payload.get(DIRECTOR_ACTION_PAYLOAD_KEY).and_then(|value| value.get_map()).ok_or(ExecutorError::MissingArgumentError {
-            message: "Director Action Payload not specified".to_string(),
-        })
+        payload.get(DIRECTOR_ACTION_PAYLOAD_KEY).and_then(|value| value.get_map()).ok_or(
+            ExecutorError::MissingArgumentError {
+                message: "Director Action Payload not specified".to_string(),
+            },
+        )
     }
 
     fn get_live_creation_setting(&self, payload: &Payload) -> bool {

@@ -39,7 +39,7 @@ impl MonitoringAction {
     // 2. DirectorAction that will perform the creation of the host through the DirectorAction
     // 3. Option<DirectorAction> that will perform the creation of the service through the
     // DirectorAction. This is Some if MonitoringAction is of type Service, None otherwise
-    pub fn to_sub_actions(
+    pub fn build_sub_actions(
         &mut self,
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
         match self {
@@ -86,29 +86,55 @@ impl MonitoringAction {
                 ))
             }
             MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
-
                 host.insert("object_type".to_owned(), Value::Text("Object".to_owned()));
                 let host_object_name = host.get("object_name").and_then(|value| value.get_text()).ok_or_else(||
                     ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}' for action '{}' is of type text", "object_name", "host", "simple_create_and_or_process_passive_check_result" ) }
                 )?;
 
-                let create_host_director_action = DirectorAction {
+                let director_create_host_action = DirectorAction {
                     name: DirectorActionName::CreateHost,
                     payload: host,
                     live_creation: true,
                 };
 
-                check_result.insert("type".to_owned(), Value::Text("Host".to_owned()));
-                check_result.insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
-
-                Ok((Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL,
-                    payload: Some(check_result),
-                }, DirectorAction {
-                    name: DirectorActionName::CreateHost,
-                    payload: host,
-                    live_creation: true,
-                }, None))
+                if let Some(service_payload) = service {
+                    service_payload
+                        .insert("object_type".to_owned(), Value::Text("Object".to_owned()));
+                    service_payload
+                        .insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
+                    let service_object_name = service_payload.get("object_name").and_then(|value| value.get_text()).ok_or_else(||
+                        ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}' for action '{}' is of type text", "object_name", "service", "simple_create_and_or_process_passive_check_result" ) }
+                    )?;
+                    check_result.insert("type".to_owned(), Value::Text("Service".to_owned()));
+                    check_result.insert(
+                        "service".to_owned(),
+                        Value::Text(format!("{}!{}", host_object_name, service_object_name)),
+                    );
+                    Ok((
+                        Icinga2Action {
+                            name: PROCESS_CHECK_RESULT_SUBURL,
+                            payload: Some(check_result),
+                        },
+                        director_create_host_action,
+                        Some(DirectorAction {
+                            name: DirectorActionName::CreateService,
+                            payload: service_payload,
+                            live_creation: true,
+                        }),
+                    ))
+                } else {
+                    check_result.insert("type".to_owned(), Value::Text("Host".to_owned()));
+                    check_result
+                        .insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
+                    Ok((
+                        Icinga2Action {
+                            name: PROCESS_CHECK_RESULT_SUBURL,
+                            payload: Some(check_result),
+                        },
+                        director_create_host_action,
+                        None,
+                    ))
+                }
             }
         }
     }
@@ -142,7 +168,7 @@ mod test {
         let mut monitoring_action = MonitoringAction::new(&action).unwrap();
 
         // Act
-        let result = monitoring_action.to_sub_actions();
+        let result = monitoring_action.build_sub_actions();
         println!("{:?}", result);
 
         // Assert
@@ -175,7 +201,7 @@ mod test {
         let mut monitoring_action = MonitoringAction::new(&action).unwrap();
 
         // Act
-        let result = monitoring_action.to_sub_actions();
+        let result = monitoring_action.build_sub_actions();
 
         println!("{:?}", result);
 
@@ -250,18 +276,52 @@ mod test {
         let filename_full = "./tests_resources/monitoring_host_01_full.json";
         let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
 
-        let action_full: Action = serde_json::from_str(&std::fs::read_to_string(filename_full)
-            .expect(&format!("Unable to open the file [{}]", filename_full))).unwrap();
+        let action_full: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_full)
+                .expect(&format!("Unable to open the file [{}]", filename_full)),
+        )
+        .unwrap();
 
-        let action_simple: Action = serde_json::from_str(&std::fs::read_to_string(filename_simple)
-            .expect(&format!("Unable to open the file [{}]", filename_simple))).unwrap();
+        let action_simple: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_simple)
+                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+        )
+        .unwrap();
 
         // Act
         let mut monitoring_action_full = MonitoringAction::new(&action_full).unwrap();
-        let sub_actions_full = monitoring_action_full.to_sub_actions().unwrap();
+        let sub_actions_full = monitoring_action_full.build_sub_actions().unwrap();
 
         let mut monitoring_action_simple = MonitoringAction::new(&action_simple).unwrap();
-        let sub_actions_simple = monitoring_action_simple.to_sub_actions().unwrap();
+        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
+        // Assert
+        assert_eq!(sub_actions_full, sub_actions_simple)
+    }
+
+    #[test]
+    fn simple_create_should_be_equivalent_to_full_create_service_01() {
+        // Arrange
+        let filename_full = "./tests_resources/monitoring_service_01_full.json";
+        let filename_simple = "./tests_resources/monitoring_service_01_simple.json";
+
+        let action_full: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_full)
+                .expect(&format!("Unable to open the file [{}]", filename_full)),
+        )
+        .unwrap();
+
+        let action_simple: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_simple)
+                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+        )
+        .unwrap();
+
+        // Act
+        let mut monitoring_action_full = MonitoringAction::new(&action_full).unwrap();
+        let sub_actions_full = monitoring_action_full.build_sub_actions().unwrap();
+
+        let mut monitoring_action_simple = MonitoringAction::new(&action_simple).unwrap();
+        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
         // Assert
         assert_eq!(sub_actions_full, sub_actions_simple)
     }

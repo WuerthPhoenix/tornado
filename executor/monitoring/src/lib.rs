@@ -95,7 +95,7 @@ impl Executor for MonitoringExecutor {
         let mut monitoring_action = MonitoringAction::new(&action)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
-            monitoring_action.to_sub_actions()?;
+            monitoring_action.build_sub_actions()?;
 
         let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
 
