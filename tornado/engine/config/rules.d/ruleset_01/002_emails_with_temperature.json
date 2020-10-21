@@ -19,7 +19,12 @@
         "regex": {
           "match": "[0-9]+\\sDegrees",
           "group_match_idx": 0
-        }
+        },
+        "modifiers_post": [
+          {
+            "type": "Trim"
+          }
+        ]
       }
     }
   },

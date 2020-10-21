@@ -34,6 +34,17 @@ pub struct Constraint {
 pub struct Extractor {
     pub from: String,
     pub regex: ExtractorRegex,
+    #[serde(default)]
+    pub modifiers_post: Vec<Modifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(tag = "type")]
+#[serde(deny_unknown_fields)]
+pub enum Modifier {
+    Lowercase {},
+    ReplaceAll { find: String, replace: String },
+    Trim {},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -223,6 +234,13 @@ mod test {
         let json = file_to_string("./test_resources/rules/006_with_single_key_match.json");
         let rule = Rule::from_json(&json);
 
+        assert!(rule.is_ok());
+    }
+
+    #[test]
+    fn should_deserialize_rule_from_json_with_modifiers_post() {
+        let json = file_to_string("./test_resources/rules/007_with_modifiers_post.json");
+        let rule = Rule::from_json(&json);
         assert!(rule.is_ok());
     }
 }

@@ -295,7 +295,7 @@ mod test {
             MatcherConfig::Ruleset { name, rules } => {
                 assert_eq!("root", name);
 
-                assert_eq!(6, rules.len());
+                assert_eq!(7, rules.len());
 
                 assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
                 assert_eq!("rule_without_where", rules.get(1).unwrap().name);

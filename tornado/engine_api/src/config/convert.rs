@@ -1,11 +1,12 @@
 use serde_json::Error;
 use tornado_engine_api_dto::config::{
     ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
-    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, OperatorDto, RuleDto,
+    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
+    RuleDto,
 };
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
-    Action, Constraint, Extractor, ExtractorRegex, Operator, Rule,
+    Action, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
 };
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
 
@@ -131,7 +132,19 @@ fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
 }
 
 fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
-    ExtractorDto { from: extractor.from, regex: extractor_regex_into_dto(extractor.regex) }
+    ExtractorDto {
+        from: extractor.from,
+        regex: extractor_regex_into_dto(extractor.regex),
+        modifiers_post: extractor
+            .modifiers_post
+            .into_iter()
+            .map(|modifier| match modifier {
+                Modifier::Lowercase {} => ModifierDto::Lowercase {},
+                Modifier::ReplaceAll { find, replace } => ModifierDto::ReplaceAll { find, replace },
+                Modifier::Trim {} => ModifierDto::Trim {},
+            })
+            .collect(),
+    }
 }
 
 fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDto {
@@ -268,7 +281,19 @@ fn dto_into_operator(operator: OperatorDto) -> Result<Operator, Error> {
 }
 
 fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
-    Extractor { from: extractor.from, regex: dto_into_extractor_regex(extractor.regex) }
+    Extractor {
+        from: extractor.from,
+        regex: dto_into_extractor_regex(extractor.regex),
+        modifiers_post: extractor
+            .modifiers_post
+            .into_iter()
+            .map(|modifier| match modifier {
+                ModifierDto::Lowercase {} => Modifier::Lowercase {},
+                ModifierDto::ReplaceAll { find, replace } => Modifier::ReplaceAll { find, replace },
+                ModifierDto::Trim {} => Modifier::Trim {},
+            })
+            .collect(),
+    }
 }
 
 fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRegex {
