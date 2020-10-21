@@ -29,6 +29,8 @@ pub enum MonitoringAction {
         host_creation_payload: Value,
         service_creation_payload: Value,
     },
+    #[serde(rename = "simple_create_and_or_process_passive_check_result")]
+    SimpleCreateAndProcess { check_result: Payload, host: Payload, service: Option<Payload> },
 }
 
 impl MonitoringAction {
@@ -73,6 +75,10 @@ impl MonitoringAction {
                     live_creation: true,
                 }),
             ),
+            MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
+                let remove_me = 0;
+                unimplemented!()
+            }
         }
     }
 }
@@ -101,7 +107,7 @@ impl MonitoringExecutor {
         })
     }
 
-    pub fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
+    fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
         Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
             |err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
@@ -178,6 +184,10 @@ impl Executor for MonitoringExecutor {
                 if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_SERVICE).is_none() {
                     return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_SERVICE, "process_check_result_payload", "create_and_or_process_service_passive_check_result" ) });
                 }
+            }
+            MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
+                let remove_me = 0;
+                unimplemented!()
             }
         };
 
@@ -296,13 +306,12 @@ mod test {
         let result = executor.execute(&action);
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message: "Invalid Monitoring Action configuration. Err: unknown variant `my_invalid_action`, expected `create_and_or_process_host_passive_check_result` or `create_and_or_process_service_passive_check_result`".to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError{message}) => {
+                assert!(message.contains("unknown variant `my_invalid_action`"))
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -543,4 +552,39 @@ mod test {
         // Assert
         assert!(result.is_ok());
     }
+
+    #[test]
+    fn should_parse_a_create_and_or_process_service_passive_check_result_action() {
+        // Arrange
+        let filename = "./tests_resources/create_and_or_process_service_passive_check_result.json";
+        let json = std::fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = MonitoringExecutor::parse_monitoring_action(&action).unwrap();
+
+        // Assert
+        match action {
+            MonitoringAction::Service {..} => {},
+            _ => assert!(false)
+        }
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_or_process_passive_check_result_action() {
+        // Arrange
+        let filename = "./tests_resources/simple_create_and_or_process_passive_check_result.json";
+        let json = std::fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = MonitoringExecutor::parse_monitoring_action(&action).unwrap();
+
+        // Assert
+        match action {
+            MonitoringAction::SimpleCreateAndProcess {..} => {},
+            _ => assert!(false)
+        }
+    }
+
 }
