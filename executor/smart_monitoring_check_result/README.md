@@ -1,12 +1,12 @@
 # Smart Monitoring Check Result Executor
 
-The Smart Monitoring Check Result Executor is an executor that permits to perform an Icinga `process check results` 
+The Smart Monitoring Check Result Executor permits to perform an Icinga `process check results` 
 also in the case that the Icinga object for which you want to perform the `process check result`
 does not yet exist.
 
-This is done by means of executing the action `process check result` with the Icinga Executor, 
-and by executing the actions `create_host`/`create_service` with the Director Executor, in case
-the underlying Icinga objects do not yet exist in Icinga.
+This is done by first running the action `process check result` with the Icinga Executor, 
+and then, in case the underlying Icinga objects do not exist in Icinga, 
+the actions `create_host`/`create_service` with the Director Executor.
 
 > ### Important!
 >
@@ -33,7 +33,7 @@ The __host__ and __service__ should contain all mandatory parameters expected by
 and/or a service, except:
 - `object_type`
 
-The __service__ key is optional. When it is included in the action payload, the executor will execute the `process check results`
+The __service__ key is optional. When it is included in the action payload, the executor will invoke the `process check results`
 call to set the status of a service; otherwise, it will set the one of a host.
 
 An example of a valid Tornado Action is to set the status of the service `myhost|myservice`:
@@ -83,7 +83,7 @@ By simply removing the `service` key, the same action will set the status of the
      }
 ```
 
-Below is a flowchart that helps to understand the behaviour of the Smart Monitoring Check Result Executor in relation to Icinga2 and Icinga
+Below is a flowchart that helps understand the behaviour of the Smart Monitoring Check Result Executor in relation to Icinga2 and Icinga
 Director REST APIs.
 
 ![Import source](images/monitoring-executor-flowchart.png)
