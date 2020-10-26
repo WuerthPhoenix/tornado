@@ -7,27 +7,18 @@ use tornado_executor_icinga2::Icinga2Action;
 const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
 pub const ICINGA_FIELD_FOR_SPECIFYING_SERVICE: &str = "service";
+pub const ICINGA_FIELD_FOR_SPECIFYING_TYPE: &str = "type";
+pub const ICINGA_FIELD_FOR_SPECIFYING_OBJECT_TYPE: &str = "object_type";
+pub const ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME: &str = "object_name";
 
 #[derive(Debug, PartialEq, Deserialize, Serialize)]
-#[serde(tag = "action_name")]
-pub enum MonitoringAction {
-    #[serde(rename = "create_and_or_process_host_passive_check_result")]
-    Host { process_check_result_payload: Payload, host_creation_payload: Payload },
-    #[serde(rename = "create_and_or_process_service_passive_check_result")]
-    Service {
-        process_check_result_payload: Payload,
-        host_creation_payload: Payload,
-        service_creation_payload: Payload,
-    },
-    #[serde(rename = "simple_create_and_or_process_passive_check_result")]
-    SimpleCreateAndProcess { check_result: Payload, host: Payload, service: Option<Payload> },
-}
+pub struct SimpleCreateAndProcess { check_result: Payload, host: Payload, service: Option<Payload> }
 
-impl MonitoringAction {
-    pub fn new(action: &Action) -> Result<MonitoringAction, ExecutorError> {
+impl SimpleCreateAndProcess {
+    pub fn new(action: &Action) -> Result<SimpleCreateAndProcess, ExecutorError> {
         Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
             |err| ExecutorError::ConfigurationError {
-                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+                message: format!("Invalid SimpleCreateAndProcess Action configuration. Err: {}", err),
             },
         )?)
     }
@@ -42,78 +33,35 @@ impl MonitoringAction {
     pub fn build_sub_actions(
         &mut self,
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
-        match self {
-            MonitoringAction::Host { process_check_result_payload, host_creation_payload } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_HOST, "process_check_result_payload", "create_and_or_process_host_passive_check_result" ) });
-                };
-                Ok((
-                    Icinga2Action {
-                        name: PROCESS_CHECK_RESULT_SUBURL,
-                        payload: Some(process_check_result_payload),
-                    },
-                    DirectorAction {
-                        name: DirectorActionName::CreateHost,
-                        payload: host_creation_payload,
-                        live_creation: true,
-                    },
-                    None,
-                ))
-            }
-            MonitoringAction::Service {
-                process_check_result_payload,
-                host_creation_payload,
-                service_creation_payload,
-            } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_SERVICE).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_SERVICE, "process_check_result_payload", "create_and_or_process_service_passive_check_result" ) });
-                }
-                Ok((
-                    Icinga2Action {
-                        name: PROCESS_CHECK_RESULT_SUBURL,
-                        payload: Some(process_check_result_payload),
-                    },
-                    DirectorAction {
-                        name: DirectorActionName::CreateHost,
-                        payload: host_creation_payload,
-                        live_creation: true,
-                    },
-                    Some(DirectorAction {
-                        name: DirectorActionName::CreateService,
-                        payload: service_creation_payload,
-                        live_creation: true,
-                    }),
-                ))
-            }
-            MonitoringAction::SimpleCreateAndProcess { check_result, host, service } => {
-                host.insert("object_type".to_owned(), Value::Text("Object".to_owned()));
-                let host_object_name = host.get("object_name").and_then(|value| value.get_text()).ok_or_else(||
-                    ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}' for action '{}' is of type text", "object_name", "host", "simple_create_and_or_process_passive_check_result" ) }
+
+                self.host.insert(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_TYPE.to_owned(), Value::Text("Object".to_owned()));
+                let host_object_name = self.host.get(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME).and_then(|value| value.get_text()).ok_or_else(||
+                    ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}'", ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME, ICINGA_FIELD_FOR_SPECIFYING_HOST ) }
                 )?;
 
                 let director_create_host_action = DirectorAction {
                     name: DirectorActionName::CreateHost,
-                    payload: host,
+                    payload: &self.host,
                     live_creation: true,
                 };
 
-                if let Some(service_payload) = service {
+                if let Some(service_payload) = &mut self.service {
                     service_payload
-                        .insert("object_type".to_owned(), Value::Text("Object".to_owned()));
+                        .insert(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_TYPE.to_owned(), Value::Text("Object".to_owned()));
                     service_payload
-                        .insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
-                    let service_object_name = service_payload.get("object_name").and_then(|value| value.get_text()).ok_or_else(||
-                        ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}' for action '{}' is of type text", "object_name", "service", "simple_create_and_or_process_passive_check_result" ) }
+                        .insert(ICINGA_FIELD_FOR_SPECIFYING_HOST.to_owned(), Value::Text(host_object_name.to_owned()));
+                    let service_object_name = service_payload.get(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME).and_then(|value| value.get_text()).ok_or_else(||
+                        ExecutorError::ConfigurationError { message: format!("Monitoring action expects that field '{}' inside '{}'", ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME, ICINGA_FIELD_FOR_SPECIFYING_SERVICE ) }
                     )?;
-                    check_result.insert("type".to_owned(), Value::Text("Service".to_owned()));
-                    check_result.insert(
-                        "service".to_owned(),
+                    self.check_result.insert(ICINGA_FIELD_FOR_SPECIFYING_TYPE.to_owned(), Value::Text("Service".to_owned()));
+                    self.check_result.insert(
+                        ICINGA_FIELD_FOR_SPECIFYING_SERVICE.to_owned(),
                         Value::Text(format!("{}!{}", host_object_name, service_object_name)),
                     );
                     Ok((
                         Icinga2Action {
                             name: PROCESS_CHECK_RESULT_SUBURL,
-                            payload: Some(check_result),
+                            payload: Some(&self.check_result),
                         },
                         director_create_host_action,
                         Some(DirectorAction {
@@ -123,20 +71,18 @@ impl MonitoringAction {
                         }),
                     ))
                 } else {
-                    check_result.insert("type".to_owned(), Value::Text("Host".to_owned()));
-                    check_result
-                        .insert("host".to_owned(), Value::Text(host_object_name.to_owned()));
+                    self.check_result.insert(ICINGA_FIELD_FOR_SPECIFYING_TYPE.to_owned(), Value::Text("Host".to_owned()));
+                    self.check_result
+                        .insert(ICINGA_FIELD_FOR_SPECIFYING_HOST.to_owned(), Value::Text(host_object_name.to_owned()));
                     Ok((
                         Icinga2Action {
                             name: PROCESS_CHECK_RESULT_SUBURL,
-                            payload: Some(check_result),
+                            payload: Some(&self.check_result),
                         },
                         director_create_host_action,
                         None,
                     ))
                 }
-            }
-        }
     }
 }
 

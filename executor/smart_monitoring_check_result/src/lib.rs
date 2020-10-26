@@ -1,4 +1,4 @@
-use action::MonitoringAction;
+use action::SimpleCreateAndProcess;
 use log::*;
 use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError, RetriableError};
@@ -92,7 +92,7 @@ impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let mut monitoring_action = MonitoringAction::new(&action)?;
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.build_sub_actions()?;
