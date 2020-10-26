@@ -1,8 +1,7 @@
 # Smart Monitoring Check Result Executor
 
 The Smart Monitoring Check Result Executor permits to perform an Icinga `process check results` 
-also in the case that the Icinga object for which you want to perform the `process check result`
-does not yet exist.
+also in case the Icinga object for which you want to carry out that action does not exist.
 
 This is done by first running the action `process check result` with the Icinga Executor, 
 and then, in case the underlying Icinga objects do not exist in Icinga, 
