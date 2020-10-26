@@ -1,0 +1,27 @@
+{
+  "id": "monitoring",
+  "payload": {
+    "action_name": "create_and_or_process_service_passive_check_result",
+    "process_check_result_payload": {
+      "exit_status": "${event.payload.data.exit_status}",
+      "plugin_output": "${event.payload.data.plugin_output}",
+      "service": "${event.payload.data.hostname}!${event.payload.data.servicename}",
+      "type": "Service"
+    },
+    "host_creation_payload": {
+      "object_type": "Object",
+      "object_name": "${event.payload.data.hostname}",
+      "address": "localhost",
+      "check_command": "hostalive",
+      "vars": {
+        "location": "${event.payload.data.location}"
+      }
+    },
+    "service_creation_payload": {
+      "object_type": "Object",
+      "host": "${event.payload.data.hostname}",
+      "object_name": "${event.payload.data.servicename}",
+      "check_command": "ping"
+    }
+  }
+}

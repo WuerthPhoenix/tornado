@@ -4271,6 +4271,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_executor_smart_monitoring_check_result"
+version = "0.0.1"
+dependencies = [
+ "httpmock",
+ "log",
+ "maplit",
+ "serde 1.0.116",
+ "serde_json",
+ "tornado_common_api",
+ "tornado_executor_common",
+ "tornado_executor_director",
+ "tornado_executor_icinga2",
+]
+
+[[package]]
 name = "tornado_icinga2_collector"
 version = "0.0.1"
 dependencies = [
