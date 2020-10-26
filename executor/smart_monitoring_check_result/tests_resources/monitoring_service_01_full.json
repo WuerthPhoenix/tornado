@@ -1,7 +1,4 @@
 {
-  "id": "monitoring",
-  "payload": {
-    "action_name": "create_and_or_process_service_passive_check_result",
     "process_check_result_payload": {
       "exit_status": 1,
       "plugin_output": "Output message",
@@ -24,5 +21,4 @@
       "imports": "my_service_template",
       "check_command": "ping"
     }
-  }
 }

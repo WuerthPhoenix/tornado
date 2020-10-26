@@ -1,7 +1,4 @@
 {
-  "id": "monitoring",
-  "payload": {
-    "action_name": "create_and_or_process_host_passive_check_result",
     "process_check_result_payload": {
       "exit_status": 2,
       "plugin_output": "Output message 1",
@@ -16,5 +13,4 @@
       "imports": "my_host_template_01",
       "check_command": "ping-pong"
     }
-  }
 }

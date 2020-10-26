@@ -196,16 +196,19 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("");
+        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert(
-            "check_result".to_owned(),
-            Value::Map(hashmap!()),
-        );
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!(
+            "host".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
-        action.payload.insert("service".to_owned(), Value::Map(hashmap!(
+            )),
+        );
+        action.payload.insert(
+            "service".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myservice".to_owned()),
-            )));
+            )),
+        );
 
         // Act
         let result = executor.execute(&action);
@@ -238,12 +241,18 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("");
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!(
+        action.payload.insert(
+            "host".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
-        action.payload.insert("service".to_owned(), Value::Map(hashmap!(
+            )),
+        );
+        action.payload.insert(
+            "service".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myservice".to_owned()),
-            )));
+            )),
+        );
 
         // Act
         let result = executor.execute(&action);
@@ -278,17 +287,17 @@ mod test {
                 server_api_url: "".to_owned(),
             },
         )
-            .unwrap();
+        .unwrap();
 
         let mut action = Action::new("");
-        action.payload.insert(
-            "check_result".to_owned(),
-            Value::Map(hashmap!()),
-        );
+        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert("host".to_owned(), Value::Map(hashmap!()));
-        action.payload.insert("service".to_owned(), Value::Map(hashmap!(
+        action.payload.insert(
+            "service".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myservice".to_owned()),
-            )));
+            )),
+        );
 
         // Act
         let result = executor.execute(&action);
@@ -324,16 +333,16 @@ mod test {
                 server_api_url: "".to_owned(),
             },
         )
-            .unwrap();
+        .unwrap();
 
         let mut action = Action::new("");
+        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert(
-            "check_result".to_owned(),
-            Value::Map(hashmap!()),
-        );
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!(
+            "host".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
+            )),
+        );
         action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
 
         // Act
@@ -381,13 +390,13 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("");
+        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert(
-            "check_result".to_owned(),
-            Value::Map(hashmap!()),
-        );
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!(
+            "host".to_owned(),
+            Value::Map(hashmap!(
                 "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
+            )),
+        );
 
         // Act
         let result = executor.execute(&action);

@@ -41,12 +41,15 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     action.payload.insert(
         "check_result".to_owned(),
         Value::Map(hashmap!(
-                "host".to_owned() => Value::Text("myhost".to_owned()),
-            )),
+            "host".to_owned() => Value::Text("myhost".to_owned()),
+        )),
     );
-    action.payload.insert("host".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
+    action.payload.insert(
+        "host".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        )),
+    );
 
     // Act
     let result = executor.execute(&action);
@@ -90,12 +93,15 @@ fn should_return_ok_if_process_check_result_is_successful() {
     action.payload.insert(
         "check_result".to_owned(),
         Value::Map(hashmap!(
-                "host".to_owned() => Value::Text("myhost".to_owned()),
-            )),
+            "host".to_owned() => Value::Text("myhost".to_owned()),
+        )),
     );
-    action.payload.insert("host".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
+    action.payload.insert(
+        "host".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        )),
+    );
 
     // Act
     let result = executor.execute(&action);
@@ -145,16 +151,19 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     .unwrap();
 
     let mut action = Action::new("");
+    action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
     action.payload.insert(
-        "check_result".to_owned(),
-        Value::Map(hashmap!()),
+        "host".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        )),
     );
-    action.payload.insert("host".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
-    action.payload.insert("service".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
-            )));
+    action.payload.insert(
+        "service".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myservice".to_owned()),
+        )),
+    );
 
     // Act
     let result = executor.execute(&action);
@@ -210,16 +219,19 @@ fn should_return_return_error_on_object_creation_failure() {
     .unwrap();
 
     let mut action = Action::new("");
+    action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
     action.payload.insert(
-        "check_result".to_owned(),
-        Value::Map(hashmap!()),
+        "host".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        )),
     );
-    action.payload.insert("host".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
-            )));
-    action.payload.insert("service".to_owned(), Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
-            )));
+    action.payload.insert(
+        "service".to_owned(),
+        Value::Map(hashmap!(
+            "object_name".to_owned() => Value::Text("myservice".to_owned()),
+        )),
+    );
 
     // Act
     let result = executor.execute(&action);
