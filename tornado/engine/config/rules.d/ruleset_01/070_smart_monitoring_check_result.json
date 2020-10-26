@@ -1,0 +1,38 @@
+{
+  "description": "An example rule that triggers the smart monitoring check result action",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "simple_process_check_result"
+        }
+      ]
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "smart_monitoring_check_result",
+      "payload": {
+        "check_result": {
+          "exit_status": "${event.payload.exit_status}",
+          "plugin_output": "${event.payload.plugin_output}"
+        },
+        "host": {
+          "object_name": "${event.payload.hostname}",
+          "address": "localhost",
+          "check_command": "hostalive"
+        },
+        "service": {
+          "object_name": "${event.payload.servicename}",
+          "check_command": "ping"
+        }
+      }
+    }
+  ]
+}
