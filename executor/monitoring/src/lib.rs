@@ -39,7 +39,7 @@ impl MonitoringAction {
     // 2. DirectorAction that will perform the creation of the host through the DirectorAction
     // 3. Option<DirectorAction> that will perform the creation of the service through the
     // DirectorAction. This is Some if MonitoringAction is of type Service, None otherwise
-    fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
+    pub fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
         match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
                 Icinga2Action {
@@ -101,8 +101,8 @@ impl MonitoringExecutor {
         })
     }
 
-    pub fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
+    pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
+        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(
             |err| ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
             },
@@ -164,7 +164,7 @@ impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;
+        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;
 
         // we need to be sure that the icinga2 action specifies the object on which to apply the action
         // with the fields "host" or "service", and not, e.g. with "filter"

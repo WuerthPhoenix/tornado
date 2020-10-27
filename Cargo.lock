@@ -4358,6 +4358,7 @@ dependencies = [
  "tornado_executor_common",
  "tornado_executor_director",
  "tornado_executor_icinga2",
+ "tornado_executor_monitoring",
 ]
 
 [[package]]
