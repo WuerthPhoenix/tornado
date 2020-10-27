@@ -4150,6 +4150,7 @@ dependencies = [
  "chrono",
  "clap",
  "config",
+ "fs_extra",
  "lazy_static",
  "log",
  "maplit",

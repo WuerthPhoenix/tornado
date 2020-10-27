@@ -52,3 +52,42 @@ fn upgrade(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::config::MatcherConfigReader;
+    use tempfile::TempDir;
+
+    #[test]
+    fn should_create_a_new_draft_cloning_from_current_config_with_root_filter() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        // Act
+        let result = upgrade_rules(&config_dir, &rules_dir, &drafts_dir);
+
+        // Assert
+        assert!(result.is_ok());
+
+        Ok(())
+    }
+
+
+    fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
+        let config_dir = "./config".to_owned();
+        let draft_dir = "/draft".to_owned();
+        let rules_dir = "/rules".to_owned();
+
+        let source_rules_dir = format!("{}/{}", config_dir, rules_dir);
+
+        let dest_drafts_dir = format!("{}/{}", tempdir.path().to_str().unwrap(), draft_dir);
+        let dest_rules_dir = format!("{}/{}", tempdir.path().to_str().unwrap(), rules_dir);
+
+        let mut copy_options = fs_extra::dir::CopyOptions::new();
+        copy_options.copy_inside = true;
+        fs_extra::dir::copy(&source_rules_dir, &dest_rules_dir, &copy_options).unwrap();
+        (config_dir, rules_dir, draft_dir)
+    }
+}
