@@ -71,7 +71,7 @@ pub trait MatcherConfigEditor: Sync + Send {
     /// Returns a draft by id
     fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError>;
 
-    /// Creats a new draft and returns the id
+    /// Creates a new draft and returns the id
     fn create_draft(&self, user: String) -> Result<String, MatcherError>;
 
     /// Update a draft
@@ -90,4 +90,7 @@ pub trait MatcherConfigEditor: Sync + Send {
 
     /// Sets the ownership of a draft to a user
     fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError>;
+
+    /// Deploys a new configuration overriding the current one
+    fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError>;
 }

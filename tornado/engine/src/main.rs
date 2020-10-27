@@ -20,6 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     match subcommand {
         ("check", _) => command::check::check(config_dir, rules_dir, drafts_dir),
         ("daemon", _) => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
+        ("upgrade-rules", _) => {
+            command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir)
+        }
         _ => {
             error!("Unknown subcommand [{}]", subcommand.0);
             Ok(())

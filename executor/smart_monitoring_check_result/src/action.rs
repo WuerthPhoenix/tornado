@@ -126,7 +126,7 @@ mod test {
 
     use super::*;
     use maplit::*;
-    use tornado_common_api::{Value, Action};
+    use tornado_common_api::{Action, Value};
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(

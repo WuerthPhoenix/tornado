@@ -158,6 +158,20 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         data.user = user;
         self.write_draft_data(data)
     }
+
+    fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+        info!("Deploy new configuration");
+
+        MatcherConfigValidator::new().validate(config)?;
+
+        let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
+            message: format!("Cannot create temporary directory. Err: {}", err),
+        })?;
+        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
+
+        FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.root_path)?;
+        self.get_config()
+    }
 }
 
 impl FsMatcherConfigManager {
