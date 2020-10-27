@@ -105,7 +105,7 @@ mod test {
         let mut smart_monitoring_action =
             SimpleCreateAndProcess::new(&migrated_action.payload).unwrap();
         assert_eq!(
-            monitoring_action.to_sub_actions(),
+            monitoring_action.to_sub_actions().unwrap(),
             smart_monitoring_action.build_sub_actions().unwrap()
         );
     }
