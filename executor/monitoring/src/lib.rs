@@ -1,7 +1,7 @@
 use log::*;
 use serde::{Deserialize, Serialize};
+use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_common_api::{Action, Value};
 use tornado_executor_common::{Executor, ExecutorError, RetriableError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
@@ -22,12 +22,12 @@ const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 #[serde(tag = "action_name")]
 pub enum MonitoringAction {
     #[serde(rename = "create_and_or_process_host_passive_check_result")]
-    Host { process_check_result_payload: Payload, host_creation_payload: Value },
+    Host { process_check_result_payload: Payload, host_creation_payload: Payload },
     #[serde(rename = "create_and_or_process_service_passive_check_result")]
     Service {
         process_check_result_payload: Payload,
-        host_creation_payload: Value,
-        service_creation_payload: Value,
+        host_creation_payload: Payload,
+        service_creation_payload: Payload,
     },
 }
 
