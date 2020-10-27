@@ -129,9 +129,8 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
     fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy draft with id {}", draft_id);
         let draft_id = DRAFT_ID;
-        let draft_config_dir_path = self.get_draft_config_dir_path(draft_id);
-        FsMatcherConfigManager::copy_and_override(&draft_config_dir_path, &self.root_path)?;
-        self.get_config()
+        let draft = self.get_draft(draft_id)?;
+        self.deploy_config(&draft.config)
     }
 
     fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError> {
@@ -667,6 +666,32 @@ mod test {
         assert_eq!(user_1, draft_before_take_over.data.user);
         assert_eq!(user_2, draft_after_take_over.data.user);
         assert_eq!(draft_before_take_over.config, draft_after_take_over.config);
+
+        Ok(())
+    }
+
+    #[test]
+    fn should_deploy_a_new_config() -> Result<(), Box<dyn std::error::Error>> {
+        // Arrange
+        let tempdir = tempfile::tempdir()?;
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+
+        let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
+        let config_before_deploy = config_manager.get_config().unwrap();
+
+        let new_config =
+            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+                .get_config()
+                .unwrap();
+
+        // Act
+        let deployed_config = config_manager.deploy_config(&new_config).unwrap();
+
+        // Assert
+        let config_after_deploy = config_manager.get_config().unwrap();
+        assert_ne!(config_before_deploy, config_after_deploy);
+        assert_eq!(deployed_config, config_after_deploy);
+        assert_eq!(new_config, config_after_deploy);
 
         Ok(())
     }
