@@ -74,26 +74,7 @@ mod test {
         let matcher_config_after = configs.matcher_config.get_config().unwrap();
         assert_ne!(matcher_config_before, matcher_config_after);
 
-        match matcher_config_before {
-            MatcherConfig::Filter {nodes: before_nodes, ..} => {
-                match matcher_config_after {
-                    MatcherConfig::Filter {nodes: after_nodes, ..} => {
-                        assert_eq!(before_nodes.len(), after_nodes.len());
-
-                        let ToDo = 0;
-                        // ToDo: check the monitoring rules was migrated
-                        assert!(false)
-                    },
-                    _ => assert!(false)
-                }
-            },
-            _ => assert!(false)
-        }
-    }
-
-    #[test]
-    fn upgrade_fn_should_migrate_the_monitoring_rules() {
-        unimplemented!()
+        check_migrated_rules(&matcher_config_before, &matcher_config_after);
     }
 
     fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
@@ -108,5 +89,72 @@ mod test {
         let rules_dir = "/rules.d".to_owned();
 
         (format!("{}/config", dest_config_dir), rules_dir, draft_dir)
+    }
+
+    fn check_migrated_rules(
+        matcher_config_before: &MatcherConfig,
+        matcher_config_after: &MatcherConfig,
+    ) {
+        match matcher_config_before {
+            MatcherConfig::Filter {
+                name: name_before,
+                filter: filer_before,
+                nodes: before_nodes,
+                ..
+            } => match matcher_config_after {
+                MatcherConfig::Filter {
+                    name: name_after,
+                    filter: filer_after,
+                    nodes: after_nodes,
+                    ..
+                } => {
+                    assert_eq!(name_before, name_after);
+                    assert_eq!(filer_before, filer_after);
+                    assert_eq!(before_nodes.len(), after_nodes.len());
+                    for i in 0..after_nodes.len() {
+                        check_migrated_rules(&before_nodes[i], &after_nodes[i]);
+                    }
+                }
+                _ => assert!(false),
+            },
+            MatcherConfig::Ruleset { name: name_before, rules: before_rules, .. } => {
+                match matcher_config_after {
+                    MatcherConfig::Ruleset { name: name_after, rules: after_rules, .. } => {
+                        assert_eq!(name_before, name_after);
+                        assert_eq!(before_rules.len(), after_rules.len());
+
+                        if !before_rules.is_empty() {
+                            for i in 0..before_rules.len() {
+                                let before_rule = &before_rules[i];
+                                let after_rule = &after_rules[i];
+                                assert_eq!(before_rule.name, after_rule.name);
+                                assert_eq!(before_rule.description, after_rule.description);
+                                assert_eq!(before_rule.active, after_rule.active);
+                                assert_eq!(before_rule.constraint, after_rule.constraint);
+                                assert_eq!(before_rule.do_continue, after_rule.do_continue);
+                                assert_eq!(before_rule.actions.len(), after_rule.actions.len());
+
+                                if !before_rule.actions.is_empty() {
+                                    for j in 0..before_rule.actions.len() {
+                                        let before_action = &before_rule.actions[j];
+                                        let after_action = &after_rule.actions[j];
+                                        if before_action.id == ACTION_ID_MONITORING {
+                                            assert_eq!(
+                                                ACTION_ID_SMART_MONITORING_CHECK_RESULT,
+                                                after_action.id
+                                            );
+                                            assert_ne!(before_action, after_action)
+                                        } else {
+                                            assert_eq!(before_action, after_action);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    _ => assert!(false),
+                }
+            }
+        }
     }
 }
