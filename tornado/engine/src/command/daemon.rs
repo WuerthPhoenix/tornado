@@ -24,8 +24,8 @@ use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 
-pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &'static str = "smart_monitoring_check_result";
-pub const ACTION_ID_MONITORING: &'static str = "monitoring";
+pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
+pub const ACTION_ID_MONITORING: &str = "monitoring";
 
 pub async fn daemon(
     config_dir: &str,

@@ -1,3 +1,4 @@
+use crate::config::{SUBCOMMAND_CHECK, SUBCOMMAND_DAEMON, SUBCOMMAND_RULES_UPGRADE};
 use log::error;
 
 mod api;
@@ -17,10 +18,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let drafts_dir = arg_matches.value_of("drafts-dir").expect("drafts-dir should be provided");
 
     let subcommand = arg_matches.subcommand();
+
     match subcommand {
-        ("check", _) => command::check::check(config_dir, rules_dir, drafts_dir),
-        ("daemon", _) => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
-        ("upgrade-rules", _) => {
+        (SUBCOMMAND_CHECK, _) => command::check::check(config_dir, rules_dir, drafts_dir),
+        (SUBCOMMAND_DAEMON, _) => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
+        (SUBCOMMAND_RULES_UPGRADE, _) => {
             command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir)
         }
         _ => {

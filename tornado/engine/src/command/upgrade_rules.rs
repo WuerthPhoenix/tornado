@@ -29,7 +29,7 @@ fn upgrade(
         MatcherConfig::Ruleset { name: _, rules } => {
             for rule in rules {
                 for action in &mut rule.actions {
-                    if &action.id == ACTION_ID_MONITORING {
+                    if action.id == ACTION_ID_MONITORING {
                         println!(
                             "Migrating {} action to {}",
                             ACTION_ID_MONITORING, ACTION_ID_SMART_MONITORING_CHECK_RESULT
