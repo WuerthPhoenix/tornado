@@ -1,0 +1,20 @@
+{
+  "id": "smart_monitoring_check_result",
+  "payload": {
+    "check_result": {
+      "exit_status": 2,
+      "plugin_output": "Something Went Wrong",
+      "performance_data": "blablabla | 1,2,3"
+    },
+    "host": {
+      "object_name": "my_host",
+      "address": "127.0.0.2",
+      "imports": "my_host_template",
+      "vars": {}
+    },
+    "service": {
+      "object_name": "my_service",
+      "imports": "my_service_template"
+    }
+  }
+}

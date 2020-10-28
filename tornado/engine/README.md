@@ -50,6 +50,8 @@ Tornado commands:
 - __check__ : Checks that the configuration is valid.
 - __daemon__ : Starts the Tornado daemon.
 - __help__ : Prints the general help page, or the specific help of the given command.
+- __rules-upgrade__ : Checks the current configuration and, if available, upgrades the rules structure
+  to the most recent one.
 
 Each CLI command provides its own help and usage information, you can display using the `help` command.
 

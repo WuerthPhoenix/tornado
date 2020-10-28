@@ -219,6 +219,10 @@ mod test {
         fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
             Ok(())
         }
+
+        fn deploy_config(&self, _config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+            unimplemented!()
+        }
     }
 
     struct TestApiHandler {}
