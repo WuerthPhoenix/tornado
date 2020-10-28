@@ -11,9 +11,14 @@ pub fn upgrade_rules(
     println!("Upgrade Tornado configuration rules");
     let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
     let mut matcher_config = configs.matcher_config.get_config()?;
+    let matcher_config_clone = matcher_config.clone();
     upgrade(&mut matcher_config)?;
-    configs.matcher_config.deploy_config(&matcher_config)?;
-    println!("Upgrade Tornado configuration rules completed successfully");
+    if matcher_config != matcher_config_clone {
+        configs.matcher_config.deploy_config(&matcher_config)?;
+        println!("Upgrade Tornado configuration rules completed successfully");
+    } else {
+        println!("Upgrade Tornado configuration rules completed. Nothing to do.");
+    }
     Ok(())
 }
 
