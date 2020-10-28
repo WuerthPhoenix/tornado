@@ -1,0 +1,21 @@
+{
+  "id": "smart_monitoring_check_result",
+  "payload": {
+    "check_result": {
+      "exit_status": "${event.payload.data.exit_status}",
+      "plugin_output": "${event.payload.data.plugin_output}"
+    },
+    "host": {
+      "object_name": "${event.payload.data.hostname}",
+      "address": "localhost",
+      "check_command": "hostalive",
+      "vars": {
+        "location": "${event.payload.data.location}"
+      }
+    },
+    "service": {
+      "object_name": "${event.payload.data.servicename}",
+      "check_command": "ping"
+    }
+  }
+}

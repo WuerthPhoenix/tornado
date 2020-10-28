@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tornado_common_api::{Action, Payload, Value};
+use tornado_common_api::{Payload, Value};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;
@@ -19,15 +19,15 @@ pub struct SimpleCreateAndProcess {
 }
 
 impl SimpleCreateAndProcess {
-    pub fn new(action: &Action) -> Result<SimpleCreateAndProcess, ExecutorError> {
-        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
-            |err| ExecutorError::ConfigurationError {
+    pub fn new(payload: &Payload) -> Result<SimpleCreateAndProcess, ExecutorError> {
+        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+            ExecutorError::ConfigurationError {
                 message: format!(
                     "Invalid SimpleCreateAndProcess Action configuration. Err: {}",
                     err
                 ),
-            },
-        )?)
+            }
+        })?)
     }
 
     // Transforms the SimpleCreateAndProcess into the actions needed to call the IcingaExecutor and the
@@ -120,12 +120,13 @@ impl SimpleCreateAndProcess {
         }
     }
 }
+
 #[cfg(test)]
 mod test {
 
     use super::*;
     use maplit::*;
-    use tornado_common_api::Value;
+    use tornado_common_api::{Action, Value};
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
@@ -141,7 +142,7 @@ mod test {
             )),
         );
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -170,7 +171,7 @@ mod test {
         );
         action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -196,7 +197,7 @@ mod test {
         let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action).unwrap();
+        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 
         // Assert
         assert!(action.service.is_none());
@@ -212,7 +213,7 @@ mod test {
         let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action).unwrap();
+        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 
         // Assert
         assert!(action.service.is_some());
@@ -239,7 +240,8 @@ mod test {
         // Act
         let sub_actions_full = monitoring_action_full.to_sub_actions();
 
-        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
+        let mut monitoring_action_simple =
+            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
         let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
         // Assert
         assert_eq!(sub_actions_full, sub_actions_simple)
@@ -266,7 +268,8 @@ mod test {
         // Act
         let sub_actions_full = monitoring_action_full.to_sub_actions();
 
-        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
+        let mut monitoring_action_simple =
+            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
         let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
         // Assert
         assert_eq!(sub_actions_full, sub_actions_simple)

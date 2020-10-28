@@ -24,6 +24,9 @@ use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 
+pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
+pub const ACTION_ID_MONITORING: &str = "monitoring";
+
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
@@ -144,14 +147,15 @@ pub async fn daemon(
     let smart_monitoring_check_result_executor_addr =
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
             start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor = tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
-                    icinga2_client_config.clone(),
-                    director_client_config.clone(),
-                )
+                let executor =
+                    tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
+                        icinga2_client_config.clone(),
+                        director_client_config.clone(),
+                    )
                     .expect("Cannot start the SmartMonitoringExecutor Executor");
                 ExecutorRunner { executor }
             })
-                .expect("Should start the threadpool for the executor")
+            .expect("Should start the threadpool for the executor")
         });
 
     // Configure action dispatcher
@@ -176,7 +180,7 @@ pub async fn daemon(
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
                         })
                     }
-                    "monitoring" => {
+                    ACTION_ID_MONITORING => {
                         monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!(
                                 "Error sending message to 'monitoring' executor. Err: {:?}",
@@ -184,7 +188,7 @@ pub async fn daemon(
                             )
                         })
                     }
-                    "smart_monitoring_check_result" => {
+                    ACTION_ID_SMART_MONITORING_CHECK_RESULT => {
                         smart_monitoring_check_result_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!(
                                 "Error sending message to 'smart_monitoring_check_result' executor. Err: {:?}",

@@ -39,40 +39,52 @@ impl MonitoringAction {
     // 2. DirectorAction that will perform the creation of the host through the DirectorAction
     // 3. Option<DirectorAction> that will perform the creation of the service through the
     // DirectorAction. This is Some if MonitoringAction is of type Service, None otherwise
-    fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
+    pub fn to_sub_actions(
+        &self,
+    ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
         match &self {
-            MonitoringAction::Host { process_check_result_payload, host_creation_payload } => (
-                Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL,
-                    payload: Some(process_check_result_payload),
-                },
-                DirectorAction {
-                    name: DirectorActionName::CreateHost,
-                    payload: host_creation_payload,
-                    live_creation: true,
-                },
-                None,
-            ),
+            MonitoringAction::Host { process_check_result_payload, host_creation_payload } => {
+                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
+                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_HOST, "process_check_result_payload", "create_and_or_process_host_passive_check_result" ) });
+                };
+                Ok((
+                    Icinga2Action {
+                        name: PROCESS_CHECK_RESULT_SUBURL,
+                        payload: Some(process_check_result_payload),
+                    },
+                    DirectorAction {
+                        name: DirectorActionName::CreateHost,
+                        payload: host_creation_payload,
+                        live_creation: true,
+                    },
+                    None,
+                ))
+            }
             MonitoringAction::Service {
                 process_check_result_payload,
                 host_creation_payload,
                 service_creation_payload,
-            } => (
-                Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL,
-                    payload: Some(process_check_result_payload),
-                },
-                DirectorAction {
-                    name: DirectorActionName::CreateHost,
-                    payload: host_creation_payload,
-                    live_creation: true,
-                },
-                Some(DirectorAction {
-                    name: DirectorActionName::CreateService,
-                    payload: service_creation_payload,
-                    live_creation: true,
-                }),
-            ),
+            } => {
+                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_SERVICE).is_none() {
+                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_SERVICE, "process_check_result_payload", "create_and_or_process_service_passive_check_result" ) });
+                };
+                Ok((
+                    Icinga2Action {
+                        name: PROCESS_CHECK_RESULT_SUBURL,
+                        payload: Some(process_check_result_payload),
+                    },
+                    DirectorAction {
+                        name: DirectorActionName::CreateHost,
+                        payload: host_creation_payload,
+                        live_creation: true,
+                    },
+                    Some(DirectorAction {
+                        name: DirectorActionName::CreateService,
+                        payload: service_creation_payload,
+                        live_creation: true,
+                    }),
+                ))
+            }
         }
     }
 }
@@ -101,12 +113,12 @@ impl MonitoringExecutor {
         })
     }
 
-    pub fn parse_monitoring_action(action: &Action) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(&action.payload).and_then(serde_json::from_value).map_err(
-            |err| ExecutorError::ConfigurationError {
+    pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
+        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+            ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
-            },
-        )?)
+            }
+        })?)
     }
 
     fn perform_creation_of_icinga_objects(
@@ -164,25 +176,10 @@ impl Executor for MonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action)?;
-
-        // we need to be sure that the icinga2 action specifies the object on which to apply the action
-        // with the fields "host" or "service", and not, e.g. with "filter"
-        match &monitoring_action {
-            MonitoringAction::Host { process_check_result_payload, .. } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_HOST, "process_check_result_payload", "create_and_or_process_host_passive_check_result" ) });
-                }
-            }
-            MonitoringAction::Service { process_check_result_payload, .. } => {
-                if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_SERVICE).is_none() {
-                    return Err(ExecutorError::ConfigurationError { message: format!("Monitoring action expects that Icinga objects affected by the action are specified with field '{}' inside '{}' for action '{}'", ICINGA_FIELD_FOR_SPECIFYING_SERVICE, "process_check_result_payload", "create_and_or_process_service_passive_check_result" ) });
-                }
-            }
-        };
+        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
-            monitoring_action.to_sub_actions();
+            monitoring_action.to_sub_actions()?;
         let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
 
         match icinga2_action_result {

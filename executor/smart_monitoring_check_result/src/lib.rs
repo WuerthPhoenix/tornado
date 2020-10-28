@@ -12,6 +12,7 @@ use tornado_executor_icinga2::{Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXEC
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
 mod action;
+pub mod migration;
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
 pub struct SmartMonitoringExecutor {
@@ -92,7 +93,7 @@ impl Executor for SmartMonitoringExecutor {
     fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action)?;
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.build_sub_actions()?;
