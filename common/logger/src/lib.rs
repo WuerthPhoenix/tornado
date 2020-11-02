@@ -1,29 +1,24 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoggerConfig {
-    // Todo: check if an enum can be used
-    /// The Logger level
+    /// Sets the logger [`EnvFilter`].
     /// Valid values: trace, debug, info, warn, error
+    /// Example of a valid filter: "warn,my_crate=info,my_crate::my_mod=debug,[my_span]=trace"
     pub level: String,
 
     /// Determines whether the Logger should print to standard output.
     /// Valid values: true, false
     pub stdout_output: bool,
 
-    /// A file path in the file system; if provided, the Logger will append any output to it.
-    pub file_output_path: Option<String>,
-    // #[structopt(short = "o", long = "value_one", default_value = "10000")]
-    // pub module_level: HashMap<String, String>,
-}
+    // A file path in the file system; if provided, the Logger will append any output to it;
+    // otherwise, it will log on the stdout.
+    // pub file_output_path: Option<String>,
 
-impl Default for LoggerConfig {
-    fn default() -> Self {
-        LoggerConfig { level: "info".to_owned(), stdout_output: false, file_output_path: None }
-    }
 }
 
 #[derive(Error, Debug)]
@@ -46,51 +41,23 @@ impl From<std::io::Error> for LoggerError {
 
 /// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
-    let mut log_dispatcher = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
-                message
-            ))
-        })
-        .level(log::LevelFilter::from_str(&logger_config.level).map_err(|err| {
+    if logger_config.stdout_output {
+        let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
             LoggerError::LoggerConfigurationError {
                 message: format!(
-                    "The specified logger level is not valid: [{}]. err: {}",
-                    &logger_config.level, err
+                    "Cannot parse the env_filter: [{}]. err: {}",
+                    logger_config.level, err
                 ),
             }
-        })?);
+        })?;
 
-    /*
-    for (module, level) in logger_config.module_level.iter() {
-        log_dispatcher =
-            log_dispatcher.level_for(module.to_owned(), log::LevelFilter::from_str(level).unwrap())
+        FmtSubscriber::builder()
+            .with_env_filter(env_filter)
+            .try_init()
+            .map_err(|err| LoggerError::LoggerConfigurationError {
+                message: format!("Cannot start the stdout_output logger. err: {}", err),
+            })?;
     }
-    */
-
-    log_dispatcher = log_dispatcher
-        .level_for("hyper".to_owned(), log::LevelFilter::Warn)
-        .level_for("mio".to_owned(), log::LevelFilter::Warn)
-        .level_for("rants".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_io".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_reactor".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_tcp".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_uds".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_util".to_owned(), log::LevelFilter::Warn);
-
-    if logger_config.stdout_output {
-        log_dispatcher = log_dispatcher.chain(std::io::stdout());
-    }
-
-    if let Some(path) = &logger_config.file_output_path {
-        log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?)
-    }
-
-    log_dispatcher.apply()?;
 
     Ok(())
 }
