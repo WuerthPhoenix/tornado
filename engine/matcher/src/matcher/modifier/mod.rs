@@ -188,8 +188,7 @@ mod test {
     #[test]
     fn to_number_modifier_should_return_a_number() {
         // Arrange
-        let value_modifier =
-            ValueModifier::ToNumber;
+        let value_modifier = ValueModifier::ToNumber;
 
         // Act & Assert
         {
