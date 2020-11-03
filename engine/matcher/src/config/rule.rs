@@ -44,6 +44,7 @@ pub struct Extractor {
 pub enum Modifier {
     Lowercase {},
     ReplaceAll { find: String, replace: String },
+    ToNumber {},
     Trim {},
 }
 
