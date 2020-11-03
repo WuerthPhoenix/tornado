@@ -31,7 +31,7 @@ pub struct ExtractorDto {
     pub modifiers_post: Vec<ModifierDto>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ModifierDto {
     Lowercase {},
