@@ -46,6 +46,7 @@ pub fn replace_all_with_regex(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::regex::RegexWrapper;
     use std::collections::HashMap;
 
     #[test]
@@ -114,6 +115,54 @@ mod test {
         {
             let mut input = Value::Bool(true);
             assert!(replace_all("", &mut input, find_text, replace_text).is_err());
+        }
+    }
+
+    #[test]
+    fn replace_all_with_regex_modifier_should_replace_a_string() {
+        let find_regex = RegexWrapper::new("[0-9]+").unwrap();
+        let replace_text = "replaced";
+
+        {
+            let mut input = Value::Text("".to_owned());
+            replace_all_with_regex("", &mut input, &find_regex, replace_text).unwrap();
+            assert_eq!(Value::Text("".to_owned()), input);
+        }
+
+        {
+            let mut input = Value::Text("not to replace".to_owned());
+            replace_all_with_regex("", &mut input, &find_regex, replace_text).unwrap();
+            assert_eq!(Value::Text("not to replace".to_owned()), input);
+        }
+
+        {
+            let mut input = Value::Text("to replace 12 and 3".to_owned());
+            replace_all_with_regex("", &mut input, &find_regex, replace_text).unwrap();
+            assert_eq!(Value::Text("to replace replaced and replaced".to_owned()), input);
+        }
+    }
+
+    #[test]
+    fn replace_all_with_regex_modifier_should_allow_named_groups() {
+        let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)").unwrap();
+        let replace_text = "$first $last";
+
+        {
+            let mut input = Value::Text("Springsteen, Bruce".to_owned());
+            replace_all_with_regex("", &mut input, &find_regex, replace_text).unwrap();
+            assert_eq!(Value::Text("Bruce Springsteen".to_owned()), input);
+        }
+    }
+
+    #[test]
+    fn replace_all_with_regex_modifier_should_allow_positional_groups() {
+        let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)").unwrap();
+        let replace_text = "$2 $1";
+
+        {
+            let mut input = Value::Text("Deacon, John".to_owned());
+            replace_all_with_regex("", &mut input, &find_regex, replace_text).unwrap();
+            assert_eq!(Value::Text("John Deacon".to_owned()), input);
         }
     }
 }

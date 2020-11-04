@@ -1,6 +1,6 @@
+use crate::error::MatcherError;
 use regex::Regex;
 use std::ops::Deref;
-use crate::error::MatcherError;
 
 /// A struct that allow high level operation on a basic Regex.
 /// For example, this allow a regex to be used in PartialEq checks.
@@ -37,5 +37,16 @@ impl Deref for RegexWrapper {
 impl PartialEq for RegexWrapper {
     fn eq(&self, other: &Self) -> bool {
         other.regex_string.eq(&self.regex_string)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn should_compare_regexes() {
+        assert_eq!(RegexWrapper::new(".*").unwrap(), RegexWrapper::new(".*").unwrap());
+        assert_ne!(RegexWrapper::new(".*").unwrap(), RegexWrapper::new(".*[1-9]").unwrap());
     }
 }

@@ -1,8 +1,8 @@
 use crate::config::rule::Modifier;
 use crate::error::MatcherError;
+use crate::regex::RegexWrapper;
 use log::*;
 use tornado_common_api::Value;
-use crate::regex::RegexWrapper;
 
 pub mod lowercase;
 pub mod number;
@@ -17,8 +17,6 @@ pub enum ValueModifier {
     ToNumber,
     Trim,
 }
-
-
 
 impl ValueModifier {
     pub fn build(
