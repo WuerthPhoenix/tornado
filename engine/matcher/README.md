@@ -789,11 +789,7 @@ to obtain the desired result.
 
 Common entries to all configurations:
 - **from**: An expression that determines to which value to apply the extractor regex;
-- **modifiers_post**: A list of String modifiers to post-process the extracted value. They can be:
-
-  - *Lowercase*: it converts the resulting String to lower case; 
-  - *ReplaceAll*: it returns a new string with all matches of a substring replaced by the new text;
-  - *Trim*: it trims the resulting String;
+- **modifiers_post**: A list of String modifiers to post-process the extracted value. See following section for additional details.
 
 In addition, three parameters combined will define the behavior of an extractor:
 - **all_matches**: whether the regex will loop through all the matches or only the first one will be considered. 
@@ -996,7 +992,40 @@ for each match:
 ]
 ```
 
-**Option 7 - Using the WITH modifiers_post** 
+### The 'WITH' Clause - Post Modifiers
+The WITH clause can include a list of String modifiers to post-process the extracted value. 
+The available modifiers are:
+  - *Lowercase*: it converts the resulting String to lower case. Syntax:
+  ```json
+       {
+           "type": "Lowercase"
+       }
+  ```
+  - *ReplaceAll*: it returns a new string with all matches of a substring replaced by the new text;
+  the `find` property is parsed as a regex if `is_regex` is true, otherwise it is evaluated as a static string.
+  Syntax:
+  ```json
+       {
+           "type": "ReplaceAll",
+           "find": "the string to be found",
+           "replace": "to be replaced with",
+           "is_regex": false 
+       }
+  ```
+  - *ToNumber*: it transforms the resulting String into a number. Syntax:
+  ```json
+       {
+           "type": "ToNumber"
+       }
+  ```
+  - *Trim*: it trims the resulting String. Syntax:
+  ```json
+       {
+           "type": "Trim"
+       }
+  ```
+
+A full example of a WITH clause using modifiers is:
 ```json
 "WITH": {
       "server_info": {
@@ -1013,7 +1042,8 @@ for each match:
             {
               "type": "ReplaceAll",
               "find": "to be found",
-              "replace": "to be replaced with"
+              "replace": "to be replaced with",
+              "is_regex": false
             },
             {
               "type": "Trim"
@@ -1026,6 +1056,7 @@ This extractor has three modifiers that will be applied to the extracted value.
 The modifiers are applied in the order they are declared, 
 so the extracted string will be transformed in lowercase, then some text replaced, 
 and finally, the string will be trimmed.
+
 
 ### Complete Rule Example 1
 
