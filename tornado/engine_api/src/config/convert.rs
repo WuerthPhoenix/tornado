@@ -140,7 +140,9 @@ fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
             .into_iter()
             .map(|modifier| match modifier {
                 Modifier::Lowercase {} => ModifierDto::Lowercase {},
-                Modifier::ReplaceAll { find, replace } => ModifierDto::ReplaceAll { find, replace },
+                Modifier::ReplaceAll { find, replace, is_regex } => {
+                    ModifierDto::ReplaceAll { find, replace, is_regex }
+                }
                 Modifier::ToNumber {} => ModifierDto::ToNumber {},
                 Modifier::Trim {} => ModifierDto::Trim {},
             })
@@ -290,7 +292,9 @@ fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
             .into_iter()
             .map(|modifier| match modifier {
                 ModifierDto::Lowercase {} => Modifier::Lowercase {},
-                ModifierDto::ReplaceAll { find, replace } => Modifier::ReplaceAll { find, replace },
+                ModifierDto::ReplaceAll { find, replace, is_regex } => {
+                    Modifier::ReplaceAll { find, replace, is_regex }
+                }
                 ModifierDto::ToNumber {} => Modifier::ToNumber {},
                 ModifierDto::Trim {} => Modifier::Trim {},
             })

@@ -1593,6 +1593,7 @@ mod test {
                     Modifier::ReplaceAll {
                         find: "and".to_owned(),
                         replace: "replaced_and".to_owned(),
+                        is_regex: false,
                     },
                 ],
             },

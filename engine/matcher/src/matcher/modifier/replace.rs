@@ -1,4 +1,5 @@
 use crate::error::MatcherError;
+use regex::Regex;
 use tornado_common_api::Value;
 
 #[inline]
@@ -12,6 +13,26 @@ pub fn replace_all(
         if text.contains(find) {
             *value = Value::Text(text.replace(find, replace));
         }
+        Ok(())
+    } else {
+        Err(MatcherError::ExtractedVariableError {
+            message: "The 'replace' modifier can be used only with values of type 'string'"
+                .to_owned(),
+            variable_name: variable_name.to_owned(),
+        })
+    }
+}
+
+#[inline]
+pub fn replace_all_with_regex(
+    variable_name: &str,
+    value: &mut Value,
+    find_regex: &Regex,
+    replace: &str,
+) -> Result<(), MatcherError> {
+    if let Some(text) = value.get_text() {
+        let result = find_regex.replace_all(text, replace);
+        *value = Value::Text(result.into_owned());
         Ok(())
     } else {
         Err(MatcherError::ExtractedVariableError {
