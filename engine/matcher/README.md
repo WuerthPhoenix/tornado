@@ -996,34 +996,44 @@ for each match:
 The WITH clause can include a list of String modifiers to post-process the extracted value. 
 The available modifiers are:
   - *Lowercase*: it converts the resulting String to lower case. Syntax:
-  ```json
+    ```json
        {
            "type": "Lowercase"
        }
-  ```
+    ```
   - *ReplaceAll*: it returns a new string with all matches of a substring replaced by the new text;
-  the `find` property is parsed as a regex if `is_regex` is true, otherwise it is evaluated as a static string.
-  Syntax:
-  ```json
+    the `find` property is parsed as a regex if `is_regex` is true, otherwise it is evaluated as a static string.
+    Syntax:
+    ```json
        {
            "type": "ReplaceAll",
            "find": "the string to be found",
            "replace": "to be replaced with",
            "is_regex": false 
        }
-  ```
+    ```
+    In addition, when `is_regex` is true, is possible to interpolate the regex captured groups in the `replace` string,
+    using the `$<position>` syntax, for example:  
+    ```json
+     {
+         "type": "ReplaceAll",
+         "find": "(?P<lastname>[^,\\s]+),\\s+(?P<firstname>\\S+)",
+         "replace": "firstname: $2, lastname: $1",
+         "is_regex": true 
+     }
+    ``` 
   - *ToNumber*: it transforms the resulting String into a number. Syntax:
-  ```json
+    ```json
        {
            "type": "ToNumber"
        }
-  ```
+    ```
   - *Trim*: it trims the resulting String. Syntax:
-  ```json
+    ```json
        {
            "type": "Trim"
        }
-  ```
+    ```
 
 A full example of a WITH clause using modifiers is:
 ```json
