@@ -35,7 +35,12 @@ pub struct ExtractorDto {
 #[serde(tag = "type")]
 pub enum ModifierDto {
     Lowercase {},
-    ReplaceAll { find: String, replace: String },
+    ReplaceAll {
+        find: String,
+        replace: String,
+        #[serde(default)]
+        is_regex: bool,
+    },
     ToNumber {},
     Trim {},
 }
