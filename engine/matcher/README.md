@@ -1022,6 +1022,10 @@ The available modifiers are:
          "is_regex": true 
      }
     ``` 
+    Valid forms of the `replace` field are:
+      - extract from event: `${events.payload.hostname_ext}`
+      - use named groups from regex: `$digits and other`
+      - use group positions from regex: `$1 and other`
   - *ToNumber*: it transforms the resulting String into a number. Syntax:
     ```json
        {
