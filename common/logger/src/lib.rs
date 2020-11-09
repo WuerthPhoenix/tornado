@@ -53,6 +53,7 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
 
         FmtSubscriber::builder()
             .with_env_filter(env_filter)
+            .with_ansi(false)
             .try_init()
             .map_err(|err| LoggerError::LoggerConfigurationError {
                 message: format!("Cannot start the stdout_output logger. err: {}", err),
