@@ -1,9 +1,6 @@
-use crate::TornadoError;
-
 use crate::pool::{ReplyRequest, Runner, Sender};
 use async_channel::{bounded, unbounded};
 use log::*;
-use std::sync::Arc;
 use std::thread;
 
 /// Executes a blocking callback every time a message is sent to the returned Sender.
@@ -13,7 +10,7 @@ pub fn start_blocking_runner<F, M, R, Run>(
     max_parallel_executions: usize,
     buffer_size: usize,
     factory: F,
-) -> Result<Sender<M, R>, TornadoError>
+) -> Sender<M, R>
 where
     M: Send + Sync + 'static,
     F: Fn() -> Run,
@@ -77,6 +74,7 @@ mod test {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
     use tokio::time;
+    use std::sync::Arc;
 
     #[actix_rt::test]
     async fn should_execute_max_parallel_blocking_tasks() {
@@ -98,8 +96,7 @@ mod test {
                     let _result = exec_tx.try_send(());
                 }),
             }
-        })
-        .unwrap();
+        });
 
         // Act
 
@@ -138,8 +135,7 @@ mod test {
                 println!("end processing message: [{}]", message);
                 message
             }),
-        })
-        .unwrap();
+        });
 
         let (exec_tx, exec_rx) = unbounded();
         let count = Arc::new(AtomicUsize::new(0));
