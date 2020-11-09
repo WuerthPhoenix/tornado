@@ -19,4 +19,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 actix = "0.10"
 actix-web = "3"
 maplit = "1.0"
-httpmock = "0.5"
+httpmock = "0.4"
