@@ -60,6 +60,11 @@ export type MatcherConfigDto =
  | {     type: "Filter"; name: string; filter: FilterDto; nodes:     MatcherConfigDto [] } 
  | { type: "Ruleset"; name: string; rules: RuleDto [] };
 
+export type ModifierDto = 
+ | { type: "Lowercase" } 
+ | { type: "ReplaceAll"; find: string; replace: string } 
+ | { type: "Trim" };
+
 export type OperatorDto = 
  | { type: "AND"; operators: OperatorDto [] } 
  | { type: "OR"; operators: OperatorDto [] } 
