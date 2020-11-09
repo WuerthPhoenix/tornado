@@ -36,6 +36,7 @@ pub struct ExtractorDto {
 pub enum ModifierDto {
     Lowercase {},
     ReplaceAll { find: String, replace: String },
+    ToNumber {},
     Trim {},
 }
 

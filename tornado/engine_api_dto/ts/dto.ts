@@ -63,6 +63,7 @@ export type MatcherConfigDto =
 export type ModifierDto = 
  | { type: "Lowercase" } 
  | { type: "ReplaceAll"; find: string; replace: string } 
+ | { type: "ToNumber" } 
  | { type: "Trim" };
 
 export type OperatorDto = 
