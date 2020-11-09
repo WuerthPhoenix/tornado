@@ -9,6 +9,7 @@ use crate::config::rule::{Extractor, ExtractorRegex};
 use crate::error::MatcherError;
 use crate::matcher::modifier::ValueModifier;
 use crate::model::InternalEvent;
+use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
 use std::collections::HashMap;
@@ -153,7 +154,7 @@ impl ValueExtractor {
         Ok(Self {
             key: key.to_owned(),
             regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
-            modifiers_post: ValueModifier::build(rule_name, &extractor.modifiers_post)?,
+            modifiers_post: ValueModifier::build(rule_name, accessor, &extractor.modifiers_post)?,
         })
     }
 
@@ -166,21 +167,21 @@ impl ValueExtractor {
         let mut extracted_value =
             self.regex_extractor.extract(variable_name, event, extracted_vars)?;
         for modifier in &self.modifiers_post {
-            modifier.apply(variable_name, &mut extracted_value)?;
+            modifier.apply(variable_name, &mut extracted_value, event, extracted_vars)?;
         }
         Ok(extracted_value)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 enum RegexValueExtractor {
-    SingleMatchSingleGroup { regex: RustRegex, group_match_idx: usize, target: Accessor },
-    AllMatchesSingleGroup { regex: RustRegex, group_match_idx: usize, target: Accessor },
-    SingleMatchAllGroups { regex: RustRegex, target: Accessor },
-    AllMatchesAllGroups { regex: RustRegex, target: Accessor },
-    SingleMatchNamedGroups { regex: RustRegex, target: Accessor },
-    AllMatchesNamedGroups { regex: RustRegex, target: Accessor },
-    SingleKeyMatch { regex: RustRegex, target: Accessor },
+    SingleMatchSingleGroup { regex: RegexWrapper, group_match_idx: usize, target: Accessor },
+    AllMatchesSingleGroup { regex: RegexWrapper, group_match_idx: usize, target: Accessor },
+    SingleMatchAllGroups { regex: RegexWrapper, target: Accessor },
+    AllMatchesAllGroups { regex: RegexWrapper, target: Accessor },
+    SingleMatchNamedGroups { regex: RegexWrapper, target: Accessor },
+    AllMatchesNamedGroups { regex: RegexWrapper, target: Accessor },
+    SingleKeyMatch { regex: RegexWrapper, target: Accessor },
 }
 
 impl RegexValueExtractor {
@@ -193,11 +194,7 @@ impl RegexValueExtractor {
 
         match &extractor.regex {
             ExtractorRegex::Regex { regex, group_match_idx, all_matches } => {
-                let rust_regex =
-                    RustRegex::new(regex).map_err(|e| MatcherError::ExtractorBuildFailError {
-                        message: format!("Cannot parse regex [{}]", regex),
-                        cause: e.to_string(),
-                    })?;
+                let rust_regex = RegexWrapper::new(regex)?;
 
                 let all_matches = all_matches.unwrap_or(false);
 
@@ -240,11 +237,7 @@ impl RegexValueExtractor {
                 }
             }
             ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
-                let rust_regex =
-                    RustRegex::new(regex).map_err(|e| MatcherError::ExtractorBuildFailError {
-                        message: format!("Cannot parse regex [{}]", regex),
-                        cause: e.to_string(),
-                    })?;
+                let rust_regex = RegexWrapper::new(regex)?;
 
                 if !has_named_groups(&rust_regex) {
                     return Err(MatcherError::ConfigurationError {
@@ -262,11 +255,7 @@ impl RegexValueExtractor {
                 }
             }
             ExtractorRegex::SingleKeyRegex { regex } => {
-                let rust_regex =
-                    RustRegex::new(regex).map_err(|e| MatcherError::ExtractorBuildFailError {
-                        message: format!("Cannot parse regex [{}]", regex),
-                        cause: e.to_string(),
-                    })?;
+                let rust_regex = RegexWrapper::new(regex)?;
                 Ok(RegexValueExtractor::SingleKeyMatch { regex: rust_regex, target })
             }
         }
@@ -1593,6 +1582,7 @@ mod test {
                     Modifier::ReplaceAll {
                         find: "and".to_owned(),
                         replace: "replaced_and".to_owned(),
+                        is_regex: false,
                     },
                 ],
             },
