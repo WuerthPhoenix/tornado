@@ -154,7 +154,7 @@ impl ValueExtractor {
         Ok(Self {
             key: key.to_owned(),
             regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
-            modifiers_post: ValueModifier::build(rule_name, &extractor.modifiers_post)?,
+            modifiers_post: ValueModifier::build(rule_name, accessor, &extractor.modifiers_post)?,
         })
     }
 
@@ -167,7 +167,7 @@ impl ValueExtractor {
         let mut extracted_value =
             self.regex_extractor.extract(variable_name, event, extracted_vars)?;
         for modifier in &self.modifiers_post {
-            modifier.apply(variable_name, &mut extracted_value)?;
+            modifier.apply(variable_name, &mut extracted_value, event, extracted_vars)?;
         }
         Ok(extracted_value)
     }
