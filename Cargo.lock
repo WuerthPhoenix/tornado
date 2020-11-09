@@ -4071,7 +4071,6 @@ dependencies = [
  "port_check",
  "rand 0.7.3",
  "rants",
- "rayon",
  "serde 1.0.117",
  "serde_json",
  "serial_test",

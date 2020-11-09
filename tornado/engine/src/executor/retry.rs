@@ -402,7 +402,6 @@ pub mod test {
                     let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                     ExecutorRunner { executor }
                 })
-                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -434,7 +433,6 @@ pub mod test {
                     let executor = AlwaysOkExecutor { sender: sender.clone() };
                     ExecutorRunner { executor }
                 })
-                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -464,7 +462,6 @@ pub mod test {
                     let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
                     ExecutorRunner { executor }
                 })
-                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
@@ -495,7 +492,6 @@ pub mod test {
                     let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
                     ExecutorRunner { executor }
                 })
-                .unwrap()
             });
 
         executor_addr.do_send(ActionMessage { action });
