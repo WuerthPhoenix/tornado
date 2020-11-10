@@ -13,6 +13,7 @@
   - [ ] Move to async: monitoring
   - [ ] Move to async: script
   - [ ] Move to async: smart_monitoring_check_result
+  - [ ] Archive executor: check whether the tracing_appender::non_blocking can be used to write to file 
 - [ ] Matcher 
   - [ ] Replace FS operation with `async` equivalents
 - [ ] Network

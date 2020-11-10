@@ -1,7 +1,7 @@
 use crate::executor::ActionMessage;
 use actix::prelude::*;
 use log::*;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use tornado_executor_foreach::ForEachExecutor;
 
 #[derive(Message)]

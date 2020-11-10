@@ -7,7 +7,7 @@ use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,

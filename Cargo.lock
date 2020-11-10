@@ -4324,8 +4324,13 @@ dependencies = [
 name = "tornado_executor_common"
 version = "0.0.1"
 dependencies = [
+ "actix",
+ "actix-rt",
+ "async-channel",
  "async-trait",
+ "log",
  "thiserror",
+ "tokio 0.2.22",
  "tornado_common_api",
 ]
 

@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::sync::Arc;
 use tornado_common::pool::Runner;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
 
 pub mod foreach;
 pub mod retry;
@@ -15,11 +15,11 @@ pub struct ActionMessage {
     pub action: Arc<Action>,
 }
 
-pub struct ExecutorRunner<E: Executor + Display + Unpin + Sync + Send> {
+pub struct ExecutorRunner<E: StatefulExecutor + Display + Unpin + Sync + Send> {
     pub executor: E,
 }
 
-impl<E: Executor + Display + Unpin + Sync + Send + 'static>
+impl<E: StatefulExecutor + Display + Unpin + Sync + Send + 'static>
     Runner<ActionMessage, Result<(), ExecutorError>> for ExecutorRunner<E>
 {
     fn execute(&mut self, msg: ActionMessage) -> Result<(), ExecutorError> {

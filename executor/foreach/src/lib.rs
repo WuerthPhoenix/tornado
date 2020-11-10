@@ -3,8 +3,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
 use tornado_common_parser::Parser;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use tornado_network_common::EventBus;
+use std::rc::Rc;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
@@ -30,8 +31,8 @@ impl ForEachExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for ForEachExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for ForEachExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {

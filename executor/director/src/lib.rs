@@ -3,7 +3,8 @@ use log::*;
 use serde::*;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use std::rc::Rc;
 
 pub mod config;
 
@@ -72,7 +73,7 @@ impl DirectorExecutor {
     }
 
     fn parse_action<'a>(
-        &mut self,
+        &self,
         action: &'a Action,
     ) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
@@ -155,11 +156,11 @@ impl DirectorExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for DirectorExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for DirectorExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let action = self.parse_action(action)?;
+        let action = self.parse_action(&action)?;
 
         self.perform_request(action)
     }

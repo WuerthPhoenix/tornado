@@ -1,13 +1,14 @@
 use action::SimpleCreateAndProcess;
 use log::*;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError, RetriableError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError, RetriableError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE};
+use std::rc::Rc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
@@ -90,8 +91,8 @@ impl SmartMonitoringExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for SmartMonitoringExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for SmartMonitoringExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;

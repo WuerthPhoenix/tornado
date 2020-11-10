@@ -6,7 +6,8 @@ use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
 use std::path::Path;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
+use std::rc::Rc;
 
 pub mod config;
 mod paths;
@@ -112,8 +113,8 @@ impl ArchiveExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for ArchiveExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatefulExecutor for ArchiveExecutor {
+    async fn execute(&mut self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action

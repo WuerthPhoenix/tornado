@@ -2,7 +2,8 @@ use log::*;
 use std::fmt;
 use std::process::Command;
 use tornado_common_api::{Action, Number, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use std::rc::Rc;
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
 pub const SCRIPT_ARGS_KEY: &str = "args";
@@ -53,8 +54,8 @@ impl fmt::Display for ScriptExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for ScriptExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for ScriptExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let script = action

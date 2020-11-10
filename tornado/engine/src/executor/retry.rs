@@ -225,7 +225,7 @@ pub mod test {
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common::pool::blocking_pool::start_blocking_runner;
     use tornado_common_api::Action;
-    use tornado_executor_common::{Executor, ExecutorError};
+    use tornado_executor_common::{StatefulExecutor, ExecutorError};
 
     #[test]
     fn retry_policy_none_should_never_retry() {
@@ -520,7 +520,7 @@ pub mod test {
         sender: UnboundedSender<Action>,
     }
 
-    impl Executor for AlwaysFailExecutor {
+    impl StatefulExecutor for AlwaysFailExecutor {
         fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
@@ -541,7 +541,7 @@ pub mod test {
         sender: UnboundedSender<Action>,
     }
 
-    impl Executor for AlwaysOkExecutor {
+    impl StatefulExecutor for AlwaysOkExecutor {
         fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Ok(())

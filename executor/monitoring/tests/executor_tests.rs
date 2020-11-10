@@ -3,7 +3,7 @@ use httpmock::{Mock, MockServer, Regex};
 use maplit::*;
 use std::collections::HashMap;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_monitoring::MonitoringExecutor;

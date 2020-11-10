@@ -3,7 +3,8 @@ use log::*;
 use serde::Serialize;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use std::rc::Rc;
 
 pub mod config;
 
@@ -35,7 +36,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
     }
 
-    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
+    fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -101,10 +102,10 @@ impl Icinga2Executor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for Icinga2Executor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for Icinga2Executor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
-        let action = self.parse_action(action)?;
+        let action = self.parse_action(&action)?;
 
         self.perform_request(&action)
     }

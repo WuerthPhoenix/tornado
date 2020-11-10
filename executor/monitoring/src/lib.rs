@@ -2,7 +2,7 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError, RetriableError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError, RetriableError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorActionName, DirectorExecutor,
@@ -12,6 +12,7 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
+use std::rc::Rc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -173,8 +174,8 @@ impl MonitoringExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for MonitoringExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for MonitoringExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;

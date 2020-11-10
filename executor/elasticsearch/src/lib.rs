@@ -6,7 +6,8 @@ use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use std::rc::Rc;
 
 pub mod config;
 
@@ -130,8 +131,8 @@ impl std::fmt::Display for ElasticsearchExecutor {
 }
 
 #[async_trait::async_trait(?Send)]
-impl Executor for ElasticsearchExecutor {
-    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+impl StatelessExecutor for ElasticsearchExecutor {
+    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {

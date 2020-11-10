@@ -2,7 +2,7 @@ use httpmock::Method::POST;
 use httpmock::{Mock, MockServer, Regex};
 use maplit::*;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor;
