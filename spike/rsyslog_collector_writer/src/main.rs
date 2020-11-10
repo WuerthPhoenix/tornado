@@ -11,7 +11,7 @@ fn main() {
     let conf = config::Conf::build();
 
     let logger_config =
-        LoggerConfig { level: "Debug".to_owned(), stdout_output: true };
+        LoggerConfig { level: "Debug".to_owned(), stdout_output: true, file_output_path: None };
 
     // Setup logger
     setup_logger(&logger_config).unwrap();
