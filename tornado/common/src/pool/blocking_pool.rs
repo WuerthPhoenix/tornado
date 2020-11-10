@@ -31,13 +31,15 @@ where
                     Ok(message) => {
                         let completion_tx = completion_tx.clone();
 
-                        thread::spawn( move || {
-
+                        thread::spawn(move || {
                             let response = runner.execute(message.msg);
 
                             if let Some(responder) = message.responder {
                                 if let Err(err) = responder.try_send(response) {
-                                    error!("Pool executor cannot send the response message. Err: {:?}", err);
+                                    error!(
+                                        "Pool executor cannot send the response message. Err: {:?}",
+                                        err
+                                    );
                                 };
                             }
 
@@ -72,9 +74,9 @@ mod test {
 
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
     use tokio::time;
-    use std::sync::Arc;
 
     #[actix_rt::test]
     async fn should_execute_max_parallel_blocking_tasks() {

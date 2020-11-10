@@ -34,7 +34,7 @@ pub async fn daemon(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
-    setup_logger(&configs.tornado.logger)?;
+    let _guard = setup_logger(&configs.tornado.logger)?;
 
     // start system
     let daemon_config = configs.tornado.tornado.daemon;

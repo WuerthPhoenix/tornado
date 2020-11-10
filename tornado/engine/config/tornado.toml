@@ -1,8 +1,12 @@
 [logger]
 
-# The Logger level
-# Valid values: trace, debug, info, warn, error
-level = "debug"
+# The Logger level filter
+# Example of a valid filter: "warn,tornado=info,rants=debug"
+#                              ^      ^           ^
+#                              |      |           logger level of the 'rants' library (Nats client library)
+#                              |      logger level of 'tornado'
+#                             global logger level
+level = "info,tornado=debug"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
