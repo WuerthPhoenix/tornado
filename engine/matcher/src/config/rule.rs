@@ -43,7 +43,13 @@ pub struct Extractor {
 #[serde(deny_unknown_fields)]
 pub enum Modifier {
     Lowercase {},
-    ReplaceAll { find: String, replace: String },
+    ReplaceAll {
+        find: String,
+        replace: String,
+        #[serde(default)]
+        is_regex: bool,
+    },
+    ToNumber {},
     Trim {},
 }
 

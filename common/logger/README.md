@@ -1,10 +1,13 @@
 # Common Logger
 
 The *tornado_common_logger* crate contains the logger configuration for the Tornado components.
-The current implementation is based on [fern](https://github.com/daboross/fern).
 
 The configuration is based on three entries:
-- __level__:  Defines the logger verbosity. Valid values are: *trace*, *debug*, *info*, *warn*, and *error*.
+- __level__:  A list of comma separated logger verbosity levels. Valid values for a level are: *trace*, *debug*, *info*, *warn*, and *error*.
+  If only one level is provided, this is used as global logger level. Otherwise, a list of per package levels can be used.
+  E.g.:
+  - `level=info`: the global logger level is set to *info*
+  - `level=warn,tornado=debug`: the global logger level is set to *warn*, the tornado package logger level is set to *debug* 
 - __stdout-output__:  A boolean value that determines whether the Logger should print to standard output.
   Valid values are *true* and *false*.
 - __file-output-path__:  An optional string that defines a file path in the file system. If

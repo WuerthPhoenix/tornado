@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let streams_dir = arg_matches.value_of("streams-dir").expect("streams-dir should be provided");
     let collector_config = config::build_config(&config_dir)?;
 
-    setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(&collector_config.logger)?;
 
     let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
     let streams_config = config::read_streams_from_config(&streams_dir_full_path)?;

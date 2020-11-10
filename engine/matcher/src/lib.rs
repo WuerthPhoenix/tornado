@@ -7,6 +7,7 @@ pub mod error;
 pub mod interpolator;
 pub mod matcher;
 pub mod model;
+pub mod regex;
 pub mod validator;
 
 #[cfg(test)]
@@ -33,10 +34,10 @@ pub mod test_root {
         println!("Init logger");
 
         let conf = LoggerConfig {
-            level: String::from("trace"),
+            level: String::from("info,tornado=trace"),
             stdout_output: true,
             file_output_path: None,
         };
-        setup_logger(&conf).unwrap();
+        let _guard = setup_logger(&conf).unwrap();
     }
 }

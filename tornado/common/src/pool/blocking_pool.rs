@@ -1,44 +1,12 @@
-use crate::TornadoError;
-
 use crate::pool::{ReplyRequest, Runner, Sender};
 use async_channel::{bounded, unbounded};
 use log::*;
-use rayon::{ThreadPool, ThreadPoolBuilder};
-use std::sync::Arc;
+use std::thread;
 
 /// Executes a blocking callback every time a message is sent to the returned Sender.
 /// The callback is executed in parallel with a fixed max_parallel_executions factor.
 /// If more messages than max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
 pub fn start_blocking_runner<F, M, R, Run>(
-    max_parallel_executions: usize,
-    buffer_size: usize,
-    factory: F,
-) -> Result<Sender<M, R>, TornadoError>
-where
-    M: Send + Sync + 'static,
-    F: Fn() -> Run,
-    R: Send + Sync + 'static,
-    Run: Send + 'static + Runner<M, R>,
-{
-    ThreadPoolBuilder::new()
-        .num_threads(max_parallel_executions)
-        .build()
-        .map_err(|err| TornadoError::ConfigurationError { message: format!("{:?}", err) })
-        .map(|pool| {
-            start_blocking_runner_with_pool(
-                pool.into(),
-                max_parallel_executions,
-                buffer_size,
-                factory,
-            )
-        })
-}
-
-/// Executes a blocking callback every time a message is sent to the returned Sender.
-/// The callback is executed within the provided ThreadPool with a fixed max_parallel_executions factor.
-/// If more messages than max_parallel_executions are sent, the exceeding messages are kept in a queue with fixed buffer_size.
-pub fn start_blocking_runner_with_pool<F, M, R, Run>(
-    thread_pool: Arc<ThreadPool>,
     max_parallel_executions: usize,
     buffer_size: usize,
     factory: F,
@@ -53,7 +21,6 @@ where
 
     for _ in 0..max_parallel_executions {
         let receiver = receiver.clone();
-        let thread_pool = thread_pool.clone();
         let runner = factory();
 
         actix::spawn(async move {
@@ -64,13 +31,15 @@ where
                     Ok(message) => {
                         let completion_tx = completion_tx.clone();
 
-                        thread_pool.spawn( move || {
-
+                        thread::spawn(move || {
                             let response = runner.execute(message.msg);
 
                             if let Some(responder) = message.responder {
                                 if let Err(err) = responder.try_send(response) {
-                                    error!("Pool executor cannot send the response message. Err: {:?}", err);
+                                    error!(
+                                        "Pool executor cannot send the response message. Err: {:?}",
+                                        err
+                                    );
                                 };
                             }
 
@@ -105,6 +74,7 @@ mod test {
 
     use super::*;
     use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use std::time::Duration;
     use tokio::time;
 
@@ -128,8 +98,7 @@ mod test {
                     let _result = exec_tx.try_send(());
                 }),
             }
-        })
-        .unwrap();
+        });
 
         // Act
 
@@ -168,8 +137,7 @@ mod test {
                 println!("end processing message: [{}]", message);
                 message
             }),
-        })
-        .unwrap();
+        });
 
         let (exec_tx, exec_rx) = unbounded();
         let count = Arc::new(AtomicUsize::new(0));

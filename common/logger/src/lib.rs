@@ -1,29 +1,26 @@
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
+use tracing::subscriber::set_global_default;
+use tracing::Subscriber;
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter};
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoggerConfig {
-    // Todo: check if an enum can be used
-    /// The Logger level
+    /// Sets the logger [`EnvFilter`].
     /// Valid values: trace, debug, info, warn, error
+    /// Example of a valid filter: "warn,my_crate=info,my_crate::my_mod=debug,[my_span]=trace"
     pub level: String,
 
     /// Determines whether the Logger should print to standard output.
     /// Valid values: true, false
     pub stdout_output: bool,
 
-    /// A file path in the file system; if provided, the Logger will append any output to it.
+    // A file path in the file system; if provided, the Logger will append any output to it;
+    // otherwise, it will log on the stdout.
     pub file_output_path: Option<String>,
-    // #[structopt(short = "o", long = "value_one", default_value = "10000")]
-    // pub module_level: HashMap<String, String>,
-}
-
-impl Default for LoggerConfig {
-    fn default() -> Self {
-        LoggerConfig { level: "info".to_owned(), stdout_output: false, file_output_path: None }
-    }
 }
 
 #[derive(Error, Debug)]
@@ -45,52 +42,114 @@ impl From<std::io::Error> for LoggerError {
 }
 
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(logger_config: &LoggerConfig) -> Result<(), LoggerError> {
-    let mut log_dispatcher = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "{}[{}][{}] {}",
-                chrono::Local::now().format("[%Y-%m-%d][%H:%M:%S]"),
-                record.target(),
-                record.level(),
-                message
-            ))
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>, LoggerError> {
+    let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
+        LoggerError::LoggerConfigurationError {
+            message: format!(
+                "Cannot parse the logger level: [{}]. err: {}",
+                logger_config.level, err
+            ),
+        }
+    })?;
+
+    let subscriber = tracing_subscriber::registry().with(env_filter);
+
+    if let Some(file_output) = &logger_config.file_output_path {
+        let (dir, filename) = path_to_dir_and_filename(file_output)?;
+        let file_appender = tracing_appender::rolling::never(dir, filename);
+
+        let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
+
+        let subscriber = subscriber.with(Layer::new().with_ansi(false).with_writer(non_blocking));
+
+        if logger_config.stdout_output {
+            let subscriber = subscriber.with(Layer::new().with_ansi(false));
+            set_global_logger(subscriber)?;
+            return Ok(Some(guard));
+        } else {
+            set_global_logger(subscriber)?;
+            return Ok(Some(guard));
+        }
+    } else if logger_config.stdout_output {
+        let subscriber = subscriber.with(Layer::new().with_ansi(false));
+        set_global_logger(subscriber)?;
+        return Ok(None);
+    }
+
+    Ok(None)
+}
+
+fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
+    let full_path = full_path.replace(r#"\"#, "/");
+    if let Some(last_separator_index) = full_path.rfind('/') {
+        Ok((
+            full_path[0..last_separator_index + 1].to_owned(),
+            full_path[last_separator_index + 1..full_path.len()].to_owned(),
+        ))
+    } else {
+        Err(LoggerError::LoggerConfigurationError {
+            message: format!("Output file format [{}] is wrong", full_path),
         })
-        .level(log::LevelFilter::from_str(&logger_config.level).map_err(|err| {
-            LoggerError::LoggerConfigurationError {
-                message: format!(
-                    "The specified logger level is not valid: [{}]. err: {}",
-                    &logger_config.level, err
-                ),
-            }
-        })?);
-
-    /*
-    for (module, level) in logger_config.module_level.iter() {
-        log_dispatcher =
-            log_dispatcher.level_for(module.to_owned(), log::LevelFilter::from_str(level).unwrap())
     }
-    */
+}
 
-    log_dispatcher = log_dispatcher
-        .level_for("hyper".to_owned(), log::LevelFilter::Warn)
-        .level_for("mio".to_owned(), log::LevelFilter::Warn)
-        .level_for("rants".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_io".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_reactor".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_tcp".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_uds".to_owned(), log::LevelFilter::Warn)
-        .level_for("tokio_util".to_owned(), log::LevelFilter::Warn);
+fn set_global_logger<S>(subscriber: S) -> Result<(), LoggerError>
+where
+    S: Subscriber + Send + Sync + 'static,
+{
+    tracing_log::LogTracer::init().map_err(|err| LoggerError::LoggerConfigurationError {
+        message: format!("Cannot start the logger LogTracer. err: {}", err),
+    })?;
+    set_global_default(subscriber).map_err(|err| LoggerError::LoggerConfigurationError {
+        message: format!("Cannot start the logger. err: {}", err),
+    })
+}
 
-    if logger_config.stdout_output {
-        log_dispatcher = log_dispatcher.chain(std::io::stdout());
+#[cfg(test)]
+mod test {
+
+    use super::*;
+
+    #[test]
+    fn should_split_the_file_path() {
+        assert_eq!(
+            ("/tmp/hello/".to_owned(), "filename".to_owned()),
+            path_to_dir_and_filename("/tmp/hello/filename").unwrap()
+        );
+        assert_eq!(
+            ("/".to_owned(), "log_output.log".to_owned()),
+            path_to_dir_and_filename("/log_output.log").unwrap()
+        );
+        assert_eq!(
+            ("/tmp/".to_owned(), "log_output.log".to_owned()),
+            path_to_dir_and_filename("/tmp/log_output.log").unwrap()
+        );
+        assert_eq!(
+            ("//tmp///".to_owned(), "log_output.log".to_owned()),
+            path_to_dir_and_filename("//tmp///log_output.log").unwrap()
+        );
+        assert_eq!(
+            (
+                "/neteye/shared/tornado_rsyslog_collector/log/".to_owned(),
+                "tornado_rsyslog_collector.log".to_owned()
+            ),
+            path_to_dir_and_filename(
+                "/neteye/shared/tornado_rsyslog_collector/log/tornado_rsyslog_collector.log"
+            )
+            .unwrap()
+        );
+        assert_eq!(
+            ("/tmp/hello/".to_owned(), "filename".to_owned()),
+            path_to_dir_and_filename(r#"/tmp\hello/filename"#).unwrap()
+        );
+        assert_eq!(
+            ("c:/windows/some/".to_owned(), "filename.txt".to_owned()),
+            path_to_dir_and_filename(r#"c:\windows\some\filename.txt"#).unwrap()
+        );
     }
 
-    if let Some(path) = &logger_config.file_output_path {
-        log_dispatcher = log_dispatcher.chain(fern::log_file(&path)?)
+    #[test]
+    fn split_the_file_path_should_file_if_directory_is_not_present() {
+        assert!(path_to_dir_and_filename("filename").is_err());
     }
-
-    log_dispatcher.apply()?;
-
-    Ok(())
 }

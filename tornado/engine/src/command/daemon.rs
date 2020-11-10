@@ -34,7 +34,7 @@ pub async fn daemon(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
-    setup_logger(&configs.tornado.logger)?;
+    let _guard = setup_logger(&configs.tornado.logger)?;
 
     // start system
     let daemon_config = configs.tornado.tornado.daemon;
@@ -58,7 +58,6 @@ pub async fn daemon(
                 let executor = tornado_executor_archive::ArchiveExecutor::new(&archive_config);
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start script executor actor
@@ -68,7 +67,6 @@ pub async fn daemon(
                 let executor = tornado_executor_script::ScriptExecutor::new();
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start logger executor actor
@@ -78,7 +76,6 @@ pub async fn daemon(
                 let executor = tornado_executor_logger::LoggerExecutor::new();
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start ForEach executor actor
@@ -95,7 +92,6 @@ pub async fn daemon(
                         .expect("Cannot start the Elasticsearch Executor");
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start icinga2 executor actor
@@ -108,7 +104,6 @@ pub async fn daemon(
                         .expect("Cannot start the Icinga2Executor Executor");
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start director executor actor
@@ -122,7 +117,6 @@ pub async fn daemon(
                 .expect("Cannot start the DirectorExecutor Executor");
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start monitoring executor actor
@@ -138,7 +132,6 @@ pub async fn daemon(
                 .expect("Cannot start the MonitoringExecutor Executor");
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Start smart_monitoring_check_result executor actor
@@ -155,7 +148,6 @@ pub async fn daemon(
                     .expect("Cannot start the SmartMonitoringExecutor Executor");
                 ExecutorRunner { executor }
             })
-            .expect("Should start the threadpool for the executor")
         });
 
     // Configure action dispatcher

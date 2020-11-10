@@ -40,7 +40,8 @@ members = [
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
 # (including all its external crates), instead of just one crate at a time. This can produce better-optimized code
 # However, it can take a very long time and use a huge amount of memory during compilation, so it is disabled by default.
-#[profile.release]
+[profile.release]
+debug = true
 #lto = true
 
 # To perform a CPU specific build, launch cargo with RUSTFLAGS='-C target-cpu=native'
