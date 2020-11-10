@@ -1,9 +1,9 @@
-use crate::{StatelessExecutor, ExecutorError, StatefulExecutor};
+use crate::{ExecutorError, StatefulExecutor, StatelessExecutor};
 use async_channel::{bounded, Sender};
-use tornado_common_api::Action;
-use tokio::sync::Semaphore;
 use log::*;
 use std::rc::Rc;
+use tokio::sync::Semaphore;
+use tornado_common_api::Action;
 
 pub struct ReplyRequest {
     pub action: Rc<Action>,
@@ -17,7 +17,10 @@ pub struct StatefulExecutorPool {
 }
 
 impl StatefulExecutorPool {
-    pub fn new<F: Fn() -> T, T: 'static + StatefulExecutor>(max_parallel_executions: usize, factory: F) -> Self {
+    pub fn new<F: Fn() -> T, T: 'static + StatefulExecutor>(
+        max_parallel_executions: usize,
+        factory: F,
+    ) -> Self {
         let (sender, receiver) = bounded::<ReplyRequest>(max_parallel_executions);
 
         for _ in 0..max_parallel_executions {
@@ -44,9 +47,7 @@ impl StatefulExecutorPool {
                 }
             });
         }
-        Self {
-            sender
-        }
+        Self { sender }
     }
 }
 
@@ -67,21 +68,17 @@ impl StatelessExecutor for StatefulExecutorPool {
 /// It allocates a fixed pool of StatelessExecutors with a max concurrent access factor.
 pub struct StatelessExecutorPool<T: StatelessExecutor> {
     semaphore: Semaphore,
-    executor: T
+    executor: T,
 }
 
-impl <T: StatelessExecutor> StatelessExecutorPool<T> {
+impl<T: StatelessExecutor> StatelessExecutorPool<T> {
     pub fn new(max_parallel_executions: usize, executor: T) -> Self {
-        Self{
-            semaphore: Semaphore::new(max_parallel_executions),
-            executor
-        }
+        Self { semaphore: Semaphore::new(max_parallel_executions), executor }
     }
 }
 
 #[async_trait::async_trait(?Send)]
-impl <T: StatelessExecutor> StatelessExecutor for StatelessExecutorPool<T> {
-
+impl<T: StatelessExecutor> StatelessExecutor for StatelessExecutorPool<T> {
     async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
         let _guard = self.semaphore.acquire().await;
         self.executor.execute(action).await
@@ -92,103 +89,166 @@ impl <T: StatelessExecutor> StatelessExecutor for StatelessExecutorPool<T> {
 mod test {
 
     use super::*;
+    use crate::callback::{CallbackStatefulExecutor, CallbackStatelessExecutor};
     use async_channel::unbounded;
-    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
     use tokio::time;
 
     #[actix_rt::test]
-    async fn should_execute_max_parallel_async_tasks() {
+    async fn stateful_pool_should_execute_max_parallel_async_tasks() {
         // Arrange
         let threads = 5;
-        let buffer_size = 10;
 
         let (exec_tx, exec_rx) = unbounded();
 
-        let sender = start_async_runner(
-            threads,
-            buffer_size,
-            Arc::new(move |message: String| {
-                let exec_tx_clone = exec_tx.clone();
+        let sender = Arc::new(StatefulExecutorPool::new(threads, move || {
+            let exec_tx_clone = exec_tx.clone();
+            CallbackStatefulExecutor::new(move |action: Rc<Action>| {
+                let exec_tx_clone = exec_tx_clone.clone();
                 async move {
-                    println!("processing message: [{}]", message);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
-                        .await;
-                    println!("end processing message: [{}]", message);
+                    println!("processing message: [{:?}]", action);
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    println!("end processing message: [{:?}]", action);
 
                     // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
                     let _result = exec_tx_clone.send(()).await;
+                    Ok(())
                 }
-            }),
-        );
+            })
+        }));
 
         // Act
+        let loops = 10;
 
-        //  Send enough messages to fill the buffer
-        for i in 0..(buffer_size + threads) {
-            let message = format!("hello {}", i);
-            println!("send message: [{}]", message);
-            assert!(sender.try_send(message).is_ok());
-            time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
+        for i in 0..(loops * threads) {
+            let exec_rx = exec_rx.clone();
+            let sender = sender.clone();
+            actix::spawn(async move {
+                let message = Action::new(&format!("hello {}", i));
+                println!("send message: [{:?}]", message);
+                assert!(sender.execute(Rc::new(message)).await.is_ok());
+                // There should never be more messages in the queue than available threads
+                assert!(exec_rx.len() <= threads);
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
+            });
         }
 
         // Assert
+        for _ in 0..(loops * threads) {
+            assert!(exec_rx.recv().await.is_ok());
+            // There should never be more messages in the queue than available threads
+            assert!(exec_rx.len() <= threads);
+        }
 
-        // the buffer is full and all threads are blocked, it should fail
-        assert!(sender.try_send(format!("hello world")).is_err());
-
-        // wait for at least one message to be processed
-        assert!(exec_rx.recv().await.is_ok());
-
-        time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
-
-        // Once one message was processed, we should be able to send a new message
-        assert!(sender.try_send(format!("hello world")).is_ok());
     }
 
-    /*
     #[actix_rt::test]
-    async fn should_send_and_wait_for_response() {
+    async fn stateless_pool_should_execute_max_parallel_async_tasks() {
         // Arrange
         let threads = 5;
-        let buffer_size = 10;
-
-        let sender = start_async_runner(
-            threads,
-            buffer_size,
-            Arc::new(move |message: String| async move {
-                println!("processing message: [{}]", message);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
-                println!("end processing message: [{}]", message);
-                message
-            }),
-        );
 
         let (exec_tx, exec_rx) = unbounded();
-        let count = Arc::new(AtomicUsize::new(0));
+
+        let exec_tx_clone = exec_tx.clone();
+        let sender = Arc::new(StatelessExecutorPool::new(threads,
+                                                         CallbackStatelessExecutor::new(move |action: Rc<Action>| {
+                let exec_tx_clone = exec_tx_clone.clone();
+                async move {
+                    println!("processing message: [{:?}]", action);
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    println!("end processing message: [{:?}]", action);
+
+                    // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
+                    let _result = exec_tx_clone.send(()).await;
+                    Ok(())
+                }
+        })));
+
+        // Act
+        let loops = 10;
+
+        for i in 0..(loops * threads) {
+            let exec_rx = exec_rx.clone();
+            let sender = sender.clone();
+            actix::spawn(async move {
+                let message = Action::new(&format!("hello {}", i));
+                println!("send message: [{:?}]", message);
+                assert!(sender.execute(Rc::new(message)).await.is_ok());
+                // There should never be more messages in the queue than available threads
+                assert!(exec_rx.len() <= threads);
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
+            });
+        }
+
+        // Assert
+        for _ in 0..(loops * threads) {
+            assert!(exec_rx.recv().await.is_ok());
+            // There should never be more messages in the queue than available threads
+            assert!(exec_rx.len() <= threads);
+        }
+
+    }
+
+    #[actix_rt::test]
+    async fn stateful_pool_should_send_and_wait_for_response() {
+        // Arrange
+        let threads = 5;
+
+        let sender = Arc::new(StatefulExecutorPool::new(threads, move || {
+            CallbackStatefulExecutor::new(move |action: Rc<Action>| {
+                async move {
+                    println!("processing message: [{:?}]", action);
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    println!("end processing message: [{:?}]", action);
+                    if action.id.eq("err") {
+                        Err(ExecutorError::SenderError {
+                            message: "".to_owned()
+                        })
+                    } else {
+                       Ok(())
+                    }
+                }
+            })
+        }));
 
         // Act
         for i in 0..3 {
-            let exec_tx = exec_tx.clone();
-            let sender = sender.clone();
-            let count = count.clone();
-
-            actix::spawn(async move {
-                let message = format!("hello {}", i);
-                let response = sender.send(message.clone()).await.unwrap();
-                assert_eq!(message, response);
-                count.fetch_add(1, Ordering::SeqCst);
-                exec_tx.try_send(message).unwrap();
-            })
+            if i % 2 == 0  {
+                assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
+            } else {
+                assert!(sender.execute(Action::new("err").into()).await.is_err());
+            }
         }
-
-        // Assert
-        let expected_messages = vec!["hello 0", "hello 1", "hello 2"];
-        for _ in 0..3 {
-            let response = exec_rx.recv().await.unwrap();
-            assert!(expected_messages.contains(&response.as_str()));
-        }
-
-        assert_eq!(3, count.load(Ordering::SeqCst));
     }
-         */
+
+    #[actix_rt::test]
+    async fn stateless_pool_should_send_and_wait_for_response() {
+        // Arrange
+        let threads = 5;
+
+        let sender = Arc::new(StatelessExecutorPool::new(threads,
+            CallbackStatelessExecutor::new(move |action: Rc<Action>| {
+                async move {
+                    println!("processing message: [{:?}]", action);
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    println!("end processing message: [{:?}]", action);
+                    if action.id.eq("err") {
+                        Err(ExecutorError::SenderError {
+                            message: "".to_owned()
+                        })
+                    } else {
+                        Ok(())
+                    }
+                }
+        })));
+
+        // Act
+        for i in 0..3 {
+            if i % 2 == 0  {
+                assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
+            } else {
+                assert!(sender.execute(Action::new("err").into()).await.is_err());
+            }
+        }
+    }
 }

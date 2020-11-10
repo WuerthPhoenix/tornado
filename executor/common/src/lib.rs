@@ -1,6 +1,6 @@
+use std::rc::Rc;
 use thiserror::Error;
 use tornado_common_api::Action;
-use std::rc::Rc;
 
 pub mod callback;
 pub mod pool;
