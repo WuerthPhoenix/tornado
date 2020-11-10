@@ -111,8 +111,9 @@ impl ArchiveExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for ArchiveExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action

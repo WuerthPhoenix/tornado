@@ -89,8 +89,9 @@ impl SmartMonitoringExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for SmartMonitoringExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;

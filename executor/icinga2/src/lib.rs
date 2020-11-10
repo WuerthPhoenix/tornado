@@ -100,8 +100,9 @@ impl Icinga2Executor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for Icinga2Executor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(action)?;
 

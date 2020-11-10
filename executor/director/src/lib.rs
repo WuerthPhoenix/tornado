@@ -154,8 +154,9 @@ impl DirectorExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for DirectorExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
         let action = self.parse_action(action)?;

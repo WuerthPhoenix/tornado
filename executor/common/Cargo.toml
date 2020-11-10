@@ -7,5 +7,6 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 thiserror = "1.0"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

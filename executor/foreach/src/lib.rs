@@ -29,8 +29,9 @@ impl ForEachExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for ForEachExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {

@@ -227,7 +227,7 @@ mod test {
 
     struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })

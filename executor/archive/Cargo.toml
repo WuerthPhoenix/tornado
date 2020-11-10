@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 log = "0.4"
 regex = "1.4"
 lru_time_cache = "0.11.0"

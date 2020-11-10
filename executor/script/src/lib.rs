@@ -52,8 +52,9 @@ impl fmt::Display for ScriptExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for ScriptExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let script = action

@@ -129,8 +129,9 @@ impl std::fmt::Display for ElasticsearchExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for ElasticsearchExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {

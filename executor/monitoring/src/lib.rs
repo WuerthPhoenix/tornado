@@ -172,8 +172,9 @@ impl MonitoringExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for MonitoringExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;

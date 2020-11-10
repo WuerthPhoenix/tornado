@@ -19,8 +19,9 @@ impl std::fmt::Display for LoggerExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
 impl Executor for LoggerExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:?}]", action);
         Ok(())
     }

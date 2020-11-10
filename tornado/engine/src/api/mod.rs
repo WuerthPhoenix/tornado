@@ -14,7 +14,7 @@ pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl EventApiHandler for MatcherApiHandler {
     async fn send_event_to_current_config(
         &self,
@@ -46,7 +46,7 @@ impl EventApiHandler for MatcherApiHandler {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
