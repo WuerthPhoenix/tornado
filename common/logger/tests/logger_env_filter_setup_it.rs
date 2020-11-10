@@ -1,6 +1,6 @@
-use tornado_common_logger::LoggerConfig;
-use tornado_common_logger::setup_logger;
 use log::{debug, warn};
+use tornado_common_logger::setup_logger;
+use tornado_common_logger::LoggerConfig;
 use tracing::{info, span, Level};
 
 mod inner1 {
@@ -40,8 +40,10 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
     let config = LoggerConfig {
         stdout_output: true,
         level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
+        file_output_path: None,
     };
-    setup_logger(&config).unwrap();
+
+    let _guard = setup_logger(&config).unwrap();
 
     debug!("main - this is debug");
     info!("main - this is info");
