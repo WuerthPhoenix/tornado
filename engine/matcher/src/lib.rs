@@ -33,7 +33,11 @@ pub mod test_root {
     fn start_logger() {
         println!("Init logger");
 
-        let conf = LoggerConfig { level: String::from("info,tornado=trace"), stdout_output: true };
-        setup_logger(&conf).unwrap();
+        let conf = LoggerConfig {
+            level: String::from("info,tornado=trace"),
+            stdout_output: true,
+            file_output_path: None,
+        };
+        let _guard = setup_logger(&conf).unwrap();
     }
 }

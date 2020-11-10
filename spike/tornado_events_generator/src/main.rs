@@ -15,7 +15,7 @@ fn main() {
         LoggerConfig { level: "Debug".to_owned(), stdout_output: true, file_output_path: None };
 
     // Setup logger
-    setup_logger(&logger_config).unwrap();
+    let _guard = setup_logger(&logger_config).unwrap();
 
     // Load events from fs
     let events_path = format!("{}/{}", conf.io.config_dir, conf.io.events_dir);
