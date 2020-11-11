@@ -211,22 +211,34 @@ mod test {
         let sender = Arc::new(WrapperMutPool::new(threads, move || {
             CallbackWrapperMut::new(move |action: Rc<Action>| async move {
                 println!("processing message: [{:?}]", action);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
-                if action.id.eq("err") {
-                    Err(TornadoError::SenderError { message: "".to_owned() })
+                if action.id.contains("err") {
+                    Err(TornadoError::SenderError { message: action.id.to_owned() })
                 } else {
-                    Ok(())
+                    Ok(action.id.to_owned())
                 }
             })
         }));
 
         // Act
-        for i in 0..3 {
+        for i in 0..100 {
             if i % 2 == 0 {
-                assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
+                let message = format!("hello {}", i);
+                let result = sender.execute(Action::new(&message).into()).await;
+                match result {
+                    Ok(result_message) => assert_eq!(result_message, message),
+                    _ => assert!(false),
+                }
             } else {
-                assert!(sender.execute(Action::new("err").into()).await.is_err());
+                let message = format!("err {}", i);
+                let result = sender.execute(Action::new(&message).into()).await;
+                match result {
+                    Err(TornadoError::SenderError { message: err_message }) => {
+                        assert_eq!(err_message, message)
+                    }
+                    _ => assert!(false),
+                }
             }
         }
     }
@@ -240,22 +252,34 @@ mod test {
             threads,
             CallbackWrapper::new(move |action: Rc<Action>| async move {
                 println!("processing message: [{:?}]", action);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
-                if action.id.eq("err") {
-                    Err(TornadoError::SenderError { message: "".to_owned() })
+                if action.id.contains("err") {
+                    Err(TornadoError::SenderError { message: action.id.to_owned() })
                 } else {
-                    Ok(())
+                    Ok(action.id.to_owned())
                 }
             }),
         ));
 
         // Act
-        for i in 0..3 {
+        for i in 0..100 {
             if i % 2 == 0 {
-                assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
+                let message = format!("hello {}", i);
+                let result = sender.execute(Action::new(&message).into()).await;
+                match result {
+                    Ok(result_message) => assert_eq!(result_message, message),
+                    _ => assert!(false),
+                }
             } else {
-                assert!(sender.execute(Action::new("err").into()).await.is_err());
+                let message = format!("err {}", i);
+                let result = sender.execute(Action::new(&message).into()).await;
+                match result {
+                    Err(TornadoError::SenderError { message: err_message }) => {
+                        assert_eq!(err_message, message)
+                    }
+                    _ => assert!(false),
+                }
             }
         }
     }
