@@ -65,13 +65,13 @@ impl<I: 'static, O: 'static> WrapperMutPool<I, O> {
                             let response = executor.execute(message.message).await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
-                                    "StatefulExecutorPool cannot send the response message. Err: {:?}",
+                                    "WrapperMutPool cannot send the response message. Err: {:?}",
                                     err
                                 );
                             };
                         }
                         Err(err) => {
-                            error!("StatefulExecutorPool received error from channel. The receiver will be stopped. Err: {:?}", err);
+                            error!("WrapperMutPool received error from channel. The receiver will be stopped. Err: {:?}", err);
                             break;
                         }
                     }
