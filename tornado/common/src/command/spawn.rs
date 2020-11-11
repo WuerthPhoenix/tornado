@@ -1,27 +1,27 @@
-use crate::wrapper::Wrapper;
+use crate::command::Command;
 use std::marker::PhantomData;
 use std::rc::Rc;
 
-/// A wrapper that spans the internal wrapper execution to another light thread
-/// without waiting for its execution to complete
-pub struct SpawnWrapper<I: 'static, O, W: 'static + Wrapper<I, O>> {
-    executor: Rc<W>,
+/// A Command that spans the internal Command execution to another light thread
+/// without waiting for its completion
+pub struct SpawnCommand<I: 'static, O, W: 'static + Command<I, O>> {
+    command: Rc<W>,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
 }
 
-impl<I: 'static, O, W: 'static + Wrapper<I, O>> SpawnWrapper<I, O, W> {
-    pub fn new(executor: Rc<W>) -> Self {
-        Self { executor, phantom_i: PhantomData, phantom_o: PhantomData }
+impl<I: 'static, O, W: 'static + Command<I, O>> SpawnCommand<I, O, W> {
+    pub fn new(command: Rc<W>) -> Self {
+        Self { command, phantom_i: PhantomData, phantom_o: PhantomData }
     }
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: 'static, O, W: 'static + Wrapper<I, O>> Wrapper<I, ()> for SpawnWrapper<I, O, W> {
+impl<I: 'static, O, W: 'static + Command<I, O>> Command<I, ()> for SpawnCommand<I, O, W> {
     async fn execute(&self, message: I) {
-        let executor = self.executor.clone();
+        let command = self.command.clone();
         actix::spawn(async move {
-            executor.execute(message).await;
+            command.execute(message).await;
         });
     }
 }
@@ -29,7 +29,7 @@ impl<I: 'static, O, W: 'static + Wrapper<I, O>> Wrapper<I, ()> for SpawnWrapper<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::wrapper::callback::CallbackWrapper;
+    use crate::command::callback::CallbackCommand;
     use async_channel::unbounded;
     use tokio::time;
 
@@ -42,7 +42,7 @@ mod test {
 
         let (exec_tx, exec_rx) = unbounded();
 
-        let sender = SpawnWrapper::new(Rc::new(CallbackWrapper::new(move |message: String| {
+        let sender = SpawnCommand::new(Rc::new(CallbackCommand::new(move |message: String| {
             let exec_tx_clone = exec_tx.clone();
             async move {
                 time::delay_until(

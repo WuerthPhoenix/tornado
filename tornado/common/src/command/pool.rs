@@ -1,4 +1,4 @@
-use crate::wrapper::{Wrapper, WrapperMut};
+use crate::command::{Command, CommandMut};
 use crate::TornadoError;
 use async_channel::{bounded, Sender};
 use log::*;
@@ -10,20 +10,20 @@ pub struct ReplyRequest<I, O> {
     pub responder: async_channel::Sender<O>,
 }
 
-/// An wrapper pool.
-/// It allows a max concurrent access factor to the internal wrapper.
-pub struct WrapperPool<I, O, T: Wrapper<I, O>> {
+/// A Command pool.
+/// It allows a max concurrent number of accesses to the internal Command.
+pub struct CommandPool<I, O, T: Command<I, O>> {
     semaphore: Semaphore,
-    executor: T,
+    command: T,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
 }
 
-impl<I, O, T: Wrapper<I, O>> WrapperPool<I, O, T> {
-    pub fn new(max_parallel_executions: usize, executor: T) -> Self {
+impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {
+    pub fn new(max_parallel_executions: usize, command: T) -> Self {
         Self {
             semaphore: Semaphore::new(max_parallel_executions),
-            executor,
+            command,
             phantom_i: PhantomData,
             phantom_o: PhantomData,
         }
@@ -31,23 +31,23 @@ impl<I, O, T: Wrapper<I, O>> WrapperPool<I, O, T> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I, O, T: Wrapper<I, O>> Wrapper<I, O> for WrapperPool<I, O, T> {
+impl<I, O, T: Command<I, O>> Command<I, O> for CommandPool<I, O, T> {
     async fn execute(&self, message: I) -> O {
         let _guard = self.semaphore.acquire().await;
-        self.executor.execute(message).await
+        self.command.execute(message).await
     }
 }
 
-/// A wrapper pool.
-/// It allocates a fixed pool of WrapperMut with a max concurrent access factor.
-pub struct WrapperMutPool<I: 'static, O: 'static> {
+/// A CommandMut pool.
+/// It allocates a fixed pool of CommandMut with a max concurrent access factor.
+pub struct CommandMutPool<I: 'static, O: 'static> {
     sender: Sender<ReplyRequest<I, Result<O, TornadoError>>>,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
 }
 
-impl<I: 'static, O: 'static> WrapperMutPool<I, O> {
-    pub fn new<F: Fn() -> T, T: 'static + WrapperMut<I, Result<O, TornadoError>>>(
+impl<I: 'static, O: 'static> CommandMutPool<I, O> {
+    pub fn new<F: Fn() -> T, T: 'static + CommandMut<I, Result<O, TornadoError>>>(
         max_parallel_executions: usize,
         factory: F,
     ) -> Self {
@@ -55,23 +55,23 @@ impl<I: 'static, O: 'static> WrapperMutPool<I, O> {
             bounded::<ReplyRequest<I, Result<O, TornadoError>>>(max_parallel_executions);
 
         for _ in 0..max_parallel_executions {
-            let mut executor = factory();
+            let mut command = factory();
             let receiver = receiver.clone();
 
             actix::spawn(async move {
                 loop {
                     match receiver.recv().await {
                         Ok(message) => {
-                            let response = executor.execute(message.message).await;
+                            let response = command.execute(message.message).await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
-                                    "WrapperMutPool cannot send the response message. Err: {:?}",
+                                    "CommandMutPool cannot send the response message. Err: {:?}",
                                     err
                                 );
                             };
                         }
                         Err(err) => {
-                            error!("WrapperMutPool received error from channel. The receiver will be stopped. Err: {:?}", err);
+                            error!("CommandMutPool received error from channel. The receiver will be stopped. Err: {:?}", err);
                             break;
                         }
                     }
@@ -83,7 +83,7 @@ impl<I: 'static, O: 'static> WrapperMutPool<I, O> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: 'static, O: 'static> Wrapper<I, Result<O, TornadoError>> for WrapperMutPool<I, O> {
+impl<I: 'static, O: 'static> Command<I, Result<O, TornadoError>> for CommandMutPool<I, O> {
     async fn execute(&self, message: I) -> Result<O, TornadoError> {
         let (tx, rx) = async_channel::bounded(1);
         self.sender.send(ReplyRequest { message, responder: tx }).await.map_err(|err| {
@@ -99,7 +99,7 @@ impl<I: 'static, O: 'static> Wrapper<I, Result<O, TornadoError>> for WrapperMutP
 mod test {
 
     use super::*;
-    use crate::wrapper::callback::{CallbackWrapper, CallbackWrapperMut};
+    use crate::command::callback::{CallbackCommand, CallbackCommandMut};
     use async_channel::unbounded;
     use std::rc::Rc;
     use std::sync::Arc;
@@ -113,9 +113,9 @@ mod test {
 
         let (exec_tx, exec_rx) = unbounded();
 
-        let sender = Arc::new(WrapperMutPool::new(threads, move || {
+        let sender = Arc::new(CommandMutPool::new(threads, move || {
             let exec_tx_clone = exec_tx.clone();
-            CallbackWrapperMut::new(move |action: Rc<Action>| {
+            CallbackCommandMut::new(move |action: Rc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
@@ -162,9 +162,9 @@ mod test {
         let (exec_tx, exec_rx) = unbounded();
 
         let exec_tx_clone = exec_tx.clone();
-        let sender = Arc::new(WrapperPool::new(
+        let sender = Arc::new(CommandPool::new(
             threads,
-            CallbackWrapper::<_, _, _, Result<(), TornadoError>>::new(move |action: Rc<Action>| {
+            CallbackCommand::<_, _, _, Result<(), TornadoError>>::new(move |action: Rc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
@@ -208,8 +208,8 @@ mod test {
         // Arrange
         let threads = 5;
 
-        let sender = Arc::new(WrapperMutPool::new(threads, move || {
-            CallbackWrapperMut::new(move |action: Rc<Action>| async move {
+        let sender = Arc::new(CommandMutPool::new(threads, move || {
+            CallbackCommandMut::new(move |action: Rc<Action>| async move {
                 println!("processing message: [{:?}]", action);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
@@ -248,9 +248,9 @@ mod test {
         // Arrange
         let threads = 5;
 
-        let sender = Arc::new(WrapperPool::new(
+        let sender = Arc::new(CommandPool::new(
             threads,
-            CallbackWrapper::new(move |action: Rc<Action>| async move {
+            CallbackCommand::new(move |action: Rc<Action>| async move {
                 println!("processing message: [{:?}]", action);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);

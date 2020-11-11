@@ -1,4 +1,4 @@
-use crate::wrapper::Wrapper;
+use crate::command::Command;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use log::*;
@@ -138,19 +138,20 @@ impl BackoffPolicy {
     }
 }
 
-pub struct RetryWrapper<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> {
-    executor: T,
+/// A Command that reties a failing operation based on the specified RetryStrategy
+pub struct RetryCommand<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> {
+    command: T,
     retry_strategy: RetryStrategy,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
     phantom_e: PhantomData<E>,
 }
 
-impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> RetryWrapper<I, O, E, T> {
-    pub fn new(retry_strategy: RetryStrategy, executor: T) -> Self {
+impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> RetryCommand<I, O, E, T> {
+    pub fn new(retry_strategy: RetryStrategy, command: T) -> Self {
         Self {
             retry_strategy,
-            executor,
+            command,
             phantom_i: PhantomData,
             phantom_o: PhantomData,
             phantom_e: PhantomData,
@@ -159,19 +160,19 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> RetryW
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> Wrapper<I, Result<O, E>>
-    for RetryWrapper<I, O, E, T>
+impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> Command<I, Result<O, E>>
+    for RetryCommand<I, O, E, T>
 {
     async fn execute(&self, message: I) -> Result<O, E> {
-        trace!("RetryWrapper - received new message");
+        trace!("RetryCommand - received new message");
 
-        let executor = &self.executor;
+        let command = &self.command;
         let retry_strategy = &self.retry_strategy;
 
         let mut should_retry = true;
         let mut failed_attempts = 0;
         while should_retry {
-            let result = executor.execute(message.clone()).await;
+            let result = command.execute(message.clone()).await;
             match result {
                 Ok(response) => {
                     return Ok(response);
@@ -382,13 +383,13 @@ pub mod test {
 
         let action = Rc::new(Action::new("hello"));
 
-        let executor = RetryWrapper::new(
+        let command = RetryCommand::new(
             retry_strategy.clone(),
             AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
         );
 
         actix::spawn(async move {
-            let _res = executor.execute(action).await;
+            let _res = command.execute(action).await;
         });
 
         for _i in 0..=attempts {
@@ -412,11 +413,11 @@ pub mod test {
 
         let action = Rc::new(Action::new("hello"));
 
-        let executor =
-            RetryWrapper::new(retry_strategy.clone(), AlwaysOkExecutor { sender: sender.clone() });
+        let command =
+            RetryCommand::new(retry_strategy.clone(), AlwaysOkExecutor { sender: sender.clone() });
 
         actix::spawn(async move {
-            let _res = executor.execute(action).await;
+            let _res = command.execute(action).await;
         });
 
         let received = receiver.recv().await.unwrap();
@@ -438,13 +439,13 @@ pub mod test {
 
         let action = Rc::new(Action::new("hello"));
 
-        let executor = RetryWrapper::new(
+        let command = RetryCommand::new(
             retry_strategy.clone(),
             AlwaysFailExecutor { sender: sender.clone(), can_retry: false },
         );
 
         actix::spawn(async move {
-            let _res = executor.execute(action).await;
+            let _res = command.execute(action).await;
         });
 
         let received = receiver.recv().await.unwrap();
@@ -467,13 +468,13 @@ pub mod test {
 
         let action = Rc::new(Action::new("hello_world"));
 
-        let executor = RetryWrapper::new(
+        let command = RetryCommand::new(
             retry_strategy.clone(),
             AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
         );
 
         actix::spawn(async move {
-            let _res = executor.execute(action).await;
+            let _res = command.execute(action).await;
         });
 
         for i in 0..=(attempts as usize) {

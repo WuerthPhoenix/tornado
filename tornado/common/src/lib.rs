@@ -1,8 +1,8 @@
 use thiserror::Error;
 
 pub mod actors;
+pub mod command;
 pub mod pool;
-pub mod wrapper;
 
 #[derive(Error, Debug)]
 pub enum TornadoError {

@@ -20,6 +20,7 @@
   - [ ] Should be !Send and !Sync
 - [ ] Replace LazyStatic with OnceCell
 - [ ] Tornado
-  - [ ] Rewrite actor based Retry Logic to not use actors
-  - [x] Rewrite actor based Executor Pool Logic to not use actors
-  - [x] Rewrite actor based Pool Logic to not use actors  
+  - [x] Rewrite actor based Retry Logic to use the Command pattern
+  - [x] Rewrite actor based Executor Pool Logic to use the Command pattern
+  - [x] Rewrite actor based Pool Logic to use the Command pattern
+  - [x] Add SpawnCommand  
