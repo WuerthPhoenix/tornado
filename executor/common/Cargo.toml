@@ -7,13 +7,8 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.10.0"
-async-channel = "1.5.1"
 async-trait = "0.1"
 log = "0.4"
 thiserror = "1.0"
-tokio = { version = "0.2", features = ["sync"] }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
-[dev-dependencies]
-actix-rt = "1.1.1"

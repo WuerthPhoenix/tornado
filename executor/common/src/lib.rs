@@ -2,10 +2,6 @@ use std::rc::Rc;
 use thiserror::Error;
 use tornado_common_api::Action;
 
-pub mod callback;
-pub mod pool;
-pub mod retry;
-
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
 #[async_trait::async_trait(?Send)]
