@@ -1,10 +1,10 @@
+use crate::wrapper::Wrapper;
 use core::fmt::Debug;
 use core::marker::PhantomData;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tornado_executor_common::ExecutorError;
-use crate::wrapper::Wrapper;
 
 pub trait RetriableError {
     fn can_retry(&self) -> bool;
@@ -159,8 +159,9 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> RetryW
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> Wrapper<I, Result<O, E>> for RetryWrapper<I, O, E, T> {
-
+impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> Wrapper<I, Result<O, E>>
+    for RetryWrapper<I, O, E, T>
+{
     async fn execute(&self, message: I) -> Result<O, E> {
         trace!("RetryWrapper - received new message");
 
@@ -203,15 +204,14 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Wrapper<I, Result<O, E>>> Wrappe
     }
 }
 
-
 #[cfg(test)]
 pub mod test {
     use super::*;
     use rand::Rng;
+    use std::rc::Rc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
-    use std::rc::Rc;
 
     #[test]
     fn retry_policy_none_should_never_retry() {
@@ -382,11 +382,13 @@ pub mod test {
 
         let action = Rc::new(Action::new("hello"));
 
-        let executor =
-            RetryWrapper::new(retry_strategy.clone(), AlwaysFailExecutor { sender: sender.clone(), can_retry: true });
+        let executor = RetryWrapper::new(
+            retry_strategy.clone(),
+            AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
+        );
 
         actix::spawn(async move {
-            let _res = executor.execute( action).await;
+            let _res = executor.execute(action).await;
         });
 
         for _i in 0..=attempts {
@@ -398,7 +400,7 @@ pub mod test {
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
-/*
+
     #[actix_rt::test]
     async fn should_not_retry_if_ok() {
         let (sender, mut receiver) = unbounded_channel();
@@ -408,17 +410,14 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("hello"));
+        let action = Rc::new(Action::new("hello"));
 
-        let executor_addr =
-            RetryWrapper::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                start_blocking_runner(2, 10, || {
-                    let executor = AlwaysOkExecutor { sender: sender.clone() };
-                    ExecutorRunner { executor }
-                })
-            });
+        let executor =
+            RetryWrapper::new(retry_strategy.clone(), AlwaysOkExecutor { sender: sender.clone() });
 
-        executor_addr.do_send(ActionMessage { action });
+        actix::spawn(async move {
+            let _res = executor.execute(action).await;
+        });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
@@ -437,17 +436,16 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("hello"));
+        let action = Rc::new(Action::new("hello"));
 
-        let executor_addr =
-            RetryWrapper::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                start_blocking_runner(2, 10, || {
-                    let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: false };
-                    ExecutorRunner { executor }
-                })
-            });
+        let executor = RetryWrapper::new(
+            retry_strategy.clone(),
+            AlwaysFailExecutor { sender: sender.clone(), can_retry: false },
+        );
 
-        executor_addr.do_send(ActionMessage { action });
+        actix::spawn(async move {
+            let _res = executor.execute(action).await;
+        });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
@@ -467,17 +465,16 @@ pub mod test {
             backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
-        let action = Arc::new(Action::new("hello_world"));
+        let action = Rc::new(Action::new("hello_world"));
 
-        let executor_addr =
-            RetryWrapper::start_new(10, Arc::new(retry_strategy.clone()), move || {
-                start_blocking_runner(2, 10, || {
-                    let executor = AlwaysFailExecutor { sender: sender.clone(), can_retry: true };
-                    ExecutorRunner { executor }
-                })
-            });
+        let executor = RetryWrapper::new(
+            retry_strategy.clone(),
+            AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
+        );
 
-        executor_addr.do_send(ActionMessage { action });
+        actix::spawn(async move {
+            let _res = executor.execute(action).await;
+        });
 
         for i in 0..=(attempts as usize) {
             let before_ms = chrono::Local::now().timestamp_millis();
@@ -497,7 +494,7 @@ pub mod test {
         // there should be no other messages on the channel
         assert!(receiver.try_recv().is_err());
     }
-*/
+
     struct AlwaysFailExecutor {
         can_retry: bool,
         sender: UnboundedSender<Rc<Action>>,
