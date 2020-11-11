@@ -1,27 +1,58 @@
-use crate::{ExecutorError, StatefulExecutor, StatelessExecutor};
+use crate::wrapper::{Wrapper, WrapperMut};
+use crate::TornadoError;
 use async_channel::{bounded, Sender};
 use log::*;
-use std::rc::Rc;
+use std::marker::PhantomData;
 use tokio::sync::Semaphore;
-use tornado_common_api::Action;
 
-pub struct ReplyRequest {
-    pub action: Rc<Action>,
-    pub responder: async_channel::Sender<Result<(), ExecutorError>>,
+pub struct ReplyRequest<I, O> {
+    pub message: I,
+    pub responder: async_channel::Sender<O>,
 }
 
-/// An executor pool.
-/// It allocates a fixed pool of StatefulExecutors with a max concurrent access factor.
-pub struct StatefulExecutorPool {
-    sender: Sender<ReplyRequest>,
+/// An wrapper pool.
+/// It allows a max concurrent access factor.
+pub struct WrapperPool<I, O, T: Wrapper<I, O>> {
+    semaphore: Semaphore,
+    executor: T,
+    phantom_i: PhantomData<I>,
+    phantom_o: PhantomData<O>,
 }
 
-impl StatefulExecutorPool {
-    pub fn new<F: Fn() -> T, T: 'static + StatefulExecutor>(
+impl<I, O, T: Wrapper<I, O>> WrapperPool<I, O, T> {
+    pub fn new(max_parallel_executions: usize, executor: T) -> Self {
+        Self {
+            semaphore: Semaphore::new(max_parallel_executions),
+            executor,
+            phantom_i: PhantomData,
+            phantom_o: PhantomData,
+        }
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl<I, O, T: Wrapper<I, O>> Wrapper<I, O> for WrapperPool<I, O, T> {
+    async fn execute(&self, message: I) -> O {
+        let _guard = self.semaphore.acquire().await;
+        self.executor.execute(message).await
+    }
+}
+
+/// A wrapper pool.
+/// It allocates a fixed pool of WrapperMut with a max concurrent access factor.
+pub struct WrapperMutPool<I: 'static, O: 'static> {
+    sender: Sender<ReplyRequest<I, Result<O, TornadoError>>>,
+    phantom_i: PhantomData<I>,
+    phantom_o: PhantomData<O>,
+}
+
+impl<I: 'static, O: 'static> WrapperMutPool<I, O> {
+    pub fn new<F: Fn() -> T, T: 'static + WrapperMut<I, Result<O, TornadoError>>>(
         max_parallel_executions: usize,
         factory: F,
     ) -> Self {
-        let (sender, receiver) = bounded::<ReplyRequest>(max_parallel_executions);
+        let (sender, receiver) =
+            bounded::<ReplyRequest<I, Result<O, TornadoError>>>(max_parallel_executions);
 
         for _ in 0..max_parallel_executions {
             let mut executor = factory();
@@ -31,7 +62,7 @@ impl StatefulExecutorPool {
                 loop {
                     match receiver.recv().await {
                         Ok(message) => {
-                            let response = executor.execute(message.action).await;
+                            let response = executor.execute(message.message).await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
                                     "StatefulExecutorPool cannot send the response message. Err: {:?}",
@@ -47,41 +78,20 @@ impl StatefulExecutorPool {
                 }
             });
         }
-        Self { sender }
+        Self { sender, phantom_i: PhantomData, phantom_o: PhantomData }
     }
 }
 
 #[async_trait::async_trait(?Send)]
-impl StatelessExecutor for StatefulExecutorPool {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+impl<I: 'static, O: 'static> Wrapper<I, Result<O, TornadoError>> for WrapperMutPool<I, O> {
+    async fn execute(&self, message: I) -> Result<O, TornadoError> {
         let (tx, rx) = async_channel::bounded(1);
-        self.sender.send(ReplyRequest { action, responder: tx }).await.map_err(|err| {
-            ExecutorError::SenderError { message: format!("Error sending message: {:?}", err) }
+        self.sender.send(ReplyRequest { message, responder: tx }).await.map_err(|err| {
+            TornadoError::SenderError { message: format!("Error sending message: {:?}", err) }
         })?;
-        rx.recv().await.map_err(|err| ExecutorError::SenderError {
+        rx.recv().await.map_err(|err| TornadoError::SenderError {
             message: format!("Error receiving message response: {:?}", err),
         })?
-    }
-}
-
-/// An executor pool.
-/// It allocates a fixed pool of StatelessExecutors with a max concurrent access factor.
-pub struct StatelessExecutorPool<T: StatelessExecutor> {
-    semaphore: Semaphore,
-    executor: T,
-}
-
-impl<T: StatelessExecutor> StatelessExecutorPool<T> {
-    pub fn new(max_parallel_executions: usize, executor: T) -> Self {
-        Self { semaphore: Semaphore::new(max_parallel_executions), executor }
-    }
-}
-
-#[async_trait::async_trait(?Send)]
-impl<T: StatelessExecutor> StatelessExecutor for StatelessExecutorPool<T> {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
-        let _guard = self.semaphore.acquire().await;
-        self.executor.execute(action).await
     }
 }
 
@@ -89,10 +99,12 @@ impl<T: StatelessExecutor> StatelessExecutor for StatelessExecutorPool<T> {
 mod test {
 
     use super::*;
-    use crate::callback::{CallbackStatefulExecutor, CallbackStatelessExecutor};
+    use crate::wrapper::callback::{CallbackWrapper, CallbackWrapperMut};
     use async_channel::unbounded;
+    use std::rc::Rc;
     use std::sync::Arc;
     use tokio::time;
+    use tornado_common_api::Action;
 
     #[actix_rt::test]
     async fn stateful_pool_should_execute_max_parallel_async_tasks() {
@@ -101,13 +113,14 @@ mod test {
 
         let (exec_tx, exec_rx) = unbounded();
 
-        let sender = Arc::new(StatefulExecutorPool::new(threads, move || {
+        let sender = Arc::new(WrapperMutPool::new(threads, move || {
             let exec_tx_clone = exec_tx.clone();
-            CallbackStatefulExecutor::new(move |action: Rc<Action>| {
+            CallbackWrapperMut::new(move |action: Rc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
+                        .await;
                     println!("end processing message: [{:?}]", action);
 
                     // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
@@ -139,7 +152,6 @@ mod test {
             // There should never be more messages in the queue than available threads
             assert!(exec_rx.len() <= threads);
         }
-
     }
 
     #[actix_rt::test]
@@ -150,19 +162,22 @@ mod test {
         let (exec_tx, exec_rx) = unbounded();
 
         let exec_tx_clone = exec_tx.clone();
-        let sender = Arc::new(StatelessExecutorPool::new(threads,
-                                                         CallbackStatelessExecutor::new(move |action: Rc<Action>| {
+        let sender = Arc::new(WrapperPool::new(
+            threads,
+            CallbackWrapper::<_, _, _, Result<(), TornadoError>>::new(move |action: Rc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
+                        .await;
                     println!("end processing message: [{:?}]", action);
 
                     // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
                     let _result = exec_tx_clone.send(()).await;
                     Ok(())
                 }
-        })));
+            }),
+        ));
 
         // Act
         let loops = 10;
@@ -186,7 +201,6 @@ mod test {
             // There should never be more messages in the queue than available threads
             assert!(exec_rx.len() <= threads);
         }
-
     }
 
     #[actix_rt::test]
@@ -194,26 +208,22 @@ mod test {
         // Arrange
         let threads = 5;
 
-        let sender = Arc::new(StatefulExecutorPool::new(threads, move || {
-            CallbackStatefulExecutor::new(move |action: Rc<Action>| {
-                async move {
-                    println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
-                    println!("end processing message: [{:?}]", action);
-                    if action.id.eq("err") {
-                        Err(ExecutorError::SenderError {
-                            message: "".to_owned()
-                        })
-                    } else {
-                       Ok(())
-                    }
+        let sender = Arc::new(WrapperMutPool::new(threads, move || {
+            CallbackWrapperMut::new(move |action: Rc<Action>| async move {
+                println!("processing message: [{:?}]", action);
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                println!("end processing message: [{:?}]", action);
+                if action.id.eq("err") {
+                    Err(TornadoError::SenderError { message: "".to_owned() })
+                } else {
+                    Ok(())
                 }
             })
         }));
 
         // Act
         for i in 0..3 {
-            if i % 2 == 0  {
+            if i % 2 == 0 {
                 assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
             } else {
                 assert!(sender.execute(Action::new("err").into()).await.is_err());
@@ -226,25 +236,23 @@ mod test {
         // Arrange
         let threads = 5;
 
-        let sender = Arc::new(StatelessExecutorPool::new(threads,
-            CallbackStatelessExecutor::new(move |action: Rc<Action>| {
-                async move {
-                    println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
-                    println!("end processing message: [{:?}]", action);
-                    if action.id.eq("err") {
-                        Err(ExecutorError::SenderError {
-                            message: "".to_owned()
-                        })
-                    } else {
-                        Ok(())
-                    }
+        let sender = Arc::new(WrapperPool::new(
+            threads,
+            CallbackWrapper::new(move |action: Rc<Action>| async move {
+                println!("processing message: [{:?}]", action);
+                time::delay_until(time::Instant::now() + time::Duration::from_millis(100)).await;
+                println!("end processing message: [{:?}]", action);
+                if action.id.eq("err") {
+                    Err(TornadoError::SenderError { message: "".to_owned() })
+                } else {
+                    Ok(())
                 }
-        })));
+            }),
+        ));
 
         // Act
         for i in 0..3 {
-            if i % 2 == 0  {
+            if i % 2 == 0 {
                 assert!(sender.execute(Action::new(&format!("hello {}", i)).into()).await.is_ok());
             } else {
                 assert!(sender.execute(Action::new("err").into()).await.is_err());
