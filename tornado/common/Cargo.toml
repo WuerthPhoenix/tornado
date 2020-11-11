@@ -18,6 +18,7 @@ tokio-util = { version = "0.3", features = ["codec"] }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 
 # Feature nats
 rants = { version = "0.5", features = ["native-tls"], optional = true }

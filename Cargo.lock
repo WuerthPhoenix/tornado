@@ -4151,6 +4151,7 @@ dependencies = [
  "tornado_collector_json",
  "tornado_common_api",
  "tornado_common_logger",
+ "tornado_executor_common",
 ]
 
 [[package]]
