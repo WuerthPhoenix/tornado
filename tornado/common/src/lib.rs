@@ -12,4 +12,6 @@ pub enum TornadoError {
     ActorCreationError { message: String },
     #[error("ConfigurationError: {message}")]
     ConfigurationError { message: String },
+    #[error("ExecutionError: {message}")]
+    ExecutionError { message: String },
 }

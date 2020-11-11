@@ -35,16 +35,3 @@ pub enum ExecutorError {
     #[error("UnknownArgumentError: [{message}]")]
     UnknownArgumentError { message: String },
 }
-
-pub trait RetriableError {
-    fn can_retry(&self) -> bool;
-}
-
-impl RetriableError for ExecutorError {
-    fn can_retry(&self) -> bool {
-        match self {
-            ExecutorError::ActionExecutionError { can_retry, .. } => *can_retry,
-            _ => false,
-        }
-    }
-}
