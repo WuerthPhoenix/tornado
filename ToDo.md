@@ -1,7 +1,7 @@
 # Upgrade to Async
 
 ## ToDo
-- [ ] Everything should be single-threaded and `mut`
+- [ ] Everything should be single-threaded (and `mut`?)
 - [ ] Executor
   - [x] Add `async` to Executor trait
   - [ ] Move to async: Archive
@@ -18,3 +18,7 @@
   - [ ] Replace FS operation with `async` equivalents
 - [ ] Network
   - [ ] Should be !Send and !Sync
+- [ ] Replace LazyStatic with OnceCell
+- [ ] Tornado
+  - [ ] Rewrite actor based Retry Logic to not use actors
+  - [x] Rewrite actor based Executor Pool Logic to not use actors  

@@ -11,7 +11,7 @@ pub struct ReplyRequest<I, O> {
 }
 
 /// An wrapper pool.
-/// It allows a max concurrent access factor.
+/// It allows a max concurrent access factor to the internal wrapper.
 pub struct WrapperPool<I, O, T: Wrapper<I, O>> {
     semaphore: Semaphore,
     executor: T,
