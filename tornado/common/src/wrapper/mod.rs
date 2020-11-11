@@ -5,6 +5,7 @@ use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor
 pub mod callback;
 pub mod pool;
 pub mod retry;
+pub mod spawn;
 
 #[async_trait::async_trait(?Send)]
 pub trait Wrapper<Message, Output> {
