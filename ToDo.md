@@ -16,6 +16,11 @@
   - [ ] Archive executor: check whether the tracing_appender::non_blocking can be used to write to file 
 - [ ] Matcher 
   - [ ] Replace FS operation with `async` equivalents
+  - [ ] Move Dispatcher to a separate module
+    - [ ] Dispatcher should be async
+    - [ ] Dispatcher should accept a Command as callback
+    - [ ] Should Dispatcher be a command?  
+  - [ ] Remove duplication between eventbus and dispatcher (remove eventbus?) 
 - [ ] Network
   - [ ] Should be !Send and !Sync
 - [ ] Replace LazyStatic with OnceCell
