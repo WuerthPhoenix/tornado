@@ -62,6 +62,7 @@ export type MatcherConfigDto =
 
 export type ModifierDto = 
  | { type: "Lowercase" } 
+ | {     type: "Map"; mapped_values: { [key: string]: string }; default_value: string | null } 
  | {     type: "ReplaceAll"; find: string; replace: string; is_regex:     boolean } 
  | { type: "ToNumber" } 
  | { type: "Trim" };
