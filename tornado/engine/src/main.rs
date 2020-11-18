@@ -1,5 +1,5 @@
 use crate::config::{SUBCOMMAND_CHECK, SUBCOMMAND_DAEMON, SUBCOMMAND_RULES_UPGRADE};
-use log::{warn, error};
+use log::error;
 
 mod api;
 mod command;
