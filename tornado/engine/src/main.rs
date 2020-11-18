@@ -17,9 +17,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let rules_dir = arg_matches.value_of("rules-dir").expect("rules-dir should be provided");
     let drafts_dir = arg_matches.value_of("drafts-dir").expect("drafts-dir should be provided");
 
-    // ToDo: TO BE REMOVED
-    warn!("TORNADO PATCH: ATTEMPT 1 TO FIX hyper-dns pool spawning");
-
     let subcommand = arg_matches.subcommand();
 
     match subcommand {
