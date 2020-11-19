@@ -90,6 +90,7 @@ impl MonitoringAction {
 }
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
+#[derive(Clone)]
 pub struct MonitoringExecutor {
     icinga_executor: Icinga2Executor,
     director_executor: DirectorExecutor,

@@ -7,7 +7,7 @@ use tornado_executor_common::{Executor, ExecutorError};
 pub const SCRIPT_TYPE_KEY: &str = "script";
 pub const SCRIPT_ARGS_KEY: &str = "args";
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ScriptExecutor {}
 
 impl ScriptExecutor {

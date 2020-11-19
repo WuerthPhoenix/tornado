@@ -39,6 +39,7 @@ impl DirectorActionName {
 }
 
 /// An executor that calls the APIs of the IcingaWeb2 Director
+#[derive(Clone)]
 pub struct DirectorExecutor {
     api_client: ApiClient,
 }
