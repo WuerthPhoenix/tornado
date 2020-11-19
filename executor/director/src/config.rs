@@ -21,6 +21,7 @@ pub struct DirectorClientConfig {
     pub timeout_secs: Option<u64>,
 }
 
+#[derive(Clone)]
 pub struct ApiClient {
     pub server_api_url: String,
     pub http_auth_header: String,

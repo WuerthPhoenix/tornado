@@ -15,6 +15,7 @@ mod action;
 pub mod migration;
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
+#[derive(Clone)]
 pub struct SmartMonitoringExecutor {
     icinga_executor: Icinga2Executor,
     director_executor: DirectorExecutor,

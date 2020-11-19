@@ -97,6 +97,7 @@ impl PemCertificateData {
     }
 }
 /// An executor that sends data to elasticsearch
+#[derive(Clone)]
 pub struct ElasticsearchExecutor {
     default_client: Option<Client>,
 }
