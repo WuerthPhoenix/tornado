@@ -108,7 +108,7 @@ fn build_jmespath_collector_config(
     topic: &str,
 ) -> JMESPathEventCollectorConfig {
     let collector_config =
-        collector_config.unwrap_or_else(|| EventConfig { event_type: None, payload: None });
+        collector_config.unwrap_or(EventConfig { event_type: None, payload: None });
 
     JMESPathEventCollectorConfig {
         event_type: collector_config.event_type.unwrap_or_else(|| topic.to_owned()),
