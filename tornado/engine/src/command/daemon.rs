@@ -26,6 +26,8 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
+pub const ACTION_ID_FOREACH: &str = "foreach";
+pub const ACTION_ID_LOGGER: &str = "logger";
 
 pub async fn daemon(
     config_dir: &str,
@@ -193,12 +195,12 @@ pub async fn daemon(
                             format!("Error sending message to 'script' executor. Err: {:?}", err)
                         })
                     }
-                    "foreach" => foreach_executor_addr_clone
+                    ACTION_ID_FOREACH => foreach_executor_addr_clone
                         .try_send(ActionMessage { action })
                         .map_err(|err| {
                             format!("Error sending message to 'foreach' executor. Err: {:?}", err)
                         }),
-                    "logger" => {
+                    ACTION_ID_LOGGER => {
                         logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'logger' executor. Err: {:?}", err)
                         })
