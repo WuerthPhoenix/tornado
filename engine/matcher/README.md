@@ -1001,6 +1001,22 @@ The available modifiers are:
            "type": "Lowercase"
        }
     ```
+  - *Map*: it maps a string to another string value. Syntax:
+    ```json
+      {
+            "type": "Map",
+            "mapping": {
+              "Critical": "2",
+              "Warning": "1",
+              "Clear": "0",
+              "Major": "2",
+              "Minor": "1"
+            },
+            "default_value": "3"
+      }
+    ``` 
+    The `default_value` is optional; when provided, it is used to map values that do not have a corresponding key
+    in the `mapping` field. When not provided, the extractor will fail if a specific mapping is not found.
   - *ReplaceAll*: it returns a new string with all matches of a substring replaced by the new text;
     the `find` property is parsed as a regex if `is_regex` is true, otherwise it is evaluated as a static string.
     Syntax:

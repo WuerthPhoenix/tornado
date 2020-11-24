@@ -43,6 +43,10 @@ pub struct Extractor {
 #[serde(deny_unknown_fields)]
 pub enum Modifier {
     Lowercase {},
+    Map {
+        mapping: HashMap<String, String>,
+        default_value: Option<String>,
+    },
     ReplaceAll {
         find: String,
         replace: String,

@@ -4,9 +4,11 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
 use log::*;
+use std::collections::HashMap;
 use tornado_common_api::Value;
 
 pub mod lowercase;
+pub mod map;
 pub mod number;
 pub mod replace;
 pub mod trim;
@@ -14,6 +16,7 @@ pub mod trim;
 #[derive(Debug, PartialEq)]
 pub enum ValueModifier {
     Lowercase,
+    Map { mapping: HashMap<String, String>, default_value: Option<String> },
     ReplaceAll { find: String, replace: Accessor },
     ReplaceAllRegex { find_regex: RegexWrapper, replace: Accessor },
     ToNumber,
@@ -33,6 +36,17 @@ impl ValueModifier {
                 Modifier::Lowercase {} => {
                     trace!("Add post modifier to extractor: lowercase");
                     value_modifiers.push(ValueModifier::Lowercase);
+                }
+                Modifier::Map { mapping, default_value } => {
+                    trace!(
+                        "Add post modifier to extractor: Map: {:?}; default_value: {:?}",
+                        mapping,
+                        default_value
+                    );
+                    value_modifiers.push(ValueModifier::Map {
+                        mapping: mapping.clone(),
+                        default_value: default_value.clone(),
+                    });
                 }
                 Modifier::ReplaceAll { find, replace, is_regex } => {
                     trace!("Add post modifier to extractor: replace. Is it regex? {}", is_regex);
@@ -71,6 +85,9 @@ impl ValueModifier {
     ) -> Result<(), MatcherError> {
         match self {
             ValueModifier::Lowercase => lowercase::lowercase(variable_name, value),
+            ValueModifier::Map { mapping, default_value } => {
+                map::map(variable_name, value, mapping, default_value)
+            }
             ValueModifier::ReplaceAll { find, replace } => {
                 replace::replace_all(variable_name, value, find, replace, event, extracted_vars)
             }
@@ -93,6 +110,7 @@ impl ValueModifier {
 #[cfg(test)]
 mod test {
     use super::*;
+    use maplit::*;
     use tornado_common_api::{Event, Number};
 
     #[test]
@@ -164,6 +182,32 @@ mod test {
         let expected_value_modifiers = vec![ValueModifier::ReplaceAll {
             find: "some".to_owned(),
             replace: AccessorBuilder::new().build("", "some other").unwrap(),
+        }];
+
+        // Act
+        let value_modifiers =
+            ValueModifier::build("", &AccessorBuilder::new(), &modifiers).unwrap();
+
+        // Assert
+        assert_eq!(1, value_modifiers.len());
+        assert_eq!(expected_value_modifiers, value_modifiers);
+    }
+
+    #[test]
+    fn should_build_a_map_modifiers() {
+        // Arrange
+        let modifiers = vec![Modifier::Map {
+            default_value: Some("Keith Richards".to_owned()),
+            mapping: hashmap!(
+                "0".to_owned() => "David Gilmour".to_owned(),
+            ),
+        }];
+
+        let expected_value_modifiers = vec![ValueModifier::Map {
+            default_value: Some("Keith Richards".to_owned()),
+            mapping: hashmap!(
+                "0".to_owned() => "David Gilmour".to_owned(),
+            ),
         }];
 
         // Act
@@ -329,6 +373,26 @@ mod test {
             let mut input = Value::Text("Hello World 123 4!".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
             assert_eq!(Value::Text("Hello World number number!".to_owned()), input);
+        }
+    }
+
+    #[test]
+    fn map_modifier_should_replace_a_string() {
+        // Arrange
+        let event = InternalEvent::new(Event::new(""));
+        let variables = None;
+        let value_modifier = ValueModifier::Map {
+            default_value: Some("Keith Richards".to_owned()),
+            mapping: hashmap!(
+                "0".to_owned() => "David Gilmour".to_owned(),
+            ),
+        };
+
+        // Act & Assert
+        {
+            let mut input = Value::Text("0".to_owned());
+            value_modifier.apply("", &mut input, &event, variables).unwrap();
+            assert_eq!(Value::Text("David Gilmour".to_owned()), input);
         }
     }
 }
