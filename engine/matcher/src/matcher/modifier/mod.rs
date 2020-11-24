@@ -16,7 +16,7 @@ pub mod trim;
 #[derive(Debug, PartialEq)]
 pub enum ValueModifier {
     Lowercase,
-    Map { mapped_values: HashMap<String, String>, default_value: Option<String> },
+    Map { mapping: HashMap<String, String>, default_value: Option<String> },
     ReplaceAll { find: String, replace: Accessor },
     ReplaceAllRegex { find_regex: RegexWrapper, replace: Accessor },
     ToNumber,
@@ -37,14 +37,14 @@ impl ValueModifier {
                     trace!("Add post modifier to extractor: lowercase");
                     value_modifiers.push(ValueModifier::Lowercase);
                 }
-                Modifier::Map { mapped_values, default_value } => {
+                Modifier::Map { mapping, default_value } => {
                     trace!(
                         "Add post modifier to extractor: Map: {:?}; default_value: {:?}",
-                        mapped_values,
+                        mapping,
                         default_value
                     );
                     value_modifiers.push(ValueModifier::Map {
-                        mapped_values: mapped_values.clone(),
+                        mapping: mapping.clone(),
                         default_value: default_value.clone(),
                     });
                 }
@@ -85,8 +85,8 @@ impl ValueModifier {
     ) -> Result<(), MatcherError> {
         match self {
             ValueModifier::Lowercase => lowercase::lowercase(variable_name, value),
-            ValueModifier::Map { mapped_values, default_value } => {
-                map::map(variable_name, value, mapped_values, default_value)
+            ValueModifier::Map { mapping, default_value } => {
+                map::map(variable_name, value, mapping, default_value)
             }
             ValueModifier::ReplaceAll { find, replace } => {
                 replace::replace_all(variable_name, value, find, replace, event, extracted_vars)
@@ -198,14 +198,14 @@ mod test {
         // Arrange
         let modifiers = vec![Modifier::Map {
             default_value: Some("Keith Richards".to_owned()),
-            mapped_values: hashmap!(
+            mapping: hashmap!(
                 "0".to_owned() => "David Gilmour".to_owned(),
             ),
         }];
 
         let expected_value_modifiers = vec![ValueModifier::Map {
             default_value: Some("Keith Richards".to_owned()),
-            mapped_values: hashmap!(
+            mapping: hashmap!(
                 "0".to_owned() => "David Gilmour".to_owned(),
             ),
         }];
@@ -383,7 +383,7 @@ mod test {
         let variables = None;
         let value_modifier = ValueModifier::Map {
             default_value: Some("Keith Richards".to_owned()),
-            mapped_values: hashmap!(
+            mapping: hashmap!(
                 "0".to_owned() => "David Gilmour".to_owned(),
             ),
         };

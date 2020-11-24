@@ -36,7 +36,7 @@ pub struct ExtractorDto {
 pub enum ModifierDto {
     Lowercase {},
     Map {
-        mapped_values: HashMap<String, String>,
+        mapping: HashMap<String, String>,
         default_value: Option<String>,
     },
     ReplaceAll {
