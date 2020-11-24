@@ -35,6 +35,10 @@ pub struct ExtractorDto {
 #[serde(tag = "type")]
 pub enum ModifierDto {
     Lowercase {},
+    Map {
+        mapping: HashMap<String, String>,
+        default_value: Option<String>,
+    },
     ReplaceAll {
         find: String,
         replace: String,
