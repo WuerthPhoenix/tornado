@@ -6,7 +6,7 @@
 #                              |      |           logger level of the 'rants' library (Nats client library)
 #                              |      logger level of 'tornado'
 #                             global logger level
-level = "info,tornado=debug"
+level = "info,tornado=debug,actix=debug"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
