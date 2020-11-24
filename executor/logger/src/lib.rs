@@ -3,7 +3,7 @@ use tornado_common_api::Action;
 use tornado_executor_common::{Executor, ExecutorError};
 
 /// An executor that logs received actions at the 'info' level
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct LoggerExecutor {}
 
 impl LoggerExecutor {

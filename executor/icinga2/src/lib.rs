@@ -15,6 +15,7 @@ const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
 pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
 
 /// An executor that logs received actions at the 'info' level
+#[derive(Clone)]
 pub struct Icinga2Executor {
     api_client: ApiClient,
 }

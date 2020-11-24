@@ -122,6 +122,15 @@ pub struct Action {
     pub payload: Payload,
 }
 
+impl From<Action> for Value {
+    fn from(action: Action) -> Self {
+        let mut new_value = HashMap::new();
+        new_value.insert("id".to_owned(), Value::Text(action.id));
+        new_value.insert("payload".to_owned(), Value::Map(action.payload));
+        Value::Map(new_value)
+    }
+}
+
 impl Rule {
     pub fn from_json(json: &str) -> Result<Rule, MatcherError> {
         serde_json::from_str(&json).map_err(|e| MatcherError::JsonDeserializationError {
