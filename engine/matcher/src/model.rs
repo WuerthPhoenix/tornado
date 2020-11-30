@@ -72,6 +72,7 @@ pub struct ProcessedRule {
     pub status: ProcessedRuleStatus,
     pub actions: Vec<Action>,
     pub message: Option<String>,
+    pub meta: Option<ProcessedRuleMetaData>
 }
 
 impl ProcessedRule {
@@ -81,6 +82,7 @@ impl ProcessedRule {
             status: ProcessedRuleStatus::NotProcessed,
             actions: vec![],
             message: None,
+            meta: None,
         }
     }
 }
@@ -109,10 +111,7 @@ pub type PayloadMetaData = HashMap<String, EnrichedValue>;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum EnrichedValue {
-    Text(ValueContent<String>),
-    Null,
-    Bool(ValueContent<bool>),
-    Number(ValueContent<Number>),
+    Single(ValueContent<Value>),
     Map(ValueContent<PayloadMetaData>),
     Array(ValueContent<Vec<EnrichedValue>>),
 }
@@ -125,6 +124,7 @@ pub struct ValueContent<T> {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ValueMetaData {
-    pub original: Option<Value>,
+    //pub original: Option<Value>,
     pub modified: bool,
+    pub is_leaf: bool,
 }

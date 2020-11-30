@@ -178,6 +178,7 @@ impl Matcher {
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
+                meta: None
             };
 
             if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
