@@ -1,4 +1,6 @@
 use tornado_common_api::{Action, Event, Number, Payload, Value};
+use std::collections::HashMap;
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InternalEvent {
@@ -89,4 +91,40 @@ pub enum ProcessedRuleStatus {
     PartiallyMatched,
     NotMatched,
     NotProcessed,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ProcessedRuleMetaData {
+    pub actions: Vec<ActionMetaData>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ActionMetaData {
+    pub id: String,
+    pub payload: PayloadMetaData,
+}
+
+pub type PayloadMetaData = HashMap<String, EnrichedValue>;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum EnrichedValue {
+    Text(ValueContent<String>),
+    Null,
+    Bool(ValueContent<bool>),
+    Number(ValueContent<Number>),
+    Map(ValueContent<PayloadMetaData>),
+    Array(ValueContent<Vec<EnrichedValue>>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ValueContent<T> {
+    pub content: T,
+    pub meta: ValueMetaData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ValueMetaData {
+    pub original: Option<Value>,
+    pub modified: bool,
 }
