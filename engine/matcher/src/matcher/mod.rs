@@ -72,7 +72,7 @@ impl Matcher {
                         operator: operator_builder
                             .build_option(&rule.name, &rule.constraint.where_operator)?,
                         extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                        actions: action_builder.build(&rule.name, &rule.actions)?,
+                        actions: action_builder.build_all(&rule.name, &rule.actions)?,
                     })
                 }
 
@@ -178,7 +178,7 @@ impl Matcher {
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
-                meta: None
+                meta: None,
             };
 
             if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
