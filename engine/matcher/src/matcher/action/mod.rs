@@ -8,7 +8,7 @@ use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
 use crate::interpolator::StringInterpolator;
-use crate::model::InternalEvent;
+use crate::model::{InternalEvent, EnrichedValue, ValueMetaData, EnrichedValueContent, ActionMetaData};
 use std::collections::HashMap;
 use tornado_common_api::Value;
 use tornado_common_api::{Action, Number};
@@ -113,7 +113,7 @@ pub struct ActionResolver {
 impl ActionResolver {
     /// Builds an Action by extracting the required data from the InternalEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
-    pub fn execute(
+    pub fn resolve(
         &self,
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
@@ -129,6 +129,29 @@ impl ActionResolver {
 
         Ok(action)
     }
+
+    pub fn resolve_with_meta(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&Value>,
+    ) -> Result<(Action, ActionMetaData), MatcherError> {
+        let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
+        let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
+
+        for (key, action_value_processor) in &self.payload {
+            let (value, value_enriched) = action_value_processor.process_enriched(&self.rule_name, &self.id, event, extracted_vars)?;
+            action.payload.insert(
+                key.to_owned(),
+                value,
+            );
+            action_meta.payload.insert(
+                key.to_owned(),
+                value_enriched,
+            );
+        }
+
+        Ok((action, action_meta))
+    }
 }
 
 #[derive(Debug, PartialEq)]
@@ -143,6 +166,7 @@ enum ActionValueProcessor {
 }
 
 impl ActionValueProcessor {
+
     pub fn process(
         &self,
         rule_name: &str,
@@ -186,6 +210,140 @@ impl ActionValueProcessor {
                     )?)
                 }
                 Ok(Value::Array(processor_values))
+            }
+        }
+    }
+
+    pub fn process_enriched(
+        &self,
+        rule_name: &str,
+        action_id: &str,
+        event: &InternalEvent,
+        extracted_vars: Option<&Value>,
+    ) -> Result<(Value, EnrichedValue), MatcherError> {
+        match self {
+            ActionValueProcessor::Accessor(accessor) => {
+                let value = accessor
+                    .get(event, extracted_vars)
+                    .ok_or(MatcherError::CreateActionError {
+                        action_id: action_id.to_owned(),
+                        rule_name: rule_name.to_owned(),
+                        cause: format!("Accessor [{:?}] returned empty value.", accessor),
+                    })?
+                    .into_owned();
+                Ok((value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified: accessor.dynamic_value()
+                        }
+                    }
+                ))
+            },
+            ActionValueProcessor::Interpolator(interpolator) => {
+                let value = interpolator.render(event, extracted_vars).map(Value::Text)?;
+                Ok((value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified: true
+                        }
+                    }
+                ))
+            }
+            ActionValueProcessor::Null => {
+                let value = Value::Null;
+                Ok((value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified: false
+                        }
+                    }
+                ))
+            },
+            ActionValueProcessor::Number(number) => {
+                let value = Value::Number(*number);
+                Ok((value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified: false
+                        }
+                    }
+                ))
+            },
+            ActionValueProcessor::Bool(boolean) => {
+                let value = Value::Bool(*boolean);
+                Ok((value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified: false
+                        }
+                    }
+                ))
+            },
+            ActionValueProcessor::Map(payload) => {
+                let mut processor_payload = HashMap::new();
+                let mut processor_payload_enriched = HashMap::new();
+                let mut modified = false;
+
+                for (key, value) in payload {
+                    let (value, enriched_value) = value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                    modified = modified || enriched_value.meta.modified;
+                    processor_payload.insert(
+                        key.to_owned(),
+                        value,
+                    );
+                    processor_payload_enriched.insert(
+                        key.to_owned(),
+                        enriched_value,
+                    );
+                }
+
+                let value = Value::Map(processor_payload);
+                Ok((value,
+                    EnrichedValue {
+                        content: EnrichedValueContent::Map { content: processor_payload_enriched },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified
+                        }
+                    }
+                ))
+            }
+            ActionValueProcessor::Array(values) => {
+                let mut processor_values = vec![];
+                let mut processor_payload_enriched = vec![];
+                let mut modified = false;
+
+                for value in values {
+                    let (value, enriched_value) = value.process_enriched(
+                        rule_name,
+                        action_id,
+                        event,
+                        extracted_vars,
+                    )?;
+                    modified = modified || enriched_value.meta.modified;
+                    processor_values.push(value);
+                    processor_payload_enriched.push(enriched_value);
+                }
+                let value = Value::Array(processor_values);
+                Ok((value,
+                    EnrichedValue {
+                        content: EnrichedValueContent::Array { content: processor_payload_enriched },
+                        meta: ValueMetaData {
+                            is_leaf: true,
+                            modified
+                        }
+                    }
+                ))
             }
         }
     }
@@ -312,7 +470,7 @@ mod test {
         extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.execute(&event, Some(&Value::Map(extracted_vars))).unwrap();
+        let result = matcher_action.resolve(&event, Some(&Value::Map(extracted_vars))).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -349,7 +507,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -381,7 +539,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -410,7 +568,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -439,7 +597,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -475,7 +633,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -514,7 +672,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -556,7 +714,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -587,7 +745,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -620,7 +778,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);

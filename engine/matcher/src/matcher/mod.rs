@@ -239,7 +239,7 @@ impl Matcher {
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
         for action in actions {
-            processed_rule.actions.push(action.execute(processed_event, extracted_vars)?);
+            processed_rule.actions.push(action.resolve(processed_event, extracted_vars)?);
         }
         Ok(())
     }

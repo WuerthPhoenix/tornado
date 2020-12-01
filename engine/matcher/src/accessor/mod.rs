@@ -148,6 +148,17 @@ impl Accessor {
             }
         }
     }
+
+    /// Returns true if this Accessor returns a dynamic value that changes
+    /// based on the event and extracted_vars content
+    pub fn dynamic_value(
+        &self,
+    ) -> bool {
+        match &self {
+            Accessor::Constant { .. } => false,
+            Accessor::CreatedMs  | Accessor::ExtractedVar{ .. } | Accessor::Payload{ .. } | Accessor::Type | Accessor::Event => true
+        }
+    }
 }
 
 #[cfg(test)]

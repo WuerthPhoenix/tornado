@@ -109,17 +109,17 @@ pub struct ActionMetaData {
 pub type PayloadMetaData = HashMap<String, EnrichedValue>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum EnrichedValue {
-    Single(ValueContent<Value>),
-    Map(ValueContent<PayloadMetaData>),
-    Array(ValueContent<Vec<EnrichedValue>>),
+pub struct  EnrichedValue {
+    pub content: EnrichedValueContent,
+    pub meta: ValueMetaData,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ValueContent<T> {
-    pub content: T,
-    pub meta: ValueMetaData,
+#[serde(tag = "type")]
+pub enum EnrichedValueContent {
+    Single {content: Value},
+    Map {content: PayloadMetaData},
+    Array {content: Vec<EnrichedValue>},
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
