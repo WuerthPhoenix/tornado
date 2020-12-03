@@ -6,7 +6,10 @@ pub mod operator;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use crate::model::{InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode, ProcessedRule, ProcessedRuleStatus, ProcessedRules, ProcessedRuleMetaData};
+use crate::model::{
+    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
+    ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules,
+};
 use crate::validator::MatcherConfigValidator;
 use log::*;
 use std::collections::HashMap;
@@ -106,13 +109,21 @@ impl Matcher {
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
     pub fn process(&self, event: Event, include_metadata: bool) -> ProcessedEvent {
-        trace!("Matcher process - processing event: [{:?}], include metadata: [{}]", &event, include_metadata);
+        trace!(
+            "Matcher process - processing event: [{:?}], include metadata: [{}]",
+            &event,
+            include_metadata
+        );
         let internal_event: InternalEvent = event.into();
         let result = Matcher::process_node(&self.node, &internal_event, include_metadata);
         ProcessedEvent { event: internal_event, result }
     }
 
-    fn process_node(node: &ProcessingNode, internal_event: &InternalEvent, include_metadata: bool) -> ProcessedNode {
+    fn process_node(
+        node: &ProcessingNode,
+        internal_event: &InternalEvent,
+        include_metadata: bool,
+    ) -> ProcessedNode {
         match node {
             ProcessingNode::Filter { name, filter, nodes } => {
                 Matcher::process_filter(name, filter, nodes, internal_event, include_metadata)
@@ -141,7 +152,8 @@ impl Matcher {
                         filter_name
                     );
                 nodes.iter().for_each(|node| {
-                    let processed_node = Matcher::process_node(node, internal_event, include_metadata);
+                    let processed_node =
+                        Matcher::process_node(node, internal_event, include_metadata);
                     result_nodes.push(processed_node);
                 });
                 ProcessedFilterStatus::Matched
@@ -181,9 +193,7 @@ impl Matcher {
             };
 
             if include_metadata {
-                processed_rule.meta = Some(ProcessedRuleMetaData{
-                    actions: vec![]
-                })
+                processed_rule.meta = Some(ProcessedRuleMetaData { actions: vec![] })
             }
 
             if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
@@ -200,7 +210,7 @@ impl Matcher {
                             internal_event,
                             Some(&extracted_vars),
                             &mut processed_rule,
-                            &rule.actions
+                            &rule.actions,
                         ) {
                             Ok(_) => {
                                 processed_rule.status = ProcessedRuleStatus::Matched;
@@ -245,7 +255,8 @@ impl Matcher {
     ) -> Result<(), MatcherError> {
         if let Some(metadata) = &mut processed_rule.meta {
             for action in actions {
-                let (action, action_metadata) = action.resolve_with_meta(processed_event, extracted_vars)?;
+                let (action, action_metadata) =
+                    action.resolve_with_meta(processed_event, extracted_vars)?;
                 processed_rule.actions.push(action);
                 metadata.actions.push(action_metadata);
             }
@@ -2444,6 +2455,55 @@ mod test {
                 let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
                 assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_return_processed_rule_metadata() {
+        // Arrange
+        let mut rule = new_rule("rule_name", None);
+        rule.actions.push(Action { id: String::from("action_1"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_2"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_3"), payload: HashMap::new() });
+
+        let matcher =
+            new_matcher(&MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule] })
+                .expect("should create a matcher");
+
+        let mut payload = Payload::new();
+        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+
+        // Act
+        let result_without_metadata =
+            matcher.process(Event::new_with_payload("email", payload.clone()), false);
+        let result_with_metadata = matcher.process(Event::new_with_payload("email", payload), true);
+
+        // Assert
+        match result_without_metadata.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(1, rules.rules.len());
+
+                let rule_processed = rules.rules.get(0).expect("should contain rule");
+                assert!(rule_processed.meta.is_none())
+            }
+            _ => assert!(false),
+        };
+
+        match result_with_metadata.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(1, rules.rules.len());
+
+                let rule_processed = rules.rules.get(0).expect("should contain rule");
+                assert!(rule_processed.meta.is_some());
+                let processed_rule_metadata = rule_processed.meta.as_ref().unwrap();
+                assert_eq!(3, processed_rule_metadata.actions.len());
+                assert_eq!("action_1", &processed_rule_metadata.actions[0].id);
+                assert_eq!("action_2", &processed_rule_metadata.actions[1].id);
+                assert_eq!("action_3", &processed_rule_metadata.actions[2].id);
             }
             _ => assert!(false),
         };
