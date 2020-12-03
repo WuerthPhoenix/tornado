@@ -7,6 +7,7 @@ use std::fs::*;
 use std::io::Write;
 use std::str::FromStr;
 use tornado_engine_api_dto::*;
+use tornado_engine_matcher as matcher;
 
 const TS_OUTPUT_DIR: &str = "./ts";
 const TS_OUTPUT_FILE: &str = "dto.ts";
@@ -146,6 +147,20 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &event::ProcessedRulesDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedRuleStatusDto::type_script_ify());
     push_ts(&mut ts_code, &event::SendEventRequestDto::type_script_ify());
+
+    // Push 'matcher' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* ---------------- */
+/* 'matcher' types   */
+/* ---------------- */"#,
+    );
+    push_ts(&mut ts_code, &matcher::model::ActionMetaData::type_script_ify());
+    push_ts(&mut ts_code, &matcher::model::EnrichedValue::type_script_ify());
+    push_ts(&mut ts_code, &matcher::model::EnrichedValueContent::type_script_ify());
+    push_ts(&mut ts_code, &matcher::model::ProcessedRuleMetaData::type_script_ify());
+    push_ts(&mut ts_code, &matcher::model::ValueMetaData::type_script_ify());
 
     ts_code
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tornado_common_api::{Action, Event, Number, Payload, Value};
+use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InternalEvent {
@@ -95,12 +96,12 @@ pub enum ProcessedRuleStatus {
     NotProcessed,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeScriptify)]
 pub struct ProcessedRuleMetaData {
     pub actions: Vec<ActionMetaData>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeScriptify)]
 pub struct ActionMetaData {
     pub id: String,
     pub payload: PayloadMetaData,
@@ -108,13 +109,13 @@ pub struct ActionMetaData {
 
 pub type PayloadMetaData = HashMap<String, EnrichedValue>;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 pub struct EnrichedValue {
     pub content: EnrichedValueContent,
     pub meta: ValueMetaData,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum EnrichedValueContent {
     Single { content: Value },
@@ -122,7 +123,7 @@ pub enum EnrichedValueContent {
     Array { content: Vec<EnrichedValue> },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 pub struct ValueMetaData {
     //pub original: Option<Value>,
     pub modified: bool,
