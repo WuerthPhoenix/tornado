@@ -2472,13 +2472,10 @@ mod test {
             new_matcher(&MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule] })
                 .expect("should create a matcher");
 
-        let mut payload = Payload::new();
-        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
-
         // Act
         let result_without_metadata =
-            matcher.process(Event::new_with_payload("email", payload.clone()), false);
-        let result_with_metadata = matcher.process(Event::new_with_payload("email", payload), true);
+            matcher.process(Event::new("email"), false);
+        let result_with_metadata = matcher.process(Event::new("email"), true);
 
         // Assert
         match result_without_metadata.result {
