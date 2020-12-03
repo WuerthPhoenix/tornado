@@ -67,6 +67,7 @@ pub fn processed_rule_into_dto(node: ProcessedRule) -> Result<ProcessedRuleDto, 
         name: node.name,
         actions: node.actions.into_iter().map(action_into_dto).collect::<Result<Vec<_>, _>>()?,
         status: processed_rule_status_into_dto(node.status),
+        meta: node.meta
     })
 }
 
