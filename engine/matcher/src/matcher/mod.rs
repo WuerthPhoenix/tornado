@@ -2473,8 +2473,7 @@ mod test {
                 .expect("should create a matcher");
 
         // Act
-        let result_without_metadata =
-            matcher.process(Event::new("email"), false);
+        let result_without_metadata = matcher.process(Event::new("email"), false);
         let result_with_metadata = matcher.process(Event::new("email"), true);
 
         // Assert

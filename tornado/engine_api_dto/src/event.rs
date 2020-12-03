@@ -2,8 +2,8 @@ use crate::config::ActionDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use typescript_definitions::TypeScriptify;
 use tornado_engine_matcher::model::ProcessedRuleMetaData;
+use typescript_definitions::TypeScriptify;
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct SendEventRequestDto {
