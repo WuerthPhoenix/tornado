@@ -8,7 +8,9 @@ use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
 use crate::interpolator::StringInterpolator;
-use crate::model::InternalEvent;
+use crate::model::{
+    ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
+};
 use std::collections::HashMap;
 use tornado_common_api::Value;
 use tornado_common_api::{Action, Number};
@@ -27,38 +29,46 @@ impl ActionResolverBuilder {
     /// Receives an array of Actions as defined in a Rule and returns an array of ActionResolver elements.
     /// Each ActionResolver is linked to an input Action definition and contains the logic needed to build
     /// the final Action object, ready to be sent to the executors.
-    pub fn build(
+    pub fn build_all(
         &self,
         rule_name: &str,
         actions: &[ConfigAction],
     ) -> Result<Vec<ActionResolver>, MatcherError> {
         let mut matcher_actions = vec![];
-
         for action in actions {
-            let mut matcher_action = ActionResolver {
-                rule_name: rule_name.to_owned(),
-                id: action.id.to_owned(),
-                payload: HashMap::new(),
-            };
+            matcher_actions.push(self.build(rule_name, action)?);
+        }
+        Ok(matcher_actions)
+    }
 
-            for (payload_key, payload_value) in &action.payload {
-                matcher_action
-                    .payload
-                    //.insert(payload_key.to_owned(), self.accessor.build(rule_name, payload_value)?);
-                    .insert(
-                        payload_key.to_owned(),
-                        ActionResolverBuilder::build_action_value_processor(
-                            &rule_name,
-                            &self.accessor,
-                            payload_value,
-                        )?,
-                    );
-            }
+    /// Receives an Action as defined in a Rule and returns an ActionResolver.
+    /// The ActionResolver contains the logic needed to build the final Action object, ready to be sent to the executors.
+    pub fn build(
+        &self,
+        rule_name: &str,
+        action: &ConfigAction,
+    ) -> Result<ActionResolver, MatcherError> {
+        let mut matcher_action = ActionResolver {
+            rule_name: rule_name.to_owned(),
+            id: action.id.to_owned(),
+            payload: HashMap::new(),
+        };
 
-            matcher_actions.push(matcher_action);
+        for (payload_key, payload_value) in &action.payload {
+            matcher_action
+                .payload
+                //.insert(payload_key.to_owned(), self.accessor.build(rule_name, payload_value)?);
+                .insert(
+                    payload_key.to_owned(),
+                    ActionResolverBuilder::build_action_value_processor(
+                        &rule_name,
+                        &self.accessor,
+                        payload_value,
+                    )?,
+                );
         }
 
-        Ok(matcher_actions)
+        Ok(matcher_action)
     }
 
     fn build_action_value_processor(
@@ -113,7 +123,7 @@ pub struct ActionResolver {
 impl ActionResolver {
     /// Builds an Action by extracting the required data from the InternalEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
-    pub fn execute(
+    pub fn resolve(
         &self,
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
@@ -128,6 +138,28 @@ impl ActionResolver {
         }
 
         Ok(action)
+    }
+
+    pub fn resolve_with_meta(
+        &self,
+        event: &InternalEvent,
+        extracted_vars: Option<&Value>,
+    ) -> Result<(Action, ActionMetaData), MatcherError> {
+        let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
+        let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
+
+        for (key, action_value_processor) in &self.payload {
+            let (value, value_enriched) = action_value_processor.process_enriched(
+                &self.rule_name,
+                &self.id,
+                event,
+                extracted_vars,
+            )?;
+            action.payload.insert(key.to_owned(), value);
+            action_meta.payload.insert(key.to_owned(), value_enriched);
+        }
+
+        Ok((action, action_meta))
     }
 }
 
@@ -189,6 +221,119 @@ impl ActionValueProcessor {
             }
         }
     }
+
+    pub fn process_enriched(
+        &self,
+        rule_name: &str,
+        action_id: &str,
+        event: &InternalEvent,
+        extracted_vars: Option<&Value>,
+    ) -> Result<(Value, EnrichedValue), MatcherError> {
+        match self {
+            ActionValueProcessor::Accessor(accessor) => {
+                let value = accessor
+                    .get(event, extracted_vars)
+                    .ok_or(MatcherError::CreateActionError {
+                        action_id: action_id.to_owned(),
+                        rule_name: rule_name.to_owned(),
+                        cause: format!("Accessor [{:?}] returned empty value.", accessor),
+                    })?
+                    .into_owned();
+                Ok((
+                    value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData { is_leaf: true, modified: accessor.dynamic_value() },
+                    },
+                ))
+            }
+            ActionValueProcessor::Interpolator(interpolator) => {
+                let value = interpolator.render(event, extracted_vars).map(Value::Text)?;
+                Ok((
+                    value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData { is_leaf: true, modified: true },
+                    },
+                ))
+            }
+            ActionValueProcessor::Null => {
+                let value = Value::Null;
+                Ok((
+                    value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData { is_leaf: true, modified: false },
+                    },
+                ))
+            }
+            ActionValueProcessor::Number(number) => {
+                let value = Value::Number(*number);
+                Ok((
+                    value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData { is_leaf: true, modified: false },
+                    },
+                ))
+            }
+            ActionValueProcessor::Bool(boolean) => {
+                let value = Value::Bool(*boolean);
+                Ok((
+                    value.clone(),
+                    EnrichedValue {
+                        content: EnrichedValueContent::Single { content: value },
+                        meta: ValueMetaData { is_leaf: true, modified: false },
+                    },
+                ))
+            }
+            ActionValueProcessor::Map(payload) => {
+                let mut processor_payload = HashMap::new();
+                let mut processor_payload_enriched = HashMap::new();
+                let mut modified = false;
+
+                for (key, value) in payload {
+                    let (value, enriched_value) =
+                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                    modified = modified || enriched_value.meta.modified;
+                    processor_payload.insert(key.to_owned(), value);
+                    processor_payload_enriched.insert(key.to_owned(), enriched_value);
+                }
+
+                let value = Value::Map(processor_payload);
+                Ok((
+                    value,
+                    EnrichedValue {
+                        content: EnrichedValueContent::Map { content: processor_payload_enriched },
+                        meta: ValueMetaData { is_leaf: false, modified },
+                    },
+                ))
+            }
+            ActionValueProcessor::Array(values) => {
+                let mut processor_values = vec![];
+                let mut processor_payload_enriched = vec![];
+                let mut modified = false;
+
+                for value in values {
+                    let (value, enriched_value) =
+                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                    modified = modified || enriched_value.meta.modified;
+                    processor_values.push(value);
+                    processor_payload_enriched.push(enriched_value);
+                }
+                let value = Value::Array(processor_values);
+                Ok((
+                    value,
+                    EnrichedValue {
+                        content: EnrichedValueContent::Array {
+                            content: processor_payload_enriched,
+                        },
+                        meta: ValueMetaData { is_leaf: false, modified },
+                    },
+                ))
+            }
+        }
+    }
 }
 
 #[cfg(test)]
@@ -209,7 +354,7 @@ mod test {
         let config = vec![action];
 
         // Act
-        let actions = ActionResolverBuilder::new().build("", &config).unwrap();
+        let actions = ActionResolverBuilder::new().build_all("", &config).unwrap();
 
         // Assert
         assert_eq!(1, actions.len());
@@ -239,7 +384,7 @@ mod test {
         let config = vec![action];
 
         // Act
-        let actions = ActionResolverBuilder::new().build("", &config).unwrap();
+        let actions = ActionResolverBuilder::new().build_all("", &config).unwrap();
 
         // Assert
         assert_eq!(1, actions.len());
@@ -291,7 +436,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -312,7 +457,7 @@ mod test {
         extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.execute(&event, Some(&Value::Map(extracted_vars))).unwrap();
+        let result = matcher_action.resolve(&event, Some(&Value::Map(extracted_vars))).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -336,7 +481,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -349,7 +494,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -368,7 +513,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -381,7 +526,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -397,7 +542,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -410,7 +555,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -426,7 +571,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -439,7 +584,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -462,7 +607,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -475,7 +620,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -501,7 +646,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -514,7 +659,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -540,7 +685,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut body = HashMap::new();
@@ -556,7 +701,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -573,7 +718,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -587,7 +732,7 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -607,7 +752,7 @@ mod test {
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build(rule_name, &config).unwrap();
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
@@ -620,10 +765,252 @@ mod test {
         });
 
         // Act
-        let result = matcher_action.execute(&event, None).unwrap();
+        let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(&Value::Map(payload), result.payload.get("event_payload").unwrap());
+    }
+
+    #[test]
+    fn should_return_action_metadata_for_simple_action() {
+        // Arrange
+        let mut config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        config_action
+            .payload
+            .insert("event_payload".to_owned(), Value::Text("${event.payload}".to_owned()));
+        config_action
+            .payload
+            .insert("constant".to_owned(), Value::Text("Into The Great Wide Open".to_owned()));
+
+        let rule_name = "rule_for_test";
+        let action_resolver =
+            ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = InternalEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ms: 123456,
+            payload: payload.clone(),
+        });
+
+        // Act
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+
+        // Assert
+        assert_eq!("an_action_id", &action.id);
+        assert_eq!(&Value::Map(payload.clone()), action.payload.get("event_payload").unwrap());
+
+        assert_eq!("an_action_id", &action_meta_data.id);
+
+        let expected_action_meta_data = ActionMetaData {
+            id: config_action.id.to_owned(),
+            payload: hashmap! {
+                "event_payload".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Single {
+                        content: Value::Map(hashmap! {
+                            "body".to_owned() => Value::Text("from_payload".to_owned())
+                        })
+                    },
+                    meta: ValueMetaData {
+                        modified: true,
+                        is_leaf: true
+                    },
+                },
+                "constant".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Single {
+                        content: Value::Text("Into The Great Wide Open".to_owned())
+                    },
+                    meta: ValueMetaData {
+                        modified: false,
+                        is_leaf: true
+                    },
+                }
+            },
+        };
+        assert_eq!(expected_action_meta_data, action_meta_data);
+    }
+
+    #[test]
+    fn should_return_action_metadata_with_deep_map_value_resolution() {
+        // Arrange
+        let config_action = ConfigAction {
+            id: "an_action_id".to_owned(),
+            payload: hashmap! {
+                "inner_map_static".to_owned() => Value::Map(
+                    hashmap!{
+                        "bool".to_owned() => Value::Bool(false)
+                    }
+                ),
+                "inner_map_dynamic".to_owned() => Value::Map(
+                    hashmap!{
+                        "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
+                    }
+                ),
+            },
+        };
+
+        let rule_name = "rule_for_test";
+        let action_resolver =
+            ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = InternalEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ms: 123456,
+            payload: payload.clone(),
+        });
+
+        // Act
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+
+        // Assert
+        assert_eq!("an_action_id", &action.id);
+        assert_eq!(
+            &Value::Text("from_payload".to_owned()),
+            action
+                .payload
+                .get("inner_map_dynamic")
+                .unwrap()
+                .get_map()
+                .unwrap()
+                .get("value")
+                .unwrap()
+        );
+
+        assert_eq!("an_action_id", &action_meta_data.id);
+
+        let expected_action_meta_data = ActionMetaData {
+            id: config_action.id.to_owned(),
+            payload: hashmap! {
+                "inner_map_static".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Map {
+                        content: hashmap! {
+                            "bool".to_owned()  => EnrichedValue {
+                                  content: EnrichedValueContent::Single { content: Value::Bool(false) },
+                                  meta: ValueMetaData {
+                                        modified: false,
+                                        is_leaf: true
+                                 },
+                            }
+                        }
+                    },
+                    meta: ValueMetaData {
+                        modified: false,
+                        is_leaf: false
+                    },
+                },
+                "inner_map_dynamic".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Map {
+                        content: hashmap! {
+                            "value".to_owned()  => EnrichedValue {
+                                  content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                  meta: ValueMetaData {
+                                        modified: true,
+                                        is_leaf: true
+                                 },
+                            }
+                        }
+                    },
+                    meta: ValueMetaData {
+                        modified: true,
+                        is_leaf: false
+                    },
+                },
+            },
+        };
+        assert_eq!(expected_action_meta_data, action_meta_data);
+    }
+
+    #[test]
+    fn should_return_action_metadata_with_deep_array_value_resolution() {
+        // Arrange
+        let config_action = ConfigAction {
+            id: "an_action_id".to_owned(),
+            payload: hashmap! {
+                "inner_vec_static".to_owned() => Value::Array(vec![Value::Number(Number::PosInt(545))]),
+                "inner_vec_dynamic".to_owned() => Value::Array(
+                    vec![
+                        Value::Map(hashmap!{
+                                "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
+                        })
+                    ]
+                ),
+            },
+        };
+
+        let rule_name = "rule_for_test";
+        let action_resolver =
+            ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
+
+        let mut payload = Payload::new();
+        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+
+        let event = InternalEvent::new(Event {
+            event_type: "event_type_value".to_owned(),
+            created_ms: 123456,
+            payload: payload.clone(),
+        });
+
+        // Act
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+
+        // Assert
+        assert_eq!("an_action_id", &action.id);
+        assert_eq!("an_action_id", &action_meta_data.id);
+
+        let expected_action_meta_data = ActionMetaData {
+            id: config_action.id.to_owned(),
+            payload: hashmap! {
+                "inner_vec_static".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Array {
+                        content: vec![EnrichedValue {
+                                  content: EnrichedValueContent::Single { content: Value::Number(Number::PosInt(545)) },
+                                  meta: ValueMetaData {
+                                        modified: false,
+                                        is_leaf: true
+                                 },
+                            }]
+                    },
+                    meta: ValueMetaData {
+                        modified: false,
+                        is_leaf: false
+                    },
+                },
+                "inner_vec_dynamic".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Array {
+                        content: vec![
+                            EnrichedValue {
+                                content: EnrichedValueContent::Map {
+                                    content: hashmap! {
+                                        "value".to_owned()  => EnrichedValue {
+                                              content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                              meta: ValueMetaData {
+                                                    modified: true,
+                                                    is_leaf: true
+                                             },
+                                        }
+                                    },
+                                },
+                                meta: ValueMetaData {
+                                    modified: true,
+                                    is_leaf: false
+                                },
+                            }
+                        ]
+                    },
+                    meta: ValueMetaData {
+                        modified: true,
+                        is_leaf: false
+                    },
+                },
+            },
+        };
+        assert_eq!(expected_action_meta_data, action_meta_data);
     }
 }

@@ -15,6 +15,7 @@ use tornado_engine_matcher::{error, matcher};
 pub struct EventMessageWithReply {
     pub event: tornado_common_api::Event,
     pub process_type: ProcessType,
+    pub include_metadata: bool,
 }
 
 #[derive(Debug, Message)]
@@ -23,6 +24,7 @@ pub struct EventMessageAndConfigWithReply {
     pub event: tornado_common_api::Event,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
+    pub include_metadata: bool,
 }
 
 #[derive(Message)]
@@ -65,8 +67,9 @@ impl MatcherActor {
         matcher: &Matcher,
         event: Event,
         process_type: ProcessType,
+        include_metadata: bool,
     ) -> Result<ProcessedEvent, error::MatcherError> {
-        let processed_event = matcher.process(event);
+        let processed_event = matcher.process(event, include_metadata);
 
         match process_type {
             ProcessType::Full => self
@@ -101,7 +104,7 @@ impl Handler<EventMessage> for MatcherActor {
         let matcher = self.matcher.clone();
         let dispatcher_addr = self.dispatcher_addr.clone();
         actix::spawn(async move {
-            let processed_event = matcher.process(msg.event);
+            let processed_event = matcher.process(msg.event, false);
             dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         });
         Ok(())
@@ -113,7 +116,12 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
-        self.process_event_with_reply(&self.matcher, msg.event, msg.process_type)
+        self.process_event_with_reply(
+            &self.matcher,
+            msg.event,
+            msg.process_type,
+            msg.include_metadata,
+        )
     }
 }
 
@@ -127,7 +135,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
     ) -> Self::Result {
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
-        self.process_event_with_reply(&matcher, msg.event, msg.process_type)
+        self.process_event_with_reply(&matcher, msg.event, msg.process_type, msg.include_metadata)
     }
 }
 

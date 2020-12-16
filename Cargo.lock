@@ -4280,6 +4280,7 @@ version = "0.0.1"
 dependencies = [
  "serde 1.0.117",
  "serde_json",
+ "tornado_engine_matcher",
  "typescript-definitions-ufo-patch",
 ]
 
@@ -4303,6 +4304,7 @@ dependencies = [
  "tornado_common_parser",
  "tornado_network_common",
  "tornado_network_simple",
+ "typescript-definitions-ufo-patch",
 ]
 
 [[package]]
