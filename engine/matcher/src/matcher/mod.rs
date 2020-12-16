@@ -8,7 +8,7 @@ use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
-    ProcessedRule, ProcessedRuleStatus, ProcessedRules,
+    ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules,
 };
 use crate::validator::MatcherConfigValidator;
 use log::*;
@@ -72,7 +72,7 @@ impl Matcher {
                         operator: operator_builder
                             .build_option(&rule.name, &rule.constraint.where_operator)?,
                         extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                        actions: action_builder.build(&rule.name, &rule.actions)?,
+                        actions: action_builder.build_all(&rule.name, &rule.actions)?,
                     })
                 }
 
@@ -108,20 +108,28 @@ impl Matcher {
 
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
-    pub fn process(&self, event: Event) -> ProcessedEvent {
-        trace!("Matcher process - processing event: [{:?}]", &event);
+    pub fn process(&self, event: Event, include_metadata: bool) -> ProcessedEvent {
+        trace!(
+            "Matcher process - processing event: [{:?}], include metadata: [{}]",
+            &event,
+            include_metadata
+        );
         let internal_event: InternalEvent = event.into();
-        let result = Matcher::process_node(&self.node, &internal_event);
+        let result = Matcher::process_node(&self.node, &internal_event, include_metadata);
         ProcessedEvent { event: internal_event, result }
     }
 
-    fn process_node(node: &ProcessingNode, internal_event: &InternalEvent) -> ProcessedNode {
+    fn process_node(
+        node: &ProcessingNode,
+        internal_event: &InternalEvent,
+        include_metadata: bool,
+    ) -> ProcessedNode {
         match node {
             ProcessingNode::Filter { name, filter, nodes } => {
-                Matcher::process_filter(name, filter, nodes, internal_event)
+                Matcher::process_filter(name, filter, nodes, internal_event, include_metadata)
             }
             ProcessingNode::Ruleset { name, rules } => {
-                Matcher::process_rules(name, rules, internal_event)
+                Matcher::process_rules(name, rules, internal_event, include_metadata)
             }
         }
     }
@@ -131,6 +139,7 @@ impl Matcher {
         filter: &MatcherFilter,
         nodes: &[ProcessingNode],
         internal_event: &InternalEvent,
+        include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of filter: [{}]", filter_name);
 
@@ -143,7 +152,8 @@ impl Matcher {
                         filter_name
                     );
                 nodes.iter().for_each(|node| {
-                    let processed_node = Matcher::process_node(node, internal_event);
+                    let processed_node =
+                        Matcher::process_node(node, internal_event, include_metadata);
                     result_nodes.push(processed_node);
                 });
                 ProcessedFilterStatus::Matched
@@ -165,6 +175,7 @@ impl Matcher {
         ruleset_name: &str,
         rules: &[MatcherRule],
         internal_event: &InternalEvent,
+        include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
         let mut extracted_vars = Value::Map(HashMap::new());
@@ -178,7 +189,12 @@ impl Matcher {
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
+                meta: None,
             };
+
+            if include_metadata {
+                processed_rule.meta = Some(ProcessedRuleMetaData { actions: vec![] })
+            }
 
             if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
                 trace!(
@@ -237,8 +253,17 @@ impl Matcher {
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
-        for action in actions {
-            processed_rule.actions.push(action.execute(processed_event, extracted_vars)?);
+        if let Some(metadata) = &mut processed_rule.meta {
+            for action in actions {
+                let (action, action_metadata) =
+                    action.resolve_with_meta(processed_event, extracted_vars)?;
+                processed_rule.actions.push(action);
+                metadata.actions.push(action_metadata);
+            }
+        } else {
+            for action in actions {
+                processed_rule.actions.push(action.resolve(processed_event, extracted_vars)?);
+            }
         }
         Ok(())
     }
@@ -544,7 +569,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -603,7 +628,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -650,7 +675,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("sms"));
+        let result = matcher.process(Event::new("sms"), false);
 
         // Assert
         match result.result {
@@ -697,7 +722,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -760,7 +785,7 @@ mod test {
         event_payload.insert(String::from("temp"), Value::Text(String::from("temp_value")));
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", event_payload));
+        let result = matcher.process(Event::new_with_payload("email", event_payload), false);
 
         // Assert
         match result.result {
@@ -804,7 +829,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -850,7 +875,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -899,7 +924,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -975,7 +1000,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1063,7 +1088,7 @@ mod test {
         .unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1132,7 +1157,7 @@ mod test {
         );
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", payload));
+        let result = matcher.process(Event::new_with_payload("email", payload), false);
 
         // Assert
         match result.result {
@@ -1193,7 +1218,7 @@ mod test {
         payload.insert("map".to_owned(), Value::Map(inner));
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", payload));
+        let result = matcher.process(Event::new_with_payload("email", payload), false);
 
         // Assert
         match result.result {
@@ -1243,7 +1268,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1300,7 +1325,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1398,7 +1423,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         match result.result {
             ProcessedNode::Filter { name, filter, nodes } => {
@@ -1504,7 +1529,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1546,7 +1571,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1598,7 +1623,7 @@ mod test {
         let matcher = new_matcher(&config).unwrap();
 
         // Act
-        let result = matcher.process(Event::new("email"));
+        let result = matcher.process(Event::new("email"), false);
 
         // Assert
         match result.result {
@@ -1698,7 +1723,7 @@ mod test {
         payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", payload));
+        let result = matcher.process(Event::new_with_payload("email", payload), false);
 
         // Assert
         match result.result {
@@ -1775,7 +1800,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(1000)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1793,7 +1818,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(2000)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1811,7 +1836,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::NegInt(-1000)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1829,7 +1854,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::Float(1000000000.0)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1847,7 +1872,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(100)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1865,7 +1890,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(110)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1883,7 +1908,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(200)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1901,7 +1926,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(140)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1920,7 +1945,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1939,7 +1964,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Number(Number::PosInt(160)));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1961,7 +1986,7 @@ mod test {
                 Value::Text("This is a Contain alias test!".to_owned()),
             );
             payload.insert("message".to_owned(), Value::Text("WaRnInG".to_owned()));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -1983,7 +2008,7 @@ mod test {
                 Value::Text("This is a Contain alias test!".to_owned()),
             );
             payload.insert("message".to_owned(), Value::Text("WaRnInGs".to_owned()));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2021,7 +2046,7 @@ mod test {
                 "value".to_owned(),
                 Value::Text("The word Something should match".to_owned()),
             );
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2056,7 +2081,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Text("Some".to_owned()));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2097,7 +2122,7 @@ mod test {
                     Value::Text("Something".to_owned()),
                 ]),
             );
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2138,7 +2163,7 @@ mod test {
                     Value::Text("Something else".to_owned()),
                 ]),
             );
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2174,7 +2199,7 @@ mod test {
         {
             // Act
             payload.insert("value".to_owned(), Value::Text("This is a Contains test!".to_owned()));
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2213,7 +2238,7 @@ mod test {
                 "value".to_owned(),
                 Value::Text("This is a Contain alias test!".to_owned()),
             );
-            let result = matcher.process(Event::new_with_payload("email", payload.clone()));
+            let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
             match result.result {
@@ -2277,7 +2302,7 @@ mod test {
         payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", payload));
+        let result = matcher.process(Event::new_with_payload("email", payload), false);
 
         // Assert
         match result.result {
@@ -2388,7 +2413,7 @@ mod test {
         payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
 
         // Act
-        let result = matcher.process(Event::new_with_payload("email", payload));
+        let result = matcher.process(Event::new_with_payload("email", payload), false);
 
         // Assert
         match result.result {
@@ -2430,6 +2455,51 @@ mod test {
                 let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
                 assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[test]
+    fn should_return_processed_rule_metadata() {
+        // Arrange
+        let mut rule = new_rule("rule_name", None);
+        rule.actions.push(Action { id: String::from("action_1"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_2"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_3"), payload: HashMap::new() });
+
+        let matcher =
+            new_matcher(&MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule] })
+                .expect("should create a matcher");
+
+        // Act
+        let result_without_metadata = matcher.process(Event::new("email"), false);
+        let result_with_metadata = matcher.process(Event::new("email"), true);
+
+        // Assert
+        match result_without_metadata.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(1, rules.rules.len());
+
+                let rule_processed = rules.rules.get(0).expect("should contain rule");
+                assert!(rule_processed.meta.is_none())
+            }
+            _ => assert!(false),
+        };
+
+        match result_with_metadata.result {
+            ProcessedNode::Ruleset { name, rules } => {
+                assert_eq!("ruleset", name);
+                assert_eq!(1, rules.rules.len());
+
+                let rule_processed = rules.rules.get(0).expect("should contain rule");
+                assert!(rule_processed.meta.is_some());
+                let processed_rule_metadata = rule_processed.meta.as_ref().unwrap();
+                assert_eq!(3, processed_rule_metadata.actions.len());
+                assert_eq!("action_1", &processed_rule_metadata.actions[0].id);
+                assert_eq!("action_2", &processed_rule_metadata.actions[1].id);
+                assert_eq!("action_3", &processed_rule_metadata.actions[2].id);
             }
             _ => assert!(false),
         };

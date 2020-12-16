@@ -2,6 +2,7 @@ use crate::config::ActionDto;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use tornado_engine_matcher::model::ProcessedRuleMetaData;
 use typescript_definitions::TypeScriptify;
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
@@ -61,6 +62,7 @@ pub struct ProcessedRuleDto {
     pub status: ProcessedRuleStatusDto,
     pub actions: Vec<ActionDto>,
     pub message: Option<String>,
+    pub meta: Option<ProcessedRuleMetaData>,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
