@@ -125,7 +125,6 @@ pub enum EnrichedValueContent {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 pub struct ValueMetaData {
-    //pub original: Option<Value>,
     pub modified: bool,
     pub is_leaf: bool,
 }
