@@ -23,5 +23,5 @@ tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
 maplit = "1.0"
-rand = "0.7.3"
+rand = "0.8"
 testcontainers = "0.11"

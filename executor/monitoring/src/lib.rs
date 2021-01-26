@@ -357,7 +357,7 @@ mod test {
 
         Mock::new()
             .expect_method(POST)
-            .expect_path("/process-check-result")
+            .expect_path("/v1/actions/process-check-result")
             .return_status(200)
             .create_on(&mock_server);
 
@@ -498,7 +498,7 @@ mod test {
 
         Mock::new()
             .expect_method(POST)
-            .expect_path("/process-check-result")
+            .expect_path("/v1/actions/process-check-result")
             .return_status(200)
             .create_on(&mock_server);
 

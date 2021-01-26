@@ -1,5 +1,6 @@
 use crate::api::MatcherApiHandler;
 use crate::config;
+use crate::config::build_config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
@@ -34,12 +35,13 @@ pub async fn daemon(
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let tornado = build_config(config_dir)?;
+    let _guard = setup_logger(&tornado.logger)?;
+
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
-    let _guard = setup_logger(&configs.tornado.logger)?;
-
     // start system
-    let daemon_config = configs.tornado.tornado.daemon;
+    let daemon_config = tornado.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
     info!(
@@ -141,6 +143,7 @@ pub async fn daemon(
     let smart_monitoring_check_result_executor_addr = {
         let executor =
             tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
+                configs.smart_monitoring_check_result_config.clone(),
                 configs.icinga2_executor_config.clone(),
                 configs.director_executor_config.clone(),
             )

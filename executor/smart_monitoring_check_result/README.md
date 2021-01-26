@@ -86,3 +86,11 @@ Below is a flowchart that helps understand the behaviour of the Smart Monitoring
 Director REST APIs.
 
 ![Import source](images/monitoring-executor-flowchart.png)
+
+## Retry logic
+
+When a new object is created, after the call to the `process_check_result` the executor calls the Icinga `/v1/objects` API
+to check whether the new object is still in `PENDING` state.
+In case the object is found to be pending, the executor will call again the `process_check_result` API, 
+for a predefined number of attempts, 
+until the check to the object state returns that it is not `PENDING` anymore.

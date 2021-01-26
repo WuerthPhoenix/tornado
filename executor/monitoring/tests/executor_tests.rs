@@ -16,7 +16,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
 
     let icinga_mock = Mock::new()
         .expect_method(POST)
-        .expect_path("/process-check-result")
+        .expect_path("/v1/actions/process-check-result")
         .return_status(500)
         .create_on(&icinga_server);
 
@@ -67,7 +67,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
 
     let icinga_mock = Mock::new()
         .expect_method(POST)
-        .expect_path("/process-check-result")
+        .expect_path("/v1/actions/process-check-result")
         .return_status(201)
         .create_on(&icinga_server);
 
@@ -118,7 +118,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
 
     let icinga_mock = Mock::new()
         .expect_method(POST)
-        .expect_path("/process-check-result")
+        .expect_path("/v1/actions/process-check-result")
         .return_body(icinga_server_response)
         .return_status(404)
         .create_on(&icinga_server);
@@ -183,7 +183,7 @@ fn should_return_return_error_on_object_creation_failure() {
 
     let icinga_mock = Mock::new()
         .expect_method(POST)
-        .expect_path("/process-check-result")
+        .expect_path("/v1/actions/process-check-result")
         .return_body(icinga_server_response)
         .return_status(404)
         .create_on(&icinga_server);
