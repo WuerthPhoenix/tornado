@@ -119,6 +119,17 @@ impl SimpleCreateAndProcess {
             ))
         }
     }
+
+    pub fn get_host_name(&self) -> Option<&str> {
+        self.host.get(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME).and_then(|value| value.get_text())
+    }
+
+    pub fn get_service_name(&self) -> Option<&str> {
+        self.service
+            .as_ref()
+            .and_then(|service| service.get(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME))
+            .and_then(|value| value.get_text())
+    }
 }
 
 #[cfg(test)]
