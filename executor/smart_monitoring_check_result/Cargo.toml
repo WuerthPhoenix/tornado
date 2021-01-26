@@ -19,3 +19,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 [dev-dependencies]
 maplit = "1.0"
 httpmock = "0.4"
+rand = "0.8"

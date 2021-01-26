@@ -45,5 +45,5 @@ lazy_static = "1.4"
 fs_extra = "1.2"
 maplit = "1.0"
 tempfile = "3"
-rand = "0.7"
+rand = "0.8"
 tokio = { version = "0.2", features = ["sync"] }

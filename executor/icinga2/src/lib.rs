@@ -1,10 +1,12 @@
-use crate::config::{ApiClient, Icinga2ClientConfig};
+use crate::client::ApiClient;
+use crate::config::Icinga2ClientConfig;
 use log::*;
 use serde::Serialize;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{Executor, ExecutorError};
 
+pub mod client;
 pub mod config;
 
 pub const ICINGA2_ACTION_NAME_KEY: &str = "icinga2_action_name";
@@ -17,7 +19,7 @@ pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectN
 /// An executor that logs received actions at the 'info' level
 #[derive(Clone)]
 pub struct Icinga2Executor {
-    api_client: ApiClient,
+    pub api_client: ApiClient,
 }
 
 impl std::fmt::Display for Icinga2Executor {
@@ -29,7 +31,7 @@ impl std::fmt::Display for Icinga2Executor {
 
 impl Icinga2Executor {
     pub fn new(config: Icinga2ClientConfig) -> Result<Icinga2Executor, ExecutorError> {
-        Ok(Icinga2Executor { api_client: config.new_client()? })
+        Ok(Icinga2Executor { api_client: ApiClient::new(&config)? })
     }
 
     fn get_payload<'a>(&self, payload: &'a Payload) -> Option<&'a Payload> {
@@ -56,23 +58,8 @@ impl Icinga2Executor {
     }
 
     pub fn perform_request(&self, icinga2_action: &Icinga2Action) -> Result<(), ExecutorError> {
-        let url = format!("{}/{}", &self.api_client.server_api_url, icinga2_action.name);
-        let http_auth_header = &self.api_client.http_auth_header;
-        let client = &self.api_client.client;
-
-        trace!("Icinga2Executor - calling url: {}", url);
-
-        let mut response = client
-            .post(&url)
-            .header(reqwest::header::ACCEPT, "application/json")
-            .header(reqwest::header::AUTHORIZATION, http_auth_header)
-            .json(&icinga2_action.payload)
-            .send()
-            .map_err(|err| ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!("Icinga2Executor - Connection failed. Err: {}", err),
-                code: None,
-            })?;
+        let mut response =
+            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload)?;
 
         let response_status = response.status();
 
