@@ -30,6 +30,9 @@ pub const ACTION_ID_MONITORING: &str = "monitoring";
 pub const ACTION_ID_FOREACH: &str = "foreach";
 pub const ACTION_ID_LOGGER: &str = "logger";
 
+// 64*1024*1024 byte = 64MB limit
+const MAX_JSON_PAYLOAD_SIZE: usize = 67_108_860;
+
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
@@ -349,6 +352,11 @@ pub async fn daemon(
             .wrap(Cors::new().max_age(3600).finish())
             .service(
                 web::scope("/api")
+                    .app_data(
+                        // Json extractor configuration for this resource.
+                        web::JsonConfig::default()
+                            .limit(daemon_config.web_max_json_payload_size.unwrap_or(MAX_JSON_PAYLOAD_SIZE)) // Limit request payload size in byte
+                    )
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(event_api)),
