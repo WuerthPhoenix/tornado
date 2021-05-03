@@ -119,6 +119,8 @@ file _'config-dir'/tornado.toml_:
     - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
       This is used, for example, by the monitoring endpoints.
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
+    - **web_max_json_payload_size**: The max JSON size in bytes accepted by a Tornado endpoint.
+      (Optional. Defaults to 67108860 (i.e. 64MB))
 
 
 More information about the logger configuration is available [here](../../common/logger/README.md).

@@ -85,6 +85,7 @@ pub struct DaemonCommandConfig {
 
     pub web_server_ip: String,
     pub web_server_port: u16,
+    pub web_max_json_payload_size: Option<usize>,
 
     pub message_queue_size: usize,
 
@@ -321,6 +322,7 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
+            web_max_json_payload_size: None,
             message_queue_size: 0,
             thread_pool_config: None,
             retry_strategy: Default::default(),
@@ -347,6 +349,7 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
+            web_max_json_payload_size: None,
             message_queue_size: 0,
             thread_pool_config: None,
             retry_strategy: Default::default(),
