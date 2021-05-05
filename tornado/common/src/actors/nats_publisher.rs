@@ -1,22 +1,17 @@
-use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActorError};
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use rants::native_tls::{Certificate, Identity, TlsConnector};
-use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::prelude::*;
-use tokio::time;
-use tokio::time::Duration;
+use async_nats::{Connection, Options};
 
 pub struct NatsPublisherActor {
-    restarted: bool,
-    subject: Arc<Subject>,
-    client_config: Arc<NatsClientConfig>,
-    client: Option<Client>,
+    config: Arc<NatsPublisherConfig>,
+    client: Arc<Connection>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -45,16 +40,8 @@ pub struct NatsClientConfig {
 }
 
 impl NatsClientConfig {
-    pub async fn new_client(&self) -> Result<Client, TornadoError> {
-        let addresses = self
-            .addresses
-            .iter()
-            .map(|address| {
-                address.to_owned().parse().map_err(|err| TornadoError::ConfigurationError {
-                    message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err},
-                })
-            })
-            .collect::<Result<Vec<Address>, TornadoError>>()?;
+    pub async fn new_client(&self) -> Result<Connection, TornadoError> {
+        let addresses = self.addresses.join(",");
 
         let auth = self.get_auth();
 
@@ -64,6 +51,9 @@ impl NatsClientConfig {
                 pkcs12_bundle_password: pkcs_password,
                 path_to_root_certificate,
             } => {
+                let implement_nats_tls = 0;
+                unimplemented!("TLS NOT IMPLEMENTED YET. To be fixed in TOR-314");
+                /*
                 let mut connect = Connect::new();
                 connect.tls_required(true);
                 let mut client = Client::with_connect(addresses, connect);
@@ -106,21 +96,18 @@ impl NatsClientConfig {
 
                 client.set_tls_config(tls_connector).await;
                 client
+
+                 */
             }
             NatsClientAuth::None => {
-                let connect = Connect::new();
-                Client::with_connect(addresses, connect)
+                info!("Open Nats connection (without TLS) to [{}]", addresses);
+                Options::new().connect(&addresses).await.map_err(|err| {
+                    TornadoError::ConfigurationError {
+                        message: format!("Error while building tls connector. Err: {}", err),
+                    }
+                })?
             }
         };
-        {
-            let mut delay_generator = client.delay_generator_mut().await;
-            *delay_generator = generate_delay_generator(
-                3,
-                Duration::from_secs(0),
-                Duration::from_secs(5),
-                Duration::from_secs(10),
-            );
-        }
 
         Ok(client)
     }
@@ -143,22 +130,18 @@ async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError>
 }
 
 impl NatsPublisherActor {
-    pub fn start_new(
+    pub async fn start_new(
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-        let subject =
-            Arc::new(config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
-                message: format! {"NatsPublisherActor - Cannot parse subject. Err: {}", err},
-            })?);
+
+        let client = config.client.new_client().await?;
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
             NatsPublisherActor {
-                restarted: false,
-                subject,
-                client_config: Arc::new(config.client),
-                client: None,
+                config: Arc::new(config),
+                client: Arc::new(client),
             }
         }))
     }
@@ -167,116 +150,40 @@ impl NatsPublisherActor {
 impl Actor for NatsPublisherActor {
     type Context = Context<Self>;
 
-    fn started(&mut self, ctx: &mut Self::Context) {
-        info!(
-            "NatsPublisherActor started. Attempting connection to server [{:?}]",
-            &self.client_config.addresses
-        );
-
-        let mut delay_until = time::Instant::now();
-        if self.restarted {
-            delay_until += time::Duration::new(1, 0)
-        }
-
-        let client_config = self.client_config.clone();
-        let current_client = self.client.clone();
-
-        ctx.wait(
-            async move {
-                if let Some(client) = current_client {
-                    client.disconnect().await;
-                }
-
-                time::delay_until(delay_until).await;
-                match client_config.new_client().await {
-                    Ok(client) => {
-                        client.connect().await;
-                        Ok(client)
-                    }
-                    Err(e) => Err(e),
-                }
-            }
-            .into_actor(self)
-            .map(move |client, act, ctx| match client {
-                Ok(client) => {
-                    info!(
-                        "NatsPublisherActor connected to server [{:?}]",
-                        &act.client_config.addresses
-                    );
-                    act.client = Some(client);
-                }
-                Err(err) => {
-                    act.client = None;
-                    warn!("NatsPublisherActor connection failed. Err: {}", err);
-                    ctx.stop();
-                }
-            }),
-        );
+    fn started(&mut self, _ctx: &mut Self::Context) {
+        info!("NatsPublisherActor started. Connected to NATS address(es): {:?}", self.config.client.addresses);
     }
 }
 
 impl actix::Supervised for NatsPublisherActor {
     fn restarting(&mut self, _ctx: &mut Context<NatsPublisherActor>) {
         info!("Restarting NatsPublisherActor");
-        self.restarted = true;
     }
 }
 
 impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: EventMessage, _ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
 
         let event = serde_json::to_vec(&msg.event)
             .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
 
-        match &mut self.client {
-            Some(client) => {
-                let client = client.clone();
-                let subject = self.subject.clone();
-                let address = ctx.address();
-                actix::spawn(async move {
-                    debug!("NatsPublisherActor - Publish event to NATS");
-                    if let Err(e) = client.publish(&subject, &event).await {
-                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
-                        if let rants::error::Error::NotConnected = e {
-                            warn!(
-                                "NatsPublisherActor - Connection not available. Resending message."
-                            );
-                            address.try_send(ResetActorMessage { payload: Some(msg) }).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending ResetActorMessage to itself. Error: {}", err));
-                        }
-                    };
-                });
-                Ok(())
-            }
-            None => {
-                warn!("NatsPublisherActor - Connection not available. Restart Actor.");
-                ctx.address().try_send(ResetActorMessage { payload: Some(msg) }).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending ResetActorMessage to itself. Error: {}", err));
-                Ok(())
-            }
-        }
-    }
-}
 
-impl Handler<ResetActorMessage<Option<EventMessage>>> for NatsPublisherActor {
-    type Result = Result<(), TornadoCommonActorError>;
+        let client = self.client.clone();
+        let config = self.config.clone();
 
-    fn handle(
-        &mut self,
-        msg: ResetActorMessage<Option<EventMessage>>,
-        ctx: &mut Context<Self>,
-    ) -> Self::Result {
-        trace!("NatsPublisherActor - Received reset actor message");
-        ctx.stop();
-        if let Some(message) = msg.payload {
-            ctx.address().try_send(message).unwrap_or_else(|err| {
-                error!(
-                    "NatsPublisherActor -  Error while sending EventMessage to itself. Error: {}",
-                    err
-                )
-            });
-        };
+        actix::spawn(async move {
+            debug!("NatsPublisherActor - Publish event to NATS");
+            if let Err(e) = client.publish(&config.subject, &event).await {
+                error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
+            };
+            debug!("NatsPublisherActor - Publish event to NATS succeeded");
+        });
+
         Ok(())
+
     }
 }
+

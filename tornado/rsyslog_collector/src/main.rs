@@ -49,7 +49,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         match connection_channel {
             TornadoConnectionChannel::Nats { nats } => {
                 info!("Connect to Tornado through NATS");
-                let actor_address = NatsPublisherActor::start_new(nats, message_queue_size)?;
+                let actor_address = NatsPublisherActor::start_new(nats, message_queue_size).await?;
                 start(actor_address, message_queue_size)?;
             }
             TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
