@@ -178,6 +178,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
             if let Err(e) = client.publish(&config.subject, &event).await {
                 error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
             };
+            debug!("NatsPublisherActor - Publish event to NATS succeeded");
         });
 
         Ok(())

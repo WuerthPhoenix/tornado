@@ -28,8 +28,7 @@ pub async fn subscribe_to_nats<
 
     let message_stream = stream::unfold(subscription, |sub| async {
         sub.next().await.map(|msg| (BytesMessage { msg: msg.data }, sub))
-    })
-    .boxed();
+    });
 
     NatsSubscriberActor::create(|ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);

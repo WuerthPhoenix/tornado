@@ -51,6 +51,112 @@ fn new_nats_docker_container(
     (node, nats_port)
 }
 
+
+#[actix_rt::test]
+#[serial]
+async fn official_nats_client_spike_test() {
+    start_logger();
+    let docker = clients::Cli::default();
+    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let nats_address = format!("127.0.0.1:{}", nats_port);
+
+    let random: u8 = rand::random();
+    let subject = format!("test_subject_{}", random);
+
+    let message = format!("message_{}", random);
+
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let nc_1 = async_nats::connect(&nats_address).await.unwrap();
+    let nc_2 = async_nats::connect(&nats_address).await.unwrap();
+    
+    let subscription = nc_1.subscribe(&subject).await.unwrap();
+    actix::spawn(async move {
+        let message = subscription.next().await;
+        info!("message received: {:?}", message);
+        sender.send(message.unwrap().data).unwrap();
+    });
+
+    
+    nc_2.publish(&subject, &message).await.unwrap();
+
+    assert_eq!(message.as_bytes(), &receiver.recv().await.unwrap());
+
+}
+
+#[actix_rt::test]
+#[serial]
+async fn nats_subscriber_should_receive_from_nats() {
+    start_logger();
+    let docker = clients::Cli::default();
+    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let nats_address = format!("127.0.0.1:{}", nats_port);
+
+    let random: u8 = rand::random();
+    let subject = format!("test_subject_{}", random);
+    let event = Event::new(format!("event_type_{}", random));
+
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let nc_1 = async_nats::connect(&nats_address).await.unwrap();
+
+    subscribe_to_nats(
+        NatsSubscriberConfig {
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
+            subject: subject.to_owned(),
+        },
+        10000,
+        move |event| {
+            sender.send(event).unwrap();
+            Ok(())
+        },
+    )
+    .await
+    .unwrap();
+
+    nc_1.publish(&subject, &serde_json::to_vec(&event).unwrap()).await.unwrap();
+
+    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg);
+
+}
+
+#[actix_rt::test]
+#[serial]
+async fn nats_publisher_should_publish_to_nats() {
+    start_logger();
+    let docker = clients::Cli::default();
+    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let nats_address = format!("127.0.0.1:{}", nats_port);
+
+    let random: u8 = rand::random();
+    let subject = format!("test_subject_{}", random);
+    let event = Event::new(format!("event_type_{}", random));
+
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let nc_1 = async_nats::connect(&nats_address).await.unwrap();
+    
+    let subscription = nc_1.subscribe(&subject).await.unwrap();
+    actix::spawn(async move {
+        let message = subscription.next().await;
+        info!("message received: {:?}", message);
+        sender.send(message.unwrap().data).unwrap();
+    });
+    
+    let publisher = NatsPublisherActor::start_new(
+        NatsPublisherConfig {
+            client: NatsClientConfig { addresses: vec![nats_address.to_owned()], auth: None },
+            subject: subject.to_owned(),
+        },
+        10,
+    ).await
+    .unwrap();
+    publisher.do_send(EventMessage { event: event.clone() });
+
+    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap());
+
+}
+
 #[actix_rt::test]
 #[serial]
 async fn should_publish_to_nats() {
