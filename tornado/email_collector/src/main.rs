@@ -60,7 +60,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let actor_address = NatsPublisherActor::start_new(
                     nats,
                     collector_config.email_collector.message_queue_size,
-                )?;
+                ).await?;
                 start(
                     collector_config.email_collector.uds_path,
                     actor_address,

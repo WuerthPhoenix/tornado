@@ -85,7 +85,7 @@ async fn should_publish_to_nats() {
             subject: subject.to_owned(),
         },
         10,
-    )
+    ).await
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
@@ -134,7 +134,7 @@ async fn should_publish_to_nats_with_tls() {
             subject: subject.to_owned(),
         },
         10,
-    )
+    ).await
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
@@ -161,7 +161,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
             subject: subject.to_owned(),
         },
         10,
-    )
+    ).await
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
@@ -241,7 +241,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
             subject: subject.to_owned(),
         },
         10,
-    )
+    ).await
     .unwrap();
 
     let mut received = false;
@@ -281,7 +281,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
             subject: subject.to_owned(),
         },
         10,
-    )
+    ).await
     .unwrap();
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
