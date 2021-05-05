@@ -2,7 +2,7 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{StatelessExecutor, ExecutorError, RetriableError};
+use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorActionName, DirectorExecutor,
@@ -13,6 +13,7 @@ use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
 use std::rc::Rc;
+use tornado_common::command::retry::RetriableError;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -43,6 +44,7 @@ impl MonitoringAction {
     pub fn to_sub_actions(
         &self,
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
+
         match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => {
                 if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
@@ -91,6 +93,7 @@ impl MonitoringAction {
 }
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
+#[derive(Clone)]
 pub struct MonitoringExecutor {
     icinga_executor: Icinga2Executor,
     director_executor: DirectorExecutor,
@@ -358,7 +361,7 @@ mod test {
 
         Mock::new()
             .expect_method(POST)
-            .expect_path("/process-check-result")
+            .expect_path("/v1/actions/process-check-result")
             .return_status(200)
             .create_on(&mock_server);
 
@@ -499,7 +502,7 @@ mod test {
 
         Mock::new()
             .expect_method(POST)
-            .expect_path("/process-check-result")
+            .expect_path("/v1/actions/process-check-result")
             .return_status(200)
             .create_on(&mock_server);
 

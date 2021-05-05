@@ -62,6 +62,7 @@ export type MatcherConfigDto =
 
 export type ModifierDto = 
  | { type: "Lowercase" } 
+ | {     type: "Map"; mapping: { [key: string]: string }; default_value:     string | null } 
  | {     type: "ReplaceAll"; find: string; replace: string; is_regex:     boolean } 
  | { type: "ToNumber" } 
  | { type: "Trim" };
@@ -102,10 +103,28 @@ export type ProcessedNodeDto =
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
-export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null };
+export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };
 
 export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: Value };
 
 export enum ProcessedRuleStatusDto {     Matched = "Matched", PartiallyMatched = "PartiallyMatched", NotMatched =     "NotMatched", NotProcessed = "NotProcessed" };
 
 export type SendEventRequestDto = { process_type: ProcessType; event: EventDto };
+
+
+/* ---------------- */
+/* 'matcher' types   */
+/* ---------------- */
+
+export type ActionMetaData = { id: string; payload: PayloadMetaData };
+
+export type EnrichedValue = { content: EnrichedValueContent; meta: ValueMetaData };
+
+export type EnrichedValueContent = 
+ | { type: "Single"; content: Value } 
+ | { type: "Map"; content: PayloadMetaData } 
+ | { type: "Array"; content: EnrichedValue [] };
+
+export type ProcessedRuleMetaData = { actions: ActionMetaData [] };
+
+export type ValueMetaData = { modified: boolean; is_leaf: boolean };

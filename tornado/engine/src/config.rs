@@ -1,8 +1,10 @@
 use crate::executor::retry::RetryStrategy;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
+use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::Arc;
 use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
 use tornado_common_logger::LoggerConfig;
@@ -12,6 +14,7 @@ use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
+use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -82,6 +85,7 @@ pub struct DaemonCommandConfig {
 
     pub web_server_ip: String,
     pub web_server_port: u16,
+    pub web_max_json_payload_size: Option<usize>,
 
     pub message_queue_size: usize,
 
@@ -154,13 +158,30 @@ fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, C
     s.try_into()
 }
 
+fn build_smart_monitoring_check_result_config(
+    config_dir: &str,
+) -> Result<SmartMonitoringCheckResultConfig, ConfigError> {
+    let config_file_path = format!("{}/smart_monitoring_check_result.toml", config_dir);
+    if Path::new(&config_file_path).exists() {
+        let mut s = Config::new();
+        s.merge(File::with_name(&config_file_path))?;
+        s.try_into()
+    } else {
+        warn!(
+            "Cannot find configuration file [{}]. The default config will be used.",
+            config_file_path
+        );
+        Ok(Default::default())
+    }
+}
+
 pub struct ComponentsConfig {
     pub matcher_config: Arc<FsMatcherConfigManager>,
-    pub tornado: GlobalConfig,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
     pub director_executor_config: DirectorClientConfig,
     pub elasticsearch_executor_config: ElasticsearchConfig,
+    pub smart_monitoring_check_result_config: SmartMonitoringCheckResultConfig,
 }
 
 pub fn parse_config_files(
@@ -169,18 +190,19 @@ pub fn parse_config_files(
     drafts_dir: &str,
 ) -> Result<ComponentsConfig, Box<dyn std::error::Error + Send + Sync + 'static>> {
     let matcher_config = Arc::new(build_matcher_config(config_dir, rules_dir, drafts_dir));
-    let tornado = build_config(config_dir)?;
     let archive_executor_config = build_archive_config(config_dir)?;
     let icinga2_executor_config = build_icinga2_client_config(config_dir)?;
     let director_executor_config = build_director_client_config(config_dir)?;
     let elasticsearch_executor_config = build_elasticsearch_config(config_dir)?;
+    let smart_monitoring_check_result_config =
+        build_smart_monitoring_check_result_config(config_dir)?;
     Ok(ComponentsConfig {
         matcher_config,
-        tornado,
         archive_executor_config,
         icinga2_executor_config,
         director_executor_config,
         elasticsearch_executor_config,
+        smart_monitoring_check_result_config,
     })
 }
 
@@ -300,6 +322,7 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
+            web_max_json_payload_size: None,
             message_queue_size: 0,
             thread_pool_config: None,
             retry_strategy: Default::default(),
@@ -326,6 +349,7 @@ mod test {
             nats: None,
             web_server_ip: "".to_string(),
             web_server_port: 0,
+            web_max_json_payload_size: None,
             message_queue_size: 0,
             thread_pool_config: None,
             retry_strategy: Default::default(),

@@ -40,6 +40,7 @@ impl DirectorActionName {
 }
 
 /// An executor that calls the APIs of the IcingaWeb2 Director
+#[derive(Clone)]
 pub struct DirectorExecutor {
     api_client: ApiClient,
 }
@@ -147,8 +148,7 @@ impl DirectorExecutor {
             })
         } else {
             debug!(
-                "DirectorExecutor API request completed successfully. Response body: {}",
-                response_body
+                "DirectorExecutor API request completed successfully. Response body",
             );
             Ok(())
         }

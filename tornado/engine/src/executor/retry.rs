@@ -388,7 +388,7 @@ pub mod test {
     #[actix_rt::test]
     async fn should_retry_if_failure() {
         let (sender, mut receiver) = unbounded_channel();
-        let attempts = rand::thread_rng().gen_range(10, 250);
+        let attempts = rand::thread_rng().gen_range(10..250);
         let retry_strategy = RetryStrategy {
             retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::None,
@@ -419,7 +419,7 @@ pub mod test {
     #[actix_rt::test]
     async fn should_not_retry_if_ok() {
         let (sender, mut receiver) = unbounded_channel();
-        let attempts = rand::thread_rng().gen_range(10, 250);
+        let attempts = rand::thread_rng().gen_range(10..250);
         let retry_strategy = RetryStrategy {
             retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::None,
@@ -448,7 +448,7 @@ pub mod test {
     #[actix_rt::test]
     async fn should_not_retry_if_unrecoverable_error() {
         let (sender, mut receiver) = unbounded_channel();
-        let attempts = rand::thread_rng().gen_range(10, 250);
+        let attempts = rand::thread_rng().gen_range(10..250);
         let retry_strategy = RetryStrategy {
             retry_policy: RetryPolicy::MaxRetries { retries: attempts },
             backoff_policy: BackoffPolicy::None,

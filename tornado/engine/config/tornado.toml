@@ -6,7 +6,7 @@
 #                              |      |           logger level of the 'rants' library (Nats client library)
 #                              |      logger level of 'tornado'
 #                             global logger level
-level = "info,tornado=debug"
+level = "info,tornado=debug,actix=debug"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
@@ -55,7 +55,9 @@ nats.client.auth.type = "None"
 web_server_ip = "0.0.0.0"
 # The port where the Tornado Web Server will listen for HTTP requests.
 web_server_port = 4748
-
+# (Optional) The max JSON size in bytes accepted by a Tornado endpoint.
+# Default is 67108860 (i.e. 64MB)
+web_max_json_payload_size = 1048000
 # Set the size of the in-memory queue where messages will be stored before being processed
 message_queue_size = 10000
 

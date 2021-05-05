@@ -27,7 +27,7 @@ fn should_perform_a_post_request() {
 
         HttpServer::new(move || {
             let app_received = act_received.clone();
-            let url = format!("{}{}", api, "/icinga2-api-action");
+            let url = format!("{}{}", api, "/v1/actions/icinga2-api-action");
 
             App::new().data(app_received).service(web::resource(&url).route(web::post().to(
                 move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
@@ -101,7 +101,7 @@ fn should_return_object_not_existing_error_in_case_of_404_status_code() {
 
     Mock::new()
         .expect_method(POST)
-        .expect_path("/icinga2-api-action")
+        .expect_path("/v1/actions/icinga2-api-action")
         .return_body(server_response)
         .return_status(404)
         .create_on(&mock_server);

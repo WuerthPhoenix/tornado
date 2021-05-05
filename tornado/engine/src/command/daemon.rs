@@ -1,5 +1,6 @@
 use crate::api::MatcherApiHandler;
 use crate::config;
+use crate::config::build_config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::engine::{EventMessage, MatcherActor};
 use crate::executor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
@@ -26,18 +27,24 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
+pub const ACTION_ID_FOREACH: &str = "foreach";
+pub const ACTION_ID_LOGGER: &str = "logger";
+
+// 64*1024*1024 byte = 64MB limit
+const MAX_JSON_PAYLOAD_SIZE: usize = 67_108_860;
 
 pub async fn daemon(
     config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let tornado = build_config(config_dir)?;
+    let _guard = setup_logger(&tornado.logger)?;
+
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
-    let _guard = setup_logger(&configs.tornado.logger)?;
-
     // start system
-    let daemon_config = configs.tornado.tornado.daemon;
+    let daemon_config = tornado.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
     info!(
@@ -61,94 +68,95 @@ pub async fn daemon(
         });
 
     // Start script executor actor
-    let script_executor_addr =
+    let script_executor_addr = {
+        let executor = tornado_executor_script::ScriptExecutor::new();
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor = tornado_executor_script::ScriptExecutor::new();
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start logger executor actor
-    let logger_executor_addr =
+    let logger_executor_addr = {
+        let executor = tornado_executor_logger::LoggerExecutor::new();
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor = tornado_executor_logger::LoggerExecutor::new();
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start ForEach executor actor
     let foreach_executor_addr = ForEachExecutorActor::start_new(message_queue_size);
 
     // Start elasticsearch executor actor
-    let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
-    let elasticsearch_executor_addr =
+    let elasticsearch_executor_addr = {
+        let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
+        let executor =
+            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+                .expect("Cannot start the Elasticsearch Executor");
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let es_authentication = es_authentication.clone();
-                let executor =
-                    tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
-                        .expect("Cannot start the Elasticsearch Executor");
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start icinga2 executor actor
-    let icinga2_client_config = configs.icinga2_executor_config.clone();
-    let icinga2_executor_addr =
+    let icinga2_executor_addr = {
+        let executor =
+            tornado_executor_icinga2::Icinga2Executor::new(configs.icinga2_executor_config.clone())
+                .expect("Cannot start the Icinga2Executor Executor");
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor =
-                    tornado_executor_icinga2::Icinga2Executor::new(icinga2_client_config.clone())
-                        .expect("Cannot start the Icinga2Executor Executor");
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start director executor actor
     let director_client_config = configs.director_executor_config.clone();
-    let director_executor_addr =
-        RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor = tornado_executor_director::DirectorExecutor::new(
-                    director_client_config.clone(),
-                )
+    let director_executor_addr = {
+        let executor =
+            tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
                 .expect("Cannot start the DirectorExecutor Executor");
-                ExecutorRunner { executor }
+        RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start monitoring executor actor
-    let icinga2_client_config = configs.icinga2_executor_config.clone();
-    let director_client_config = configs.director_executor_config.clone();
-    let monitoring_executor_addr =
+    let monitoring_executor_addr = {
+        let executor = tornado_executor_monitoring::MonitoringExecutor::new(
+            configs.icinga2_executor_config.clone(),
+            configs.director_executor_config.clone(),
+        )
+        .expect("Cannot start the MonitoringExecutor Executor");
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor = tornado_executor_monitoring::MonitoringExecutor::new(
-                    icinga2_client_config.clone(),
-                    director_client_config.clone(),
-                )
-                .expect("Cannot start the MonitoringExecutor Executor");
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Start smart_monitoring_check_result executor actor
-    let icinga2_client_config = configs.icinga2_executor_config.clone();
-    let director_client_config = configs.director_executor_config.clone();
-    let smart_monitoring_check_result_executor_addr =
+    let smart_monitoring_check_result_executor_addr = {
+        let executor =
+            tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
+                configs.smart_monitoring_check_result_config.clone(),
+                configs.icinga2_executor_config.clone(),
+                configs.director_executor_config.clone(),
+            )
+            .expect("Cannot start the SmartMonitoringExecutor Executor");
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
-            start_blocking_runner(threads_per_queue, message_queue_size, || {
-                let executor =
-                    tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
-                        icinga2_client_config.clone(),
-                        director_client_config.clone(),
-                    )
-                    .expect("Cannot start the SmartMonitoringExecutor Executor");
-                ExecutorRunner { executor }
+            start_blocking_runner(threads_per_queue, message_queue_size, || ExecutorRunner {
+                executor: executor.clone(),
             })
-        });
+        })
+    };
 
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
@@ -193,12 +201,12 @@ pub async fn daemon(
                             format!("Error sending message to 'script' executor. Err: {:?}", err)
                         })
                     }
-                    "foreach" => foreach_executor_addr_clone
+                    ACTION_ID_FOREACH => foreach_executor_addr_clone
                         .try_send(ActionMessage { action })
                         .map_err(|err| {
                             format!("Error sending message to 'foreach' executor. Err: {:?}", err)
                         }),
-                    "logger" => {
+                    ACTION_ID_LOGGER => {
                         logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
                             format!("Error sending message to 'logger' executor. Err: {:?}", err)
                         })
@@ -344,6 +352,11 @@ pub async fn daemon(
             .wrap(Cors::new().max_age(3600).finish())
             .service(
                 web::scope("/api")
+                    .app_data(
+                        // Json extractor configuration for this resource.
+                        web::JsonConfig::default()
+                            .limit(daemon_config.web_max_json_payload_size.unwrap_or(MAX_JSON_PAYLOAD_SIZE)) // Limit request payload size in byte
+                    )
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(event_api)),

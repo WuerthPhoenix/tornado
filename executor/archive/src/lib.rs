@@ -4,6 +4,7 @@ use lru_time_cache::LruCache;
 use std::collections::HashMap;
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
+use std::io::BufWriter;
 use std::path::Path;
 use tornado_common_api::Action;
 use tornado_executor_common::{StatefulExecutor, ExecutorError};
@@ -19,7 +20,7 @@ pub struct ArchiveExecutor {
     pub base_path: String,
     pub default_path: String,
     paths: HashMap<String, paths::PathMatcher>,
-    file_cache: LruCache<String, File>,
+    file_cache: LruCache<String, BufWriter<File>>,
 }
 
 impl std::fmt::Display for ArchiveExecutor {
@@ -41,10 +42,8 @@ impl ArchiveExecutor {
             .collect::<HashMap<String, paths::PathMatcher>>();
 
         let time_to_live = ::std::time::Duration::from_secs(config.file_cache_ttl_secs);
-        let file_cache = LruCache::<String, File>::with_expiry_duration_and_capacity(
-            time_to_live,
-            config.file_cache_size,
-        );
+        let file_cache =
+            LruCache::with_expiry_duration_and_capacity(time_to_live, config.file_cache_size);
 
         ArchiveExecutor {
             base_path: config.base_path.clone(),
@@ -64,7 +63,7 @@ impl ArchiveExecutor {
                 .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
         );
 
-        let file = match self.file_cache.entry(absolute_path_string.clone()) {
+        let buf_writer = match self.file_cache.entry(absolute_path_string.clone()) {
             Entry::Occupied(occupied) => occupied.into_mut(),
             Entry::Vacant(vacant) => {
                 if absolute_path_string.contains(r"\..") || absolute_path_string.contains("/..") {
@@ -100,13 +99,18 @@ impl ArchiveExecutor {
                         }
                     })?;
 
-                vacant.insert(file)
+                vacant.insert(BufWriter::new(file))
             }
         };
 
-        file.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
+        buf_writer.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
+            code: None,
+        })?;
+        buf_writer.flush().map_err(|err| ExecutorError::ActionExecutionError {
+            can_retry: true,
+            message: format!("Cannot flush file [{}]: {}", &absolute_path_string, err),
             code: None,
         })
     }

@@ -148,6 +148,19 @@ impl Accessor {
             }
         }
     }
+
+    /// Returns true if this Accessor returns a dynamic value that changes
+    /// based on the event and extracted_vars content
+    pub fn dynamic_value(&self) -> bool {
+        match &self {
+            Accessor::Constant { .. } => false,
+            Accessor::CreatedMs
+            | Accessor::ExtractedVar { .. }
+            | Accessor::Payload { .. }
+            | Accessor::Type
+            | Accessor::Event => true,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -166,6 +179,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("constant_value", result.as_ref());
+        assert!(!accessor.dynamic_value());
     }
 
     #[test]
@@ -177,6 +191,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("  constant_value  ", result.as_ref());
+        assert!(!accessor.dynamic_value());
     }
 
     #[test]
@@ -188,6 +203,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("event_type_string", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -201,6 +217,7 @@ mod test {
         let created_ms = result.unwrap().get_number().unwrap().clone();
         assert!(created_ms.is_u64());
         assert!(created_ms.as_u64().unwrap() > 0);
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -216,6 +233,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         assert_eq!("body_value", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -234,6 +252,7 @@ mod test {
 
         // Assert
         assert_eq!(&true, result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -251,6 +270,7 @@ mod test {
 
         // Assert
         assert_eq!(555.0, result.as_ref().get_number().unwrap().as_f64());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -274,6 +294,7 @@ mod test {
 
         // Assert
         assert_eq!(&Value::Map(body_clone), result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -295,6 +316,7 @@ mod test {
 
         // Assert
         assert_eq!("body_first_value", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -318,6 +340,7 @@ mod test {
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -342,6 +365,7 @@ mod test {
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -371,6 +395,7 @@ mod test {
 
         let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -406,6 +431,7 @@ mod test {
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
         assert_eq!("body_value", result.as_ref());
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -496,7 +522,8 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Type {}, accessor)
+        assert_eq!(Accessor::Type {}, accessor);
+        assert!(accessor.dynamic_value());
     }
 
     #[test]
@@ -506,7 +533,8 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::CreatedMs {}, accessor)
+        assert_eq!(Accessor::CreatedMs {}, accessor);
+        assert!(accessor.dynamic_value());
     }
 
     #[test]

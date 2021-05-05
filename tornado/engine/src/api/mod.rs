@@ -22,7 +22,11 @@ impl EventApiHandler for MatcherApiHandler {
     ) -> Result<ProcessedEvent, ApiError> {
         let request = self
             .matcher
-            .send(EventMessageWithReply { event: event.event, process_type: event.process_type })
+            .send(EventMessageWithReply {
+                event: event.event,
+                process_type: event.process_type,
+                include_metadata: true,
+            })
             .await?;
 
         Ok(request?)
@@ -39,6 +43,7 @@ impl EventApiHandler for MatcherApiHandler {
                 event: event.event,
                 process_type: event.process_type,
                 matcher_config,
+                include_metadata: true,
             })
             .await?;
 

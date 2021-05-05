@@ -4,7 +4,7 @@ use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use std::rc::Rc;
 
 /// An executor that logs received actions at the 'info' level
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct LoggerExecutor {}
 
 impl LoggerExecutor {

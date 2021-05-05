@@ -25,6 +25,7 @@ This specific Tornado Engine executable is composed of the following components:
 - The Monitoring executor
 - The logger executor
 - The script executor
+- The Smart Monitoring executor
 
 Each component is wrapped in a dedicated actix actor.
 
@@ -118,6 +119,8 @@ file _'config-dir'/tornado.toml_:
     - **web_server_ip**: The IP address where the Tornado Web Server will listen for HTTP requests.
       This is used, for example, by the monitoring endpoints.
     - **web_server_port**:  The port where the Tornado Web Server will listen for HTTP requests.
+    - **web_max_json_payload_size**: The max JSON size in bytes accepted by a Tornado endpoint.
+      (Optional. Defaults to 67108860 (i.e. 64MB))
 
 
 More information about the logger configuration is available [here](../../common/logger/README.md).
@@ -529,6 +532,23 @@ This executor has no specific configuration, since everything required for scrip
 contained in the Action itself as described in the
 [executor documentation](../../executor/script/README.md)
 
+
+### Structure and Configuration:  The Smart Monitoring Check Result Executor
+
+The configuration of the [smart_monitoring_check_result executor](../../executor/smart_monitoring_check_result/README.md) 
+is specified in the `smart_monitoring_check_result.toml` file into the Tornado config folder.
+
+The smart_monitoring_check_result.toml has the following configuration options:
+- __pending_object_set_status_retries_attempts__: The number of attempts to perform a `process_check_result` for an object in pending state.
+- __pending_object_set_status_retries_sleep_ms__: The sleep time in ms between attempts to perform a process_check_result for an object in pending state.
+
+The `smart_monitoring_check_result.toml` file is optional; if not provided, the following default values will be used:
+- __pending_object_set_status_retries_attempts__ = 5
+- __pending_object_set_status_retries_sleep_ms__ = 2000
+
+
+More details about the executor can be found in the
+[smart_monitoring_check_result documentation](../../executor/smart_monitoring_check_result/README.md).
 
 
 ## Tornado API
