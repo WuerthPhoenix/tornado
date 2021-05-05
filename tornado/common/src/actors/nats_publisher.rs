@@ -100,6 +100,7 @@ impl NatsClientConfig {
                  */
             }
             NatsClientAuth::None => {
+                info!("Open Nats connection (without TLS) to [{}]", addresses);
                 Options::new().connect(&addresses).await.map_err(|err| {
                     TornadoError::ConfigurationError {
                         message: format!("Error while building tls connector. Err: {}", err),

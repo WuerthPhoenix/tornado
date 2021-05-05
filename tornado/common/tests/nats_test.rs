@@ -4,6 +4,9 @@
 // This tests require docker on the host machine
 //
 
+use std::time::Duration;
+
+use actix::clock::delay_for;
 use log::*;
 use serial_test::serial;
 use testcontainers::images::generic::GenericImage;
@@ -67,10 +70,10 @@ async fn official_nats_client_spike_test() {
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let nc_1 = async_nats::connect(&nats_address).await.unwrap();
+    let nc_1 = async_nats::Options::new().connect(&nats_address).await.unwrap();
     let nc_2 = async_nats::connect(&nats_address).await.unwrap();
     
-    let subscription = nc_1.subscribe(&subject).await.unwrap();
+    let subscription = nc_2.subscribe(&subject).await.unwrap();
     actix::spawn(async move {
         let message = subscription.next().await;
         info!("message received: {:?}", message);
@@ -78,7 +81,7 @@ async fn official_nats_client_spike_test() {
     });
 
     
-    nc_2.publish(&subject, &message).await.unwrap();
+    nc_1.publish(&subject, &message).await.unwrap();
 
     assert_eq!(message.as_bytes(), &receiver.recv().await.unwrap());
 
@@ -114,7 +117,11 @@ async fn nats_subscriber_should_receive_from_nats() {
     .await
     .unwrap();
 
+    delay_for(Duration::from_millis(100)).await;
+
+    info!("Sending message");
     nc_1.publish(&subject, &serde_json::to_vec(&event).unwrap()).await.unwrap();
+    info!("Message sent");
 
     assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg);
 
@@ -142,6 +149,8 @@ async fn nats_publisher_should_publish_to_nats() {
         info!("message received: {:?}", message);
         sender.send(message.unwrap().data).unwrap();
     });
+    
+    delay_for(Duration::from_millis(100)).await;
     
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
