@@ -52,7 +52,7 @@ impl NatsClientConfig {
                 path_to_root_certificate,
             } => {
                 let implement_nats_tls = 0;
-                unimplemented!("TLS NOT IMPLEMENTED YET");
+                unimplemented!("TLS NOT IMPLEMENTED YET. To be fixed in TOR-314");
                 /*
                 let mut connect = Connect::new();
                 connect.tls_required(true);
