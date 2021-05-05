@@ -2,8 +2,6 @@ use crate::actors::message::{EventMessage, ResetActorMessage, TornadoCommonActor
 use crate::TornadoError;
 use actix::prelude::*;
 use log::*;
-use rants::native_tls::{Certificate, Identity, TlsConnector};
-use rants::{generate_delay_generator, Address, Client, Connect, Subject};
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::Arc;
@@ -11,12 +9,13 @@ use tokio::fs::File;
 use tokio::prelude::*;
 use tokio::time;
 use tokio::time::Duration;
+use async_nats::{Connection, Options};
 
 pub struct NatsPublisherActor {
     restarted: bool,
     subject: Arc<Subject>,
     client_config: Arc<NatsClientConfig>,
-    client: Option<Client>,
+    client: Option<Connection>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -45,16 +44,8 @@ pub struct NatsClientConfig {
 }
 
 impl NatsClientConfig {
-    pub async fn new_client(&self) -> Result<Client, TornadoError> {
-        let addresses = self
-            .addresses
-            .iter()
-            .map(|address| {
-                address.to_owned().parse().map_err(|err| TornadoError::ConfigurationError {
-                    message: format! {"NatsPublisherActor - Cannot parse address. Err: {}", err},
-                })
-            })
-            .collect::<Result<Vec<Address>, TornadoError>>()?;
+    pub async fn new_client(&self) -> Result<Connection, TornadoError> {
+        let addresses = self.addresses.join(",");
 
         let auth = self.get_auth();
 
@@ -64,6 +55,9 @@ impl NatsClientConfig {
                 pkcs12_bundle_password: pkcs_password,
                 path_to_root_certificate,
             } => {
+                let implement_nats_tls = 0;
+                unimplemented!("TLS NOT IMPLEMENTED YET");
+                /*
                 let mut connect = Connect::new();
                 connect.tls_required(true);
                 let mut client = Client::with_connect(addresses, connect);
@@ -106,21 +100,17 @@ impl NatsClientConfig {
 
                 client.set_tls_config(tls_connector).await;
                 client
+
+                 */
             }
             NatsClientAuth::None => {
-                let connect = Connect::new();
-                Client::with_connect(addresses, connect)
+                Options::new().connect(&addresses).await.map_err(|err| {
+                    TornadoError::ConfigurationError {
+                        message: format!("Error while building tls connector. Err: {}", err),
+                    }
+                })?
             }
         };
-        {
-            let mut delay_generator = client.delay_generator_mut().await;
-            *delay_generator = generate_delay_generator(
-                3,
-                Duration::from_secs(0),
-                Duration::from_secs(5),
-                Duration::from_secs(10),
-            );
-        }
 
         Ok(client)
     }

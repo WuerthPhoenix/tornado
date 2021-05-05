@@ -2,7 +2,7 @@ use crate::actors::message::{BytesMessage, TornadoCommonActorError};
 use crate::actors::nats_publisher::NatsClientConfig;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::StreamExt;
+use futures::{stream, StreamExt};
 use log::*;
 use serde::{Deserialize, Serialize};
 
@@ -19,23 +19,21 @@ pub async fn subscribe_to_nats<
     message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
-    let subject = config.subject.parse().map_err(|err| TornadoError::ConfigurationError {
-        message: format! {"NatsSubscriberActor - Cannot parse subject. Err: {}", err},
-    })?;
 
     let client = config.client.new_client().await?;
-    client.connect().await;
 
-    let (_, subscription) = client.subscribe(&subject, message_mailbox_capacity).await.map_err(|err| {
-        TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", subject, err} }
+    let subscription = client.subscribe(&config.subject).await.map_err(|err| {
+        TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", config.subject, err} }
     })?;
+
+    let message_stream = stream::unfold(subscription, |sub| async {
+        sub.next().await.map(|msg| (BytesMessage { msg: msg.data }, sub))
+    })
+    .boxed();
 
     NatsSubscriberActor::create(|ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);
-        ctx.add_message_stream(
-            Box::leak(Box::new(subscription))
-                .map(|message| BytesMessage { msg: message.into_payload() }),
-        );
+        ctx.add_message_stream(message_stream);
         NatsSubscriberActor { callback }
     });
 
