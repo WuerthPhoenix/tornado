@@ -1,8 +1,9 @@
 use crate::executor::ActionMessage;
 use actix::prelude::*;
 use log::*;
-use tornado_executor_common::{StatefulExecutor, ExecutorError};
+use tornado_executor_common::{StatefulExecutor, ExecutorError, StatelessExecutor};
 use tornado_executor_foreach::ForEachExecutor;
+use std::rc::Rc;
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -14,7 +15,7 @@ where
 }
 
 pub struct ForEachExecutorActor {
-    executor: Option<ForEachExecutor>,
+    executor: Option<Rc<ForEachExecutor>>,
 }
 
 impl ForEachExecutorActor {
@@ -39,20 +40,25 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
         trace!("ForEachExecutorActor - received new action [{:?}]", &msg.action);
 
-        if let Some(executor) = &mut self.executor {
-            match executor.execute(&msg.action) {
-                Ok(_) => {
-                    debug!("ForEachExecutorActor - {} - Action executed successfully", &executor);
-                    Ok(())
+        if let Some(executor) = &self.executor {
+            let action = msg.action.clone();
+            let executor = executor.clone();
+            actix::spawn(async move {
+                match executor.execute(action) {
+                    Ok(_) => {
+                        debug!("ForEachExecutorActor - {} - Action executed successfully", &executor);
+                        Ok(())
+                    }
+                    Err(e) => {
+                        error!(
+                            "ForEachExecutorActor - {} - Failed to execute action: {}",
+                            &executor, e
+                        );
+                        Err(e)
+                    }
                 }
-                Err(e) => {
-                    error!(
-                        "ForEachExecutorActor - {} - Failed to execute action: {}",
-                        &executor, e
-                    );
-                    Err(e)
-                }
-            }
+            });
+            Ok(())
         } else {
             let message =
                 "ForEachExecutorActor received a message when it was not yet initialized!"
@@ -72,6 +78,6 @@ where
 
     fn handle(&mut self, msg: ForEachExecutorActorInitMessage<F>, _: &mut Context<Self>) {
         trace!("ForEachExecutorActor - received init message");
-        self.executor = Some((msg.init)());
+        self.executor = Some((msg.init)().into());
     }
 }

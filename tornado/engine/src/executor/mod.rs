@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tornado_common::pool::Runner;
 use tornado_common_api::Action;
 use tornado_executor_common::{StatefulExecutor, ExecutorError};
+use std::rc::Rc;
 
 pub mod foreach;
 pub mod retry;
@@ -12,7 +13,7 @@ pub mod retry;
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
-    pub action: Arc<Action>,
+    pub action: Rc<Action>,
 }
 
 pub struct ExecutorRunner<E: StatefulExecutor + Display + Unpin + Sync + Send> {
