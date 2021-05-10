@@ -1,4 +1,4 @@
-use crate::engine::{
+use crate::actor::matcher::{
     EventMessageAndConfigWithReply, EventMessageWithReply, MatcherActor, ReconfigureMessage,
 };
 use actix::Addr;
@@ -51,7 +51,7 @@ impl EventApiHandler for MatcherApiHandler {
     }
 }
 
-#[async_trait(?Send)]
+#[async_trait]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
@@ -68,7 +68,7 @@ impl MatcherApiHandler {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::dispatcher::{ActixEventBus, DispatcherActor};
+    use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_common_api::{Event, Value};

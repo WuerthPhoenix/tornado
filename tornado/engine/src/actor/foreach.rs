@@ -1,9 +1,9 @@
-use crate::executor::ActionMessage;
 use actix::prelude::*;
 use log::*;
-use tornado_executor_common::{StatefulExecutor, ExecutorError, StatelessExecutor};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_foreach::ForEachExecutor;
 use std::rc::Rc;
+use tornado_common::actors::message::ActionMessage;
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -44,17 +44,15 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
             let action = msg.action.clone();
             let executor = executor.clone();
             actix::spawn(async move {
-                match executor.execute(action) {
+                match executor.execute(action).await {
                     Ok(_) => {
                         debug!("ForEachExecutorActor - {} - Action executed successfully", &executor);
-                        Ok(())
                     }
                     Err(e) => {
                         error!(
                             "ForEachExecutorActor - {} - Failed to execute action: {}",
                             &executor, e
                         );
-                        Err(e)
                     }
                 }
             });

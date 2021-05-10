@@ -1,4 +1,4 @@
-use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
+use crate::actor::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;

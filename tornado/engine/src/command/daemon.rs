@@ -2,7 +2,7 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
 use crate::dispatcher::{ActixEventBus, DispatcherActor};
-use crate::engine::{EventMessage, MatcherActor};
+use crate::matcher::{EventMessage, MatcherActor};
 use crate::executor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::executor::retry::RetryActor;
 use crate::executor::ActionMessage;
