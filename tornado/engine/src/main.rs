@@ -3,10 +3,10 @@ use log::error;
 
 mod api;
 mod command;
+pub mod actor;
 pub mod config;
 pub mod dispatcher;
 pub mod engine;
-pub mod executor;
 mod monitoring;
 
 #[actix_web::main]
