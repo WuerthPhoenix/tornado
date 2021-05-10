@@ -4,20 +4,7 @@ use core::marker::PhantomData;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use tornado_executor_common::ExecutorError;
-
-pub trait RetriableError {
-    fn can_retry(&self) -> bool;
-}
-
-impl RetriableError for ExecutorError {
-    fn can_retry(&self) -> bool {
-        match self {
-            ExecutorError::ActionExecutionError { can_retry, .. } => *can_retry,
-            _ => false,
-        }
-    }
-}
+use tornado_common_api::RetriableError;
 
 /// Defines the strategy to apply in case of a failure.
 /// This is applied, for example, when an action execution fails

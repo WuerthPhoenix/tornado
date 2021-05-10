@@ -390,6 +390,10 @@ pub fn partial_cmp_option_cow_value<'o, F: FnOnce() -> Option<Cow<'o, Value>>>(
     }
 }
 
+pub trait RetriableError {
+    fn can_retry(&self) -> bool;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

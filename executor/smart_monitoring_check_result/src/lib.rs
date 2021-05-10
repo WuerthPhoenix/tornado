@@ -13,7 +13,7 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use tornado_common::command::retry::RetriableError;
+use tornado_common_api::RetriableError;
 use std::rc::Rc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";

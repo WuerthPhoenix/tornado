@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use thiserror::Error;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, RetriableError};
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
@@ -30,4 +30,13 @@ pub enum ExecutorError {
     SenderError { message: String },
     #[error("UnknownArgumentError: [{message}]")]
     UnknownArgumentError { message: String },
+}
+
+impl RetriableError for ExecutorError {
+    fn can_retry(&self) -> bool {
+        match self {
+            ExecutorError::ActionExecutionError { can_retry, .. } => *can_retry,
+            _ => false,
+        }
+    }
 }
