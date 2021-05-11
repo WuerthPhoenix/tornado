@@ -114,8 +114,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -142,7 +141,7 @@ mod test {
     #[test]
     fn should_have_empty_payload_if_action_does_not_contains_one() {
         // Arrange
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -166,7 +165,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
