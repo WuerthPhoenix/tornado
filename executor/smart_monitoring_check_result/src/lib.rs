@@ -242,7 +242,7 @@ mod test {
     #[test]
     fn should_fail_if_action_data_is_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -264,7 +264,7 @@ mod test {
         let action = Action::new("");
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -284,7 +284,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -319,7 +319,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -330,7 +330,7 @@ mod test {
     #[test]
     fn should_throw_error_if_process_check_result_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -364,7 +364,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -380,7 +380,7 @@ mod test {
     #[test]
     fn should_throw_error_if_host_name_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -410,7 +410,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -427,7 +427,7 @@ mod test {
     #[test]
     fn should_throw_error_if_service_name_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -457,7 +457,7 @@ mod test {
         action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -482,7 +482,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -511,7 +511,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 

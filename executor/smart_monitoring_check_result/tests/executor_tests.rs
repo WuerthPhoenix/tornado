@@ -26,7 +26,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -60,7 +60,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -84,7 +84,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -118,7 +118,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_ok());
@@ -151,7 +151,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config.clone(),
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -186,7 +186,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -227,7 +227,7 @@ fn should_return_return_error_on_object_creation_failure() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -262,7 +262,7 @@ fn should_return_return_error_on_object_creation_failure() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
