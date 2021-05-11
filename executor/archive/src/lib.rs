@@ -9,6 +9,7 @@ use std::path::Path;
 use tornado_common_api::Action;
 use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub mod config;
 mod paths;
@@ -118,7 +119,7 @@ impl ArchiveExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatefulExecutor for ArchiveExecutor {
-    async fn execute(&mut self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action

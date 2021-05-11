@@ -6,6 +6,7 @@ use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub mod client;
 pub mod config;
@@ -91,7 +92,7 @@ impl Icinga2Executor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for Icinga2Executor {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(&action)?;
 

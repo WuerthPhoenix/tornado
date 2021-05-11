@@ -21,6 +21,9 @@ use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use std::rc::Rc;
+use tornado_common::command::retry::RetryCommand;
+use tornado_common::command::pool::CommandMutPool;
+use tornado_common::actors::command::CommandExecutorActor;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -49,7 +52,7 @@ pub async fn daemon(
         threads_per_queue, thread_pool_config
     );
 
-    let retry_strategy = Arc::new(daemon_config.retry_strategy.clone());
+    let retry_strategy = daemon_config.retry_strategy.clone();
     info!("Tornado global retry strategy: {:?}", retry_strategy);
 
     let message_queue_size = daemon_config.message_queue_size;
@@ -59,6 +62,13 @@ pub async fn daemon(
 
     // Start archive executor actor
     let archive_config = configs.archive_executor_config.clone();
+
+    let archive_executor_addr = CommandExecutorActor::start_new(message_queue_size,
+    Rc::new(RetryCommand::new(retry_strategy.clone(),
+                      CommandMutPool::new(1, move || tornado_executor_archive::ArchiveExecutor::new(&archive_config))
+    )));
+
+    /*
     let archive_executor_addr =
         RetryActor::start_new(message_queue_size, retry_strategy.clone(), move || {
             start_blocking_runner(threads_per_queue, message_queue_size, || {
@@ -67,6 +77,8 @@ pub async fn daemon(
             })
         });
 
+
+     */
     /*
     // Start script executor actor
     let script_executor_addr = {
@@ -162,7 +174,7 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |action| {
-                let action = Rc::new(action);
+                let action = Arc::new(action);
                 let send_result = match action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(ActionMessage { action }).map_err(|err| {

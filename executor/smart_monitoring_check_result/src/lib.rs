@@ -15,6 +15,7 @@ use tornado_executor_icinga2::{
 };
 use tornado_common_api::RetriableError;
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
@@ -186,7 +187,7 @@ impl SmartMonitoringExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for SmartMonitoringExecutor {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;

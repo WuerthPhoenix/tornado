@@ -5,6 +5,7 @@ use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use std::rc::Rc;
+use std::sync::Arc;
 
 pub mod config;
 
@@ -157,7 +158,7 @@ impl DirectorExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for DirectorExecutor {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
         let action = self.parse_action(&action)?;

@@ -32,7 +32,7 @@ impl ForEachExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ForEachExecutor {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {

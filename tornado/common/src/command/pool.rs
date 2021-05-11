@@ -1,9 +1,9 @@
 use crate::command::{Command, CommandMut};
-use crate::TornadoError;
 use async_channel::{bounded, Sender};
 use log::*;
 use std::marker::PhantomData;
 use tokio::sync::Semaphore;
+use tornado_executor_common::ExecutorError;
 
 pub struct ReplyRequest<I, O> {
     pub message: I,
@@ -41,18 +41,18 @@ impl<I, O, T: Command<I, O>> Command<I, O> for CommandPool<I, O, T> {
 /// A CommandMut pool.
 /// It allocates a fixed pool of CommandMut with a max concurrent access factor.
 pub struct CommandMutPool<I: 'static, O: 'static> {
-    sender: Sender<ReplyRequest<I, Result<O, TornadoError>>>,
+    sender: Sender<ReplyRequest<I, Result<O, ExecutorError>>>,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
 }
 
 impl<I: 'static, O: 'static> CommandMutPool<I, O> {
-    pub fn new<F: Fn() -> T, T: 'static + CommandMut<I, Result<O, TornadoError>>>(
+    pub fn new<F: Fn() -> T, T: 'static + CommandMut<I, Result<O, ExecutorError>>>(
         max_parallel_executions: usize,
         factory: F,
     ) -> Self {
         let (sender, receiver) =
-            bounded::<ReplyRequest<I, Result<O, TornadoError>>>(max_parallel_executions);
+            bounded::<ReplyRequest<I, Result<O, ExecutorError>>>(max_parallel_executions);
 
         for _ in 0..max_parallel_executions {
             let mut command = factory();
@@ -83,13 +83,13 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: 'static, O: 'static> Command<I, Result<O, TornadoError>> for CommandMutPool<I, O> {
-    async fn execute(&self, message: I) -> Result<O, TornadoError> {
+impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMutPool<I, O> {
+    async fn execute(&self, message: I) -> Result<O, ExecutorError> {
         let (tx, rx) = async_channel::bounded(1);
         self.sender.send(ReplyRequest { message, responder: tx }).await.map_err(|err| {
-            TornadoError::SenderError { message: format!("Error sending message: {:?}", err) }
+            ExecutorError::SenderError { message: format!("Error sending message: {:?}", err) }
         })?;
-        rx.recv().await.map_err(|err| TornadoError::SenderError {
+        rx.recv().await.map_err(|err| ExecutorError::SenderError {
             message: format!("Error receiving message response: {:?}", err),
         })?
     }
@@ -214,7 +214,7 @@ mod test {
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
                 if action.id.contains("err") {
-                    Err(TornadoError::SenderError { message: action.id.to_owned() })
+                    Err(ExecutorError::SenderError { message: action.id.to_owned() })
                 } else {
                     Ok(action.id.to_owned())
                 }
@@ -234,7 +234,7 @@ mod test {
                 let message = format!("err {}", i);
                 let result = sender.execute(Action::new(&message).into()).await;
                 match result {
-                    Err(TornadoError::SenderError { message: err_message }) => {
+                    Err(ExecutorError::SenderError { message: err_message }) => {
                         assert_eq!(err_message, message)
                     }
                     _ => assert!(false),

@@ -14,6 +14,7 @@ use tornado_executor_icinga2::{
 };
 use std::rc::Rc;
 use tornado_common_api::RetriableError;
+use std::sync::Arc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -178,7 +179,7 @@ impl MonitoringExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for MonitoringExecutor {
-    async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;
