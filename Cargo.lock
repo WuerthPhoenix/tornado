@@ -4504,6 +4504,7 @@ name = "tornado_executor_director"
 version = "0.0.1"
 dependencies = [
  "actix",
+ "actix-rt",
  "actix-web",
  "async-trait",
  "base64 0.13.0",
