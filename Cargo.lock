@@ -4504,7 +4504,6 @@ name = "tornado_executor_director"
 version = "0.0.1"
 dependencies = [
  "actix",
- "actix-rt",
  "actix-web",
  "async-trait",
  "base64 0.13.0",
@@ -4514,6 +4513,7 @@ dependencies = [
  "reqwest",
  "serde 1.0.125",
  "serde_json",
+ "tokio 0.2.25",
  "tornado_common_api",
  "tornado_executor_common",
 ]
@@ -4528,6 +4528,7 @@ dependencies = [
  "reqwest",
  "serde 1.0.125",
  "serde_json",
+ "tokio 0.2.25",
  "tornado_common_api",
  "tornado_executor_common",
 ]

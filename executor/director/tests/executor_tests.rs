@@ -114,7 +114,7 @@ fn should_perform_a_post_request() {
     );
 }
 
-#[actix_rt::test]
+#[tokio::test]
 async fn should_return_object_already_existing_error_in_case_of_422_status_code() {
     // Arrange
     let director_server = MockServer::start();

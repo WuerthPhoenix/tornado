@@ -279,10 +279,10 @@ mod test {
     //        //            assert!(result.is_ok());
     //    }
 
-    #[test]
-    fn should_fail_if_index_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_index_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -295,7 +295,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -304,10 +304,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_endpoint_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_endpoint_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -318,7 +318,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -327,10 +327,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_data_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_data_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -343,7 +343,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -352,10 +352,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_index_is_not_text() {
+    #[tokio::test]
+    async fn should_fail_if_index_is_not_text() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -369,7 +369,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -378,10 +378,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_endpoint_is_not_text() {
+    #[tokio::test]
+    async fn should_fail_if_endpoint_is_not_text() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -393,7 +393,7 @@ mod test {
         action.payload.insert("endpoint".to_owned(), Value::Bool(false));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
