@@ -2,13 +2,13 @@ use std::fs;
 use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use tornado_common_api::Action;
-use tornado_executor_common::StatefulExecutor;
+use tornado_executor_common::StatelessExecutor;
 use tornado_executor_foreach;
 use tornado_executor_foreach::ForEachExecutor;
 use tornado_network_simple::SimpleEventBus;
 
-#[test]
-fn should_convert_value_to_action() {
+#[tokio::test]
+async fn should_convert_value_to_action() {
     // Arrange
     let action_filename = "./test_resources/elasticsearch_usecase_01/action.json";
     let action_json = fs::read_to_string(action_filename)
@@ -33,10 +33,10 @@ fn should_convert_value_to_action() {
             }),
         );
     };
-    let mut executor = ForEachExecutor::new(Arc::new(bus));
+    let executor = ForEachExecutor::new(Arc::new(bus));
 
     // Act
-    executor.execute(&action).unwrap();
+    executor.execute(action.into()).await.unwrap();
 
     // Assert
     let lock = execution_results.read().unwrap();
