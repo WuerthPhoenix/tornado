@@ -114,7 +114,7 @@ impl SmartMonitoringExecutor {
                 trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
             }
             Err(err) => {
-                warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {}", host_name, service_name, err);
+                warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {:?}", host_name, service_name, err);
             }
         }
 
@@ -239,8 +239,8 @@ mod test {
     use maplit::*;
     use tornado_common_api::Value;
 
-    #[test]
-    fn should_fail_if_action_data_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_action_data_is_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
@@ -273,8 +273,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_ok_if_action_is_valid() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_is_valid() {
         // Arrange
         let mock_server = MockServer::start();
 
@@ -327,8 +327,8 @@ mod test {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn should_throw_error_if_process_check_result_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_process_check_result_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
@@ -377,8 +377,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_throw_error_if_host_name_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_host_name_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
@@ -424,8 +424,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_throw_error_if_service_name_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_service_name_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
@@ -471,8 +471,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
         // Arrange
         let mock_server = MockServer::start();
 
@@ -519,8 +519,8 @@ mod test {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn should_return_state_check_pending() {
+    #[tokio::test]
+    async fn should_return_state_check_pending() {
         // Arrange
         let icinga_response: serde_json::Value = serde_json::from_str(
             r#"
