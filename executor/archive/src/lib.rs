@@ -8,7 +8,6 @@ use std::io::BufWriter;
 use std::path::Path;
 use tornado_common_api::Action;
 use tornado_executor_common::{StatefulExecutor, ExecutorError};
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub mod config;

@@ -12,7 +12,6 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use std::rc::Rc;
 use tornado_common_api::RetriableError;
 use std::sync::Arc;
 

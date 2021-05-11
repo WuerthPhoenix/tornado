@@ -7,7 +7,6 @@ use std::fs::File;
 use std::io::Read;
 use tornado_common_api::Action;
 use tornado_executor_common::{StatelessExecutor, ExecutorError};
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub mod config;

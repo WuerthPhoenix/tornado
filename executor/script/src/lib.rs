@@ -3,7 +3,6 @@ use std::fmt;
 use std::process::Command;
 use tornado_common_api::{Action, Number, Value};
 use tornado_executor_common::{StatelessExecutor, ExecutorError};
-use std::rc::Rc;
 use std::sync::Arc;
 
 pub const SCRIPT_TYPE_KEY: &str = "script";

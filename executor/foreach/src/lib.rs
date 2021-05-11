@@ -5,7 +5,6 @@ use tornado_common_api::{Action, Value};
 use tornado_common_parser::Parser;
 use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use tornado_network_common::EventBus;
-use std::rc::Rc;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
