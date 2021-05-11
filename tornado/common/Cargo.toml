@@ -20,7 +20,7 @@ tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 # Feature nats
-rants = { version = "0.5", features = ["native-tls"], optional = true }
+async-nats = { version = "0.9", optional = true }
 
 [dev-dependencies]
 actix-rt = "1.1.1"
@@ -33,5 +33,5 @@ tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 [features]
 default = []
 
-nats = ["rants"]
+nats = ["async-nats"]
 nats_integration_tests = ["nats"]
