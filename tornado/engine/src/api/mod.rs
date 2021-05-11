@@ -51,7 +51,7 @@ impl EventApiHandler for MatcherApiHandler {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;

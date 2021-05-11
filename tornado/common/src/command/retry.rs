@@ -200,6 +200,7 @@ pub mod test {
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
+    use std::sync::Arc;
 
     #[test]
     fn retry_policy_none_should_never_retry() {
@@ -368,7 +369,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Rc::new(Action::new("hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -398,7 +399,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Rc::new(Action::new("hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command =
             RetryCommand::new(retry_strategy.clone(), AlwaysOkExecutor { sender: sender.clone() });
@@ -424,7 +425,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Rc::new(Action::new("hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -453,7 +454,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
-        let action = Rc::new(Action::new("hello_world"));
+        let action = Arc::new(Action::new("hello_world"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -485,12 +486,12 @@ pub mod test {
 
     struct AlwaysFailExecutor {
         can_retry: bool,
-        sender: UnboundedSender<Rc<Action>>,
+        sender: UnboundedSender<Arc<Action>>,
     }
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysFailExecutor {
-        async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
@@ -507,12 +508,12 @@ pub mod test {
     }
 
     struct AlwaysOkExecutor {
-        sender: UnboundedSender<Rc<Action>>,
+        sender: UnboundedSender<Arc<Action>>,
     }
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysOkExecutor {
-        async fn execute(&self, action: Rc<Action>) -> Result<(), ExecutorError> {
+        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
             self.sender.send(action.clone()).unwrap();
             Ok(())
         }

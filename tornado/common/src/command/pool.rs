@@ -101,10 +101,10 @@ mod test {
     use super::*;
     use crate::command::callback::{CallbackCommand, CallbackCommandMut};
     use async_channel::unbounded;
-    use std::rc::Rc;
     use std::sync::Arc;
     use tokio::time;
     use tornado_common_api::Action;
+    use crate::TornadoError;
 
     #[actix_rt::test]
     async fn stateful_pool_should_execute_max_parallel_async_tasks() {
@@ -115,7 +115,7 @@ mod test {
 
         let sender = Arc::new(CommandMutPool::new(threads, move || {
             let exec_tx_clone = exec_tx.clone();
-            CallbackCommandMut::new(move |action: Rc<Action>| {
+            CallbackCommandMut::new(move |action: Arc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
@@ -139,7 +139,7 @@ mod test {
             actix::spawn(async move {
                 let message = Action::new(&format!("hello {}", i));
                 println!("send message: [{:?}]", message);
-                assert!(sender.execute(Rc::new(message)).await.is_ok());
+                assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
                 assert!(exec_rx.len() <= threads);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
@@ -164,7 +164,7 @@ mod test {
         let exec_tx_clone = exec_tx.clone();
         let sender = Arc::new(CommandPool::new(
             threads,
-            CallbackCommand::<_, _, _, Result<(), TornadoError>>::new(move |action: Rc<Action>| {
+            CallbackCommand::<_, _, _, Result<(), TornadoError>>::new(move |action: Arc<Action>| {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
@@ -188,7 +188,7 @@ mod test {
             actix::spawn(async move {
                 let message = Action::new(&format!("hello {}", i));
                 println!("send message: [{:?}]", message);
-                assert!(sender.execute(Rc::new(message)).await.is_ok());
+                assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
                 assert!(exec_rx.len() <= threads);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
@@ -209,7 +209,7 @@ mod test {
         let threads = 5;
 
         let sender = Arc::new(CommandMutPool::new(threads, move || {
-            CallbackCommandMut::new(move |action: Rc<Action>| async move {
+            CallbackCommandMut::new(move |action: Arc<Action>| async move {
                 println!("processing message: [{:?}]", action);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
@@ -250,7 +250,7 @@ mod test {
 
         let sender = Arc::new(CommandPool::new(
             threads,
-            CallbackCommand::new(move |action: Rc<Action>| async move {
+            CallbackCommand::new(move |action: Arc<Action>| async move {
                 println!("processing message: [{:?}]", action);
                 time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
