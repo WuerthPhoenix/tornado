@@ -7,7 +7,7 @@ use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,

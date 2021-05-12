@@ -1,10 +1,10 @@
 use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use serde::*;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
-use std::sync::Arc;
 
 pub mod config;
 
@@ -73,10 +73,7 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action<'a>(
-        &self,
-        action: &'a Action,
-    ) -> Result<DirectorAction<'a>, ExecutorError> {
+    fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -147,9 +144,7 @@ impl DirectorExecutor {
                 code: None
             })
         } else {
-            debug!(
-                "DirectorExecutor API request completed successfully. Response body",
-            );
+            debug!("DirectorExecutor API request completed successfully. Response body",);
             Ok(())
         }
     }

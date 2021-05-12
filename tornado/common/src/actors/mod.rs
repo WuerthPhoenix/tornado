@@ -25,7 +25,7 @@ pub enum TornadoConnectionChannel {
     Nats {
         nats: NatsPublisherConfig,
     },
-    TCP {
+    Tcp {
         tcp_socket_ip: String,
         tcp_socket_port: u16,
     },

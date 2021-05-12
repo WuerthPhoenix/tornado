@@ -100,11 +100,11 @@ mod test {
 
     use super::*;
     use crate::command::callback::{CallbackCommand, CallbackCommandMut};
+    use crate::TornadoError;
     use async_channel::unbounded;
     use std::sync::Arc;
     use tokio::time;
     use tornado_common_api::Action;
-    use crate::TornadoError;
 
     #[actix_rt::test]
     async fn stateful_pool_should_execute_max_parallel_async_tasks() {
@@ -164,19 +164,21 @@ mod test {
         let exec_tx_clone = exec_tx.clone();
         let sender = Arc::new(CommandPool::new(
             threads,
-            CallbackCommand::<_, _, _, Result<(), TornadoError>>::new(move |action: Arc<Action>| {
-                let exec_tx_clone = exec_tx_clone.clone();
-                async move {
-                    println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
-                        .await;
-                    println!("end processing message: [{:?}]", action);
+            CallbackCommand::<_, _, _, Result<(), TornadoError>>::new(
+                move |action: Arc<Action>| {
+                    let exec_tx_clone = exec_tx_clone.clone();
+                    async move {
+                        println!("processing message: [{:?}]", action);
+                        time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
+                            .await;
+                        println!("end processing message: [{:?}]", action);
 
-                    // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
-                    let _result = exec_tx_clone.send(()).await;
-                    Ok(())
-                }
-            }),
+                        // Do not use 'unwrap' here; the threadpool could survive the test and execute this call when the receiver is dropped.
+                        let _result = exec_tx_clone.send(()).await;
+                        Ok(())
+                    }
+                },
+            ),
         ));
 
         // Act

@@ -1,29 +1,29 @@
+use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
+use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
+use crate::actor::matcher::{EventMessage, MatcherActor};
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
-use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
-use crate::actor::matcher::{EventMessage, MatcherActor};
-use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::monitoring::monitoring_endpoints;
 use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
+use std::rc::Rc;
 use std::sync::Arc;
+use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::message::{TornadoCommonActorError, ActionMessage};
+use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
+use tornado_common::command::pool::{CommandMutPool, CommandPool};
+use tornado_common::command::retry::RetryCommand;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use std::rc::Rc;
-use tornado_common::command::retry::RetryCommand;
-use tornado_common::command::pool::{CommandMutPool, CommandPool};
-use tornado_common::actors::command::CommandExecutorActor;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -63,28 +63,39 @@ pub async fn daemon(
     // Start archive executor actor
     let archive_executor_addr = {
         let archive_config = configs.archive_executor_config.clone();
-        CommandExecutorActor::start_new(message_queue_size,
-              Rc::new(RetryCommand::new(retry_strategy.clone(),
-                    CommandMutPool::new(1, move || tornado_executor_archive::ArchiveExecutor::new(&archive_config))
-        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandMutPool::new(1, move || {
+                    tornado_executor_archive::ArchiveExecutor::new(&archive_config)
+                }),
+            )),
+        )
     };
 
     // Start script executor actor
     let script_executor_addr = {
         let executor = tornado_executor_script::ScriptExecutor::new();
-        CommandExecutorActor::start_new(message_queue_size,
-        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                  CommandPool::new(threads_per_queue, executor)
-        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
 
     // Start logger executor actor
     let logger_executor_addr = {
         let executor = tornado_executor_logger::LoggerExecutor::new();
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
 
     // Start elasticsearch executor actor
@@ -93,10 +104,13 @@ pub async fn daemon(
         let executor =
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
                 .expect("Cannot start the Elasticsearch Executor");
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
 
     // Start icinga2 executor actor
@@ -104,10 +118,13 @@ pub async fn daemon(
         let executor =
             tornado_executor_icinga2::Icinga2Executor::new(configs.icinga2_executor_config.clone())
                 .expect("Cannot start the Icinga2Executor Executor");
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
 
     // Start director executor actor
@@ -116,10 +133,13 @@ pub async fn daemon(
         let executor =
             tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
                 .expect("Cannot start the DirectorExecutor Executor");
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
 
     // Start monitoring executor actor
@@ -129,12 +149,14 @@ pub async fn daemon(
             configs.director_executor_config.clone(),
         )
         .expect("Cannot start the MonitoringExecutor Executor");
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
-
 
     // Start smart_monitoring_check_result executor actor
     let smart_monitoring_check_result_executor_addr = {
@@ -145,12 +167,14 @@ pub async fn daemon(
                 configs.director_executor_config.clone(),
             )
             .expect("Cannot start the SmartMonitoringExecutor Executor");
-        CommandExecutorActor::start_new(message_queue_size,
-                                        Rc::new(RetryCommand::new(retry_strategy.clone(),
-                                                                  CommandPool::new(threads_per_queue, executor)
-                                        )))
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, executor),
+            )),
+        )
     };
-
 
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
@@ -349,8 +373,11 @@ pub async fn daemon(
                 web::scope("/api")
                     .app_data(
                         // Json extractor configuration for this resource.
-                        web::JsonConfig::default()
-                            .limit(daemon_config.web_max_json_payload_size.unwrap_or(MAX_JSON_PAYLOAD_SIZE)) // Limit request payload size in byte
+                        web::JsonConfig::default().limit(
+                            daemon_config
+                                .web_max_json_payload_size
+                                .unwrap_or(MAX_JSON_PAYLOAD_SIZE),
+                        ), // Limit request payload size in byte
                     )
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))

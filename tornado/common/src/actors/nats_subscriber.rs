@@ -20,7 +20,6 @@ pub async fn subscribe_to_nats<
     message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
-
     let client = config.client.new_client().await?;
 
     let subscription = client.subscribe(&config.subject).await.map_err(|err| {
@@ -43,7 +42,7 @@ pub async fn subscribe_to_nats<
     /*
     let address = NatsSubscriberActor::create(|ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);
-        NatsSubscriberActor { 
+        NatsSubscriberActor {
             callback,
             client
         }

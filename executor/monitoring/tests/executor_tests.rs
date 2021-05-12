@@ -3,14 +3,14 @@ use httpmock::{Mock, MockServer, Regex};
 use maplit::*;
 use std::collections::HashMap;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_monitoring::MonitoringExecutor;
 
 #[tokio::test]
-async fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object()
-{
+async fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object(
+) {
     // Arrange
     let icinga_server = MockServer::start();
 

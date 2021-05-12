@@ -1,13 +1,13 @@
 use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
+use async_nats::{Connection, Options};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::Arc;
 use tokio::fs::File;
 use tokio::prelude::*;
-use async_nats::{Connection, Options};
 
 pub struct NatsPublisherActor {
     config: Arc<NatsPublisherConfig>,
@@ -134,15 +134,11 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
-
         let client = config.client.new_client().await?;
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor {
-                config: Arc::new(config),
-                client: Arc::new(client),
-            }
+            NatsPublisherActor { config: Arc::new(config), client: Arc::new(client) }
         }))
     }
 }
@@ -151,7 +147,10 @@ impl Actor for NatsPublisherActor {
     type Context = Context<Self>;
 
     fn started(&mut self, _ctx: &mut Self::Context) {
-        info!("NatsPublisherActor started. Connected to NATS address(es): {:?}", self.config.client.addresses);
+        info!(
+            "NatsPublisherActor started. Connected to NATS address(es): {:?}",
+            self.config.client.addresses
+        );
     }
 }
 
@@ -170,7 +169,6 @@ impl Handler<EventMessage> for NatsPublisherActor {
         let event = serde_json::to_vec(&msg.event)
             .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
 
-
         let client = self.client.clone();
         let config = self.config.clone();
 
@@ -183,7 +181,5 @@ impl Handler<EventMessage> for NatsPublisherActor {
         });
 
         Ok(())
-
     }
 }
-

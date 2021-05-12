@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
-use tornado_common_api::Action;
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use std::sync::Arc;
+use tornado_common_api::Action;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
 

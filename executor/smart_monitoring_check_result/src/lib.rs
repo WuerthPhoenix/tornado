@@ -2,9 +2,11 @@ use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
 use serde_json::Value;
+use std::sync::Arc;
 use std::time::Duration;
 use tornado_common_api::Action;
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use tornado_common_api::RetriableError;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
@@ -13,8 +15,6 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use tornado_common_api::RetriableError;
-use std::sync::Arc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
@@ -108,7 +108,6 @@ impl SmartMonitoringExecutor {
         attempts: u32,
         sleep_ms_between_retries: u64,
     ) -> Result<(), ExecutorError> {
-
         match self.icinga_executor.perform_request(icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None }) {
             Ok(()) => {
                 trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
@@ -139,7 +138,10 @@ impl SmartMonitoringExecutor {
 
         let response_json = response.json().map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
-            message: format!("SmartMonitoringExecutor - Cannot extract response body. Err: {}", err),
+            message: format!(
+                "SmartMonitoringExecutor - Cannot extract response body. Err: {}",
+                err
+            ),
             code: None,
         })?;
 

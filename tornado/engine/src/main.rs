@@ -1,9 +1,9 @@
 use crate::config::{SUBCOMMAND_CHECK, SUBCOMMAND_DAEMON, SUBCOMMAND_RULES_UPGRADE};
 use log::error;
 
+pub mod actor;
 mod api;
 mod command;
-pub mod actor;
 pub mod config;
 mod monitoring;
 

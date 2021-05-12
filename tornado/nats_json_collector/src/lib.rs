@@ -34,10 +34,11 @@ pub async fn start(
             let actor_address = NatsPublisherActor::start_new(
                 nats_publisher_config,
                 nats_json_collector_config.message_queue_size,
-            ).await?;
+            )
+            .await?;
             actor_address.recipient()
         }
-        TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+        TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
             info!("Connect to Tornado through TCP socket");
             // Start TcpWriter
             let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);

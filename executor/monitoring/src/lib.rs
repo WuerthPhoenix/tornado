@@ -1,8 +1,10 @@
 use log::*;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use tornado_common_api::RetriableError;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorActionName, DirectorExecutor,
@@ -12,8 +14,6 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use tornado_common_api::RetriableError;
-use std::sync::Arc;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -44,7 +44,6 @@ impl MonitoringAction {
     pub fn to_sub_actions(
         &self,
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
-
         match &self {
             MonitoringAction::Host { process_check_result_payload, host_creation_payload } => {
                 if process_check_result_payload.get(ICINGA_FIELD_FOR_SPECIFYING_HOST).is_none() {
@@ -118,11 +117,11 @@ impl MonitoringExecutor {
     }
 
     pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
                 message: format!("Invalid Monitoring Action configuration. Err: {}", err),
             }
-        })?)
+        })
     }
 
     fn perform_creation_of_icinga_objects(

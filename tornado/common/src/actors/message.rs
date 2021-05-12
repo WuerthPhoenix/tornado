@@ -1,9 +1,9 @@
 use actix::prelude::Message;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::prelude::AsyncRead;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
-use std::sync::Arc;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]

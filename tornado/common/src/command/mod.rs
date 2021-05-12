@@ -1,9 +1,9 @@
+use std::cell::RefCell;
+use std::marker::PhantomData;
 use std::rc::Rc;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor};
-use std::marker::PhantomData;
-use std::cell::RefCell;
-use std::sync::Arc;
 
 pub mod callback;
 pub mod pool;
@@ -46,13 +46,9 @@ pub struct CommandMutWrapper<Message, Output, C: CommandMut<Message, Output>> {
     phantom_output: PhantomData<Output>,
 }
 
-impl <Message, Output, C: CommandMut<Message, Output>> CommandMutWrapper<Message, Output, C> {
+impl<Message, Output, C: CommandMut<Message, Output>> CommandMutWrapper<Message, Output, C> {
     pub fn new(command: Rc<RefCell<C>>) -> Self {
-        Self {
-            command,
-            phantom_message: PhantomData,
-            phantom_output: PhantomData,
-        }
+        Self { command, phantom_message: PhantomData, phantom_output: PhantomData }
     }
 }
 

@@ -1,9 +1,9 @@
 use log::*;
 use std::fmt;
 use std::process::Command;
-use tornado_common_api::{Action, Number, Value};
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
 use std::sync::Arc;
+use tornado_common_api::{Action, Number, Value};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
 pub const SCRIPT_ARGS_KEY: &str = "args";

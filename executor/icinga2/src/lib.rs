@@ -2,10 +2,10 @@ use crate::client::ApiClient;
 use crate::config::Icinga2ClientConfig;
 use log::*;
 use serde::Serialize;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
-use std::sync::Arc;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod client;
 pub mod config;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
 use tornado_common_parser::Parser;
-use tornado_executor_common::{StatelessExecutor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
 
 const FOREACH_TARGET_KEY: &str = "target";

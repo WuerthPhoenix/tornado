@@ -197,10 +197,10 @@ pub mod test {
     use super::*;
     use rand::Rng;
     use std::rc::Rc;
+    use std::sync::Arc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
-    use std::sync::Arc;
 
     #[test]
     fn retry_policy_none_should_never_retry() {

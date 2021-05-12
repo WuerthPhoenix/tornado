@@ -33,7 +33,7 @@ impl ApiClient {
         // Clean the URL as users have this suffix in their configuration.
         let mut server_api_url = config.server_api_url.replace("/v1/actions", "");
         if server_api_url.ends_with('/') {
-            server_api_url = server_api_url[0..server_api_url.len()-1].to_owned()
+            server_api_url = server_api_url[0..server_api_url.len() - 1].to_owned()
         }
 
         Ok(ApiClient { server_api_url, http_auth_header, client })
@@ -114,28 +114,28 @@ mod test {
             disable_ssl_verification: false,
             password: "".to_owned(),
             timeout_secs: None,
-            server_api_url: "http://localhost".to_owned()
+            server_api_url: "http://localhost".to_owned(),
         };
 
         // Act & Assert
-        assert_eq!( "http://localhost", ApiClient::new(&config).unwrap().server_api_url);
+        assert_eq!("http://localhost", ApiClient::new(&config).unwrap().server_api_url);
 
         {
             let url = "http://localhost:8080/";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
 
         {
             let url = "http://localhost:8080/v1/actions";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://localhost:8080" , ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
 
         {
             let url = "http://127.0.0.1:8080/v1/actions/";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://127.0.0.1:8080" , ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://127.0.0.1:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
     }
 }

@@ -6,9 +6,9 @@ use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::path::Path;
-use tornado_common_api::Action;
-use tornado_executor_common::{StatefulExecutor, ExecutorError};
 use std::sync::Arc;
+use tornado_common_api::Action;
+use tornado_executor_common::{ExecutorError, StatefulExecutor};
 
 pub mod config;
 mod paths;
@@ -294,7 +294,6 @@ mod test {
 
         // Act
         let result = archiver.execute(action.into()).await;
-
 
         // Assert
         assert!(result.is_err());
