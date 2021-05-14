@@ -210,7 +210,7 @@ async fn should_publish_to_nats_with_tls() {
     start_logger();
     let docker = clients::Cli::default();
     let (_node, nats_port) = new_nats_docker_container(&docker, None, true);
-    let nats_address = format!("127.0.0.1:{}", nats_port);
+    let nats_address = format!("localhost:{}", nats_port);
 
     let random: u8 = rand::random();
     let event = Event::new(format!("event_type_{}", random));
@@ -219,9 +219,9 @@ async fn should_publish_to_nats_with_tls() {
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
     let auth = Some(NatsClientAuth::Tls {
-        path_to_pkcs12_bundle: "./test_resources/nats-client.pfx".to_string(),
+        certificate_path: "./test_resources/nats-client.crt.pem".to_string(),
         path_to_root_certificate: Some("./test_resources/root-ca.crt".to_string()),
-        pkcs12_bundle_password: "".to_string(),
+        private_key_path: "./test_resources/nats-client.key.pem".to_string(),
     });
     subscribe_to_nats(
         NatsSubscriberConfig {
