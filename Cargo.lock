@@ -5037,9 +5037,9 @@ dependencies = [
 name = "tornado_icinga2_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
- "actix-rt 1.1.1",
- "actix-web 3.3.2",
+ "actix 0.11.1",
+ "actix-rt 2.2.0",
+ "actix-web 4.0.0-beta.6",
  "chrono",
  "clap",
  "config",
