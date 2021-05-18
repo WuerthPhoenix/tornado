@@ -78,10 +78,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["view"]))?,
-            )
+            ))
             .uri("/v1_beta/auth/who_am_i")
             .to_request();
 

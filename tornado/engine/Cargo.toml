@@ -7,9 +7,9 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.10"
-actix-cors = "0.3"
-actix-web = "3.2"
+actix = "0.11"
+actix-cors = "0.6.0-beta.1"
+actix-web = "=4.0.0-beta.5"
 async-trait = "0.1"
 chrono = "0.4"
 clap = "2.33"
@@ -39,7 +39,7 @@ tornado_executor_smart_monitoring_check_result = { path = "../../executor/smart_
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 
 [dev-dependencies]
-actix-rt = "1.1.1"
+actix-rt = "2.2"
 chrono = "0.4"
 lazy_static = "1.4"
 fs_extra = "1.2"

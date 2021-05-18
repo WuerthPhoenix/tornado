@@ -266,10 +266,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec![""]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -291,10 +291,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -316,10 +316,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -349,10 +349,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/drafts/1/deploy")
             .to_request();
 
@@ -382,10 +382,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/drafts/draft123/take_over")
             .to_request();
 
