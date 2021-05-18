@@ -20,4 +20,4 @@ actix = "0.10"
 actix-web = "3.0"
 maplit = "1.0"
 httpmock = "0.4"
-tokio = { version = "0.2", features = ["macros", "rt-threaded"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

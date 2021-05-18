@@ -21,4 +21,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 maplit = "1.0"
 httpmock = "0.4"
 rand = "0.8"
-tokio = { version = "0.2", features = ["macros", "rt-threaded"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

@@ -21,7 +21,10 @@ fn should_perform_a_post_request() {
     let received = Arc::new(Mutex::new(None));
 
     let act_received = received.clone();
-    System::run(move || {
+    let system = System::new();
+
+    system.block_on(async move {
+
         let api = "/director";
         let api_clone = api.clone();
 
@@ -39,27 +42,27 @@ fn should_perform_a_post_request() {
                 },
             )))
         })
-        .bind("127.0.0.1:0")
-        .and_then(|server| {
-            let server_port = server.addrs()[0].port();
+            .bind("127.0.0.1:0")
+            .and_then(|server| {
+                let server_port = server.addrs()[0].port();
 
-            let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
-            println!("Client connecting to: {}", url);
+                let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
+                println!("Client connecting to: {}", url);
 
-            let config = DirectorClientConfig {
-                server_api_url: url,
-                disable_ssl_verification: true,
-                password: "".to_owned(),
-                username: "".to_owned(),
-                timeout_secs: None,
-            };
+                let config = DirectorClientConfig {
+                    server_api_url: url,
+                    disable_ssl_verification: true,
+                    password: "".to_owned(),
+                    username: "".to_owned(),
+                    timeout_secs: None,
+                };
 
-            actix::spawn(async move {
-                let executor = DirectorExecutor::new(config).unwrap();
+                actix::spawn(async move {
+                    let executor = DirectorExecutor::new(config).unwrap();
 
-                println!("Executor created");
+                    println!("Executor created");
 
-                /*
+                    /*
                 client_address.do_send(DirectorApiClientMessage {
                     message: DirectorAction {
                         name: DirectorActionName::CreateHost,
@@ -74,12 +77,12 @@ fn should_perform_a_post_request() {
                 });
                     */
 
-                let mut action = Action::new("");
-                action.payload.insert(
-                    DIRECTOR_ACTION_NAME_KEY.to_owned(),
-                    Value::Text("create_host".to_owned()),
-                );
-                action.payload.insert(
+                    let mut action = Action::new("");
+                    action.payload.insert(
+                        DIRECTOR_ACTION_NAME_KEY.to_owned(),
+                        Value::Text("create_host".to_owned()),
+                    );
+                    action.payload.insert(
                         DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
                         Value::Map(hashmap![
                             "object_type".to_owned() => Value::Text("host".to_owned()),
@@ -89,17 +92,17 @@ fn should_perform_a_post_request() {
             ]),
                     );
 
-                executor.execute(action.into()).await.unwrap();
+                    executor.execute(action.into()).await.unwrap();
 
-                println!("DirectorApiClientMessage action sent");
-            });
+                    println!("DirectorApiClientMessage action sent");
+                });
 
-            Ok(server)
-        })
-        .expect("Can not bind to port 0")
-        .run();
-    })
-    .unwrap();
+                Ok(server)
+            })
+            .expect("Can not bind to port 0")
+            .run();
+    });
+    system.run().unwrap();
 
     println!("actix System stopped");
 
