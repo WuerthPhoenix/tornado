@@ -21,7 +21,9 @@ fn should_perform_a_post_request() {
     let received = Arc::new(Mutex::new(None));
 
     let act_received = received.clone();
-    System::run(move || {
+    let system = System::new();
+
+    system.block_on(async move {
         let api = "/v1/events";
         let api_clone = api.clone();
 
@@ -80,8 +82,8 @@ fn should_perform_a_post_request() {
         })
         .expect("Can not bind to port 0")
         .run();
-    })
-    .unwrap();
+    });
+    system.run().unwrap();
 
     println!("actix System stopped");
 

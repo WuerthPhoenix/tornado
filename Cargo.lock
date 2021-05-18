@@ -4914,8 +4914,8 @@ dependencies = [
 name = "tornado_executor_icinga2"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
- "actix-web 3.3.2",
+ "actix 0.11.1",
+ "actix-web 4.0.0-beta.6",
  "async-trait",
  "base64 0.13.0",
  "httpmock",
