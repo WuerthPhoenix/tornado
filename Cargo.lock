@@ -7,7 +7,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be241f88f3b1e7e9a3fbe3b5a8a0f6915b5a1d7ee0d9a248d3376d01068cc60"
 dependencies = [
  "actix-rt 1.1.1",
- "actix_derive 0.5.0",
+ "actix_derive",
  "bitflags",
  "bytes 0.5.6",
  "crossbeam-channel 0.4.4",
@@ -23,30 +23,6 @@ dependencies = [
  "tokio-util 0.3.1",
  "trust-dns-proto",
  "trust-dns-resolver",
-]
-
-[[package]]
-name = "actix"
-version = "0.11.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "543c47e7827f8fcc9d1445bd98ba402137bfce80ee2187429de49c52b5131bd3"
-dependencies = [
- "actix-rt 2.2.0",
- "actix_derive 0.6.0",
- "bitflags",
- "bytes 1.0.1",
- "crossbeam-channel 0.5.1",
- "futures-core",
- "futures-sink",
- "futures-task",
- "futures-util",
- "log",
- "once_cell",
- "parking_lot 0.11.1",
- "pin-project-lite 0.2.6",
- "smallvec 1.6.1",
- "tokio 1.6.0",
- "tokio-util 0.6.7",
 ]
 
 [[package]]
@@ -513,17 +489,6 @@ name = "actix_derive"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b95aceadaf327f18f0df5962fedc1bde2f870566a0b9f65c89508a3b1f79334c"
-dependencies = [
- "proc-macro2 1.0.26",
- "quote 1.0.9",
- "syn 1.0.72",
-]
-
-[[package]]
-name = "actix_derive"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d44b8fee1ced9671ba043476deddef739dd0959bf77030b26b738cc591737a7"
 dependencies = [
  "proc-macro2 1.0.26",
  "quote 1.0.9",
@@ -4656,7 +4621,7 @@ dependencies = [
 name = "tornado_common"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "async-channel",
  "async-nats",
@@ -4724,7 +4689,7 @@ dependencies = [
 name = "tornado_email_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "clap",
  "config",
@@ -4744,7 +4709,7 @@ dependencies = [
 name = "tornado_engine"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-cors",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
@@ -4787,7 +4752,7 @@ dependencies = [
 name = "tornado_engine_api"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "async-trait",
@@ -4864,7 +4829,7 @@ dependencies = [
 name = "tornado_executor_director"
 version = "0.0.1"
 dependencies = [
- "actix 0.11.1",
+ "actix-rt 2.2.0",
  "actix-web 4.0.0-beta.6",
  "async-trait",
  "base64 0.13.0",
@@ -4914,7 +4879,7 @@ dependencies = [
 name = "tornado_executor_icinga2"
 version = "0.0.1"
 dependencies = [
- "actix 0.11.1",
+ "actix-rt 2.2.0",
  "actix-web 4.0.0-beta.6",
  "async-trait",
  "base64 0.13.0",
@@ -4990,7 +4955,7 @@ dependencies = [
 name = "tornado_icinga2_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "chrono",
@@ -5014,7 +4979,7 @@ dependencies = [
 name = "tornado_nats_json_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "chrono",
  "clap",
@@ -5053,7 +5018,7 @@ dependencies = [
 name = "tornado_rsyslog_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "clap",
  "config",
@@ -5084,7 +5049,7 @@ dependencies = [
 name = "tornado_webhook_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
+ "actix",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "chrono",

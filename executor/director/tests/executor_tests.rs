@@ -1,11 +1,9 @@
-use actix::prelude::*;
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer};
 use maplit::*;
 use std::sync::Arc;
-use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
@@ -13,31 +11,25 @@ use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
     ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
+use tokio::sync::mpsc::UnboundedSender;
 
-#[test]
-fn should_perform_a_post_request() {
-    println!("start actix System");
+#[actix_rt::test]
+async fn should_perform_a_post_request() {
 
-    let received = Arc::new(Mutex::new(None));
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let act_received = received.clone();
-    let system = System::new();
-
-    system.block_on(async move {
+    actix_rt::spawn(async move {
 
         let api = "/director";
         let api_clone = api.clone();
 
         HttpServer::new(move || {
-            let app_received = act_received.clone();
             let url = format!("{}{}", api, "/host");
-
-            App::new().data(app_received).service(web::resource(&url).route(web::post().to(
-                move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
+            let sender = sender.clone();
+            App::new().data(Arc::new(sender)).service(web::resource(&url).route(web::post().to(
+                move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
                     println!("Server received a call");
-                    let mut message = app_received.lock().unwrap();
-                    *message = Some(body.into_inner());
-                    System::current().stop();
+                    sender.send(body.into_inner()).unwrap();
                     ""
                 },
             )))
@@ -57,25 +49,9 @@ fn should_perform_a_post_request() {
                     timeout_secs: None,
                 };
 
-                actix::spawn(async move {
+                actix_rt::spawn(async move {
                     let executor = DirectorExecutor::new(config).unwrap();
-
                     println!("Executor created");
-
-                    /*
-                client_address.do_send(DirectorApiClientMessage {
-                    message: DirectorAction {
-                        name: DirectorActionName::CreateHost,
-                        payload: Value::Map(hashmap![
-                            "object_type".to_owned() => Value::Text("host".to_owned()),
-                            "object_name".to_owned() => Value::Text("my_host".to_owned()),
-                            "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
-                            "check_command".to_owned() => Value::Text("hostalive".to_owned())
-                        ]),
-                        live_creation: false
-                    },
-                });
-                    */
 
                     let mut action = Action::new("");
                     action.payload.insert(
@@ -100,9 +76,9 @@ fn should_perform_a_post_request() {
                 Ok(server)
             })
             .expect("Can not bind to port 0")
-            .run();
+            .run().await.unwrap();
     });
-    system.run().unwrap();
+
 
     println!("actix System stopped");
 
@@ -113,7 +89,7 @@ fn should_perform_a_post_request() {
             "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
             "check_command".to_owned() => Value::Text("hostalive".to_owned())
         ])),
-        *received.lock().unwrap()
+        receiver.recv().await
     );
 }
 

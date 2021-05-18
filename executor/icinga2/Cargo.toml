@@ -16,7 +16,7 @@ tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
-actix = "0.11"
+actix-rt = "2.2"
 actix-web = "=4.0.0-beta.6"
 maplit = "1.0"
 httpmock = "0.4"

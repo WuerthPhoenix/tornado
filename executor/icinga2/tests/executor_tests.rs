@@ -1,11 +1,9 @@
-use actix::prelude::*;
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
 use httpmock::{Mock, MockServer};
 use maplit::*;
 use std::sync::Arc;
-use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
@@ -13,30 +11,25 @@ use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,
     ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
+use tokio::sync::mpsc::UnboundedSender;
 
-#[test]
-fn should_perform_a_post_request() {
+#[actix_rt::test]
+async fn should_perform_a_post_request() {
     println!("start actix System");
 
-    let received = Arc::new(Mutex::new(None));
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
-    let act_received = received.clone();
-    let system = System::new();
-
-    system.block_on(async move {
+    actix_rt::spawn(async move {
         let api = "/v1/events";
         let api_clone = api.clone();
 
         HttpServer::new(move || {
-            let app_received = act_received.clone();
             let url = format!("{}{}", api, "/v1/actions/icinga2-api-action");
-
-            App::new().data(app_received).service(web::resource(&url).route(web::post().to(
-                move |body: Json<Value>, app_received: Data<Arc<Mutex<Option<Value>>>>| async move {
+            let sender = sender.clone();
+            App::new().data(Arc::new(sender)).service(web::resource(&url).route(web::post().to(
+                move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
                     println!("Server received a call");
-                    let mut message = app_received.lock().unwrap();
-                    *message = Some(body.into_inner());
-                    System::current().stop();
+                    sender.send(body.into_inner()).unwrap();
                     ""
                 },
             )))
@@ -56,7 +49,7 @@ fn should_perform_a_post_request() {
                 timeout_secs: None,
             };
 
-            actix::spawn(async move {
+            actix_rt::spawn(async move {
                 let executor = Icinga2Executor::new(config).unwrap();
 
                 println!("Executor created");
@@ -81,17 +74,14 @@ fn should_perform_a_post_request() {
             Ok(server)
         })
         .expect("Can not bind to port 0")
-        .run();
+        .run().await.unwrap();
     });
-    system.run().unwrap();
-
-    println!("actix System stopped");
 
     assert_eq!(
         Some(Value::Map(hashmap![
             "filter".to_owned() => Value::Text("my_service".to_owned())
         ])),
-        *received.lock().unwrap()
+        receiver.recv().await
     );
 }
 
