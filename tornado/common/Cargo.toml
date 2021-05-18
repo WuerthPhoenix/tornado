@@ -21,6 +21,14 @@ tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 
+# BEGIN - REMOVE THIS BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
+actix-files = "0.6.0-beta.4"
+actix-http = "=3.0.0-beta.5"
+actix-rt = "2.2.0"
+actix-service = "=2.0.0-beta.5"
+actix-web = "=4.0.0-beta.5"
+# END - REMOVE THIS BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
+
 # Feature nats
 async-nats = { version = "0.9", optional = true }
 

@@ -113,6 +113,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "actix-files"
+version = "0.6.0-beta.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43cb5962310801fc2215c76d5bf8f621c9789c1b9edb3a330e8263816a9c1b89"
+dependencies = [
+ "actix-service 2.0.0-beta.5",
+ "actix-utils 3.0.0",
+ "actix-web 4.0.0-beta.5",
+ "askama_escape",
+ "bitflags",
+ "bytes 1.0.1",
+ "derive_more",
+ "futures-core",
+ "http-range",
+ "log",
+ "mime",
+ "mime_guess",
+ "percent-encoding 2.1.0",
+]
+
+[[package]]
 name = "actix-http"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -161,13 +182,13 @@ dependencies = [
 
 [[package]]
 name = "actix-http"
-version = "3.0.0-beta.6"
+version = "3.0.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59d51c2ba06062e698a5d212d860e9fb2afc931c285ede687aaae896c8150347"
+checksum = "fb9c5d7ceb490d6565156ae1d4d467db17da1759425c65a2e36ac5e182e014e2"
 dependencies = [
  "actix-codec 0.4.0",
  "actix-rt 2.2.0",
- "actix-service 2.0.0",
+ "actix-service 2.0.0-beta.5",
  "actix-tls 3.0.0-beta.5",
  "actix-utils 3.0.0",
  "ahash",
@@ -176,6 +197,7 @@ dependencies = [
  "brotli2",
  "bytes 1.0.1",
  "bytestring",
+ "cookie 0.14.4",
  "derive_more",
  "encoding_rs",
  "flate2",
@@ -190,13 +212,14 @@ dependencies = [
  "log",
  "mime",
  "once_cell",
- "paste",
  "percent-encoding 2.1.0",
  "pin-project 1.0.7",
  "pin-project-lite 0.2.6",
  "rand 0.8.3",
  "regex",
  "serde 1.0.125",
+ "serde_json",
+ "serde_urlencoded 0.7.0",
  "sha-1 0.9.4",
  "smallvec 1.6.1",
  "time 0.2.26",
@@ -284,12 +307,12 @@ dependencies = [
 
 [[package]]
 name = "actix-server"
-version = "2.0.0-beta.5"
+version = "2.0.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "26369215fcc3b0176018b3b68756a8bcc275bb000e6212e454944913a1f9bf87"
+checksum = "0872f02a1871257ef09c5a269dce5dc5fea5ccf502adbf5d39f118913b61411c"
 dependencies = [
  "actix-rt 2.2.0",
- "actix-service 2.0.0",
+ "actix-service 2.0.0-beta.5",
  "actix-utils 3.0.0",
  "futures-core",
  "log",
@@ -311,12 +334,11 @@ dependencies = [
 
 [[package]]
 name = "actix-service"
-version = "2.0.0"
+version = "2.0.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77f5f9d66a8730d0fae62c26f3424f5751e5518086628a40b7ab6fca4a705034"
+checksum = "cf82340ad9f4e4caf43737fd3bbc999778a268015cdc54675f60af6240bd2b05"
 dependencies = [
  "futures-core",
- "paste",
  "pin-project-lite 0.2.6",
 ]
 
@@ -369,7 +391,7 @@ checksum = "65b7bb60840962ef0332f7ea01a57d73a24d2cb663708511ff800250bbfef569"
 dependencies = [
  "actix-codec 0.4.0",
  "actix-rt 2.2.0",
- "actix-service 2.0.0",
+ "actix-service 2.0.0-beta.5",
  "actix-utils 3.0.0",
  "derive_more",
  "futures-core",
@@ -449,28 +471,26 @@ dependencies = [
 
 [[package]]
 name = "actix-web"
-version = "4.0.0-beta.6"
+version = "4.0.0-beta.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ff12e933051557d700b0fcad20fe25b9ca38395cc87bbc5aeaddaef17b937a2f"
+checksum = "6de19cc341c2e68b1ee126de171e86b610b5bbcecc660d1250ebed73e0257bd6"
 dependencies = [
  "actix-codec 0.4.0",
- "actix-http 3.0.0-beta.6",
+ "actix-http 3.0.0-beta.5",
  "actix-macros 0.2.0",
  "actix-router",
  "actix-rt 2.2.0",
- "actix-server 2.0.0-beta.5",
- "actix-service 2.0.0",
+ "actix-server 2.0.0-beta.4",
+ "actix-service 2.0.0-beta.5",
  "actix-utils 3.0.0",
  "actix-web-codegen 0.5.0-beta.2",
  "ahash",
  "bytes 1.0.1",
- "cookie 0.15.0",
  "derive_more",
  "either",
  "encoding_rs",
  "futures-core",
  "futures-util",
- "itoa",
  "language-tags",
  "log",
  "mime",
@@ -594,6 +614,12 @@ name = "arrayvec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "23b62fc65de8e4e7f52534fb52b0f3ed04746ae267519eef2a83941e8085068b"
+
+[[package]]
+name = "askama_escape"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "90c108c1a94380c89d2215d0ac54ce09796823cca0fd91b299cfff3b33e346fb"
 
 [[package]]
 name = "assert-json-diff"
@@ -1119,17 +1145,6 @@ name = "cookie"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03a5d7b21829bc7b4bf4754a978a241ae54ea55a40f92bb20216e54096f4b951"
-dependencies = [
- "percent-encoding 2.1.0",
- "time 0.2.26",
- "version_check",
-]
-
-[[package]]
-name = "cookie"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ffdf8865bac3d9a3bde5bde9088ca431b11f5d37c7a578b8086af77248b76627"
 dependencies = [
  "percent-encoding 2.1.0",
  "time 0.2.26",
@@ -2049,6 +2064,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "http-range"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee9694f83d9b7c09682fdb32213682939507884e5bcf227be9aff5d644b90dc"
+
+[[package]]
 name = "httparse"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2874,12 +2895,6 @@ dependencies = [
  "smallvec 1.6.1",
  "winapi 0.3.9",
 ]
-
-[[package]]
-name = "paste"
-version = "1.0.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "acbf547ad0c65e31259204bd90935776d1c693cec2f4ff7abb7a1bbbd40dfe58"
 
 [[package]]
 name = "percent-encoding"
@@ -4656,7 +4671,11 @@ name = "tornado_common"
 version = "0.0.1"
 dependencies = [
  "actix 0.11.1",
+ "actix-files",
+ "actix-http 3.0.0-beta.5",
  "actix-rt 2.2.0",
+ "actix-service 2.0.0-beta.5",
+ "actix-web 4.0.0-beta.5",
  "async-channel",
  "async-nats",
  "async-trait",
@@ -4865,7 +4884,7 @@ name = "tornado_executor_director"
 version = "0.0.1"
 dependencies = [
  "actix-rt 2.2.0",
- "actix-web 4.0.0-beta.6",
+ "actix-web 4.0.0-beta.5",
  "async-trait",
  "base64 0.13.0",
  "httpmock",
@@ -4915,7 +4934,7 @@ name = "tornado_executor_icinga2"
 version = "0.0.1"
 dependencies = [
  "actix-rt 2.2.0",
- "actix-web 4.0.0-beta.6",
+ "actix-web 4.0.0-beta.5",
  "async-trait",
  "base64 0.13.0",
  "httpmock",
@@ -4992,7 +5011,7 @@ version = "0.0.1"
 dependencies = [
  "actix 0.11.1",
  "actix-rt 2.2.0",
- "actix-web 4.0.0-beta.6",
+ "actix-web 4.0.0-beta.5",
  "chrono",
  "clap",
  "config",
@@ -5053,8 +5072,8 @@ dependencies = [
 name = "tornado_rsyslog_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
- "actix-rt 1.1.1",
+ "actix 0.11.1",
+ "actix-rt 2.2.0",
  "clap",
  "config",
  "log",
@@ -5084,9 +5103,9 @@ dependencies = [
 name = "tornado_webhook_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
- "actix-rt 1.1.1",
- "actix-web 3.3.2",
+ "actix 0.11.1",
+ "actix-rt 2.2.0",
+ "actix-web 4.0.0-beta.5",
  "chrono",
  "clap",
  "config",
