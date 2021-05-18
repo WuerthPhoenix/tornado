@@ -35,7 +35,7 @@ pub fn listen_to_uds_socket<
 
     UdsServerActor::create(move |ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);
-        ctx.add_message_stream(Box::leak(Box::new(listener)).incoming().map(|stream| {
+        ctx.add_message_stream(Box::leak(Box::new(tokio_stream::wrappers::UnixListenerStream::new(listener))).map(|stream| {
             AsyncReadMessage { stream: stream.expect("Cannot read from UDS server stream") }
         }));
         UdsServerActor { path: path_string, socket_permissions, callback }

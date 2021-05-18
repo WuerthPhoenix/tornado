@@ -7,7 +7,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1be241f88f3b1e7e9a3fbe3b5a8a0f6915b5a1d7ee0d9a248d3376d01068cc60"
 dependencies = [
  "actix-rt 1.1.1",
- "actix_derive",
+ "actix_derive 0.5.0",
  "bitflags",
  "bytes 0.5.6",
  "crossbeam-channel 0.4.4",
@@ -23,6 +23,30 @@ dependencies = [
  "tokio-util 0.3.1",
  "trust-dns-proto",
  "trust-dns-resolver",
+]
+
+[[package]]
+name = "actix"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "543c47e7827f8fcc9d1445bd98ba402137bfce80ee2187429de49c52b5131bd3"
+dependencies = [
+ "actix-rt 2.2.0",
+ "actix_derive 0.6.0",
+ "bitflags",
+ "bytes 1.0.1",
+ "crossbeam-channel 0.5.1",
+ "futures-core",
+ "futures-sink",
+ "futures-task",
+ "futures-util",
+ "log",
+ "once_cell",
+ "parking_lot 0.11.1",
+ "pin-project-lite 0.2.6",
+ "smallvec 1.6.1",
+ "tokio 1.6.0",
+ "tokio-util 0.6.7",
 ]
 
 [[package]]
@@ -489,6 +513,17 @@ name = "actix_derive"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b95aceadaf327f18f0df5962fedc1bde2f870566a0b9f65c89508a3b1f79334c"
+dependencies = [
+ "proc-macro2 1.0.26",
+ "quote 1.0.9",
+ "syn 1.0.72",
+]
+
+[[package]]
+name = "actix_derive"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d44b8fee1ced9671ba043476deddef739dd0959bf77030b26b738cc591737a7"
 dependencies = [
  "proc-macro2 1.0.26",
  "quote 1.0.9",
@@ -1306,6 +1341,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "crypto-mac"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4857fd85a0c34b3c3297875b747c1e02e06b6a0ea32dd892d8192b9ce0813ea6"
+dependencies = [
+ "generic-array 0.14.4",
+ "subtle",
+]
+
+[[package]]
 name = "csv"
 version = "1.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1965,7 +2010,17 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "126888268dcc288495a26bf004b38c5fdbb31682f992c84ceb046a1f0fe38840"
 dependencies = [
- "crypto-mac",
+ "crypto-mac 0.8.0",
+ "digest 0.9.0",
+]
+
+[[package]]
+name = "hmac"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1441c6b1e930e2817404b5046f1f989899143a12bf92de603b69f4e0aee1e15"
+dependencies = [
+ "crypto-mac 0.10.0",
  "digest 0.9.0",
 ]
 
@@ -4198,9 +4253,24 @@ checksum = "959ba8f27f326db356678cb5d6ac8a418f3cb9c1ad2d677c1fe8d3afb9056d46"
 dependencies = [
  "derivative",
  "hex",
- "hmac",
+ "hmac 0.8.1",
  "log",
  "rand 0.7.3",
+ "serde 1.0.125",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "testcontainers"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d5e3ed6e3598dbf32cba8cb356b881c085e0adea57597f387723430dd94b4084"
+dependencies = [
+ "hex",
+ "hmac 0.10.1",
+ "log",
+ "rand 0.8.3",
  "serde 1.0.125",
  "serde_json",
  "sha2",
@@ -4485,6 +4555,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio-stream"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8864d706fdb3cc0843a49647ac892720dac98a6eeb818b77190592cf4994066"
+dependencies = [
+ "futures-core",
+ "pin-project-lite 0.2.6",
+ "tokio 1.6.0",
+]
+
+[[package]]
 name = "tokio-sync"
 version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4621,8 +4702,8 @@ dependencies = [
 name = "tornado_common"
 version = "0.0.1"
 dependencies = [
- "actix",
- "actix-rt 1.1.1",
+ "actix 0.11.1",
+ "actix-rt 2.2.0",
  "async-channel",
  "async-nats",
  "async-trait",
@@ -4634,10 +4715,11 @@ dependencies = [
  "serde 1.0.125",
  "serde_json",
  "serial_test",
- "testcontainers",
+ "testcontainers 0.12.0",
  "thiserror",
  "tokio 1.6.0",
- "tokio-util 0.3.1",
+ "tokio-stream",
+ "tokio-util 0.6.7",
  "tornado_collector_common",
  "tornado_collector_json",
  "tornado_common_api",
@@ -4689,7 +4771,7 @@ dependencies = [
 name = "tornado_email_collector"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "clap",
  "config",
@@ -4709,7 +4791,7 @@ dependencies = [
 name = "tornado_engine"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-cors",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
@@ -4752,7 +4834,7 @@ dependencies = [
 name = "tornado_engine_api"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "async-trait",
@@ -4955,7 +5037,7 @@ dependencies = [
 name = "tornado_icinga2_collector"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "chrono",
@@ -4979,7 +5061,7 @@ dependencies = [
 name = "tornado_nats_json_collector"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "chrono",
  "clap",
@@ -4989,7 +5071,7 @@ dependencies = [
  "rand 0.8.3",
  "serde 1.0.125",
  "serde_json",
- "testcontainers",
+ "testcontainers 0.11.0",
  "thiserror",
  "tokio 1.6.0",
  "tornado_collector_common",
@@ -5018,7 +5100,7 @@ dependencies = [
 name = "tornado_rsyslog_collector"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "clap",
  "config",
@@ -5049,7 +5131,7 @@ dependencies = [
 name = "tornado_webhook_collector"
 version = "0.0.1"
 dependencies = [
- "actix",
+ "actix 0.10.0",
  "actix-rt 1.1.1",
  "actix-web 3.3.2",
  "chrono",

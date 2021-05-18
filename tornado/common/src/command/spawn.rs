@@ -45,7 +45,7 @@ mod test {
         let sender = SpawnCommand::new(Rc::new(CallbackCommand::new(move |message: String| {
             let exec_tx_clone = exec_tx.clone();
             async move {
-                time::delay_until(
+                time::sleep_until(
                     time::Instant::now() + time::Duration::from_millis(sleep_millis as u64),
                 )
                 .await;
