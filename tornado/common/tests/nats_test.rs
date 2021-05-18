@@ -27,7 +27,7 @@ fn new_nats_docker_container(
     let port = port.unwrap_or_else(|| port_check::free_local_port().unwrap());
 
     let mut image =
-        images::generic::GenericImage::new("nats:2.1-alpine").with_mapped_port((port, 4222));
+        images::generic::GenericImage::new("nats:2.1-alpine");
     if tls {
         image = image
             .with_volume(
@@ -47,8 +47,9 @@ fn new_nats_docker_container(
             ]);
     }
 
+    let args = RunArgs::default().with_mapped_port((port, 4222));
     let node = docker
-        .run(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")));
+        .run_with_args(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")), args);
 
     let nats_port = node.get_host_port(4222).unwrap();
     (node, nats_port)
@@ -366,7 +367,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
         max_attempts -= 1;
         publisher.do_send(EventMessage { event: event.clone() });
         time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
-        received = receiver.try_recv().is_ok();
+        received = receiver.recv().await.is_some();
         if received {
             info!("Message received by the subscriber");
         } else {
@@ -468,7 +469,7 @@ fn start_logger() {
         file_output_path: None,
     };
     if let Err(err) = tornado_common_logger::setup_logger(&conf) {
-        println!("Warn: err starting logger: {}", err)
+        println!("Warn: err starting logger: {:?}", err)
     };
 }
 

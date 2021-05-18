@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::Arc;
 use tokio::fs::File;
-use tokio::prelude::*;
+use tokio::io::AsyncReadExt;
 
 pub struct NatsPublisherActor {
     config: Arc<NatsPublisherConfig>,

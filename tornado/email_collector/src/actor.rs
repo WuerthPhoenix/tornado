@@ -2,10 +2,10 @@ use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
-use tokio::prelude::*;
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
+use tokio::io::{AsyncRead, AsyncReadExt};
 
 pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 where

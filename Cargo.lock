@@ -4771,8 +4771,8 @@ dependencies = [
 name = "tornado_email_collector"
 version = "0.0.1"
 dependencies = [
- "actix 0.10.0",
- "actix-rt 1.1.1",
+ "actix 0.11.1",
+ "actix-rt 2.2.0",
  "clap",
  "config",
  "log",
