@@ -200,7 +200,6 @@ pub mod test {
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
-    use std::task::Poll;
 
     #[test]
     fn retry_policy_none_should_never_retry() {
