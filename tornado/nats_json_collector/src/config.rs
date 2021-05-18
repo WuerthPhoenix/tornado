@@ -44,7 +44,7 @@ pub struct NatsJsonCollectorConfig {
 #[serde(untagged)]
 pub enum TornadoConnectionChannel {
     Nats { nats_subject: String },
-    TCP { tcp_socket_ip: String, tcp_socket_port: u16 },
+    Tcp { tcp_socket_ip: String, tcp_socket_port: u16 },
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {

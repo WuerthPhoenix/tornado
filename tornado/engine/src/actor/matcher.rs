@@ -1,4 +1,4 @@
-use crate::dispatcher::{DispatcherActor, ProcessedEventMessage};
+use crate::actor::dispatcher::{DispatcherActor, ProcessedEventMessage};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
@@ -68,7 +68,7 @@ impl MatcherActor {
         event: Event,
         process_type: ProcessType,
         include_metadata: bool,
-    ) -> Result<ProcessedEvent, error::MatcherError> {
+    ) -> ProcessedEvent {
         let processed_event = matcher.process(event, include_metadata);
 
         match process_type {
@@ -78,7 +78,7 @@ impl MatcherActor {
             ProcessType::SkipActions => {}
         }
 
-        Ok(processed_event)
+        processed_event
     }
 }
 
@@ -116,12 +116,12 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
-        self.process_event_with_reply(
+        Ok(self.process_event_with_reply(
             &self.matcher,
             msg.event,
             msg.process_type,
             msg.include_metadata,
-        )
+        ))
     }
 }
 
@@ -135,7 +135,12 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
     ) -> Self::Result {
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
-        self.process_event_with_reply(&matcher, msg.event, msg.process_type, msg.include_metadata)
+        Ok(self.process_event_with_reply(
+            &matcher,
+            msg.event,
+            msg.process_type,
+            msg.include_metadata,
+        ))
     }
 }
 

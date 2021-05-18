@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
 use tornado_common_parser::Parser;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
 
 const FOREACH_TARGET_KEY: &str = "target";
@@ -29,8 +29,9 @@ impl ForEachExecutor {
     }
 }
 
-impl Executor for ForEachExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ForEachExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
         match action.payload.get(FOREACH_TARGET_KEY) {
@@ -59,7 +60,7 @@ impl Executor for ForEachExecutor {
                         if let Err(err) = resolve_action(&Value::Map(item), action.clone())
                             .map(|action| self.bus.publish_action(action)) {
                             warn!(
-                                "ForEachExecutor - Error while executing internal action [{}]. Err: {}",
+                                "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
                                 action.id, err
                             )
                         }
@@ -118,7 +119,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
             if let Some(parse_result) = Parser::build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
-                    message: format!("Cannot build parser for [{}]. Err: {}", text, err),
+                    message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
                     code: None,
                 })?
                 .parse_value(item)
@@ -249,8 +250,8 @@ mod test {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_execute_each_action_with_each_target_item() {
+    #[tokio::test]
+    async fn should_execute_each_action_with_each_target_item() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -288,7 +289,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -330,7 +331,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -380,8 +381,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_ignore_failing_actions_and_execute_all_others() {
+    #[tokio::test]
+    async fn should_ignore_failing_actions_and_execute_all_others() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -419,7 +420,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -452,7 +453,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -478,8 +479,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_resolve_complex_placeholders() {
+    #[tokio::test]
+    async fn should_resolve_complex_placeholders() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -501,7 +502,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -535,7 +536,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -561,8 +562,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_resolve_recursive_placeholders_in_maps() {
+    #[tokio::test]
+    async fn should_resolve_recursive_placeholders_in_maps() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(vec![]));
@@ -579,7 +580,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -609,7 +610,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -623,8 +624,8 @@ mod test {
         assert_eq!(&expected_map, value);
     }
 
-    #[test]
-    fn should_resolve_recursive_placeholders_in_arrays() {
+    #[tokio::test]
+    async fn should_resolve_recursive_placeholders_in_arrays() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(vec![]));
@@ -641,7 +642,7 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
         let mut action = Action::new("");
         action.payload.insert(
@@ -672,7 +673,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());

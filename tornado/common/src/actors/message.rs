@@ -1,6 +1,15 @@
 use actix::prelude::Message;
+use std::sync::Arc;
 use thiserror::Error;
 use tokio::prelude::AsyncRead;
+use tornado_common_api::Action;
+use tornado_executor_common::ExecutorError;
+
+#[derive(Debug, Message, Clone)]
+#[rtype(result = "Result<(), ExecutorError>")]
+pub struct ActionMessage {
+    pub action: Arc<Action>,
+}
 
 #[derive(Error, Debug)]
 pub enum TornadoCommonActorError {

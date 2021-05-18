@@ -6,8 +6,9 @@ use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::prelude::*;
 use std::io::BufWriter;
 use std::path::Path;
+use std::sync::Arc;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatefulExecutor};
 
 pub mod config;
 mod paths;
@@ -115,8 +116,9 @@ impl ArchiveExecutor {
     }
 }
 
-impl Executor for ArchiveExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatefulExecutor for ArchiveExecutor {
+    async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action
@@ -171,8 +173,8 @@ mod test {
     use tornado_common_api::Event;
     use tornado_common_api::Value;
 
-    #[test]
-    fn should_write_to_expected_path() {
+    #[tokio::test]
+    async fn should_write_to_expected_path() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -200,7 +202,7 @@ mod test {
         action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
 
         // Act
-        let result = archiver.execute(&action);
+        let result = archiver.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -211,8 +213,8 @@ mod test {
         assert_eq!(event, event_from_file);
     }
 
-    #[test]
-    fn should_write_an_event_per_line() {
+    #[tokio::test]
+    async fn should_write_an_event_per_line() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -245,7 +247,7 @@ mod test {
             action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
             action.payload.insert("key_one".to_owned(), Value::Text("first".to_owned()));
             action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
-            archiver.execute(&action).unwrap()
+            archiver.execute(action.into()).await.unwrap()
         }
 
         let file = fs::File::open(&expected_path).unwrap();
@@ -266,8 +268,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_not_allow_writing_outside_the_base_path() {
+    #[tokio::test]
+    async fn should_not_allow_writing_outside_the_base_path() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -291,14 +293,14 @@ mod test {
         action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
 
         // Act
-        let result = archiver.execute(&action);
+        let result = archiver.execute(action.into()).await;
 
         // Assert
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_return_error_if_cannot_resolve_params() {
+    #[tokio::test]
+    async fn should_return_error_if_cannot_resolve_params() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -320,14 +322,14 @@ mod test {
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
 
         // Act
-        let result = archiver.execute(&action);
+        let result = archiver.execute(action.into()).await;
 
         // Assert
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_return_error_if_action_type_is_not_mapped() {
+    #[tokio::test]
+    async fn should_return_error_if_action_type_is_not_mapped() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -349,14 +351,14 @@ mod test {
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("two".to_owned()));
 
         // Act
-        let result = archiver.execute(&action);
+        let result = archiver.execute(action.into()).await;
 
         // Assert
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_use_default_if_archive_type_not_specified() {
+    #[tokio::test]
+    async fn should_use_default_if_archive_type_not_specified() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -378,7 +380,7 @@ mod test {
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
 
         // Act
-        let result = archiver.execute(&action);
+        let result = archiver.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());

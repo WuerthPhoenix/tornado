@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 log = "0.4"
 regex = "1.4"
 lru_time_cache = "0.11.0"
@@ -17,3 +18,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { version = "0.2", features = ["macros", "rt-threaded"] }

@@ -50,7 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             collector_config.email_collector.uds_path,
             actor_address,
             collector_config.email_collector.message_queue_size,
-        )?;
+        );
     } else if let Some(connection_channel) =
         collector_config.email_collector.tornado_connection_channel
     {
@@ -60,14 +60,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let actor_address = NatsPublisherActor::start_new(
                     nats,
                     collector_config.email_collector.message_queue_size,
-                ).await?;
+                )
+                .await?;
                 start(
                     collector_config.email_collector.uds_path,
                     actor_address,
                     collector_config.email_collector.message_queue_size,
-                )?;
+                );
             }
-            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+            TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
                 // Start TcpWriter
                 let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
@@ -80,7 +81,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     collector_config.email_collector.uds_path,
                     actor_address,
                     collector_config.email_collector.message_queue_size,
-                )?;
+                );
             }
         };
     } else {
@@ -101,8 +102,7 @@ fn start<A: Actor + actix::Handler<EventMessage>>(
     uds_path: String,
     actor_address: Addr<A>,
     message_mailbox_capacity: usize,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
-where
+) where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     // Start Email collector
@@ -121,9 +121,7 @@ where
         info!("Started UDS server at [{}]. Listening for incoming events", uds_path);
     })
     .unwrap_or_else(|err| {
-        error!("Cannot start UDS server at [{}]. Err: {}", uds_path, err);
+        error!("Cannot start UDS server at [{}]. Err: {:?}", uds_path, err);
         std::process::exit(1);
     });
-
-    Ok(())
 }

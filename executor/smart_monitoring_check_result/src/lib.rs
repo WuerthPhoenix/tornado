@@ -2,9 +2,11 @@ use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
 use serde_json::Value;
+use std::sync::Arc;
 use std::time::Duration;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError, RetriableError};
+use tornado_common_api::RetriableError;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
@@ -106,13 +108,12 @@ impl SmartMonitoringExecutor {
         attempts: u32,
         sleep_ms_between_retries: u64,
     ) -> Result<(), ExecutorError> {
-
         match self.icinga_executor.perform_request(icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None }) {
             Ok(()) => {
                 trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
             }
             Err(err) => {
-                warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {}", host_name, service_name, err);
+                warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {:?}", host_name, service_name, err);
             }
         }
 
@@ -137,7 +138,10 @@ impl SmartMonitoringExecutor {
 
         let response_json = response.json().map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
-            message: format!("SmartMonitoringExecutor - Cannot extract response body. Err: {}", err),
+            message: format!(
+                "SmartMonitoringExecutor - Cannot extract response body. Err: {}",
+                err
+            ),
             code: None,
         })?;
 
@@ -182,8 +186,9 @@ impl SmartMonitoringExecutor {
     }
 }
 
-impl Executor for SmartMonitoringExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for SmartMonitoringExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
@@ -236,10 +241,10 @@ mod test {
     use maplit::*;
     use tornado_common_api::Value;
 
-    #[test]
-    fn should_fail_if_action_data_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_action_data_is_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -261,7 +266,7 @@ mod test {
         let action = Action::new("");
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -270,8 +275,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_ok_if_action_is_valid() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_is_valid() {
         // Arrange
         let mock_server = MockServer::start();
 
@@ -281,7 +286,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -316,7 +321,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -324,10 +329,10 @@ mod test {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn should_throw_error_if_process_check_result_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_process_check_result_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -361,7 +366,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -374,10 +379,10 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_throw_error_if_host_name_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_host_name_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -407,7 +412,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -421,10 +426,10 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_throw_error_if_service_name_missing() {
+    #[tokio::test]
+    async fn should_throw_error_if_service_name_missing() {
         // Arrange
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -454,7 +459,7 @@ mod test {
         action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -468,8 +473,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
         // Arrange
         let mock_server = MockServer::start();
 
@@ -479,7 +484,7 @@ mod test {
             .return_status(200)
             .create_on(&mock_server);
 
-        let mut executor = SmartMonitoringExecutor::new(
+        let executor = SmartMonitoringExecutor::new(
             Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
@@ -508,7 +513,7 @@ mod test {
         );
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -516,8 +521,8 @@ mod test {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn should_return_state_check_pending() {
+    #[tokio::test]
+    async fn should_return_state_check_pending() {
         // Arrange
         let icinga_response: serde_json::Value = serde_json::from_str(
             r#"

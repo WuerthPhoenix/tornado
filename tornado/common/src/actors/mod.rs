@@ -2,6 +2,7 @@
 use crate::actors::nats_publisher::NatsPublisherConfig;
 use serde::{Deserialize, Serialize};
 
+pub mod command;
 pub mod json_event_reader;
 pub mod message;
 pub mod tcp_client;
@@ -24,7 +25,7 @@ pub enum TornadoConnectionChannel {
     Nats {
         nats: NatsPublisherConfig,
     },
-    TCP {
+    Tcp {
         tcp_socket_ip: String,
         tcp_socket_port: u16,
     },

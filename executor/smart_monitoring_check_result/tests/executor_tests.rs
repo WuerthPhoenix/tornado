@@ -3,15 +3,15 @@ use httpmock::{Mock, MockServer, Regex};
 use maplit::*;
 use rand::Rng;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
 use tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor;
 
-#[test]
-fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object()
-{
+#[tokio::test]
+async fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object(
+) {
     // Arrange
     let icinga_server = MockServer::start();
 
@@ -26,7 +26,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -60,7 +60,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -68,8 +68,8 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}", "500 Internal Server Error", ""), can_retry: true, code: None }))
 }
 
-#[test]
-fn should_return_ok_if_process_check_result_is_successful() {
+#[tokio::test]
+async fn should_return_ok_if_process_check_result_is_successful() {
     // Arrange
     let icinga_server = MockServer::start();
 
@@ -84,7 +84,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -118,15 +118,15 @@ fn should_return_ok_if_process_check_result_is_successful() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_ok());
     assert_eq!(icinga_mock.times_called(), 1);
 }
 
-#[test]
-fn should_return_call_process_check_result_twice_on_non_existing_object() {
+#[tokio::test]
+async fn should_return_call_process_check_result_twice_on_non_existing_object() {
     // Arrange
     let icinga_server = MockServer::start();
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
@@ -151,7 +151,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config.clone(),
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -186,7 +186,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -199,8 +199,8 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     assert_eq!(director_mock.times_called(), 2);
 }
 
-#[test]
-fn should_return_return_error_on_object_creation_failure() {
+#[tokio::test]
+async fn should_return_return_error_on_object_creation_failure() {
     // Arrange
     let icinga_server = MockServer::start();
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
@@ -227,7 +227,7 @@ fn should_return_return_error_on_object_creation_failure() {
         pending_object_set_status_retries_attempts: rand::thread_rng().gen_range(1..5),
     };
 
-    let mut executor = SmartMonitoringExecutor::new(
+    let executor = SmartMonitoringExecutor::new(
         config,
         Icinga2ClientConfig {
             timeout_secs: None,
@@ -262,7 +262,7 @@ fn should_return_return_error_on_object_creation_failure() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());

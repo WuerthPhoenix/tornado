@@ -9,7 +9,7 @@ use tornado_engine_matcher::config::{
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 pub trait ConfigApiHandler: Send + Sync {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError>;
 }
@@ -183,7 +183,7 @@ mod test {
 
     struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })

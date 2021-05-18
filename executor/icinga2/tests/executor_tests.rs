@@ -7,7 +7,7 @@ use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,
@@ -54,8 +54,8 @@ fn should_perform_a_post_request() {
                 timeout_secs: None,
             };
 
-            std::thread::spawn(move || {
-                let mut executor = Icinga2Executor::new(config).unwrap();
+            actix::spawn(async move {
+                let executor = Icinga2Executor::new(config).unwrap();
 
                 println!("Executor created");
 
@@ -71,7 +71,7 @@ fn should_perform_a_post_request() {
                     ]),
                 );
 
-                executor.execute(&action).unwrap();
+                executor.execute(action.into()).await.unwrap();
 
                 println!("Executor action sent");
             });
@@ -93,8 +93,8 @@ fn should_perform_a_post_request() {
     );
 }
 
-#[test]
-fn should_return_object_not_existing_error_in_case_of_404_status_code() {
+#[tokio::test]
+async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     // Arrange
     let mock_server = MockServer::start();
     let server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
@@ -106,7 +106,7 @@ fn should_return_object_not_existing_error_in_case_of_404_status_code() {
         .return_status(404)
         .create_on(&mock_server);
 
-    let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+    let executor = Icinga2Executor::new(Icinga2ClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),
@@ -127,7 +127,7 @@ fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());

@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::Read;
+use std::sync::Arc;
 use tornado_common_api::Action;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
 
@@ -130,8 +131,9 @@ impl std::fmt::Display for ElasticsearchExecutor {
     }
 }
 
-impl Executor for ElasticsearchExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ElasticsearchExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
         let data = action.payload.get(DATA_KEY).ok_or_else(|| {
@@ -277,10 +279,10 @@ mod test {
     //        //            assert!(result.is_ok());
     //    }
 
-    #[test]
-    fn should_fail_if_index_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_index_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -293,7 +295,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -302,10 +304,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_endpoint_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_endpoint_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -316,7 +318,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -325,10 +327,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_data_is_missing() {
+    #[tokio::test]
+    async fn should_fail_if_data_is_missing() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -341,7 +343,7 @@ mod test {
         action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -350,10 +352,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_index_is_not_text() {
+    #[tokio::test]
+    async fn should_fail_if_index_is_not_text() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -367,7 +369,7 @@ mod test {
             .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {
@@ -376,10 +378,10 @@ mod test {
         };
     }
 
-    #[test]
-    fn should_fail_if_endpoint_is_not_text() {
+    #[tokio::test]
+    async fn should_fail_if_endpoint_is_not_text() {
         // Arrange
-        let mut executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -391,7 +393,7 @@ mod test {
         action.payload.insert("endpoint".to_owned(), Value::Bool(false));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         match result {

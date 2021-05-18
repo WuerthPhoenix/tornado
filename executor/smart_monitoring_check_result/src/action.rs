@@ -20,14 +20,14 @@ pub struct SimpleCreateAndProcess {
 
 impl SimpleCreateAndProcess {
     pub fn new(payload: &Payload) -> Result<SimpleCreateAndProcess, ExecutorError> {
-        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
                 message: format!(
                     "Invalid SimpleCreateAndProcess Action configuration. Err: {}",
                     err
                 ),
             }
-        })?)
+        })
     }
 
     // Transforms the SimpleCreateAndProcess into the actions needed to call the IcingaExecutor and the

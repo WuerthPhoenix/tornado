@@ -1,9 +1,10 @@
 use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use serde::*;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
 
@@ -72,10 +73,7 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action<'a>(
-        &mut self,
-        action: &'a Action,
-    ) -> Result<DirectorAction<'a>, ExecutorError> {
+    fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -146,19 +144,18 @@ impl DirectorExecutor {
                 code: None
             })
         } else {
-            debug!(
-                "DirectorExecutor API request completed successfully. Response body",
-            );
+            debug!("DirectorExecutor API request completed successfully. Response body",);
             Ok(())
         }
     }
 }
 
-impl Executor for DirectorExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for DirectorExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let action = self.parse_action(action)?;
+        let action = self.parse_action(&action)?;
 
         self.perform_request(action)
     }
@@ -180,7 +177,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -206,7 +203,7 @@ mod test {
     #[test]
     fn should_throw_error_if_action_payload_is_not_set() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -231,7 +228,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),

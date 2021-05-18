@@ -1,4 +1,3 @@
-use crate::executor::retry::RetryStrategy;
 use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use log::*;
@@ -6,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
-use tornado_common::actors::nats_subscriber::NatsSubscriberConfig;
+use tornado_common::{
+    actors::nats_subscriber::NatsSubscriberConfig, command::retry::RetryStrategy,
+};
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
 use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
@@ -47,6 +48,7 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
+#[allow(clippy::upper_case_acronyms)]
 pub enum ThreadPoolConfig {
     CPU { factor: f64 },
     Fixed { size: isize },

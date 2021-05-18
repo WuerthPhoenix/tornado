@@ -7,7 +7,7 @@ use maplit::*;
 use std::sync::Arc;
 use std::sync::Mutex;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
@@ -54,8 +54,8 @@ fn should_perform_a_post_request() {
                 timeout_secs: None,
             };
 
-            std::thread::spawn(move || {
-                let mut executor = DirectorExecutor::new(config).unwrap();
+            actix::spawn(async move {
+                let executor = DirectorExecutor::new(config).unwrap();
 
                 println!("Executor created");
 
@@ -89,7 +89,7 @@ fn should_perform_a_post_request() {
             ]),
                     );
 
-                executor.execute(&action).unwrap();
+                executor.execute(action.into()).await.unwrap();
 
                 println!("DirectorApiClientMessage action sent");
             });
@@ -114,8 +114,8 @@ fn should_perform_a_post_request() {
     );
 }
 
-#[test]
-fn should_return_object_already_existing_error_in_case_of_422_status_code() {
+#[tokio::test]
+async fn should_return_object_already_existing_error_in_case_of_422_status_code() {
     // Arrange
     let director_server = MockServer::start();
     let server_response = "{\"error\": \"Trying to recreate icinga_host (\"some host\")\"}";
@@ -127,7 +127,7 @@ fn should_return_object_already_existing_error_in_case_of_422_status_code() {
         .return_status(422)
         .create_on(&director_server);
 
-    let mut executor = DirectorExecutor::new(DirectorClientConfig {
+    let executor = DirectorExecutor::new(DirectorClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),
@@ -151,7 +151,7 @@ fn should_return_object_already_existing_error_in_case_of_422_status_code() {
     );
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());

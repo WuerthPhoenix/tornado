@@ -9,7 +9,7 @@ use tornado_engine_matcher::model::ProcessedEvent;
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
-#[async_trait]
+#[async_trait(?Send)]
 pub trait EventApiHandler: Send + Sync {
     /// Executes an Event on the current Tornado Configuration
     async fn send_event_to_current_config(
@@ -85,7 +85,7 @@ pub mod test {
 
     pub struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl EventApiHandler for TestApiHandler {
         async fn send_event_to_current_config(
             &self,

@@ -131,6 +131,7 @@ async fn new_publisher(nats_address: String, subject: String) -> Addr<NatsPublis
             subject,
         },
         10,
-    ).await
+    )
+    .await
     .unwrap()
 }

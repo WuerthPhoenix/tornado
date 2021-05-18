@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 base64 = "0.13"
 log = "0.4"
 reqwest = { version="0.9", default-features = false, features=["rustls-tls"]}
@@ -19,3 +20,4 @@ actix = "0.10"
 actix-web = "3.0"
 maplit = "1.0"
 httpmock = "0.4"
+tokio = { version = "0.2", features = ["macros", "rt-threaded"] }

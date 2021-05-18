@@ -3,14 +3,14 @@ use httpmock::{Mock, MockServer, Regex};
 use maplit::*;
 use std::collections::HashMap;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_monitoring::MonitoringExecutor;
 
-#[test]
-fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object()
-{
+#[tokio::test]
+async fn should_return_error_if_process_check_result_fails_with_error_different_than_non_existing_object(
+) {
     // Arrange
     let icinga_server = MockServer::start();
 
@@ -20,7 +20,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
         .return_status(500)
         .create_on(&icinga_server);
 
-    let mut executor = MonitoringExecutor::new(
+    let executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -52,7 +52,7 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -60,8 +60,8 @@ fn should_return_error_if_process_check_result_fails_with_error_different_than_n
     assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}", "500 Internal Server Error", ""), can_retry: true, code: None }))
 }
 
-#[test]
-fn should_return_ok_if_process_check_result_is_successful() {
+#[tokio::test]
+async fn should_return_ok_if_process_check_result_is_successful() {
     // Arrange
     let icinga_server = MockServer::start();
 
@@ -71,7 +71,7 @@ fn should_return_ok_if_process_check_result_is_successful() {
         .return_status(201)
         .create_on(&icinga_server);
 
-    let mut executor = MonitoringExecutor::new(
+    let executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -103,15 +103,15 @@ fn should_return_ok_if_process_check_result_is_successful() {
     action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_ok());
     assert_eq!(icinga_mock.times_called(), 1);
 }
 
-#[test]
-fn should_return_call_process_check_result_twice_on_non_existing_object() {
+#[tokio::test]
+async fn should_return_call_process_check_result_twice_on_non_existing_object() {
     // Arrange
     let icinga_server = MockServer::start();
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
@@ -131,7 +131,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
         .return_status(201)
         .create_on(&director_server);
 
-    let mut executor = MonitoringExecutor::new(
+    let executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -164,7 +164,7 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -175,8 +175,8 @@ fn should_return_call_process_check_result_twice_on_non_existing_object() {
     assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}\", can_retry: true, code: Some(\"IcingaObjectNotExisting\") }}", "404 Not Found", icinga_server_response.escape_debug()), can_retry: true, code: None  }))
 }
 
-#[test]
-fn should_return_return_error_on_object_creation_failure() {
+#[tokio::test]
+async fn should_return_return_error_on_object_creation_failure() {
     // Arrange
     let icinga_server = MockServer::start();
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
@@ -198,7 +198,7 @@ fn should_return_return_error_on_object_creation_failure() {
         .return_status(500)
         .create_on(&director_server);
 
-    let mut executor = MonitoringExecutor::new(
+    let executor = MonitoringExecutor::new(
         Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
@@ -231,7 +231,7 @@ fn should_return_return_error_on_object_creation_failure() {
     action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
     // Act
-    let result = executor.execute(&action);
+    let result = executor.execute(action.into()).await;
 
     // Assert
     assert!(result.is_err());

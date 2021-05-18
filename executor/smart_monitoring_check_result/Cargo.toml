@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 log = "0.4"
 serde = { version = "1.0", features = ['derive'] }
 serde_json = { version = "1.0" }
@@ -20,3 +21,4 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 maplit = "1.0"
 httpmock = "0.4"
 rand = "0.8"
+tokio = { version = "0.2", features = ["macros", "rt-threaded"] }
