@@ -1,7 +1,7 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use log::*;
 use std::net;
 use std::str::FromStr;
