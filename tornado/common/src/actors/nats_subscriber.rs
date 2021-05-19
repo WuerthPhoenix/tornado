@@ -20,7 +20,7 @@ pub async fn subscribe_to_nats<
     message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
-    let client = config.client.new_client().await?;
+    let client = config.client.new_client().await;
 
     let subscription = client.subscribe(&config.subject).await.map_err(|err| {
         TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", config.subject, err} }
