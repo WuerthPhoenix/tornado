@@ -1,7 +1,7 @@
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
-use httpmock::{Mock, MockServer};
+use httpmock::MockServer;
 use maplit::*;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
@@ -96,22 +96,22 @@ async fn should_perform_a_post_request() {
 #[tokio::test]
 async fn should_return_object_already_existing_error_in_case_of_422_status_code() {
     // Arrange
-    let director_server = MockServer::start();
+    let server = MockServer::start();
     let server_response = "{\"error\": \"Trying to recreate icinga_host (\"some host\")\"}";
 
-    Mock::new()
-        .expect_method(POST)
-        .expect_path("/host")
-        .return_body(server_response)
-        .return_status(422)
-        .create_on(&director_server);
+    server.mock(|when, then| {
+        when.method(POST)
+            .path("/host");
+        then.body(server_response)
+            .status(422);
+    });
 
     let executor = DirectorExecutor::new(DirectorClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),
         disable_ssl_verification: true,
-        server_api_url: director_server.url(""),
+        server_api_url: server.url(""),
     })
     .unwrap();
 

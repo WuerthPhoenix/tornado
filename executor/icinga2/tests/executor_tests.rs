@@ -1,7 +1,7 @@
 use actix_web::web::{Data, Json};
 use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
-use httpmock::{Mock, MockServer};
+use httpmock::MockServer;
 use maplit::*;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
@@ -88,22 +88,22 @@ async fn should_perform_a_post_request() {
 #[tokio::test]
 async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     // Arrange
-    let mock_server = MockServer::start();
+    let server = MockServer::start();
     let server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
 
-    Mock::new()
-        .expect_method(POST)
-        .expect_path("/v1/actions/icinga2-api-action")
-        .return_body(server_response)
-        .return_status(404)
-        .create_on(&mock_server);
+    server.mock(|when, then| {
+        when.method(POST)
+            .path("/v1/actions/icinga2-api-action");
+        then.body(server_response)
+            .status(404);
+    });
 
     let executor = Icinga2Executor::new(Icinga2ClientConfig {
         timeout_secs: None,
         username: "".to_owned(),
         password: "".to_owned(),
         disable_ssl_verification: true,
-        server_api_url: mock_server.url(""),
+        server_api_url: server.url(""),
     })
     .unwrap();
 

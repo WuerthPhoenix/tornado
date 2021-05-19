@@ -20,5 +20,5 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 actix-rt = "2.2"
 actix-web = "=4.0.0-beta.5"
 maplit = "1.0"
-httpmock = "0.4"
+httpmock = "0.5"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
