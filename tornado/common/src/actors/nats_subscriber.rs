@@ -3,7 +3,7 @@ use crate::actors::nats_publisher::NatsClientConfig;
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::Connection;
-use futures::{stream, StreamExt};
+use futures::stream;
 use log::*;
 use serde::{Deserialize, Serialize};
 

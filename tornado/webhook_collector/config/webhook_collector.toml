@@ -34,10 +34,10 @@ server_port = 8080
 # The type of authentication used when connecting to the NATS server
 #nats.client.auth.type = "None"
 #nats.client.auth.type = "Tls"
-# The path to a pkcs12 bundle file which contains the certificate and private key to authenicate to the NATS server
-#nats.client.auth.path_to_pkcs12_bundle = "/path/to/pkcs12/bundle.pfx"
-# The password used to decrypt the pkcs12 bundle
-#nats.client.auth.pkcs12_bundle_password = ""
+# The path to the client certificate (in .pem format) used to authenicate to the NATS server
+#nats.client.auth.certificate_path = "/path/to/certificate.pem"
+# The path to the client certificate private key (in .pem format) used to authenicate to the NATS server
+#nats.client.auth.private_key_path = "/path/to/key.pem"
 # The path to a root certificate (in .pem format) to trust in addition to system's trust root.
 # May be useful if the NATS server is not trusted by the system as default. Optional
 #nats.client.auth.path_to_root_certificate = "/path/to/root/certificate.crt.pem"
