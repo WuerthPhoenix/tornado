@@ -237,7 +237,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
 mod test {
     use super::*;
     use httpmock::Method::POST;
-    use httpmock::{Mock, MockServer};
+    use httpmock::MockServer;
     use maplit::*;
     use tornado_common_api::Value;
 
@@ -280,11 +280,11 @@ mod test {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
@@ -478,11 +478,11 @@ mod test {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
