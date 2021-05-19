@@ -1,10 +1,11 @@
 use crate::config::{Icinga2ClientConfig, Stream};
 use crate::error::Icinga2CollectorError;
-use actix::prelude::*;
+use futures::stream::TryStreamExt;
 use log::*;
 use reqwest::{header, Client};
-use std::io::{BufRead, BufReader};
-use std::{thread, time};
+use std::time;
+use tokio::io::AsyncBufReadExt;
+use tokio_util::compat::FuturesAsyncReadCompatExt;
 use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
@@ -17,10 +18,10 @@ pub struct Icinga2StreamActor<F: 'static + Fn(Event) + Unpin> {
 }
 
 impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
-    fn start_polling(&mut self, client: &Client) -> Result<(), Icinga2CollectorError> {
+    async fn start_polling(&self, client: &Client) -> Result<(), Icinga2CollectorError> {
         info!("Starting Event Stream call to Icinga2");
 
-        let mut response = client
+        let response = client
             .post(&self.icinga_config.server_api_url)
             .header(header::ACCEPT, "application/json")
             .basic_auth(
@@ -28,7 +29,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
                 Some(self.icinga_config.password.clone()),
             )
             .json(&self.stream_config)
-            .send()
+            .send().await
             .map_err(|e| Icinga2CollectorError::CannotPerformHttpRequest {
                 message: format!(
                     "Cannot perform POST request to {}. err: {}",
@@ -36,8 +37,9 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
                 ),
             })?;
 
-        if !response.status().is_success() {
-            let body = match response.text() {
+        let response_status = response.status();
+        if !response_status.is_success() {
+            let body = match response.text().await {
                 Ok(body) => body,
                 _ => "".to_owned(),
             };
@@ -45,31 +47,44 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
             return Err(Icinga2CollectorError::CannotPerformHttpRequest {
                 message: format!(
                     "Failed response returned from Icinga2, Response status: {:?} - body: {}",
-                    response.status(),
+                    response_status,
                     body
                 ),
             });
         }
 
-        let mut reader = BufReader::new(response);
+        let reader = {
+            // Convert the body of the response into a futures::io::Stream.
+            let response = response.bytes_stream();
 
-        let mut line = String::new();
+            // Convert the stream into an futures::io::AsyncRead.
+            // We must first convert the reqwest::Error into an futures::io::Error.
+            let response = response
+                .map_err(|e| futures::io::Error::new(futures::io::ErrorKind::Other, e))
+                .into_async_read();
+
+            // Convert the futures::io::AsyncRead into a tokio::io::AsyncRead.
+            let response = response.compat();
+
+            tokio::io::BufReader::new(response)
+        };
+
+        let mut lines = reader.lines();
+
         loop {
-            line.clear();
-            match reader.read_line(&mut line) {
-                Ok(len) => {
-                    if len == 0 {
-                        warn!("EOF received. Stopping Icinga2 collector.");
-                        return Err(Icinga2CollectorError::UnexpectedEndOfHttpRequest);
-                    } else {
-                        debug!("Received line: {}", line);
-                        match self.collector.to_event(&line) {
-                            Ok(event) => (self.callback)(event),
-                            Err(e) => {
-                                error!("Error processing Icinga2 response: [{}], Err: {}", line, e)
-                            }
+            match lines.next_line().await {
+                Ok(Some(line)) => {
+                    debug!("Received line: {}", line);
+                    match self.collector.to_event(&line) {
+                        Ok(event) => (self.callback)(event),
+                        Err(e) => {
+                            error!("Error processing Icinga2 response: [{}], Err: {:?}", line, e)
                         }
                     }
+                }
+                Ok(None) => {
+                    warn!("EOF received. Stopping Icinga2 collector.");
+                    return Err(Icinga2CollectorError::UnexpectedEndOfHttpRequest);
                 }
                 Err(e) => {
                     return Err(Icinga2CollectorError::CannotPerformHttpRequest {
@@ -82,26 +97,23 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
             }
         }
     }
-}
 
-impl<F: 'static + Fn(Event) + Unpin> Actor for Icinga2StreamActor<F> {
-    type Context = SyncContext<Self>;
-
-    fn started(&mut self, _ctx: &mut Self::Context) {
+    pub async fn start_polling_icinga(&self) -> Result<(), Icinga2CollectorError> {
         info!("Starting Icinga2StreamActor with stream config: {:?}", self.stream_config);
 
         let client = reqwest::ClientBuilder::new()
             .danger_accept_invalid_certs(self.icinga_config.disable_ssl_verification)
-            .timeout(None)
             .build()
-            .unwrap_or_else(|e| {
-                System::current().stop();
-                panic!("Impossible to create a connection to the Icinga2 server. Err: {}", e)
-            });
+            .map_err(|e| Icinga2CollectorError::IcingaConnectionError {
+                message: format!(
+                    "Cannot connect to Icinga at url {}, Err: {}",
+                    self.icinga_config.server_api_url, e
+                ),
+            })?;
 
         loop {
-            if let Err(e) = self.start_polling(&client) {
-                error!("Client connection to Icinga2 Server dropped. Err: {}", e);
+            if let Err(e) = self.start_polling(&client).await {
+                error!("Client connection to Icinga2 Server dropped. Err: {:?}", e);
                 info!(
                     "Attempting a new connection in {} ms",
                     self.icinga_config.sleep_ms_between_connection_attempts
@@ -110,9 +122,10 @@ impl<F: 'static + Fn(Event) + Unpin> Actor for Icinga2StreamActor<F> {
                 let sleep_millis = time::Duration::from_millis(
                     self.icinga_config.sleep_ms_between_connection_attempts,
                 );
-                thread::sleep(sleep_millis);
+                tokio::time::sleep(sleep_millis).await;
             }
         }
+
     }
 }
 
@@ -140,7 +153,7 @@ mod test {
             HttpServer::new(move || {
                 App::new().service(web::resource(api).route(web::post().to(
                     move |body: Json<Stream>| async {
-                        info!("Server received a call with Stream: \n{:?}", body.clone());
+                        info!("Server received a call with Stream: \n{:?}", &body);
                         body
                     },
                 )))
