@@ -196,7 +196,6 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> Comman
 pub mod test {
     use super::*;
     use rand::Rng;
-    use std::rc::Rc;
     use std::sync::Arc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;

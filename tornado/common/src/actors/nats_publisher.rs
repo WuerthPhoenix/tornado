@@ -6,8 +6,6 @@ use log::*;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::sync::Arc;
-use tokio::fs::File;
-use tokio::prelude::*;
 
 pub struct NatsPublisherActor {
     config: Arc<NatsPublisherConfig>,
@@ -27,8 +25,8 @@ pub struct NatsPublisherConfig {
 pub enum NatsClientAuth {
     None,
     Tls {
-        path_to_pkcs12_bundle: String,
-        pkcs12_bundle_password: String,
+        certificate_path: String,
+        private_key_path: String,
         path_to_root_certificate: Option<String>,
     },
 }
@@ -47,63 +45,37 @@ impl NatsClientConfig {
 
         let client = match auth {
             NatsClientAuth::Tls {
-                path_to_pkcs12_bundle: path_to_pkcs_bundle,
-                pkcs12_bundle_password: pkcs_password,
+                certificate_path,
+                private_key_path,
                 path_to_root_certificate,
             } => {
-                let implement_nats_tls = 0;
-                unimplemented!("TLS NOT IMPLEMENTED YET. To be fixed in TOR-314");
-                /*
-                let mut connect = Connect::new();
-                connect.tls_required(true);
-                let mut client = Client::with_connect(addresses, connect);
+                info!("NatsClientConfig - Open Nats connection (with TLS) to [{}]", addresses);
+                let mut options = Options::new()
+                    .client_cert(certificate_path, private_key_path)
+                    .tls_required(true);
 
-                let mut tls_connector_builder = TlsConnector::builder();
-
-                // Load root certificate, if path is configured
                 if let Some(path_to_root_certificate) = path_to_root_certificate {
-                    let mut buf = vec![];
-                    read_file(&path_to_root_certificate, &mut buf).await?;
-                    let root_ca_certificate = Certificate::from_pem(&buf).map_err(|err| {
-                        TornadoError::ConfigurationError {
-                            message: format!(
-                                "Error while constructing certificate from pem file {}. Err: {}",
-                                path_to_root_certificate, err
-                            ),
-                        }
-                    })?;
-                    tls_connector_builder.add_root_certificate(root_ca_certificate);
-                };
+                    debug!("NatsClientConfig - Trusting CA: {}", path_to_root_certificate);
+                    options = options.add_root_certificate(path_to_root_certificate)
+                }
 
-                let mut buf = vec![];
-                read_file(&path_to_pkcs_bundle, &mut buf).await?;
-                let identity =
-                    Identity::from_pkcs12(&buf, pkcs_password.as_str()).map_err(|err| {
-                        TornadoError::ConfigurationError {
-                            message: format!(
-                                "Error while constructing identity from pkcs12 file {}. Err: {}",
-                                path_to_pkcs_bundle, err
-                            ),
-                        }
-                    })?;
-
-                let tls_connector =
-                    tls_connector_builder.identity(identity).build().map_err(|err| {
-                        TornadoError::ConfigurationError {
-                            message: format!("Error while building tls connector. Err: {}", err),
-                        }
-                    })?;
-
-                client.set_tls_config(tls_connector).await;
-                client
-
-                 */
+                options.connect(&addresses).await.map_err(|err| {
+                    TornadoError::ConfigurationError {
+                        message: format!(
+                            "Error during connection to NATS with TLS (with TLS). Err: {}",
+                            err
+                        ),
+                    }
+                })?
             }
             NatsClientAuth::None => {
-                info!("Open Nats connection (without TLS) to [{}]", addresses);
+                info!("NatsClientConfig - Open Nats connection (without TLS) to [{}]", addresses);
                 Options::new().connect(&addresses).await.map_err(|err| {
                     TornadoError::ConfigurationError {
-                        message: format!("Error while building tls connector. Err: {}", err),
+                        message: format!(
+                            "Error during connection to NATS (without TLS). Err: {}",
+                            err
+                        ),
                     }
                 })?
             }
@@ -118,15 +90,6 @@ impl NatsClientConfig {
             Some(auth) => &auth,
         }
     }
-}
-
-async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, TornadoError> {
-    let mut file = File::open(path).await.map_err(|err| TornadoError::ConfigurationError {
-        message: format!("Error while opening file {}. Err: {}", path, err),
-    })?;
-    file.read_to_end(buf).await.map_err(|err| TornadoError::ConfigurationError {
-        message: format!("Error while reading file {}. Err: {}", path, err),
-    })
 }
 
 impl NatsPublisherActor {
