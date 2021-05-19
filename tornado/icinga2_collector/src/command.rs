@@ -10,14 +10,14 @@ use tornado_collector_common::Collector;
 use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common_api::Event;
 
-pub struct Icinga2StreamActor<F: 'static + Fn(Event) + Unpin> {
+pub struct Icinga2StreamConnector<F: 'static + Fn(Event) + Unpin> {
     pub icinga_config: Icinga2ClientConfig,
     pub collector: JMESPathEventCollector,
     pub stream_config: Stream,
     pub callback: F,
 }
 
-impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
+impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
     async fn start_polling(&self, client: &Client) -> Result<(), Icinga2CollectorError> {
         info!("Starting Event Stream call to Icinga2");
 
@@ -99,7 +99,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamActor<F> {
     }
 
     pub async fn start_polling_icinga(&self) -> Result<(), Icinga2CollectorError> {
-        info!("Starting Icinga2StreamActor with stream config: {:?}", self.stream_config);
+        info!("Starting Icinga2StreamConnector with stream config: {:?}", self.stream_config);
 
         let client = reqwest::ClientBuilder::new()
             .danger_accept_invalid_certs(self.icinga_config.disable_ssl_verification)
@@ -165,7 +165,7 @@ mod test {
                 let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
                 warn!("Client connecting to: {}", url);
 
-                SyncArbiter::start(1, move || {
+                actix::spawn(async move {
                     let icinga_config = Icinga2ClientConfig {
                         server_api_url: url.clone(),
                         disable_ssl_verification: true,
@@ -174,7 +174,7 @@ mod test {
                         sleep_ms_between_connection_attempts: 0,
                     };
                     let sender = sender.clone();
-                    Icinga2StreamActor {
+                    let icinga_poll = Icinga2StreamConnector {
                         callback: move |event| {
                             info!("Callback called with Event: {:?}", event);
                             sender.send(event).unwrap();
@@ -199,7 +199,8 @@ mod test {
                             queue: "queue_name".to_owned(),
                             types: vec![],
                         },
-                    }
+                    };
+                    icinga_poll.start_polling_icinga().await.unwrap();
                 });
 
                 Ok(server)

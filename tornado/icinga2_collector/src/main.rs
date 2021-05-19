@@ -10,7 +10,7 @@ use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::{actors, TornadoError};
 use tornado_common_logger::setup_logger;
 
-mod actor;
+mod command;
 mod config;
 mod error;
 
@@ -100,13 +100,13 @@ fn start<A: Actor + actix::Handler<EventMessage>>(
         let actor_address = actor_address.clone();
         actix::spawn(async move {
             let actor_address = actor_address.clone();
-            let icinga_poll = actor::Icinga2StreamActor {
+            let icinga_poll = command::Icinga2StreamConnector {
                 icinga_config: icinga2_config.icinga2_collector.connection.clone(),
                 collector: JMESPathEventCollector::build(config.collector_config.clone())
                     .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {:?}", config.collector_config.clone(), e)),
                 stream_config: config.stream.clone(),
                 callback: move |event| {
-                    actor_address.try_send(EventMessage { event }).unwrap_or_else(|err| error!("Icinga2StreamActor -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
+                    actor_address.try_send(EventMessage { event }).unwrap_or_else(|err| error!("Icinga2StreamConnector -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
                 },
             };
             if let Err(err) = icinga_poll.start_polling_icinga().await {
