@@ -5,13 +5,11 @@ use async_nats::{Connection, Options};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
-use std::ops::Deref;
-use std::sync::Arc;
 use tokio::time;
 
 pub struct NatsPublisherActor {
-    config: Arc<NatsPublisherConfig>,
-    nats_connection: Arc<Option<Connection>>,
+    config: NatsPublisherConfig,
+    nats_connection: Option<Connection>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -103,7 +101,7 @@ impl NatsPublisherActor {
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config: Arc::new(config), nats_connection: Arc::new(None) }
+            NatsPublisherActor { config: config, nats_connection: None }
         }))
     }
 }
@@ -118,9 +116,11 @@ impl Actor for NatsPublisherActor {
         );
 
         let client_config = self.config.client.clone();
-        ctx.wait(async move { client_config.new_client().await }.into_actor(self).map(
-            move |connection, actor, _ctx| actor.nats_connection = Arc::new(Some(connection)),
-        ));
+        ctx.wait(
+            async move { client_config.new_client().await }
+                .into_actor(self)
+                .map(move |connection, actor, _ctx| actor.nats_connection = Some(connection)),
+        );
     }
 }
 
@@ -135,7 +135,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
-        if let Some(connection) = self.nats_connection.deref() {
+        if let Some(connection) = &self.nats_connection {
             let event = serde_json::to_vec(&msg.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
