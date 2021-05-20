@@ -178,7 +178,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
             })?)
         };
 
-        let res = client.post(&endpoint).json(&data).send().map_err(|err| {
+        let res = client.post(&endpoint).json(&data).send().await.map_err(|err| {
             ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {}", err),
