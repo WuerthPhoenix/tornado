@@ -102,7 +102,7 @@ pub async fn daemon(
     let elasticsearch_executor_addr = {
         let es_authentication = configs.elasticsearch_executor_config.default_auth.clone();
         let executor =
-            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
+            tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication).await
                 .expect("Cannot start the Elasticsearch Executor");
         CommandExecutorActor::start_new(
             message_queue_size,

@@ -3,9 +3,8 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::fs::File;
-use std::io::Read;
 use std::sync::Arc;
+use tokio::io::AsyncReadExt;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
@@ -28,7 +27,7 @@ pub enum ElasticsearchAuthentication {
 }
 
 impl ElasticsearchAuthentication {
-    pub fn new_client(&self) -> Result<Client, ExecutorError> {
+    pub async fn new_client(&self) -> Result<Client, ExecutorError> {
         match self {
             ElasticsearchAuthentication::PemCertificatePath {
                 certificate_path,
@@ -43,7 +42,7 @@ impl ElasticsearchAuthentication {
                     certificate_path,
                     private_key_path,
                     ca_certificate_path,
-                )?
+                ).await?
                 .new_client()
             }
             ElasticsearchAuthentication::None => {
@@ -60,17 +59,17 @@ struct PemCertificateData {
 }
 
 impl PemCertificateData {
-    pub fn from_fs(
+    pub async fn from_fs(
         certificate_path: &str,
         private_key_path: &str,
         ca_certificate_path: &str,
     ) -> Result<Self, ExecutorError> {
         let mut certificate_with_private_key = vec![];
-        read_file(certificate_path, &mut certificate_with_private_key)?;
-        read_file(private_key_path, &mut certificate_with_private_key)?;
+        read_file(certificate_path, &mut certificate_with_private_key).await?;
+        read_file(private_key_path, &mut certificate_with_private_key).await?;
 
         let mut ca_certificate = vec![];
-        read_file(ca_certificate_path, &mut ca_certificate)?;
+        read_file(ca_certificate_path, &mut ca_certificate).await?;
 
         Ok(PemCertificateData { certificate_with_private_key, ca_certificate })
     }
@@ -104,20 +103,26 @@ pub struct ElasticsearchExecutor {
 }
 
 impl ElasticsearchExecutor {
-    pub fn new(
+    pub async fn new(
         es_authentication: Option<ElasticsearchAuthentication>,
     ) -> Result<ElasticsearchExecutor, ExecutorError> {
         debug!("ElasticsearchExecutor - Creating new Elasticsearch executor");
-        let default_client = es_authentication
-            .map(|es_authentication| es_authentication.new_client())
-            .transpose()?;
+        let default_client = match es_authentication {
+            Some(es_authentication) => Some(es_authentication.new_client().await?),
+            None => None
+        };
 
         Ok(ElasticsearchExecutor { default_client })
     }
 }
 
-fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
-    File::open(path).and_then(|mut file| file.read_to_end(buf)).map_err(|err| {
+async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
+    let mut file = tokio::fs::File::open(path).await.map_err(|err| {
+        ExecutorError::ConfigurationError {
+            message: format!("Error while reading file {}. Err: {}", path, err),
+        }
+    })?;
+    file.read_to_end(buf).await.map_err(|err| {
         ExecutorError::ConfigurationError {
             message: format!("Error while reading file {}. Err: {}", path, err),
         }
@@ -166,7 +171,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                     message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
                     code: None,
                 })?;
-            Cow::Owned(es_authentication.new_client()?)
+            Cow::Owned(es_authentication.new_client().await?)
         } else {
             debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
             Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
@@ -208,9 +213,9 @@ mod test {
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    //                This can be used for local testing. It requires Elasticsearch running on localhost
-    //    #[test]
-    //    fn should_send_document_to_elasticsearch() {
+    // This can be used for local testing. It requires Elasticsearch running on localhost
+    // #[tokio::test]
+    // async fn should_send_document_to_elasticsearch() {
     //        // Arrange
     //        let es_authentication = Some(ElasticsearchAuthentication::PemCertificatePath {
     //            certificate_path: "/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_string(),
@@ -218,7 +223,7 @@ mod test {
     //                .to_string(),
     //            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string(),
     //        });
-    //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
+    //        let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
     //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //        let mut es_document = HashMap::new();
     //        es_document
@@ -232,13 +237,13 @@ mod test {
     //        );
     //
     //        // Act
-    //        let result = executor.execute(action);
-    //        result.unwrap();
-    //        // Assert
-    //        //            assert!(result.is_ok());
-    //    }
+    //        let result = executor.execute(action.into()).await;
     //
-    //    // This can be used for local testing. It requires Elasticsearch running on localhost
+    //     // Assert
+    //        assert!(result.is_ok());
+    //    }
+
+    // This can be used for local testing. It requires Elasticsearch running on localhost
     //    #[test]
     //    fn should_build_client_from_payload() {
     //        // Arrange
@@ -279,10 +284,47 @@ mod test {
     //        //            assert!(result.is_ok());
     //    }
 
+       // This can be used for local testing. It requires Elasticsearch running on localhost
+       // #[tokio::test]
+       // async fn should_build_client_from_payload() {
+       //     // Arrange
+       //     let es_authentication = Some(ElasticsearchAuthentication::None {});
+       //     let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
+       //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+       //     let mut es_document = HashMap::new();
+       //     es_document
+       //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+       //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+       //     action.payload.insert("data".to_owned(), Value::Map(es_document));
+       //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+       //     action.payload.insert(
+       //         "endpoint".to_owned(),
+       //         Value::Text("http://localhost:9200".to_owned()),
+       //     );
+       //
+       //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+       //     let mut es_document = HashMap::new();
+       //     es_document
+       //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+       //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+       //     action.payload.insert("data".to_owned(), Value::Map(es_document));
+       //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+       //     action.payload.insert(
+       //         "endpoint".to_owned(),
+       //         Value::Text("http://localhost:9200".to_owned()),
+       //     );
+       //
+       //     // Act
+       //     let result = executor.execute(action.into()).await;
+       //
+       //     // Assert
+       //     assert!(result.is_ok());
+       // }
+
     #[tokio::test]
     async fn should_fail_if_index_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -307,7 +349,7 @@ mod test {
     #[tokio::test]
     async fn should_fail_if_endpoint_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -330,7 +372,7 @@ mod test {
     #[tokio::test]
     async fn should_fail_if_data_is_missing() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -355,7 +397,7 @@ mod test {
     #[tokio::test]
     async fn should_fail_if_index_is_not_text() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
@@ -381,7 +423,7 @@ mod test {
     #[tokio::test]
     async fn should_fail_if_endpoint_is_not_text() {
         // Arrange
-        let executor = ElasticsearchExecutor::new(None).unwrap();
+        let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
         let mut es_document = HashMap::new();
         es_document
