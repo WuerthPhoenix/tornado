@@ -9,6 +9,7 @@ use std::time::Duration;
 use actix::clock::delay_for;
 use log::*;
 use serial_test::serial;
+use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
 use tokio::time;
@@ -18,7 +19,6 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
-use std::sync::Arc;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,

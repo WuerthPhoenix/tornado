@@ -81,6 +81,7 @@ impl NatsClientConfig {
                     time::delay_for(time::Duration::from_secs(5)).await;
                 }
                 Ok(connection) => {
+                    info!("NatsClientConfig - Successfully connected to NATS");
                     return connection;
                 }
             };
@@ -122,11 +123,6 @@ impl Actor for NatsPublisherActor {
                 .into_actor(self)
                 .map(move |connection, actor, _ctx| actor.nats_connection = Some(connection)),
         );
-
-        info!(
-            "NatsPublisherActor connected to NATS address(es): {:?}",
-            self.config.client.addresses
-        );
     }
 }
 
@@ -152,9 +148,12 @@ impl Handler<EventMessage> for NatsPublisherActor {
             let config = self.config.clone();
 
             actix::spawn(async move {
-                debug!("NatsPublisherActor - Publish event to NATS");
+                debug!("NatsPublisherActor - Publishing event to NATS");
                 match client.publish(&config.subject, &event).await {
-                    Ok(_) => trace!("NatsPublisherActor - Publish event to NATS succeeded. Event: {:?}", &msg),
+                    Ok(_) => trace!(
+                        "NatsPublisherActor - Publish event to NATS succeeded. Event: {:?}",
+                        &msg
+                    ),
                     Err(e) => {
                         error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
                         time::delay_for(time::Duration::from_secs(1)).await;
@@ -168,7 +167,12 @@ impl Handler<EventMessage> for NatsPublisherActor {
             actix::spawn(async move {
                 warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Reprocessing event ...");
                 time::delay_for(time::Duration::from_secs(1)).await;
-                address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
+                address.try_send(msg).unwrap_or_else(|err| {
+                    error!(
+                        "NatsPublisherActor -  Error while sending event to itself. Error: {}",
+                        err
+                    )
+                });
             });
         }
 
