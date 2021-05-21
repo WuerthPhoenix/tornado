@@ -476,6 +476,83 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
     assert_eq!(loops * 2, received_messages);
 }
 
+// To test the behaviour where after a disconnection from NATS, the publisher seems to lose the first
+// 2 events which it tries to publish.
+// Commented because upon restart of NATS, the publisher connects and publishes the messages before the subscriber has connected
+// #[actix_rt::test]
+// #[serial]
+// async fn publisher_should_reschedule_all_events_after_a_disconnection() {
+//     start_logger();
+//     let free_local_port = port_check::free_local_port().unwrap();
+//
+//     // Start NATS
+//     let docker = clients::Cli::default();
+//     let (node, nats_port) = new_nats_docker_container(&docker, Some(free_local_port), false);
+//     let nats_address = format!("127.0.0.1:{}", nats_port);
+//
+//     let random: u8 = rand::random();
+//     let event = Event::new(format!("event_type_{}", random));
+//     let subject = format!("test_subject_{}", random);
+//
+//     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+//     let subject_clone = subject.clone();
+//     actix::spawn(async move {
+//         // Start a subscriber
+//         subscribe_to_nats(
+//             NatsSubscriberConfig {
+//                 client: NatsClientConfig {
+//                     addresses: vec![format!("127.0.0.1:{}", free_local_port)],
+//                     auth: None,
+//                 },
+//                 subject: subject_clone,
+//             },
+//             10000,
+//             move |event| {
+//                 sender.send(event).unwrap();
+//                 Ok(())
+//             },
+//         )
+//         .await
+//         .unwrap();
+//     });
+//
+//     let publisher = NatsPublisherActor::start_new(
+//         NatsPublisherConfig {
+//             client: NatsClientConfig { addresses: vec![nats_address], auth: None },
+//             subject: subject.to_owned(),
+//         },
+//         10,
+//     )
+//     .await
+//     .unwrap();
+//
+//     time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+//
+//     drop(node);
+//     wait_until_port_is_free(free_local_port).await;
+//
+//     let n_events = 10;
+//
+//     for i in 0..n_events {
+//         info!("Sending event to publisher: {}", i);
+//         publisher.do_send(EventMessage { event: event.clone() });
+//         time::delay_for(time::Duration::from_millis(100)).await;
+//     }
+//
+//     let (_node, _nats_port) = new_nats_docker_container(&docker, Some(free_local_port), false);
+//
+//     let mut n_received = 0;
+//
+//     while n_received < n_events {
+//         info!("Trying to receive message number: {}", n_received);
+//         receiver.recv().await.unwrap();
+//         n_received += 1;
+//         info!("Subscriber received {} messages", n_received);
+//     }
+//
+//     assert_eq!(n_received, n_events);
+// }
+
 fn start_logger() {
     println!("Init logger");
 
