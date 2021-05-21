@@ -18,6 +18,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
+use std::sync::Arc;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -402,6 +403,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
+    let subscriber_connected = Arc::new(std::sync::RwLock::new(false));
+    let subscriber_connected_clone = subscriber_connected.clone();
     actix::spawn(async move {
         subscribe_to_nats(
             NatsSubscriberConfig {
@@ -416,6 +419,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         )
         .await
         .unwrap();
+        let mut lock = subscriber_connected_clone.write().unwrap();
+        *lock = true;
     });
 
     let docker = clients::Cli::default();
@@ -428,7 +433,19 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
         let mut nats_is_up = true;
 
-        publisher.do_send(EventMessage { event: event.clone() });
+        // Before publishing the event, wait the subscriber to be subscribed for the first time.
+        // The subscriber may be slower than the publisher to connect to NATS for the first time.
+        // If this is the case, the message could be successfully published before the subscriber
+        // is subscribed. The message would then be not received.
+        loop {
+            if *(subscriber_connected.read().unwrap()) {
+                publisher.do_send(EventMessage { event: event.clone() });
+                break;
+            }
+            info!("Subscriber not yet connected, delaying publishing");
+            delay_for(std::time::Duration::from_secs(1)).await;
+        }
+
         in_flight_messages += 1;
         time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
 

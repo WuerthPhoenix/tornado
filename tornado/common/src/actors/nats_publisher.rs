@@ -51,6 +51,7 @@ impl NatsClientConfig {
                 .reconnect_callback(|| {
                     info!("NatsClientConfig - connection to NATS server was restored")
                 })
+                .reconnect_delay_callback(|_attempts| std::time::Duration::from_secs(1))
                 .max_reconnects(None);
             match auth {
                 NatsClientAuth::Tls {
@@ -77,7 +78,7 @@ impl NatsClientConfig {
             match options.connect(&addresses).await {
                 Err(connection_error) => {
                     error!("Error during connection to NATS. Err: {}", connection_error);
-                    time::delay_until(time::Instant::now() + time::Duration::from_secs(5)).await;
+                    time::delay_for(time::Duration::from_secs(5)).await;
                 }
                 Ok(connection) => {
                     return connection;
@@ -111,7 +112,7 @@ impl Actor for NatsPublisherActor {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         info!(
-            "NatsPublisherActor started. Connected to NATS address(es): {:?}",
+            "NatsPublisherActor started. Connecting to NATS address(es): {:?}",
             self.config.client.addresses
         );
 
@@ -120,6 +121,11 @@ impl Actor for NatsPublisherActor {
             async move { client_config.new_client().await }
                 .into_actor(self)
                 .map(move |connection, actor, _ctx| actor.nats_connection = Some(connection)),
+        );
+
+        info!(
+            "NatsPublisherActor connected to NATS address(es): {:?}",
+            self.config.client.addresses
         );
     }
 }
@@ -135,6 +141,8 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
+        let address = ctx.address();
+
         if let Some(connection) = &self.nats_connection {
             let event = serde_json::to_vec(&msg.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
@@ -145,19 +153,23 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
             actix::spawn(async move {
                 debug!("NatsPublisherActor - Publish event to NATS");
-                let res = client.publish(&config.subject, &event).await;
-                match res {
-                    Ok(_) => error!("NatsPublisherActor - Publish event to NATS succeeded"),
+                match client.publish(&config.subject, &event).await {
+                    Ok(_) => trace!("NatsPublisherActor - Publish event to NATS succeeded. Event: {:?}", &msg),
                     Err(e) => {
-                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e)
+                        error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
+                        time::delay_for(time::Duration::from_secs(1)).await;
+                        address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
             });
         } else {
             // This should be rare because while establishing connection to NATS, events are not
             // processed by the actor
-            warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Reprocessing event ...");
-            ctx.notify_later(msg, std::time::Duration::from_secs(1));
+            actix::spawn(async move {
+                warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Reprocessing event ...");
+                time::delay_for(time::Duration::from_secs(1)).await;
+                address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
+            });
         }
 
         Ok(())
