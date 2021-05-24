@@ -264,7 +264,7 @@ pub async fn daemon(
         dispatcher_addr.clone(),
         configs.matcher_config.clone(),
         message_queue_size,
-    )?;
+    ).await?;
 
     if daemon_config.is_nats_enabled() {
         info!("NATS connection is enabled. Starting it...");

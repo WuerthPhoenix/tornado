@@ -49,12 +49,12 @@ pub struct MatcherActor {
 }
 
 impl MatcherActor {
-    pub fn start(
+    pub async fn start(
         dispatcher_addr: Addr<DispatcherActor>,
         matcher_config_manager: Arc<dyn MatcherConfigReader>,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
-        let matcher_config = Arc::new(matcher_config_manager.get_config()?);
+        let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
         Ok(actix::Supervisor::start(move |ctx: &mut Context<MatcherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);

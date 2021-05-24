@@ -7,7 +7,6 @@ use crate::config::{
 use crate::error::MatcherError;
 use crate::validator::MatcherConfigValidator;
 use chrono::Local;
-use fs_extra::dir::*;
 use log::*;
 use tokio::{fs::{File, create_dir_all, remove_dir_all}, io::AsyncWriteExt};
 use std::path::{Path, PathBuf};
@@ -206,18 +205,7 @@ impl FsMatcherConfigManager {
             })?;
         }
 
-        let mut copy_options = CopyOptions::new();
-        copy_options.copy_inside = true;
-        copy(source_dir.as_ref(), dest_dir.as_ref(), &copy_options)
-            .map_err(|err| MatcherError::InternalSystemError {
-                message: format!(
-                    "Cannot copy configuration from [{}] [{}]. Err: {:?}",
-                    source_dir.as_ref().display(),
-                    dest_dir.as_ref().display(),
-                    err
-                ),
-            })
-            .map(|_| ())
+        copy_recursive(source_dir.as_ref().into(), dest_dir.as_ref().into()).await
     }
 
     fn matcher_config_to_fs(
@@ -347,6 +335,33 @@ async fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
     })
 }
 
+async fn copy_recursive(
+    source_dir: PathBuf,
+    dest_dir: PathBuf,
+) -> Result<(), MatcherError> {
+
+    tokio::task::spawn_blocking(move || {
+
+        use fs_extra::dir::*;
+
+        let mut copy_options = CopyOptions::new();
+        copy_options.copy_inside = true;
+        copy(&source_dir, &dest_dir, &copy_options)
+            .map_err(|err| MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot copy configuration from [{}] [{}]. Err: {:?}",
+                    source_dir.display(),
+                    dest_dir.display(),
+                    err
+                ),
+            })
+            .map(|_| ())
+    }).await.map_err(|err| MatcherError::InternalSystemError {
+        message: format!("FsMatcherConfigManager - copy_recursive - Cannot execute Tokio internal task. Err: {:?}", err),
+    })?
+
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -358,7 +373,7 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -390,7 +405,7 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -428,7 +443,7 @@ mod test {
         // Arrange
         let current_ts_ms = current_ts_ms();
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -453,7 +468,7 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -470,7 +485,7 @@ mod test {
     async fn get_drafts_should_return_all_draft_ids() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -495,7 +510,7 @@ mod test {
     async fn should_return_delete_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -529,7 +544,7 @@ mod test {
         for test_configuration in test_configurations {
             // Arrange
             let tempdir = tempfile::tempdir()?;
-            let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, test_configuration);
+            let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, test_configuration).await;
             let converted_matcher_config_path = tempdir.path().join("matcher_config_to_fs");
 
             // Act
@@ -560,7 +575,7 @@ mod test {
     async fn should_update_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -596,7 +611,7 @@ mod test {
     async fn should_validate_draft_on_update() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -645,7 +660,7 @@ mod test {
     async fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let config_before_deploy = config_manager.get_config().await.unwrap();
@@ -678,7 +693,7 @@ mod test {
     async fn should_take_over_a_draft() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -704,7 +719,7 @@ mod test {
     async fn should_deploy_a_new_config() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
+        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let config_before_deploy = config_manager.get_config().await.unwrap();
@@ -726,13 +741,10 @@ mod test {
         Ok(())
     }
 
-    fn prepare_temp_dirs(tempdir: &TempDir, rules_source_dir: &str) -> (String, String) {
+    async fn prepare_temp_dirs(tempdir: &TempDir, rules_source_dir: &str) -> (String, String) {
         let drafts_dir = format!("{}/drafts", tempdir.path().to_str().unwrap());
         let rules_dir = format!("{}/rules", tempdir.path().to_str().unwrap());
-
-        let mut copy_options = CopyOptions::new();
-        copy_options.copy_inside = true;
-        copy(rules_source_dir, &rules_dir, &copy_options).unwrap();
+        copy_recursive(rules_source_dir.into(), (&rules_dir).into()).await.unwrap();
         (rules_dir, drafts_dir)
     }
 }
