@@ -10,13 +10,16 @@ use chrono::Local;
 use fs_extra::dir::*;
 use log::*;
 use std::path::{Path, PathBuf};
+use std::fs::File;
+use std::io::Write;
 
 const DRAFT_ID: &str = "draft_001";
 const DRAFT_CONFIG_DIR: &str = "config";
 const DRAFT_DATA_FILE: &str = "data.json";
 
+#[async_trait::async_trait]
 impl MatcherConfigEditor for FsMatcherConfigManager {
-    fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
+    async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let path = Path::new(&self.drafts_path);
 
         if path.exists() {
@@ -36,7 +39,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         }
     }
 
-    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+    async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         debug!("Get draft with id {}", draft_id);
 
         let config =
@@ -46,7 +49,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         Ok(MatcherConfigDraft { config, data })
     }
 
-    fn create_draft(&self, user: String) -> Result<String, MatcherError> {
+    async fn create_draft(&self, user: String) -> Result<String, MatcherError> {
         info!("Create new draft");
 
         let draft_id = DRAFT_ID.to_owned();
@@ -55,14 +58,14 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         if Path::new(&draft_path).exists() {
             std::fs::remove_dir_all(&draft_path).map_err(|err| {
                 MatcherError::InternalSystemError {
-                    message: format!("Cannot delete directory [{}]. Err: {}", draft_path, err),
+                    message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
                 }
             })?;
         }
 
         let current_ts_ms = current_ts_ms();
 
-        let current_config = self.get_config()?;
+        let current_config = self.get_config().await?;
         let current_config = match &current_config {
             MatcherConfig::Ruleset { .. } => {
                 info!(
@@ -99,7 +102,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         Ok(draft_id)
     }
 
-    fn update_draft(
+    async fn update_draft(
         &self,
         draft_id: &str,
         user: String,
@@ -110,7 +113,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         MatcherConfigValidator::new().validate(config)?;
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
-            message: format!("Cannot create temporary directory. Err: {}", err),
+            message: format!("Cannot create temporary directory. Err: {:?}", err),
         })?;
         FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
 
@@ -126,20 +129,20 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         self.write_draft_data(data)
     }
 
-    fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+    async fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy draft with id {}", draft_id);
         let draft_id = DRAFT_ID;
-        let draft = self.get_draft(draft_id)?;
-        self.deploy_config(&draft.config)
+        let draft = self.get_draft(draft_id).await?;
+        self.deploy_config(&draft.config).await
     }
 
-    fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError> {
+    async fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError> {
         info!("Delete draft with id {}", draft_id);
         let draft_path = self.get_draft_path(&draft_id);
 
         if Path::new(&draft_path).exists() {
             std::fs::remove_dir_all(&draft_path).map_err(|err| MatcherError::InternalSystemError {
-                message: format!("Cannot delete directory [{}]. Err: {}", draft_path, err),
+                message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
             })
         } else {
             Err(MatcherError::ConfigurationError {
@@ -151,25 +154,25 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         }
     }
 
-    fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError> {
+    async fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError> {
         info!("User [{}] asks to take over draft with id {}", user, draft_id);
         let mut data = self.read_draft_data(draft_id)?;
         data.user = user;
         self.write_draft_data(data)
     }
 
-    fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+    async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy new configuration");
 
         MatcherConfigValidator::new().validate(config)?;
 
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
-            message: format!("Cannot create temporary directory. Err: {}", err),
+            message: format!("Cannot create temporary directory. Err: {:?}", err),
         })?;
         FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
 
         FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.root_path)?;
-        self.get_config()
+        self.get_config().await
     }
 }
 
@@ -194,7 +197,7 @@ impl FsMatcherConfigManager {
             std::fs::remove_dir_all(dest_dir.as_ref()).map_err(|err| {
                 MatcherError::InternalSystemError {
                     message: format!(
-                        "Cannot delete directory [{}]. Err: {}",
+                        "Cannot delete directory [{}]. Err: {:?}",
                         dest_dir.as_ref().display(),
                         err
                     ),
@@ -207,7 +210,7 @@ impl FsMatcherConfigManager {
         copy(source_dir.as_ref(), dest_dir.as_ref(), &copy_options)
             .map_err(|err| MatcherError::InternalSystemError {
                 message: format!(
-                    "Cannot copy configuration from [{}] [{}]. Err: {}",
+                    "Cannot copy configuration from [{}] [{}]. Err: {:?}",
                     source_dir.as_ref().display(),
                     dest_dir.as_ref().display(),
                     err
@@ -230,12 +233,12 @@ impl FsMatcherConfigManager {
                     let rule_path = current_path.join(&format!("{:09}0_{}.json", index, rule.name));
                     let rule_json = serde_json::to_string_pretty(rule).map_err(|err| {
                         MatcherError::InternalSystemError {
-                            message: format!("Cannot convert rule body to JSON. Err: {}", err),
+                            message: format!("Cannot convert rule body to JSON. Err: {:?}", err),
                         }
                     })?;
-                    fs_extra::file::write_all(&rule_path, &rule_json).map_err(|err| {
+                    write_all(&rule_path, &rule_json).map_err(|err| {
                         MatcherError::InternalSystemError {
-                            message: format!("Cannot save JSON rule to filesystem. Err: {}", err),
+                            message: format!("Cannot save JSON rule to filesystem. Err: {:?}", err),
                         }
                     })?
                 }
@@ -246,12 +249,12 @@ impl FsMatcherConfigManager {
 
                 let filter_json = serde_json::to_string_pretty(filter).map_err(|err| {
                     MatcherError::InternalSystemError {
-                        message: format!("Cannot convert filter body to JSON. Err: {}", err),
+                        message: format!("Cannot convert filter body to JSON. Err: {:?}", err),
                     }
                 })?;
-                fs_extra::file::write_all(&current_path.join("filter.json"), &filter_json)
+                write_all(&current_path.join("filter.json"), &filter_json)
                     .map_err(|err| MatcherError::InternalSystemError {
-                        message: format!("Cannot save JSON filter to filesystem. Err: {}", err),
+                        message: format!("Cannot save JSON filter to filesystem. Err: {:?}", err),
                     })?;
 
                 for node in nodes {
@@ -276,7 +279,7 @@ impl FsMatcherConfigManager {
         std::fs::create_dir_all(&current_path).map_err(|err| {
             MatcherError::InternalSystemError {
                 message: format!(
-                    "Cannot create directory [{}]. Err: {}",
+                    "Cannot create directory [{}]. Err: {:?}",
                     current_path.display(),
                     err
                 ),
@@ -289,10 +292,10 @@ impl FsMatcherConfigManager {
     fn read_draft_data(&self, draft_id: &str) -> Result<MatcherConfigDraftData, MatcherError> {
         let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id))
             .map_err(|err| MatcherError::ConfigurationError {
-                message: format!("Cannot read data for draft id [{}]. Err: {}", draft_id, err),
+                message: format!("Cannot read data for draft id [{}]. Err: {:?}", draft_id, err),
             })?;
         serde_json::from_str(&data_json).map_err(|err| MatcherError::ConfigurationError {
-            message: format!("Cannot parse JSON data for draft id [{}]. Err: {}", draft_id, err),
+            message: format!("Cannot parse JSON data for draft id [{}]. Err: {:?}", draft_id, err),
         })
     }
 
@@ -300,15 +303,15 @@ impl FsMatcherConfigManager {
         let data_json = serde_json::to_string_pretty(&data).map_err(|err| {
             MatcherError::ConfigurationError {
                 message: format!(
-                    "Cannot create JSON data for draft id [{}]. Err: {}",
+                    "Cannot create JSON data for draft id [{}]. Err: {:?}",
                     data.draft_id, err
                 ),
             }
         })?;
 
-        fs_extra::file::write_all(&self.get_draft_data_file_path(&data.draft_id), &data_json)
+        write_all(&self.get_draft_data_file_path(&data.draft_id), &data_json)
             .map_err(|err| MatcherError::ConfigurationError {
-                message: format!("Cannot read data for draft id [{}]. Err: {}", data.draft_id, err),
+                message: format!("Cannot read data for draft id [{}]. Err: {:?}", data.draft_id, err),
             })
     }
 }
@@ -317,33 +320,57 @@ fn current_ts_ms() -> i64 {
     Local::now().timestamp_millis()
 }
 
+fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
+    where
+        P: AsRef<Path>,
+{
+    let path = path.as_ref();
+    if path.exists() && !path.is_file() {
+        return Err(MatcherError::InternalSystemError {
+            message: format!("Path \"{:?}\" is not a file!", path),
+        })
+    }
+
+    let mut f = File::create(path).map_err(|err| MatcherError::ConfigurationError {
+        message: format!("Cannot write data. Err: {:?}", err),
+    })?;
+
+    f.write_all(content.as_bytes()).map_err(|err| MatcherError::ConfigurationError {
+        message: format!("Cannot write data. Err: {:?}", err),
+    })?;
+
+    f.flush().map_err(|err| MatcherError::ConfigurationError {
+        message: format!("Cannot write data. Err: {:?}", err),
+    })
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::config::MatcherConfigReader;
     use tempfile::TempDir;
 
-    #[test]
-    fn should_create_a_new_draft_cloning_from_current_config_with_root_filter(
+    #[tokio::test]
+    async fn should_create_a_new_draft_cloning_from_current_config_with_root_filter(
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let current_config = config_manager.get_config().unwrap();
+        let current_config = config_manager.get_config().await.unwrap();
 
         let user_1 = "user_1".to_owned();
 
         // Act
-        let result = config_manager.create_draft(user_1.clone()).unwrap();
+        let result = config_manager.create_draft(user_1.clone()).await.unwrap();
         let draft_config_path = config_manager.get_draft_config_dir_path(&result);
 
         // Assert
         assert_eq!(DRAFT_ID, &result);
         assert_eq!(
             current_config,
-            FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config()?
+            FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config().await?
         );
 
         // current_config must be a filter for this test
@@ -355,27 +382,27 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_create_a_new_draft_cloning_current_config_with_root_ruleset(
+    #[tokio::test]
+    async fn should_create_a_new_draft_cloning_current_config_with_root_ruleset(
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let current_config = config_manager.get_config().unwrap();
+        let current_config = config_manager.get_config().await.unwrap();
 
         let user_1 = "user_1".to_owned();
 
         // Act
-        let result = config_manager.create_draft(user_1.clone()).unwrap();
+        let result = config_manager.create_draft(user_1.clone()).await.unwrap();
         let draft_config_path = config_manager.get_draft_config_dir_path(&result);
 
         // Assert
         assert_eq!(DRAFT_ID, &result);
 
         // A default root filter should be automatically added
-        match FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config()? {
+        match FsMatcherConfigManager::new(draft_config_path.as_str(), "").get_config().await? {
             MatcherConfig::Filter { name, nodes, .. } => {
                 assert_eq!("root", name);
                 assert_eq!(1, nodes.len());
@@ -393,21 +420,21 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_return_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_return_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let current_ts_ms = current_ts_ms();
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/config_04");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let current_config = config_manager.get_config().unwrap();
+        let current_config = config_manager.get_config().await.unwrap();
 
         let user_1 = "user_1".to_owned();
 
         // Act
-        let result = config_manager.create_draft(user_1.clone()).unwrap();
-        let draft_content = config_manager.get_draft(&result)?;
+        let result = config_manager.create_draft(user_1.clone()).await.unwrap();
+        let draft_content = config_manager.get_draft(&result).await?;
 
         // Assert
         assert_eq!(current_config, draft_content.config);
@@ -418,8 +445,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn get_draft_should_return_error_if_draft_id_does_not_exists(
+    #[tokio::test]
+    async fn get_draft_should_return_error_if_draft_id_does_not_exists(
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
@@ -428,7 +455,7 @@ mod test {
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
         // Act
-        let result = config_manager.get_draft("Hello, World!");
+        let result = config_manager.get_draft("Hello, World!").await;
 
         // Assert
         assert!(result.is_err());
@@ -436,8 +463,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn get_drafts_should_return_all_draft_ids() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn get_drafts_should_return_all_draft_ids() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -447,11 +474,11 @@ mod test {
         let user_1 = "user_1".to_owned();
 
         // Act
-        let drafts_before_create = config_manager.get_drafts().unwrap();
-        let created_draft_id = config_manager.create_draft(user_1).unwrap();
-        let drafts_after_create = config_manager.get_drafts().unwrap();
-        config_manager.delete_draft(&created_draft_id).unwrap();
-        let drafts_after_delete = config_manager.get_drafts().unwrap();
+        let drafts_before_create = config_manager.get_drafts().await.unwrap();
+        let created_draft_id = config_manager.create_draft(user_1).await.unwrap();
+        let drafts_after_create = config_manager.get_drafts().await.unwrap();
+        config_manager.delete_draft(&created_draft_id).await.unwrap();
+        let drafts_after_delete = config_manager.get_drafts().await.unwrap();
 
         // Assert
         assert!(drafts_before_create.is_empty());
@@ -461,8 +488,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_return_delete_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_return_delete_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -471,21 +498,21 @@ mod test {
 
         let user_1 = "user_1".to_owned();
 
-        let created_draft_id = config_manager.create_draft(user_1).unwrap();
+        let created_draft_id = config_manager.create_draft(user_1).await.unwrap();
 
         // Act
-        config_manager.delete_draft(&created_draft_id).unwrap();
-        let second_delete_attempt_result = config_manager.delete_draft(&created_draft_id);
+        config_manager.delete_draft(&created_draft_id).await.unwrap();
+        let second_delete_attempt_result = config_manager.delete_draft(&created_draft_id).await;
 
         // Assert
         assert!(second_delete_attempt_result.is_err());
-        assert!(config_manager.get_drafts().unwrap().is_empty());
+        assert!(config_manager.get_drafts().await.unwrap().is_empty());
 
         Ok(())
     }
 
-    #[test]
-    fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
         let test_configurations = vec![
             "./test_resources/config_01",
             "./test_resources/config_02",
@@ -504,7 +531,7 @@ mod test {
 
             // Act
             let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-            let src_config = config_manager.get_config().unwrap();
+            let src_config = config_manager.get_config().await.unwrap();
 
             FsMatcherConfigManager::matcher_config_to_fs(
                 true,
@@ -517,7 +544,7 @@ mod test {
                 converted_matcher_config_path.to_str().unwrap(),
                 drafts_dir,
             );
-            let converted_config = config_manager.get_config().unwrap();
+            let converted_config = config_manager.get_config().await.unwrap();
 
             // Assert
             assert_eq!(src_config, converted_config);
@@ -526,8 +553,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_update_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_update_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -536,20 +563,20 @@ mod test {
 
         let new_config =
             FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
-                .get_config()
+                .get_config().await
                 .unwrap();
 
         let user_1 = "user_1".to_owned();
         let user_2 = "user_2".to_owned();
 
         // Act
-        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
-        let draft_before_update = config_manager.get_draft(&draft_id).unwrap();
+        let draft_id = config_manager.create_draft(user_1.clone()).await.unwrap();
+        let draft_before_update = config_manager.get_draft(&draft_id).await.unwrap();
 
         std::thread::sleep(std::time::Duration::from_millis(1));
 
-        config_manager.update_draft(&draft_id, user_2.clone(), &new_config).unwrap();
-        let draft_after_update = config_manager.get_draft(&draft_id).unwrap();
+        config_manager.update_draft(&draft_id, user_2.clone(), &new_config).await.unwrap();
+        let draft_after_update = config_manager.get_draft(&draft_id).await.unwrap();
 
         // Assert
         assert_eq!(&user_1, &draft_before_update.data.user);
@@ -562,8 +589,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_validate_draft_on_update() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_validate_draft_on_update() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -594,16 +621,16 @@ mod test {
         };
 
         let user_1 = "user_1".to_owned();
-        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
+        let draft_id = config_manager.create_draft(user_1.clone()).await.unwrap();
 
         // Act
         let update_result_1 = config_manager.update_draft(
             &draft_id,
             user_1.clone(),
             &config_with_invalid_filter_name,
-        );
+        ).await;
         let update_result_2 =
-            config_manager.update_draft(&draft_id, user_1.clone(), &config_with_invalid_rule_name);
+            config_manager.update_draft(&draft_id, user_1.clone(), &config_with_invalid_rule_name).await;
 
         // Assert
         assert!(update_result_1.is_err());
@@ -611,30 +638,30 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let config_before_deploy = config_manager.get_config().unwrap();
+        let config_before_deploy = config_manager.get_config().await.unwrap();
 
         let new_config =
             FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
-                .get_config()
+                .get_config().await
                 .unwrap();
 
         let user_1 = "user_1".to_owned();
         let user_2 = "user_2".to_owned();
 
         // Act
-        let draft_id = config_manager.create_draft(user_2.clone()).unwrap();
-        config_manager.update_draft(&draft_id, user_1.clone(), &new_config).unwrap();
+        let draft_id = config_manager.create_draft(user_2.clone()).await.unwrap();
+        config_manager.update_draft(&draft_id, user_1.clone(), &new_config).await.unwrap();
 
         // Act
-        let deploy_draft_content = config_manager.deploy_draft(&draft_id).unwrap();
-        let config_after_deploy = config_manager.get_config().unwrap();
+        let deploy_draft_content = config_manager.deploy_draft(&draft_id).await.unwrap();
+        let config_after_deploy = config_manager.get_config().await.unwrap();
 
         // Assert
         assert_ne!(config_before_deploy, config_after_deploy);
@@ -644,8 +671,8 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_take_over_a_draft() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_take_over_a_draft() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
@@ -655,12 +682,12 @@ mod test {
         let user_1 = "user_1".to_owned();
         let user_2 = "user_2".to_owned();
 
-        let draft_id = config_manager.create_draft(user_1.clone()).unwrap();
+        let draft_id = config_manager.create_draft(user_1.clone()).await.unwrap();
 
         // Act
-        let draft_before_take_over = config_manager.get_draft(&draft_id)?;
-        config_manager.draft_take_over(&draft_id, user_2.clone())?;
-        let draft_after_take_over = config_manager.get_draft(&draft_id)?;
+        let draft_before_take_over = config_manager.get_draft(&draft_id).await?;
+        config_manager.draft_take_over(&draft_id, user_2.clone()).await?;
+        let draft_after_take_over = config_manager.get_draft(&draft_id).await?;
 
         // Assert
         assert_eq!(user_1, draft_before_take_over.data.user);
@@ -670,25 +697,25 @@ mod test {
         Ok(())
     }
 
-    #[test]
-    fn should_deploy_a_new_config() -> Result<(), Box<dyn std::error::Error>> {
+    #[tokio::test]
+    async fn should_deploy_a_new_config() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules");
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
-        let config_before_deploy = config_manager.get_config().unwrap();
+        let config_before_deploy = config_manager.get_config().await.unwrap();
 
         let new_config =
             FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
-                .get_config()
+                .get_config().await
                 .unwrap();
 
         // Act
-        let deployed_config = config_manager.deploy_config(&new_config).unwrap();
+        let deployed_config = config_manager.deploy_config(&new_config).await.unwrap();
 
         // Assert
-        let config_after_deploy = config_manager.get_config().unwrap();
+        let config_after_deploy = config_manager.get_config().await.unwrap();
         assert_ne!(config_before_deploy, config_after_deploy);
         assert_eq!(deployed_config, config_after_deploy);
         assert_eq!(new_config, config_after_deploy);

@@ -140,7 +140,7 @@ impl SmartMonitoringExecutor {
             let response_json = response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
-                    "SmartMonitoringExecutor - Cannot extract response body. Err: {}",
+                    "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
                     err
                 ),
                 code: None,

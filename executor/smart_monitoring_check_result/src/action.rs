@@ -23,7 +23,7 @@ impl SimpleCreateAndProcess {
         serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
                 message: format!(
-                    "Invalid SimpleCreateAndProcess Action configuration. Err: {}",
+                    "Invalid SimpleCreateAndProcess Action configuration. Err: {:?}",
                     err
                 ),
             }

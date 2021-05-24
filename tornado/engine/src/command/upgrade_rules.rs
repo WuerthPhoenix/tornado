@@ -39,7 +39,7 @@ fn upgrade(
             for rule in rules {
                 for action in &mut rule.actions {
                     if let Err(err) = upgrade_action(action) {
-                        println!("Error Migrating {}. Err: {}", action.id, err);
+                        println!("Error Migrating {}. Err: {:?}", action.id, err);
                     }
                 }
             }

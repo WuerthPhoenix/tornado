@@ -32,8 +32,9 @@ pub enum DirType {
     FilterOrRuleset,
 }
 
+#[async_trait::async_trait]
 impl MatcherConfigReader for FsMatcherConfigManager {
-    fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
+    async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         FsMatcherConfigManager::read_from_root_dir(&self.root_path)
     }
 }
@@ -59,7 +60,7 @@ impl FsMatcherConfigManager {
                     Ok(result) => Ok(result),
                     Err(err) => {
                         debug!(
-                            "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {}",
+                            "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {:?}",
                             dir.as_ref().display(),
                             err
                         );
@@ -144,14 +145,14 @@ impl FsMatcherConfigManager {
             debug!("Loading rule from file: [{}]", path.display());
             let rule_body =
                 fs::read_to_string(&path).map_err(|e| MatcherError::ConfigurationError {
-                    message: format!("Unable to open the file [{}]. Err: {}", path.display(), e),
+                    message: format!("Unable to open the file [{}]. Err: {:?}", path.display(), e),
                 })?;
 
             trace!("Rule body: \n{}", rule_body);
             let mut rule =
                 Rule::from_json(&rule_body).map_err(|e| MatcherError::ConfigurationError {
                     message: format!(
-                        "Error building Rule from file [{}]. Err: {}",
+                        "Error building Rule from file [{}]. Err: {:?}",
                         path.display(),
                         e
                     ),
@@ -199,14 +200,14 @@ impl FsMatcherConfigManager {
             info!("Loading filter from file: [{}]", path.display());
             let filter_body =
                 fs::read_to_string(&path).map_err(|e| MatcherError::ConfigurationError {
-                    message: format!("Unable to open the file [{}]. Err: {}", path.display(), e),
+                    message: format!("Unable to open the file [{}]. Err: {:?}", path.display(), e),
                 })?;
 
             trace!("Filter [{}] body: \n{}", filename, filter_body);
             let filter =
                 Filter::from_json(&filter_body).map_err(|e| MatcherError::ConfigurationError {
                     message: format!(
-                        "Error building Filter from file [{}]. Err: {}",
+                        "Error building Filter from file [{}]. Err: {:?}",
                         path.display(),
                         e
                     ),
@@ -286,10 +287,10 @@ mod test {
     use super::*;
     use std::fs;
 
-    #[test]
-    fn should_read_rules_from_folder_sorting_by_filename() {
+    #[tokio::test]
+    async fn should_read_rules_from_folder_sorting_by_filename() {
         let path = "./test_resources/rules";
-        let config = FsMatcherConfigManager::new(path, "").get_config().unwrap();
+        let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
             MatcherConfig::Ruleset { name, rules } => {
@@ -308,10 +309,10 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_read_rules_from_empty_folder() {
+    #[tokio::test]
+    async fn should_read_rules_from_empty_folder() {
         let path = "./test_resources/config_empty";
-        let config = FsMatcherConfigManager::new(path, "").get_config().unwrap();
+        let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
             MatcherConfig::Ruleset { name, rules } => {
@@ -322,8 +323,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_read_filter_from_folder() {
+    #[tokio::test]
+    async fn should_read_filter_from_folder() {
         let path = "./test_resources/config_01";
         let config = FsMatcherConfigManager::read_from_dir("custom_name", path).unwrap();
 
@@ -352,24 +353,24 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
+    #[tokio::test]
+    async fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
         let path = "./test_resources/config_02";
         let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
 
         assert!(is_filter(&config, "root", 0));
     }
 
-    #[test]
-    fn should_read_filter_from_folder_with_many_subfolders() {
+    #[tokio::test]
+    async fn should_read_filter_from_folder_with_many_subfolders() {
         let path = "./test_resources/config_03";
         let config = FsMatcherConfigManager::read_from_dir("emails", path).unwrap();
 
         assert!(is_filter(&config, "emails", 2));
     }
 
-    #[test]
-    fn should_read_config_from_folder_recursively() {
+    #[tokio::test]
+    async fn should_read_config_from_folder_recursively() {
         let path = "./test_resources/config_04";
         let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
 
@@ -401,8 +402,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_create_implicit_filter_recursively() {
+    #[tokio::test]
+    async fn should_create_implicit_filter_recursively() {
         let path = "./test_resources/config_implicit_filter";
         let config = FsMatcherConfigManager::read_from_dir("implicit", path).unwrap();
         println!("{:?}", config);
@@ -439,8 +440,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_dir_type_filter_if_one_file_and_one_subdir() {
+    #[tokio::test]
+    async fn should_return_dir_type_filter_if_one_file_and_one_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -455,8 +456,8 @@ mod test {
         assert_eq!(Ok(DirType::Filter), result);
     }
 
-    #[test]
-    fn should_return_undetermined_dir_type_if_one_file_and_no_subdir() {
+    #[tokio::test]
+    async fn should_return_undetermined_dir_type_if_one_file_and_no_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -470,8 +471,8 @@ mod test {
         assert_eq!(Ok(DirType::FilterOrRuleset), result);
     }
 
-    #[test]
-    fn should_return_dir_type_rules_if_many_files_and_no_subdir() {
+    #[tokio::test]
+    async fn should_return_dir_type_rules_if_many_files_and_no_subdir() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -487,8 +488,8 @@ mod test {
         assert_eq!(Ok(DirType::Ruleset), result);
     }
 
-    #[test]
-    fn should_return_dir_type_filter_if_no_files_but_subdirs() {
+    #[tokio::test]
+    async fn should_return_dir_type_filter_if_no_files_but_subdirs() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -503,8 +504,8 @@ mod test {
         assert_eq!(Ok(DirType::Filter), result);
     }
 
-    #[test]
-    fn is_filter_dir_should_return_error_if_many_files_and_subdirs() {
+    #[tokio::test]
+    async fn is_filter_dir_should_return_error_if_many_files_and_subdirs() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
@@ -530,8 +531,8 @@ mod test {
         }
     }
 
-    #[test]
-    fn should_return_rule_name_from_file_name() {
+    #[tokio::test]
+    async fn should_return_rule_name_from_file_name() {
         // not valid names
         assert!(FsMatcherConfigManager::rule_name_from_filename("").is_err());
         assert!(FsMatcherConfigManager::rule_name_from_filename("1245345").is_err());

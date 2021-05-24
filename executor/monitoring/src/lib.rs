@@ -119,7 +119,7 @@ impl MonitoringExecutor {
     pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
         serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
-                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+                message: format!("Invalid Monitoring Action configuration. Err: {:?}", err),
             }
         })
     }

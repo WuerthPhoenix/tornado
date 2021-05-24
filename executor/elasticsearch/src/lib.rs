@@ -77,12 +77,12 @@ impl PemCertificateData {
     pub fn new_client(&self) -> Result<Client, ExecutorError> {
         let identity = Identity::from_pem(&self.certificate_with_private_key).map_err(|err| {
             ExecutorError::ConfigurationError {
-                message: format!("Error while creating client identity. Err: {}", err),
+                message: format!("Error while creating client identity. Err: {:?}", err),
             }
         })?;
         let ca_certificate = Certificate::from_pem(&self.ca_certificate).map_err(|err| {
             ExecutorError::ConfigurationError {
-                message: format!("Error while creating ca certificate. Err: {}", err),
+                message: format!("Error while creating ca certificate. Err: {:?}", err),
             }
         })?;
 
@@ -92,7 +92,7 @@ impl PemCertificateData {
             .use_rustls_tls()
             .build()
             .map_err(|err| ExecutorError::ConfigurationError {
-                message: format!("Error while building reqwest client. Err: {}", err),
+                message: format!("Error while building reqwest client. Err: {:?}", err),
             })
     }
 }
@@ -119,12 +119,12 @@ impl ElasticsearchExecutor {
 async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
     let mut file = tokio::fs::File::open(path).await.map_err(|err| {
         ExecutorError::ConfigurationError {
-            message: format!("Error while reading file {}. Err: {}", path, err),
+            message: format!("Error while reading file {}. Err: {:?}", path, err),
         }
     })?;
     file.read_to_end(buf).await.map_err(|err| {
         ExecutorError::ConfigurationError {
-            message: format!("Error while reading file {}. Err: {}", path, err),
+            message: format!("Error while reading file {}. Err: {:?}", path, err),
         }
     })
 }
@@ -168,7 +168,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                 .and_then(serde_json::from_value)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
-                    message: format!("Error while deserializing {}. Err: {}", AUTH_KEY, err),
+                    message: format!("Error while deserializing {}. Err: {:?}", AUTH_KEY, err),
                     code: None,
                 })?;
             Cow::Owned(es_authentication.new_client().await?)
@@ -186,7 +186,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
         let res = client.post(&endpoint).json(&data).send().await.map_err(|err| {
             ExecutorError::ActionExecutionError {
                 can_retry: true,
-                message: format!("Error while sending document to Elasticsearch. Err: {}", err),
+                message: format!("Error while sending document to Elasticsearch. Err: {:?}", err),
                 code: None,
             }
         })?;
