@@ -34,15 +34,15 @@ impl Actor for UdsClientActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("UdsClientActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
-        let mut delay_until = time::Instant::now();
+        let mut sleep_until = time::Instant::now();
         if self.restarted {
-            delay_until += time::Duration::new(1, 0)
+            sleep_until += time::Duration::new(1, 0)
         }
         let path = (&self.socket_path).clone();
 
         ctx.wait(
             async move {
-                time::delay_until(delay_until).await;
+                time::sleep_until(sleep_until).await;
                 UnixStream::connect(path).await.map_err(|_| ())
             }
             .into_actor(self)

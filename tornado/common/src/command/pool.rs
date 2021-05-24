@@ -119,7 +119,7 @@ mod test {
                 let exec_tx_clone = exec_tx_clone.clone();
                 async move {
                     println!("processing message: [{:?}]", action);
-                    time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
+                    time::sleep_until(time::Instant::now() + time::Duration::from_millis(100))
                         .await;
                     println!("end processing message: [{:?}]", action);
 
@@ -142,7 +142,7 @@ mod test {
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
                 assert!(exec_rx.len() <= threads);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
+                time::sleep_until(time::Instant::now() + time::Duration::from_millis(1)).await;
             });
         }
 
@@ -169,7 +169,7 @@ mod test {
                     let exec_tx_clone = exec_tx_clone.clone();
                     async move {
                         println!("processing message: [{:?}]", action);
-                        time::delay_until(time::Instant::now() + time::Duration::from_millis(100))
+                        time::sleep_until(time::Instant::now() + time::Duration::from_millis(100))
                             .await;
                         println!("end processing message: [{:?}]", action);
 
@@ -193,7 +193,7 @@ mod test {
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
                 assert!(exec_rx.len() <= threads);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(1)).await;
+                time::sleep_until(time::Instant::now() + time::Duration::from_millis(1)).await;
             });
         }
 
@@ -213,7 +213,7 @@ mod test {
         let sender = Arc::new(CommandMutPool::new(threads, move || {
             CallbackCommandMut::new(move |action: Arc<Action>| async move {
                 println!("processing message: [{:?}]", action);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
+                time::sleep_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
                 if action.id.contains("err") {
                     Err(ExecutorError::SenderError { message: action.id.to_owned() })
@@ -254,7 +254,7 @@ mod test {
             threads,
             CallbackCommand::new(move |action: Arc<Action>| async move {
                 println!("processing message: [{:?}]", action);
-                time::delay_until(time::Instant::now() + time::Duration::from_millis(10)).await;
+                time::sleep_until(time::Instant::now() + time::Duration::from_millis(10)).await;
                 println!("end processing message: [{:?}]", action);
                 if action.id.contains("err") {
                     Err(TornadoError::SenderError { message: action.id.to_owned() })

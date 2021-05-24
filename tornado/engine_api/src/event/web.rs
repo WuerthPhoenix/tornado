@@ -98,11 +98,11 @@ mod test {
         // Act
         let request = test::TestRequest::post()
             .uri("/v1_beta/event/current/send")
-            .header(header::CONTENT_TYPE, "application/json")
-            .header(
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"])).unwrap(),
-            )
+            ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
 
@@ -132,12 +132,12 @@ mod test {
         // Act
         let request = test::TestRequest::post()
             .uri("/v1_beta/event/drafts/a125/send")
-            .header(header::CONTENT_TYPE, "application/json")
-            .header(
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new(DRAFT_OWNER_ID, vec!["edit"]))
                     .unwrap(),
-            )
+            ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
 

@@ -368,7 +368,7 @@ pub async fn daemon(
 
         App::new()
             .wrap(Logger::default())
-            .wrap(Cors::new().max_age(3600).finish())
+            .wrap(Cors::default().max_age(3600))
             .service(
                 web::scope("/api")
                     .app_data(

@@ -7,10 +7,10 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.10"
-actix-web = "3"
-async-trait = "0.1.41"
-base64 = "0.13.0"
+actix = "0.11"
+actix-web = "=4.0.0-beta.5"
+async-trait = "0.1"
+base64 = "0.13"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -20,4 +20,4 @@ tornado_engine_api_dto = { path = "../engine_api_dto", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 
 [dev-dependencies]
-actix-rt = "1.1.1"
+actix-rt = "2.2"

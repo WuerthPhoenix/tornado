@@ -37,14 +37,14 @@ impl Actor for TcpClientActor {
         let socket_address =
             net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
 
-        let mut delay_until = time::Instant::now();
+        let mut sleep_until = time::Instant::now();
         if self.restarted {
-            delay_until += time::Duration::new(1, 0)
+            sleep_until += time::Duration::new(1, 0)
         }
 
         ctx.wait(
             async move {
-                time::delay_until(delay_until).await;
+                time::sleep_until(sleep_until).await;
                 TcpStream::connect(&socket_address).await
             }
             .into_actor(self)
