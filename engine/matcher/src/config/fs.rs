@@ -3,10 +3,12 @@ use crate::config::rule::Rule;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use log::*;
+use tokio::fs::DirEntry;
 use std::ffi::OsStr;
-use std::fs;
-use std::fs::DirEntry;
+use std::future::Future;
 use std::path::{Path, PathBuf};
+use std::pin::Pin;
+use tokio::fs::{read_dir, read_to_string};
 
 pub mod editor;
 
@@ -35,40 +37,42 @@ pub enum DirType {
 #[async_trait::async_trait(?Send)]
 impl MatcherConfigReader for FsMatcherConfigManager {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
-        FsMatcherConfigManager::read_from_root_dir(&self.root_path)
+        FsMatcherConfigManager::read_from_root_dir(PathBuf::from(&self.root_path)).await
     }
 }
 
 impl FsMatcherConfigManager {
-    fn read_from_root_dir<P: AsRef<Path>>(dir: P) -> Result<MatcherConfig, MatcherError> {
-        FsMatcherConfigManager::read_from_dir(ROOT_NODE_NAME, dir)
+    async fn read_from_root_dir(dir: PathBuf) -> Result<MatcherConfig, MatcherError> {
+        FsMatcherConfigManager::read_from_dir(ROOT_NODE_NAME.to_owned(), dir).await
     }
 
-    fn read_from_dir<P: AsRef<Path>>(
-        node_name: &str,
-        dir: P,
-    ) -> Result<MatcherConfig, MatcherError> {
-        match FsMatcherConfigManager::detect_dir_type(dir.as_ref())? {
-            DirType::Filter => {
-                FsMatcherConfigManager::read_filter_from_dir(node_name, dir.as_ref())
-            }
-            DirType::Ruleset => {
-                FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref())
-            }
-            DirType::FilterOrRuleset => {
-                match FsMatcherConfigManager::read_ruleset_from_dir(node_name, dir.as_ref()) {
-                    Ok(result) => Ok(result),
-                    Err(err) => {
-                        debug!(
-                            "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {:?}",
-                            dir.as_ref().display(),
-                            err
-                        );
-                        FsMatcherConfigManager::read_filter_from_dir(node_name, dir.as_ref())
+    fn read_from_dir(
+        node_name: String,
+        dir: PathBuf,
+    ) -> Pin<Box<dyn Future<Output = Result<MatcherConfig, MatcherError>>>> {
+        Box::pin(async move {
+            match FsMatcherConfigManager::detect_dir_type(&dir).await? {
+                DirType::Filter => {
+                    FsMatcherConfigManager::read_filter_from_dir(&node_name, &dir).await
+                }
+                DirType::Ruleset => {
+                    FsMatcherConfigManager::read_ruleset_from_dir(&node_name, &dir).await
+                }
+                DirType::FilterOrRuleset => {
+                    match FsMatcherConfigManager::read_ruleset_from_dir(&node_name, &dir).await {
+                        Ok(result) => Ok(result),
+                        Err(err) => {
+                            debug!(
+                                "Cannot read path {} as ruleset. Try parsing it as Filter. Err: {:?}",
+                                dir.display(),
+                                err
+                            );
+                            FsMatcherConfigManager::read_filter_from_dir(&node_name, &dir).await
+                        }
                     }
                 }
             }
-        }
+        })
     }
 
     // Returns whether the directory contains a filter. Otherwise it contains rules.
@@ -76,8 +80,8 @@ impl FsMatcherConfigManager {
     // - It contains a filter if there max one json file AND at least one subdirectory. The result is true.
     // - It contains a rule set if there are no subdirectories. The result is false.
     // - It returns an error in every other case.
-    fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
-        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
+    async fn detect_dir_type<P: AsRef<Path>>(dir: P) -> Result<DirType, MatcherError> {
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref()).await?;
 
         let mut subdirectories_count = 0;
         let mut json_files_count = 0;
@@ -123,11 +127,11 @@ impl FsMatcherConfigManager {
         }
     }
 
-    fn read_ruleset_from_dir<P: AsRef<Path>>(
+    async fn read_ruleset_from_dir<P: AsRef<Path>>(
         node_name: &str,
         dir: P,
     ) -> Result<MatcherConfig, MatcherError> {
-        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref()).await?;
 
         let mut rules = vec![];
 
@@ -144,7 +148,7 @@ impl FsMatcherConfigManager {
 
             debug!("Loading rule from file: [{}]", path.display());
             let rule_body =
-                fs::read_to_string(&path).map_err(|e| MatcherError::ConfigurationError {
+                read_to_string(&path).await.map_err(|e| MatcherError::ConfigurationError {
                     message: format!("Unable to open the file [{}]. Err: {:?}", path.display(), e),
                 })?;
 
@@ -169,11 +173,11 @@ impl FsMatcherConfigManager {
         Ok(MatcherConfig::Ruleset { name: node_name.to_owned(), rules })
     }
 
-    fn read_filter_from_dir<P: AsRef<Path>>(
+    async fn read_filter_from_dir<P: AsRef<Path>>(
         node_name: &str,
         dir: P,
     ) -> Result<MatcherConfig, MatcherError> {
-        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref())?;
+        let paths = FsMatcherConfigManager::read_dir_entries(dir.as_ref()).await?;
 
         let mut nodes = vec![];
         let mut filters = vec![];
@@ -187,7 +191,7 @@ impl FsMatcherConfigManager {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call FsMatcherConfigManager::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.push(FsMatcherConfigManager::read_from_dir(filename, path.as_path())?);
+                nodes.push(FsMatcherConfigManager::read_from_dir(filename.to_owned(), path.clone()).await?);
                 continue;
             }
 
@@ -199,7 +203,7 @@ impl FsMatcherConfigManager {
 
             info!("Loading filter from file: [{}]", path.display());
             let filter_body =
-                fs::read_to_string(&path).map_err(|e| MatcherError::ConfigurationError {
+                read_to_string(&path).await.map_err(|e| MatcherError::ConfigurationError {
                     message: format!("Unable to open the file [{}]. Err: {:?}", path.display(), e),
                 })?;
 
@@ -237,17 +241,31 @@ impl FsMatcherConfigManager {
         })
     }
 
-    fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
-        let mut paths: Vec<_> =
-            fs::read_dir(dir.as_ref()).and_then(Iterator::collect).map_err(|e| {
-                MatcherError::ConfigurationError {
-                    message: format!(
-                        "Error reading from config path [{}]: {}",
-                        dir.as_ref().display(),
-                        e
-                    ),
-                }
-            })?;
+    async fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+        let mut paths = vec![];
+
+        let mut read_dir = read_dir(dir.as_ref()).await.map_err(|e| {
+            MatcherError::ConfigurationError {
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
+            }
+        })?;
+    
+        while let Some(entry) = read_dir.next_entry().await.map_err(|e| {
+            MatcherError::ConfigurationError {
+                message: format!(
+                    "Error reading from config path [{}]: {}",
+                    dir.as_ref().display(),
+                    e
+                ),
+            }
+        })? {
+            paths.push(entry);
+        };
+        
         // Sort by filename
         paths.sort_by_key(DirEntry::path);
         Ok(paths)
@@ -326,7 +344,7 @@ mod test {
     #[tokio::test]
     async fn should_read_filter_from_folder() {
         let path = "./test_resources/config_01";
-        let config = FsMatcherConfigManager::read_from_dir("custom_name", path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("custom_name".to_owned(), path.into()).await.unwrap();
 
         assert!(is_filter(&config, "custom_name", 1));
     }
@@ -356,7 +374,7 @@ mod test {
     #[tokio::test]
     async fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
         let path = "./test_resources/config_02";
-        let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         assert!(is_filter(&config, "root", 0));
     }
@@ -364,7 +382,7 @@ mod test {
     #[tokio::test]
     async fn should_read_filter_from_folder_with_many_subfolders() {
         let path = "./test_resources/config_03";
-        let config = FsMatcherConfigManager::read_from_dir("emails", path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("emails".to_owned(), path.into()).await.unwrap();
 
         assert!(is_filter(&config, "emails", 2));
     }
@@ -372,7 +390,7 @@ mod test {
     #[tokio::test]
     async fn should_read_config_from_folder_recursively() {
         let path = "./test_resources/config_04";
-        let config = FsMatcherConfigManager::read_from_root_dir(path).unwrap();
+        let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         println!("{:?}", config);
 
@@ -405,7 +423,7 @@ mod test {
     #[tokio::test]
     async fn should_create_implicit_filter_recursively() {
         let path = "./test_resources/config_implicit_filter";
-        let config = FsMatcherConfigManager::read_from_dir("implicit", path).unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("implicit".to_owned(), path.into()).await.unwrap();
         println!("{:?}", config);
 
         assert!(is_filter(&config, "implicit", 2));
@@ -450,7 +468,7 @@ mod test {
         fs::File::create(&format!("{}/file.json", dir)).unwrap();
 
         // Act
-        let result = FsMatcherConfigManager::detect_dir_type(&dir);
+        let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
 
         // Assert
         assert_eq!(Ok(DirType::Filter), result);
@@ -465,7 +483,7 @@ mod test {
         fs::File::create(&format!("{}/file.json", dir)).unwrap();
 
         // Act
-        let result = FsMatcherConfigManager::detect_dir_type(&dir);
+        let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
 
         // Assert
         assert_eq!(Ok(DirType::FilterOrRuleset), result);
@@ -482,7 +500,7 @@ mod test {
         fs::File::create(&format!("{}/file_03.json", dir)).unwrap();
 
         // Act
-        let result = FsMatcherConfigManager::detect_dir_type(&dir);
+        let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
 
         // Assert
         assert_eq!(Ok(DirType::Ruleset), result);
@@ -498,7 +516,7 @@ mod test {
         fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
 
         // Act
-        let result = FsMatcherConfigManager::detect_dir_type(&dir);
+        let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
 
         // Assert
         assert_eq!(Ok(DirType::Filter), result);
@@ -516,7 +534,7 @@ mod test {
         fs::File::create(&format!("{}/file2.json", dir)).unwrap();
 
         // Act
-        let result = FsMatcherConfigManager::detect_dir_type(&dir);
+        let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
 
         // Assert
         assert!(result.is_err());

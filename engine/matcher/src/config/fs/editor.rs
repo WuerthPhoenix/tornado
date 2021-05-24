@@ -26,7 +26,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         if path.exists() {
             let mut result = vec![];
 
-            for entry in FsMatcherConfigManager::read_dir_entries(path)? {
+            for entry in FsMatcherConfigManager::read_dir_entries(path).await? {
                 let path = entry.path();
                 if path.is_dir() {
                     let filename = FsMatcherConfigManager::filename(&path)?;
@@ -44,7 +44,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         debug!("Get draft with id {}", draft_id);
 
         let config =
-            FsMatcherConfigManager::read_from_root_dir(&self.get_draft_config_dir_path(draft_id))?;
+            FsMatcherConfigManager::read_from_root_dir((&self.get_draft_config_dir_path(draft_id)).into()).await?;
         let data = self.read_draft_data(draft_id).await?;
 
         Ok(MatcherConfigDraft { config, data })
