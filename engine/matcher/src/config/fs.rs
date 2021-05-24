@@ -32,7 +32,7 @@ pub enum DirType {
     FilterOrRuleset,
 }
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl MatcherConfigReader for FsMatcherConfigManager {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         FsMatcherConfigManager::read_from_root_dir(&self.root_path)

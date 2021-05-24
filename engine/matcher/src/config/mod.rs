@@ -59,13 +59,13 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
 
 /// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 pub trait MatcherConfigReader: Sync + Send {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
 }
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 pub trait MatcherConfigEditor: Sync + Send {
     /// Returns the list of available drafts
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;

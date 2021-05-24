@@ -9,15 +9,16 @@ use crate::validator::MatcherConfigValidator;
 use chrono::Local;
 use fs_extra::dir::*;
 use log::*;
+use tokio::{fs::{File, create_dir_all, remove_dir_all}, io::AsyncWriteExt};
 use std::path::{Path, PathBuf};
-use std::fs::File;
-use std::io::Write;
+use std::future::Future;
+use std::pin::Pin;
 
 const DRAFT_ID: &str = "draft_001";
 const DRAFT_CONFIG_DIR: &str = "config";
 const DRAFT_DATA_FILE: &str = "data.json";
 
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 impl MatcherConfigEditor for FsMatcherConfigManager {
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let path = Path::new(&self.drafts_path);
@@ -44,7 +45,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         let config =
             FsMatcherConfigManager::read_from_root_dir(&self.get_draft_config_dir_path(draft_id))?;
-        let data = self.read_draft_data(draft_id)?;
+        let data = self.read_draft_data(draft_id).await?;
 
         Ok(MatcherConfigDraft { config, data })
     }
@@ -56,7 +57,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         let draft_path = self.get_draft_path(&draft_id);
         if Path::new(&draft_path).exists() {
-            std::fs::remove_dir_all(&draft_path).map_err(|err| {
+            remove_dir_all(&draft_path).await.map_err(|err| {
                 MatcherError::InternalSystemError {
                     message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
                 }
@@ -87,16 +88,16 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         FsMatcherConfigManager::matcher_config_to_fs(
             true,
-            &self.get_draft_config_dir_path(&draft_id),
-            &current_config,
-        )?;
+            PathBuf::from(&self.get_draft_config_dir_path(&draft_id)),
+            current_config,
+        ).await?;
 
         self.write_draft_data(MatcherConfigDraftData {
             user,
             updated_ts_ms: current_ts_ms,
             created_ts_ms: current_ts_ms,
             draft_id: draft_id.clone(),
-        })?;
+        }).await?;
 
         debug!("Created new draft with id {}", draft_id);
         Ok(draft_id)
@@ -115,18 +116,18 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
             message: format!("Cannot create temporary directory. Err: {:?}", err),
         })?;
-        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
+        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path().to_owned(), config.clone()).await?;
 
         FsMatcherConfigManager::copy_and_override(
             tempdir.path(),
             &self.get_draft_config_dir_path(&draft_id),
-        )?;
+        ).await?;
 
-        let mut data = self.read_draft_data(draft_id)?;
+        let mut data = self.read_draft_data(draft_id).await?;
         data.user = user;
         data.updated_ts_ms = current_ts_ms();
 
-        self.write_draft_data(data)
+        self.write_draft_data(data).await
     }
 
     async fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
@@ -141,7 +142,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         let draft_path = self.get_draft_path(&draft_id);
 
         if Path::new(&draft_path).exists() {
-            std::fs::remove_dir_all(&draft_path).map_err(|err| MatcherError::InternalSystemError {
+            remove_dir_all(&draft_path).await.map_err(|err| MatcherError::InternalSystemError {
                 message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
             })
         } else {
@@ -156,9 +157,9 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
     async fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError> {
         info!("User [{}] asks to take over draft with id {}", user, draft_id);
-        let mut data = self.read_draft_data(draft_id)?;
+        let mut data = self.read_draft_data(draft_id).await?;
         data.user = user;
-        self.write_draft_data(data)
+        self.write_draft_data(data).await
     }
 
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
@@ -169,9 +170,9 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
             message: format!("Cannot create temporary directory. Err: {:?}", err),
         })?;
-        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path(), config)?;
+        FsMatcherConfigManager::matcher_config_to_fs(true, tempdir.path().to_owned(), config.clone()).await?;
 
-        FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.root_path)?;
+        FsMatcherConfigManager::copy_and_override(tempdir.path(), &self.root_path).await?;
         self.get_config().await
     }
 }
@@ -189,12 +190,12 @@ impl FsMatcherConfigManager {
         format!("{}/{}/{}", self.drafts_path, draft_id, DRAFT_DATA_FILE)
     }
 
-    fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
+    async fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
         source_dir: S,
         dest_dir: D,
     ) -> Result<(), MatcherError> {
         if dest_dir.as_ref().exists() {
-            std::fs::remove_dir_all(dest_dir.as_ref()).map_err(|err| {
+            remove_dir_all(dest_dir.as_ref()).await.map_err(|err| {
                 MatcherError::InternalSystemError {
                     message: format!(
                         "Cannot delete directory [{}]. Err: {:?}",
@@ -219,53 +220,55 @@ impl FsMatcherConfigManager {
             .map(|_| ())
     }
 
-    fn matcher_config_to_fs<P: AsRef<Path>>(
+    fn matcher_config_to_fs(
         is_root_node: bool,
-        root_path: P,
-        config: &MatcherConfig,
-    ) -> Result<(), MatcherError> {
-        match config {
-            MatcherConfig::Ruleset { name, rules } => {
-                let current_path =
-                    FsMatcherConfigManager::create_node_dir(is_root_node, root_path, name)?;
+        root_path: PathBuf,
+        config: MatcherConfig,
+    ) -> Pin<Box<dyn Future<Output = Result<(), MatcherError>>>> {
+        Box::pin(async move {
+            match config {
+                MatcherConfig::Ruleset { name, rules } => {
+                    let current_path =
+                        FsMatcherConfigManager::create_node_dir(is_root_node, root_path, &name).await?;
 
-                for (index, rule) in rules.iter().enumerate() {
-                    let rule_path = current_path.join(&format!("{:09}0_{}.json", index, rule.name));
-                    let rule_json = serde_json::to_string_pretty(rule).map_err(|err| {
-                        MatcherError::InternalSystemError {
-                            message: format!("Cannot convert rule body to JSON. Err: {:?}", err),
-                        }
-                    })?;
-                    write_all(&rule_path, &rule_json).map_err(|err| {
-                        MatcherError::InternalSystemError {
-                            message: format!("Cannot save JSON rule to filesystem. Err: {:?}", err),
-                        }
-                    })?
-                }
-            }
-            MatcherConfig::Filter { name, filter, nodes } => {
-                let current_path =
-                    FsMatcherConfigManager::create_node_dir(is_root_node, root_path, name)?;
-
-                let filter_json = serde_json::to_string_pretty(filter).map_err(|err| {
-                    MatcherError::InternalSystemError {
-                        message: format!("Cannot convert filter body to JSON. Err: {:?}", err),
+                    for (index, rule) in rules.iter().enumerate() {
+                        let rule_path = current_path.join(&format!("{:09}0_{}.json", index, rule.name));
+                        let rule_json = serde_json::to_string_pretty(rule).map_err(|err| {
+                            MatcherError::InternalSystemError {
+                                message: format!("Cannot convert rule body to JSON. Err: {:?}", err),
+                            }
+                        })?;
+                        write_all(&rule_path, &rule_json).await.map_err(|err| {
+                            MatcherError::InternalSystemError {
+                                message: format!("Cannot save JSON rule to filesystem. Err: {:?}", err),
+                            }
+                        })?
                     }
-                })?;
-                write_all(&current_path.join("filter.json"), &filter_json)
-                    .map_err(|err| MatcherError::InternalSystemError {
-                        message: format!("Cannot save JSON filter to filesystem. Err: {:?}", err),
-                    })?;
+                }
+                MatcherConfig::Filter { name, filter, nodes } => {
+                    let current_path =
+                        FsMatcherConfigManager::create_node_dir(is_root_node, root_path, &name).await?;
 
-                for node in nodes {
-                    FsMatcherConfigManager::matcher_config_to_fs(false, &current_path, node)?
+                    let filter_json = serde_json::to_string_pretty(&filter).map_err(|err| {
+                        MatcherError::InternalSystemError {
+                            message: format!("Cannot convert filter body to JSON. Err: {:?}", err),
+                        }
+                    })?;
+                    write_all(&current_path.join("filter.json"), &filter_json).await
+                        .map_err(|err| MatcherError::InternalSystemError {
+                            message: format!("Cannot save JSON filter to filesystem. Err: {:?}", err),
+                        })?;
+
+                    for node in nodes {
+                        FsMatcherConfigManager::matcher_config_to_fs(false, current_path.clone(), node).await?
+                    }
                 }
             }
-        }
-        Ok(())
+            Ok(())
+        })
     }
 
-    fn create_node_dir<P: AsRef<Path>>(
+    async fn create_node_dir<P: AsRef<Path>>(
         is_root_node: bool,
         root_path: P,
         node_name: &str,
@@ -276,7 +279,7 @@ impl FsMatcherConfigManager {
             root_path.as_ref().join(&node_name)
         };
 
-        std::fs::create_dir_all(&current_path).map_err(|err| {
+        create_dir_all(&current_path).await.map_err(|err| {
             MatcherError::InternalSystemError {
                 message: format!(
                     "Cannot create directory [{}]. Err: {:?}",
@@ -289,7 +292,7 @@ impl FsMatcherConfigManager {
         Ok(current_path)
     }
 
-    fn read_draft_data(&self, draft_id: &str) -> Result<MatcherConfigDraftData, MatcherError> {
+    async fn read_draft_data(&self, draft_id: &str) -> Result<MatcherConfigDraftData, MatcherError> {
         let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id))
             .map_err(|err| MatcherError::ConfigurationError {
                 message: format!("Cannot read data for draft id [{}]. Err: {:?}", draft_id, err),
@@ -299,7 +302,7 @@ impl FsMatcherConfigManager {
         })
     }
 
-    fn write_draft_data(&self, data: MatcherConfigDraftData) -> Result<(), MatcherError> {
+    async fn write_draft_data(&self, data: MatcherConfigDraftData) -> Result<(), MatcherError> {
         let data_json = serde_json::to_string_pretty(&data).map_err(|err| {
             MatcherError::ConfigurationError {
                 message: format!(
@@ -309,7 +312,7 @@ impl FsMatcherConfigManager {
             }
         })?;
 
-        write_all(&self.get_draft_data_file_path(&data.draft_id), &data_json)
+        write_all(&self.get_draft_data_file_path(&data.draft_id), &data_json).await
             .map_err(|err| MatcherError::ConfigurationError {
                 message: format!("Cannot read data for draft id [{}]. Err: {:?}", data.draft_id, err),
             })
@@ -320,7 +323,7 @@ fn current_ts_ms() -> i64 {
     Local::now().timestamp_millis()
 }
 
-fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
+async fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
     where
         P: AsRef<Path>,
 {
@@ -331,15 +334,15 @@ fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
         })
     }
 
-    let mut f = File::create(path).map_err(|err| MatcherError::ConfigurationError {
+    let mut f = File::create(path).await.map_err(|err| MatcherError::ConfigurationError {
         message: format!("Cannot write data. Err: {:?}", err),
     })?;
 
-    f.write_all(content.as_bytes()).map_err(|err| MatcherError::ConfigurationError {
+    f.write_all(content.as_bytes()).await.map_err(|err| MatcherError::ConfigurationError {
         message: format!("Cannot write data. Err: {:?}", err),
     })?;
 
-    f.flush().map_err(|err| MatcherError::ConfigurationError {
+    f.flush().await.map_err(|err| MatcherError::ConfigurationError {
         message: format!("Cannot write data. Err: {:?}", err),
     })
 }
@@ -535,9 +538,9 @@ mod test {
 
             FsMatcherConfigManager::matcher_config_to_fs(
                 true,
-                &converted_matcher_config_path,
-                &src_config,
-            )
+                PathBuf::from(&converted_matcher_config_path),
+                src_config.clone(),
+            ).await
             .unwrap();
 
             let config_manager = FsMatcherConfigManager::new(
