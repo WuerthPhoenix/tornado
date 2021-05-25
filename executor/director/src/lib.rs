@@ -92,7 +92,7 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
-    pub fn perform_request(&self, director_action: DirectorAction) -> Result<(), ExecutorError> {
+    pub async fn perform_request(&self, director_action: DirectorAction<'_>) -> Result<(), ExecutorError> {
         let mut url = format!(
             "{}/{}",
             &self.api_client.server_api_url,
@@ -111,12 +111,13 @@ impl DirectorExecutor {
 
         trace!("DirectorExecutor - calling url: {}", url);
 
-        let mut response = client
+        let response = client
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
             .json(&director_action.payload)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
@@ -125,7 +126,7 @@ impl DirectorExecutor {
 
         let response_status = response.status();
 
-        let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
+        let response_body = response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
             code: None,
@@ -157,7 +158,7 @@ impl StatelessExecutor for DirectorExecutor {
 
         let action = self.parse_action(&action)?;
 
-        self.perform_request(action)
+        self.perform_request(action).await
     }
 }
 

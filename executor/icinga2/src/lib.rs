@@ -58,13 +58,13 @@ impl Icinga2Executor {
         }
     }
 
-    pub fn perform_request(&self, icinga2_action: &Icinga2Action) -> Result<(), ExecutorError> {
-        let mut response =
-            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload)?;
+    pub async fn perform_request<'a>(&self, icinga2_action: &'a Icinga2Action<'a>) -> Result<(), ExecutorError> {
+        let response =
+            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload).await?;
 
         let response_status = response.status();
 
-        let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
+        let response_body = response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
             code: None,
@@ -95,7 +95,7 @@ impl StatelessExecutor for Icinga2Executor {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(&action)?;
 
-        self.perform_request(&action)
+        self.perform_request(&action).await
     }
 }
 

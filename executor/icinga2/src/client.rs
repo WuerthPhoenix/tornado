@@ -39,7 +39,7 @@ impl ApiClient {
         Ok(ApiClient { server_api_url, http_auth_header, client })
     }
 
-    fn post<T: Serialize + ?Sized>(
+    async fn post<T: Serialize + ?Sized>(
         &self,
         icinga2_api_name: &str,
         payload: &T,
@@ -55,6 +55,7 @@ impl ApiClient {
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .json(payload)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {}", err),
@@ -62,7 +63,7 @@ impl ApiClient {
             })
     }
 
-    fn get(&self, icinga2_api_name: &str) -> Result<Response, ExecutorError> {
+    async fn get(&self, icinga2_api_name: &str) -> Result<Response, ExecutorError> {
         let url = format!("{}{}", &self.server_api_url, icinga2_api_name);
         let http_auth_header = &self.http_auth_header;
 
@@ -73,6 +74,7 @@ impl ApiClient {
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {}", err),
@@ -80,25 +82,25 @@ impl ApiClient {
             })
     }
 
-    pub fn api_get_objects_host(&self, host_name: &str) -> Result<Response, ExecutorError> {
-        self.get(&format!("/v1/objects/hosts/{}", host_name))
+    pub async fn api_get_objects_host(&self, host_name: &str) -> Result<Response, ExecutorError> {
+        self.get(&format!("/v1/objects/hosts/{}", host_name)).await
     }
 
-    pub fn api_get_objects_service(
+    pub async fn api_get_objects_service(
         &self,
         host_name: &str,
         service_name: &str,
     ) -> Result<Response, ExecutorError> {
-        self.get(&format!("/v1/objects/services/{}!{}", host_name, service_name))
+        self.get(&format!("/v1/objects/services/{}!{}", host_name, service_name)).await
     }
 
-    pub fn api_post_action<T: Serialize + ?Sized>(
+    pub async fn api_post_action<T: Serialize + ?Sized>(
         &self,
         icinga2_action_name: &str,
         payload: &T,
     ) -> Result<Response, ExecutorError> {
         let url = format!("/v1/actions/{}", icinga2_action_name);
-        self.post(&url, payload)
+        self.post(&url, payload).await
     }
 }
 

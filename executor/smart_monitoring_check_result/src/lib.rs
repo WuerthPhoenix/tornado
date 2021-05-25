@@ -2,9 +2,9 @@ use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
 use serde_json::Value;
-use std::sync::Arc;
+use std::{future::Future, pin::Pin, sync::Arc};
 use std::time::Duration;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, Payload};
 use tornado_common_api::RetriableError;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
@@ -26,7 +26,7 @@ pub mod migration;
 #[derive(Clone)]
 pub struct SmartMonitoringExecutor {
     config: SmartMonitoringCheckResultConfig,
-    icinga_executor: Icinga2Executor,
+    icinga_executor: Arc<Icinga2Executor>,
     director_executor: DirectorExecutor,
 }
 
@@ -45,18 +45,18 @@ impl SmartMonitoringExecutor {
     ) -> Result<SmartMonitoringExecutor, ExecutorError> {
         Ok(SmartMonitoringExecutor {
             config,
-            icinga_executor: Icinga2Executor::new(icinga2_client_config)?,
+            icinga_executor: Arc::new(Icinga2Executor::new(icinga2_client_config)?),
             director_executor: DirectorExecutor::new(director_client_config)?,
         })
     }
 
-    fn perform_creation_of_icinga_objects(
+    async fn perform_creation_of_icinga_objects<'a>(
         &self,
-        director_host_creation_action: DirectorAction,
-        director_service_creation_action: Option<DirectorAction>,
+        director_host_creation_action: DirectorAction<'a>,
+        director_service_creation_action: Option<DirectorAction<'a>>,
     ) -> Result<(), ExecutorError> {
         let host_creation_result =
-            self.director_executor.perform_request(director_host_creation_action);
+            self.director_executor.perform_request(director_host_creation_action).await;
         match host_creation_result {
             Ok(()) => {
                 debug!("SmartMonitoringExecutor - Director host creation action successfully performed");
@@ -79,7 +79,7 @@ impl SmartMonitoringExecutor {
 
         if let Some(director_service_creation_action) = director_service_creation_action {
             let service_creation_result =
-                self.director_executor.perform_request(director_service_creation_action);
+                self.director_executor.perform_request(director_service_creation_action).await;
             match service_creation_result {
                 Ok(()) => {
                     debug!("SmartMonitoringExecutor - Director service creation action successfully performed");
@@ -101,69 +101,72 @@ impl SmartMonitoringExecutor {
     }
 
     fn set_state_with_retry(
-        &self,
-        icinga2_action: &Icinga2Action,
-        host_name: Option<&str>,
-        service_name: Option<&str>,
+        icinga_executor: Arc<Icinga2Executor>,
+        icinga2_action: Icinga2ActionOwned,
+        host_name: Option<String>,
+        service_name: Option<String>,
         attempts: u32,
         sleep_ms_between_retries: u64,
-    ) -> Result<(), ExecutorError> {
-        match self.icinga_executor.perform_request(icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None }) {
-            Ok(()) => {
-                trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
-            }
-            Err(err) => {
-                warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {:?}", host_name, service_name, err);
-            }
-        }
-
-        // check status
-        let mut response = match (host_name, service_name) {
-            (Some(host_name), Some(service_name)) => {
-                debug!(
-                    "SmartMonitoringExecutor - check host [{}] service [{}] status",
-                    host_name, service_name
-                );
-                self.icinga_executor.api_client.api_get_objects_service(host_name, service_name)
-            }
-            (Some(host_name), None) => {
-                debug!("SmartMonitoringExecutor - check host [{}] status", host_name);
-                self.icinga_executor.api_client.api_get_objects_host(host_name)
-            }
-            _ => {
-                warn!("SmartMonitoringExecutor - cannot identify host or service name to retry process_check_result");
-                Err(ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot identify host or service name to retry process_check_result".to_owned(), can_retry: false, code: None })
-            }
-        }?;
-
-        let response_json = response.json().map_err(|err| ExecutorError::ActionExecutionError {
-            can_retry: true,
-            message: format!(
-                "SmartMonitoringExecutor - Cannot extract response body. Err: {}",
-                err
-            ),
-            code: None,
-        })?;
-
-        match SmartMonitoringExecutor::is_pending(&response_json) {
-            Ok(false) => Ok(()),
-            _ => {
-                if attempts > 0 {
-                    let remaining_attempts = attempts - 1;
-                    info!("SmartMonitoringExecutor - the object host [{:?}] service [{:?}] is found to be pending or the state cannot be determined. Retrying to set the status. Remaining attempts: {}", host_name, service_name, remaining_attempts);
-                    std::thread::sleep(Duration::from_millis(sleep_ms_between_retries));
-                    self.set_state_with_retry(
-                        icinga2_action,
-                        host_name,
-                        service_name,
-                        remaining_attempts,
-                        sleep_ms_between_retries,
-                    )
-                } else {
-                    Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending and no more attempts to set the status will be performed.", host_name, service_name), can_retry: true, code: None })
+    ) -> Pin<Box<dyn Future<Output = Result<(), ExecutorError>>>> {
+        Box::pin(async move {
+            match icinga_executor.perform_request(&(&icinga2_action).into()).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None }) {
+                Ok(()) => {
+                    trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
+                }
+                Err(err) => {
+                    warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {:?}", host_name, service_name, err);
                 }
             }
-        }
+
+            // check status
+            let response = match (&host_name, &service_name) {
+                (Some(host_name), Some(service_name)) => {
+                    debug!(
+                        "SmartMonitoringExecutor - check host [{}] service [{}] status",
+                        host_name, service_name
+                    );
+                    icinga_executor.api_client.api_get_objects_service(host_name, service_name).await
+                }
+                (Some(host_name), None) => {
+                    debug!("SmartMonitoringExecutor - check host [{}] status", host_name);
+                    icinga_executor.api_client.api_get_objects_host(host_name).await
+                }
+                _ => {
+                    warn!("SmartMonitoringExecutor - cannot identify host or service name to retry process_check_result");
+                    Err(ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot identify host or service name to retry process_check_result".to_owned(), can_retry: false, code: None })
+                }
+            }?;
+
+            let response_json = response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!(
+                    "SmartMonitoringExecutor - Cannot extract response body. Err: {}",
+                    err
+                ),
+                code: None,
+            })?;
+
+            match SmartMonitoringExecutor::is_pending(&response_json) {
+                Ok(false) => Ok(()),
+                _ => {
+                    if attempts > 0 {
+                        let remaining_attempts = attempts - 1;
+                        info!("SmartMonitoringExecutor - the object host [{:?}] service [{:?}] is found to be pending or the state cannot be determined. Retrying to set the status. Remaining attempts: {}", host_name, service_name, remaining_attempts);
+                        tokio::time::sleep(Duration::from_millis(sleep_ms_between_retries)).await;
+                        SmartMonitoringExecutor::set_state_with_retry(
+                            icinga_executor,
+                            icinga2_action,
+                            host_name,
+                            service_name,
+                            remaining_attempts,
+                            sleep_ms_between_retries,
+                        ).await
+                    } else {
+                        Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending and no more attempts to set the status will be performed.", host_name, service_name), can_retry: true, code: None })
+                    }
+                }
+            }
+        })
     }
 
     /// Returns whether an object is pending.
@@ -199,7 +202,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.build_sub_actions()?;
 
-        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
+        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action).await;
 
         match icinga2_action_result {
             Ok(_) => {
@@ -213,14 +216,18 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
-                )?;
-                self.set_state_with_retry(
-                    &icinga2_action,
-                    host_name.as_deref(),
-                    service_name.as_deref(),
+                ).await?;
+                SmartMonitoringExecutor::set_state_with_retry(
+                    self.icinga_executor.clone(),
+                    Icinga2ActionOwned {
+                        name: icinga2_action.name.to_owned(),
+                        payload: icinga2_action.payload.cloned(),
+                    },
+                    host_name,
+                    service_name,
                     self.config.pending_object_set_status_retries_attempts,
                     self.config.pending_object_set_status_retries_sleep_ms,
-                )
+                ).await
             }
             Err(err) => {
                 error!(
@@ -229,6 +236,20 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                 );
                 Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
+        }
+    }
+}
+
+pub struct Icinga2ActionOwned {
+    pub name: String,
+    pub payload: Option<Payload>,
+}
+
+impl <'a> Into<Icinga2Action<'a>> for &'a Icinga2ActionOwned {
+    fn into(self) -> Icinga2Action<'a> {
+        Icinga2Action{
+            name: &self.name,
+            payload: self.payload.as_ref()
         }
     }
 }
