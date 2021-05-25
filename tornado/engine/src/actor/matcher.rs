@@ -34,8 +34,9 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Arc<MatcherConfig>, error::MatcherError>")]
-pub struct ReconfigureMessage {}
+#[rtype(result = "Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>")]
+pub struct ReconfigureMessage {
+}
 
 #[derive(Message)]
 #[rtype(result = "Arc<MatcherConfig>")]
@@ -154,18 +155,32 @@ impl Handler<GetCurrentConfigMessage> for MatcherActor {
 }
 
 impl Handler<ReconfigureMessage> for MatcherActor {
-    type Result = Result<Arc<MatcherConfig>, error::MatcherError>;
+    type Result = Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>;
 
-    fn handle(&mut self, _msg: ReconfigureMessage, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, _msg: ReconfigureMessage, ctx: &mut Context<Self>) -> Self::Result {
+        
+        let matcher_config_manager = self.matcher_config_manager.clone();
         info!("MatcherActor - received ReconfigureMessage.");
+        let (tx, rx) = async_channel::bounded(1);
 
-        let matcher_config = Arc::new(self.matcher_config_manager.get_config()?);
-        let matcher = Arc::new(Matcher::build(&matcher_config)?);
-        self.matcher_config = matcher_config.clone();
-        self.matcher = matcher;
+        ctx.wait(async move {
+            let matcher_config_result = matcher_config_manager.get_config().await;
+            let REMOVE_THE_UNWRAP = 1;
 
-        info!("MatcherActor - Tornado configuration updated successfully.");
+            let matcher_config = Arc::new(matcher_config_result.unwrap());
+            let matcher = Arc::new(Matcher::build(&matcher_config).unwrap());
 
-        Ok(matcher_config)
+            if let Err(err) = tx.send(Ok(matcher_config.clone())).await {
+                error!("MatcherActor - Error sending message: {:?}", err);
+            }
+            (matcher, matcher_config)
+        }.into_actor(self).map(|(matcher, matcher_config),this,ctx| {
+
+            this.matcher_config = matcher_config;
+            this.matcher = matcher;
+            info!("MatcherActor - Tornado configuration updated successfully.");
+        }));
+
+        Ok(rx)
     }
 }

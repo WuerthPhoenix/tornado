@@ -55,7 +55,9 @@ impl EventApiHandler for MatcherApiHandler {
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
-        Ok(request?.as_ref().clone())
+        let response = request?;
+        let REMOVE_UNWRAP = 1;
+        Ok(response.recv().await.unwrap()?.as_ref().clone())
     }
 }
 

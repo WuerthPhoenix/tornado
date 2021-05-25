@@ -3497,6 +3497,7 @@ dependencies = [
  "actix-cors",
  "actix-rt",
  "actix-web",
+ "async-channel",
  "async-trait",
  "chrono",
  "clap",
