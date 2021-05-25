@@ -54,10 +54,10 @@ impl EventApiHandler for MatcherApiHandler {
 #[async_trait(?Send)]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
-        let request = self.matcher.send(ReconfigureMessage {}).await?;
-        let response = request?;
-        let REMOVE_UNWRAP = 1;
-        Ok(response.recv().await.unwrap()?.as_ref().clone())
+        let request = self.matcher.send(ReconfigureMessage {}).await??;
+        Ok(request.recv().await.map_err(|err| ApiError::InternalServerError {
+            cause: format!("{:?}", err)
+        })??.as_ref().clone())
     }
 }
 

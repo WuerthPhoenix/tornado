@@ -1,7 +1,7 @@
 use thiserror::Error;
 use tornado_common_parser::ParserError;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Clone, Debug, PartialEq)]
 pub enum MatcherError {
     #[error("ExtractorBuildFailError: [{message}]\n cause: [{cause}]")]
     ExtractorBuildFailError { message: String, cause: String },

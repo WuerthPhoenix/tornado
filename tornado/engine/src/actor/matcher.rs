@@ -165,20 +165,27 @@ impl Handler<ReconfigureMessage> for MatcherActor {
 
         ctx.wait(async move {
             let matcher_config_result = matcher_config_manager.get_config().await;
-            let REMOVE_THE_UNWRAP = 1;
 
-            let matcher_config = Arc::new(matcher_config_result.unwrap());
-            let matcher = Arc::new(Matcher::build(&matcher_config).unwrap());
+            let result : Result<_, error::MatcherError> = {
+                let matcher_config = Arc::new(matcher_config_result?);
+                let matcher = Arc::new(Matcher::build(&matcher_config)?);
+                Ok((matcher, matcher_config))
+            };
 
-            if let Err(err) = tx.send(Ok(matcher_config.clone())).await {
+            if let Err(err) = tx.send(result.clone().map(|(_matcher, matcher_config)| matcher_config)).await {
                 error!("MatcherActor - Error sending message: {:?}", err);
             }
-            (matcher, matcher_config)
-        }.into_actor(self).map(|(matcher, matcher_config),this,ctx| {
 
-            this.matcher_config = matcher_config;
-            this.matcher = matcher;
-            info!("MatcherActor - Tornado configuration updated successfully.");
+            result
+        }.into_actor(self).map(|result,this,_ctx| {
+            match result {
+                Ok((matcher, matcher_config)) => {
+                    this.matcher_config = matcher_config;
+                    this.matcher = matcher;
+                    info!("MatcherActor - Tornado configuration updated successfully.");
+                },
+                Err(err) => error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err)
+            }
         }));
 
         Ok(rx)
