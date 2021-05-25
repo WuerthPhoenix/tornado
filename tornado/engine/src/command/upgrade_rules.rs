@@ -97,7 +97,7 @@ fn value_to_action(value: &Value) -> Result<Action, MatcherError> {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use crate::command::daemon::{ACTION_ID_FOREACH, ACTION_ID_LOGGER};
     use tempfile::TempDir;
@@ -156,7 +156,7 @@ mod test {
             .unwrap()
     }
 
-    fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
+    pub fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
         let source_config_dir = "./config/".to_owned();
         let dest_config_dir = tempdir.path().to_str().unwrap().to_owned();
 

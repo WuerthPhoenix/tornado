@@ -93,7 +93,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47).await.unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
@@ -123,7 +123,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager.clone(), 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47).await.unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
@@ -166,7 +166,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47).await.unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
