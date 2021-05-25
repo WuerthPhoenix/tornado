@@ -78,7 +78,7 @@ impl NatsClientConfig {
             match options.connect(&addresses).await {
                 Err(connection_error) => {
                     error!("Error during connection to NATS. Err: {}", connection_error);
-                    time::delay_for(time::Duration::from_secs(5)).await;
+                    time::sleep(time::Duration::from_secs(5)).await;
                 }
                 Ok(connection) => {
                     info!("NatsClientConfig - Successfully connected to NATS");
@@ -156,7 +156,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                     ),
                     Err(e) => {
                         error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
-                        time::delay_for(time::Duration::from_secs(1)).await;
+                        time::sleep(time::Duration::from_secs(1)).await;
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
@@ -166,7 +166,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
             // processed by the actor
             actix::spawn(async move {
                 warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Reprocessing event ...");
-                time::delay_for(time::Duration::from_secs(1)).await;
+                time::sleep(time::Duration::from_secs(1)).await;
                 address.try_send(msg).unwrap_or_else(|err| {
                     error!(
                         "NatsPublisherActor -  Error while sending event to itself. Error: {}",
