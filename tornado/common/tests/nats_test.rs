@@ -6,7 +6,7 @@
 
 use std::time::Duration;
 
-use actix::clock::delay_for;
+use actix::clock::sleep;
 use log::*;
 use serial_test::serial;
 use std::sync::Arc;
@@ -28,7 +28,7 @@ fn new_nats_docker_container(
     let port = port.unwrap_or_else(|| port_check::free_local_port().unwrap());
 
     let mut image =
-        images::generic::GenericImage::new("nats:2.1-alpine").with_mapped_port((port, 4222));
+        images::generic::GenericImage::new("nats:2.1-alpine");
     if tls {
         image = image
             .with_volume(
@@ -48,8 +48,9 @@ fn new_nats_docker_container(
             ]);
     }
 
+    let args = RunArgs::default().with_mapped_port((port, 4222));
     let node = docker
-        .run(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")));
+        .run_with_args(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")), args);
 
     let nats_port = node.get_host_port(4222).unwrap();
     (node, nats_port)
@@ -115,7 +116,7 @@ async fn nats_subscriber_should_receive_from_nats() {
     .await
     .unwrap();
 
-    delay_for(Duration::from_millis(100)).await;
+    sleep(Duration::from_millis(100)).await;
 
     info!("Sending message");
     nc_1.publish(&subject, &serde_json::to_vec(&event).unwrap()).await.unwrap();
@@ -147,7 +148,7 @@ async fn nats_publisher_should_publish_to_nats() {
         sender.send(message.unwrap().data).unwrap();
     });
 
-    delay_for(Duration::from_millis(100)).await;
+    sleep(Duration::from_millis(100)).await;
 
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
@@ -342,7 +343,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
         .unwrap();
     });
 
-    time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+    time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
 
     // Start NATS
     let docker = clients::Cli::default();
@@ -366,8 +367,8 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
     while !received && max_attempts > 0 {
         max_attempts -= 1;
         publisher.do_send(EventMessage { event: event.clone() });
-        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
-        received = receiver.try_recv().is_ok();
+        time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+        received = receiver.recv().await.is_some();
         if received {
             info!("Message received by the subscriber");
         } else {
@@ -447,7 +448,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         }
 
         in_flight_messages += 1;
-        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+        time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
 
         for _ in 0..in_flight_messages {
             assert!(receiver.recv().await.is_some());
@@ -562,14 +563,14 @@ fn start_logger() {
         file_output_path: None,
     };
     if let Err(err) = tornado_common_logger::setup_logger(&conf) {
-        println!("Warn: err starting logger: {}", err)
+        println!("Warn: err starting logger: {:?}", err)
     };
 }
 
 async fn wait_until_port_is_free(port: u16) {
     while !port_check::is_local_port_free(port) {
         warn!("port {} still not free", port);
-        time::delay_until(time::Instant::now() + time::Duration::new(1, 0)).await;
+        time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
     }
-    time::delay_until(time::Instant::now() + time::Duration::new(0, 10000)).await;
+    time::sleep_until(time::Instant::now() + time::Duration::new(0, 10000)).await;
 }

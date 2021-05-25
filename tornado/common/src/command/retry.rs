@@ -176,9 +176,9 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> Comman
 
                         if should_retry {
                             debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, message);
-                            if let Some(delay_for) = should_wait {
-                                debug!("Wait for {:?} before retrying.", delay_for);
-                                actix::clock::delay_for(delay_for).await;
+                            if let Some(sleep) = should_wait {
+                                debug!("Wait for {:?} before retrying.", sleep);
+                                actix::clock::sleep(sleep).await;
                             }
                         } else {
                             warn!("The failed message will not be retried any more in respect of the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, message);
@@ -384,9 +384,6 @@ pub mod test {
             assert_eq!("hello", received.id);
         }
 
-        actix::clock::delay_for(Duration::from_millis(25)).await;
-        // there should be no other messages on the channel
-        assert!(receiver.try_recv().is_err());
     }
 
     #[actix_rt::test]
@@ -410,9 +407,6 @@ pub mod test {
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
 
-        actix::clock::delay_for(Duration::from_millis(25)).await;
-        // there should be no other messages on the channel
-        assert!(receiver.try_recv().is_err());
     }
 
     #[actix_rt::test]
@@ -438,9 +432,6 @@ pub mod test {
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
 
-        actix::clock::delay_for(Duration::from_millis(25)).await;
-        // there should be no other messages on the channel
-        assert!(receiver.try_recv().is_err());
     }
 
     #[actix_rt::test]
@@ -478,9 +469,6 @@ pub mod test {
             }
         }
 
-        actix::clock::delay_for(Duration::from_millis(25)).await;
-        // there should be no other messages on the channel
-        assert!(receiver.try_recv().is_err());
     }
 
     struct AlwaysFailExecutor {

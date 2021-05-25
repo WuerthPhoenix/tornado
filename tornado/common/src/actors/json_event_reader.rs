@@ -2,11 +2,11 @@ use crate::actors::message::AsyncReadMessage;
 
 use actix::prelude::*;
 use log::*;
-use tokio::prelude::AsyncRead;
 use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
 use tornado_common_api::Event;
+use tokio::io::AsyncRead;
 
 pub struct JsonEventReaderActor<F: Fn(Event) + 'static + Unpin> {
     json_collector: JsonEventCollector,

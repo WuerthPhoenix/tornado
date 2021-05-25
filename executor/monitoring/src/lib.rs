@@ -124,13 +124,13 @@ impl MonitoringExecutor {
         })
     }
 
-    fn perform_creation_of_icinga_objects(
+    async fn perform_creation_of_icinga_objects<'a>(
         &self,
-        director_host_creation_action: DirectorAction,
-        director_service_creation_action: Option<DirectorAction>,
+        director_host_creation_action: DirectorAction<'a>,
+        director_service_creation_action: Option<DirectorAction<'a>>,
     ) -> Result<(), ExecutorError> {
         let host_creation_result =
-            self.director_executor.perform_request(director_host_creation_action);
+            self.director_executor.perform_request(director_host_creation_action).await;
         match host_creation_result {
             Ok(()) => {
                 debug!("MonitoringExecutor - Director host creation action successfully performed");
@@ -153,7 +153,7 @@ impl MonitoringExecutor {
 
         if let Some(director_service_creation_action) = director_service_creation_action {
             let service_creation_result =
-                self.director_executor.perform_request(director_service_creation_action);
+                self.director_executor.perform_request(director_service_creation_action).await;
             match service_creation_result {
                 Ok(()) => {
                     debug!("MonitoringExecutor - Director service creation action successfully performed");
@@ -184,7 +184,7 @@ impl StatelessExecutor for MonitoringExecutor {
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.to_sub_actions()?;
-        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
+        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action).await;
 
         match icinga2_action_result {
             Ok(_) => {
@@ -198,8 +198,8 @@ impl StatelessExecutor for MonitoringExecutor {
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
-                )?;
-                self.icinga_executor.perform_request(&icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                ).await?;
+                self.icinga_executor.perform_request(&icinga2_action).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
             Err(err) => {
                 error!(
@@ -216,7 +216,7 @@ impl StatelessExecutor for MonitoringExecutor {
 mod test {
     use super::*;
     use httpmock::Method::POST;
-    use httpmock::{Mock, MockServer};
+    use httpmock::MockServer;
     use maplit::*;
     use std::collections::HashMap;
     use tornado_common_api::Value;
@@ -358,11 +358,11 @@ mod test {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
         let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
@@ -499,11 +499,11 @@ mod test {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST)
+                .path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
         let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
