@@ -51,7 +51,6 @@ impl NatsClientConfig {
                 .reconnect_callback(|| {
                     info!("NatsClientConfig - connection to NATS server was restored")
                 })
-                .reconnect_delay_callback(|_attempts| std::time::Duration::from_secs(1))
                 .max_reconnects(None);
             match auth {
                 NatsClientAuth::Tls {
