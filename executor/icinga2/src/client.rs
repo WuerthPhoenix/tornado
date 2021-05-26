@@ -26,7 +26,7 @@ impl ApiClient {
         }
 
         let client = client_builder.build().map_err(|err| ExecutorError::ConfigurationError {
-            message: format!("Error while building Icinga2Client. Err: {}", err),
+            message: format!("Error while building Icinga2Client. Err: {:?}", err),
         })?;
 
         // The server API url should not contain the /v1/actions suffix.
@@ -58,7 +58,7 @@ impl ApiClient {
             .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
-                message: format!("Icinga2Executor - Connection failed. Err: {}", err),
+                message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
             })
     }
@@ -77,7 +77,7 @@ impl ApiClient {
             .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
-                message: format!("Icinga2Executor - Connection failed. Err: {}", err),
+                message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
             })
     }

@@ -71,7 +71,7 @@ pub fn read_streams_from_config(path: &str) -> Result<Vec<StreamConfig>, Tornado
     for path in paths {
         let filename = path
             .map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Cannot get the filename. Err: {}", e),
+                message: format!("Cannot get the filename. Err: {:?}", e),
             })?
             .path();
 
@@ -90,7 +90,7 @@ pub fn read_streams_from_config(path: &str) -> Result<Vec<StreamConfig>, Tornado
 
         let stream_body =
             fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
+                message: format!("Unable to open the file [{}]. Err: {:?}", filename.display(), e),
             })?;
         trace!("Stream configuration body: \n{}", stream_body);
         streams.push(serde_json::from_str::<StreamConfig>(&stream_body).map_err(|e| {

@@ -42,7 +42,7 @@ impl DirectorClientConfig {
         }
 
         let client = client_builder.build().map_err(|err| ExecutorError::ConfigurationError {
-            message: format!("Error while building DirectorClient. Err: {}", err),
+            message: format!("Error while building DirectorClient. Err: {:?}", err),
         })?;
 
         Ok(ApiClient { server_api_url: self.server_api_url.clone(), http_auth_header, client })

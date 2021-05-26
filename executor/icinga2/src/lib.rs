@@ -66,7 +66,7 @@ impl Icinga2Executor {
 
         let response_body = response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
-            message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
+            message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
             code: None,
         })?;
 

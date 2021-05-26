@@ -119,7 +119,7 @@ impl MonitoringExecutor {
     pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
         serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
-                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+                message: format!("Invalid Monitoring Action configuration. Err: {:?}", err),
             }
         })
     }
@@ -248,15 +248,12 @@ mod test {
         let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message:
-                    "Invalid Monitoring Action configuration. Err: missing field `action_name`"
-                        .to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false)
+        }
     }
 
     #[tokio::test]
@@ -297,13 +294,12 @@ mod test {
         let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message: "Invalid Monitoring Action configuration. Err: unknown variant `my_invalid_action`, expected `create_and_or_process_host_passive_check_result` or `create_and_or_process_service_passive_check_result`".to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false)
+        }
     }
 
     #[tokio::test]
@@ -344,13 +340,12 @@ mod test {
         let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message: "Invalid Monitoring Action configuration. Err: missing field `service_creation_payload`".to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false)
+        }
     }
 
     #[tokio::test]

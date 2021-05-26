@@ -241,14 +241,14 @@ mod test {
         )
     }
 
-    #[test]
-    fn should_read_all_rule_configurations_from_file() {
+    #[tokio::test]
+    async fn should_read_all_rule_configurations_from_file() {
         // Arrange
         let path = "./config/rules.d";
         let drafts_path = "./config/drafts";
 
         // Act
-        let config = FsMatcherConfigManager::new(path, drafts_path).get_config().unwrap();
+        let config = FsMatcherConfigManager::new(path, drafts_path).get_config().await.unwrap();
 
         // Assert
         match config {

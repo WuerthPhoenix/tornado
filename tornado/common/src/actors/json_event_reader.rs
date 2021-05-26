@@ -54,7 +54,7 @@ impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecErro
                 };
             }
             Err(err) => {
-                error!("JsonEventReaderActor stream error. Err: {}", err);
+                error!("JsonEventReaderActor stream error. Err: {:?}", err);
             }
         }
     }

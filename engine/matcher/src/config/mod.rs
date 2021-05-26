@@ -59,23 +59,25 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
 
 /// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
+#[async_trait::async_trait(?Send)]
 pub trait MatcherConfigReader: Sync + Send {
-    fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
+    async fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
 }
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
+#[async_trait::async_trait(?Send)]
 pub trait MatcherConfigEditor: Sync + Send {
     /// Returns the list of available drafts
-    fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
+    async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
 
     /// Returns a draft by id
-    fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError>;
+    async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError>;
 
     /// Creates a new draft and returns the id
-    fn create_draft(&self, user: String) -> Result<String, MatcherError>;
+    async fn create_draft(&self, user: String) -> Result<String, MatcherError>;
 
     /// Update a draft
-    fn update_draft(
+    async fn update_draft(
         &self,
         draft_id: &str,
         user: String,
@@ -83,14 +85,14 @@ pub trait MatcherConfigEditor: Sync + Send {
     ) -> Result<(), MatcherError>;
 
     /// Deploy a draft by id replacing the current tornado configuration
-    fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
+    async fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError>;
 
     /// Deletes a draft by id
-    fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError>;
+    async fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError>;
 
     /// Sets the ownership of a draft to a user
-    fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError>;
+    async fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError>;
 
     /// Deploys a new configuration overriding the current one
-    fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError>;
+    async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError>;
 }
