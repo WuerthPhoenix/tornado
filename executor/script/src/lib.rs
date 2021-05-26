@@ -1,7 +1,7 @@
 use log::*;
 use std::fmt;
-use std::process::Command;
 use std::sync::Arc;
+use tokio::process::Command;
 use tornado_common_api::{Action, Number, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
@@ -90,7 +90,7 @@ impl StatelessExecutor for ScriptExecutor {
                 trace!("No args found in payload")
             };
 
-            cmd.output().map_err(|err| ExecutorError::ActionExecutionError {
+            cmd.output().await.map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Cannot execute script [{:?}]: {}", script, err),
                 code: None,
