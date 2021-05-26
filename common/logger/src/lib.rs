@@ -41,8 +41,15 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
+pub struct LogWorkerGuards {
+    #[allow(dead_code)]
+    file_guard: Option<WorkerGuard>,
+    #[allow(dead_code)]
+    stdout_guard: Option<WorkerGuard>,
+}
+
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>, LoggerError> {
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, LoggerError> {
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
@@ -63,8 +70,12 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>,
         (None, None)
     };
 
-    let stdout_subscriber =
-        if logger_config.stdout_output { Some(Layer::new().with_ansi(false)) } else { None };
+    let (stdout_subscriber, stdout_guard) = if logger_config.stdout_output {
+        let (non_blocking, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
+        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(stdout_guard))
+    } else {
+        (None, None)
+    };
 
     let subscriber = tracing_subscriber::registry()
         .with(env_filter)
@@ -73,7 +84,7 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>,
 
     set_global_logger(subscriber)?;
 
-    Ok(file_guard)
+    Ok(LogWorkerGuards { file_guard, stdout_guard })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
