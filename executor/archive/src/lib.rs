@@ -1,10 +1,12 @@
 use log::*;
 use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
+use tokio::fs::File;
+use tokio::fs::OpenOptions;
+use tokio::fs::create_dir_all;
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufWriter;
 use std::collections::HashMap;
-use std::fs::{create_dir_all, File, OpenOptions};
-use std::io::prelude::*;
-use std::io::BufWriter;
 use std::path::Path;
 use std::sync::Arc;
 use tornado_common_api::Action;
@@ -53,7 +55,7 @@ impl ArchiveExecutor {
         }
     }
 
-    fn write(&mut self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
+    async fn write(&mut self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
         let absolute_path_string = format!(
             "{}{}{}",
             self.base_path,
@@ -77,7 +79,7 @@ impl ArchiveExecutor {
                 let path = Path::new(&absolute_path_string);
 
                 if let Some(parent) = path.parent() {
-                    create_dir_all(&parent).map_err(|err| ExecutorError::ActionExecutionError {
+                    create_dir_all(&parent).await.map_err(|err| ExecutorError::ActionExecutionError {
                         can_retry: true,
                         message: format!(
                             "Cannot create required directories for path [{:?}]: {}",
@@ -88,7 +90,7 @@ impl ArchiveExecutor {
                 }
 
                 let file =
-                    OpenOptions::new().create(true).append(true).open(&path).map_err(|err| {
+                    OpenOptions::new().create(true).append(true).open(&path).await.map_err(|err| {
                         ExecutorError::ActionExecutionError {
                             can_retry: true,
                             message: format!(
@@ -103,12 +105,12 @@ impl ArchiveExecutor {
             }
         };
 
-        buf_writer.write_all(buf).map_err(|err| ExecutorError::ActionExecutionError {
+        buf_writer.write_all(buf).await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
             code: None,
         })?;
-        buf_writer.flush().map_err(|err| ExecutorError::ActionExecutionError {
+        buf_writer.flush().await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Cannot flush file [{}]: {}", &absolute_path_string, err),
             code: None,
@@ -158,7 +160,7 @@ impl StatefulExecutor for ArchiveExecutor {
 
         event_bytes.push(b'\n');
 
-        self.write(path, &event_bytes)?;
+        self.write(path, &event_bytes).await?;
 
         Ok(())
     }
@@ -168,8 +170,8 @@ impl StatefulExecutor for ArchiveExecutor {
 mod test {
 
     use super::*;
-    use std::fs;
-    use std::io::{BufRead, BufReader};
+    use tokio::fs::{self, read_to_string};
+    use tokio::io::{BufReader, AsyncBufReadExt};
     use tornado_common_api::Event;
     use tornado_common_api::Value;
 
@@ -207,7 +209,7 @@ mod test {
         // Assert
         assert!(result.is_ok());
 
-        let file_content = std::fs::read_to_string(&expected_path).unwrap();
+        let file_content = read_to_string(&expected_path).await.unwrap();
         let event_from_file = serde_json::from_str::<Event>(&file_content).unwrap();
 
         assert_eq!(event, event_from_file);
@@ -250,9 +252,9 @@ mod test {
             archiver.execute(action.into()).await.unwrap()
         }
 
-        let file = fs::File::open(&expected_path).unwrap();
-        for line in BufReader::new(file).lines() {
-            let line_string = line.unwrap();
+        let file = fs::File::open(&expected_path).await.unwrap();
+        let mut lines = BufReader::new(file).lines();
+        while let Some(line_string) = lines.next_line().await.unwrap() {
             println!("Read line: {}", &line_string);
             read_lines.push(line_string);
         }
@@ -385,7 +387,7 @@ mod test {
         // Assert
         assert!(result.is_ok());
 
-        let file_content = std::fs::read_to_string(&expected_path).unwrap();
+        let file_content = read_to_string(&expected_path).await.unwrap();
         let event_from_file = serde_json::from_str::<Event>(&file_content).unwrap();
 
         assert_eq!(event, event_from_file);
