@@ -1,14 +1,14 @@
 use log::*;
 use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
-use tokio::fs::File;
-use tokio::fs::OpenOptions;
-use tokio::fs::create_dir_all;
-use tokio::io::AsyncWriteExt;
-use tokio::io::BufWriter;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Arc;
+use tokio::fs::create_dir_all;
+use tokio::fs::File;
+use tokio::fs::OpenOptions;
+use tokio::io::AsyncWriteExt;
+use tokio::io::BufWriter;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
 
@@ -55,7 +55,11 @@ impl ArchiveExecutor {
         }
     }
 
-    async fn write(&mut self, relative_path: Option<String>, buf: &[u8]) -> Result<(), ExecutorError> {
+    async fn write(
+        &mut self,
+        relative_path: Option<String>,
+        buf: &[u8],
+    ) -> Result<(), ExecutorError> {
         let absolute_path_string = format!(
             "{}{}{}",
             self.base_path,
@@ -79,27 +83,25 @@ impl ArchiveExecutor {
                 let path = Path::new(&absolute_path_string);
 
                 if let Some(parent) = path.parent() {
-                    create_dir_all(&parent).await.map_err(|err| ExecutorError::ActionExecutionError {
-                        can_retry: true,
-                        message: format!(
-                            "Cannot create required directories for path [{:?}]: {}",
-                            &path, err
-                        ),
-                        code: None,
-                    })?;
-                }
-
-                let file =
-                    OpenOptions::new().create(true).append(true).open(&path).await.map_err(|err| {
+                    create_dir_all(&parent).await.map_err(|err| {
                         ExecutorError::ActionExecutionError {
                             can_retry: true,
                             message: format!(
-                                "Cannot open file [{}]: {}",
-                                &absolute_path_string, err
+                                "Cannot create required directories for path [{:?}]: {}",
+                                &path, err
                             ),
                             code: None,
                         }
                     })?;
+                }
+
+                let file = OpenOptions::new().create(true).append(true).open(&path).await.map_err(
+                    |err| ExecutorError::ActionExecutionError {
+                        can_retry: true,
+                        message: format!("Cannot open file [{}]: {}", &absolute_path_string, err),
+                        code: None,
+                    },
+                )?;
 
                 vacant.insert(BufWriter::new(file))
             }
@@ -171,7 +173,7 @@ mod test {
 
     use super::*;
     use tokio::fs::{self, read_to_string};
-    use tokio::io::{BufReader, AsyncBufReadExt};
+    use tokio::io::{AsyncBufReadExt, BufReader};
     use tornado_common_api::Event;
     use tornado_common_api::Value;
 

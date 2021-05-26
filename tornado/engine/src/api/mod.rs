@@ -55,9 +55,12 @@ impl EventApiHandler for MatcherApiHandler {
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await??;
-        Ok(request.recv().await.map_err(|err| ApiError::InternalServerError {
-            cause: format!("{:?}", err)
-        })??.as_ref().clone())
+        Ok(request
+            .recv()
+            .await
+            .map_err(|err| ApiError::InternalServerError { cause: format!("{:?}", err) })??
+            .as_ref()
+            .clone())
     }
 }
 
@@ -93,7 +96,9 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
@@ -123,7 +128,9 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
@@ -166,7 +173,9 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47).await.unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 

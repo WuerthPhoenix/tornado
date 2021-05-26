@@ -15,8 +15,7 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     let server = MockServer::start();
 
     let icinga_mock = server.mock(|when, then| {
-        when.method(POST)
-            .path("/v1/actions/process-check-result");
+        when.method(POST).path("/v1/actions/process-check-result");
         then.status(500);
     });
 
@@ -66,8 +65,7 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     let icinga_server = MockServer::start();
 
     let icinga_mock = icinga_server.mock(|when, then| {
-        when.method(POST)
-            .path("/v1/actions/process-check-result");
+        when.method(POST).path("/v1/actions/process-check-result");
         then.status(201);
     });
 
@@ -117,17 +115,14 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
 
     let icinga_mock = icinga_server.mock(|when, then| {
-        when.method(POST)
-            .path("/v1/actions/process-check-result");
-        then.body(icinga_server_response)
-            .status(404);
+        when.method(POST).path("/v1/actions/process-check-result");
+        then.body(icinga_server_response).status(404);
     });
 
     let director_server = MockServer::start();
 
     let director_mock = director_server.mock(|when, then| {
-        when.method(POST)
-            .path_matches(Regex::new("/(host)|(service)").unwrap());
+        when.method(POST).path_matches(Regex::new("/(host)|(service)").unwrap());
         then.status(201);
     });
 
@@ -182,18 +177,15 @@ async fn should_return_return_error_on_object_creation_failure() {
     let icinga_server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
 
     let icinga_mock = icinga_server.mock(|when, then| {
-        when.method(POST)
-            .path("/v1/actions/process-check-result");
-        then.body(icinga_server_response)
-            .status(404);
+        when.method(POST).path("/v1/actions/process-check-result");
+        then.body(icinga_server_response).status(404);
     });
 
     let director_server = MockServer::start();
     let director_server_response = "{\"error\":500.0,\"status\":\"Internal Server Error.\"}";
 
     let director_mock = director_server.mock(|when, then| {
-        when.method(POST)
-            .path_matches(Regex::new("/(host)|(service)").unwrap());
+        when.method(POST).path_matches(Regex::new("/(host)|(service)").unwrap());
         then.body(director_server_response).status(500);
     });
 

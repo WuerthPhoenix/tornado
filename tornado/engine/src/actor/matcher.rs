@@ -34,9 +34,10 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>")]
-pub struct ReconfigureMessage {
-}
+#[rtype(
+    result = "Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>"
+)]
+pub struct ReconfigureMessage {}
 
 #[derive(Message)]
 #[rtype(result = "Arc<MatcherConfig>")]
@@ -156,38 +157,44 @@ impl Handler<GetCurrentConfigMessage> for MatcherActor {
 }
 
 impl Handler<ReconfigureMessage> for MatcherActor {
-    type Result = Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>;
+    type Result = Result<
+        async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>,
+        error::MatcherError,
+    >;
 
     fn handle(&mut self, _msg: ReconfigureMessage, ctx: &mut Context<Self>) -> Self::Result {
-        
         let matcher_config_manager = self.matcher_config_manager.clone();
         info!("MatcherActor - received ReconfigureMessage.");
         let (tx, rx) = async_channel::bounded(1);
 
-        ctx.wait(async move {
-            let matcher_config_result = matcher_config_manager.get_config().await;
+        ctx.wait(
+            async move {
+                let matcher_config_result = matcher_config_manager.get_config().await;
 
-            let result : Result<_, error::MatcherError> = {
-                let matcher_config = Arc::new(matcher_config_result?);
-                let matcher = Arc::new(Matcher::build(&matcher_config)?);
-                Ok((matcher, matcher_config))
-            };
+                let result: Result<_, error::MatcherError> = {
+                    let matcher_config = Arc::new(matcher_config_result?);
+                    let matcher = Arc::new(Matcher::build(&matcher_config)?);
+                    Ok((matcher, matcher_config))
+                };
 
-            if let Err(err) = tx.send(result.clone().map(|(_matcher, matcher_config)| matcher_config)).await {
-                error!("MatcherActor - Error sending message: {:?}", err);
+                if let Err(err) =
+                    tx.send(result.clone().map(|(_matcher, matcher_config)| matcher_config)).await
+                {
+                    error!("MatcherActor - Error sending message: {:?}", err);
+                }
+
+                result
             }
-
-            result
-        }.into_actor(self).map(|result,this,_ctx| {
-            match result {
+            .into_actor(self)
+            .map(|result, this, _ctx| match result {
                 Ok((matcher, matcher_config)) => {
                     this.matcher_config = matcher_config;
                     this.matcher = matcher;
                     info!("MatcherActor - Tornado configuration updated successfully.");
-                },
-                Err(err) => error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err)
-            }
-        }));
+                }
+                Err(err) => error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err),
+            }),
+        );
 
         Ok(rx)
     }
@@ -197,9 +204,9 @@ impl Handler<ReconfigureMessage> for MatcherActor {
 mod test {
 
     use super::*;
-    use crate::config::parse_config_files;
-    use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::actor::dispatcher::ProcessedEventMessage;
+    use crate::command::upgrade_rules::test::prepare_temp_dirs;
+    use crate::config::parse_config_files;
     use tornado_engine_matcher::config::MatcherConfigEditor;
 
     #[actix::test]
@@ -211,9 +218,10 @@ mod test {
         let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
 
         let config_manager = configs.matcher_config.clone();
-        let dispatcher_addr = FakeDispatcher{}.start().recipient();
+        let dispatcher_addr = FakeDispatcher {}.start().recipient();
 
-        let matcher_actor = MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+        let matcher_actor =
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
 
         let draft_id = config_manager.create_draft("user_1".to_owned()).await.unwrap();
         let draft = config_manager.get_draft(&draft_id).await.unwrap();
@@ -226,7 +234,6 @@ mod test {
         let matcher_config_after = config_manager.get_config().await.unwrap();
         assert_eq!(config_from_response, matcher_config_after);
         assert_eq!(config_from_response, draft.config);
-
     }
 
     #[actix::test]
@@ -238,8 +245,9 @@ mod test {
         let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
 
         let config_manager = configs.matcher_config.clone();
-        let dispatcher_addr = FakeDispatcher{}.start().recipient();
-        let matcher_actor = MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+        let dispatcher_addr = FakeDispatcher {}.start().recipient();
+        let matcher_actor =
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
 
         // Act
         let returned_config = matcher_actor.send(GetCurrentConfigMessage {}).await.unwrap();
@@ -247,10 +255,9 @@ mod test {
         // Assert
         let matcher_config = config_manager.get_config().await.unwrap();
         assert_eq!(&matcher_config, returned_config.as_ref());
-
     }
 
-    struct FakeDispatcher{}
+    struct FakeDispatcher {}
 
     impl Actor for FakeDispatcher {
         type Context = Context<Self>;
@@ -262,5 +269,4 @@ mod test {
             Ok(())
         }
     }
-
 }

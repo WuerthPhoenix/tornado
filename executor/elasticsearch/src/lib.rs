@@ -38,12 +38,9 @@ impl ElasticsearchAuthentication {
                     "ElasticsearchAuthentication - Creating new PemCertificatePath client from paths: {}, {}, {}",
                     certificate_path, private_key_path, ca_certificate_path,
                 );
-                PemCertificateData::from_fs(
-                    certificate_path,
-                    private_key_path,
-                    ca_certificate_path,
-                ).await?
-                .new_client()
+                PemCertificateData::from_fs(certificate_path, private_key_path, ca_certificate_path)
+                    .await?
+                    .new_client()
             }
             ElasticsearchAuthentication::None => {
                 debug!("ElasticsearchAuthentication - Creating new client with no authentication",);
@@ -109,7 +106,7 @@ impl ElasticsearchExecutor {
         debug!("ElasticsearchExecutor - Creating new Elasticsearch executor");
         let default_client = match es_authentication {
             Some(es_authentication) => Some(es_authentication.new_client().await?),
-            None => None
+            None => None,
         };
 
         Ok(ElasticsearchExecutor { default_client })
@@ -117,15 +114,12 @@ impl ElasticsearchExecutor {
 }
 
 async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
-    let mut file = tokio::fs::File::open(path).await.map_err(|err| {
-        ExecutorError::ConfigurationError {
+    let mut file =
+        tokio::fs::File::open(path).await.map_err(|err| ExecutorError::ConfigurationError {
             message: format!("Error while reading file {}. Err: {:?}", path, err),
-        }
-    })?;
-    file.read_to_end(buf).await.map_err(|err| {
-        ExecutorError::ConfigurationError {
-            message: format!("Error while reading file {}. Err: {:?}", path, err),
-        }
+        })?;
+    file.read_to_end(buf).await.map_err(|err| ExecutorError::ConfigurationError {
+        message: format!("Error while reading file {}. Err: {:?}", path, err),
     })
 }
 
@@ -284,42 +278,42 @@ mod test {
     //        //            assert!(result.is_ok());
     //    }
 
-       // This can be used for local testing. It requires Elasticsearch running on localhost
-       // #[tokio::test]
-       // async fn should_build_client_from_payload() {
-       //     // Arrange
-       //     let es_authentication = Some(ElasticsearchAuthentication::None {});
-       //     let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
-       //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-       //     let mut es_document = HashMap::new();
-       //     es_document
-       //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-       //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-       //     action.payload.insert("data".to_owned(), Value::Map(es_document));
-       //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
-       //     action.payload.insert(
-       //         "endpoint".to_owned(),
-       //         Value::Text("http://localhost:9200".to_owned()),
-       //     );
-       //
-       //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-       //     let mut es_document = HashMap::new();
-       //     es_document
-       //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-       //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-       //     action.payload.insert("data".to_owned(), Value::Map(es_document));
-       //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
-       //     action.payload.insert(
-       //         "endpoint".to_owned(),
-       //         Value::Text("http://localhost:9200".to_owned()),
-       //     );
-       //
-       //     // Act
-       //     let result = executor.execute(action.into()).await;
-       //
-       //     // Assert
-       //     assert!(result.is_ok());
-       // }
+    // This can be used for local testing. It requires Elasticsearch running on localhost
+    // #[tokio::test]
+    // async fn should_build_client_from_payload() {
+    //     // Arrange
+    //     let es_authentication = Some(ElasticsearchAuthentication::None {});
+    //     let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
+    //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+    //     let mut es_document = HashMap::new();
+    //     es_document
+    //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+    //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+    //     action.payload.insert("data".to_owned(), Value::Map(es_document));
+    //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //     action.payload.insert(
+    //         "endpoint".to_owned(),
+    //         Value::Text("http://localhost:9200".to_owned()),
+    //     );
+    //
+    //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
+    //     let mut es_document = HashMap::new();
+    //     es_document
+    //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
+    //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+    //     action.payload.insert("data".to_owned(), Value::Map(es_document));
+    //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //     action.payload.insert(
+    //         "endpoint".to_owned(),
+    //         Value::Text("http://localhost:9200".to_owned()),
+    //     );
+    //
+    //     // Act
+    //     let result = executor.execute(action.into()).await;
+    //
+    //     // Assert
+    //     assert!(result.is_ok());
+    // }
 
     #[tokio::test]
     async fn should_fail_if_index_is_missing() {

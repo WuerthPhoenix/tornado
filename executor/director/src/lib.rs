@@ -92,7 +92,10 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
-    pub async fn perform_request(&self, director_action: DirectorAction<'_>) -> Result<(), ExecutorError> {
+    pub async fn perform_request(
+        &self,
+        director_action: DirectorAction<'_>,
+    ) -> Result<(), ExecutorError> {
         let mut url = format!(
             "{}/{}",
             &self.api_client.server_api_url,
@@ -126,11 +129,12 @@ impl DirectorExecutor {
 
         let response_status = response.status();
 
-        let response_body = response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
-            can_retry: true,
-            message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
-            code: None,
-        })?;
+        let response_body =
+            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
+                code: None,
+            })?;
 
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)

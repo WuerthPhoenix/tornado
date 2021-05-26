@@ -198,7 +198,8 @@ impl StatelessExecutor for MonitoringExecutor {
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
-                ).await?;
+                )
+                .await?;
                 self.icinga_executor.perform_request(&icinga2_action).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
             Err(err) => {
@@ -252,7 +253,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -298,7 +299,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -344,7 +345,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false)
+            _ => assert!(false),
         }
     }
 
@@ -354,8 +355,7 @@ mod test {
         let mock_server = MockServer::start();
 
         mock_server.mock(|when, then| {
-            when.method(POST)
-                .path("/v1/actions/process-check-result");
+            when.method(POST).path("/v1/actions/process-check-result");
             then.status(200);
         });
 
@@ -495,8 +495,7 @@ mod test {
         let mock_server = MockServer::start();
 
         mock_server.mock(|when, then| {
-            when.method(POST)
-                .path("/v1/actions/process-check-result");
+            when.method(POST).path("/v1/actions/process-check-result");
             then.status(200);
         });
 
