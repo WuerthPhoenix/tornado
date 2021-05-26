@@ -8,7 +8,7 @@ use crate::error::MatcherError;
 use crate::validator::MatcherConfigValidator;
 use chrono::Local;
 use log::*;
-use tokio::{fs::{File, create_dir_all, remove_dir_all}, io::AsyncWriteExt};
+use tokio::{fs::{File, create_dir_all, metadata, remove_dir_all}, io::AsyncWriteExt};
 use std::path::{Path, PathBuf};
 use std::future::Future;
 use std::pin::Pin;
@@ -22,12 +22,12 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let path = Path::new(&self.drafts_path);
 
-        if path.exists() {
+        if exists(path).await {
             let mut result = vec![];
 
             for entry in FsMatcherConfigManager::read_dir_entries(path).await? {
                 let path = entry.path();
-                if path.is_dir() {
+                if is_dir(&path).await {
                     let filename = FsMatcherConfigManager::filename(&path)?;
                     result.push(filename.to_lowercase());
                 }
@@ -55,7 +55,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         let draft_id = DRAFT_ID.to_owned();
 
         let draft_path = self.get_draft_path(&draft_id);
-        if Path::new(&draft_path).exists() {
+        if exists(Path::new(&draft_path)).await {
             remove_dir_all(&draft_path).await.map_err(|err| {
                 MatcherError::InternalSystemError {
                     message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
@@ -140,7 +140,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
         info!("Delete draft with id {}", draft_id);
         let draft_path = self.get_draft_path(&draft_id);
 
-        if Path::new(&draft_path).exists() {
+        if exists(Path::new(&draft_path)).await {
             remove_dir_all(&draft_path).await.map_err(|err| MatcherError::InternalSystemError {
                 message: format!("Cannot delete directory [{}]. Err: {:?}", draft_path, err),
             })
@@ -193,7 +193,7 @@ impl FsMatcherConfigManager {
         source_dir: S,
         dest_dir: D,
     ) -> Result<(), MatcherError> {
-        if dest_dir.as_ref().exists() {
+        if exists(dest_dir.as_ref()).await {
             remove_dir_all(dest_dir.as_ref()).await.map_err(|err| {
                 MatcherError::InternalSystemError {
                     message: format!(
@@ -316,7 +316,7 @@ async fn write_all<P>(path: P, content: &str) -> Result<(), MatcherError>
         P: AsRef<Path>,
 {
     let path = path.as_ref();
-    if path.exists() && !path.is_file() {
+    if exists(path).await && !is_file(path).await {
         return Err(MatcherError::InternalSystemError {
             message: format!("Path \"{:?}\" is not a file!", path),
         })
@@ -360,6 +360,22 @@ async fn copy_recursive(
         message: format!("FsMatcherConfigManager - copy_recursive - Cannot execute Tokio internal task. Err: {:?}", err),
     })?
 
+}
+
+
+#[inline]
+pub async fn exists(path: &Path) -> bool {
+    metadata(&path).await.is_ok()
+}
+
+#[inline]
+pub async fn is_file(path: &Path) -> bool {
+    metadata(&path).await.map(|metadata| metadata.is_file()).unwrap_or(false)
+}
+
+#[inline]
+pub async fn is_dir(path: &Path) -> bool {
+    metadata(&path).await.map(|metadata| metadata.is_dir()).unwrap_or(false)
 }
 
 #[cfg(test)]

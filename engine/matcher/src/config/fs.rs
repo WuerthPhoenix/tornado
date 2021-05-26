@@ -9,6 +9,7 @@ use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use tokio::fs::{read_dir, read_to_string};
+use crate::config::fs::editor::is_dir;
 
 pub mod editor;
 
@@ -89,7 +90,7 @@ impl FsMatcherConfigManager {
         for entry in paths {
             let path = entry.path();
 
-            if path.is_dir() {
+            if is_dir(&path).await {
                 subdirectories_count += 1;
             } else {
                 let filename = FsMatcherConfigManager::filename(&path)?;
@@ -187,7 +188,7 @@ impl FsMatcherConfigManager {
 
             let filename = FsMatcherConfigManager::filename(&path)?;
 
-            if path.is_dir() {
+            if is_dir(&path).await {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call FsMatcherConfigManager::read_from_dir recursively to build this nested tree
                 // of inner structures.
