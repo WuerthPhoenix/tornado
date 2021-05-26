@@ -41,8 +41,15 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
+pub struct LogWorkerGuards {
+    #[allow(dead_code)]
+    file_guard: Option<WorkerGuard>,
+    #[allow(dead_code)]
+    stdout_guard: Option<WorkerGuard>,
+}
+
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>, LoggerError> {
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, LoggerError> {
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
@@ -52,31 +59,32 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>,
         }
     })?;
 
-    let subscriber = tracing_subscriber::registry().with(env_filter);
-
-    if let Some(file_output) = &logger_config.file_output_path {
+    let (file_subscriber, file_guard) = if let Some(file_output) = &logger_config.file_output_path {
         let (dir, filename) = path_to_dir_and_filename(file_output)?;
         let file_appender = tracing_appender::rolling::never(dir, filename);
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-        let subscriber = subscriber.with(Layer::new().with_ansi(false).with_writer(non_blocking));
+        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(guard))
+    } else {
+        (None, None)
+    };
 
-        if logger_config.stdout_output {
-            let subscriber = subscriber.with(Layer::new().with_ansi(false));
-            set_global_logger(subscriber)?;
-            return Ok(Some(guard));
-        } else {
-            set_global_logger(subscriber)?;
-            return Ok(Some(guard));
-        }
-    } else if logger_config.stdout_output {
-        let subscriber = subscriber.with(Layer::new().with_ansi(false));
-        set_global_logger(subscriber)?;
-        return Ok(None);
-    }
+    let (stdout_subscriber, stdout_guard) = if logger_config.stdout_output {
+        let (non_blocking, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
+        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(stdout_guard))
+    } else {
+        (None, None)
+    };
 
-    Ok(None)
+    let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(file_subscriber)
+        .with(stdout_subscriber);
+
+    set_global_logger(subscriber)?;
+
+    Ok(LogWorkerGuards { file_guard, stdout_guard })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {

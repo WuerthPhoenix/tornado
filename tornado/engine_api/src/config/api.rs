@@ -174,11 +174,18 @@ mod test {
             Ok(())
         }
 
-        async fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
+        async fn draft_take_over(
+            &self,
+            _draft_id: &str,
+            _user: String,
+        ) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        async fn deploy_config(&self, _config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_config(
+            &self,
+            _config: &MatcherConfig,
+        ) -> Result<MatcherConfig, MatcherError> {
             unimplemented!()
         }
     }

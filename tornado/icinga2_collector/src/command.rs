@@ -29,7 +29,8 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
                 Some(self.icinga_config.password.clone()),
             )
             .json(&self.stream_config)
-            .send().await
+            .send()
+            .await
             .map_err(|e| Icinga2CollectorError::CannotPerformHttpRequest {
                 message: format!(
                     "Cannot perform POST request to {}. err: {}",
@@ -47,8 +48,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
             return Err(Icinga2CollectorError::CannotPerformHttpRequest {
                 message: format!(
                     "Failed response returned from Icinga2, Response status: {:?} - body: {}",
-                    response_status,
-                    body
+                    response_status, body
                 ),
             });
         }
@@ -125,7 +125,6 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
                 tokio::time::sleep(sleep_millis).await;
             }
         }
-
     }
 }
 
@@ -149,7 +148,6 @@ mod test {
         let api_clone = api.clone();
 
         actix::spawn(async move {
-
             HttpServer::new(move || {
                 App::new().service(web::resource(api).route(web::post().to(
                     move |body: Json<Stream>| async {
@@ -184,7 +182,6 @@ mod test {
                             // We check that we added three messages into the mutek, if this succeeds,
                             // it means that the actor was successfully restarted after each connection drop, so the client
                             // is correctly handling dropped connections.
-
                         },
                         collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
                             event_type: "test".to_owned(),
@@ -206,7 +203,9 @@ mod test {
                 Ok(server)
             })
             .expect("Can not bind to port 0")
-            .run().await.unwrap();
+            .run()
+            .await
+            .unwrap();
         });
 
         let mut events = vec![];

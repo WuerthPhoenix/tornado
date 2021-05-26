@@ -1,15 +1,15 @@
 use crate::config::filter::Filter;
+use crate::config::fs::editor::is_dir;
 use crate::config::rule::Rule;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use log::*;
-use tokio::fs::DirEntry;
 use std::ffi::OsStr;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
+use tokio::fs::DirEntry;
 use tokio::fs::{read_dir, read_to_string};
-use crate::config::fs::editor::is_dir;
 
 pub mod editor;
 
@@ -192,7 +192,10 @@ impl FsMatcherConfigManager {
                 // A filter contains a set of subdirectories that can recursively contain other filters
                 // or rule sets. We call FsMatcherConfigManager::read_from_dir recursively to build this nested tree
                 // of inner structures.
-                nodes.push(FsMatcherConfigManager::read_from_dir(filename.to_owned(), path.clone()).await?);
+                nodes.push(
+                    FsMatcherConfigManager::read_from_dir(filename.to_owned(), path.clone())
+                        .await?,
+                );
                 continue;
             }
 
@@ -245,28 +248,27 @@ impl FsMatcherConfigManager {
     async fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
         let mut paths = vec![];
 
-        let mut read_dir = read_dir(dir.as_ref()).await.map_err(|e| {
-            MatcherError::ConfigurationError {
+        let mut read_dir =
+            read_dir(dir.as_ref()).await.map_err(|e| MatcherError::ConfigurationError {
                 message: format!(
                     "Error reading from config path [{}]: {}",
                     dir.as_ref().display(),
                     e
                 ),
-            }
-        })?;
-    
-        while let Some(entry) = read_dir.next_entry().await.map_err(|e| {
-            MatcherError::ConfigurationError {
+            })?;
+
+        while let Some(entry) =
+            read_dir.next_entry().await.map_err(|e| MatcherError::ConfigurationError {
                 message: format!(
                     "Error reading from config path [{}]: {}",
                     dir.as_ref().display(),
                     e
                 ),
-            }
-        })? {
+            })?
+        {
             paths.push(entry);
-        };
-        
+        }
+
         // Sort by filename
         paths.sort_by_key(DirEntry::path);
         Ok(paths)
@@ -345,7 +347,9 @@ mod test {
     #[tokio::test]
     async fn should_read_filter_from_folder() {
         let path = "./test_resources/config_01";
-        let config = FsMatcherConfigManager::read_from_dir("custom_name".to_owned(), path.into()).await.unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("custom_name".to_owned(), path.into())
+            .await
+            .unwrap();
 
         assert!(is_filter(&config, "custom_name", 1));
     }
@@ -383,7 +387,8 @@ mod test {
     #[tokio::test]
     async fn should_read_filter_from_folder_with_many_subfolders() {
         let path = "./test_resources/config_03";
-        let config = FsMatcherConfigManager::read_from_dir("emails".to_owned(), path.into()).await.unwrap();
+        let config =
+            FsMatcherConfigManager::read_from_dir("emails".to_owned(), path.into()).await.unwrap();
 
         assert!(is_filter(&config, "emails", 2));
     }
@@ -424,7 +429,9 @@ mod test {
     #[tokio::test]
     async fn should_create_implicit_filter_recursively() {
         let path = "./test_resources/config_implicit_filter";
-        let config = FsMatcherConfigManager::read_from_dir("implicit".to_owned(), path.into()).await.unwrap();
+        let config = FsMatcherConfigManager::read_from_dir("implicit".to_owned(), path.into())
+            .await
+            .unwrap();
         println!("{:?}", config);
 
         assert!(is_filter(&config, "implicit", 2));

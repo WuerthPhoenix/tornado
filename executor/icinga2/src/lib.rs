@@ -58,17 +58,21 @@ impl Icinga2Executor {
         }
     }
 
-    pub async fn perform_request<'a>(&self, icinga2_action: &'a Icinga2Action<'a>) -> Result<(), ExecutorError> {
+    pub async fn perform_request<'a>(
+        &self,
+        icinga2_action: &'a Icinga2Action<'a>,
+    ) -> Result<(), ExecutorError> {
         let response =
             self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload).await?;
 
         let response_status = response.status();
 
-        let response_body = response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
-            can_retry: true,
-            message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
-            code: None,
-        })?;
+        let response_body =
+            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
+                code: None,
+            })?;
 
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)

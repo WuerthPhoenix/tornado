@@ -17,11 +17,13 @@ pub async fn listen_to_tcp<
 ) -> Result<(), TornadoError> {
     let address = address.into();
     let socket_address = net::SocketAddr::from_str(address.as_str()).unwrap();
-    let listener = Box::new(tokio_stream::wrappers::TcpListenerStream::new(TcpListener::bind(&socket_address).await.map_err(|err| {
-        TornadoError::ActorCreationError {
-            message: format!("Cannot start TCP server on [{}]: {}", address, err),
-        }
-    })?));
+    let listener = Box::new(tokio_stream::wrappers::TcpListenerStream::new(
+        TcpListener::bind(&socket_address).await.map_err(|err| {
+            TornadoError::ActorCreationError {
+                message: format!("Cannot start TCP server on [{}]: {}", address, err),
+            }
+        })?,
+    ));
 
     TcpServerActor::create(|ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);

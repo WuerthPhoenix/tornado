@@ -2,10 +2,10 @@ use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
 use serde_json::Value;
-use std::{future::Future, pin::Pin, sync::Arc};
 use std::time::Duration;
-use tornado_common_api::{Action, Payload};
+use std::{future::Future, pin::Pin, sync::Arc};
 use tornado_common_api::RetriableError;
+use tornado_common_api::{Action, Payload};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
@@ -125,7 +125,10 @@ impl SmartMonitoringExecutor {
                         "SmartMonitoringExecutor - check host [{}] service [{}] status",
                         host_name, service_name
                     );
-                    icinga_executor.api_client.api_get_objects_service(host_name, service_name).await
+                    icinga_executor
+                        .api_client
+                        .api_get_objects_service(host_name, service_name)
+                        .await
                 }
                 (Some(host_name), None) => {
                     debug!("SmartMonitoringExecutor - check host [{}] status", host_name);
@@ -137,14 +140,15 @@ impl SmartMonitoringExecutor {
                 }
             }?;
 
-            let response_json = response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!(
-                    "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
-                    err
-                ),
-                code: None,
-            })?;
+            let response_json =
+                response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: true,
+                    message: format!(
+                        "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
+                        err
+                    ),
+                    code: None,
+                })?;
 
             match SmartMonitoringExecutor::is_pending(&response_json) {
                 Ok(false) => Ok(()),
@@ -160,7 +164,8 @@ impl SmartMonitoringExecutor {
                             service_name,
                             remaining_attempts,
                             sleep_ms_between_retries,
-                        ).await
+                        )
+                        .await
                     } else {
                         Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending and no more attempts to set the status will be performed.", host_name, service_name), can_retry: true, code: None })
                     }
@@ -216,7 +221,8 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
-                ).await?;
+                )
+                .await?;
                 SmartMonitoringExecutor::set_state_with_retry(
                     self.icinga_executor.clone(),
                     Icinga2ActionOwned {
@@ -227,7 +233,8 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                     service_name,
                     self.config.pending_object_set_status_retries_attempts,
                     self.config.pending_object_set_status_retries_sleep_ms,
-                ).await
+                )
+                .await
             }
             Err(err) => {
                 error!(
@@ -245,12 +252,9 @@ pub struct Icinga2ActionOwned {
     pub payload: Option<Payload>,
 }
 
-impl <'a> Into<Icinga2Action<'a>> for &'a Icinga2ActionOwned {
+impl<'a> Into<Icinga2Action<'a>> for &'a Icinga2ActionOwned {
     fn into(self) -> Icinga2Action<'a> {
-        Icinga2Action{
-            name: &self.name,
-            payload: self.payload.as_ref()
-        }
+        Icinga2Action { name: &self.name, payload: self.payload.as_ref() }
     }
 }
 
@@ -302,8 +306,7 @@ mod test {
         let mock_server = MockServer::start();
 
         mock_server.mock(|when, then| {
-            when.method(POST)
-                .path("/v1/actions/process-check-result");
+            when.method(POST).path("/v1/actions/process-check-result");
             then.status(200);
         });
 
@@ -500,8 +503,7 @@ mod test {
         let mock_server = MockServer::start();
 
         mock_server.mock(|when, then| {
-            when.method(POST)
-                .path("/v1/actions/process-check-result");
+            when.method(POST).path("/v1/actions/process-check-result");
             then.status(200);
         });
 

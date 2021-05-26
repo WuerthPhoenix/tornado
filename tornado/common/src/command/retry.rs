@@ -383,7 +383,6 @@ pub mod test {
             let received = receiver.recv().await.unwrap();
             assert_eq!("hello", received.id);
         }
-
     }
 
     #[actix_rt::test]
@@ -406,7 +405,6 @@ pub mod test {
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
-
     }
 
     #[actix_rt::test]
@@ -431,7 +429,6 @@ pub mod test {
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("hello", received.id);
-
     }
 
     #[actix_rt::test]
@@ -468,7 +465,6 @@ pub mod test {
                 assert!(passed >= expected);
             }
         }
-
     }
 
     struct AlwaysFailExecutor {

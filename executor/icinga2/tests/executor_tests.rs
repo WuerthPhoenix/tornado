@@ -4,6 +4,7 @@ use httpmock::Method::POST;
 use httpmock::MockServer;
 use maplit::*;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
@@ -11,7 +12,6 @@ use tornado_executor_icinga2::{
     Icinga2Executor, ICINGA2_ACTION_NAME_KEY, ICINGA2_ACTION_PAYLOAD_KEY,
     ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use tokio::sync::mpsc::UnboundedSender;
 
 #[actix_rt::test]
 async fn should_perform_a_post_request() {
@@ -74,7 +74,9 @@ async fn should_perform_a_post_request() {
             Ok(server)
         })
         .expect("Can not bind to port 0")
-        .run().await.unwrap();
+        .run()
+        .await
+        .unwrap();
     });
 
     assert_eq!(
@@ -92,10 +94,8 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     let server_response = "{\"error\":404.0,\"status\":\"No objects found.\"}";
 
     server.mock(|when, then| {
-        when.method(POST)
-            .path("/v1/actions/icinga2-api-action");
-        then.body(server_response)
-            .status(404);
+        when.method(POST).path("/v1/actions/icinga2-api-action");
+        then.body(server_response).status(404);
     });
 
     let executor = Icinga2Executor::new(Icinga2ClientConfig {

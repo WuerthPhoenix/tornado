@@ -4,6 +4,7 @@ use httpmock::Method::POST;
 use httpmock::MockServer;
 use maplit::*;
 use std::sync::Arc;
+use tokio::sync::mpsc::UnboundedSender;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
@@ -11,15 +12,12 @@ use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
     ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
-use tokio::sync::mpsc::UnboundedSender;
 
 #[actix_rt::test]
 async fn should_perform_a_post_request() {
-
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
     actix_rt::spawn(async move {
-
         let api = "/director";
         let api_clone = api.clone();
 
@@ -34,31 +32,31 @@ async fn should_perform_a_post_request() {
                 },
             )))
         })
-            .bind("127.0.0.1:0")
-            .and_then(|server| {
-                let server_port = server.addrs()[0].port();
+        .bind("127.0.0.1:0")
+        .and_then(|server| {
+            let server_port = server.addrs()[0].port();
 
-                let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
-                println!("Client connecting to: {}", url);
+            let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
+            println!("Client connecting to: {}", url);
 
-                let config = DirectorClientConfig {
-                    server_api_url: url,
-                    disable_ssl_verification: true,
-                    password: "".to_owned(),
-                    username: "".to_owned(),
-                    timeout_secs: None,
-                };
+            let config = DirectorClientConfig {
+                server_api_url: url,
+                disable_ssl_verification: true,
+                password: "".to_owned(),
+                username: "".to_owned(),
+                timeout_secs: None,
+            };
 
-                actix_rt::spawn(async move {
-                    let executor = DirectorExecutor::new(config).unwrap();
-                    println!("Executor created");
+            actix_rt::spawn(async move {
+                let executor = DirectorExecutor::new(config).unwrap();
+                println!("Executor created");
 
-                    let mut action = Action::new("");
-                    action.payload.insert(
-                        DIRECTOR_ACTION_NAME_KEY.to_owned(),
-                        Value::Text("create_host".to_owned()),
-                    );
-                    action.payload.insert(
+                let mut action = Action::new("");
+                action.payload.insert(
+                    DIRECTOR_ACTION_NAME_KEY.to_owned(),
+                    Value::Text("create_host".to_owned()),
+                );
+                action.payload.insert(
                         DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
                         Value::Map(hashmap![
                             "object_type".to_owned() => Value::Text("host".to_owned()),
@@ -68,17 +66,18 @@ async fn should_perform_a_post_request() {
             ]),
                     );
 
-                    executor.execute(action.into()).await.unwrap();
+                executor.execute(action.into()).await.unwrap();
 
-                    println!("DirectorApiClientMessage action sent");
-                });
+                println!("DirectorApiClientMessage action sent");
+            });
 
-                Ok(server)
-            })
-            .expect("Can not bind to port 0")
-            .run().await.unwrap();
+            Ok(server)
+        })
+        .expect("Can not bind to port 0")
+        .run()
+        .await
+        .unwrap();
     });
-
 
     println!("actix System stopped");
 
@@ -100,10 +99,8 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
     let server_response = "{\"error\": \"Trying to recreate icinga_host (\"some host\")\"}";
 
     server.mock(|when, then| {
-        when.method(POST)
-            .path("/host");
-        then.body(server_response)
-            .status(422);
+        when.method(POST).path("/host");
+        then.body(server_response).status(422);
     });
 
     let executor = DirectorExecutor::new(DirectorClientConfig {
