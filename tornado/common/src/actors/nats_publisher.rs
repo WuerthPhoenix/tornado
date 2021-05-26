@@ -5,11 +5,13 @@ use async_nats::{Connection, Options};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
+use std::ops::Deref;
+use std::rc::Rc;
 use tokio::time;
 
 pub struct NatsPublisherActor {
     config: NatsPublisherConfig,
-    nats_connection: Option<Connection>,
+    nats_connection: Rc<Option<Connection>>,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -38,53 +40,37 @@ pub struct NatsClientConfig {
 }
 
 impl NatsClientConfig {
-    pub async fn new_client(&self) -> Connection {
+    pub async fn new_client(&self) -> std::io::Result<Connection> {
         let addresses = self.addresses.join(",");
 
         let auth = self.get_auth();
 
-        loop {
-            let mut options = Options::new()
-                .disconnect_callback(|| {
-                    error!("NatsClientConfig - connection to NATS server was lost")
-                })
-                .reconnect_callback(|| {
-                    info!("NatsClientConfig - connection to NATS server was restored")
-                })
-                .max_reconnects(None);
-            match auth {
-                NatsClientAuth::Tls {
-                    certificate_path,
-                    private_key_path,
-                    path_to_root_certificate,
-                } => {
-                    info!("NatsClientConfig - Open Nats connection (with TLS) to [{}]", addresses);
-                    options =
-                        options.client_cert(certificate_path, private_key_path).tls_required(true);
+        let mut options = Options::new()
+            .disconnect_callback(|| error!("NatsClientConfig - connection to NATS server was lost"))
+            .reconnect_callback(|| {
+                info!("NatsClientConfig - connection to NATS server was restored")
+            })
+            .max_reconnects(None);
+        match auth {
+            NatsClientAuth::Tls {
+                certificate_path,
+                private_key_path,
+                path_to_root_certificate,
+            } => {
+                info!("NatsClientConfig - Open Nats connection (with TLS) to [{}]", addresses);
+                options =
+                    options.client_cert(certificate_path, private_key_path).tls_required(true);
 
-                    if let Some(path_to_root_certificate) = path_to_root_certificate {
-                        debug!("NatsClientConfig - Trusting CA: {}", path_to_root_certificate);
-                        options = options.add_root_certificate(path_to_root_certificate)
-                    }
+                if let Some(path_to_root_certificate) = path_to_root_certificate {
+                    debug!("NatsClientConfig - Trusting CA: {}", path_to_root_certificate);
+                    options = options.add_root_certificate(path_to_root_certificate)
                 }
-                NatsClientAuth::None => {
-                    info!(
-                        "NatsClientConfig - Open Nats connection (without TLS) to [{}]",
-                        addresses
-                    );
-                }
-            };
-            match options.connect(&addresses).await {
-                Err(connection_error) => {
-                    error!("Error during connection to NATS. Err: {:?}", connection_error);
-                    time::sleep(time::Duration::from_secs(5)).await;
-                }
-                Ok(connection) => {
-                    info!("NatsClientConfig - Successfully connected to NATS");
-                    return connection;
-                }
-            };
-        }
+            }
+            NatsClientAuth::None => {
+                info!("NatsClientConfig - Open Nats connection (without TLS) to [{}]", addresses);
+            }
+        };
+        options.connect(&addresses).await
     }
 
     fn get_auth(&self) -> &NatsClientAuth {
@@ -102,7 +88,7 @@ impl NatsPublisherActor {
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config: config, nats_connection: None }
+            NatsPublisherActor { config: config, nats_connection: Rc::new(None) }
         }))
     }
 }
@@ -117,10 +103,26 @@ impl Actor for NatsPublisherActor {
         );
 
         let client_config = self.config.client.clone();
+        let nats_connection = self.nats_connection.clone();
         ctx.wait(
-            async move { client_config.new_client().await }
-                .into_actor(self)
-                .map(move |connection, actor, _ctx| actor.nats_connection = Some(connection)),
+            async move {
+                if let Some(connection) = nats_connection.deref() {
+                    connection.close().await.unwrap();
+                    match connection.close().await {
+                        Ok(()) => {debug!(
+                            "NatsPublisherActor - Successfully closed previously opened NATS connection."
+                        );}
+                        Err(err) => {
+                            error!("NatsPublisherActor - Error while closing previously opened NATS connection. Err: {:?}", err)
+                        }
+                    };
+                }
+                wait_for_nats_connection(&client_config).await
+            }
+            .into_actor(self)
+            .map(move |connection, actor, _ctx| {
+                actor.nats_connection = Rc::new(Some(connection));
+            }),
         );
     }
 }
@@ -138,7 +140,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
         trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
         let address = ctx.address();
 
-        if let Some(connection) = &self.nats_connection {
+        if let Some(connection) = self.nats_connection.deref() {
             let event = serde_json::to_vec(&msg.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
@@ -161,20 +163,28 @@ impl Handler<EventMessage> for NatsPublisherActor {
                 }
             });
         } else {
-            // This should be rare because while establishing connection to NATS, events are not
-            // processed by the actor
-            actix::spawn(async move {
-                warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Reprocessing event ...");
-                time::sleep(time::Duration::from_secs(1)).await;
-                address.try_send(msg).unwrap_or_else(|err| {
-                    error!(
-                        "NatsPublisherActor -  Error while sending event to itself. Err: {:?}",
-                        err
-                    )
-                });
+            warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
+            ctx.stop();
+            address.try_send(msg).unwrap_or_else(|err| {
+                error!("NatsPublisherActor -  Error while sending event to itself. Err: {:?}", err)
             });
         }
 
         Ok(())
+    }
+}
+
+pub async fn wait_for_nats_connection(client_config: &NatsClientConfig) -> Connection {
+    loop {
+        match client_config.new_client().await {
+            Err(connection_error) => {
+                error!("Error during connection to NATS. Err: {:?}", connection_error);
+                time::sleep(time::Duration::from_secs(5)).await;
+            }
+            Ok(connection) => {
+                info!("NatsClientConfig - Successfully connected to NATS");
+                return connection;
+            }
+        }
     }
 }

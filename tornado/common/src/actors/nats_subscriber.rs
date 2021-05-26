@@ -1,5 +1,5 @@
 use crate::actors::message::{BytesMessage, TornadoCommonActorError};
-use crate::actors::nats_publisher::NatsClientConfig;
+use crate::actors::nats_publisher::{wait_for_nats_connection, NatsClientConfig};
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::Connection;
@@ -20,7 +20,7 @@ pub async fn subscribe_to_nats<
     message_mailbox_capacity: usize,
     callback: F,
 ) -> Result<(), TornadoError> {
-    let client = config.client.new_client().await;
+    let client = wait_for_nats_connection(&config.client).await;
 
     let subscription = client.subscribe(&config.subject).await.map_err(|err| {
         TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {:?}", config.subject, err} }

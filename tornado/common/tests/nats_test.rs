@@ -510,6 +510,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 // Tests the behaviour where after a disconnection from NATS, the publisher seems to lose the first
 // 2 events which it tries to publish.
 // Currenlty fails and ignored, should be fixed when this is solved: https://github.com/nats-io/nats.rs/issues/182
+// To be fixed and restored in https://siwuerthphoenix.atlassian.net/browse/TOR-326
 #[actix_rt::test]
 #[ignore]
 #[serial]
