@@ -62,7 +62,7 @@ impl NatsClientConfig {
                 options.connect(&addresses).await.map_err(|err| {
                     TornadoError::ConfigurationError {
                         message: format!(
-                            "Error during connection to NATS with TLS (with TLS). Err: {}",
+                            "Error during connection to NATS with TLS (with TLS). Err: {:?}",
                             err
                         ),
                     }
@@ -73,7 +73,7 @@ impl NatsClientConfig {
                 Options::new().connect(&addresses).await.map_err(|err| {
                     TornadoError::ConfigurationError {
                         message: format!(
-                            "Error during connection to NATS (without TLS). Err: {}",
+                            "Error during connection to NATS (without TLS). Err: {:?}",
                             err
                         ),
                     }
@@ -138,7 +138,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
         actix::spawn(async move {
             debug!("NatsPublisherActor - Publish event to NATS");
             if let Err(e) = client.publish(&config.subject, &event).await {
-                error!("NatsPublisherActor - Error sending event to NATS. Err: {}", e);
+                error!("NatsPublisherActor - Error sending event to NATS. Err: {:?}", e);
             };
             debug!("NatsPublisherActor - Publish event to NATS succeeded");
         });

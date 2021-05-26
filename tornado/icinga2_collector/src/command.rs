@@ -89,7 +89,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
                 Err(e) => {
                     return Err(Icinga2CollectorError::CannotPerformHttpRequest {
                         message: format!(
-                            "Error reading response from Icinga at url {}, Err: {}",
+                            "Error reading response from Icinga at url {}, Err: {:?}",
                             self.icinga_config.server_api_url, e
                         ),
                     });
@@ -106,7 +106,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
             .build()
             .map_err(|e| Icinga2CollectorError::IcingaConnectionError {
                 message: format!(
-                    "Cannot connect to Icinga at url {}, Err: {}",
+                    "Cannot connect to Icinga at url {}, Err: {:?}",
                     self.icinga_config.server_api_url, e
                 ),
             })?;

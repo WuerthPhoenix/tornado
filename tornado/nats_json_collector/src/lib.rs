@@ -74,7 +74,7 @@ async fn subscribe_to_topics(
                 build_jmespath_collector_config(topic_config.collector_config.clone(), &topic);
             let jmespath_collector = JMESPathEventCollector::build(jmespath_collector_config)
                 .map_err(|err| CollectorError::CollectorCreationError {
-                    message: format!("Cannot create collector for topic [{}]. Err: {}", topic, err),
+                    message: format!("Cannot create collector for topic [{}]. Err: {:?}", topic, err),
                 })?;
 
             let nats_subscriber_config =
