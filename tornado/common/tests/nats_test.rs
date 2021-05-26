@@ -8,7 +8,10 @@ use std::time::Duration;
 
 use actix::clock::sleep;
 use log::*;
+use reqwest::Client;
+use serde_json::Value;
 use serial_test::serial;
+use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
 use tokio::time;
@@ -23,11 +26,12 @@ fn new_nats_docker_container(
     docker: &clients::Cli,
     port: Option<u16>,
     tls: bool,
-) -> (Container<'_, clients::Cli, GenericImage>, u16) {
+) -> (Container<'_, clients::Cli, GenericImage>, u16, u16) {
     let port = port.unwrap_or_else(|| port_check::free_local_port().unwrap());
+    let monitoring_port = port_check::free_local_port().unwrap();
+    let internal_monitoring_port = 8222;
 
-    let mut image =
-        images::generic::GenericImage::new("nats:2.1-alpine");
+    let mut image = images::generic::GenericImage::new("nats:2.1-alpine");
     if tls {
         image = image
             .with_volume(
@@ -44,15 +48,48 @@ fn new_nats_docker_container(
                 "/test_resources/nats-server.crt.pem".to_owned(),
                 "--tlskey".to_owned(),
                 "/test_resources/nats-server.key".to_owned(),
+                "--http_port".to_owned(),
+                internal_monitoring_port.to_string(),
+            ]);
+    } else {
+        image = image
+            .with_args(vec![
+                "nats-server".to_owned(),
+                "--http_port".to_owned(),
+                internal_monitoring_port.to_string(),
             ]);
     }
 
-    let args = RunArgs::default().with_mapped_port((port, 4222));
-    let node = docker
-        .run_with_args(image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")), args);
+    let args = RunArgs::default()
+        .with_mapped_port((port, 4222))
+        .with_mapped_port((monitoring_port, internal_monitoring_port));
+    let node = docker.run_with_args(
+        image.with_wait_for(images::generic::WaitFor::message_on_stderr("Server is ready")),
+        args,
+    );
 
     let nats_port = node.get_host_port(4222).unwrap();
-    (node, nats_port)
+    (node, nats_port, monitoring_port)
+}
+
+async fn get_number_of_published_messages(nats_monitoring_url: &str) -> u64 {
+    let connections = get_nats_connections_status(nats_monitoring_url).await;
+
+    match connections.get("connections").unwrap().get(0) {
+        None => 0,
+        Some(connection_stats) => connection_stats.get("in_msgs").unwrap().as_u64().unwrap(),
+    }
+}
+
+async fn get_nats_connections_status(nats_monitoring_url: &str) -> Value {
+    Client::new()
+        .get(format!("http://{}/connz", nats_monitoring_url))
+        .send()
+        .await
+        .unwrap()
+        .json::<Value>()
+        .await
+        .unwrap()
 }
 
 #[actix_rt::test]
@@ -60,7 +97,7 @@ fn new_nats_docker_container(
 async fn official_nats_client_spike_test() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let (_node, nats_port, _nats_monitoring_port) = new_nats_docker_container(&docker, None, false);
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
@@ -90,7 +127,7 @@ async fn official_nats_client_spike_test() {
 async fn nats_subscriber_should_receive_from_nats() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let (_node, nats_port, _nats_monitoring_port) = new_nats_docker_container(&docker, None, false);
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
@@ -129,7 +166,7 @@ async fn nats_subscriber_should_receive_from_nats() {
 async fn nats_publisher_should_publish_to_nats() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let (_node, nats_port, _nats_monitoring_port) = new_nats_docker_container(&docker, None, false);
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
@@ -168,7 +205,7 @@ async fn nats_publisher_should_publish_to_nats() {
 async fn should_publish_to_nats() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, None, false);
+    let (_node, nats_port, _nats_monitoring_port) = new_nats_docker_container(&docker, None, false);
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
@@ -210,7 +247,7 @@ async fn should_publish_to_nats() {
 async fn should_publish_to_nats_with_tls() {
     start_logger();
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, None, true);
+    let (_node, nats_port, _nats_monitoring_port) = new_nats_docker_container(&docker, None, true);
     let nats_address = format!("localhost:{}", nats_port);
 
     let random: u8 = rand::random();
@@ -284,29 +321,17 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
 
     // Start NATS
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, Some(free_local_port), false);
+    let (_node, _nats_port, nats_monitoring_port) =
+        new_nats_docker_container(&docker, Some(free_local_port), false);
 
-    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+    let mut published_messages = 0;
+    while published_messages < 1 {
+        published_messages =
+            get_number_of_published_messages(&format!("127.0.0.1:{}", nats_monitoring_port)).await;
+        time::sleep(Duration::from_secs(1)).await;
+    }
 
-    // Start a subscriber that should receive the message sent when NATS was down
-    subscribe_to_nats(
-        NatsSubscriberConfig {
-            client: NatsClientConfig {
-                addresses: vec![format!("127.0.0.1:{}", nats_port)],
-                auth: None,
-            },
-            subject: subject.to_owned(),
-        },
-        10000,
-        move |event| {
-            sender.send(event).unwrap();
-            Ok(())
-        },
-    )
-    .await
-    .unwrap();
-
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
+    assert_eq!(published_messages, 1);
 }
 
 #[actix_rt::test]
@@ -346,10 +371,22 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
 
     // Start NATS
     let docker = clients::Cli::default();
-    let (_node, nats_port) = new_nats_docker_container(&docker, Some(free_local_port), false);
+    let (_node, nats_port, nats_monitoring_port) =
+        new_nats_docker_container(&docker, Some(free_local_port), false);
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
-    // Start a publisher and publish a message when Nats is not available
+    while get_nats_connections_status(&format!("127.0.0.1:{}", nats_monitoring_port))
+        .await
+        .get("num_connections")
+        .unwrap()
+        .as_u64()
+        .unwrap()
+        < 1
+    {
+        info!("Wait for subscriber to be connected to NATS");
+        time::sleep(Duration::from_secs(1)).await;
+    }
+
     let publisher = NatsPublisherActor::start_new(
         NatsPublisherConfig {
             client: NatsClientConfig { addresses: vec![nats_address], auth: None },
@@ -403,6 +440,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
+    let subscriber_connected = Arc::new(std::sync::RwLock::new(false));
+    let subscriber_connected_clone = subscriber_connected.clone();
     actix::spawn(async move {
         subscribe_to_nats(
             NatsSubscriberConfig {
@@ -417,6 +456,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         )
         .await
         .unwrap();
+        let mut lock = subscriber_connected_clone.write().unwrap();
+        *lock = true;
     });
 
     let docker = clients::Cli::default();
@@ -425,11 +466,24 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
     let mut received_messages = 0;
 
     for i in 1..=loops {
-        let (node, _nats_port) = new_nats_docker_container(&docker, Some(free_local_port), false);
+        let (node, _nats_port, _nats_monitoring_port) =
+            new_nats_docker_container(&docker, Some(free_local_port), false);
 
         let mut nats_is_up = true;
 
-        publisher.do_send(EventMessage { event: event.clone() });
+        // Before publishing the event, wait the subscriber to be subscribed for the first time.
+        // The subscriber may be slower than the publisher to connect to NATS for the first time.
+        // If this is the case, the message could be successfully published before the subscriber
+        // is subscribed. The message would then be not received.
+        loop {
+            if *(subscriber_connected.read().unwrap()) {
+                publisher.do_send(EventMessage { event: event.clone() });
+                break;
+            }
+            info!("Subscriber not yet connected, delaying publishing");
+            sleep(time::Duration::from_secs(1)).await;
+        }
+
         in_flight_messages += 1;
         time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
 
@@ -458,6 +512,67 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
     }
 
     assert_eq!(loops * 2, received_messages);
+}
+
+// Tests the behaviour where after a disconnection from NATS, the publisher seems to lose the first
+// 2 events which it tries to publish.
+// Currenlty fails and ignored, should be fixed when this is solved: https://github.com/nats-io/nats.rs/issues/182
+// To be fixed and restored in https://siwuerthphoenix.atlassian.net/browse/TOR-326
+#[actix_rt::test]
+#[ignore]
+#[serial]
+async fn publisher_should_reschedule_all_events_after_a_disconnection() {
+    start_logger();
+    let free_local_port = port_check::free_local_port().unwrap();
+
+    // Start NATS
+    let docker = clients::Cli::default();
+    let (node, nats_port, _nats_monitoring_port) =
+        new_nats_docker_container(&docker, Some(free_local_port), false);
+    let nats_address = format!("127.0.0.1:{}", nats_port);
+
+    let random: u8 = rand::random();
+    let event = Event::new(format!("event_type_{}", random));
+    let subject = format!("test_subject_{}", random);
+
+    let publisher = NatsPublisherActor::start_new(
+        NatsPublisherConfig {
+            client: NatsClientConfig { addresses: vec![nats_address], auth: None },
+            subject: subject.to_owned(),
+        },
+        10,
+    )
+    .await
+    .unwrap();
+
+    time::sleep(time::Duration::new(1, 0)).await;
+
+    drop(node);
+    wait_until_port_is_free(free_local_port).await;
+
+    let n_events = 10;
+
+    for i in 0..n_events {
+        info!("Sending event to publisher: {}", i);
+        publisher.do_send(EventMessage { event: event.clone() });
+        time::sleep(time::Duration::from_millis(100)).await;
+    }
+
+    let (_node, _nats_port, nats_monitoring_port) =
+        new_nats_docker_container(&docker, Some(free_local_port), false);
+
+    let mut n_published;
+    loop {
+        n_published =
+            get_number_of_published_messages(&format!("127.0.0.1:{}", nats_monitoring_port)).await;
+        info!("Subscriber received {} messages", n_published);
+        if n_published < n_events {
+            time::sleep(Duration::from_secs(1)).await;
+        } else {
+            break;
+        }
+    }
+    assert_eq!(n_published, n_events);
 }
 
 fn start_logger() {

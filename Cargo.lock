@@ -3414,6 +3414,7 @@ dependencies = [
  "log",
  "port_check",
  "rand 0.8.3",
+ "reqwest",
  "serde",
  "serde_json",
  "serial_test",
