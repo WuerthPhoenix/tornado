@@ -1,10 +1,11 @@
-use std::process::Command;
+use tokio::process::Command;
 
-#[test]
-fn spike_command_script() {
+#[tokio::test]
+async fn spike_command_script() {
     let output = Command::new("./test_resources/echo.sh")
         .arg("hello_world")
         .output()
+        .await
         .expect("failed to execute process");
 
     println!("status: {}", output.status);
@@ -15,23 +16,24 @@ fn spike_command_script() {
     assert!(output.status.success());
 }
 
-#[test]
-fn spike_command_failing_script() {
+#[tokio::test]
+async fn spike_command_failing_script() {
     let output =
-        Command::new("./test_resources/fail.sh").output().expect("failed to execute process");
+        Command::new("./test_resources/fail.sh").output().await.expect("failed to execute process");
 
     println!("status: {}", output.status);
 
     assert!(!output.status.success());
 }
 
-#[test]
-fn spike_command_script_with_inline_args() {
+#[tokio::test]
+async fn spike_command_script_with_inline_args() {
     let shell: [&str; 2] = ["sh", "-c"];
     let output = Command::new(shell[0])
         .args(&shell[1..])
         .arg("./test_resources/echo.sh hello_world")
         .output()
+        .await
         .expect("failed to execute process");
 
     println!("status: {}", output.status);
@@ -42,8 +44,8 @@ fn spike_command_script_with_inline_args() {
     assert!(output.status.success());
 }
 
-#[test]
-fn spike_execute_script_write_file() {
+#[tokio::test]
+async fn spike_execute_script_write_file() {
     // Arrange
     let tempdir = tempfile::tempdir().unwrap();
     let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
@@ -54,6 +56,7 @@ fn spike_execute_script_write_file() {
         .arg(&filename)
         .arg(&content)
         .output()
+        .await
         .expect("failed to execute process");
 
     // Assert
