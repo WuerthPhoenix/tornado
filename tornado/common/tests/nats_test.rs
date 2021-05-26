@@ -51,6 +51,13 @@ fn new_nats_docker_container(
                 "--http_port".to_owned(),
                 internal_monitoring_port.to_string(),
             ]);
+    } else {
+        image = image
+            .with_args(vec![
+                "nats-server".to_owned(),
+                "--http_port".to_owned(),
+                internal_monitoring_port.to_string(),
+            ]);
     }
 
     let args = RunArgs::default()

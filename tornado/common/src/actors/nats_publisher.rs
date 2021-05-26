@@ -117,12 +117,23 @@ impl Actor for NatsPublisherActor {
                         }
                     };
                 }
-                wait_for_nats_connection(&client_config).await
+                client_config.new_client().await
             }
             .into_actor(self)
-            .map(move |connection, actor, _ctx| {
-                actor.nats_connection = Rc::new(Some(connection));
-            }),
+                .map(move |client, act, ctx| match client {
+                    Ok(client) => {
+                        info!(
+                            "NatsPublisherActor connected to server [{:?}]",
+                            &act.config.client.addresses
+                        );
+                        act.nats_connection = Rc::new(Some(client));
+                    }
+                    Err(err) => {
+                        act.nats_connection = Rc::new(None);
+                        warn!("NatsPublisherActor connection failed. Err: {}", err);
+                        ctx.stop();
+                    }
+                }),
         );
     }
 }
