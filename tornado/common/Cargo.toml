@@ -37,6 +37,7 @@ actix-rt = "2.2"
 chrono = "0.4"
 port_check = "0.1"
 rand = "0.8"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls"] }
 serial_test = "*"
 testcontainers = "0.12"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
