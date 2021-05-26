@@ -52,31 +52,28 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<Option<WorkerGuard>,
         }
     })?;
 
-    let subscriber = tracing_subscriber::registry().with(env_filter);
-
-    if let Some(file_output) = &logger_config.file_output_path {
+    let (file_subscriber, file_guard) = if let Some(file_output) = &logger_config.file_output_path {
         let (dir, filename) = path_to_dir_and_filename(file_output)?;
         let file_appender = tracing_appender::rolling::never(dir, filename);
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-        let subscriber = subscriber.with(Layer::new().with_ansi(false).with_writer(non_blocking));
+        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(guard))
+    } else {
+        (None, None)
+    };
 
-        if logger_config.stdout_output {
-            let subscriber = subscriber.with(Layer::new().with_ansi(false));
-            set_global_logger(subscriber)?;
-            return Ok(Some(guard));
-        } else {
-            set_global_logger(subscriber)?;
-            return Ok(Some(guard));
-        }
-    } else if logger_config.stdout_output {
-        let subscriber = subscriber.with(Layer::new().with_ansi(false));
-        set_global_logger(subscriber)?;
-        return Ok(None);
-    }
+    let stdout_subscriber =
+        if logger_config.stdout_output { Some(Layer::new().with_ansi(false)) } else { None };
 
-    Ok(None)
+    let subscriber = tracing_subscriber::registry()
+        .with(env_filter)
+        .with(file_subscriber)
+        .with(stdout_subscriber);
+
+    set_global_logger(subscriber)?;
+
+    Ok(file_guard)
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
