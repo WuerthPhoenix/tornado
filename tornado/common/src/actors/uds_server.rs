@@ -63,7 +63,7 @@ where
         if let Some(permissions) = self.socket_permissions {
             debug!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
             if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
-                error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
+                error!("UdsServerActor - Cannot set socket permissions. Err: {:?}", err);
                 ctx.stop();
             }
         }

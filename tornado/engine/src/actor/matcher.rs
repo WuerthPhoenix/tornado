@@ -1,4 +1,4 @@
-use crate::actor::dispatcher::{DispatcherActor, ProcessedEventMessage};
+use crate::actor::dispatcher::ProcessedEventMessage;
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
@@ -34,28 +34,30 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
-#[rtype(result = "Result<Arc<MatcherConfig>, error::MatcherError>")]
-pub struct ReconfigureMessage {}
+#[rtype(result = "Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>")]
+pub struct ReconfigureMessage {
+}
 
 #[derive(Message)]
 #[rtype(result = "Arc<MatcherConfig>")]
 pub struct GetCurrentConfigMessage {}
 
 pub struct MatcherActor {
-    dispatcher_addr: Addr<DispatcherActor>,
+    dispatcher_addr: Recipient<ProcessedEventMessage>,
     matcher_config_manager: Arc<dyn MatcherConfigReader>,
     matcher_config: Arc<MatcherConfig>,
     matcher: Arc<matcher::Matcher>,
 }
 
 impl MatcherActor {
-    pub fn start(
-        dispatcher_addr: Addr<DispatcherActor>,
+    pub async fn start(
+        dispatcher_addr: Recipient<ProcessedEventMessage>,
         matcher_config_manager: Arc<dyn MatcherConfigReader>,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
-        let matcher_config = Arc::new(matcher_config_manager.get_config()?);
+        let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
+
         Ok(actix::Supervisor::start(move |ctx: &mut Context<MatcherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
             MatcherActor { dispatcher_addr, matcher_config_manager, matcher_config, matcher }
@@ -154,18 +156,111 @@ impl Handler<GetCurrentConfigMessage> for MatcherActor {
 }
 
 impl Handler<ReconfigureMessage> for MatcherActor {
-    type Result = Result<Arc<MatcherConfig>, error::MatcherError>;
+    type Result = Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>;
 
-    fn handle(&mut self, _msg: ReconfigureMessage, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, _msg: ReconfigureMessage, ctx: &mut Context<Self>) -> Self::Result {
+        
+        let matcher_config_manager = self.matcher_config_manager.clone();
         info!("MatcherActor - received ReconfigureMessage.");
+        let (tx, rx) = async_channel::bounded(1);
 
-        let matcher_config = Arc::new(self.matcher_config_manager.get_config()?);
-        let matcher = Arc::new(Matcher::build(&matcher_config)?);
-        self.matcher_config = matcher_config.clone();
-        self.matcher = matcher;
+        ctx.wait(async move {
+            let matcher_config_result = matcher_config_manager.get_config().await;
 
-        info!("MatcherActor - Tornado configuration updated successfully.");
+            let result : Result<_, error::MatcherError> = {
+                let matcher_config = Arc::new(matcher_config_result?);
+                let matcher = Arc::new(Matcher::build(&matcher_config)?);
+                Ok((matcher, matcher_config))
+            };
 
-        Ok(matcher_config)
+            if let Err(err) = tx.send(result.clone().map(|(_matcher, matcher_config)| matcher_config)).await {
+                error!("MatcherActor - Error sending message: {:?}", err);
+            }
+
+            result
+        }.into_actor(self).map(|result,this,_ctx| {
+            match result {
+                Ok((matcher, matcher_config)) => {
+                    this.matcher_config = matcher_config;
+                    this.matcher = matcher;
+                    info!("MatcherActor - Tornado configuration updated successfully.");
+                },
+                Err(err) => error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err)
+            }
+        }));
+
+        Ok(rx)
     }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use crate::config::parse_config_files;
+    use crate::command::upgrade_rules::test::prepare_temp_dirs;
+    use crate::actor::dispatcher::ProcessedEventMessage;
+    use tornado_engine_matcher::config::MatcherConfigEditor;
+
+    #[actix::test]
+    async fn should_reconfigure_the_matcher_and_return_the_new_config() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+
+        let config_manager = configs.matcher_config.clone();
+        let dispatcher_addr = FakeDispatcher{}.start().recipient();
+
+        let matcher_actor = MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+
+        let draft_id = config_manager.create_draft("user_1".to_owned()).await.unwrap();
+        let draft = config_manager.get_draft(&draft_id).await.unwrap();
+
+        // Act
+        let request = matcher_actor.send(ReconfigureMessage {}).await.unwrap().unwrap();
+        let config_from_response = request.recv().await.unwrap().unwrap().as_ref().clone();
+
+        // Assert
+        let matcher_config_after = config_manager.get_config().await.unwrap();
+        assert_eq!(config_from_response, matcher_config_after);
+        assert_eq!(config_from_response, draft.config);
+
+    }
+
+    #[actix::test]
+    async fn should_return_the_current_config() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+
+        let config_manager = configs.matcher_config.clone();
+        let dispatcher_addr = FakeDispatcher{}.start().recipient();
+        let matcher_actor = MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+
+        // Act
+        let returned_config = matcher_actor.send(GetCurrentConfigMessage {}).await.unwrap();
+
+        // Assert
+        let matcher_config = config_manager.get_config().await.unwrap();
+        assert_eq!(&matcher_config, returned_config.as_ref());
+
+    }
+
+    struct FakeDispatcher{}
+
+    impl Actor for FakeDispatcher {
+        type Context = Context<Self>;
+    }
+
+    impl Handler<ProcessedEventMessage> for FakeDispatcher {
+        type Result = Result<(), MatcherError>;
+        fn handle(&mut self, _msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
+            Ok(())
+        }
+    }
+
 }

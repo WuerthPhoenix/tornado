@@ -23,7 +23,7 @@ pub async fn subscribe_to_nats<
     let client = config.client.new_client().await;
 
     let subscription = client.subscribe(&config.subject).await.map_err(|err| {
-        TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {}", config.subject, err} }
+        TornadoError::ConfigurationError { message: format! {"NatsSubscriberActor - Cannot subscribe to subject [{}]. Err: {:?}", config.subject, err} }
     })?;
 
     info!("NatsSubscriberActor - Created Nats subscription to subject [{}]", config.subject);

@@ -34,7 +34,7 @@ impl Parser {
                 ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
             let jmespath_exp =
                 jmespath::compile(expression).map_err(|err| ParserError::ConfigurationError {
-                    message: format!("Not valid expression: [{}]. Err: {}", expression, err),
+                    message: format!("Not valid expression: [{}]. Err: {:?}", expression, err),
                 })?;
             Ok(Parser::Exp(jmespath_exp))
         } else {
@@ -45,7 +45,7 @@ impl Parser {
     pub fn parse_str<'o>(&'o self, value: &str) -> Result<Cow<'o, Value>, ParserError> {
         let data: Value =
             serde_json::from_str(value).map_err(|err| ParserError::ConfigurationError {
-                message: format!("Failed to parse str into Value. Err: {}", err),
+                message: format!("Failed to parse str into Value. Err: {:?}", err),
             })?;
         self.parse_value(&data)
     }

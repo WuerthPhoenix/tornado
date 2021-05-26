@@ -55,7 +55,7 @@ impl Actor for TcpClientActor {
                     act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
                 }
                 Err(err) => {
-                    warn!("TCP connection failed. Err: {}", err);
+                    warn!("TCP connection failed. Err: {:?}", err);
                     ctx.stop();
                 }
             }),

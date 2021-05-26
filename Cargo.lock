@@ -3571,6 +3571,7 @@ dependencies = [
  "actix-cors",
  "actix-rt",
  "actix-web",
+ "async-channel",
  "async-trait",
  "chrono",
  "clap",
@@ -3638,6 +3639,7 @@ dependencies = [
 name = "tornado_engine_matcher"
 version = "0.0.1"
 dependencies = [
+ "async-trait",
  "chrono",
  "criterion",
  "fs_extra",
@@ -3649,6 +3651,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror",
+ "tokio",
  "tornado_common_api",
  "tornado_common_logger",
  "tornado_common_parser",

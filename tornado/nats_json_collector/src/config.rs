@@ -65,13 +65,13 @@ pub fn read_topics_from_config(path: &str) -> Result<Vec<TopicConfig>, TornadoEr
     for path in paths {
         let filename = path
             .map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Cannot get the filename. Err: {}", e),
+                message: format!("Cannot get the filename. Err: {:?}", e),
             })?
             .path();
         debug!("Loading topic configuration from file: [{}]", filename.display());
         let topic_body =
             fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
+                message: format!("Unable to open the file [{}]. Err: {:?}", filename.display(), e),
             })?;
         trace!("Topic configuration body: \n{}", topic_body);
         topics.push(serde_json::from_str::<TopicConfig>(&topic_body).map_err(|e| {
