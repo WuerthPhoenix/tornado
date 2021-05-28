@@ -431,9 +431,8 @@ dependencies = [
 
 [[package]]
 name = "async-nats"
-version = "0.9.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44a042e52858bf59b58b37ad2e32f9c956b2411a63e53063055bd18755598aac"
+version = "0.9.17"
+source = "git+https://github.com/WuerthPhoenix/nats.rs?branch=bugfix/messages-lost-by-publish-after-disconnection#4b2777add64232ee11200c6ddbcf10eaa08753dd"
 dependencies = [
  "blocking",
  "nats",
@@ -1904,9 +1903,8 @@ dependencies = [
 
 [[package]]
 name = "nats"
-version = "0.9.16"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a52d8392a8d3d010d503795cfe94e5ed7ca51ee6366d84640addc38b28c9fc5c"
+version = "0.9.17"
+source = "git+https://github.com/WuerthPhoenix/nats.rs?branch=bugfix/messages-lost-by-publish-after-disconnection#4b2777add64232ee11200c6ddbcf10eaa08753dd"
 dependencies = [
  "base64 0.13.0",
  "base64-url",
