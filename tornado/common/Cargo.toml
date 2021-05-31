@@ -30,11 +30,7 @@ actix-web = "=4.0.0-beta.5"
 # END - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
 
 # Feature nats
-# Use WP fork which fixes the bug https://github.com/nats-io/nats.rs/issues/182
-# see also https://siwuerthphoenix.atlassian.net/browse/TOR-326
-# We can use the official version once the bug is fixed
-async-nats = { git = "https://github.com/WuerthPhoenix/nats.rs", package = "async-nats", branch = "bugfix/messages-lost-by-publish-after-disconnection", optional = true }
-#async-nats = { version = "0.9", optional = true }
+async-nats = { version = "0.9", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.2"
