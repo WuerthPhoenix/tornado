@@ -77,10 +77,29 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, Log
         (None, None)
     };
 
+
+
+    let otel_subscriber = {
+        // Create a jaeger exporter pipeline for a `trace_demo` service.
+        let tracer = opentelemetry_jaeger::new_pipeline()
+            .with_service_name("tornado_demo")
+            .install_simple()
+            .expect("Error initializing Jaeger exporter");
+
+        // Create a subscriber with the configured tracer
+        let otel_subscriber = tracing_opentelemetry::layer().with_tracer(tracer);
+
+        // Use the tracing subscriber `Registry`, or any other subscriber
+        // that impls `LookupSpan`
+        //let subscriber = Registry::default().with(otel_subscriber);
+        Some(otel_subscriber)
+    };
+
     let subscriber = tracing_subscriber::registry()
         .with(env_filter)
         .with(file_subscriber)
-        .with(stdout_subscriber);
+        .with(stdout_subscriber)
+        .with(otel_subscriber);
 
     set_global_logger(subscriber)?;
 
