@@ -14,6 +14,8 @@ pub fn to_auth_with_permissions_dto(
             .map(|permission| match permission {
                 Permission::ConfigEdit => PermissionDto::ConfigEdit,
                 Permission::ConfigView => PermissionDto::ConfigView,
+                Permission::RuntimeConfigEdit => PermissionDto::RuntimeConfigEdit,
+                Permission::RuntimeConfigView => PermissionDto::RuntimeConfigView,
             })
             .collect(),
     }
