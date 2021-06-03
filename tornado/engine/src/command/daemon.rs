@@ -26,6 +26,7 @@ use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
+use tokio::sync::RwLock;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -355,7 +356,7 @@ pub async fn daemon(
     let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
-    let logger_level = global_config.logger.level.clone();
+    let logger_level = Arc::new(RwLock::new(global_config.logger.level.clone()));
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
