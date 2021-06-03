@@ -3520,6 +3520,7 @@ dependencies = [
  "tornado_common_api",
  "tornado_common_logger",
  "tornado_engine_api",
+ "tornado_engine_api_dto",
  "tornado_engine_matcher",
  "tornado_executor_archive",
  "tornado_executor_common",
@@ -3532,6 +3533,7 @@ dependencies = [
  "tornado_executor_script",
  "tornado_executor_smart_monitoring_check_result",
  "tornado_network_common",
+ "tracing-subscriber",
 ]
 
 [[package]]

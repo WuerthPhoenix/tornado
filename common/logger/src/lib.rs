@@ -41,7 +41,7 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
-pub struct LogWorkerGuards {
+pub struct LogWorkerGuard {
     #[allow(dead_code)]
     file_guard: Option<WorkerGuard>,
     #[allow(dead_code)]
@@ -50,7 +50,18 @@ pub struct LogWorkerGuards {
     reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
 }
 
-impl LogWorkerGuards {
+impl LogWorkerGuard {
+
+    pub fn new (file_guard: Option<WorkerGuard>,
+        stdout_guard: Option<WorkerGuard>,
+        reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>) -> Self {
+        Self {
+            file_guard,
+            stdout_guard,
+            reload_handle
+        }
+    }
+
     pub fn reload(&self, env_filter_str: &str) -> Result<(), LoggerError> {
         let env_filter = EnvFilter::from_str(env_filter_str).map_err(|err| {
             LoggerError::LoggerConfigurationError {
@@ -67,7 +78,7 @@ impl LogWorkerGuards {
 }
 
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, LoggerError> {
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
@@ -105,7 +116,7 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, Log
 
     set_global_logger(subscriber)?;
 
-    Ok(LogWorkerGuards { file_guard, stdout_guard, reload_handle: reloadable_env_filter_handle })
+    Ok(LogWorkerGuard { file_guard, stdout_guard, reload_handle: reloadable_env_filter_handle })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {

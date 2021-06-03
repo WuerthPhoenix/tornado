@@ -24,6 +24,8 @@ use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
+use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -38,13 +40,13 @@ pub async fn daemon(
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let tornado = build_config(config_dir)?;
-    let _guard = setup_logger(&tornado.logger)?;
+    let global_config = build_config(config_dir)?;
+    let logger_guard = Arc::new(setup_logger(&global_config.logger)?);
 
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
     // start system
-    let daemon_config = tornado.tornado.daemon;
+    let daemon_config = global_config.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
     info!(
@@ -353,10 +355,13 @@ pub async fn daemon(
     let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
+    let logger_level = global_config.logger.level.clone();
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
+        let logger_guard = logger_guard.clone();
+        let logger_level = logger_level.clone();
 
         let auth_api = ApiData { auth: auth_service.clone(), api: () };
         let config_api = ApiData {
@@ -366,6 +371,10 @@ pub async fn daemon(
         let event_api = ApiData {
             auth: auth_service.clone(),
             api: EventApi::new(api_handler.clone(), matcher_config.clone()),
+        };
+        let runtime_config_api = ApiData {
+            auth: auth_service.clone(),
+            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard, logger_level)),
         };
 
         App::new()
@@ -383,7 +392,8 @@ pub async fn daemon(
                     )
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
-                    .service(tornado_engine_api::event::web::build_event_endpoints(event_api)),
+                    .service(tornado_engine_api::event::web::build_event_endpoints(event_api))
+                    .service(tornado_engine_api::runtime_config::web::build_runtime_config_endpoints(runtime_config_api)),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
