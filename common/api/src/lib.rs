@@ -10,10 +10,16 @@ use std::collections::HashMap;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
+    #[serde(default = "default_trace_id")]
+    pub trace_id: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
     pub payload: Payload,
+}
+
+fn default_trace_id() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 impl Event {
@@ -24,7 +30,7 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { event_type: event_type.into(), created_ms, payload }
+        Event { trace_id: default_trace_id() ,event_type: event_type.into(), created_ms, payload }
     }
 }
 
@@ -801,5 +807,59 @@ mod test {
             Value::Array(vec![Value::Bool(true), Value::Bool(false)])
                 .partial_cmp(&Value::Array(vec![Value::Bool(true), Value::Bool(true)]))
         );
+    }
+
+    #[test]
+    fn should_return_a_valid_uuid_as_trace_id() {
+        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_generate_trace_if_missing() {
+        // Arrange
+        let json = r#"
+{
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_use_trace_if_present() {
+        // Arrange
+        let json = r#"
+{
+  "trace_id": "abcdefghilmon",
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert_eq!("abcdefghilmon", event.trace_id);
+
+    }
+
+    #[test]
+    fn generating_an_event_should_include_trace_id() {
+        // Act
+        let event = Event::new("hello");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
     }
 }
