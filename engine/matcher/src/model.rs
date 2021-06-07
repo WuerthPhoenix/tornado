@@ -3,9 +3,10 @@ use std::collections::HashMap;
 use tornado_common_api::{Action, Event, Number, Payload, Value};
 use typescript_definitions::TypeScriptify;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct InternalEvent {
     pub trace_id: String,
+    #[serde(rename = "type")]
     pub event_type: Value,
     pub created_ms: Value,
     pub payload: Value,
@@ -130,4 +131,29 @@ pub enum EnrichedValueContent {
 pub struct ValueMetaData {
     pub modified: bool,
     pub is_leaf: bool,
+}
+
+#[cfg(test)]
+mod test {
+    use tornado_common_api::{Payload, Value, Number, Event};
+    use crate::model::InternalEvent;
+
+    #[test]
+    fn should_convert_between_event_and_internal_event() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
+        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
+        payload.insert("bool".to_owned(), Value::Bool(false));
+
+        let event = Event::new_with_payload("my-event-type", payload.clone());
+
+        // Act
+        let internal_from_event: InternalEvent = event.clone().into();
+        let json_from_internal = serde_json::to_string(&internal_from_event).unwrap();
+        let event_from_internal: Event = serde_json::from_str(&json_from_internal).unwrap();
+
+        // Assert
+        assert_eq!(event, event_from_internal);
+    }
 }

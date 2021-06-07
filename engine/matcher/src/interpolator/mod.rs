@@ -29,11 +29,7 @@ lazy_static! {
 /// let mut payload = Payload::new();
 /// payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 ///
-/// let event = InternalEvent::new(Event {
-///     event_type: "event_type_value".to_owned(),
-///     created_ms: 1554130814854,
-///     payload,
-/// });
+/// let event = InternalEvent::new(Event::new_with_payload("event_type_value", payload));
 ///
 /// let template = "type: ${event.type} - body: ${event.payload.body}";
 ///
