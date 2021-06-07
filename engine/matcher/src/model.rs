@@ -5,6 +5,7 @@ use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct InternalEvent {
+    pub trace_id: String,
     pub event_type: Value,
     pub created_ms: Value,
     pub payload: Value,
@@ -13,6 +14,7 @@ pub struct InternalEvent {
 impl Into<InternalEvent> for Event {
     fn into(self) -> InternalEvent {
         InternalEvent {
+            trace_id: self.trace_id,
             event_type: Value::Text(self.event_type),
             created_ms: Value::Number(Number::PosInt(self.created_ms)),
             payload: Value::Map(self.payload),
@@ -23,6 +25,7 @@ impl Into<InternalEvent> for Event {
 impl Into<Value> for InternalEvent {
     fn into(self) -> Value {
         let mut payload = Payload::new();
+        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
         payload.insert("type".to_owned(), self.event_type);
         payload.insert("created_ms".to_owned(), self.created_ms);
         payload.insert("payload".to_owned(), self.payload);
