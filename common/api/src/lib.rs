@@ -37,6 +37,7 @@ impl Event {
 impl Into<Value> for Event {
     fn into(self) -> Value {
         let mut payload = Payload::new();
+        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
         payload.insert("type".to_owned(), Value::Text(self.event_type));
         payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(self.created_ms)));
         payload.insert("payload".to_owned(), Value::Map(self.payload));
@@ -697,7 +698,7 @@ mod test {
     }
 
     #[test]
-    fn should_convert_event_into_type() {
+    fn should_convert_event_into_value() {
         // Arrange
         let mut payload = Payload::new();
         payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
@@ -709,12 +710,31 @@ mod test {
         let created_ms = event.created_ms.to_owned();
 
         // Act
-        let event_value: Value = event.into();
+        let value_from_event: Value = event.into();
 
         // Assert
-        assert_eq!("my-event-type", event_value.get_from_map("type").unwrap().get_text().unwrap());
-        assert_eq!(&created_ms, event_value.get_from_map("created_ms").unwrap());
-        assert_eq!(&Value::Map(payload), event_value.get_from_map("payload").unwrap());
+        assert_eq!("my-event-type", value_from_event.get_from_map("type").unwrap().get_text().unwrap());
+        assert_eq!(&created_ms, value_from_event.get_from_map("created_ms").unwrap());
+        assert_eq!(&Value::Map(payload), value_from_event.get_from_map("payload").unwrap());
+    }
+
+    #[test]
+    fn should_convert_between_event_and_value() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
+        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
+        payload.insert("bool".to_owned(), Value::Bool(false));
+
+        let event = Event::new_with_payload("my-event-type", payload.clone());
+
+        // Act
+        let value_from_event: Value = event.clone().into();
+        let json_from_value = serde_json::to_string(&value_from_event).unwrap();
+        let event_from_value: Event = serde_json::from_str(&json_from_value).unwrap();
+
+        // Assert
+        assert_eq!(event, event_from_value);
     }
 
     #[test]
@@ -862,4 +882,5 @@ mod test {
         assert!(!event.trace_id.is_empty());
         assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
     }
+
 }

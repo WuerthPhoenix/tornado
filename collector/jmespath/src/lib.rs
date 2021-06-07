@@ -116,6 +116,7 @@ impl EventProcessor {
             .to_owned();
         let mut event = Event::new(event_type);
 
+
         for (key, value_processor) in &self.payload {
             event.payload.insert(key.clone(), value_processor.process(var)?);
         }
@@ -548,6 +549,7 @@ mod test {
         assert!(result.is_ok());
 
         let result_event = result.unwrap();
+        expected_event.trace_id = result_event.trace_id.clone();
         expected_event.created_ms = result_event.created_ms.clone();
 
         assert_eq!(expected_event, result_event);
