@@ -9,6 +9,8 @@ use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
+pub mod runtime_config;
+
 #[derive(Clone)]
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,

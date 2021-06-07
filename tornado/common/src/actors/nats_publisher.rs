@@ -88,7 +88,7 @@ impl NatsPublisherActor {
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config: config, nats_connection: Rc::new(None) }
+            NatsPublisherActor { config, nats_connection: Rc::new(None) }
         }))
     }
 }
