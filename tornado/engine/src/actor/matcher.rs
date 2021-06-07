@@ -217,7 +217,7 @@ mod test {
 
         // Act
         let request = matcher_actor.send(ReconfigureMessage {}).await.unwrap().unwrap();
-        let config_from_response = request.recv().await.unwrap().unwrap().as_ref().clone();
+        let config_from_response = request.as_ref().clone();
 
         // Assert
         let matcher_config_after = config_manager.get_config().await.unwrap();
