@@ -150,7 +150,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id.as_str();
-        let span = tracing::error_span!("trace_id", trace_id);
+        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
 
@@ -177,7 +177,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(span));
+            }.instrument(span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();

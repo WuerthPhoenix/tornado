@@ -4,6 +4,7 @@ use log::*;
 use std::marker::PhantomData;
 use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
+use tracing_futures::Instrument;
 
 pub struct ReplyRequest<I, O> {
     pub message: I,
@@ -57,7 +58,7 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
         for _ in 0..max_parallel_executions {
             let mut command = factory();
             let receiver = receiver.clone();
-
+            let span = tracing::Span::current();
             actix::spawn(async move {
                 loop {
                     match receiver.recv().await {
@@ -76,7 +77,7 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
                         }
                     }
                 }
-            });
+            }.instrument(span));
         }
         Self { sender, phantom_i: PhantomData, phantom_o: PhantomData }
     }
