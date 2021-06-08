@@ -236,7 +236,7 @@ mod test {
 
         // Assert
         assert_eq!(
-            vec![Permission::ConfigEdit, Permission::ConfigView],
+            vec![Permission::ConfigEdit, Permission::ConfigView, Permission::RuntimeConfigEdit, Permission::RuntimeConfigView],
             config.tornado.daemon.auth.role_permissions["ADMIN"]
         )
     }

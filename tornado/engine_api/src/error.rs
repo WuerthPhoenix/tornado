@@ -14,6 +14,9 @@ pub enum ApiError {
     ActixMailboxError { cause: String },
     #[error("JsonError: [{cause}]")]
     JsonError { cause: String },
+
+    #[error("BadRequestError: [{cause}]")]
+    BadRequestError { cause: String },
     #[error("InternalServerError: [{cause}]")]
     InternalServerError { cause: String },
 
@@ -77,6 +80,7 @@ impl actix_web::error::ResponseError for ApiError {
             },
             ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::BadRequestError { .. } => HttpResponse::BadRequest().finish(),
             ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::InvalidTokenError { .. }
             | ApiError::ExpiredTokenError { .. }

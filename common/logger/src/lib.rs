@@ -4,7 +4,7 @@ use thiserror::Error;
 use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter};
+use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -41,23 +41,55 @@ impl From<std::io::Error> for LoggerError {
     }
 }
 
-pub struct LogWorkerGuards {
+pub struct LogWorkerGuard {
     #[allow(dead_code)]
     file_guard: Option<WorkerGuard>,
     #[allow(dead_code)]
     stdout_guard: Option<WorkerGuard>,
+
+    reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
+}
+
+impl LogWorkerGuard {
+
+    pub fn new (file_guard: Option<WorkerGuard>,
+        stdout_guard: Option<WorkerGuard>,
+        reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>) -> Self {
+        Self {
+            file_guard,
+            stdout_guard,
+            reload_handle
+        }
+    }
+
+    pub fn reload(&self, env_filter_str: &str) -> Result<(), LoggerError> {
+        let env_filter = EnvFilter::from_str(env_filter_str).map_err(|err| {
+            LoggerError::LoggerConfigurationError {
+                message: format!(
+                    "Cannot parse the logger level: [{}]. err: {:?}",
+                    env_filter_str, err
+                ),
+            }
+        })?;
+        self.reload_handle.reload(env_filter).map_err(|err| LoggerError::LoggerConfigurationError {
+            message: format!("Cannot reload the logger configuration. err: {:?}", err),
+        })
+    }
 }
 
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, LoggerError> {
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
-                "Cannot parse the logger level: [{}]. err: {}",
+                "Cannot parse the logger level: [{}]. err: {:?}",
                 logger_config.level, err
             ),
         }
     })?;
+
+    let (reloadable_env_filter, reloadable_env_filter_handle) =
+        tracing_subscriber::reload::Layer::new(env_filter);
 
     let (file_subscriber, file_guard) = if let Some(file_output) = &logger_config.file_output_path {
         let (dir, filename) = path_to_dir_and_filename(file_output)?;
@@ -78,13 +110,13 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuards, Log
     };
 
     let subscriber = tracing_subscriber::registry()
-        .with(env_filter)
+        .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber);
 
     set_global_logger(subscriber)?;
 
-    Ok(LogWorkerGuards { file_guard, stdout_guard })
+    Ok(LogWorkerGuard { file_guard, stdout_guard, reload_handle: reloadable_env_filter_handle })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
@@ -106,10 +138,10 @@ where
     S: Subscriber + Send + Sync + 'static,
 {
     tracing_log::LogTracer::init().map_err(|err| LoggerError::LoggerConfigurationError {
-        message: format!("Cannot start the logger LogTracer. err: {}", err),
+        message: format!("Cannot start the logger LogTracer. err: {:?}", err),
     })?;
     set_global_default(subscriber).map_err(|err| LoggerError::LoggerConfigurationError {
-        message: format!("Cannot start the logger. err: {}", err),
+        message: format!("Cannot start the logger. err: {:?}", err),
     })
 }
 

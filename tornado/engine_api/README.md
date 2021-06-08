@@ -264,3 +264,36 @@ Endpoint: match an event on a specific Tornado draft
 - path : __/api/v1_beta/event/drafts/{draft_id}/send__
 - request type: __JSON__
 - request/response example: same request and response of the __/api/v1_beta/event/current/send__ endpoint
+
+
+## Tornado 'RuntimeConfig' Backend API
+
+These endpoints allow inspecting and changing the tornado configuration at runtime.
+Please note that whatever configuration change performed with these endpoints
+will be lost when tornado is restarted.
+
+### Get and Set the logger configuration level
+
+Endpoint: get the current logger level configuration
+- HTTP Method: __GET__
+- path : __/api/v1_beta/runtime_config/logger__
+- response type: __JSON__
+- response example:
+  ```json
+  {
+    "level": "info"
+  }
+  ```
+
+
+Endpoint: set the current logger level configuration
+- HTTP Method: __POST__
+- path : __/api/v1_beta/runtime_config/logger__
+- response: http status code 200 if the request was performed correctly
+- request body type: __JSON__
+- request body:
+  ```json
+  {
+    "level": "warn,tornado=trace"
+  }
+  ```
