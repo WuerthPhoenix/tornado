@@ -53,7 +53,7 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
                     }
                     Err(e) => {
                         error!(
-                            "ForEachExecutorActor - {} - Failed to execute action: {}",
+                            "ForEachExecutorActor - {} - Failed to execute action: {:?}",
                             &executor, e
                         );
                     }

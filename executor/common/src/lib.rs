@@ -1,11 +1,12 @@
 use std::sync::Arc;
 use thiserror::Error;
 use tornado_common_api::{Action, RetriableError};
+use std::fmt::Display;
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
 #[async_trait::async_trait(?Send)]
-pub trait StatefulExecutor {
+pub trait StatefulExecutor: Display {
     /// Executes the operation linked to the received Action.
     async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError>;
 }
@@ -13,7 +14,7 @@ pub trait StatefulExecutor {
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
 #[async_trait::async_trait(?Send)]
-pub trait StatelessExecutor {
+pub trait StatelessExecutor: Display {
     /// Executes the operation linked to the received Action.
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError>;
 }

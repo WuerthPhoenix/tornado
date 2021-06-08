@@ -3428,6 +3428,8 @@ dependencies = [
  "tornado_common_api",
  "tornado_common_logger",
  "tornado_executor_common",
+ "tracing",
+ "tracing-futures",
 ]
 
 [[package]]

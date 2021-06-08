@@ -49,7 +49,7 @@ where
             Ok(event) => self.writer_addr.try_send(EventMessage { event }).unwrap_or_else(|err| {
                 error!("RsyslogCollectorActor - Error while sending event. Error: {}", err)
             }),
-            Err(e) => error!("RsyslogCollectorActor - Cannot unmarshal event from json: {}", e),
+            Err(e) => error!("RsyslogCollectorActor - Cannot unmarshal event from json: {:?}", e),
         };
     }
 }

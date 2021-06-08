@@ -38,6 +38,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
+
         trace!("CommandExecutorActor - received new action [{:?}]", &msg.action);
 
         let action = msg.action;
