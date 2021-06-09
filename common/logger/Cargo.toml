@@ -13,6 +13,7 @@ serde = { version = "1.0", features = ['derive'] }
 thiserror = "1.0"
 tracing = "0.1"
 tracing-appender = "0.1"
+tracing-elastic-apm = { version = "2.1" } #, default-features = false, features = ["rustls-tls"] }
 tracing-futures = "0.2"
 tracing-log = "0.1"
 tracing-subscriber = "0.2"
