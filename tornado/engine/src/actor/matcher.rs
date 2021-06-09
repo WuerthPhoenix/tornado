@@ -102,14 +102,12 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
-        let matcher = self.matcher.clone();
-        let dispatcher_addr = self.dispatcher_addr.clone();
-        actix::spawn(async move {
-            let processed_event = matcher.process(msg.event, false);
-            dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
-        });
+        let processed_event = self.matcher.process(msg.event, false);
+        self.dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }
@@ -118,7 +116,10 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+
         Ok(self.process_event_with_reply(
             &self.matcher,
             msg.event,
@@ -136,6 +137,8 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         msg: EventMessageAndConfigWithReply,
         _: &mut Context<Self>,
     ) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
         Ok(self.process_event_with_reply(

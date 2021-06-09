@@ -19,6 +19,7 @@ tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0.1" }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
+tracing-actix-web = "0.4.0-beta.4"
 
 [dev-dependencies]
 actix-rt = "2.2"

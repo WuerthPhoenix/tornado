@@ -27,6 +27,7 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tokio::sync::RwLock;
+use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -380,6 +381,7 @@ pub async fn daemon(
 
         App::new()
             .wrap(Logger::default())
+            .wrap(TracingLogger::default())
             .wrap(Cors::default().max_age(3600))
             .service(
                 web::scope("/api")
