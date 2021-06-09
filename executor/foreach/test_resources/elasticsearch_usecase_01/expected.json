@@ -1,5 +1,6 @@
 [
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -14,6 +15,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -28,6 +30,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -42,6 +45,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -56,6 +60,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -70,6 +75,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {
@@ -84,6 +90,7 @@
     }
   },
   {
+    "trace_id": "123478965132198744",
     "id": "elasticsearch",
     "payload": {
       "data": {

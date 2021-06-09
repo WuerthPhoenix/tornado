@@ -92,7 +92,7 @@ mod test {
         // Act
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
         let migrated_action =
-            Action::new_with_payload("smart_monitoring_check_result", migrated_payload);
+            Action::new_with_payload("", "smart_monitoring_check_result", migrated_payload);
 
         // Assert
         assert_eq!(dest_action, migrated_action);

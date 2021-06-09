@@ -6,6 +6,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
+use tracing_futures::Instrument;
 
 pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
@@ -39,21 +40,26 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
 
-        trace!("CommandExecutorActor - received new action [{:?}]", &msg.action);
+        let trace_id = msg.action.trace_id.as_str();
+        let span = tracing::error_span!("CommandExecutorActor", trace_id);
 
-        let action = msg.action;
         let command = self.command.clone();
 
         actix::spawn(async move {
+            let action = msg.action;
+            let action_id = action.id.clone();
+            trace!("CommandExecutorActor - received new action [{:?}]", &action);
+            debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
+
             match command.execute(action).await {
                 Ok(_) => {
-                    debug!("CommandExecutorActor - Action executed successfully");
+                    debug!("CommandExecutorActor - Action [{}] executed successfully", &action_id);
                 }
                 Err(e) => {
-                    error!("CommandExecutorActor - Failed to execute action: {:?}", e);
+                    error!("CommandExecutorActor - Failed to execute action [{}]: {:?}", &action_id, e);
                 }
             }
-        });
+        }.instrument(span));
         Ok(())
     }
 }

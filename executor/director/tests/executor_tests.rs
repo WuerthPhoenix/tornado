@@ -51,7 +51,7 @@ async fn should_perform_a_post_request() {
                 let executor = DirectorExecutor::new(config).unwrap();
                 println!("Executor created");
 
-                let mut action = Action::new("");
+                let mut action = Action::new("","");
                 action.payload.insert(
                     DIRECTOR_ACTION_NAME_KEY.to_owned(),
                     Value::Text("create_host".to_owned()),
@@ -112,7 +112,7 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
     })
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("","");
     action
         .payload
         .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));

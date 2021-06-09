@@ -243,7 +243,7 @@ mod test {
         )
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("", "");
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -278,7 +278,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action
             .payload
             .insert("action_name".to_owned(), Value::Text("my_invalid_action".to_owned()));
@@ -324,7 +324,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -377,7 +377,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -421,7 +421,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -465,7 +465,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -517,7 +517,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
