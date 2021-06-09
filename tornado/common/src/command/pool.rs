@@ -5,8 +5,10 @@ use std::marker::PhantomData;
 use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
+use tracing::Span;
 
 pub struct ReplyRequest<I, O> {
+    pub span: Span,
     pub message: I,
     pub responder: async_channel::Sender<O>,
 }
@@ -58,12 +60,13 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
         for _ in 0..max_parallel_executions {
             let mut command = factory();
             let receiver = receiver.clone();
-            let span = tracing::Span::current();
+
             actix::spawn(async move {
                 loop {
                     match receiver.recv().await {
                         Ok(message) => {
-                            let response = command.execute(message.message).await;
+                            let _entered_span = message.span.enter();
+                            let response = command.execute(message.message).instrument(message.span.clone()).await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
                                     "CommandMutPool cannot send the response message. Err: {:?}",
@@ -77,7 +80,7 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
                         }
                     }
                 }
-            }.instrument(span));
+            });
         }
         Self { sender, phantom_i: PhantomData, phantom_o: PhantomData }
     }
@@ -87,7 +90,8 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
 impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMutPool<I, O> {
     async fn execute(&self, message: I) -> Result<O, ExecutorError> {
         let (tx, rx) = async_channel::bounded(1);
-        self.sender.send(ReplyRequest { message, responder: tx }).await.map_err(|err| {
+        let span = tracing::Span::current();
+        self.sender.send(ReplyRequest { span, message, responder: tx }).await.map_err(|err| {
             ExecutorError::SenderError { message: format!("Error sending message: {:?}", err) }
         })?;
         rx.recv().await.map_err(|err| ExecutorError::SenderError {

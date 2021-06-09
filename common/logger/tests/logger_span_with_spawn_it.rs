@@ -57,6 +57,8 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
 
     info!("main - this is level 2");
 
+    inner2::log_smt(10, Data { id: 10 }).await;
+
     let handle = tokio::spawn(async move {
         inner2::log_smt(3, Data { id: 789 }).await;
     }.instrument(span_2.exit()));
