@@ -1,8 +1,10 @@
 use log::*;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError, RetriableError};
+use tornado_common_api::RetriableError;
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorAction, DirectorActionName, DirectorExecutor,
@@ -115,20 +117,20 @@ impl MonitoringExecutor {
     }
 
     pub fn parse_monitoring_action(payload: &Payload) -> Result<MonitoringAction, ExecutorError> {
-        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
-                message: format!("Invalid Monitoring Action configuration. Err: {}", err),
+                message: format!("Invalid Monitoring Action configuration. Err: {:?}", err),
             }
-        })?)
+        })
     }
 
-    fn perform_creation_of_icinga_objects(
+    async fn perform_creation_of_icinga_objects<'a>(
         &self,
-        director_host_creation_action: DirectorAction,
-        director_service_creation_action: Option<DirectorAction>,
+        director_host_creation_action: DirectorAction<'a>,
+        director_service_creation_action: Option<DirectorAction<'a>>,
     ) -> Result<(), ExecutorError> {
         let host_creation_result =
-            self.director_executor.perform_request(director_host_creation_action);
+            self.director_executor.perform_request(director_host_creation_action).await;
         match host_creation_result {
             Ok(()) => {
                 debug!("MonitoringExecutor - Director host creation action successfully performed");
@@ -151,7 +153,7 @@ impl MonitoringExecutor {
 
         if let Some(director_service_creation_action) = director_service_creation_action {
             let service_creation_result =
-                self.director_executor.perform_request(director_service_creation_action);
+                self.director_executor.perform_request(director_service_creation_action).await;
             match service_creation_result {
                 Ok(()) => {
                     debug!("MonitoringExecutor - Director service creation action successfully performed");
@@ -173,15 +175,16 @@ impl MonitoringExecutor {
     }
 }
 
-impl Executor for MonitoringExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for MonitoringExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
         let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.to_sub_actions()?;
-        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action);
+        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action).await;
 
         match icinga2_action_result {
             Ok(_) => {
@@ -195,8 +198,9 @@ impl Executor for MonitoringExecutor {
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
                     director_service_creation_action,
-                )?;
-                self.icinga_executor.perform_request(&icinga2_action).map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                )
+                .await?;
+                self.icinga_executor.perform_request(&icinga2_action).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
             }
             Err(err) => {
                 error!(
@@ -213,15 +217,15 @@ impl Executor for MonitoringExecutor {
 mod test {
     use super::*;
     use httpmock::Method::POST;
-    use httpmock::{Mock, MockServer};
+    use httpmock::MockServer;
     use maplit::*;
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    #[test]
-    fn should_fail_if_action_missing() {
+    #[tokio::test]
+    async fn should_fail_if_action_missing() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -239,27 +243,24 @@ mod test {
         )
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("", "");
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message:
-                    "Invalid Monitoring Action configuration. Err: missing field `action_name`"
-                        .to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false),
+        }
     }
 
-    #[test]
-    fn should_throw_error_if_action_name_is_not_valid() {
+    #[tokio::test]
+    async fn should_throw_error_if_action_name_is_not_valid() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -277,7 +278,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action
             .payload
             .insert("action_name".to_owned(), Value::Text("my_invalid_action".to_owned()));
@@ -291,22 +292,21 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message: "Invalid Monitoring Action configuration. Err: unknown variant `my_invalid_action`, expected `create_and_or_process_host_passive_check_result` or `create_and_or_process_service_passive_check_result`".to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false),
+        }
     }
 
-    #[test]
-    fn should_throw_error_if_service_action_but_service_creation_payload_not_given() {
+    #[tokio::test]
+    async fn should_throw_error_if_service_action_but_service_creation_payload_not_given() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -324,7 +324,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -338,30 +338,28 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
-        assert!(result.is_err());
-        assert_eq!(
-            Err(ExecutorError::ConfigurationError {
-                message: "Invalid Monitoring Action configuration. Err: missing field `service_creation_payload`".to_owned()
-            }),
-            result
-        );
+        match result {
+            Err(ExecutorError::ConfigurationError { message }) => {
+                assert!(message.contains("Invalid Monitoring Action configuration"))
+            }
+            _ => assert!(false),
+        }
     }
 
-    #[test]
-    fn should_return_ok_if_action_name_is_valid() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_name_is_valid() {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST).path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -379,7 +377,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -394,7 +392,7 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -402,10 +400,10 @@ mod test {
         assert!(result.is_ok());
     }
 
-    #[test]
-    fn should_throw_error_if_process_check_result_host_not_specified_with_host_field() {
+    #[tokio::test]
+    async fn should_throw_error_if_process_check_result_host_not_specified_with_host_field() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -423,7 +421,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -437,7 +435,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -446,10 +444,10 @@ mod test {
         assert_eq!(result, Err(ExecutorError::ConfigurationError { message: "Monitoring action expects that Icinga objects affected by the action are specified with field 'host' inside 'process_check_result_payload' for action 'create_and_or_process_host_passive_check_result'".to_string() }))
     }
 
-    #[test]
-    fn should_throw_error_if_process_check_result_service_not_specified_with_service_field() {
+    #[tokio::test]
+    async fn should_throw_error_if_process_check_result_service_not_specified_with_service_field() {
         // Arrange
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -467,7 +465,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -482,7 +480,7 @@ mod test {
         action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 
@@ -491,18 +489,17 @@ mod test {
         assert_eq!(result, Err(ExecutorError::ConfigurationError { message: "Monitoring action expects that Icinga objects affected by the action are specified with field 'service' inside 'process_check_result_payload' for action 'create_and_or_process_service_passive_check_result'".to_string() }))
     }
 
-    #[test]
-    fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
+    #[tokio::test]
+    async fn should_return_ok_if_action_type_is_host_and_service_creation_payload_not_given() {
         // Arrange
         let mock_server = MockServer::start();
 
-        Mock::new()
-            .expect_method(POST)
-            .expect_path("/v1/actions/process-check-result")
-            .return_status(200)
-            .create_on(&mock_server);
+        mock_server.mock(|when, then| {
+            when.method(POST).path("/v1/actions/process-check-result");
+            then.status(200);
+        });
 
-        let mut executor = MonitoringExecutor::new(
+        let executor = MonitoringExecutor::new(
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -520,7 +517,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -534,7 +531,7 @@ mod test {
         action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         println!("{:?}", result);
 

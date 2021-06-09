@@ -162,6 +162,16 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &matcher::model::ProcessedRuleMetaData::type_script_ify());
     push_ts(&mut ts_code, &matcher::model::ValueMetaData::type_script_ify());
 
+    // Push 'runtime_config' ts types
+    push_ts(
+        &mut ts_code,
+        r#"
+/* -------------- */
+/* 'runtime_config' types */
+/* -------------- */"#,
+    );
+    push_ts(&mut ts_code, &runtime_config::LoggerConfigDto::type_script_ify());
+
     ts_code
 }
 

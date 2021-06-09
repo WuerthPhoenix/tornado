@@ -15,6 +15,8 @@ use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
+use actix_web::middleware::Logger;
+use tracing_actix_web::TracingLogger;
 
 mod config;
 mod handler;
@@ -67,10 +69,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                 let actor_address = NatsPublisherActor::start_new(
                     nats,
                     collector_config.webhook_collector.message_queue_size,
-                )?;
+                )
+                .await?;
                 start_http_server(actor_address, webhooks_config, bind_address, port).await?;
             }
-            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+            TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
                 // Start TcpWriter
                 let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
@@ -107,7 +110,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
             collector: JMESPathEventCollector::build(config.collector_config).map_err(|err| {
                 CollectorError::CollectorCreationError {
                     message: format!(
-                        "Cannot create collector for webhook with id [{}]. Err: {}",
+                        "Cannot create collector for webhook with id [{}]. Err: {:?}",
                         id, err
                     ),
                 }
@@ -138,14 +141,17 @@ where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     HttpServer::new(move || {
-        App::new().service(
+        App::new()
+            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
+            .service(
             create_app(webhooks_config.clone(), || {
                 let clone = actor_address.clone();
                 move |event| clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
             })
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {
-                error!("Cannot create the webhook handlers. Err: {}", err);
+                error!("Cannot create the webhook handlers. Err: {:?}", err);
                 std::process::exit(1);
             }),
         )
@@ -153,7 +159,7 @@ where
     .bind(format!("{}:{}", bind_address, port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
     .unwrap_or_else(|err| {
-        error!("Server cannot start on port {}. Err: {}", port, err);
+        error!("Server cannot start on port {}. Err: {:?}", port, err);
         std::process::exit(1);
     })
     .run()
@@ -231,14 +237,14 @@ mod test {
         // Act
         let request_1 = test::TestRequest::post()
             .uri("/event/hook_1?token=hook_1_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response_1 = test::read_response(&mut srv, request_1).await;
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=hook_2_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response_2 = test::read_response(&mut srv, request_2).await;
@@ -279,14 +285,14 @@ mod test {
         // Act
         let request_1 = test::TestRequest::post()
             .uri("/event/hook_1?token=hook_1_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response_1 = test::call_service(&mut srv, request_1).await;
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=WRONG_TOKEN")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response_2 = test::call_service(&mut srv, request_2).await;
@@ -330,7 +336,7 @@ mod test {
         // Act
         let request_1 = test::TestRequest::post()
             .uri("/event/hook_1?token=hook_1_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(
                 r#"{
                     "map" : {
@@ -371,7 +377,7 @@ mod test {
         // Act
         let request = test::TestRequest::post()
             .uri("/event/hook_2?token=hook_2_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response = test::call_service(&mut srv, request).await;
@@ -402,7 +408,7 @@ mod test {
         // Act
         let request = test::TestRequest::get()
             .uri("/event/hook_1?token=hook_1_token")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .to_request();
         let response = test::call_service(&mut srv, request).await;
 
@@ -432,7 +438,7 @@ mod test {
         // Act
         let request = test::TestRequest::post()
             .uri("/event/hook%20with%20space?token=token%26%23%3F%3D")
-            .header(http::header::CONTENT_TYPE, "application/json")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
         let response = test::call_service(&mut srv, request).await;

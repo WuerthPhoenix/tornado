@@ -51,10 +51,11 @@ file _'config-dir'/nats_json_collector.toml_:
     - **nats_client.addresses**: The addresses of the  NATS server.
     - **nats_client.auth.type**:  The type of authentication used to authenticate to NATS
     (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
-    - **nats_client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
+    - **nats_client.auth.certificate_path**:  The path to the client certificate (in `.pem` format) that will be
+    used for authenticating to NATS.
     (Mandatory if `nats_client.auth.type` is set to `Tls`).
-    - **nats_client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
-    (Mandatory if `nats_client.auth.type` is set to `Tls`).
+    - **nats_client.auth.private_key_path**:  The path to the client certificate private key (in `.pem` format)
+    that will be used for authenticating to NATS.
     - **nats_client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
     addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
     (Optional, valid if `nats_client.auth.type` is set to `Tls`).

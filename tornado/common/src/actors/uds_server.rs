@@ -1,7 +1,7 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use log::*;
 use std::fs;
 use std::fs::Permissions;
@@ -35,9 +35,13 @@ pub fn listen_to_uds_socket<
 
     UdsServerActor::create(move |ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);
-        ctx.add_message_stream(Box::leak(Box::new(listener)).incoming().map(|stream| {
-            AsyncReadMessage { stream: stream.expect("Cannot read from UDS server stream") }
-        }));
+        ctx.add_message_stream(
+            Box::leak(Box::new(tokio_stream::wrappers::UnixListenerStream::new(listener))).map(
+                |stream| AsyncReadMessage {
+                    stream: stream.expect("Cannot read from UDS server stream"),
+                },
+            ),
+        );
         UdsServerActor { path: path_string, socket_permissions, callback }
     });
 
@@ -63,7 +67,7 @@ where
         if let Some(permissions) = self.socket_permissions {
             debug!("UdsServerActor - Set filesystem socket permissions to [{:o}]", permissions);
             if let Err(err) = fs::set_permissions(&self.path, Permissions::from_mode(permissions)) {
-                error!("UdsServerActor - Cannot set socket permissions. Err: {}", err);
+                error!("UdsServerActor - Cannot set socket permissions. Err: {:?}", err);
                 ctx.stop();
             }
         }

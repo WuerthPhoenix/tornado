@@ -1,7 +1,7 @@
 use crate::actors::message::AsyncReadMessage;
 use crate::TornadoError;
 use actix::prelude::*;
-use futures::StreamExt;
+use futures_util::StreamExt;
 use log::*;
 use std::net;
 use std::str::FromStr;
@@ -17,15 +17,17 @@ pub async fn listen_to_tcp<
 ) -> Result<(), TornadoError> {
     let address = address.into();
     let socket_address = net::SocketAddr::from_str(address.as_str()).unwrap();
-    let listener = Box::new(TcpListener::bind(&socket_address).await.map_err(|err| {
-        TornadoError::ActorCreationError {
-            message: format!("Cannot start TCP server on [{}]: {}", address, err),
-        }
-    })?);
+    let listener = Box::new(tokio_stream::wrappers::TcpListenerStream::new(
+        TcpListener::bind(&socket_address).await.map_err(|err| {
+            TornadoError::ActorCreationError {
+                message: format!("Cannot start TCP server on [{}]: {}", address, err),
+            }
+        })?,
+    ));
 
     TcpServerActor::create(|ctx| {
         ctx.set_mailbox_capacity(message_mailbox_capacity);
-        ctx.add_message_stream(Box::leak(listener).incoming().map(|stream| AsyncReadMessage {
+        ctx.add_message_stream(Box::leak(listener).map(|stream| AsyncReadMessage {
             stream: stream.expect("Cannot read from TCP server stream"),
         }));
         TcpServerActor { address, callback }

@@ -24,5 +24,5 @@ pub fn bench(c: &mut Criterion) {
 }
 
 fn execute_test(matcher: &Matcher, event: Event) {
-    matcher.process(event);
+    matcher.process(event, false);
 }

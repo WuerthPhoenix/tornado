@@ -10,6 +10,7 @@ pub fn bench(c: &mut Criterion) {
     payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
     let event = InternalEvent::new(Event {
+        trace_id: "trace".to_owned(),
         event_type: "event_type_value".to_owned(),
         created_ms: 1554130814854,
         payload,

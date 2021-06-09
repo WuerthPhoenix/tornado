@@ -2,9 +2,10 @@ use crate::client::ApiClient;
 use crate::config::Icinga2ClientConfig;
 use log::*;
 use serde::Serialize;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod client;
 pub mod config;
@@ -38,7 +39,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
     }
 
-    fn parse_action<'a>(&mut self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
+    fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
@@ -57,17 +58,21 @@ impl Icinga2Executor {
         }
     }
 
-    pub fn perform_request(&self, icinga2_action: &Icinga2Action) -> Result<(), ExecutorError> {
-        let mut response =
-            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload)?;
+    pub async fn perform_request<'a>(
+        &self,
+        icinga2_action: &'a Icinga2Action<'a>,
+    ) -> Result<(), ExecutorError> {
+        let response =
+            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload).await?;
 
         let response_status = response.status();
 
-        let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
-            can_retry: true,
-            message: format!("Icinga2Executor - Cannot extract response body. Err: {}", err),
-            code: None,
-        })?;
+        let response_body =
+            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
+                code: None,
+            })?;
 
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
@@ -88,12 +93,13 @@ impl Icinga2Executor {
     }
 }
 
-impl Executor for Icinga2Executor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for Icinga2Executor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
-        let action = self.parse_action(action)?;
+        let action = self.parse_action(&action)?;
 
-        self.perform_request(&action)
+        self.perform_request(&action).await
     }
 }
 
@@ -112,8 +118,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -122,7 +127,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("","");
 
         // Act
         let result = executor.parse_action(&action);
@@ -140,7 +145,7 @@ mod test {
     #[test]
     fn should_have_empty_payload_if_action_does_not_contains_one() {
         // Arrange
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -149,7 +154,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
@@ -164,7 +169,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let mut executor = Icinga2Executor::new(Icinga2ClientConfig {
+        let executor = Icinga2Executor::new(Icinga2ClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -173,7 +178,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::Text("process-check-result".to_owned()),

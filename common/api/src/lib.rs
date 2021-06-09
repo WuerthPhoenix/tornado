@@ -10,10 +10,16 @@ use std::collections::HashMap;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
+    #[serde(default = "default_trace_id")]
+    pub trace_id: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
     pub payload: Payload,
+}
+
+fn default_trace_id() -> String {
+    uuid::Uuid::new_v4().to_string()
 }
 
 impl Event {
@@ -24,13 +30,14 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { event_type: event_type.into(), created_ms, payload }
+        Event { trace_id: default_trace_id() ,event_type: event_type.into(), created_ms, payload }
     }
 }
 
 impl Into<Value> for Event {
     fn into(self) -> Value {
         let mut payload = Payload::new();
+        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
         payload.insert("type".to_owned(), Value::Text(self.event_type));
         payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(self.created_ms)));
         payload.insert("payload".to_owned(), Value::Map(self.payload));
@@ -42,16 +49,17 @@ impl Into<Value> for Event {
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
+    pub trace_id: String,
     pub id: String,
     pub payload: Payload,
 }
 
 impl Action {
-    pub fn new<S: Into<String>>(id: S) -> Action {
-        Action::new_with_payload(id, HashMap::new())
+    pub fn new<T: Into<String>, S: Into<String>>(trace_id: T, id: S) -> Action {
+        Action::new_with_payload(trace_id, id, HashMap::new())
     }
-    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
-        Action { id: id.into(), payload }
+    pub fn new_with_payload<T: Into<String>, S: Into<String>>(trace_id: T, id: S, payload: Payload) -> Action {
+        Action { trace_id: trace_id.into(), id: id.into(), payload }
     }
 }
 
@@ -390,6 +398,10 @@ pub fn partial_cmp_option_cow_value<'o, F: FnOnce() -> Option<Cow<'o, Value>>>(
     }
 }
 
+pub trait RetriableError {
+    fn can_retry(&self) -> bool;
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -687,7 +699,7 @@ mod test {
     }
 
     #[test]
-    fn should_convert_event_into_type() {
+    fn should_convert_event_into_value() {
         // Arrange
         let mut payload = Payload::new();
         payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
@@ -699,12 +711,31 @@ mod test {
         let created_ms = event.created_ms.to_owned();
 
         // Act
-        let event_value: Value = event.into();
+        let value_from_event: Value = event.into();
 
         // Assert
-        assert_eq!("my-event-type", event_value.get_from_map("type").unwrap().get_text().unwrap());
-        assert_eq!(&created_ms, event_value.get_from_map("created_ms").unwrap());
-        assert_eq!(&Value::Map(payload), event_value.get_from_map("payload").unwrap());
+        assert_eq!("my-event-type", value_from_event.get_from_map("type").unwrap().get_text().unwrap());
+        assert_eq!(&created_ms, value_from_event.get_from_map("created_ms").unwrap());
+        assert_eq!(&Value::Map(payload), value_from_event.get_from_map("payload").unwrap());
+    }
+
+    #[test]
+    fn should_convert_between_event_and_value() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
+        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
+        payload.insert("bool".to_owned(), Value::Bool(false));
+
+        let event = Event::new_with_payload("my-event-type", payload.clone());
+
+        // Act
+        let value_from_event: Value = event.clone().into();
+        let json_from_value = serde_json::to_string(&value_from_event).unwrap();
+        let event_from_value: Event = serde_json::from_str(&json_from_value).unwrap();
+
+        // Assert
+        assert_eq!(event, event_from_value);
     }
 
     #[test]
@@ -798,4 +829,59 @@ mod test {
                 .partial_cmp(&Value::Array(vec![Value::Bool(true), Value::Bool(true)]))
         );
     }
+
+    #[test]
+    fn should_return_a_valid_uuid_as_trace_id() {
+        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_generate_trace_if_missing() {
+        // Arrange
+        let json = r#"
+{
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_use_trace_if_present() {
+        // Arrange
+        let json = r#"
+{
+  "trace_id": "abcdefghilmon",
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert_eq!("abcdefghilmon", event.trace_id);
+
+    }
+
+    #[test]
+    fn generating_an_event_should_include_trace_id() {
+        // Act
+        let event = Event::new("hello");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
 }

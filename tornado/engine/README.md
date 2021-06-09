@@ -109,9 +109,11 @@ file _'config-dir'/tornado.toml_:
     (Mandatory if `nats_enabled` is set to true).
     - **nats.client.auth.type**:  The type of authentication used to authenticate to NATS
     (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
-    - **nats.client.auth.path_to_pkcs12_bundle**:  The path to a PKCS12 file that will be used for authenticating to NATS
+    - **nats.client.auth.certificate_path**:  The path to the client certificate that will be used for authenticating
+    to NATS.
     (Mandatory if `nats.client.auth.type` is set to `Tls`).
-    - **nats.client.auth.pkcs12_bundle_password**:  The password to decrypt the provided PKCS12 file
+    - **nats.client.auth.private_key_path**:  The path to the client certificate private key that will be used for
+    authenticating to NATS.
     (Mandatory if `nats.client.auth.type` is set to `Tls`).
     - **nats.client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
     addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.

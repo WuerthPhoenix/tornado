@@ -5,33 +5,47 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix = "0.10"
-async-channel = "1.5"
+actix = "0.11"
+async-channel = "1.6"
 async-trait = "0.1"
-futures = "0.3"
+futures-util = { version = "0.3", default-features = false, features=["std"]}
 log = "0.4"
 serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "0.2", features = ["io-std", "io-util", "fs", "net", "time"] }
-tokio-util = { version = "0.3", features = ["codec"] }
+tokio = { version = "1", features = ["net", "time"] }
+tokio-stream = { version = "0.1", features = ["net"] }
+tokio-util = { version = "0.6", features = ["codec"] }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
+tracing = "0.1"
+tracing-futures = "0.2"
+
+# BEGIN - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
+actix-files = "0.6.0-beta.4"
+actix-http = "=3.0.0-beta.5"
+actix-rt = "2.2.0"
+actix-service = "=2.0.0-beta.5"
+actix-web = "=4.0.0-beta.5"
+# END - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
 
 # Feature nats
-rants = { version = "0.5", features = ["native-tls"], optional = true }
+async-nats = { version = "0.9", optional = true }
 
 [dev-dependencies]
-actix-rt = "1.1.1"
-port_check = "0.1.3"
+actix-rt = "2.2"
+chrono = "0.4"
+port_check = "0.1"
 rand = "0.8"
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls"] }
 serial_test = "*"
-testcontainers = "0.11"
+testcontainers = "0.12"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 
 [features]
 default = []
 
-nats = ["rants"]
+nats = ["async-nats"]
 nats_integration_tests = ["nats"]

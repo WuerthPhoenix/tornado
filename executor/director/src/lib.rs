@@ -1,9 +1,10 @@
 use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use serde::*;
+use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
 
@@ -72,10 +73,7 @@ impl DirectorExecutor {
             .to_owned()
     }
 
-    fn parse_action<'a>(
-        &mut self,
-        action: &'a Action,
-    ) -> Result<DirectorAction<'a>, ExecutorError> {
+    fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
             .get(DIRECTOR_ACTION_NAME_KEY)
@@ -94,7 +92,10 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
-    pub fn perform_request(&self, director_action: DirectorAction) -> Result<(), ExecutorError> {
+    pub async fn perform_request(
+        &self,
+        director_action: DirectorAction<'_>,
+    ) -> Result<(), ExecutorError> {
         let mut url = format!(
             "{}/{}",
             &self.api_client.server_api_url,
@@ -113,12 +114,13 @@ impl DirectorExecutor {
 
         trace!("DirectorExecutor - calling url: {}", url);
 
-        let mut response = client
+        let response = client
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
             .json(&director_action.payload)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
@@ -127,11 +129,12 @@ impl DirectorExecutor {
 
         let response_status = response.status();
 
-        let response_body = response.text().map_err(|err| ExecutorError::ActionExecutionError {
-            can_retry: true,
-            message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
-            code: None,
-        })?;
+        let response_body =
+            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
+                code: None,
+            })?;
 
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
@@ -146,21 +149,20 @@ impl DirectorExecutor {
                 code: None
             })
         } else {
-            debug!(
-                "DirectorExecutor API request completed successfully. Response body",
-            );
+            debug!("DirectorExecutor API request completed successfully. Response body",);
             Ok(())
         }
     }
 }
 
-impl Executor for DirectorExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for DirectorExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let action = self.parse_action(action)?;
+        let action = self.parse_action(&action)?;
 
-        self.perform_request(action)
+        self.perform_request(action).await
     }
 }
 
@@ -180,7 +182,7 @@ mod test {
     #[test]
     fn should_fail_if_action_missing() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -189,7 +191,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("","");
 
         // Act
         let result = executor.parse_action(&action);
@@ -206,7 +208,7 @@ mod test {
     #[test]
     fn should_throw_error_if_action_payload_is_not_set() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -215,7 +217,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_service".to_owned()));
@@ -231,7 +233,7 @@ mod test {
     #[test]
     fn should_parse_valid_action() {
         // Arrange
-        let mut executor = DirectorExecutor::new(DirectorClientConfig {
+        let executor = DirectorExecutor::new(DirectorClientConfig {
             timeout_secs: None,
             username: "".to_owned(),
             password: "".to_owned(),
@@ -240,7 +242,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));

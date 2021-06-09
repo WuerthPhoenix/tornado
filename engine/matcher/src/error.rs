@@ -1,7 +1,7 @@
 use thiserror::Error;
 use tornado_common_parser::ParserError;
 
-#[derive(Error, Debug, PartialEq)]
+#[derive(Error, Clone, Debug, PartialEq)]
 pub enum MatcherError {
     #[error("ExtractorBuildFailError: [{message}]\n cause: [{cause}]")]
     ExtractorBuildFailError { message: String, cause: String },
@@ -59,6 +59,6 @@ pub enum MatcherError {
 
 impl From<ParserError> for MatcherError {
     fn from(parser_error: ParserError) -> Self {
-        MatcherError::ConfigurationError { message: format!("{}", parser_error) }
+        MatcherError::ConfigurationError { message: format!("{:?}", parser_error) }
     }
 }

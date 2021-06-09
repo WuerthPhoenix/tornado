@@ -128,7 +128,7 @@ impl ActionResolver {
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
     ) -> Result<Action, MatcherError> {
-        let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
+        let mut action = Action { trace_id: event.trace_id.clone(), id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
@@ -145,7 +145,7 @@ impl ActionResolver {
         event: &InternalEvent,
         extracted_vars: Option<&Value>,
     ) -> Result<(Action, ActionMetaData), MatcherError> {
-        let mut action = Action { id: self.id.to_owned(), payload: HashMap::new() };
+        let mut action = Action { trace_id: event.trace_id.clone(), id: self.id.to_owned(), payload: HashMap::new() };
         let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {
@@ -443,11 +443,7 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 1554130814854,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let mut extracted_vars_inner = HashMap::new();
         extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
@@ -468,6 +464,7 @@ mod test {
         assert_eq!(&event.created_ms, result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
+        assert_eq!(&event.trace_id, &result.trace_id);
     }
 
     #[test]
@@ -487,11 +484,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "an_event_type_full_of_imagination".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("an_event_type_full_of_imagination".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -519,11 +512,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -548,11 +537,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -577,11 +562,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -613,11 +594,9 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = Event::new_with_payload("event_type_value".to_owned(), payload);
+        let created_ms = event.created_ms;
+        let event = InternalEvent::new(event);
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -628,7 +607,7 @@ mod test {
             &Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
                 Value::Text("event_type_value".to_owned()),
-                Value::Text("Event created on 123456".to_owned())
+                Value::Text(format!("Event created on {}", created_ms))
             ]),
             result.payload.get("type").unwrap()
         );
@@ -652,11 +631,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -694,11 +669,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Map(body.clone()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -725,11 +696,7 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
         payload.insert("some_null".to_owned(), Value::Null);
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload,
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -758,11 +725,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload: payload.clone(),
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload.clone()));
 
         // Act
         let result = matcher_action.resolve(&event, None).unwrap();
@@ -791,11 +754,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload: payload.clone(),
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload.clone()));
 
         // Act
         let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
@@ -860,11 +819,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload: payload.clone(),
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
@@ -951,11 +906,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event {
-            event_type: "event_type_value".to_owned(),
-            created_ms: 123456,
-            payload: payload.clone(),
-        });
+        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
         let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
@@ -1012,5 +963,26 @@ mod test {
             },
         };
         assert_eq!(expected_action_meta_data, action_meta_data);
+    }
+
+    #[test]
+    fn processed_action_should_have_same_trace_id_than_the_event() {
+        // Arrange
+        let config_action =
+            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let event = InternalEvent::new(Event::new("event_type_value".to_owned()));
+
+        // Act
+        let result = matcher_action.resolve(&event, None).unwrap();
+
+        // Assert
+        assert_eq!(&event.trace_id, &result.trace_id);
+
     }
 }

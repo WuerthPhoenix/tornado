@@ -54,7 +54,7 @@ mod test {
         );
 
         // Act
-        bus.publish_action(Action { id: String::from(action_id), payload: HashMap::new() });
+        bus.publish_action(Action { trace_id: "".to_owned(), id: String::from(action_id), payload: HashMap::new() });
 
         // Assert
         let value = &*received.lock().unwrap();

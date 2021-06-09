@@ -68,7 +68,7 @@ async fn should_subscribe_to_nats_topics() {
 
     // Assert
     {
-        let vsphere_publisher = new_publisher(nats_address.to_owned(), "vsphere".to_owned());
+        let vsphere_publisher = new_publisher(nats_address.to_owned(), "vsphere".to_owned()).await;
 
         let event_type = format!("event_type_{}", random);
         let source = Event::new(event_type.clone());
@@ -87,7 +87,7 @@ async fn should_subscribe_to_nats_topics() {
 
     {
         let another_topic_publisher =
-            new_publisher(nats_address.to_owned(), "another_topic".to_owned());
+            new_publisher(nats_address.to_owned(), "another_topic".to_owned()).await;
 
         let event_type = format!("another_event_type_{}", random);
         let source = Event::new(event_type.clone());
@@ -106,7 +106,7 @@ async fn should_subscribe_to_nats_topics() {
 
     {
         let vsphere_simple_publisher =
-            new_publisher(nats_address.to_owned(), "vsphere_simple".to_owned());
+            new_publisher(nats_address.to_owned(), "vsphere_simple".to_owned()).await;
 
         let event_type = format!("another_event_type_{}", random);
         let source = Event::new(event_type.clone());
@@ -124,7 +124,7 @@ async fn should_subscribe_to_nats_topics() {
     }
 }
 
-fn new_publisher(nats_address: String, subject: String) -> Addr<NatsPublisherActor> {
+async fn new_publisher(nats_address: String, subject: String) -> Addr<NatsPublisherActor> {
     NatsPublisherActor::start_new(
         NatsPublisherConfig {
             client: NatsClientConfig { addresses: vec![nats_address], auth: None },
@@ -132,5 +132,6 @@ fn new_publisher(nats_address: String, subject: String) -> Addr<NatsPublisherAct
         },
         10,
     )
+    .await
     .unwrap()
 }

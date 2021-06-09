@@ -6,4 +6,6 @@ pub enum Icinga2CollectorError {
     CannotPerformHttpRequest { message: String },
     #[error("UnexpectedEndOfHttpRequest")]
     UnexpectedEndOfHttpRequest,
+    #[error("IcingaConnectionError: [{message}]")]
+    IcingaConnectionError { message: String },
 }

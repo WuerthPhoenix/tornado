@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Action, Value};
 use tornado_common_parser::Parser;
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
 
 const FOREACH_TARGET_KEY: &str = "target";
@@ -29,15 +29,17 @@ impl ForEachExecutor {
     }
 }
 
-impl Executor for ForEachExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ForEachExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
+        let trace_id = &action.trace_id;
         match action.payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
                 let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
                     Some(Value::Array(actions)) => {
-                        actions.iter().map(to_action).filter_map(Result::ok).collect()
+                        actions.iter().map(|value| to_action(trace_id, value)).filter_map(Result::ok).collect()
                     }
                     _ => {
                         return Err(ExecutorError::MissingArgumentError {
@@ -59,7 +61,7 @@ impl Executor for ForEachExecutor {
                         if let Err(err) = resolve_action(&Value::Map(item), action.clone())
                             .map(|action| self.bus.publish_action(action)) {
                             warn!(
-                                "ForEachExecutor - Error while executing internal action [{}]. Err: {}",
+                                "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
                                 action.id, err
                             )
                         }
@@ -77,12 +79,12 @@ impl Executor for ForEachExecutor {
     }
 }
 
-fn to_action(value: &Value) -> Result<Action, ExecutorError> {
+fn to_action(trace_id: &str, value: &Value) -> Result<Action, ExecutorError> {
     match value {
         Value::Map(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::Text(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
                 Some(Value::Map(payload)) => {
-                    Ok(Action { id: id.to_owned(), payload: payload.clone() })
+                    Ok(Action { trace_id: trace_id.to_owned(), id: id.to_owned(), payload: payload.clone() })
                 }
                 _ => {
                     let message =
@@ -118,7 +120,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
             if let Some(parse_result) = Parser::build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
-                    message: format!("Cannot build parser for [{}]. Err: {}", text, err),
+                    message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
                     code: None,
                 })?
                 .parse_value(item)
@@ -161,19 +163,21 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Map(payload_map.clone()));
 
         let action_value = Value::Map(action_map);
+        let trace_id = "asfse3t23tegre";
 
         // Act
-        let action = to_action(&action_value).unwrap();
+        let action = to_action(trace_id, &action_value).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
         assert_eq!(payload_map, action.payload);
+        assert_eq!(trace_id, &action.trace_id);
     }
 
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action(&Value::Array(vec![]));
+        let result = to_action("", &Value::Array(vec![]));
 
         // Assert
         assert!(result.is_err());
@@ -191,7 +195,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action("", &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -210,7 +214,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action("", &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -225,7 +229,7 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action("", &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -243,14 +247,14 @@ mod test {
         let action_value = Value::Map(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action("", &action_value);
 
         // Assert
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_execute_each_action_with_each_target_item() {
+    #[tokio::test]
+    async fn should_execute_each_action_with_each_target_item() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -288,9 +292,9 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -330,7 +334,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -348,14 +352,14 @@ mod test {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_one.get(0).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_one.get(0).unwrap());
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_one.get(1).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_one.get(1).unwrap());
         }
 
         let action_two = lock.get("id_two").unwrap();
@@ -367,7 +371,7 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::Text("a first_item bb <first_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(0).unwrap());
         }
 
         {
@@ -376,12 +380,12 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::Text("a second_item bb <second_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(1).unwrap());
         }
     }
 
-    #[test]
-    fn should_ignore_failing_actions_and_execute_all_others() {
+    #[tokio::test]
+    async fn should_ignore_failing_actions_and_execute_all_others() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -419,9 +423,9 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -452,7 +456,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -468,18 +472,18 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(0).unwrap());
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(1).unwrap());
         }
     }
 
-    #[test]
-    fn should_resolve_complex_placeholders() {
+    #[tokio::test]
+    async fn should_resolve_complex_placeholders() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(HashMap::new()));
@@ -501,9 +505,9 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -535,7 +539,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -551,18 +555,18 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("value".to_owned(), Value::Text("first + second".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(0).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_two.get(0).unwrap());
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("value".to_owned(), Value::Text("third + fourth".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(1).unwrap());
+            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_two.get(1).unwrap());
         }
     }
 
-    #[test]
-    fn should_resolve_recursive_placeholders_in_maps() {
+    #[tokio::test]
+    async fn should_resolve_recursive_placeholders_in_maps() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(vec![]));
@@ -579,9 +583,9 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
@@ -609,7 +613,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());
@@ -623,8 +627,8 @@ mod test {
         assert_eq!(&expected_map, value);
     }
 
-    #[test]
-    fn should_resolve_recursive_placeholders_in_arrays() {
+    #[tokio::test]
+    async fn should_resolve_recursive_placeholders_in_arrays() {
         // Arrange
 
         let execution_results = Arc::new(RwLock::new(vec![]));
@@ -641,9 +645,9 @@ mod test {
             );
         };
 
-        let mut executor = ForEachExecutor::new(Arc::new(bus));
+        let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
@@ -672,7 +676,7 @@ mod test {
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_ok());

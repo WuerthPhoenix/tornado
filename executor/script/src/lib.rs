@@ -1,8 +1,9 @@
 use log::*;
 use std::fmt;
-use std::process::Command;
+use std::sync::Arc;
+use tokio::process::Command;
 use tornado_common_api::{Action, Number, Value};
-use tornado_executor_common::{Executor, ExecutorError};
+use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
 pub const SCRIPT_ARGS_KEY: &str = "args";
@@ -52,8 +53,9 @@ impl fmt::Display for ScriptExecutor {
     }
 }
 
-impl Executor for ScriptExecutor {
-    fn execute(&mut self, action: &Action) -> Result<(), ExecutorError> {
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ScriptExecutor {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let script = action
@@ -88,7 +90,7 @@ impl Executor for ScriptExecutor {
                 trace!("No args found in payload")
             };
 
-            cmd.output().map_err(|err| ExecutorError::ActionExecutionError {
+            cmd.output().await.map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Cannot execute script [{:?}]: {}", script, err),
                 code: None,
@@ -127,139 +129,139 @@ mod test_unix {
     use std::collections::HashMap;
     use tornado_common_api::Value;
 
-    #[test]
-    fn should_return_error_if_script_not_found() {
+    #[tokio::test]
+    async fn should_return_error_if_script_not_found() {
         // Arrange
         let script = "NOT_EXISTING_SCRIPT.sh";
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_err())
     }
 
-    #[test]
-    fn should_execute_failing_script_and_return_error() {
+    #[tokio::test]
+    async fn should_execute_failing_script_and_return_error() {
         // Arrange
         let script = "./test_resources/fail.sh";
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        let result = executor.execute(&action);
+        let result = executor.execute(action.into()).await;
 
         // Assert
         assert!(result.is_err())
     }
 
-    #[test]
-    fn should_execute_echo_script() {
+    #[tokio::test]
+    async fn should_execute_echo_script() {
         // Arrange
         let script = format!("{}", "./test_resources/echo.sh");
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
     }
 
-    #[test]
-    fn should_execute_echo_script_with_args() {
+    #[tokio::test]
+    async fn should_execute_echo_script_with_args() {
         // Arrange
         let script = format!("{}", "./test_resources/echo.sh");
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text("hello_world!".to_owned()));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
     }
 
-    #[test]
-    fn should_execute_script_without_arguments() {
+    #[tokio::test]
+    async fn should_execute_script_without_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
         let content = "HelloRustyWorld!";
         let script = format!("{} {} {}", "./test_resources/write_file.sh", &filename, &content);
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
 
         // Assert
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
 
-    #[test]
-    fn should_execute_script_with_arguments() {
+    #[tokio::test]
+    async fn should_execute_script_with_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
         let content = "HelloRustyWorld!";
         let script = format!("{} {}", "./test_resources/write_file.sh", &filename);
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
 
         // Assert
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
 
-    #[test]
-    fn should_execute_script_with_array_of_arguments() {
+    #[tokio::test]
+    async fn should_execute_script_with_array_of_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
         let content = "HelloRustyWorld!";
         let script = "./test_resources/write_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
             Value::Array(vec![Value::Text(filename.to_owned()), Value::Text(content.to_owned())]),
         );
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
 
         // Assert
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
 
-    #[test]
-    fn should_execute_script_escaping_arguments() {
+    #[tokio::test]
+    async fn should_execute_script_escaping_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
@@ -267,32 +269,32 @@ mod test_unix {
             r#"Hello Rusty World!! 'single quote' "double quote" ""double double quote"""#;
         let script = "./test_resources/write_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
             Value::Array(vec![Value::Text(filename.to_owned()), Value::Text(content.to_owned())]),
         );
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
 
         // Assert
         let file_content = std::fs::read_to_string(&filename).unwrap();
         assert_eq!(content, file_content.trim())
     }
 
-    #[test]
-    fn should_execute_script_with_map_of_arguments() {
+    #[tokio::test]
+    async fn should_execute_script_with_map_of_arguments() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let filename = format!("{}/output.txt", tempdir.path().to_str().unwrap().to_owned());
 
         let script = "./test_resources/write_all_args_to_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
         let first_content = "First_HelloRustyWorld!";
@@ -307,10 +309,10 @@ mod test_unix {
             Value::Array(vec![Value::Text(filename.to_owned()), Value::Map(args)]),
         );
 
-        let mut executor = ScriptExecutor::new();
+        let executor = ScriptExecutor::new();
 
         // Act
-        executor.execute(&action).unwrap();
+        executor.execute(action.into()).await.unwrap();
 
         // Assert
         let file_content = std::fs::read_to_string(&filename).unwrap();

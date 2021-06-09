@@ -1,12 +1,10 @@
 use crate::config::{SUBCOMMAND_CHECK, SUBCOMMAND_DAEMON, SUBCOMMAND_RULES_UPGRADE};
 use log::error;
 
+pub mod actor;
 mod api;
 mod command;
 pub mod config;
-pub mod dispatcher;
-pub mod engine;
-pub mod executor;
 mod monitoring;
 
 #[actix_web::main]
@@ -20,10 +18,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let subcommand = arg_matches.subcommand();
 
     match subcommand {
-        (SUBCOMMAND_CHECK, _) => command::check::check(config_dir, rules_dir, drafts_dir),
+        (SUBCOMMAND_CHECK, _) => command::check::check(config_dir, rules_dir, drafts_dir).await,
         (SUBCOMMAND_DAEMON, _) => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
         (SUBCOMMAND_RULES_UPGRADE, _) => {
-            command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir)
+            command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir).await
         }
         _ => {
             error!("Unknown subcommand [{}]", subcommand.0);

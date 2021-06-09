@@ -7,18 +7,18 @@ use tornado_engine_matcher::config::rule::Action;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 
-pub fn upgrade_rules(
+pub async fn upgrade_rules(
     config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     println!("Upgrade Tornado configuration rules");
     let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
-    let mut matcher_config = configs.matcher_config.get_config()?;
+    let mut matcher_config = configs.matcher_config.get_config().await?;
     let matcher_config_clone = matcher_config.clone();
     upgrade(&mut matcher_config)?;
     if matcher_config != matcher_config_clone {
-        configs.matcher_config.deploy_config(&matcher_config)?;
+        configs.matcher_config.deploy_config(&matcher_config).await?;
         println!("Upgrade Tornado configuration rules completed successfully");
     } else {
         println!("Upgrade Tornado configuration rules completed. Nothing to do.");
@@ -39,7 +39,7 @@ fn upgrade(
             for rule in rules {
                 for action in &mut rule.actions {
                     if let Err(err) = upgrade_action(action) {
-                        println!("Error Migrating {}. Err: {}", action.id, err);
+                        println!("Error Migrating {}. Err: {:?}", action.id, err);
                     }
                 }
             }
@@ -97,26 +97,26 @@ fn value_to_action(value: &Value) -> Result<Action, MatcherError> {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
     use crate::command::daemon::{ACTION_ID_FOREACH, ACTION_ID_LOGGER};
     use tempfile::TempDir;
     use tornado_engine_matcher::config::rule::Rule;
 
-    #[test]
-    fn should_migrate_the_monitoring_rules() {
+    #[tokio::test]
+    async fn should_migrate_the_monitoring_rules() {
         // Arrange
         let tempdir = tempfile::tempdir().unwrap();
         let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
         let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
 
-        let matcher_config_before = configs.matcher_config.get_config().unwrap();
+        let matcher_config_before = configs.matcher_config.get_config().await.unwrap();
 
         // Act
-        upgrade_rules(&config_dir, &rules_dir, &drafts_dir).unwrap();
+        upgrade_rules(&config_dir, &rules_dir, &drafts_dir).await.unwrap();
 
         // Assert
-        let matcher_config_after = configs.matcher_config.get_config().unwrap();
+        let matcher_config_after = configs.matcher_config.get_config().await.unwrap();
         assert_ne!(matcher_config_before, matcher_config_after);
 
         check_migrated_rules(&matcher_config_before, &matcher_config_after);
@@ -156,7 +156,7 @@ mod test {
             .unwrap()
     }
 
-    fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
+    pub fn prepare_temp_dirs(tempdir: &TempDir) -> (String, String, String) {
         let source_config_dir = "./config/".to_owned();
         let dest_config_dir = tempdir.path().to_str().unwrap().to_owned();
 

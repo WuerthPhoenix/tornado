@@ -7,15 +7,17 @@ authors = [
 edition = "2018"
 
 [dependencies]
+async-trait = "0.1"
 base64 = "0.13"
 log = "0.4"
-reqwest = { version="0.9", default-features = false, features=["rustls-tls"]}
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"]}
 serde = { version = "1.0", features = ['derive'] }
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
-actix = "0.10"
-actix-web = "3.0"
+actix-rt = "2.2"
+actix-web = "=4.0.0-beta.5"
 maplit = "1.0"
-httpmock = "0.4"
+httpmock = "0.5"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

@@ -26,6 +26,8 @@ pub trait WithOwner {
 pub enum Permission {
     ConfigEdit,
     ConfigView,
+    RuntimeConfigEdit,
+    RuntimeConfigView,
 }
 
 #[derive(Debug, Clone)]
@@ -164,13 +166,13 @@ impl AuthService {
 
     pub fn auth_from_token_string(&self, token: &str) -> Result<AuthContext, ApiError> {
         let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Cannot perform base64::decode of auth token. Err: {}", err),
+            message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
         })?;
         let auth_str = String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Invalid UTF8 token content. Err: {}", err),
+            message: format!("Invalid UTF8 token content. Err: {:?}", err),
         })?;
         let auth = serde_json::from_str(&auth_str).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Invalid JSON token content. Err: {}", err),
+            message: format!("Invalid JSON token content. Err: {:?}", err),
         })?;
         trace!("Auth built from request: [{:?}]", auth);
         Ok(AuthContext::new(auth, &self.permission_roles_map))
@@ -180,7 +182,7 @@ impl AuthService {
     pub fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
         let auth_str =
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
-                cause: format!("Cannot serialize auth into string. Err: {}", err),
+                cause: format!("Cannot serialize auth into string. Err: {:?}", err),
             })?;
         Ok(base64::encode(auth_str.as_bytes()))
     }
@@ -206,7 +208,10 @@ pub fn test_auth_service() -> AuthService {
     let mut permission_roles_map = BTreeMap::new();
     permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
     permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-
+    permission_roles_map
+        .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
+    permission_roles_map
+        .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
     AuthService::new(Arc::new(permission_roles_map))
 }
 

@@ -172,18 +172,20 @@ mod test {
 
     struct ConfigManager {}
 
+    #[async_trait::async_trait(?Send)]
     impl MatcherConfigReader for ConfigManager {
-        fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
+        async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl MatcherConfigEditor for ConfigManager {
-        fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
+        async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
             unimplemented!()
         }
 
-        fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+        async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
             Ok(MatcherConfigDraft {
                 data: MatcherConfigDraftData {
                     user: "user".to_owned(),
@@ -195,11 +197,11 @@ mod test {
             })
         }
 
-        fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
+        async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
             unimplemented!()
         }
 
-        fn update_draft(
+        async fn update_draft(
             &self,
             _draft_id: &str,
             _user: String,
@@ -208,26 +210,33 @@ mod test {
             unimplemented!()
         }
 
-        fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
         }
 
-        fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
+        async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
             unimplemented!()
         }
 
-        fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
+        async fn draft_take_over(
+            &self,
+            _draft_id: &str,
+            _user: String,
+        ) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        fn deploy_config(&self, _config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_config(
+            &self,
+            _config: &MatcherConfig,
+        ) -> Result<MatcherConfig, MatcherError> {
             unimplemented!()
         }
     }
 
     struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
@@ -266,10 +275,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec![""]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -291,10 +300,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -316,10 +325,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/current")
             .to_request();
 
@@ -349,10 +358,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/drafts/1/deploy")
             .to_request();
 
@@ -382,10 +391,10 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            )
+            ))
             .uri("/v1_beta/config/drafts/draft123/take_over")
             .to_request();
 
