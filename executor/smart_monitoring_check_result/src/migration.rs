@@ -62,7 +62,7 @@ fn remove_entries(payload: &mut Payload) {
 mod test {
 
     use super::*;
-    use tornado_common_api::Action;
+    use tornado_engine_matcher::config::rule::Action;
 
     #[test]
     fn test_before_and_after_migration() {
@@ -91,8 +91,10 @@ mod test {
 
         // Act
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
-        let migrated_action =
-            Action::new_with_payload("", "smart_monitoring_check_result", migrated_payload);
+        let migrated_action = Action {
+                id: "smart_monitoring_check_result".to_owned(),
+                payload: migrated_payload
+            };
 
         // Assert
         assert_eq!(dest_action, migrated_action);
