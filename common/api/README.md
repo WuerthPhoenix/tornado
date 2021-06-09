@@ -16,6 +16,7 @@ executors.
 
 An Event has a simple structure, composed as follows:
 
+- __trace_id__:  An optional unique Event identifier (usually a UUID). Tornado will generate a unique `trace_id` for each event that misses it.   
 - __type__:  The Event type identifier (a given Collector usually sends Events of only a single type)
 - __created_ms__:  The Event creation timestamp in milliseconds since January 1, 1970 UTC
 - __payload__:  A Map<String, Value> with event-specific data
@@ -33,6 +34,7 @@ All fields must have values, although the _payload_ can be an empty structure.
 Example Event in JSON format:
 ```json
 {
+    "trace_id": "130b53f2-4e64-452a-b6c0-c88516b6e7c7",
     "type": "email",
     "created_ms": 1554130814854,
     "payload": {
