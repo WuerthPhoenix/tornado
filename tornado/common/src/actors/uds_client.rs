@@ -34,15 +34,15 @@ impl Actor for UdsClientActor {
     fn started(&mut self, ctx: &mut Self::Context) {
         info!("UdsClientActor started. Attempt connection to socket [{:?}]", &self.socket_path);
 
-        let mut delay_until = time::Instant::now();
+        let mut sleep_until = time::Instant::now();
         if self.restarted {
-            delay_until += time::Duration::new(1, 0)
+            sleep_until += time::Duration::new(1, 0)
         }
         let path = (&self.socket_path).clone();
 
         ctx.wait(
             async move {
-                time::delay_until(delay_until).await;
+                time::sleep_until(sleep_until).await;
                 UnixStream::connect(path).await.map_err(|_| ())
             }
             .into_actor(self)
@@ -74,13 +74,16 @@ impl Handler<EventMessage> for UdsClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        trace!("UdsClientActor - {:?} - received new event", &msg.event);
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("UdsClientActor", trace_id).entered();
+        trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.event);
 
         match &mut self.tx {
             Some(stream) => {
                 let event = serde_json::to_string(&msg.event).map_err(|err| {
                     TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
+                debug!("UdsClientActor - Publishing event");
                 stream.write(event);
                 Ok(())
             }

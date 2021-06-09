@@ -96,6 +96,7 @@ mod test {
         assert_eq!("syslog", &event.event_type);
         assert_eq!("2018-11-01T23:59:59+01:00", event.payload.get("@timestamp").unwrap());
 
+        expected_event.trace_id = event.trace_id.clone();
         expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
     }

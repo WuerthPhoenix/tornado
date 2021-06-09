@@ -30,7 +30,7 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
 
         let data = jmespath::Variable::from_json(input).map_err(|err| {
             CollectorError::EventCreationError {
-                message: format!("Cannot parse received json. Err: {} - Json: {}.", err, input),
+                message: format!("Cannot parse received json. Err: {:?} - Json: {}.", err, input),
             }
         })?;
         self.processor.process(&data)
@@ -94,7 +94,7 @@ impl EventProcessor {
             let jmespath_exp = jmespath::compile(expression).map_err(|err| {
                 CollectorError::CollectorCreationError {
                     message: format!(
-                        "Not valid jmespath expression: [{}]. Err: {}",
+                        "Not valid jmespath expression: [{}]. Err: {:?}",
                         expression, err
                     ),
                 }
@@ -115,6 +115,7 @@ impl EventProcessor {
             })?
             .to_owned();
         let mut event = Event::new(event_type);
+
 
         for (key, value_processor) in &self.payload {
             event.payload.insert(key.clone(), value_processor.process(var)?);
@@ -527,7 +528,7 @@ mod test {
         let config_json = fs::read_to_string(config_path)
             .expect(&format!("Unable to open the file [{}]", config_path));
         let config: config::JMESPathEventCollectorConfig = serde_json::from_str(&config_json)
-            .map_err(|e| panic!("Cannot parse config json. Err: {}", e))
+            .map_err(|e| panic!("Cannot parse config json. Err: {:?}", e))
             .unwrap();
 
         let collector = JMESPathEventCollector::build(config).unwrap();
@@ -538,7 +539,7 @@ mod test {
         let output_json = fs::read_to_string(output_path)
             .expect(&format!("Unable to open the file [{}]", output_path));
         let mut expected_event: Event = serde_json::from_str(&output_json)
-            .map_err(|e| panic!("Cannot parse output json. Err: {}", e))
+            .map_err(|e| panic!("Cannot parse output json. Err: {:?}", e))
             .unwrap();
 
         // Act
@@ -548,6 +549,7 @@ mod test {
         assert!(result.is_ok());
 
         let result_event = result.unwrap();
+        expected_event.trace_id = result_event.trace_id.clone();
         expected_event.created_ms = result_event.created_ms.clone();
 
         assert_eq!(expected_event, result_event);

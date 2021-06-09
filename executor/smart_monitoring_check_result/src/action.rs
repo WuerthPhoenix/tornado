@@ -20,14 +20,14 @@ pub struct SimpleCreateAndProcess {
 
 impl SimpleCreateAndProcess {
     pub fn new(payload: &Payload) -> Result<SimpleCreateAndProcess, ExecutorError> {
-        Ok(serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
+        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
             ExecutorError::ConfigurationError {
                 message: format!(
-                    "Invalid SimpleCreateAndProcess Action configuration. Err: {}",
+                    "Invalid SimpleCreateAndProcess Action configuration. Err: {:?}",
                     err
                 ),
             }
-        })?)
+        })
     }
 
     // Transforms the SimpleCreateAndProcess into the actions needed to call the IcingaExecutor and the
@@ -143,7 +143,7 @@ mod test {
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
     ) {
         // Arrange
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert("host".to_owned(), Value::Map(hashmap!()));
         action.payload.insert(
@@ -172,7 +172,7 @@ mod test {
     fn to_sub_actions_should_throw_error_if_process_check_result_service_not_specified_with_service_field(
     ) {
         // Arrange
-        let mut action = Action::new("");
+        let mut action = Action::new("", "");
         action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
         action.payload.insert(
             "host".to_owned(),
@@ -205,7 +205,7 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: Action = serde_json::from_str(&json).unwrap();
+        let action: tornado_engine_matcher::config::rule::Action = serde_json::from_str(&json).unwrap();
 
         // Act
         let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
@@ -221,7 +221,7 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: Action = serde_json::from_str(&json).unwrap();
+        let action: tornado_engine_matcher::config::rule::Action = serde_json::from_str(&json).unwrap();
 
         // Act
         let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
@@ -242,7 +242,7 @@ mod test {
         )
         .unwrap();
 
-        let action_simple: Action = serde_json::from_str(
+        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
                 .expect(&format!("Unable to open the file [{}]", filename_simple)),
         )
@@ -270,7 +270,7 @@ mod test {
         )
         .unwrap();
 
-        let action_simple: Action = serde_json::from_str(
+        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
                 .expect(&format!("Unable to open the file [{}]", filename_simple)),
         )

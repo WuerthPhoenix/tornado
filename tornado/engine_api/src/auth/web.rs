@@ -30,31 +30,21 @@ async fn who_am_i(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{AuthService, Permission};
+    use crate::auth::{test_auth_service, AuthService};
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},
         test, App,
     };
-    use std::collections::BTreeMap;
-    use std::sync::Arc;
     use tornado_engine_api_dto::auth::{Auth, PermissionDto};
-
-    fn auth_service() -> AuthService {
-        let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map
-            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-
-        AuthService::new(Arc::new(permission_roles_map))
-    }
 
     #[actix_rt::test]
     async fn who_am_i_should_return_status_code_unauthenticated_if_no_token() -> Result<(), ApiError>
     {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(build_auth_endpoints(ApiData { auth: auth_service(), api: () })),
+            App::new()
+                .service(build_auth_endpoints(ApiData { auth: test_auth_service(), api: () })),
         )
         .await;
 
@@ -72,16 +62,17 @@ mod test {
     async fn who_am_i_should_return_the_auth_with_permissions_dto() -> Result<(), ApiError> {
         // Arrange
         let mut srv = test::init_service(
-            App::new().service(build_auth_endpoints(ApiData { auth: auth_service(), api: () })),
+            App::new()
+                .service(build_auth_endpoints(ApiData { auth: test_auth_service(), api: () })),
         )
         .await;
 
         // Act
         let request = test::TestRequest::get()
-            .header(
+            .insert_header((
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["view"]))?,
-            )
+            ))
             .uri("/v1_beta/auth/who_am_i")
             .to_request();
 

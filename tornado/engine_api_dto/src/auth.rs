@@ -17,6 +17,8 @@ pub struct Auth {
 pub enum PermissionDto {
     ConfigEdit,
     ConfigView,
+    RuntimeConfigEdit,
+    RuntimeConfigView,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]

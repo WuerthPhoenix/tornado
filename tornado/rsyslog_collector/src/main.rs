@@ -42,24 +42,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             format!("{}:{}", tornado_event_socket_ip, tornado_event_socket_port,);
 
         let actor_address = TcpClientActor::start_new(tornado_tcp_address, message_queue_size);
-        start(actor_address, message_queue_size)?;
+        start(actor_address, message_queue_size);
     } else if let Some(connection_channel) =
         collector_config.rsyslog_collector.tornado_connection_channel
     {
         match connection_channel {
             TornadoConnectionChannel::Nats { nats } => {
                 info!("Connect to Tornado through NATS");
-                let actor_address = NatsPublisherActor::start_new(nats, message_queue_size)?;
-                start(actor_address, message_queue_size)?;
+                let actor_address = NatsPublisherActor::start_new(nats, message_queue_size).await?;
+                start(actor_address, message_queue_size);
             }
-            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+            TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
                 // Start TcpWriter
                 let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
 
                 let actor_address =
                     TcpClientActor::start_new(tornado_tcp_address, message_queue_size);
-                start(actor_address, message_queue_size)?;
+                start(actor_address, message_queue_size);
             }
         };
     } else {
@@ -76,10 +76,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-fn start<A: Actor + actix::Handler<EventMessage>>(
-    actor_address: Addr<A>,
-    message_queue_size: usize,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
+fn start<A: Actor + actix::Handler<EventMessage>>(actor_address: Addr<A>, message_queue_size: usize)
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
@@ -104,12 +101,10 @@ where
                     }
                 }
                 Err(error) => {
-                    error!("error: {}", error);
+                    error!("error: {:?}", error);
                     system.stop();
                 }
             }
         }
     });
-
-    Ok(())
 }

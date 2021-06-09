@@ -10,7 +10,7 @@ use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::{actors, TornadoError};
 use tornado_common_logger::setup_logger;
 
-mod actor;
+mod command;
 mod config;
 mod error;
 
@@ -57,10 +57,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let actor_address = NatsPublisherActor::start_new(
                     nats.clone(),
                     collector_config.icinga2_collector.message_queue_size,
-                )?;
+                )
+                .await?;
                 start(collector_config, streams_config, actor_address);
             }
-            TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+            TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
                 // Start TcpWriter
                 let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
@@ -97,16 +98,20 @@ fn start<A: Actor + actix::Handler<EventMessage>>(
         let config = config.clone();
         let icinga2_config = collector_config.clone();
         let actor_address = actor_address.clone();
-        SyncArbiter::start(1, move || {
+        actix::spawn(async move {
             let actor_address = actor_address.clone();
-            actor::Icinga2StreamActor {
+            let icinga_poll = command::Icinga2StreamConnector {
                 icinga_config: icinga2_config.icinga2_collector.connection.clone(),
                 collector: JMESPathEventCollector::build(config.collector_config.clone())
-                    .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {}", config.collector_config.clone(), e)),
+                    .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {:?}", config.collector_config.clone(), e)),
                 stream_config: config.stream.clone(),
                 callback: move |event| {
-                    actor_address.try_send(EventMessage { event }).unwrap_or_else(|err| error!("Icinga2StreamActor -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
+                    actor_address.try_send(EventMessage { event }).unwrap_or_else(|err| error!("Icinga2StreamConnector -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
                 },
+            };
+            if let Err(err) = icinga_poll.start_polling_icinga().await {
+                error!("Cannot start connection to Icinga. Err: {:?}", err);
+                System::current().stop()
             }
         });
     });

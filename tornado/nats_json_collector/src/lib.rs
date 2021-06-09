@@ -34,10 +34,11 @@ pub async fn start(
             let actor_address = NatsPublisherActor::start_new(
                 nats_publisher_config,
                 nats_json_collector_config.message_queue_size,
-            )?;
+            )
+            .await?;
             actor_address.recipient()
         }
-        TornadoConnectionChannel::TCP { tcp_socket_ip, tcp_socket_port } => {
+        TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
             info!("Connect to Tornado through TCP socket");
             // Start TcpWriter
             let tornado_tcp_address = format!("{}:{}", tcp_socket_ip, tcp_socket_port,);
@@ -73,7 +74,10 @@ async fn subscribe_to_topics(
                 build_jmespath_collector_config(topic_config.collector_config.clone(), &topic);
             let jmespath_collector = JMESPathEventCollector::build(jmespath_collector_config)
                 .map_err(|err| CollectorError::CollectorCreationError {
-                    message: format!("Cannot create collector for topic [{}]. Err: {}", topic, err),
+                    message: format!(
+                        "Cannot create collector for topic [{}]. Err: {:?}",
+                        topic, err
+                    ),
                 })?;
 
             let nats_subscriber_config =

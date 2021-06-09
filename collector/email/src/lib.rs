@@ -152,6 +152,7 @@ mod test {
         let event = collector.to_event(email.as_bytes()).unwrap();
 
         // Assert
+        expected_event.trace_id = event.trace_id.clone();
         expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
     }

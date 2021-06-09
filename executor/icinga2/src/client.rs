@@ -26,20 +26,20 @@ impl ApiClient {
         }
 
         let client = client_builder.build().map_err(|err| ExecutorError::ConfigurationError {
-            message: format!("Error while building Icinga2Client. Err: {}", err),
+            message: format!("Error while building Icinga2Client. Err: {:?}", err),
         })?;
 
         // The server API url should not contain the /v1/actions suffix.
         // Clean the URL as users have this suffix in their configuration.
         let mut server_api_url = config.server_api_url.replace("/v1/actions", "");
         if server_api_url.ends_with('/') {
-            server_api_url = server_api_url[0..server_api_url.len()-1].to_owned()
+            server_api_url = server_api_url[0..server_api_url.len() - 1].to_owned()
         }
 
         Ok(ApiClient { server_api_url, http_auth_header, client })
     }
 
-    fn post<T: Serialize + ?Sized>(
+    async fn post<T: Serialize + ?Sized>(
         &self,
         icinga2_api_name: &str,
         payload: &T,
@@ -55,14 +55,15 @@ impl ApiClient {
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .json(payload)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
-                message: format!("Icinga2Executor - Connection failed. Err: {}", err),
+                message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
             })
     }
 
-    fn get(&self, icinga2_api_name: &str) -> Result<Response, ExecutorError> {
+    async fn get(&self, icinga2_api_name: &str) -> Result<Response, ExecutorError> {
         let url = format!("{}{}", &self.server_api_url, icinga2_api_name);
         let http_auth_header = &self.http_auth_header;
 
@@ -73,32 +74,33 @@ impl ApiClient {
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .send()
+            .await
             .map_err(|err| ExecutorError::ActionExecutionError {
                 can_retry: true,
-                message: format!("Icinga2Executor - Connection failed. Err: {}", err),
+                message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
             })
     }
 
-    pub fn api_get_objects_host(&self, host_name: &str) -> Result<Response, ExecutorError> {
-        self.get(&format!("/v1/objects/hosts/{}", host_name))
+    pub async fn api_get_objects_host(&self, host_name: &str) -> Result<Response, ExecutorError> {
+        self.get(&format!("/v1/objects/hosts/{}", host_name)).await
     }
 
-    pub fn api_get_objects_service(
+    pub async fn api_get_objects_service(
         &self,
         host_name: &str,
         service_name: &str,
     ) -> Result<Response, ExecutorError> {
-        self.get(&format!("/v1/objects/services/{}!{}", host_name, service_name))
+        self.get(&format!("/v1/objects/services/{}!{}", host_name, service_name)).await
     }
 
-    pub fn api_post_action<T: Serialize + ?Sized>(
+    pub async fn api_post_action<T: Serialize + ?Sized>(
         &self,
         icinga2_action_name: &str,
         payload: &T,
     ) -> Result<Response, ExecutorError> {
         let url = format!("/v1/actions/{}", icinga2_action_name);
-        self.post(&url, payload)
+        self.post(&url, payload).await
     }
 }
 
@@ -114,28 +116,28 @@ mod test {
             disable_ssl_verification: false,
             password: "".to_owned(),
             timeout_secs: None,
-            server_api_url: "http://localhost".to_owned()
+            server_api_url: "http://localhost".to_owned(),
         };
 
         // Act & Assert
-        assert_eq!( "http://localhost", ApiClient::new(&config).unwrap().server_api_url);
+        assert_eq!("http://localhost", ApiClient::new(&config).unwrap().server_api_url);
 
         {
             let url = "http://localhost:8080/";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
 
         {
             let url = "http://localhost:8080/v1/actions";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://localhost:8080" , ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://localhost:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
 
         {
             let url = "http://127.0.0.1:8080/v1/actions/";
             config.server_api_url = url.to_owned();
-            assert_eq!( "http://127.0.0.1:8080" , ApiClient::new(&config).unwrap().server_api_url);
+            assert_eq!("http://127.0.0.1:8080", ApiClient::new(&config).unwrap().server_api_url);
         }
     }
 }

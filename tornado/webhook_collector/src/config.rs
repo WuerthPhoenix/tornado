@@ -62,13 +62,13 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
     for path in paths {
         let filename = path
             .map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Cannot get the filename. Err: {}", e),
+                message: format!("Cannot get the filename. Err: {:?}", e),
             })?
             .path();
         debug!("Loading webhook configuration from file: [{}]", filename.display());
         let webhook_body =
             fs::read_to_string(&filename).map_err(|e| TornadoError::ConfigurationError {
-                message: format!("Unable to open the file [{}]. Err: {}", filename.display(), e),
+                message: format!("Unable to open the file [{}]. Err: {:?}", filename.display(), e),
             })?;
         trace!("Webhook configuration body: \n{}", webhook_body);
         webhooks.push(serde_json::from_str::<WebhookConfig>(&webhook_body).map_err(|e| {

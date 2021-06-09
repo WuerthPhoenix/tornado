@@ -9,7 +9,7 @@ use tornado_engine_matcher::config::{
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
-#[async_trait::async_trait]
+#[async_trait::async_trait(?Send)]
 pub trait ConfigApiHandler: Send + Sync {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError>;
 }
@@ -30,13 +30,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: AuthContext<'_>,
     ) -> Result<MatcherConfig, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        Ok(self.config_manager.get_config()?)
+        Ok(self.config_manager.get_config().await?)
     }
 
     /// Returns the list of available drafts
     pub async fn get_drafts(&self, auth: AuthContext<'_>) -> Result<Vec<String>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        Ok(self.config_manager.get_drafts()?)
+        Ok(self.config_manager.get_drafts().await?)
     }
 
     /// Returns a draft by id
@@ -52,7 +52,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     /// Creats a new draft and returns the id
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        Ok(self.config_manager.create_draft(auth.auth.user).map(|id| Id { id })?)
+        Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
     }
 
     /// Update a draft
@@ -64,7 +64,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         self.get_draft_and_check_owner(&auth, draft_id).await?;
-        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config)?)
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config).await?)
     }
 
     /// Deploy a draft by id and reload the tornado configuration
@@ -75,7 +75,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<MatcherConfig, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         self.get_draft_and_check_owner(&auth, draft_id).await?;
-        self.config_manager.deploy_draft(draft_id)?;
+        self.config_manager.deploy_draft(draft_id).await?;
         self.handler.reload_configuration().await
     }
 
@@ -87,7 +87,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         self.get_draft_and_check_owner(&auth, draft_id).await?;
-        Ok(self.config_manager.delete_draft(draft_id)?)
+        Ok(self.config_manager.delete_draft(draft_id).await?)
     }
 
     pub async fn draft_take_over(
@@ -96,7 +96,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         draft_id: &str,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user)?)
+        Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user).await?)
     }
 
     async fn get_draft_and_check_owner(
@@ -104,7 +104,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContext<'_>,
         draft_id: &str,
     ) -> Result<MatcherConfigDraft, ApiError> {
-        let draft = self.config_manager.get_draft(draft_id)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
         Ok(draft)
     }
@@ -128,18 +128,20 @@ mod test {
 
     struct TestConfigManager {}
 
+    #[async_trait::async_trait(?Send)]
     impl MatcherConfigReader for TestConfigManager {
-        fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
+        async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
         }
     }
 
+    #[async_trait::async_trait(?Send)]
     impl MatcherConfigEditor for TestConfigManager {
-        fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
+        async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
             Ok(vec![])
         }
 
-        fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+        async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
             Ok(MatcherConfigDraft {
                 data: MatcherConfigDraftData {
                     user: DRAFT_OWNER_ID.to_owned(),
@@ -151,11 +153,11 @@ mod test {
             })
         }
 
-        fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
+        async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
             Ok("".to_owned())
         }
 
-        fn update_draft(
+        async fn update_draft(
             &self,
             _draft_id: &str,
             _user: String,
@@ -164,26 +166,33 @@ mod test {
             Ok(())
         }
 
-        fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
         }
 
-        fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
+        async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
+        async fn draft_take_over(
+            &self,
+            _draft_id: &str,
+            _user: String,
+        ) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        fn deploy_config(&self, _config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_config(
+            &self,
+            _config: &MatcherConfig,
+        ) -> Result<MatcherConfig, MatcherError> {
             unimplemented!()
         }
     }
 
     struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })

@@ -2,7 +2,7 @@ use actix::dev::ToEnvelope;
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
-use tokio::prelude::*;
+use tokio::io::{AsyncRead, AsyncReadExt};
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
@@ -60,7 +60,7 @@ where
                 Ok(event) => {
                     tcp.try_send(EventMessage { event }).unwrap_or_else(|err| error!("EmailReaderActor -  Error while sending ProcessedEventMessage to TornadoConnectionChannel actor. Error: {}", err));
                 }
-                Err(e) => error!("Error processing incoming email. Err: {}", e),
+                Err(e) => error!("Error processing incoming email. Err: {:?}", e),
             };
         };
 

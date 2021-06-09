@@ -30,7 +30,7 @@ export type Auth = { user: string; roles: string []; preferences: UserPreference
 
 export type AuthWithPermissionsDto = {     user: string; permissions: PermissionDto []; preferences:     UserPreferences | null };
 
-export enum PermissionDto { ConfigEdit = "ConfigEdit", ConfigView = "ConfigView" };
+export enum PermissionDto {     ConfigEdit = "ConfigEdit", ConfigView = "ConfigView", RuntimeConfigEdit =     "RuntimeConfigEdit", RuntimeConfigView = "RuntimeConfigView" };
 
 export type UserPreferences = { language: string | null };
 
@@ -128,3 +128,10 @@ export type EnrichedValueContent =
 export type ProcessedRuleMetaData = { actions: ActionMetaData [] };
 
 export type ValueMetaData = { modified: boolean; is_leaf: boolean };
+
+
+/* -------------- */
+/* 'runtime_config' types */
+/* -------------- */
+
+export type LoggerConfigDto = { level: string };

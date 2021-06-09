@@ -1,4 +1,4 @@
-use crate::engine::{
+use crate::actor::matcher::{
     EventMessageAndConfigWithReply, EventMessageWithReply, MatcherActor, ReconfigureMessage,
 };
 use actix::Addr;
@@ -9,12 +9,14 @@ use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
+pub mod runtime_config;
+
 #[derive(Clone)]
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl EventApiHandler for MatcherApiHandler {
     async fn send_event_to_current_config(
         &self,
@@ -51,11 +53,14 @@ impl EventApiHandler for MatcherApiHandler {
     }
 }
 
-#[async_trait]
+#[async_trait(?Send)]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
         let request = self.matcher.send(ReconfigureMessage {}).await?;
-        Ok(request?.as_ref().clone())
+        Ok(request
+            .map_err(|err| ApiError::InternalServerError { cause: format!("{:?}", err) })?
+            .as_ref()
+            .clone())
     }
 }
 
@@ -68,7 +73,7 @@ impl MatcherApiHandler {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::dispatcher::{ActixEventBus, DispatcherActor};
+    use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_common_api::{Event, Value};
@@ -91,7 +96,9 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
@@ -121,12 +128,14 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager.clone(), 47).unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 
         // Act
-        let res = config_manager.get_config();
+        let res = config_manager.get_config().await;
         // Verify
         assert!(res.is_ok());
         match res.unwrap() {
@@ -164,7 +173,9 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone(), config_manager, 47).unwrap();
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+                .await
+                .unwrap();
 
         let api = MatcherApiHandler { matcher: matcher_addr };
 

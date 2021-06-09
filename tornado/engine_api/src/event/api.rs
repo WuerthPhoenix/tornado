@@ -9,7 +9,7 @@ use tornado_engine_matcher::model::ProcessedEvent;
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
-#[async_trait]
+#[async_trait(?Send)]
 pub trait EventApiHandler: Send + Sync {
     /// Executes an Event on the current Tornado Configuration
     async fn send_event_to_current_config(
@@ -64,7 +64,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        let draft = self.config_manager.get_draft(draft_id)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
         self.handler.send_event_to_config(event, draft.config).await
     }
@@ -85,7 +85,7 @@ pub mod test {
 
     pub struct TestApiHandler {}
 
-    #[async_trait]
+    #[async_trait(?Send)]
     impl EventApiHandler for TestApiHandler {
         async fn send_event_to_current_config(
             &self,
@@ -139,12 +139,13 @@ pub mod test {
 
     pub struct TestConfigManager {}
 
+    #[async_trait::async_trait(?Send)]
     impl MatcherConfigEditor for TestConfigManager {
-        fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
+        async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
             Ok(vec![])
         }
 
-        fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
+        async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
             Ok(MatcherConfigDraft {
                 data: MatcherConfigDraftData {
                     user: DRAFT_OWNER_ID.to_owned(),
@@ -156,11 +157,11 @@ pub mod test {
             })
         }
 
-        fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
+        async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
             Ok("".to_owned())
         }
 
-        fn update_draft(
+        async fn update_draft(
             &self,
             _draft_id: &str,
             _user: String,
@@ -169,19 +170,26 @@ pub mod test {
             Ok(())
         }
 
-        fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
         }
 
-        fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
+        async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        fn draft_take_over(&self, _draft_id: &str, _user: String) -> Result<(), MatcherError> {
+        async fn draft_take_over(
+            &self,
+            _draft_id: &str,
+            _user: String,
+        ) -> Result<(), MatcherError> {
             Ok(())
         }
 
-        fn deploy_config(&self, _config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
+        async fn deploy_config(
+            &self,
+            _config: &MatcherConfig,
+        ) -> Result<MatcherConfig, MatcherError> {
             unimplemented!()
         }
     }

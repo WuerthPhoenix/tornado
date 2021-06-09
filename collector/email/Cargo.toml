@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 base64 = "0.13"
 log = "0.4"
-mailparse = "0.13.0"
+mailparse = "0.13"
 tornado_collector_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 

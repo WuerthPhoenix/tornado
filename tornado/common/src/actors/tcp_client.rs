@@ -37,14 +37,14 @@ impl Actor for TcpClientActor {
         let socket_address =
             net::SocketAddr::from_str(self.address.as_str()).expect("Not valid socket address");
 
-        let mut delay_until = time::Instant::now();
+        let mut sleep_until = time::Instant::now();
         if self.restarted {
-            delay_until += time::Duration::new(1, 0)
+            sleep_until += time::Duration::new(1, 0)
         }
 
         ctx.wait(
             async move {
-                time::delay_until(delay_until).await;
+                time::sleep_until(sleep_until).await;
                 TcpStream::connect(&socket_address).await
             }
             .into_actor(self)
@@ -55,7 +55,7 @@ impl Actor for TcpClientActor {
                     act.tx = Some(actix::io::FramedWrite::new(w, LinesCodec::new(), ctx));
                 }
                 Err(err) => {
-                    warn!("TCP connection failed. Err: {}", err);
+                    warn!("TCP connection failed. Err: {:?}", err);
                     ctx.stop();
                 }
             }),
@@ -76,13 +76,16 @@ impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        trace!("TcpClientActor - {:?} - received new event", &msg.event);
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("TcpClientActor", trace_id).entered();
+        trace!("TcpClientActor - Handling Event to be sent through TCP - {:?}", &msg.event);
 
         match &mut self.tx {
             Some(stream) => {
                 let event = serde_json::to_string(&msg.event).map_err(|err| {
                     TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
+                debug!("TcpClientActor - Publishing event");
                 stream.write(event);
                 Ok(())
             }

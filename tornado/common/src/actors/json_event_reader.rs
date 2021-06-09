@@ -2,7 +2,7 @@ use crate::actors::message::AsyncReadMessage;
 
 use actix::prelude::*;
 use log::*;
-use tokio::prelude::AsyncRead;
+use tokio::io::AsyncRead;
 use tokio_util::codec::{FramedRead, LinesCodec, LinesCodecError};
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonEventCollector;
@@ -50,11 +50,11 @@ impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecErro
                 debug!("JsonReaderActor - received json message: [{}]", msg);
                 match self.json_collector.to_event(&msg) {
                     Ok(event) => (self.callback)(event),
-                    Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
+                    Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {:?}", e),
                 };
             }
             Err(err) => {
-                error!("JsonEventReaderActor stream error. Err: {}", err);
+                error!("JsonEventReaderActor stream error. Err: {:?}", err);
             }
         }
     }

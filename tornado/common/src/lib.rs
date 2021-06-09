@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 pub mod actors;
-pub mod pool;
+pub mod command;
 
 #[derive(Error, Debug)]
 pub enum TornadoError {
@@ -11,4 +11,6 @@ pub enum TornadoError {
     ActorCreationError { message: String },
     #[error("ConfigurationError: {message}")]
     ConfigurationError { message: String },
+    #[error("ExecutionError: {message}")]
+    ExecutionError { message: String },
 }
