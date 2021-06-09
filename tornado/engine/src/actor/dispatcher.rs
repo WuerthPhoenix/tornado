@@ -49,6 +49,8 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
+        let trace_id = msg.event.event.trace_id.as_str();
+        let _span = tracing::error_span!("DispatcherActor", trace_id).entered();
         trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }

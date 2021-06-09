@@ -49,16 +49,17 @@ impl Into<Value> for Event {
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
+    pub trace_id: String,
     pub id: String,
     pub payload: Payload,
 }
 
 impl Action {
-    pub fn new<S: Into<String>>(id: S) -> Action {
-        Action::new_with_payload(id, HashMap::new())
+    pub fn new<T: Into<String>, S: Into<String>>(trace_id: T, id: S) -> Action {
+        Action::new_with_payload(trace_id, id, HashMap::new())
     }
-    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
-        Action { id: id.into(), payload }
+    pub fn new_with_payload<T: Into<String>, S: Into<String>>(trace_id: T, id: S, payload: Payload) -> Action {
+        Action { trace_id: trace_id.into(), id: id.into(), payload }
     }
 }
 

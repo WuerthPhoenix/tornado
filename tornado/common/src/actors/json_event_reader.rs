@@ -50,7 +50,7 @@ impl<F: Fn(Event) + 'static + Unpin> StreamHandler<Result<String, LinesCodecErro
                 debug!("JsonReaderActor - received json message: [{}]", msg);
                 match self.json_collector.to_event(&msg) {
                     Ok(event) => (self.callback)(event),
-                    Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {}", e),
+                    Err(e) => error!("JsonReaderActor - Cannot unmarshal event from json: {:?}", e),
                 };
             }
             Err(err) => {

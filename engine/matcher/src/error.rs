@@ -59,6 +59,6 @@ pub enum MatcherError {
 
 impl From<ParserError> for MatcherError {
     fn from(parser_error: ParserError) -> Self {
-        MatcherError::ConfigurationError { message: format!("{}", parser_error) }
+        MatcherError::ConfigurationError { message: format!("{:?}", parser_error) }
     }
 }

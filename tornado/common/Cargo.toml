@@ -20,6 +20,8 @@ tornado_collector_common = { path = "../../collector/common", version = "0.0.1" 
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
+tracing = "0.1"
+tracing-futures = "0.2"
 
 # BEGIN - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
 actix-files = "0.6.0-beta.4"

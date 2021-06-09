@@ -127,7 +127,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("","");
 
         // Act
         let result = executor.parse_action(&action);
@@ -154,7 +154,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
@@ -178,7 +178,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::Text("process-check-result".to_owned()),

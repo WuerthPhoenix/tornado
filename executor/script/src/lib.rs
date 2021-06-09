@@ -134,7 +134,7 @@ mod test_unix {
         // Arrange
         let script = "NOT_EXISTING_SCRIPT.sh";
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
 
         let executor = ScriptExecutor::new();
@@ -151,7 +151,7 @@ mod test_unix {
         // Arrange
         let script = "./test_resources/fail.sh";
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
 
         let executor = ScriptExecutor::new();
@@ -168,7 +168,7 @@ mod test_unix {
         // Arrange
         let script = format!("{}", "./test_resources/echo.sh");
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
         let executor = ScriptExecutor::new();
@@ -182,7 +182,7 @@ mod test_unix {
         // Arrange
         let script = format!("{}", "./test_resources/echo.sh");
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text("hello_world!".to_owned()));
 
@@ -200,7 +200,7 @@ mod test_unix {
         let content = "HelloRustyWorld!";
         let script = format!("{} {} {}", "./test_resources/write_file.sh", &filename, &content);
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
         let executor = ScriptExecutor::new();
@@ -221,7 +221,7 @@ mod test_unix {
         let content = "HelloRustyWorld!";
         let script = format!("{} {}", "./test_resources/write_file.sh", &filename);
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
 
@@ -243,7 +243,7 @@ mod test_unix {
         let content = "HelloRustyWorld!";
         let script = "./test_resources/write_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
@@ -269,7 +269,7 @@ mod test_unix {
             r#"Hello Rusty World!! 'single quote' "double quote" ""double double quote"""#;
         let script = "./test_resources/write_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
@@ -294,7 +294,7 @@ mod test_unix {
 
         let script = "./test_resources/write_all_args_to_file.sh".to_owned();
 
-        let mut action = Action::new("script");
+        let mut action = Action::new("", "script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
 
         let first_content = "First_HelloRustyWorld!";

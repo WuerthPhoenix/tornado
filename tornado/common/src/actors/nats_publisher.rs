@@ -8,6 +8,7 @@ use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
+use tracing_futures::Instrument;
 
 pub struct NatsPublisherActor {
     config: NatsPublisherConfig,
@@ -148,7 +149,11 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        trace!("NatsPublisherActor - {:?} - received new event", &msg.event);
+        let trace_id = msg.event.trace_id.as_str();
+        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
+
+        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
+
         let address = ctx.address();
 
         if let Some(connection) = self.nats_connection.deref() {
@@ -172,7 +177,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            });
+            }.instrument(span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();

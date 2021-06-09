@@ -10,7 +10,6 @@ edition = "2018"
 actix = "0.11"
 actix-cors = "0.6.0-beta.1"
 actix-web = "=4.0.0-beta.5"
-async-channel = "1.6"
 async-trait = "0.1"
 chrono = "0.4"
 clap = "2.33"
@@ -40,6 +39,9 @@ tornado_executor_monitoring = { path = "../../executor/monitoring", version = "0
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_executor_smart_monitoring_check_result = { path = "../../executor/smart_monitoring_check_result", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
+tracing = "0.1"
+tracing-actix-web = "0.4.0-beta.4"
+tracing-futures = "0.2"
 
 [dev-dependencies]
 actix-rt = "2.2"

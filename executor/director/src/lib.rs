@@ -191,7 +191,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("");
+        let action = Action::new("","");
 
         // Act
         let result = executor.parse_action(&action);
@@ -217,7 +217,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_service".to_owned()));
@@ -242,7 +242,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("");
+        let mut action = Action::new("","");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));

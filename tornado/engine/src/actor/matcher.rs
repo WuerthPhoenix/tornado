@@ -35,7 +35,7 @@ pub struct EventMessage {
 
 #[derive(Message)]
 #[rtype(
-    result = "Result<async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>, error::MatcherError>"
+    result = "Result<Arc<MatcherConfig>, error::MatcherError>"
 )]
 pub struct ReconfigureMessage {}
 
@@ -102,14 +102,12 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
-        let matcher = self.matcher.clone();
-        let dispatcher_addr = self.dispatcher_addr.clone();
-        actix::spawn(async move {
-            let processed_event = matcher.process(msg.event, false);
-            dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
-        });
+        let processed_event = self.matcher.process(msg.event, false);
+        self.dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }
@@ -118,7 +116,10 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
+
         Ok(self.process_event_with_reply(
             &self.matcher,
             msg.event,
@@ -136,6 +137,8 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         msg: EventMessageAndConfigWithReply,
         _: &mut Context<Self>,
     ) -> Self::Result {
+        let trace_id = msg.event.trace_id.as_str();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
         Ok(self.process_event_with_reply(
@@ -157,46 +160,35 @@ impl Handler<GetCurrentConfigMessage> for MatcherActor {
 }
 
 impl Handler<ReconfigureMessage> for MatcherActor {
-    type Result = Result<
-        async_channel::Receiver<Result<Arc<MatcherConfig>, error::MatcherError>>,
-        error::MatcherError,
-    >;
+    type Result = ResponseActFuture<Self, Result<Arc<MatcherConfig>, error::MatcherError>>;
 
-    fn handle(&mut self, _msg: ReconfigureMessage, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, _msg: ReconfigureMessage, _ctx: &mut Context<Self>) -> Self::Result {
         let matcher_config_manager = self.matcher_config_manager.clone();
         info!("MatcherActor - received ReconfigureMessage.");
-        let (tx, rx) = async_channel::bounded(1);
 
-        ctx.wait(
-            async move {
-                let matcher_config_result = matcher_config_manager.get_config().await;
+        Box::pin(
+                        async move {
+                            let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
+                            let matcher = Arc::new(Matcher::build(&matcher_config)?);
+                            Ok((matcher, matcher_config))
+                        }
+                        .into_actor(self) // converts future to ActorFuture
+                            .map(|result, this, _ctx| {
+                                match result {
+                                    Ok((matcher, matcher_config)) => {
+                                        this.matcher_config = matcher_config.clone();
+                                        this.matcher = matcher;
+                                        info!("MatcherActor - Tornado configuration updated successfully.");
+                                        Ok(matcher_config)
+                                    }
+                                    Err(err) => {
+                                        error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err);
+                                        Err(err)
+                                    },
+                                }
+                            }),
+                    )
 
-                let result: Result<_, error::MatcherError> = {
-                    let matcher_config = Arc::new(matcher_config_result?);
-                    let matcher = Arc::new(Matcher::build(&matcher_config)?);
-                    Ok((matcher, matcher_config))
-                };
-
-                if let Err(err) =
-                    tx.send(result.clone().map(|(_matcher, matcher_config)| matcher_config)).await
-                {
-                    error!("MatcherActor - Error sending message: {:?}", err);
-                }
-
-                result
-            }
-            .into_actor(self)
-            .map(|result, this, _ctx| match result {
-                Ok((matcher, matcher_config)) => {
-                    this.matcher_config = matcher_config;
-                    this.matcher = matcher;
-                    info!("MatcherActor - Tornado configuration updated successfully.");
-                }
-                Err(err) => error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err),
-            }),
-        );
-
-        Ok(rx)
     }
 }
 
@@ -228,7 +220,7 @@ mod test {
 
         // Act
         let request = matcher_actor.send(ReconfigureMessage {}).await.unwrap().unwrap();
-        let config_from_response = request.recv().await.unwrap().unwrap().as_ref().clone();
+        let config_from_response = request.as_ref().clone();
 
         // Assert
         let matcher_config_after = config_manager.get_config().await.unwrap();

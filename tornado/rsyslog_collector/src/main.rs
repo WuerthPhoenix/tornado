@@ -101,7 +101,7 @@ where
                     }
                 }
                 Err(error) => {
-                    error!("error: {}", error);
+                    error!("error: {:?}", error);
                     system.stop();
                 }
             }

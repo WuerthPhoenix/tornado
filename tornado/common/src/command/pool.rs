@@ -4,8 +4,11 @@ use log::*;
 use std::marker::PhantomData;
 use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
+use tracing_futures::Instrument;
+use tracing::Span;
 
 pub struct ReplyRequest<I, O> {
+    pub span: Span,
     pub message: I,
     pub responder: async_channel::Sender<O>,
 }
@@ -62,7 +65,8 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
                 loop {
                     match receiver.recv().await {
                         Ok(message) => {
-                            let response = command.execute(message.message).await;
+                            let _entered_span = message.span.enter();
+                            let response = command.execute(message.message).instrument(message.span.clone()).await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
                                     "CommandMutPool cannot send the response message. Err: {:?}",
@@ -86,7 +90,8 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
 impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMutPool<I, O> {
     async fn execute(&self, message: I) -> Result<O, ExecutorError> {
         let (tx, rx) = async_channel::bounded(1);
-        self.sender.send(ReplyRequest { message, responder: tx }).await.map_err(|err| {
+        let span = tracing::Span::current();
+        self.sender.send(ReplyRequest { span, message, responder: tx }).await.map_err(|err| {
             ExecutorError::SenderError { message: format!("Error sending message: {:?}", err) }
         })?;
         rx.recv().await.map_err(|err| ExecutorError::SenderError {
@@ -137,7 +142,7 @@ mod test {
             let exec_rx = exec_rx.clone();
             let sender = sender.clone();
             actix::spawn(async move {
-                let message = Action::new(&format!("hello {}", i));
+                let message = Action::new("", &format!("hello {}", i));
                 println!("send message: [{:?}]", message);
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
@@ -188,7 +193,7 @@ mod test {
             let exec_rx = exec_rx.clone();
             let sender = sender.clone();
             actix::spawn(async move {
-                let message = Action::new(&format!("hello {}", i));
+                let message = Action::new("", &format!("hello {}", i));
                 println!("send message: [{:?}]", message);
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
@@ -227,14 +232,14 @@ mod test {
         for i in 0..100 {
             if i % 2 == 0 {
                 let message = format!("hello {}", i);
-                let result = sender.execute(Action::new(&message).into()).await;
+                let result = sender.execute(Action::new("", &message).into()).await;
                 match result {
                     Ok(result_message) => assert_eq!(result_message, message),
                     _ => assert!(false),
                 }
             } else {
                 let message = format!("err {}", i);
-                let result = sender.execute(Action::new(&message).into()).await;
+                let result = sender.execute(Action::new("", &message).into()).await;
                 match result {
                     Err(ExecutorError::SenderError { message: err_message }) => {
                         assert_eq!(err_message, message)
@@ -268,14 +273,14 @@ mod test {
         for i in 0..100 {
             if i % 2 == 0 {
                 let message = format!("hello {}", i);
-                let result = sender.execute(Action::new(&message).into()).await;
+                let result = sender.execute(Action::new("", &message).into()).await;
                 match result {
                     Ok(result_message) => assert_eq!(result_message, message),
                     _ => assert!(false),
                 }
             } else {
                 let message = format!("err {}", i);
-                let result = sender.execute(Action::new(&message).into()).await;
+                let result = sender.execute(Action::new("", &message).into()).await;
                 match result {
                     Err(TornadoError::SenderError { message: err_message }) => {
                         assert_eq!(err_message, message)

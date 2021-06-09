@@ -56,11 +56,9 @@ impl EventApiHandler for MatcherApiHandler {
 #[async_trait(?Send)]
 impl ConfigApiHandler for MatcherApiHandler {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
-        let request = self.matcher.send(ReconfigureMessage {}).await??;
+        let request = self.matcher.send(ReconfigureMessage {}).await?;
         Ok(request
-            .recv()
-            .await
-            .map_err(|err| ApiError::InternalServerError { cause: format!("{:?}", err) })??
+            .map_err(|err| ApiError::InternalServerError { cause: format!("{:?}", err) })?
             .as_ref()
             .clone())
     }

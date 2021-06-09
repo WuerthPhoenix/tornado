@@ -15,6 +15,8 @@ use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::setup_logger;
+use actix_web::middleware::Logger;
+use tracing_actix_web::TracingLogger;
 
 mod config;
 mod handler;
@@ -139,7 +141,10 @@ where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     HttpServer::new(move || {
-        App::new().service(
+        App::new()
+            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
+            .service(
             create_app(webhooks_config.clone(), || {
                 let clone = actor_address.clone();
                 move |event| clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))

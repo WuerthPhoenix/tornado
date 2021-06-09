@@ -44,7 +44,7 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     )
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("", "");
     action.payload.insert(
         "check_result".to_owned(),
         Value::Map(hashmap!(
@@ -101,7 +101,7 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     )
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("", "");
     action.payload.insert(
         "check_result".to_owned(),
         Value::Map(hashmap!(
@@ -165,7 +165,7 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     )
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("", "");
     action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
     action.payload.insert(
         "host".to_owned(),
@@ -237,7 +237,7 @@ async fn should_return_return_error_on_object_creation_failure() {
     )
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("", "");
     action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
     action.payload.insert(
         "host".to_owned(),

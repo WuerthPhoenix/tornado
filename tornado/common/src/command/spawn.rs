@@ -1,6 +1,7 @@
 use crate::command::Command;
 use std::marker::PhantomData;
 use std::rc::Rc;
+use tracing_futures::Instrument;
 
 /// A Command that spans the internal Command execution to another light thread
 /// without waiting for its completion
@@ -19,10 +20,11 @@ impl<I: 'static, O, W: 'static + Command<I, O>> SpawnCommand<I, O, W> {
 #[async_trait::async_trait(?Send)]
 impl<I: 'static, O, W: 'static + Command<I, O>> Command<I, ()> for SpawnCommand<I, O, W> {
     async fn execute(&self, message: I) {
+        let span = tracing::Span::current();
         let command = self.command.clone();
         actix::spawn(async move {
             command.execute(message).await;
-        });
+        }.instrument(span));
     }
 }
 

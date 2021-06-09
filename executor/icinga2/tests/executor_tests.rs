@@ -54,7 +54,7 @@ async fn should_perform_a_post_request() {
 
                 println!("Executor created");
 
-                let mut action = Action::new("");
+                let mut action = Action::new("","");
                 action.payload.insert(
                     ICINGA2_ACTION_NAME_KEY.to_owned(),
                     Value::Text("icinga2-api-action".to_owned()),
@@ -107,7 +107,7 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     })
     .unwrap();
 
-    let mut action = Action::new("");
+    let mut action = Action::new("","");
     action
         .payload
         .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("icinga2-api-action".to_owned()));
