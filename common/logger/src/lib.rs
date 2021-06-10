@@ -111,7 +111,7 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuard, Logg
 
     let apm_layer = tracing_elastic_apm::new_layer(
         "ServiceName".to_string(),
-        tracing_elastic_apm::config::Config::new("127.0.0.1:8200".to_string())
+        tracing_elastic_apm::config::Config::new("http://127.0.0.1:8200".to_string())
     );
 
     let subscriber = tracing_subscriber::registry()
