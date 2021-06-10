@@ -5,7 +5,6 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
 use crate::monitoring::monitoring_endpoints;
-use actix_cors::Cors;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -382,7 +381,6 @@ pub async fn daemon(
         App::new()
             .wrap(Logger::default())
             .wrap(TracingLogger::default())
-            .wrap(Cors::default().max_age(3600))
             .service(
                 web::scope("/api")
                     .app_data(

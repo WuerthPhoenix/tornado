@@ -41,21 +41,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "actix-cors"
-version = "0.6.0-beta.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa50c395d15e5946cf04bccb1edef583e9fd42aa6710a1f89a725c5e2c4c5503"
-dependencies = [
- "actix-service",
- "actix-web",
- "derive_more",
- "futures-util",
- "log",
- "once_cell",
- "tinyvec",
-]
-
-[[package]]
 name = "actix-files"
 version = "0.6.0-beta.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3514,7 +3499,6 @@ name = "tornado_engine"
 version = "0.0.1"
 dependencies = [
  "actix",
- "actix-cors",
  "actix-rt",
  "actix-web",
  "async-trait",
