@@ -5,7 +5,7 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix = "0.11"
+actix = "0.12"
 async-channel = "1.6"
 async-trait = "0.1"
 futures-util = { version = "0.3", default-features = false, features=["std"]}
@@ -23,16 +23,8 @@ tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 tracing = "0.1"
 tracing-futures = "0.2"
 
-# BEGIN - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
-actix-files = "0.6.0-beta.4"
-actix-http = "=3.0.0-beta.5"
-actix-rt = "2.2.0"
-actix-service = "=2.0.0-beta.5"
-actix-web = "=4.0.0-beta.5"
-# END - REMOVE THIS ENTIRE BLOCK OF DEPS AS PART OF TOR-323 IMPLEMENTATION
-
 # Feature nats
-async-nats = { version = "0.9", optional = true }
+async-nats = { version = "0.10", optional = true }
 
 [dev-dependencies]
 actix-rt = "2.2"

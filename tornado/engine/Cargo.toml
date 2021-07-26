@@ -7,8 +7,8 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.11"
-actix-web = "=4.0.0-beta.5"
+actix = "0.12"
+actix-web = "4.0.0-beta.8"
 async-trait = "0.1"
 chrono = "0.4"
 clap = "2.33"
@@ -39,7 +39,7 @@ tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_executor_smart_monitoring_check_result = { path = "../../executor/smart_monitoring_check_result", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 tracing = "0.1"
-tracing-actix-web = "0.4.0-beta.4"
+tracing-actix-web = "0.4.0-beta.9"
 tracing-futures = "0.2"
 
 [dev-dependencies]

@@ -24,7 +24,7 @@ async fn should_perform_a_post_request() {
         HttpServer::new(move || {
             let url = format!("{}{}", api, "/host");
             let sender = sender.clone();
-            App::new().data(Arc::new(sender)).service(web::resource(&url).route(web::post().to(
+            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(web::post().to(
                 move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
                     println!("Server received a call");
                     sender.send(body.into_inner()).unwrap();
