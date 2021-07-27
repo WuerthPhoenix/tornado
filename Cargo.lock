@@ -3534,6 +3534,7 @@ dependencies = [
  "log",
  "rand 0.8.3",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tokio",

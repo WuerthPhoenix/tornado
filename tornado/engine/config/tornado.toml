@@ -15,6 +15,11 @@ stdout_output = true
 # A file path in the file system; if provided, the Logger will append any output to it.
 # file_output_path = "/output/file.log"
 
+[logger.apm_tracing]
+# The url of the Elastic APM server; if provided, traces will be sent to this server;
+# if not provided traces will not be sent.
+apm_server_url = "https://localhost:8200/"
+
 [tornado]
 
 [tornado.daemon]

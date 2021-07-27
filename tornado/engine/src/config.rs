@@ -238,7 +238,17 @@ mod test {
         assert_eq!(
             vec![Permission::ConfigEdit, Permission::ConfigView, Permission::RuntimeConfigEdit, Permission::RuntimeConfigView],
             config.tornado.daemon.auth.role_permissions["ADMIN"]
-        )
+        );
+
+        assert_eq!(
+            config.logger.apm_tracing.apm_server_url,
+            Some("https://localhost:8200/".to_string())
+        );
+
+        assert_eq!(
+            config.logger.apm_tracing.apm_server_credentials_filepath,
+            None
+        );
     }
 
     #[tokio::test]

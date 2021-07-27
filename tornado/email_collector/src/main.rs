@@ -19,12 +19,13 @@ use tornado_common_logger::setup_logger;
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let arg_matches = config::arg_matches();
 
+    let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
     let collector_config = config::build_config(
-        &arg_matches.value_of("config-dir").expect("config-dir should be provided"),
+        config_dir,
     )?;
 
     // Setup logger
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(&collector_config.logger, config_dir)?;
 
     info!("Email collector started");
 

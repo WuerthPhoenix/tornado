@@ -42,9 +42,10 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
         file_output_path: None,
+        apm_tracing: Default::default(),
     };
 
-    let _guard = setup_logger(&config).unwrap();
+    let _guard = setup_logger(&config, "./").unwrap();
 
     let _span_1 = tracing::error_span!("level", "first").entered();
 
@@ -59,9 +60,12 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
 
     inner2::log_smt(10, Data { id: 10 }).await;
 
-    let handle = tokio::spawn(async move {
-        inner2::log_smt(3, Data { id: 789 }).await;
-    }.instrument(span_2.exit()));
+    let handle = tokio::spawn(
+        async move {
+            inner2::log_smt(3, Data { id: 789 }).await;
+        }
+        .instrument(span_2.exit()),
+    );
 
     handle.await.unwrap();
 

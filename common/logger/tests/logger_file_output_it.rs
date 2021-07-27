@@ -16,9 +16,10 @@ fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_file_output_it=info".to_owned(),
         file_output_path: Some(log_filename.clone()),
+        apm_tracing: Default::default(),
     };
 
-    let _guard = setup_logger(&config).unwrap();
+    let _guard = setup_logger(&config, "./").unwrap();
 
     debug!("main - this is debug");
     info!("main - this is info");
