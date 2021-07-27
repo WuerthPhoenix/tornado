@@ -241,12 +241,12 @@ mod test {
         );
 
         assert_eq!(
-            config.logger.apm_tracing.apm_server_url,
+            config.logger.tracing_elastic_apm.apm_server_url,
             Some("https://localhost:8200/".to_string())
         );
 
         assert_eq!(
-            config.logger.apm_tracing.apm_server_credentials_filepath,
+            config.logger.tracing_elastic_apm.apm_server_credentials_filepath,
             None
         );
     }

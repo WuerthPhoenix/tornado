@@ -583,7 +583,7 @@ fn start_logger() {
         level: String::from("trace"),
         stdout_output: true,
         file_output_path: None,
-        apm_tracing: Default::default()
+        tracing_elastic_apm: Default::default()
     };
     if let Err(err) = tornado_common_logger::setup_logger(&conf, "./") {
         println!("Warn: err starting logger: {:?}", err)

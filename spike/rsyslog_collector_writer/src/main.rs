@@ -11,7 +11,7 @@ fn main() {
     let conf = config::Conf::build();
 
     let logger_config =
-        LoggerConfig { level: "Debug".to_owned(), stdout_output: true, file_output_path: None, apm_tracing: Default::default() };
+        LoggerConfig { level: "Debug".to_owned(), stdout_output: true, file_output_path: None, tracing_elastic_apm: Default::default() };
 
     // Setup logger
     let _guard = setup_logger(&logger_config, "./").unwrap();

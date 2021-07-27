@@ -28,7 +28,7 @@ pub struct LoggerConfig {
     pub file_output_path: Option<String>,
 
     #[serde(default)]
-    pub apm_tracing: ApmTracingConfig,
+    pub tracing_elastic_apm: ApmTracingConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,9 +175,9 @@ pub fn setup_logger(
         (None, None)
     };
 
-    let apm_layer = if let Some(apm_server_url) = logger_config.apm_tracing.apm_server_url.clone() {
+    let apm_layer = if let Some(apm_server_url) = logger_config.tracing_elastic_apm.apm_server_url.clone() {
         let apm_server_api_credentials =
-            logger_config.apm_tracing.read_api_credentials(config_dir)?;
+            logger_config.tracing_elastic_apm.read_api_credentials(config_dir)?;
         Some(tracing_elastic_apm::new_layer(
             get_current_service_name()?,
             tracing_elastic_apm::config::Config::new(apm_server_url).with_authorization(
