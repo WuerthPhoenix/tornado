@@ -31,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let collector_config = config::build_config(&config_dir)?;
 
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(&collector_config.logger, config_dir)?;
 
     let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
     let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)?;

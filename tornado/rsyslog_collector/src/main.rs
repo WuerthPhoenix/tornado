@@ -22,7 +22,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let collector_config = config::build_config(&config_dir)?;
 
     // Setup logger
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(&collector_config.logger, config_dir)?;
 
     info!("Rsyslog collector started");
 

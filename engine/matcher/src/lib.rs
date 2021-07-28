@@ -37,7 +37,8 @@ pub mod test_root {
             level: String::from("info,tornado=trace"),
             stdout_output: true,
             file_output_path: None,
+            tracing_elastic_apm: Default::default()
         };
-        let _guard = setup_logger(&conf).unwrap();
+        let _guard = setup_logger(&conf, "./").unwrap();
     }
 }
