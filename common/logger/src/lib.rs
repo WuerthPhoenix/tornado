@@ -47,15 +47,14 @@ impl Default for ApmTracingConfig {
     }
 }
 
-impl ApmTracingConfig {
-    fn read_api_credentials(&self, config_dir: &str) -> Result<ApiCredentials, LoggerError> {
-        let apm_server_credentials_filepath = if let Some(apm_server_credentials_filepath) =
-            self.apm_server_credentials_filepath.clone()
-        {
-            apm_server_credentials_filepath
-        } else {
-            format!("{}/{}", config_dir, self::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME)
-        };
+#[derive(Debug, Deserialize, PartialEq)]
+struct ApiCredentials {
+    id: String,
+    key: String,
+}
+
+impl ApiCredentials {
+    fn from_file(apm_server_credentials_filepath: &str) -> Result<Self, LoggerError> {
         let apm_server_credentials_file = File::open(&apm_server_credentials_filepath)?;
         let apm_server_credentials_reader = BufReader::new(apm_server_credentials_file);
 
@@ -68,12 +67,6 @@ impl ApmTracingConfig {
             }
         })
     }
-}
-
-#[derive(Debug, Deserialize, PartialEq)]
-struct ApiCredentials {
-    id: String,
-    key: String,
 }
 
 fn get_current_service_name() -> Result<String, LoggerError> {
@@ -175,21 +168,29 @@ pub fn setup_logger(
         (None, None)
     };
 
-    let apm_layer = if let Some(apm_server_url) = logger_config.tracing_elastic_apm.apm_server_url.clone() {
-        let apm_server_api_credentials =
-            logger_config.tracing_elastic_apm.read_api_credentials(config_dir)?;
-        Some(tracing_elastic_apm::new_layer(
-            get_current_service_name()?,
-            tracing_elastic_apm::config::Config::new(apm_server_url).with_authorization(
-                Authorization::ApiKey(ApiKey::new(
-                    apm_server_api_credentials.id,
-                    apm_server_api_credentials.key,
-                )),
-            ),
-        ))
-    } else {
-        None
-    };
+    let apm_layer =
+        if let Some(apm_server_url) = logger_config.tracing_elastic_apm.apm_server_url.clone() {
+            let apm_server_credentials_filepath = if let Some(apm_server_credentials_filepath) =
+                logger_config.tracing_elastic_apm.apm_server_credentials_filepath.clone()
+            {
+                apm_server_credentials_filepath
+            } else {
+                format!("{}/{}", config_dir, self::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME)
+            };
+            let apm_server_api_credentials = ApiCredentials::from_file(&apm_server_credentials_filepath)?;
+
+            Some(tracing_elastic_apm::new_layer(
+                get_current_service_name()?,
+                tracing_elastic_apm::config::Config::new(apm_server_url).with_authorization(
+                    Authorization::ApiKey(ApiKey::new(
+                        apm_server_api_credentials.id,
+                        apm_server_api_credentials.key,
+                    )),
+                ),
+            ))
+        } else {
+            None
+        };
 
     let subscriber = tracing_subscriber::registry()
         .with(reloadable_env_filter)
@@ -282,10 +283,9 @@ mod test {
     }
 
     #[test]
-    fn should_read_api_credentials_from_default_file() {
-        let apm_tracing_config =
-            ApmTracingConfig { apm_server_url: None, apm_server_credentials_filepath: None };
-        let api_credentials = apm_tracing_config.read_api_credentials("./test_resources").unwrap();
+    fn should_read_api_credentials_correct_file() {
+        let api_credentials =
+            ApiCredentials::from_file("./test_resources/apm_server_api_credentials.json").unwrap();
         assert_eq!(
             api_credentials,
             ApiCredentials { id: "myid".to_string(), key: "mykey".to_string() }
@@ -293,37 +293,15 @@ mod test {
     }
 
     #[test]
-    fn should_read_api_credentials_should_return_error_if_default_file_does_not_exist() {
-        let apm_tracing_config =
-            ApmTracingConfig { apm_server_url: None, apm_server_credentials_filepath: None };
-        let res = apm_tracing_config.read_api_credentials("./");
+    fn should_read_api_credentials_should_return_error_if_file_does_not_exist() {
+        let res = ApiCredentials::from_file("./non-existing.json");
         assert!(res.is_err());
     }
 
     #[test]
     fn should_read_api_credentials_should_return_error_if_file_is_not_correcly_formatted() {
-        let apm_tracing_config = ApmTracingConfig {
-            apm_server_url: None,
-            apm_server_credentials_filepath: Some(
-                "./test_resources/apm_server_api_credentials_wrong.json".to_string(),
-            ),
-        };
-        let res = apm_tracing_config.read_api_credentials("./");
+        let res =
+            ApiCredentials::from_file("./test_resources/apm_server_api_credentials_wrong.json");
         assert!(res.is_err());
-    }
-
-    #[test]
-    fn should_read_api_credentials_from_custom_file() {
-        let apm_tracing_config = ApmTracingConfig {
-            apm_server_url: None,
-            apm_server_credentials_filepath: Some(
-                "./test_resources/apm_server_api_credentials_custom.json".to_string(),
-            ),
-        };
-        let api_credentials = apm_tracing_config.read_api_credentials("./").unwrap();
-        assert_eq!(
-            api_credentials,
-            ApiCredentials { id: "custom_id".to_string(), key: "custom_key".to_string() }
-        );
     }
 }

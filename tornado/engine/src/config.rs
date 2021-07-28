@@ -242,7 +242,7 @@ mod test {
 
         assert_eq!(
             config.logger.tracing_elastic_apm.apm_server_url,
-            Some("https://localhost:8200/".to_string())
+            Some("http://localhost:8200".to_string())
         );
 
         assert_eq!(
