@@ -8,8 +8,13 @@ use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::{ApiKey, Authorization};
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use crate::filter::FilteredLayer;
 
 const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
+
+mod filter;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,6 +118,9 @@ pub struct LogWorkerGuard {
     #[allow(dead_code)]
     stdout_guard: Option<WorkerGuard>,
 
+    stdout_enabled: Arc<AtomicBool>,
+    apm_enabled: Option<Arc<AtomicBool>>,
+
     reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
 }
 
@@ -120,11 +128,14 @@ impl LogWorkerGuard {
     pub fn new(
         file_guard: Option<WorkerGuard>,
         stdout_guard: Option<WorkerGuard>,
+        stdout_enabled: Arc<AtomicBool>,
+        apm_enabled: Option<Arc<AtomicBool>>,
         reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
     ) -> Self {
-        Self { file_guard, stdout_guard, reload_handle }
+        Self { file_guard, stdout_guard, stdout_enabled, apm_enabled, reload_handle }
     }
 
+    /// Reloads the logger global filter
     pub fn reload(&self, env_filter_str: &str) -> Result<(), LoggerError> {
         let env_filter = EnvFilter::from_str(env_filter_str).map_err(|err| {
             LoggerError::LoggerConfigurationError {
@@ -137,6 +148,16 @@ impl LogWorkerGuard {
         self.reload_handle.reload(env_filter).map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot reload the logger configuration. err: {:?}", err),
         })
+    }
+
+    pub fn set_stdout_enabled(&self, enabled: bool) {
+        self.stdout_enabled.store(enabled, Ordering::Relaxed)
+    }
+
+    pub fn set_apm_enabled(&self, enabled: bool) -> Result<(), LoggerError> {
+        self.apm_enabled.as_ref().ok_or_else(|| LoggerError::LoggerConfigurationError {
+            message: format!("Cannot enable/disable the apm logger because it is not configured."),
+        }).map(|apm_enabled| apm_enabled.store(enabled, Ordering::Relaxed))
     }
 }
 
@@ -168,12 +189,22 @@ pub fn setup_logger(
         (None, None)
     };
 
-    let (stdout_subscriber, stdout_guard) = if logger_config.stdout_output {
+    let stdout_enabled = Arc::new(AtomicBool::new(logger_config.stdout_output));
+
+    let (stdout_subscriber, stdout_guard) = {
         let (non_blocking, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
-        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(stdout_guard))
-    } else {
-        (None, None)
+
+        let stdout_enabled = stdout_enabled.clone();
+
+        (FilteredLayer::new(
+            Layer::new().with_ansi(false).with_writer(non_blocking),
+            move |_metadata, _ctx| {
+                stdout_enabled.load(Ordering::Relaxed)
+            },
+        ), Some(stdout_guard))
     };
+
+    let mut apm_enabled = None;
 
     let apm_layer = if let Some(apm_server_url) = logger_config.tracing_elastic_apm.apm_server_url.clone() {
         let apm_server_api_credentials =
@@ -199,7 +230,7 @@ pub fn setup_logger(
 
     set_global_logger(subscriber)?;
 
-    Ok(LogWorkerGuard { file_guard, stdout_guard, reload_handle: reloadable_env_filter_handle })
+    Ok(LogWorkerGuard { file_guard, stdout_guard, reload_handle: reloadable_env_filter_handle, stdout_enabled, apm_enabled })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
@@ -269,6 +300,65 @@ mod test {
             ("c:/windows/some/".to_owned(), "filename.txt".to_owned()),
             path_to_dir_and_filename(r#"c:\windows\some\filename.txt"#).unwrap()
         );
+    }
+
+    #[test]
+    fn log_worker_guard_should_set_stdoud_enabled() {
+        // Arrange
+        let env_filter = EnvFilter::from_str("info").unwrap();
+
+        let guard = LogWorkerGuard {
+            apm_enabled: None,
+            stdout_enabled: AtomicBool::new(true).into(),
+            file_guard: None,
+            stdout_guard: None,
+            reload_handle: tracing_subscriber::reload::Layer::new(env_filter).1,
+        };
+
+        // Act
+        guard.set_stdout_enabled(true);
+        assert!(guard.stdout_enabled.load(Ordering::Relaxed));
+
+        guard.set_stdout_enabled(false);
+        assert!(!guard.stdout_enabled.load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn log_worker_guard_should_set_apm_enabled() {
+        // Arrange
+        let env_filter = EnvFilter::from_str("info").unwrap();
+
+        let guard = LogWorkerGuard {
+            apm_enabled: Some(AtomicBool::new(true).into()),
+            stdout_enabled: AtomicBool::new(true).into(),
+            file_guard: None,
+            stdout_guard: None,
+            reload_handle: tracing_subscriber::reload::Layer::new(env_filter).1,
+        };
+
+        // Act
+        guard.set_apm_enabled(true).unwrap();
+        assert!(guard.apm_enabled.as_ref().unwrap().load(Ordering::Relaxed));
+
+        guard.set_apm_enabled(false).unwrap();
+        assert!(!guard.apm_enabled.as_ref().unwrap().load(Ordering::Relaxed));
+    }
+
+    #[test]
+    fn log_worker_guard_should_fail_if_set_apm_enabled_without_config() {
+        // Arrange
+        let env_filter = EnvFilter::from_str("info").unwrap();
+
+        let guard = LogWorkerGuard {
+            apm_enabled: None,
+            stdout_enabled: AtomicBool::new(true).into(),
+            file_guard: None,
+            stdout_guard: None,
+            reload_handle: tracing_subscriber::reload::Layer::new(env_filter).1,
+        };
+
+        // Act
+        assert!(guard.set_apm_enabled(true).is_err());
     }
 
     #[test]

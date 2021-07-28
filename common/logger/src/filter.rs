@@ -1,10 +1,7 @@
 use tracing::{Subscriber, Event, Metadata};
 use tracing::span;
 use tracing_subscriber::Layer;
-use tracing_subscriber::layer::{Context, Layered};
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::any::TypeId;
+use tracing_subscriber::layer::Context;
 use tracing::level_filters::LevelFilter;
 use tracing::subscriber::Interest;
 use std::marker::PhantomData;
