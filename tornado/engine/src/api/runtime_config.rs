@@ -33,7 +33,7 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         })
     }
 
-    async fn set_logger_configuration(&self, logger_config: LoggerConfigDto) -> Result<(), ApiError> {
+    async fn set_logger_level(&self, logger_config: LoggerConfigDto) -> Result<(), ApiError> {
         info!("RuntimeConfigApiHandlerImpl - set_logger_configuration to: [{}]", logger_config.level);
         self.logger_guard.reload(&logger_config.level).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
         let mut logger_level_guard = self.logger_level.write().await;
@@ -66,7 +66,7 @@ mod test {
         // Act
         let logger_level_before = api.get_logger_configuration().await.unwrap();
 
-        api.set_logger_configuration(LoggerConfigDto{
+        api.set_logger_level(LoggerConfigDto{
             level: "info".to_owned()
         }).await.unwrap();
 
