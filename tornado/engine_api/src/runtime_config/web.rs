@@ -8,11 +8,24 @@ use tornado_engine_api_dto::runtime_config::LoggerConfigDto;
 pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
     data: ApiData<RuntimeConfigApi<A>>,
 ) -> Scope {
-    web::scope("/v1_beta/runtime_config").app_data(Data::new(data)).service(
-        web::resource("/logger")
+    web::scope("/v1_beta/runtime_config")
+        .app_data(Data::new(data))
+        .service(
+            web::resource("/logger/level")
+                .route(web::post().to(set_current_logger_level::<A>)),
+        )
+        .service(
+            web::resource("/logger/stdout")
+                .route(web::post().to(set_current_logger_level::<A>)),
+        )
+        .service(
+            web::resource("/logger/apm")
+                .route(web::post().to(set_current_logger_level::<A>)),
+        )
+        .service(
+            web::resource("/logger")
             .route(web::get().to(get_current_logger_configuration::<A>))
-            .route(web::post().to(set_current_logger_configuration::<A>)),
-    )
+        )
 }
 
 async fn get_current_logger_configuration<A: RuntimeConfigApiHandler + 'static>(
@@ -25,7 +38,7 @@ async fn get_current_logger_configuration<A: RuntimeConfigApiHandler + 'static>(
     Ok(Json(result))
 }
 
-async fn set_current_logger_configuration<A: RuntimeConfigApiHandler + 'static>(
+async fn set_current_logger_level<A: RuntimeConfigApiHandler + 'static>(
     req: HttpRequest,
     data: Data<ApiData<RuntimeConfigApi<A>>>,
     body: Json<LoggerConfigDto>,

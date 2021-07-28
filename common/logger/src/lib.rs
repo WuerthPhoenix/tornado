@@ -150,8 +150,16 @@ impl LogWorkerGuard {
         })
     }
 
+    pub fn stdout_enabled(&self) -> bool {
+        self.stdout_enabled.load(Ordering::Relaxed)
+    }
+
     pub fn set_stdout_enabled(&self, enabled: bool) {
         self.stdout_enabled.store(enabled, Ordering::Relaxed)
+    }
+
+    pub fn apm_enabled(&self) -> bool {
+        self.apm_enabled.as_ref().map(|val| val.load(Ordering::Relaxed)).unwrap_or(false)
     }
 
     pub fn set_apm_enabled(&self, enabled: bool) -> Result<(), LoggerError> {
@@ -317,10 +325,10 @@ mod test {
 
         // Act
         guard.set_stdout_enabled(true);
-        assert!(guard.stdout_enabled.load(Ordering::Relaxed));
+        assert!(guard.stdout_enabled());
 
         guard.set_stdout_enabled(false);
-        assert!(!guard.stdout_enabled.load(Ordering::Relaxed));
+        assert!(!guard.stdout_enabled());
     }
 
     #[test]
@@ -338,10 +346,10 @@ mod test {
 
         // Act
         guard.set_apm_enabled(true).unwrap();
-        assert!(guard.apm_enabled.as_ref().unwrap().load(Ordering::Relaxed));
+        assert!(guard.apm_enabled());
 
         guard.set_apm_enabled(false).unwrap();
-        assert!(!guard.apm_enabled.as_ref().unwrap().load(Ordering::Relaxed));
+        assert!(!guard.apm_enabled());
     }
 
     #[test]
