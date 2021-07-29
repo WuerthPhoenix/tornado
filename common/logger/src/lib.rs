@@ -82,7 +82,7 @@ impl LogWorkerGuard {
     }
 
     /// Reloads the logger global filter
-    pub fn reload(&self, env_filter_str: &str) -> Result<(), LoggerError> {
+    pub fn reload_level(&self, env_filter_str: &str) -> Result<(), LoggerError> {
         let env_filter = EnvFilter::from_str(env_filter_str).map_err(|err| {
             LoggerError::LoggerConfigurationError {
                 message: format!(

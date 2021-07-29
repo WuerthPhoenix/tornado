@@ -30,7 +30,7 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
     warn!("level debug - this is warn");
     inner::log_smt(11111).await;
 
-    guard.reload("warn,logger_reload_it::inner=info").unwrap();
+    guard.reload_level("warn,logger_reload_it::inner=info").unwrap();
 
     debug!("level warn - this is debug");
     info!("level warn - this is info");
