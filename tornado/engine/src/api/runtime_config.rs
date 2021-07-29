@@ -38,7 +38,7 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
 
     async fn set_logger_level(&self, logger_config: SetLoggerLevelRequestDto) -> Result<(), ApiError> {
         info!("RuntimeConfigApiHandlerImpl - set_logger_level to: [{}]", logger_config.level);
-        self.logger_guard.reload_level(&logger_config.level).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
+        self.logger_guard.set_level(&logger_config.level).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
         let mut logger_level_guard = self.logger_level.write().await;
         *logger_level_guard = logger_config.level;
         Ok(())
@@ -78,7 +78,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, AtomicBool::new(true).into(), None,reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(true).into(), None,reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(RwLock::new(logger_level.clone())));
 
@@ -105,7 +105,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(RwLock::new(logger_level.clone())));
 
@@ -129,7 +129,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(RwLock::new(logger_level.clone())));
 

@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+arc-swap = "1"
 chrono = "0.4"
 log = "0.4"
 serde = { version = "1.0", features = ['derive'] }
