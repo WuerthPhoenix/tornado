@@ -236,19 +236,21 @@ mod test {
 
         // Assert
         assert_eq!(
-            vec![Permission::ConfigEdit, Permission::ConfigView, Permission::RuntimeConfigEdit, Permission::RuntimeConfigView],
+            vec![
+                Permission::ConfigEdit,
+                Permission::ConfigView,
+                Permission::RuntimeConfigEdit,
+                Permission::RuntimeConfigView
+            ],
             config.tornado.daemon.auth.role_permissions["ADMIN"]
         );
 
         assert_eq!(
-            config.logger.tracing_elastic_apm.apm_server_url,
-            Some("http://localhost:8200".to_string())
+            config.logger.tracing_elastic_apm.clone().unwrap().apm_server_url,
+            "http://localhost:8200".to_string()
         );
 
-        assert_eq!(
-            config.logger.tracing_elastic_apm.apm_server_credentials_filepath,
-            None
-        );
+        assert_eq!(config.logger.tracing_elastic_apm.unwrap().apm_server_api_credentials, None);
     }
 
     #[tokio::test]
