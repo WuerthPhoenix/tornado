@@ -11,11 +11,15 @@ use tornado_common_logger::{setup_logger, LoggerConfig};
 fn main() {
     let conf = config::Conf::build();
 
-    let logger_config =
-        LoggerConfig { level: "Debug".to_owned(), stdout_output: true, file_output_path: None, tracing_elastic_apm: Default::default() };
+    let logger_config = LoggerConfig {
+        level: "Debug".to_owned(),
+        stdout_output: true,
+        file_output_path: None,
+        tracing_elastic_apm: None,
+    };
 
     // Setup logger
-    let _guard = setup_logger(&logger_config, "./").unwrap();
+    let _guard = setup_logger(&logger_config).unwrap();
 
     // Load events from fs
     let events_path = format!("{}/{}", conf.io.config_dir, conf.io.events_dir);

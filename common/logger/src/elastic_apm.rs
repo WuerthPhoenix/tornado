@@ -8,33 +8,38 @@ pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_creden
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApmTracingConfig {
-    // The url of the Elastic APM server; if provided, traces will be sent to this server;
-    // if not provided traces will not be sent.
-    pub apm_server_url: Option<String>,
+    // The url of the Elastic APM server.
+    pub apm_server_url: String,
 
-    // The path of file containing credentials for calling the APM server APIs;
-    pub apm_server_credentials_filepath: Option<String>,
+    // The credentials for calling the APM server APIs;
+    pub apm_server_api_credentials: Option<ApmServerApiCredentials>,
 }
 
-impl Default for ApmTracingConfig {
-    fn default() -> Self {
-        Self { apm_server_url: None, apm_server_credentials_filepath: None }
+impl ApmTracingConfig {
+    pub fn read_apm_server_api_credentials_if_not_set(
+        &mut self,
+        filename: &str,
+    ) -> Result<(), LoggerError> {
+        if self.apm_server_api_credentials.is_none() {
+            self.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(filename)?);
+        }
+        Ok(())
     }
 }
 
-#[derive(Debug, Deserialize, PartialEq)]
-pub struct ApiCredentials {
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub struct ApmServerApiCredentials {
     id: String,
     key: String,
 }
 
-impl From<ApiCredentials> for ApiKey {
-    fn from(api_credentials: ApiCredentials) -> Self {
+impl From<ApmServerApiCredentials> for ApiKey {
+    fn from(api_credentials: ApmServerApiCredentials) -> Self {
         ApiKey::new(api_credentials.id, api_credentials.key)
     }
 }
 
-impl ApiCredentials {
+impl ApmServerApiCredentials {
     pub fn from_file(apm_server_credentials_filepath: &str) -> Result<Self, LoggerError> {
         let apm_server_credentials_file = File::open(&apm_server_credentials_filepath)?;
         let apm_server_credentials_reader = BufReader::new(apm_server_credentials_file);
@@ -74,23 +79,25 @@ mod test {
     #[test]
     fn should_read_api_credentials_correct_file() {
         let api_credentials =
-            ApiCredentials::from_file("./test_resources/apm_server_api_credentials.json").unwrap();
+            ApmServerApiCredentials::from_file("./test_resources/apm_server_api_credentials.json")
+                .unwrap();
         assert_eq!(
             api_credentials,
-            ApiCredentials { id: "myid".to_string(), key: "mykey".to_string() }
+            ApmServerApiCredentials { id: "myid".to_string(), key: "mykey".to_string() }
         );
     }
 
     #[test]
     fn should_read_api_credentials_should_return_error_if_file_does_not_exist() {
-        let res = ApiCredentials::from_file("./non-existing.json");
+        let res = ApmServerApiCredentials::from_file("./non-existing.json");
         assert!(res.is_err());
     }
 
     #[test]
     fn should_read_api_credentials_should_return_error_if_file_is_not_correcly_formatted() {
-        let res =
-            ApiCredentials::from_file("./test_resources/apm_server_api_credentials_wrong.json");
+        let res = ApmServerApiCredentials::from_file(
+            "./test_resources/apm_server_api_credentials_wrong.json",
+        );
         assert!(res.is_err());
     }
 }

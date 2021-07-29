@@ -1,7 +1,4 @@
-use crate::elastic_apm::{
-    get_current_service_name, ApiCredentials, ApmTracingConfig,
-    DEFAULT_APM_SERVER_CREDENTIALS_FILENAME,
-};
+use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
@@ -11,7 +8,7 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
 
-mod elastic_apm;
+pub mod elastic_apm;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,8 +26,7 @@ pub struct LoggerConfig {
     // otherwise, it will log on the stdout.
     pub file_output_path: Option<String>,
 
-    #[serde(default)]
-    pub tracing_elastic_apm: ApmTracingConfig,
+    pub tracing_elastic_apm: Option<ApmTracingConfig>,
 }
 
 #[derive(Error, Debug)]
@@ -87,10 +83,7 @@ impl LogWorkerGuard {
 }
 
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(
-    logger_config: &LoggerConfig,
-    config_dir: &str,
-) -> Result<LogWorkerGuard, LoggerError> {
+pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
@@ -121,26 +114,20 @@ pub fn setup_logger(
         (None, None)
     };
 
-    let apm_layer =
-        if let Some(apm_server_url) = logger_config.tracing_elastic_apm.apm_server_url.clone() {
-            let apm_server_credentials_filepath = if let Some(apm_server_credentials_filepath) =
-                logger_config.tracing_elastic_apm.apm_server_credentials_filepath.clone()
-            {
-                apm_server_credentials_filepath
-            } else {
-                format!("{}/{}", config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME)
-            };
-            let apm_server_api_credentials =
-                ApiCredentials::from_file(&apm_server_credentials_filepath)?;
-
-            Some(tracing_elastic_apm::new_layer(
-                get_current_service_name()?,
-                tracing_elastic_apm::config::Config::new(apm_server_url)
-                    .with_authorization(Authorization::ApiKey(apm_server_api_credentials.into())),
-            ))
+    let apm_layer = if let Some(apm_tracing_config) = logger_config.tracing_elastic_apm.clone() {
+        let mut apm_config =
+            tracing_elastic_apm::config::Config::new(apm_tracing_config.apm_server_url.clone());
+        apm_config = if let Some(apm_server_api_credentials) =
+            apm_tracing_config.apm_server_api_credentials
+        {
+            apm_config.with_authorization(Authorization::ApiKey(apm_server_api_credentials.into()))
         } else {
-            None
+            apm_config
         };
+        Some(tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config))
+    } else {
+        None
+    };
 
     let subscriber = tracing_subscriber::registry()
         .with(reloadable_env_filter)
