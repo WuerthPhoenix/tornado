@@ -17,6 +17,9 @@ use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
+use tornado_common_logger::elastic_apm::{
+    ApmServerApiCredentials, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME,
+};
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
@@ -40,8 +43,17 @@ pub async fn daemon(
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let global_config = build_config(config_dir)?;
-    let logger_guard = Arc::new(setup_logger(&global_config.logger, config_dir)?);
+    let mut global_config = build_config(config_dir)?;
+    if let Some(tracing_elastic_apm_config) = &mut global_config.logger.tracing_elastic_apm {
+        if tracing_elastic_apm_config.apm_server_api_credentials.is_none() {
+            tracing_elastic_apm_config.apm_server_api_credentials =
+                Some(ApmServerApiCredentials::from_file(&format!(
+                    "{}/{}",
+                    config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
+                ))?);
+        }
+    }
+    let logger_guard = Arc::new(setup_logger(&global_config.logger)?);
 
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
@@ -391,7 +403,11 @@ pub async fn daemon(
                     .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(event_api))
-                    .service(tornado_engine_api::runtime_config::web::build_runtime_config_endpoints(runtime_config_api)),
+                    .service(
+                        tornado_engine_api::runtime_config::web::build_runtime_config_endpoints(
+                            runtime_config_api,
+                        ),
+                    ),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
