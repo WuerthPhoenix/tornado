@@ -164,11 +164,21 @@ pub fn setup_logger(
             let apm_server_api_credentials =
                 ApiCredentials::from_file(&apm_server_credentials_filepath)?;
 
-            Some(tracing_elastic_apm::new_layer(
+            let apm_layer = tracing_elastic_apm::new_layer(
                 get_current_service_name()?,
                 tracing_elastic_apm::config::Config::new(apm_server_url)
                     .with_authorization(Authorization::ApiKey(apm_server_api_credentials.into())),
+            );
+            let enabled = Arc::new(AtomicBool::new(true));
+            apm_enabled = Some(enabled.clone());
+
+            Some(FilteredLayer::new(
+                apm_layer,
+                move |_metadata, _ctx| {
+                    enabled.load(Ordering::Relaxed)
+                },
             ))
+
         } else {
             None
         };
