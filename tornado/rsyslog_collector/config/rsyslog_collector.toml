@@ -2,7 +2,7 @@
 
 # The Logger level
 # Valid values: trace, debug, info, warn, error
-level = "debug"
+level = "info,tornado=debug"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false

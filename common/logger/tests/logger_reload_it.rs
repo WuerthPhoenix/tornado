@@ -20,6 +20,7 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_reload_it::inner=warn".to_owned(),
         file_output_path: None,
+        tracing_elastic_apm: None,
     };
 
     let guard = setup_logger(&config).unwrap();

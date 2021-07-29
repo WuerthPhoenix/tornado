@@ -1312,6 +1312,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fxhash"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
+dependencies = [
+ "byteorder",
+]
+
+[[package]]
 name = "generic-array"
 version = "0.12.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3452,11 +3461,13 @@ dependencies = [
  "log",
  "rand 0.8.3",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror",
  "tokio",
  "tracing",
  "tracing-appender",
+ "tracing-elastic-apm",
  "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
@@ -3934,6 +3945,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-elastic-apm"
+version = "2.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8f5dcaf3fd4d0abfe76cc741df4c278752a4c533cb0b4064b11b03a74a0c126e"
+dependencies = [
+ "base64 0.13.0",
+ "fxhash",
+ "rand 0.8.3",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "version",
+]
+
+[[package]]
 name = "tracing-futures"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4143,6 +4172,12 @@ name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f1bddf1187be692e79c5ffeab891132dfb0f236ed36a43c7ed39f1165ee20191"
+
+[[package]]
+name = "version"
+version = "3.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a449064fee414fcc201356a3e6c1510f6c8829ed28bb06b91c54ebe208ce065"
 
 [[package]]
 name = "version_check"
