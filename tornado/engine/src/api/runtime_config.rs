@@ -49,6 +49,7 @@ mod test {
     use std::sync::Arc;
     use tracing_subscriber::EnvFilter;
     use std::str::FromStr;
+    use std::sync::atomic::AtomicBool;
 
     #[actix_rt::test]
     async fn should_set_the_logger_level() {
@@ -59,7 +60,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None,reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, AtomicBool::new(true).into(), None,reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(RwLock::new(logger_level.clone())));
 

@@ -18,7 +18,7 @@ stdout_output = true
 [logger.tracing_elastic_apm]
 # The url of the Elastic APM server; if provided, traces will be sent to this server;
 # if not provided traces will not be sent.
-apm_server_url = "https://localhost:8200/"
+apm_server_url = "http://localhost:8200"
 
 [tornado]
 
