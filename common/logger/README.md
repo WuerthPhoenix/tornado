@@ -14,17 +14,13 @@ The logger configuration is based on the following entries:
   provided, the Logger will append any output to that file.
 
 The configuration subsection `logger.tracing_elastic_apm` allows to configure the connection to Elastic APM for the tracing
-functionality. The following entries are present:
-- __apm_server_url__:  The url of the Elastic APM server. If any is provided, traces will be sent to this server.
-  If no apm_server_url is configured, traces will not be sent.
-- __apm_server_credentials_filepath__:  The filepath to the JSON file containing the Api Key credentials for authenticating
-  to the Elastic APM server. Defaults to `<config-dir>/apm_server_api_credentials.json`.
-  A valid JSON for the credential file is:
-  ```
-     {
-       "id": "myid",
-       "key": "mykey"
-     }
+functionality. If this section is not provided traces will be sent to the APM Server.
+The following entries can be configured:
+- __apm_server_url__:  The url of the Elastic APM Server.
+- __apm_server_api_credentials.id__:  (Optional) the ID of the Api Key for authenticating to the Elastic APM server.
+- __apm_server_api_credentials.key__:  (Optional) the key of the Api Key for authenticating to the Elastic APM server.
+                                       If `apm_server_api_credentials.id` and `apm_server_api_credentials.key` are not
+                                       provided, they will be read from the file `<config_dir>/apm_server_api_credentials.json`
   
 In Tornado executables, the Logger configuration is usually defined with command line parameters
 managed by [structopt](https://github.com/TeXitoi/structopt). In that case, the default _level_

@@ -42,10 +42,10 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
         file_output_path: None,
-        tracing_elastic_apm: Default::default(),
+        tracing_elastic_apm: None,
     };
 
-    let _guard = setup_logger(&config, "./").unwrap();
+    let _guard = setup_logger(&config).unwrap();
 
     let _span_1 = tracing::error_span!("level", "first").entered();
 

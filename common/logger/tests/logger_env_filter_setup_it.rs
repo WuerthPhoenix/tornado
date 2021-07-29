@@ -41,10 +41,10 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
         file_output_path: None,
-        tracing_elastic_apm: Default::default(),
+        tracing_elastic_apm: None,
     };
 
-    let guard = setup_logger(&config, "./").unwrap();
+    let guard = setup_logger(&config).unwrap();
 
     debug!("main - this is debug");
     info!("main - this is info");
