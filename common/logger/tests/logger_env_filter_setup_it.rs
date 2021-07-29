@@ -44,13 +44,31 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         tracing_elastic_apm: Default::default(),
     };
 
-    let _guard = setup_logger(&config, "./").unwrap();
+    let guard = setup_logger(&config, "./").unwrap();
 
     debug!("main - this is debug");
     info!("main - this is info");
     warn!("main - this is warn");
     inner1::log_smt();
     inner2::log_smt(3, Data { id: 789 }).await;
+
+    println!("Disabling sysout");
+    warn!("Disabling sysout");
+
+    guard.set_stdout_enabled(false);
+
+    // these logs should not appear in sysout
+    debug!("main - this is debug but should not appear in sysout");
+    info!("main - this is info but should not appear in sysout");
+    warn!("main - this is warn but should not appear in sysout");
+
+    println!("Enabling sysout");
+    warn!("Enabling sysout");
+
+    guard.set_stdout_enabled(true);
+
+    // these logs should appear in sysout
+    debug!("main - this is debug and should appear in sysout");
 
     Ok(())
 }
