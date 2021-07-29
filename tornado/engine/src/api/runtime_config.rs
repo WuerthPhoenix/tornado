@@ -4,21 +4,17 @@ use tornado_engine_api::runtime_config::api::RuntimeConfigApiHandler;
 use std::sync::Arc;
 use tornado_common_logger::LogWorkerGuard;
 use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto};
-use tokio::sync::RwLock;
 use log::*;
 
 #[derive(Clone)]
 pub struct RuntimeConfigApiHandlerImpl {
     logger_guard: Arc<LogWorkerGuard>,
-    #[deprecated]
-    logger_level: Arc<RwLock<String>>
 }
 
 impl RuntimeConfigApiHandlerImpl {
-    pub fn new(logger_guard: Arc<LogWorkerGuard>, logger_level: Arc<RwLock<String>>) -> Self {
+    pub fn new(logger_guard: Arc<LogWorkerGuard>) -> Self {
         Self {
             logger_guard,
-            logger_level
         }
     }
 }
@@ -27,10 +23,9 @@ impl RuntimeConfigApiHandlerImpl {
 impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
 
     async fn get_logger_configuration(&self) -> Result<LoggerConfigDto, ApiError> {
-        let logger_level_guard = self.logger_level.read().await;
-        trace!("RuntimeConfigApiHandlerImpl - get_logger_configuration: [{}]", *logger_level_guard);
+        trace!("RuntimeConfigApiHandlerImpl - get_logger_configuration");
         Ok(LoggerConfigDto{
-            level: logger_level_guard.clone(),
+            level: self.logger_guard.level(),
             apm_enabled: self.logger_guard.apm_enabled(),
             stdout_enabled: self.logger_guard.stdout_enabled()
         })
@@ -38,16 +33,14 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
 
     async fn set_logger_level(&self, logger_config: SetLoggerLevelRequestDto) -> Result<(), ApiError> {
         info!("RuntimeConfigApiHandlerImpl - set_logger_level to: [{}]", logger_config.level);
-        self.logger_guard.set_level(&logger_config.level).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
-        let mut logger_level_guard = self.logger_level.write().await;
-        *logger_level_guard = logger_config.level;
-        Ok(())
+        self.logger_guard.set_level(&logger_config.level).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})
     }
 
     async fn set_apm_enabled(
         &self,
         logger_config: SetLoggerApmRequestDto,
     ) -> Result<(), ApiError> {
+        info!("RuntimeConfigApiHandlerImpl - set_apm_enabled to: [{}]", logger_config.enabled);
         self.logger_guard.set_apm_enabled(logger_config.enabled).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})
     }
 
@@ -55,6 +48,7 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         &self,
         logger_config: SetLoggerStdoutRequestDto,
     ) -> Result<(), ApiError> {
+        info!("RuntimeConfigApiHandlerImpl - set_stdout_enabled to: [{}]", logger_config.enabled);
         self.logger_guard.set_stdout_enabled(logger_config.enabled);
         Ok(())
     }
@@ -80,7 +74,7 @@ mod test {
 
         let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(true).into(), None,reloadable_env_filter_handle));
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(RwLock::new(logger_level.clone())));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard);
 
         // Act
         let logger_level_before = api.get_logger_configuration().await.unwrap();
@@ -107,7 +101,7 @@ mod test {
 
         let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(RwLock::new(logger_level.clone())));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
         // Act
         assert!(!log_guard.apm_enabled());
@@ -131,7 +125,7 @@ mod test {
 
         let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(RwLock::new(logger_level.clone())));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
         // Act
         assert!(!log_guard.stdout_enabled());
