@@ -223,6 +223,7 @@ fn build_matcher_config(
 mod test {
 
     use super::*;
+    use tornado_common_logger::elastic_apm::ApmServerApiCredentials;
     use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 
@@ -250,7 +251,10 @@ mod test {
             "http://localhost:8200".to_string()
         );
 
-        assert_eq!(config.logger.tracing_elastic_apm.unwrap().apm_server_api_credentials, None);
+        assert_eq!(
+            config.logger.tracing_elastic_apm.unwrap().apm_server_api_credentials,
+            Some(ApmServerApiCredentials { id: "api_id".to_string(), key: "api_key".to_string() })
+        );
     }
 
     #[tokio::test]

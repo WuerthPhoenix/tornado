@@ -29,8 +29,8 @@ impl ApmTracingConfig {
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct ApmServerApiCredentials {
-    id: String,
-    key: String,
+    pub id: String,
+    pub key: String,
 }
 
 impl From<ApmServerApiCredentials> for ApiKey {
