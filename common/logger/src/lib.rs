@@ -1,10 +1,14 @@
+use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use thiserror::Error;
 use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
+use tracing_elastic_apm::config::Authorization;
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
+
+pub mod elastic_apm;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,12 +25,16 @@ pub struct LoggerConfig {
     // A file path in the file system; if provided, the Logger will append any output to it;
     // otherwise, it will log on the stdout.
     pub file_output_path: Option<String>,
+
+    pub tracing_elastic_apm: Option<ApmTracingConfig>,
 }
 
 #[derive(Error, Debug)]
 pub enum LoggerError {
     #[error("LoggerConfigurationError: [{message}]")]
     LoggerConfigurationError { message: String },
+    #[error("LoggerRuntimeError: [{message}]")]
+    LoggerRuntimeError { message: String },
 }
 
 impl From<log::SetLoggerError> for LoggerError {
@@ -51,15 +59,12 @@ pub struct LogWorkerGuard {
 }
 
 impl LogWorkerGuard {
-
-    pub fn new (file_guard: Option<WorkerGuard>,
+    pub fn new(
+        file_guard: Option<WorkerGuard>,
         stdout_guard: Option<WorkerGuard>,
-        reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>) -> Self {
-        Self {
-            file_guard,
-            stdout_guard,
-            reload_handle
-        }
+        reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
+    ) -> Self {
+        Self { file_guard, stdout_guard, reload_handle }
     }
 
     pub fn reload(&self, env_filter_str: &str) -> Result<(), LoggerError> {
@@ -109,10 +114,26 @@ pub fn setup_logger(logger_config: &LoggerConfig) -> Result<LogWorkerGuard, Logg
         (None, None)
     };
 
+    let apm_layer = if let Some(apm_tracing_config) = logger_config.tracing_elastic_apm.clone() {
+        let mut apm_config =
+            tracing_elastic_apm::config::Config::new(apm_tracing_config.apm_server_url.clone());
+        apm_config = if let Some(apm_server_api_credentials) =
+            apm_tracing_config.apm_server_api_credentials
+        {
+            apm_config.with_authorization(Authorization::ApiKey(apm_server_api_credentials.into()))
+        } else {
+            apm_config
+        };
+        Some(tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config))
+    } else {
+        None
+    };
+
     let subscriber = tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
-        .with(stdout_subscriber);
+        .with(stdout_subscriber)
+        .with(apm_layer);
 
     set_global_logger(subscriber)?;
 
@@ -147,7 +168,6 @@ where
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]
