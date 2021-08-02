@@ -272,7 +272,7 @@ These endpoints allow inspecting and changing the tornado configuration at runti
 Please note that whatever configuration change performed with these endpoints
 will be lost when tornado is restarted.
 
-### Get and Set the logger configuration level
+### Get the logger configuration
 
 Endpoint: get the current logger level configuration
 - HTTP Method: __GET__
@@ -281,19 +281,47 @@ Endpoint: get the current logger level configuration
 - response example:
   ```json
   {
-    "level": "info"
+    "level": "info",
+    "stdout_enabled": true,
+    "apm_enabled": false
   }
   ```
 
-
+### Set the logger level
 Endpoint: set the current logger level configuration
 - HTTP Method: __POST__
-- path : __/api/v1_beta/runtime_config/logger__
+- path : __/api/v1_beta/runtime_config/logger/level__
 - response: http status code 200 if the request was performed correctly
 - request body type: __JSON__
 - request body:
   ```json
   {
     "level": "warn,tornado=trace"
+  }
+  ```
+
+### Set the logger stdout output
+Endpoint: Enable or disable the logger stdout output
+- HTTP Method: __POST__
+- path : __/api/v1_beta/runtime_config/logger/stdout__
+- response: http status code 200 if the request was performed correctly
+- request body type: __JSON__
+- request body:
+  ```json
+  {
+    "enabled": true
+  }
+  ```
+  
+### Set the logger output to Elastic APM
+Endpoint: Enable or disable the logger output to Elastic APM
+- HTTP Method: __POST__
+- path : __/api/v1_beta/runtime_config/logger/apm__
+- response: http status code 200 if the request was performed correctly
+- request body type: __JSON__
+- request body:
+  ```json
+  {
+    "enabled": true
   }
   ```
