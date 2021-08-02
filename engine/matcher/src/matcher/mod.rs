@@ -108,7 +108,7 @@ impl Matcher {
 
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
-    #[tracing::instrument(skip(self, event), fields(trace_id=event.trace_id.as_str(), event_type=event.event_type.as_str(), event_created_ms=event.created_ms))]
+    #[tracing::instrument(skip(self, event, include_metadata), fields(trace_id=event.trace_id.as_str(), event_type=event.event_type.as_str(), event_created_ms=event.created_ms))]
     pub fn process(&self, event: Event, include_metadata: bool) -> ProcessedEvent {
         trace!(
             "Matcher process - processing event: [{:?}], include metadata: [{}]",

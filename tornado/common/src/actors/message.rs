@@ -4,10 +4,12 @@ use thiserror::Error;
 use tokio::io::AsyncRead;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
+use tracing::Span;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
 pub struct ActionMessage {
+    pub span: Span,
     pub action: Arc<Action>,
 }
 

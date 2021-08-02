@@ -197,24 +197,26 @@ pub async fn daemon(
         let event_bus = ActixEventBus {
             callback: move |action| {
                 let action = Arc::new(action);
-                let send_result = match action.id.as_ref() {
+                let span = tracing::Span::current();
+                let message = ActionMessage { action, span};
+                let send_result = match message.action.id.as_ref() {
                     "archive" => {
-                        archive_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        archive_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'archive' executor. Err: {:?}", err)
                         })
                     }
                     "icinga2" => {
-                        icinga2_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        icinga2_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
                         })
                     }
                     "director" => {
-                        director_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        director_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
                         })
                     }
                     ACTION_ID_MONITORING => {
-                        monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        monitoring_executor_addr.try_send(message).map_err(|err| {
                             format!(
                                 "Error sending message to 'monitoring' executor. Err: {:?}",
                                 err
@@ -222,7 +224,7 @@ pub async fn daemon(
                         })
                     }
                     ACTION_ID_SMART_MONITORING_CHECK_RESULT => {
-                        smart_monitoring_check_result_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        smart_monitoring_check_result_executor_addr.try_send(message).map_err(|err| {
                             format!(
                                 "Error sending message to 'smart_monitoring_check_result' executor. Err: {:?}",
                                 err
@@ -230,22 +232,22 @@ pub async fn daemon(
                         })
                     }
                     "script" => {
-                        script_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        script_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'script' executor. Err: {:?}", err)
                         })
                     }
                     ACTION_ID_FOREACH => foreach_executor_addr_clone
-                        .try_send(ActionMessage { action })
+                        .try_send(message)
                         .map_err(|err| {
                             format!("Error sending message to 'foreach' executor. Err: {:?}", err)
                         }),
                     ACTION_ID_LOGGER => {
-                        logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        logger_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'logger' executor. Err: {:?}", err)
                         })
                     }
                     "elasticsearch" => elasticsearch_executor_addr
-                        .try_send(ActionMessage { action })
+                        .try_send(message)
                         .map_err(|err| {
                             format!(
                                 "Error sending message to 'elasticsearch' executor. Err: {:?}",
@@ -253,7 +255,7 @@ pub async fn daemon(
                             )
                         }),
 
-                    _ => Err(format!("There are not executors for action id [{}]", &action.id)),
+                    _ => Err(format!("There are not executors for action id [{}]", &message.action.id)),
                 };
                 if let Err(error_message) = send_result {
                     error!("{}", error_message)
