@@ -1,6 +1,5 @@
 use actix::MailboxError;
-use actix_web::dev::HttpResponseBuilder;
-use actix_web::{http, HttpResponse};
+use actix_web::{http, HttpResponse, HttpResponseBuilder};
 use std::collections::HashMap;
 use thiserror::Error;
 use tornado_engine_api_dto::common::WebError;

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig) -> Scope {
     scope
-        .data(daemon_command_config)
+        .app_data(Data::new(daemon_command_config))
         .service(web::resource("").route(web::get().to(index)))
         .service(web::resource("/ping").route(web::get().to(pong)))
         .service(

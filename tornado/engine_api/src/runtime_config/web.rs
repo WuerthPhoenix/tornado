@@ -8,7 +8,7 @@ use tornado_engine_api_dto::runtime_config::LoggerConfigDto;
 pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
     data: ApiData<RuntimeConfigApi<A>>,
 ) -> Scope {
-    web::scope("/v1_beta/runtime_config").data(data).service(
+    web::scope("/v1_beta/runtime_config").app_data(Data::new(data)).service(
         web::resource("/logger")
             .route(web::get().to(get_current_logger_configuration::<A>))
             .route(web::post().to(set_current_logger_configuration::<A>)),
