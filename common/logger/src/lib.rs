@@ -1,16 +1,16 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use arc_swap::ArcSwap;
+use crate::filter::FilteredLayer;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use thiserror::Error;
 use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
 use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
-use crate::filter::FilteredLayer;
 
 pub mod elastic_apm;
 
@@ -117,9 +117,14 @@ impl LogWorkerGuard {
     }
 
     pub fn set_apm_enabled(&self, enabled: bool) -> Result<(), LoggerError> {
-        self.apm_enabled.as_ref().ok_or_else(|| LoggerError::LoggerConfigurationError {
-            message: format!("Cannot enable/disable the apm logger because it is not configured."),
-        }).map(|apm_enabled| apm_enabled.store(enabled, Ordering::Relaxed))
+        self.apm_enabled
+            .as_ref()
+            .ok_or_else(|| LoggerError::LoggerConfigurationError {
+                message: format!(
+                    "Cannot enable/disable the apm logger because it is not configured."
+                ),
+            })
+            .map(|apm_enabled| apm_enabled.store(enabled, Ordering::Relaxed))
     }
 }
 
@@ -158,14 +163,14 @@ pub fn setup_logger(
 
         let stdout_enabled = stdout_enabled.clone();
 
-        (FilteredLayer::new(
-            Layer::new().with_ansi(false).with_writer(non_blocking),
-            move |_metadata, _ctx| {
-                stdout_enabled.load(Ordering::Relaxed)
-            },
-        ), Some(stdout_guard))
+        (
+            FilteredLayer::new(
+                Layer::new().with_ansi(false).with_writer(non_blocking),
+                move |_metadata, _ctx| stdout_enabled.load(Ordering::Relaxed),
+            ),
+            Some(stdout_guard),
+        )
     };
-
 
     let mut apm_enabled = None;
 
@@ -179,17 +184,17 @@ pub fn setup_logger(
         } else {
             apm_config
         };
-        let apm_layer = tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config);
+        let apm_layer = tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config)
+            .map_err(|err| LoggerError::LoggerConfigurationError {
+                message: format!(
+                    "Could not create APM tracing layer for the logger. Err: {:?}",
+                    err
+                ),
+            })?;
         let enabled = Arc::new(AtomicBool::new(true));
         apm_enabled = Some(enabled.clone());
 
-        Some(FilteredLayer::new(
-            apm_layer,
-            move |_metadata, _ctx| {
-                enabled.load(Ordering::Relaxed)
-            },
-        ))
-
+        Some(FilteredLayer::new(apm_layer, move |_metadata, _ctx| enabled.load(Ordering::Relaxed)))
     } else {
         None
     };
