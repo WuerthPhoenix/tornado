@@ -134,4 +134,10 @@ export type ValueMetaData = { modified: boolean; is_leaf: boolean };
 /* 'runtime_config' types */
 /* -------------- */
 
-export type LoggerConfigDto = { level: string };
+export type LoggerConfigDto = { level: string; stdout_enabled: boolean; apm_enabled: boolean };
+
+export type SetLoggerApmRequestDto = { enabled: boolean };
+
+export type SetLoggerLevelRequestDto = { level: string };
+
+export type SetLoggerStdoutRequestDto = { enabled: boolean };

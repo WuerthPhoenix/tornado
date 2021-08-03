@@ -1,7 +1,6 @@
 use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::actor::matcher::{EventMessage, MatcherActor};
-use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
@@ -11,7 +10,6 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
@@ -27,8 +25,9 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
-use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
+use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -368,13 +367,11 @@ pub async fn daemon(
     let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
-    let logger_level = Arc::new(RwLock::new(global_config.logger.level.clone()));
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
         let logger_guard = logger_guard.clone();
-        let logger_level = logger_level.clone();
 
         let auth_api = ApiData { auth: auth_service.clone(), api: () };
         let config_api = ApiData {
@@ -387,10 +384,7 @@ pub async fn daemon(
         };
         let runtime_config_api = ApiData {
             auth: auth_service.clone(),
-            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
-                logger_guard,
-                logger_level,
-            )),
+            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
 
         App::new()
