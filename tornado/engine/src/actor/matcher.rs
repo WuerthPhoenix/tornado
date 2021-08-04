@@ -77,7 +77,7 @@ impl MatcherActor {
         match process_type {
             ProcessType::Full => self
                 .dispatcher_addr
-                .try_send(ProcessedEventMessage { event: processed_event.clone() }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err)),
+                .try_send(ProcessedEventMessage { span:  tracing::Span::current(), event: processed_event.clone() }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err)),
             ProcessType::SkipActions => {}
         }
 
@@ -103,11 +103,11 @@ impl Handler<EventMessage> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id.as_str();
-        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
+        let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.matcher.process(msg.event, false);
-        self.dispatcher_addr.try_send(ProcessedEventMessage { event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
+        self.dispatcher_addr.try_send(ProcessedEventMessage { span: span.exit(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }

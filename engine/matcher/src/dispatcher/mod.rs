@@ -19,17 +19,23 @@ impl Dispatcher {
     /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
-            ProcessedNode::Ruleset { rules, .. } => {
+            ProcessedNode::Ruleset { rules, name, .. } => {
+                let _span = tracing::error_span!("dispatch", ruleset = name.as_str()).entered();
                 for rule in rules.rules {
+                    let _span = tracing::error_span!("dispatch", rule = rule.name.as_str()).entered();
                     match rule.status {
-                        ProcessedRuleStatus::Matched => self.dispatch(rule.actions)?,
+                        ProcessedRuleStatus::Matched => {
+                            debug!("Rule [{}] matched, dispatching actions", rule.name);
+                            self.dispatch(rule.actions)?
+                        },
                         _ => {
                             trace!("Rule [{}] not matched, ignoring actions", rule.name);
                         }
                     }
                 }
             }
-            ProcessedNode::Filter { nodes, .. } => {
+            ProcessedNode::Filter { nodes, name, .. } => {
+                let _span = tracing::error_span!("dispatch", filter = name.as_str()).entered();
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }
@@ -39,7 +45,8 @@ impl Dispatcher {
     }
 
     fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
-        for action in actions {
+        for (index, action) in actions.into_iter().enumerate() {
+            let _span = tracing::error_span!("dispatch_action", action = index, action_id = action.id.as_str()).entered();
             self.event_bus.publish_action(action)
         }
         Ok(())
