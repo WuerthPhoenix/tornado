@@ -29,7 +29,7 @@ impl Dispatcher {
                             self.dispatch(rule.actions)?
                         },
                         _ => {
-                            debug!("Rule [{}] not matched, ignoring actions", rule.name);
+                            trace!("Rule [{}] not matched, ignoring actions", rule.name);
                         }
                     }
                 }
