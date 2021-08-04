@@ -1,10 +1,10 @@
-use tracing::{Subscriber, Event, Metadata};
-use tracing::span;
-use tracing_subscriber::Layer;
-use tracing_subscriber::layer::Context;
-use tracing::level_filters::LevelFilter;
-use tracing::subscriber::Interest;
 use std::marker::PhantomData;
+use tracing::level_filters::LevelFilter;
+use tracing::span;
+use tracing::subscriber::Interest;
+use tracing::{Event, Metadata, Subscriber};
+use tracing_subscriber::layer::Context;
+use tracing_subscriber::Layer;
 
 /// A Layer that wraps another Layer and allows
 /// disabling logs based on a filter function
@@ -19,20 +19,19 @@ where
     phantom_s: PhantomData<S>,
 }
 
-impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool>  FilteredLayer<S, L, F> {
+impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool>
+    FilteredLayer<S, L, F>
+{
     pub fn new(layer: L, filter: F) -> Self {
-        Self {
-            layer,
-            filter,
-            phantom_s: PhantomData
-        }
+        Self { layer, filter, phantom_s: PhantomData }
     }
 }
 
-impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool> Layer<S> for FilteredLayer<S, L, F> {
-
+impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool> Layer<S>
+    for FilteredLayer<S, L, F>
+{
     fn on_event(&self, event: &Event, context: Context<S>) {
-        if (self.filter)(&event.metadata(), &context){
+        if (self.filter)(&event.metadata(), &context) {
             self.layer.on_event(event, context);
         }
     }
@@ -76,5 +75,4 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {
         self.layer.on_id_change(old, new, ctx)
     }
-
 }
