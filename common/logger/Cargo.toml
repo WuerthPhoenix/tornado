@@ -7,6 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
+arc-swap = "1"
 chrono = "0.4"
 log = "0.4"
 serde = { version = "1.0", features = ['derive'] }
@@ -14,7 +15,7 @@ serde_json = { version = "1.0" }
 thiserror = "1.0"
 tracing = "0.1"
 tracing-appender = "0.1"
-tracing-elastic-apm = { version = "2.1" }
+tracing-elastic-apm = { version = "3.0" }
 tracing-futures = "0.2"
 tracing-log = "0.1"
 tracing-subscriber = "0.2"

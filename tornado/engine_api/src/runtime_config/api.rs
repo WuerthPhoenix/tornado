@@ -1,16 +1,28 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
-use tornado_engine_api_dto::runtime_config::LoggerConfigDto;
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
 #[async_trait::async_trait(?Send)]
 pub trait RuntimeConfigApiHandler: Send + Sync {
+
     async fn get_logger_configuration(&self) -> Result<LoggerConfigDto, ApiError>;
-    async fn set_logger_configuration(
+
+    async fn set_logger_level(
         &self,
-        logger_config: LoggerConfigDto,
+        logger_config: SetLoggerLevelRequestDto,
+    ) -> Result<(), ApiError>;
+
+    async fn set_apm_enabled(
+        &self,
+        logger_config: SetLoggerApmRequestDto,
+    ) -> Result<(), ApiError>;
+
+    async fn set_stdout_enabled(
+        &self,
+        logger_config: SetLoggerStdoutRequestDto,
     ) -> Result<(), ApiError>;
 }
 
@@ -33,13 +45,33 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
     }
 
     /// Sets the current logger configuration of tornado
-    pub async fn set_logger_configuration(
+    pub async fn set_logger_level(
         &self,
         auth: AuthContext<'_>,
-        logger_config: LoggerConfigDto,
+        logger_config: SetLoggerLevelRequestDto,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
-        self.handler.set_logger_configuration(logger_config).await
+        self.handler.set_logger_level(logger_config).await
+    }
+
+    /// Enable or disable logging to apm
+    pub async fn set_apm_enabled(
+        &self,
+        auth: AuthContext<'_>,
+        dto: SetLoggerApmRequestDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::RuntimeConfigEdit)?;
+        self.handler.set_apm_enabled(dto).await
+    }
+
+    /// Enable or disable logging to stdout
+    pub async fn set_stdout_enabled(
+        &self,
+        auth: AuthContext<'_>,
+        dto: SetLoggerStdoutRequestDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::RuntimeConfigEdit)?;
+        self.handler.set_stdout_enabled(dto).await
     }
 }
 
@@ -56,12 +88,20 @@ pub mod test {
     #[async_trait::async_trait(?Send)]
     impl RuntimeConfigApiHandler for TestRuntimeConfigApiHandler {
         async fn get_logger_configuration(&self) -> Result<LoggerConfigDto, ApiError> {
-            Ok(LoggerConfigDto { level: "debug".to_owned() })
+            Ok(LoggerConfigDto { level: "debug".to_owned(), apm_enabled: true, stdout_enabled: false })
         }
-        async fn set_logger_configuration(
+        async fn set_logger_level(
             &self,
-            _logger_config: LoggerConfigDto,
+            _logger_config: SetLoggerLevelRequestDto,
         ) -> Result<(), ApiError> {
+            Ok(())
+        }
+
+        async fn set_apm_enabled(&self, _logger_config: SetLoggerApmRequestDto) -> Result<(), ApiError> {
+            Ok(())
+        }
+
+        async fn set_stdout_enabled(&self, _logger_config: SetLoggerStdoutRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
     }
@@ -95,7 +135,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn set_current_logger_configuration_should_require_edit_permission() {
+    async fn set_current_logger_level_should_require_edit_permission() {
         // Arrange
         let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
         let permissions_map = &auth_permissions();
@@ -110,10 +150,56 @@ pub mod test {
             permissions_map,
         );
 
-        let logger_config = LoggerConfigDto { level: "".to_owned() };
+        let logger_config = SetLoggerLevelRequestDto { level: "".to_owned() };
 
         // Act & Assert
-        assert!(api.set_logger_configuration(auth_view, logger_config.clone()).await.is_err());
-        assert!(api.set_logger_configuration(auth_edit, logger_config).await.is_ok());
+        assert!(api.set_logger_level(auth_view, logger_config.clone()).await.is_err());
+        assert!(api.set_logger_level(auth_edit, logger_config).await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn set_apm_configuration_should_require_edit_permission() {
+        // Arrange
+        let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
+        let permissions_map = &auth_permissions();
+
+        let auth_view = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["view".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let auth_edit = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let dto = SetLoggerApmRequestDto { enabled: false };
+
+        // Act & Assert
+        assert!(api.set_apm_enabled(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_apm_enabled(auth_edit, dto).await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn set_stdout_configuration_should_require_edit_permission() {
+        // Arrange
+        let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
+        let permissions_map = &auth_permissions();
+
+        let auth_view = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["view".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let auth_edit = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let dto = SetLoggerStdoutRequestDto { enabled: false };
+
+        // Act & Assert
+        assert!(api.set_stdout_enabled(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_stdout_enabled(auth_edit, dto).await.is_ok());
     }
 }

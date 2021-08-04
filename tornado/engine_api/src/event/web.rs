@@ -12,7 +12,7 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
     data: ApiData<EventApi<T, CM>>,
 ) -> Scope {
     web::scope("/v1_beta/event")
-        .data(data)
+        .app_data(Data::new(data))
         .service(
             web::resource("/current/send")
                 .route(web::post().to(send_event_to_current_config::<T, CM>)),

@@ -129,7 +129,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
         debug!("Creating endpoint: [{}]", &path);
 
         let new_scope = web::scope(&path)
-            .data(handler)
+            .app_data(Data::new(handler))
             .service(web::resource("").route(web::post().to(handle::<R>)));
 
         scope = scope.service(new_scope);

@@ -1,7 +1,6 @@
 use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::actor::matcher::{EventMessage, MatcherActor};
-use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
@@ -11,7 +10,6 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::rc::Rc;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
@@ -27,8 +25,9 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
-use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
+use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -198,24 +197,26 @@ pub async fn daemon(
         let event_bus = ActixEventBus {
             callback: move |action| {
                 let action = Arc::new(action);
-                let send_result = match action.id.as_ref() {
+                let span = tracing::Span::current();
+                let message = ActionMessage { action, span};
+                let send_result = match message.action.id.as_ref() {
                     "archive" => {
-                        archive_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        archive_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'archive' executor. Err: {:?}", err)
                         })
                     }
                     "icinga2" => {
-                        icinga2_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        icinga2_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
                         })
                     }
                     "director" => {
-                        director_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        director_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
                         })
                     }
                     ACTION_ID_MONITORING => {
-                        monitoring_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        monitoring_executor_addr.try_send(message).map_err(|err| {
                             format!(
                                 "Error sending message to 'monitoring' executor. Err: {:?}",
                                 err
@@ -223,7 +224,7 @@ pub async fn daemon(
                         })
                     }
                     ACTION_ID_SMART_MONITORING_CHECK_RESULT => {
-                        smart_monitoring_check_result_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        smart_monitoring_check_result_executor_addr.try_send(message).map_err(|err| {
                             format!(
                                 "Error sending message to 'smart_monitoring_check_result' executor. Err: {:?}",
                                 err
@@ -231,22 +232,22 @@ pub async fn daemon(
                         })
                     }
                     "script" => {
-                        script_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        script_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'script' executor. Err: {:?}", err)
                         })
                     }
                     ACTION_ID_FOREACH => foreach_executor_addr_clone
-                        .try_send(ActionMessage { action })
+                        .try_send(message)
                         .map_err(|err| {
                             format!("Error sending message to 'foreach' executor. Err: {:?}", err)
                         }),
                     ACTION_ID_LOGGER => {
-                        logger_executor_addr.try_send(ActionMessage { action }).map_err(|err| {
+                        logger_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'logger' executor. Err: {:?}", err)
                         })
                     }
                     "elasticsearch" => elasticsearch_executor_addr
-                        .try_send(ActionMessage { action })
+                        .try_send(message)
                         .map_err(|err| {
                             format!(
                                 "Error sending message to 'elasticsearch' executor. Err: {:?}",
@@ -254,7 +255,7 @@ pub async fn daemon(
                             )
                         }),
 
-                    _ => Err(format!("There are not executors for action id [{}]", &action.id)),
+                    _ => Err(format!("There are not executors for action id [{}]", &message.action.id)),
                 };
                 if let Err(error_message) = send_result {
                     error!("{}", error_message)
@@ -368,13 +369,11 @@ pub async fn daemon(
     let api_handler = MatcherApiHandler::new(matcher_addr);
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
-    let logger_level = Arc::new(RwLock::new(global_config.logger.level.clone()));
 
     // Start API and monitoring endpoint
     HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
         let logger_guard = logger_guard.clone();
-        let logger_level = logger_level.clone();
 
         let auth_api = ApiData { auth: auth_service.clone(), api: () };
         let config_api = ApiData {
@@ -387,10 +386,7 @@ pub async fn daemon(
         };
         let runtime_config_api = ApiData {
             auth: auth_service.clone(),
-            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
-                logger_guard,
-                logger_level,
-            )),
+            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
 
         App::new()

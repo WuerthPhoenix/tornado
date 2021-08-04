@@ -17,7 +17,7 @@ pub fn build_config_endpoints<
     data: ApiData<ConfigApi<A, CM>>,
 ) -> Scope {
     web::scope("/v1_beta/config")
-        .data(data)
+        .app_data(Data::new(data))
         .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
         .service(
             web::resource("/drafts")
