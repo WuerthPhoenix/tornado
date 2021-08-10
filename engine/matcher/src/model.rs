@@ -108,10 +108,8 @@ pub struct ProcessedRuleMetaData {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TypeScriptify)]
 pub struct ActionMetaData {
     pub id: String,
-    pub payload: PayloadMetaData,
+    pub payload: HashMap<String, EnrichedValue>,
 }
-
-pub type PayloadMetaData = HashMap<String, EnrichedValue>;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 pub struct EnrichedValue {
@@ -123,7 +121,7 @@ pub struct EnrichedValue {
 #[serde(tag = "type")]
 pub enum EnrichedValueContent {
     Single { content: Value },
-    Map { content: PayloadMetaData },
+    Map { content: HashMap<String, EnrichedValue> },
     Array { content: Vec<EnrichedValue> },
 }
 
