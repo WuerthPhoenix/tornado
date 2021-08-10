@@ -149,7 +149,7 @@ impl DirectorExecutor {
                 code: None
             })
         } else {
-            debug!("DirectorExecutor API request completed successfully. Response body",);
+            debug!("DirectorExecutor API request completed successfully. Response status: {}. Response body: {}", response_status, response_body);
             Ok(())
         }
     }
