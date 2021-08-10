@@ -175,8 +175,7 @@ impl<I: Clone + Debug, O, E: RetriableError + Debug, T: Command<I, Result<O, E>>
                         should_retry = new_should_retry;
 
                         if should_retry {
-                            debug!("Execution attempt failed with error: {:?}", err);
-                            debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, message);
+                            debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}. Execution attempt error: {:?}", failed_attempts, message, err);
                             if let Some(sleep) = should_wait {
                                 debug!("Wait for {:?} before retrying.", sleep);
                                 actix::clock::sleep(sleep).await;
