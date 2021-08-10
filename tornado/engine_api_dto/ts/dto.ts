@@ -116,13 +116,13 @@ export type SendEventRequestDto = { process_type: ProcessType; event: EventDto }
 /* 'matcher' types   */
 /* ---------------- */
 
-export type ActionMetaData = { id: string; payload: PayloadMetaData };
+export type ActionMetaData = { id: string; payload: { [key: string]: EnrichedValue } };
 
 export type EnrichedValue = { content: EnrichedValueContent; meta: ValueMetaData };
 
 export type EnrichedValueContent = 
  | { type: "Single"; content: Value } 
- | { type: "Map"; content: PayloadMetaData } 
+ | { type: "Map"; content: { [key: string]: EnrichedValue } } 
  | { type: "Array"; content: EnrichedValue [] };
 
 export type ProcessedRuleMetaData = { actions: ActionMetaData [] };
