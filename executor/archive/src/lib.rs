@@ -76,7 +76,8 @@ impl ArchiveExecutor {
                     return Err(ExecutorError::ActionExecutionError {
                         can_retry: false,
                         message: format!("Suspicious path [{:?}]. It could be an attempt to write outside the main directory.", &absolute_path_string),
-                        code: None
+                        code: None,
+                        data: Default::default(),
                     });
                 }
 
@@ -91,6 +92,7 @@ impl ArchiveExecutor {
                                 &path, err
                             ),
                             code: None,
+                            data: Default::default(),
                         }
                     })?;
                 }
@@ -100,6 +102,7 @@ impl ArchiveExecutor {
                         can_retry: true,
                         message: format!("Cannot open file [{}]: {}", &absolute_path_string, err),
                         code: None,
+                        data: Default::default(),
                     },
                 )?;
 
@@ -111,11 +114,13 @@ impl ArchiveExecutor {
             can_retry: true,
             message: format!("Cannot write to file [{}]: {}", &absolute_path_string, err),
             code: None,
+            data: Default::default(),
         })?;
         buf_writer.flush().await.map_err(|err| ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!("Cannot flush file [{}]: {}", &absolute_path_string, err),
             code: None,
+            data: Default::default(),
         })
     }
 }
@@ -139,6 +144,7 @@ impl StatefulExecutor for ArchiveExecutor {
                         ARCHIVE_TYPE_KEY, archive_type
                     ),
                     code: None,
+                    data: Default::default(),
                 }),
             },
             None => Ok(None),
@@ -151,12 +157,14 @@ impl StatefulExecutor for ArchiveExecutor {
                 can_retry: false,
                 message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
                 code: None,
+                data: Default::default(),
             })
             .and_then(|value| {
                 serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot deserialize event:{}", err),
                     code: None,
+                    data: Default::default(),
                 })
             })?;
 

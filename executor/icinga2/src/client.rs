@@ -1,5 +1,6 @@
 use crate::config::Icinga2ClientConfig;
 use log::*;
+use maplit::*;
 use reqwest::{Client, Response};
 use serde::Serialize;
 use std::time::Duration;
@@ -43,46 +44,68 @@ impl ApiClient {
         &self,
         icinga2_api_name: &str,
         payload: &T,
-    ) -> Result<Response, ExecutorError> {
+    ) -> Result<ResponseData, ExecutorError> {
         let url = format!("{}{}", &self.server_api_url, icinga2_api_name);
         let http_auth_header = &self.http_auth_header;
 
         trace!("Icinga2Executor - HTTP POST - url: {}", url);
 
-        self.client
+        match self.client
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .json(payload)
             .send()
-            .await
-            .map_err(|err| ExecutorError::ActionExecutionError {
+            .await {
+            Ok(response) => Ok(ResponseData {
+                response,
+                url,
+                method: "POST"
+            }),
+            Err(err) => Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
+                data: hashmap![
+                            "method" => "POST".into(),
+                            "url" => url.into(),
+                            "payload" => serde_json::to_value(payload)?
+                        ]
             })
+        }
+
     }
 
-    async fn get(&self, icinga2_api_name: &str) -> Result<Response, ExecutorError> {
+    async fn get(&self, icinga2_api_name: &str) -> Result<ResponseData, ExecutorError> {
         let url = format!("{}{}", &self.server_api_url, icinga2_api_name);
         let http_auth_header = &self.http_auth_header;
 
         trace!("Icinga2Executor - HTTP GET - url: {}", url);
 
-        self.client
+        match self.client
             .get(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .send()
-            .await
-            .map_err(|err| ExecutorError::ActionExecutionError {
+            .await {
+            Ok(response) => Ok(ResponseData {
+                response,
+                url,
+                method: "GET"
+            }),
+            Err(err) => Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
+                data: hashmap![
+                            "method" => "GET".into(),
+                            "url" => url.into(),
+                        ]
             })
+        }
     }
 
-    pub async fn api_get_objects_host(&self, host_name: &str) -> Result<Response, ExecutorError> {
+    pub async fn api_get_objects_host(&self, host_name: &str) -> Result<ResponseData, ExecutorError> {
         self.get(&format!("/v1/objects/hosts/{}", host_name)).await
     }
 
@@ -90,7 +113,7 @@ impl ApiClient {
         &self,
         host_name: &str,
         service_name: &str,
-    ) -> Result<Response, ExecutorError> {
+    ) -> Result<ResponseData, ExecutorError> {
         self.get(&format!("/v1/objects/services/{}!{}", host_name, service_name)).await
     }
 
@@ -98,10 +121,16 @@ impl ApiClient {
         &self,
         icinga2_action_name: &str,
         payload: &T,
-    ) -> Result<Response, ExecutorError> {
+    ) -> Result<ResponseData, ExecutorError> {
         let url = format!("/v1/actions/{}", icinga2_action_name);
         self.post(&url, payload).await
     }
+}
+
+pub struct ResponseData {
+    pub url: String,
+    pub method: &'static str,
+    pub response: Response
 }
 
 #[cfg(test)]

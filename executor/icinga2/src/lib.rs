@@ -6,6 +6,8 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use std::collections::HashMap;
+use serde_json::Value;
 
 pub mod client;
 pub mod config;
@@ -62,35 +64,60 @@ impl Icinga2Executor {
         &self,
         icinga2_action: &'a Icinga2Action<'a>,
     ) -> Result<(), ExecutorError> {
-        let response =
-            self.api_client.api_post_action(&icinga2_action.name, &icinga2_action.payload).await?;
 
-        let response_status = response.status();
+        let payload = &icinga2_action.payload;
+        let response =
+            self.api_client.api_post_action(&icinga2_action.name, payload).await?;
+
+        let method = response.method;
+        let url = response.url;
+
+        let response_status = response.response.status();
 
         let response_body =
-            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
-                code: None,
+            response.response.text().await.map_err(|err| {
+                match to_err_data(method, &url, payload) {
+                    Ok(data) => ExecutorError::ActionExecutionError {
+                        can_retry: true,
+                        message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
+                        code: None,
+                        data
+                    },
+                    Err(err) => err.into()
+                }
             })?;
 
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) })
+            Err(ExecutorError::ActionExecutionError {
+                message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ),
+                can_retry: true,
+                code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
+                data: to_err_data(method, &url, payload)?
+            })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
                     "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
-                code: None
+                code: None,
+                data: to_err_data(method, &url, payload)?
             })
         } else {
             debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
             Ok(())
         }
     }
+}
+
+fn to_err_data(method: &str, url: &str, payload: &Option<&Payload>) -> Result<HashMap<&'static str, Value>, ExecutorError> {
+    let mut data = HashMap::<&'static str, Value>::default();
+    data.insert("method", method.into());
+    data.insert("url", url.into());
+    data.insert("payload", serde_json::to_value(payload)?);
+    Ok(data)
 }
 
 #[async_trait::async_trait(?Send)]

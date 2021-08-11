@@ -3691,6 +3691,7 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "log",
+ "serde_json",
  "thiserror",
  "tornado_common_api",
 ]
@@ -3758,6 +3759,7 @@ dependencies = [
  "maplit",
  "reqwest",
  "serde",
+ "serde_json",
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
