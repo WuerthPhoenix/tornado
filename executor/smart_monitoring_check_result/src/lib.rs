@@ -1,6 +1,7 @@
 use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
+use maplit::hashmap;
 use serde_json::Value;
 use std::time::Duration;
 use std::{future::Future, pin::Pin, sync::Arc};
@@ -73,7 +74,7 @@ impl SmartMonitoringExecutor {
                     "SmartMonitoringExecutor - Director host creation action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
             }
         }?;
 
@@ -93,7 +94,7 @@ impl SmartMonitoringExecutor {
                 }
                 Err(err) => {
                     error!("SmartMonitoringExecutor - Director service creation action failed with error {:?}.", err);
-                    Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                    Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
                 }
             }?;
         };
@@ -105,11 +106,12 @@ impl SmartMonitoringExecutor {
         icinga2_action: Icinga2ActionOwned,
         host_name: Option<String>,
         service_name: Option<String>,
-        attempts: u32,
+        total_attempts: u32,
+        performed_attempts: u32,
         sleep_ms_between_retries: u64,
     ) -> Pin<Box<dyn Future<Output = Result<(), ExecutorError>>>> {
         Box::pin(async move {
-            match icinga_executor.perform_request(&(&icinga2_action).into()).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None }) {
+            match icinga_executor.perform_request(&(&icinga2_action).into()).await {
                 Ok(()) => {
                     trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
                 }
@@ -136,38 +138,46 @@ impl SmartMonitoringExecutor {
                 }
                 _ => {
                     warn!("SmartMonitoringExecutor - cannot identify host or service name to retry process_check_result");
-                    Err(ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot identify host or service name to retry process_check_result".to_owned(), can_retry: false, code: None })
+                    Err(ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot identify host or service name to retry process_check_result".to_owned(), can_retry: false, code: None, data: Default::default() })
                 }
             }?;
 
+            let url = response.url;
+            let method = response.method;
+
             let response_json =
-                response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
+                response.response.json().await.map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: true,
                     message: format!(
                         "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
                         err
                     ),
                     code: None,
+                    data: hashmap![
+                        "url" => url.into(),
+                        "method" => method.into()
+                    ]
                 })?;
 
             match SmartMonitoringExecutor::is_pending(&response_json) {
                 Ok(false) => Ok(()),
                 _ => {
-                    if attempts > 0 {
-                        let remaining_attempts = attempts - 1;
-                        info!("SmartMonitoringExecutor - the object host [{:?}] service [{:?}] is found to be pending or the state cannot be determined. Retrying to set the status. Remaining attempts: {}", host_name, service_name, remaining_attempts);
+                    if (total_attempts - performed_attempts) > 0 {
+                        let new_performed_attempts = performed_attempts + 1;
+                        info!("SmartMonitoringExecutor - the object host [{:?}] service [{:?}] is found to be pending or the state cannot be determined. Retrying to set the status. Retries: {} out of {}", host_name, service_name, new_performed_attempts, total_attempts);
                         tokio::time::sleep(Duration::from_millis(sleep_ms_between_retries)).await;
                         SmartMonitoringExecutor::set_state_with_retry(
                             icinga_executor,
                             icinga2_action,
                             host_name,
                             service_name,
-                            remaining_attempts,
+                            total_attempts,
+                            new_performed_attempts,
                             sleep_ms_between_retries,
                         )
                         .await
                     } else {
-                        Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending and no more attempts to set the status will be performed.", host_name, service_name), can_retry: true, code: None })
+                        Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending after {} attempts and no more attempts to set the status will be performed.", host_name, service_name, total_attempts), can_retry: true, code: None, data: Default::default() })
                     }
                 }
             }
@@ -189,7 +199,7 @@ impl SmartMonitoringExecutor {
             .and_then(|attrs| attrs.get("last_check_result"))
             .map(|last_check_result| last_check_result.is_null())
             .ok_or_else(||
-                ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None }
+                ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None, data: Default::default(), }
             )
     }
 }
@@ -214,7 +224,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                 debug!("SmartMonitoringExecutor - Process check result correctly performed");
                 Ok(())
             }
-            Err(ExecutorError::ActionExecutionError { message, code: Some(code), .. })
+            Err(ExecutorError::ActionExecutionError { message, code: Some(code), data: _, can_retry: _ })
                 if code.eq(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) =>
             {
                 debug!("SmartMonitoringExecutor - Process check result action failed with message {:?}. Looks like Icinga2 object does not exist yet. Proceeding with the creation of the object..", message);
@@ -223,6 +233,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                     director_service_creation_action,
                 )
                 .await?;
+
                 SmartMonitoringExecutor::set_state_with_retry(
                     self.icinga_executor.clone(),
                     Icinga2ActionOwned {
@@ -232,6 +243,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                     host_name,
                     service_name,
                     self.config.pending_object_set_status_retries_attempts,
+                    0,
                     self.config.pending_object_set_status_retries_sleep_ms,
                 )
                 .await
@@ -241,7 +253,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
                     "SmartMonitoringExecutor - Process check result action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                Err(ExecutorError::ActionExecutionError { message: format!("SmartMonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default() })
             }
         }
     }
@@ -263,7 +275,6 @@ mod test {
     use super::*;
     use httpmock::Method::POST;
     use httpmock::MockServer;
-    use maplit::*;
     use tornado_common_api::Value;
 
     #[tokio::test]

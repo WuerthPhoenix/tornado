@@ -73,7 +73,6 @@ impl ApiClient {
                         ]
             })
         }
-
     }
 
     async fn get(&self, icinga2_api_name: &str) -> Result<ResponseData, ExecutorError> {

@@ -123,5 +123,5 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
 
     // Assert
     assert!(result.is_err());
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) }))
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response), can_retry: true, code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE), data: Default::default() }))
 }
