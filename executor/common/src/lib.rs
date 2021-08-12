@@ -25,7 +25,7 @@ pub trait StatelessExecutor: Display {
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
     #[error("ActionExecutionError: [{message}], can_retry: {can_retry}, code: {code:?}, data: {data}")]
-    ActionExecutionError { message: String, can_retry: bool, code: Option<&'static str>, data: DisplayAsJson<HashMap<&'static str, Value>> },
+    ActionExecutionError { message: String, can_retry: bool, code: Option<&'static str>, data: PrintAsJson<HashMap<&'static str, Value>> },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
     #[error("JsonError: {cause}")]
@@ -38,20 +38,30 @@ pub enum ExecutorError {
     UnknownArgumentError { message: String },
 }
 
-#[derive(Default, Debug, PartialEq)]
-pub struct DisplayAsJson<S: Serialize>(S);
+#[derive(Default, PartialEq)]
+pub struct PrintAsJson<S: Serialize>(S);
 
-impl <S: Serialize> std::fmt::Display for DisplayAsJson<S> {
+impl <S: Serialize> std::fmt::Display for PrintAsJson<S> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Ok(json) = serde_json::to_string(&self.0) {
             write!(formatter, "{}", json)
         } else {
-            write!(formatter, "Error while printing the JSON content")
+            write!(formatter, "Error while printing display info for JSON content")
         }
     }
 }
 
-impl <S: Serialize> From<S> for DisplayAsJson<S> {
+impl <S: Serialize> std::fmt::Debug for PrintAsJson<S> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+        if let Ok(json) = serde_json::to_string(&self.0) {
+            write!(formatter, "{}", json)
+        } else {
+            write!(formatter, "Error while printing debug info for JSON content")
+        }
+    }
+}
+
+impl <S: Serialize> From<S> for PrintAsJson<S> {
     fn from(data: S) -> Self {
         Self(data)
     }
