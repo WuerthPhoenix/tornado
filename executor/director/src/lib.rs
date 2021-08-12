@@ -133,7 +133,7 @@ impl DirectorExecutor {
                     "method" => "POST".into(),
                     "url" => url.into(),
                     "payload" => payload
-                ]
+                ].into()
             })
         };
 
@@ -149,7 +149,7 @@ impl DirectorExecutor {
                     "method" => "POST".into(),
                     "url" => url.into(),
                     "payload" => payload
-                ]
+                ].into()
             })
         };
 
@@ -164,7 +164,7 @@ impl DirectorExecutor {
                     "method" => "POST".into(),
                     "url" => url.into(),
                     "payload" => payload
-                ]
+                ].into()
             })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
@@ -177,7 +177,7 @@ impl DirectorExecutor {
                     "method" => "POST".into(),
                     "url" => url.into(),
                     "payload" => payload
-                ]
+                ].into()
             })
         } else {
             debug!("DirectorExecutor API request completed successfully. Response status: {}. Response body: {}", response_status, response_body);

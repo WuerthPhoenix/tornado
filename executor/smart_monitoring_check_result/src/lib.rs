@@ -156,7 +156,7 @@ impl SmartMonitoringExecutor {
                     data: hashmap![
                         "url" => url.into(),
                         "method" => method.into()
-                    ]
+                    ].into()
                 })?;
 
             match SmartMonitoringExecutor::is_pending(&response_json) {

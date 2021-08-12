@@ -139,6 +139,6 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
             "method" => "POST".into(),
             "url" => format!("{}/host", server.url("")).into(),
             "payload" => serde_json::to_value(action.payload.get(DIRECTOR_ACTION_PAYLOAD_KEY)).unwrap()
-        }, 
+        }.into(), 
     }))
 }

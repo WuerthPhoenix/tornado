@@ -3691,6 +3691,7 @@ version = "0.0.1"
 dependencies = [
  "async-trait",
  "log",
+ "serde",
  "serde_json",
  "thiserror",
  "tornado_common_api",

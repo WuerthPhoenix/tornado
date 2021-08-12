@@ -131,6 +131,6 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
             "method" => "POST".into(),
             "url" => format!("{}/v1/actions/icinga2-api-action", server.url("")).into(),
             "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap()
-        },
+        }.into(),
     }))
 }

@@ -70,7 +70,7 @@ impl ApiClient {
                             "method" => "POST".into(),
                             "url" => url.into(),
                             "payload" => serde_json::to_value(payload)?
-                        ]
+                        ].into()
             })
         }
     }
@@ -99,7 +99,7 @@ impl ApiClient {
                 data: hashmap![
                             "method" => "GET".into(),
                             "url" => url.into(),
-                        ]
+                        ].into()
             })
         }
     }

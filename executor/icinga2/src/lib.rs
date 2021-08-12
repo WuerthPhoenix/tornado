@@ -81,7 +81,7 @@ impl Icinga2Executor {
                         can_retry: true,
                         message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
                         code: None,
-                        data
+                        data: data.into()
                     },
                     Err(err) => err.into()
                 }
@@ -94,7 +94,7 @@ impl Icinga2Executor {
                 message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ),
                 can_retry: true,
                 code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
-                data: to_err_data(method, &url, payload)?
+                data: to_err_data(method, &url, payload)?.into()
             })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
@@ -103,7 +103,7 @@ impl Icinga2Executor {
                     "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
                 code: None,
-                data: to_err_data(method, &url, payload)?
+                data: to_err_data(method, &url, payload)?.into()
             })
         } else {
             debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
