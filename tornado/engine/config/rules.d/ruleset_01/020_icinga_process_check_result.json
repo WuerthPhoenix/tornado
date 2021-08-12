@@ -6,7 +6,13 @@
   "constraint": {
     "WHERE": {
       "type": "AND",
-      "operators": []
+      "operators": [
+        {
+          "type": "equal",
+          "first": "${event.type}",
+          "second": "icinga_process-check-result"
+        }
+      ]
     },
     "WITH": {}
   },
@@ -16,8 +22,8 @@
       "payload": {
         "icinga2_action_name": "process-check-result",
         "icinga2_action_payload": {
-          "exit_status": "1",
-          "plugin_output": "hello",
+          "exit_status": "${event.payload.exit_status}",
+          "plugin_output": "${event.payload.plugin_output}",
           "filter": "host.name==\"example.localdomain\"",
           "type": "Host"
         }
