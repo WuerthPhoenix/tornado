@@ -147,7 +147,8 @@ impl MonitoringExecutor {
                     "MonitoringExecutor - Director host creation action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                Err(ExecutorError::ActionExecutionError { 
+                    message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
             }
         }?;
 
@@ -167,7 +168,7 @@ impl MonitoringExecutor {
                 }
                 Err(err) => {
                     error!("MonitoringExecutor - Director service creation action failed with error {:?}.", err);
-                    Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                    Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error during the service creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
                 }
             }?;
         };
@@ -200,14 +201,14 @@ impl StatelessExecutor for MonitoringExecutor {
                     director_service_creation_action,
                 )
                 .await?;
-                self.icinga_executor.perform_request(&icinga2_action).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                self.icinga_executor.perform_request(&icinga2_action).await.map_err(|err| ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
             }
             Err(err) => {
                 error!(
                     "MonitoringExecutor - Process check result action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None })
+                Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
             }
         }
     }

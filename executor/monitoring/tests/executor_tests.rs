@@ -56,7 +56,13 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     // Assert
     assert!(result.is_err());
     assert_eq!(icinga_mock.hits(), 1);
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}", "500 Internal Server Error", ""), can_retry: true, code: None }))
+
+    match result {
+        Err(ExecutorError::ActionExecutionError{message, ..}) => {
+            assert!(message.contains(&format!("{}/v1/actions/process-check-result", server.url(""))));
+        },
+        _ => assert!(false)
+    };
 }
 
 #[tokio::test]
@@ -159,7 +165,7 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
 
     // Act
-    let result = executor.execute(action.into()).await;
+    let result = executor.execute(action.clone().into()).await;
 
     // Assert
     assert!(result.is_err());
@@ -167,7 +173,14 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     assert_eq!(icinga_mock.hits(), 2);
     // director server should be called once to create the host, and once to create the service
     assert_eq!(director_mock.hits(), 2);
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { message: format!("MonitoringExecutor - Error while performing the process check result after the object creation. IcingaExecutor failed with error: ActionExecutionError {{ message: \"Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}\", can_retry: true, code: Some(\"IcingaObjectNotExisting\") }}", "404 Not Found", icinga_server_response.escape_debug()), can_retry: true, code: None  }))
+
+    match result {
+        Err(ExecutorError::ActionExecutionError{message, ..}) => {
+            assert!(message.contains(&format!("{}/v1/actions/process-check-result", icinga_server.url(""))));
+        },
+        _ => assert!(false)
+    };
+
 }
 
 #[tokio::test]
@@ -230,15 +243,13 @@ async fn should_return_return_error_on_object_creation_failure() {
     assert_eq!(icinga_mock.hits(), 1);
     // director server should be called once to create the host, and once to create the service
     assert_eq!(director_mock.hits(), 1);
-    assert_eq!(
-        result,
-        Err(ExecutorError::ActionExecutionError {
-            message: format!(
-                "MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: ActionExecutionError {{ message: \"DirectorExecutor API returned an error. Response status: {}. Response body: {}\", can_retry: true, code: None }}",
-                "500 Internal Server Error", director_server_response.escape_debug()
-            ),
-            can_retry: true,
-            code: None
-        })
-    )
+
+    match result {
+        Err(ExecutorError::ActionExecutionError{message, ..}) => {
+            assert!(message.contains("Response status: 500 Internal Server Error"));
+            assert!(message.contains(&format!("{}/host?live-creation=true", director_server.url(""))));
+        },
+        _ => assert!(false)
+    };
+
 }

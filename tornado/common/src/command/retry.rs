@@ -480,6 +480,7 @@ pub mod test {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
                 code: None,
+                data: Default::default(),
             })
         }
     }

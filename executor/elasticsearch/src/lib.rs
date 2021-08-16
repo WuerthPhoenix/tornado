@@ -164,6 +164,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                     can_retry: false,
                     message: format!("Error while deserializing {}. Err: {:?}", AUTH_KEY, err),
                     code: None,
+                    data: Default::default(),
                 })?;
             Cow::Owned(es_authentication.new_client().await?)
         } else {
@@ -173,6 +174,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                     can_retry: false,
                     message: "Missing both default client and auth data from payload".to_string(),
                     code: None,
+                    data: Default::default(),
                 }
             })?)
         };
@@ -182,6 +184,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                 can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {:?}", err),
                 code: None,
+                data: Default::default(),
             }
         })?;
 
@@ -193,6 +196,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
                     res
                 ),
                 code: None,
+                data: Default::default(),
             })
         } else {
             debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");

@@ -66,6 +66,7 @@ impl StatelessExecutor for ScriptExecutor {
                 can_retry: false,
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
                 code: None,
+                data: Default::default(),
             })?
             .to_owned();
 
@@ -77,6 +78,7 @@ impl StatelessExecutor for ScriptExecutor {
                     can_retry: false,
                     message: "The script in the payload is empty".to_owned(),
                     code: None,
+                    data: Default::default(),
                 }
             })?);
 
@@ -94,6 +96,7 @@ impl StatelessExecutor for ScriptExecutor {
                 can_retry: true,
                 message: format!("Cannot execute script [{:?}]: {}", script, err),
                 code: None,
+                data: Default::default(),
             })?
         };
 
@@ -117,6 +120,7 @@ impl StatelessExecutor for ScriptExecutor {
                     output.status, script, stderr
                 ),
                 code: None,
+                data: Default::default(),
             })
         }
     }

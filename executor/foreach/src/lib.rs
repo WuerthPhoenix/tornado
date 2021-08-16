@@ -122,6 +122,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
                     code: None,
+                    data: Default::default(),
                 })?
                 .parse_value(item)
             {

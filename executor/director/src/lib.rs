@@ -1,5 +1,6 @@
 use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
+use maplit::*;
 use serde::*;
 use std::sync::Arc;
 use tornado_common_api::Action;
@@ -114,39 +115,69 @@ impl DirectorExecutor {
 
         trace!("DirectorExecutor - calling url: {}", url);
 
-        let response = client
-            .post(&url)
-            .header(reqwest::header::ACCEPT, "application/json")
-            .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
-            .json(&director_action.payload)
-            .send()
-            .await
-            .map_err(|err| ExecutorError::ActionExecutionError {
+        let payload = serde_json::to_value(&director_action.payload)?;
+        
+        let response = match client
+        .post(&url)
+        .header(reqwest::header::ACCEPT, "application/json")
+        .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
+        .json(&payload)
+        .send()
+        .await {
+            Ok(response) => response,
+            Err(err) => return Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
                 code: None,
-            })?;
+                data: hashmap![
+                    "method" => "POST".into(),
+                    "url" => url.into(),
+                    "payload" => payload
+                ].into()
+            })
+        };
 
         let response_status = response.status();
 
-        let response_body =
-            response.text().await.map_err(|err| ExecutorError::ActionExecutionError {
+        let response_body = match response.text().await {
+            Ok(response_body) => response_body,
+            Err(err) => return Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
                 code: None,
-            })?;
+                data: hashmap![
+                    "method" => "POST".into(),
+                    "url" => url.into(),
+                    "payload" => payload
+                ].into()
+            })
+        };
 
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::ActionExecutionError { message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), can_retry: true, code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE) })
+            Err(ExecutorError::ActionExecutionError { 
+                message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), 
+                can_retry: true, 
+                code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE),
+                data: hashmap![
+                    "method" => "POST".into(),
+                    "url" => url.into(),
+                    "payload" => payload
+                ].into()
+            })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
                     "DirectorExecutor API returned an error. Response status: {}. Response body: {}", response_status, response_body
                 ),
-                code: None
+                code: None,
+                data: hashmap![
+                    "method" => "POST".into(),
+                    "url" => url.into(),
+                    "payload" => payload
+                ].into()
             })
         } else {
             debug!("DirectorExecutor API request completed successfully. Response status: {}. Response body: {}", response_status, response_body);
@@ -176,7 +207,6 @@ pub struct DirectorAction<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use maplit::*;
     use tornado_common_api::Value;
 
     #[test]
