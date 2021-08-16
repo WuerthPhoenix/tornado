@@ -147,7 +147,7 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> RetryC
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> Command<I, Result<O, E>>
+impl<I: Clone + Debug, O, E: RetriableError + Debug, T: Command<I, Result<O, E>>> Command<I, Result<O, E>>
     for RetryCommand<I, O, E, T>
 {
     async fn execute(&self, message: I) -> Result<O, E> {
@@ -175,7 +175,7 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> Comman
                         should_retry = new_should_retry;
 
                         if should_retry {
-                            debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}", failed_attempts, message);
+                            debug!("The failed message will be reprocessed based on the current RetryPolicy. Failed attempts: {}. Message: {:?}. Execution attempt error: {:?}", failed_attempts, message, err);
                             if let Some(sleep) = should_wait {
                                 debug!("Wait for {:?} before retrying.", sleep);
                                 actix::clock::sleep(sleep).await;
@@ -480,6 +480,7 @@ pub mod test {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
                 code: None,
+                data: Default::default(),
             })
         }
     }

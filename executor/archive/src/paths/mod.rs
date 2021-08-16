@@ -63,7 +63,7 @@ impl PathMatcher {
                         &param.simple, self.path
                     );
                     warn!("{}", &message);
-                    ExecutorError::ActionExecutionError { can_retry: false, message, code: None }
+                    ExecutorError::ActionExecutionError { can_retry: false, message, code: None, data: Default::default(), }
                 })?;
             path = path.replace(&param.full, var_value);
         }
