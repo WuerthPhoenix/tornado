@@ -137,11 +137,11 @@ pub mod test {
             Ok(())
         }
 
-        async fn set_apm_first_configuration(&self, dto: SetApmFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_apm_first_configuration(&self, _dto: SetApmFirstConfigurationRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
 
-        async fn set_stdout_first_configuration(&self, dto: SetStdoutFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_stdout_first_configuration(&self, _dto: SetStdoutFirstConfigurationRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
     }
@@ -282,7 +282,7 @@ pub mod test {
             permissions_map,
         );
 
-        let dto = SetStdoutFirstConfigurationRequestDto { logger_level: None };
+        let dto = SetStdoutFirstConfigurationRequestDto {};
 
         // Act & Assert
         assert!(api.set_stdout_first_configuration(auth_view, dto.clone()).await.is_err());

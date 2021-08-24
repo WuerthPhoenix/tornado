@@ -19,7 +19,7 @@ fn main() {
     };
 
     // Setup logger
-    let _guard = setup_logger(&logger_config).unwrap();
+    let _guard = setup_logger(logger_config).unwrap();
 
     // Load events from fs
     let events_path = format!("{}/{}", conf.io.config_dir, conf.io.events_dir);

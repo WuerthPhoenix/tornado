@@ -39,6 +39,6 @@ pub mod test_root {
             file_output_path: None,
             tracing_elastic_apm: None,
         };
-        let _guard = setup_logger(&conf).unwrap();
+        let _guard = setup_logger(conf).unwrap();
     }
 }

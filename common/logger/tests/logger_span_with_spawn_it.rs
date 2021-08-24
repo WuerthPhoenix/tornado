@@ -45,7 +45,7 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
         tracing_elastic_apm: None,
     };
 
-    let _guard = setup_logger(&config).unwrap();
+    let _guard = setup_logger(config).unwrap();
 
     let _span_1 = tracing::error_span!("level", "first").entered();
 
