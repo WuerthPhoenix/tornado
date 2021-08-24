@@ -1,6 +1,6 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto};
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SetApmFirstConfigurationRequestDto, SetStdoutFirstConfigurationRequestDto};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -23,6 +23,16 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
     async fn set_stdout_enabled(
         &self,
         logger_config: SetLoggerStdoutRequestDto,
+    ) -> Result<(), ApiError>;
+
+    async fn set_apm_first_configuration(
+        &self,
+        dto: SetApmFirstConfigurationRequestDto,
+    ) -> Result<(), ApiError>;
+
+    async fn set_stdout_first_configuration(
+        &self,
+        dto: SetStdoutFirstConfigurationRequestDto,
     ) -> Result<(), ApiError>;
 }
 
@@ -73,6 +83,28 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
         self.handler.set_stdout_enabled(dto).await
     }
+
+    /// Enable APM and disable the stdout.
+    /// It sets also the logger level to DEBUG
+    pub async fn set_apm_first_configuration(
+        &self,
+        auth: AuthContext<'_>,
+        dto: SetApmFirstConfigurationRequestDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::RuntimeConfigEdit)?;
+        self.handler.set_apm_first_configuration(dto).await
+    }
+
+    /// Enable the stdout and disable APM.
+    /// It also reset the logger to the original configuration
+    pub async fn set_stdout_first_configuration(
+        &self,
+        auth: AuthContext<'_>,
+        dto: SetStdoutFirstConfigurationRequestDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::RuntimeConfigEdit)?;
+        self.handler.set_stdout_first_configuration(dto).await
+    }
 }
 
 #[cfg(test)]
@@ -102,6 +134,14 @@ pub mod test {
         }
 
         async fn set_stdout_enabled(&self, _logger_config: SetLoggerStdoutRequestDto) -> Result<(), ApiError> {
+            Ok(())
+        }
+
+        async fn set_apm_first_configuration(&self, dto: SetApmFirstConfigurationRequestDto) -> Result<(), ApiError> {
+            Ok(())
+        }
+
+        async fn set_stdout_first_configuration(&self, dto: SetStdoutFirstConfigurationRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
     }
@@ -202,4 +242,51 @@ pub mod test {
         assert!(api.set_stdout_enabled(auth_view, dto.clone()).await.is_err());
         assert!(api.set_stdout_enabled(auth_edit, dto).await.is_ok());
     }
+
+    #[actix_rt::test]
+    async fn set_apm_first_configuration_should_require_edit_permission() {
+        // Arrange
+        let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
+        let permissions_map = &auth_permissions();
+
+        let auth_view = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["view".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let auth_edit = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let dto = SetApmFirstConfigurationRequestDto { logger_level: None };
+
+        // Act & Assert
+        assert!(api.set_apm_first_configuration(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_apm_first_configuration(auth_edit, dto).await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn set_stdout_first_configuration_should_require_edit_permission() {
+        // Arrange
+        let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
+        let permissions_map = &auth_permissions();
+
+        let auth_view = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["view".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let auth_edit = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let dto = SetStdoutFirstConfigurationRequestDto { logger_level: None };
+
+        // Act & Assert
+        assert!(api.set_stdout_first_configuration(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_stdout_first_configuration(auth_edit, dto).await.is_ok());
+    }
+
 }

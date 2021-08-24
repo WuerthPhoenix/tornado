@@ -22,3 +22,13 @@ pub struct SetLoggerApmRequestDto {
 pub struct SetLoggerStdoutRequestDto {
     pub enabled: bool,
 }
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct SetApmFirstConfigurationRequestDto {
+    pub logger_level: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct SetStdoutFirstConfigurationRequestDto {
+    pub logger_level: Option<String>,
+}
