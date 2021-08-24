@@ -156,4 +156,45 @@ mod test {
         // Assert
         assert!(log_guard.stdout_enabled());
     }
+
+    #[actix_rt::test]
+    async fn should_enable_apm_or_stdout_first_logger_config() {
+        // Arrange
+        let logger_level = "debug".to_owned();
+        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+
+        let (_reloadable_env_filter, reloadable_env_filter_handle) =
+            tracing_subscriber::reload::Layer::new(env_filter);
+
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, logger_level.clone().into(), AtomicBool::new(true).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
+
+        // Set APM first
+        {
+            // Act
+            assert!(!log_guard.apm_enabled());
+            assert!(log_guard.stdout_enabled());
+
+            api.set_apm_first_configuration(SetApmFirstConfigurationRequestDto{
+                logger_level: None
+            }).await.unwrap();
+
+            // Assert
+            assert!(log_guard.apm_enabled());
+            assert!(!log_guard.stdout_enabled());
+            assert_eq!("info,tornado=debug" ,&log_guard.level());
+        }
+
+        // Set stdout first
+        {
+            // Act
+            api.set_stdout_first_configuration(SetStdoutFirstConfigurationRequestDto{}).await.unwrap();
+
+            // Assert
+            assert!(!log_guard.apm_enabled());
+            assert!(log_guard.stdout_enabled());
+            assert_eq!(&logger_level ,&log_guard.level());
+        }
+    }
 }
