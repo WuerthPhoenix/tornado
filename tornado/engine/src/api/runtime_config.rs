@@ -3,7 +3,7 @@ use tornado_engine_api::error::ApiError;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApiHandler;
 use std::sync::Arc;
 use tornado_common_logger::LogWorkerGuard;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto};
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetApmFirstConfigurationRequestDto, SetStdoutFirstConfigurationRequestDto};
 use log::*;
 
 #[derive(Clone)]
@@ -53,6 +53,25 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         Ok(())
     }
 
+    async fn set_apm_first_configuration(&self, dto: SetApmFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        info!("RuntimeConfigApiHandlerImpl - set_apm_first_configuration");
+        let FIX_ME = 0;
+        let logger_level = dto.logger_level.unwrap_or_else(|| "info,tornado=debug".to_owned());
+        self.logger_guard.set_apm_enabled(true)
+            .and_then(|_| self.logger_guard.set_level(logger_level))
+            .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
+        self.logger_guard.set_stdout_enabled(false);
+        Ok(())
+    }
+
+    async fn set_stdout_first_configuration(&self, _dto: SetStdoutFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        info!("RuntimeConfigApiHandlerImpl - set_stdout_first_configuration");
+        self.logger_guard.set_stdout_enabled(true);
+        self.logger_guard.reset_level()
+            .and_then(|_| self.logger_guard.set_apm_enabled(false))
+            .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
+        Ok(())
+    }
 }
 
 #[cfg(test)]

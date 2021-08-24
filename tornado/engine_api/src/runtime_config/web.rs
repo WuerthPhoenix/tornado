@@ -2,8 +2,10 @@ use crate::model::ApiData;
 use crate::runtime_config::api::{RuntimeConfigApi, RuntimeConfigApiHandler};
 use actix_web::web::{Data, Json};
 use actix_web::{web, HttpRequest, Scope};
+use ajars::actix_web::ActixWebHandler;
 use log::*;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto};
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SET_APM_FIRST_CONFIG_REST, SetApmFirstConfigurationRequestDto};
+use crate::error::ApiError;
 
 pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
     data: ApiData<RuntimeConfigApi<A>>,
@@ -25,6 +27,9 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
         .service(
             web::resource("/logger")
             .route(web::get().to(get_current_logger_configuration::<A>))
+        )
+        .service(
+            SET_APM_FIRST_CONFIG_REST.handle(set_apm_first_config::<A>)
         )
 }
 
@@ -69,6 +74,16 @@ async fn set_stdout<A: RuntimeConfigApiHandler + 'static>(
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.set_stdout_enabled(auth_ctx, body.into_inner()).await?;
     Ok(Json(result))
+}
+
+async fn set_apm_first_config<A: RuntimeConfigApiHandler + 'static>(
+    body: SetApmFirstConfigurationRequestDto,
+    req: HttpRequest,
+    data: Data<ApiData<RuntimeConfigApi<A>>>,
+) -> Result<(), ApiError> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    data.api.set_apm_first_configuration(auth_ctx, body).await
 }
 
 #[cfg(test)]
