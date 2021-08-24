@@ -24,14 +24,14 @@ pub struct SetLoggerStdoutRequestDto {
     pub enabled: bool,
 }
 
-pub const SET_APM_FIRST_CONFIG_REST: Rest<SetApmFirstConfigurationRequestDto, ()> = Rest::post("/set_apm_first_configuration");
+pub const SET_APM_PRIORITY_CONFIG_REST: Rest<SetApmPriorityConfigurationRequestDto, ()> = Rest::post("/logger/set_apm_priority_configuration");
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct SetApmFirstConfigurationRequestDto {
+pub struct SetApmPriorityConfigurationRequestDto {
     pub logger_level: Option<String>,
 }
 
-pub const SET_STDOUT_FIRST_CONFIG_REST: Rest<SetStdoutFirstConfigurationRequestDto, ()> = Rest::post("/set_stdout_first_configuration");
+pub const SET_STDOUT_PRIORITY_CONFIG_REST: Rest<SetStdoutPriorityConfigurationRequestDto, ()> = Rest::post("/logger/set_stdout_priority_configuration");
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct SetStdoutFirstConfigurationRequestDto {}
+pub struct SetStdoutPriorityConfigurationRequestDto {}

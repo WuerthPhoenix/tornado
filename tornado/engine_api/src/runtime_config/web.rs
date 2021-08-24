@@ -4,7 +4,7 @@ use actix_web::web::{Data, Json};
 use actix_web::{web, HttpRequest, Scope};
 use ajars::actix_web::ActixWebHandler;
 use log::*;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SET_APM_FIRST_CONFIG_REST, SetApmFirstConfigurationRequestDto};
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SET_APM_PRIORITY_CONFIG_REST, SetApmPriorityConfigurationRequestDto, SET_STDOUT_PRIORITY_CONFIG_REST, SetStdoutPriorityConfigurationRequestDto};
 use crate::error::ApiError;
 
 pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
@@ -25,11 +25,14 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
                 .route(web::post().to(set_apm::<A>)),
         )
         .service(
-            web::resource("/logger")
-            .route(web::get().to(get_current_logger_configuration::<A>))
+            SET_APM_PRIORITY_CONFIG_REST.handle(set_apm_priority_config::<A>)
         )
         .service(
-            SET_APM_FIRST_CONFIG_REST.handle(set_apm_first_config::<A>)
+            SET_STDOUT_PRIORITY_CONFIG_REST.handle(set_stdout_priority_config::<A>)
+        )
+        .service(
+            web::resource("/logger")
+            .route(web::get().to(get_current_logger_configuration::<A>))
         )
 }
 
@@ -76,14 +79,24 @@ async fn set_stdout<A: RuntimeConfigApiHandler + 'static>(
     Ok(Json(result))
 }
 
-async fn set_apm_first_config<A: RuntimeConfigApiHandler + 'static>(
-    body: SetApmFirstConfigurationRequestDto,
+async fn set_apm_priority_config<A: RuntimeConfigApiHandler + 'static>(
+    body: SetApmPriorityConfigurationRequestDto,
     req: HttpRequest,
     data: Data<ApiData<RuntimeConfigApi<A>>>,
 ) -> Result<(), ApiError> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    data.api.set_apm_first_configuration(auth_ctx, body).await
+    data.api.set_apm_priority_configuration(auth_ctx, body).await
+}
+
+async fn set_stdout_priority_config<A: RuntimeConfigApiHandler + 'static>(
+    body: SetStdoutPriorityConfigurationRequestDto,
+    req: HttpRequest,
+    data: Data<ApiData<RuntimeConfigApi<A>>>,
+) -> Result<(), ApiError> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    data.api.set_stdout_priority_configuration(auth_ctx, body).await
 }
 
 #[cfg(test)]

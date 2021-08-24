@@ -1,6 +1,6 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SetApmFirstConfigurationRequestDto, SetStdoutFirstConfigurationRequestDto};
+use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SetApmPriorityConfigurationRequestDto, SetStdoutPriorityConfigurationRequestDto};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -27,12 +27,12 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
 
     async fn set_apm_first_configuration(
         &self,
-        dto: SetApmFirstConfigurationRequestDto,
+        dto: SetApmPriorityConfigurationRequestDto,
     ) -> Result<(), ApiError>;
 
     async fn set_stdout_first_configuration(
         &self,
-        dto: SetStdoutFirstConfigurationRequestDto,
+        dto: SetStdoutPriorityConfigurationRequestDto,
     ) -> Result<(), ApiError>;
 }
 
@@ -86,10 +86,10 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
 
     /// Enable APM and disable the stdout.
     /// It sets also the logger level to DEBUG
-    pub async fn set_apm_first_configuration(
+    pub async fn set_apm_priority_configuration(
         &self,
         auth: AuthContext<'_>,
-        dto: SetApmFirstConfigurationRequestDto,
+        dto: SetApmPriorityConfigurationRequestDto,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
         self.handler.set_apm_first_configuration(dto).await
@@ -97,10 +97,10 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
 
     /// Enable the stdout and disable APM.
     /// It also reset the logger to the original configuration
-    pub async fn set_stdout_first_configuration(
+    pub async fn set_stdout_priority_configuration(
         &self,
         auth: AuthContext<'_>,
-        dto: SetStdoutFirstConfigurationRequestDto,
+        dto: SetStdoutPriorityConfigurationRequestDto,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
         self.handler.set_stdout_first_configuration(dto).await
@@ -137,11 +137,11 @@ pub mod test {
             Ok(())
         }
 
-        async fn set_apm_first_configuration(&self, _dto: SetApmFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_apm_first_configuration(&self, _dto: SetApmPriorityConfigurationRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
 
-        async fn set_stdout_first_configuration(&self, _dto: SetStdoutFirstConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_stdout_first_configuration(&self, _dto: SetStdoutPriorityConfigurationRequestDto) -> Result<(), ApiError> {
             Ok(())
         }
     }
@@ -259,11 +259,11 @@ pub mod test {
             permissions_map,
         );
 
-        let dto = SetApmFirstConfigurationRequestDto { logger_level: None };
+        let dto = SetApmPriorityConfigurationRequestDto { logger_level: None };
 
         // Act & Assert
-        assert!(api.set_apm_first_configuration(auth_view, dto.clone()).await.is_err());
-        assert!(api.set_apm_first_configuration(auth_edit, dto).await.is_ok());
+        assert!(api.set_apm_priority_configuration(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_apm_priority_configuration(auth_edit, dto).await.is_ok());
     }
 
     #[actix_rt::test]
@@ -282,11 +282,11 @@ pub mod test {
             permissions_map,
         );
 
-        let dto = SetStdoutFirstConfigurationRequestDto {};
+        let dto = SetStdoutPriorityConfigurationRequestDto {};
 
         // Act & Assert
-        assert!(api.set_stdout_first_configuration(auth_view, dto.clone()).await.is_err());
-        assert!(api.set_stdout_first_configuration(auth_edit, dto).await.is_ok());
+        assert!(api.set_stdout_priority_configuration(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_stdout_priority_configuration(auth_edit, dto).await.is_ok());
     }
 
 }
