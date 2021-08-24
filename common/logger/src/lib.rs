@@ -107,6 +107,11 @@ impl LogWorkerGuard {
         Ok(())
     }
 
+    /// Reset the logger global filter to the original value from the configuration
+    pub fn reset_level(&self) -> Result<(), LoggerError> {
+        self.set_level(self.config_logger_level.as_ref())
+    }
+
     pub fn stdout_enabled(&self) -> bool {
         self.stdout_enabled.load(Ordering::Relaxed)
     }
@@ -385,6 +390,37 @@ mod test {
 
         assert!(guard.set_level("NOT_VALID_FILTER,,==::!$&%$££$%").is_err());
         assert_eq!("debug", &guard.level());
+    }
+
+    #[test]
+    fn log_worker_guard_should_reset_logger_level_to_original_config() {
+        // Arrange
+        let config_logger_level = Arc::new("warn,tornado=debug".to_owned());
+        let env_filter = EnvFilter::from_str(config_logger_level.as_ref()).unwrap();
+        let logger_level = ArcSwap::new(config_logger_level.clone());
+
+        let (reloadable_env_filter, reloadable_env_filter_handle) =
+            tracing_subscriber::reload::Layer::new(env_filter);
+
+        let _subscriber = tracing_subscriber::registry()
+            .with(reloadable_env_filter);
+
+        let guard = LogWorkerGuard {
+            apm_enabled: None,
+            stdout_enabled: AtomicBool::new(true).into(),
+            file_guard: None,
+            config_logger_level: config_logger_level.clone(),
+            logger_level,
+            stdout_guard: None,
+            reload_handle: reloadable_env_filter_handle,
+        };
+
+        // Act
+        assert!(guard.set_level("debug").is_ok());
+        assert_eq!("debug", &guard.level());
+
+        assert!(guard.reset_level().is_ok());
+        assert_eq!(config_logger_level.as_str(), &guard.level());
     }
 
     #[test]
