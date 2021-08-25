@@ -3629,6 +3629,7 @@ dependencies = [
  "actix-web",
  "ajars",
  "async-trait",
+ "base64 0.13.0",
  "chrono",
  "clap 3.0.0-beta.4",
  "config",
