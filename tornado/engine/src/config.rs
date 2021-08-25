@@ -78,14 +78,28 @@ pub enum SubCommand {
     /// Starts the Tornado Rules upgrade process
     RulesUpgrade,
 
-    /*
-    /// Verify the blockchain validity
-    Verify {
-        #[clap(flatten)]
-        opts: VerifyCommandOpts,
+    /// Enable or disable the APM logger priority configuration.
+    /// When used with `enable`, it:
+    /// - enables the elastic-APM logger output
+    /// - disables the stdout logger output
+    /// - increases the logger level to debug
+    ///
+    /// When used with `disable`, it:
+    /// - sets the logger level back to original value from the configuration file
+    /// - enables the stdout logger output
+    /// - disables the elastic-APM logger output
+    ///
+    ApmTracing {
+        #[clap(subcommand)]
+        command: EnableOrDisableSubCommand,
     },
 
-     */
+}
+
+#[derive(Clap, Debug)]
+pub enum EnableOrDisableSubCommand {
+    Enable,
+    Disable
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
