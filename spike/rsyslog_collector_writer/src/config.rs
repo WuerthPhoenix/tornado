@@ -1,29 +1,29 @@
-use structopt::StructOpt;
+use clap::Clap;
 
-#[derive(Debug, StructOpt)]
-#[structopt(rename_all = "kebab-case")]
+#[derive(Debug, Clap)]
+#[clap(rename_all = "kebab-case")]
 pub struct Io {
     /// The filesystem folder where Events are saved in JSON format
-    #[structopt(long, default_value = "./events")]
+    #[clap(long, default_value = "./events")]
     pub json_events_path: String,
 
     /// How many times each event should be sent
-    #[structopt(long, default_value = "1000")]
+    #[clap(long, default_value = "1000")]
     pub repeat_send: usize,
 
     /// How long to sleep after each message is sent, in milliseconds
-    #[structopt(long, default_value = "1000")]
+    #[clap(long, default_value = "1000")]
     pub repeat_sleep_ms: u64,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Clap)]
 pub struct Conf {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub io: Io,
 }
 
 impl Conf {
     pub fn build() -> Self {
-        Conf::from_args()
+        Conf::parse()
     }
 }

@@ -23,7 +23,7 @@ The following entries can be configured:
                                        provided, they will be read from the file `<config_dir>/apm_server_api_credentials.json`
   
 In Tornado executables, the Logger configuration is usually defined with command line parameters
-managed by [structopt](https://github.com/TeXitoi/structopt). In that case, the default _level_
+managed by [clap](https://github.com/clap-rs/clap). In that case, the default _level_
 is set to _warn_, _stdout-output_ is disabled and the _file-output-path_ is empty.
 
 For example:
