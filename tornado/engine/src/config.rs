@@ -1,4 +1,3 @@
-use clap::{App, Arg, ArgMatches, SubCommand};
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
@@ -16,6 +15,8 @@ use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
+use structopt::clap::{App, Arg, ArgMatches};
+use structopt::StructOpt;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -37,13 +38,82 @@ pub fn arg_matches<'a>() -> ArgMatches<'a> {
             .long("drafts-dir")
             .help("The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`")
             .default_value("/drafts/"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_CHECK )
+        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_CHECK )
             .help("Checks that the configuration is valid"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_DAEMON )
+        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_DAEMON )
             .help("Starts the Tornado daemon"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_RULES_UPGRADE)
+        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_RULES_UPGRADE)
             .help("Starts the Tornado Rules upgrade process"))
         .get_matches()
+}
+
+#[derive(StructOpt, Debug)]
+#[structopt(name = "tornado")]
+pub struct Opt {
+    #[structopt(long = "config-dir")]
+    /// The filesystem folder where the Tornado configuration is saved
+    config_dir: Option<String>,
+    #[structopt(long = "rules-dir")]
+    /// The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`
+    rules_dir: Option<String>,
+    #[structopt(long = "drafts-dir")]
+    /// The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`
+    drafts_dir: Option<String>,
+    #[structopt(subcommand)]
+    pub command: SubCommand,
+}
+
+impl Opt {
+    pub fn config_dir(&self) -> &str {
+        let config_dir = match &self.config_dir {
+            Some(config_dir) => config_dir,
+            None => CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado"),
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Start with configuration directory: [{}]", config_dir);
+        config_dir
+    }
+
+    pub fn rules_dir(&self) -> &str {
+        let rules_dir = match &self.rules_dir {
+            Some(rules_dir) => rules_dir,
+            None => "/rules.d/",
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Using rules_dir directory: [{}]", rules_dir);
+        rules_dir
+    }
+
+    pub fn drafts_dir(&self) -> &str {
+        let drafts_dir = match &self.drafts_dir {
+            Some(drafts_dir) => drafts_dir,
+            None => "/drafts/",
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Using drafts_dir directory: [{}]", drafts_dir);
+        drafts_dir
+    }
+}
+
+#[derive(StructOpt, Debug)]
+pub enum SubCommand {
+    /// Checks that the configuration is valid
+    Check,
+
+    /// Starts the Tornado daemon
+    Daemon,
+
+    /// Starts the Tornado Rules upgrade process
+    RulesUpgrade,
+
+    /*
+    /// Verify the blockchain validity
+    Verify {
+        #[structopt(flatten)]
+        opts: VerifyCommandOpts,
+    },
+
+     */
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
