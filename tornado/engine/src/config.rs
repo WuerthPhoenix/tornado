@@ -15,37 +15,9 @@ use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
-use structopt::clap::{App, Arg, ArgMatches};
 use structopt::StructOpt;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
-
-pub const SUBCOMMAND_CHECK: &str = "check";
-pub const SUBCOMMAND_DAEMON: &str = "daemon";
-pub const SUBCOMMAND_RULES_UPGRADE: &str = "rules-upgrade";
-
-pub fn arg_matches<'a>() -> ArgMatches<'a> {
-    App::new("tornado_daemon")
-        .arg(Arg::with_name("config-dir")
-            .long("config-dir")
-            .help("The filesystem folder where the Tornado configuration is saved")
-            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado")))
-        .arg(Arg::with_name("rules-dir")
-            .long("rules-dir")
-            .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
-            .default_value("/rules.d/"))
-        .arg(Arg::with_name("drafts-dir")
-            .long("drafts-dir")
-            .help("The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`")
-            .default_value("/drafts/"))
-        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_CHECK )
-            .help("Checks that the configuration is valid"))
-        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_DAEMON )
-            .help("Starts the Tornado daemon"))
-        .subcommand(structopt::clap::SubCommand::with_name(SUBCOMMAND_RULES_UPGRADE)
-            .help("Starts the Tornado Rules upgrade process"))
-        .get_matches()
-}
 
 #[derive(StructOpt, Debug)]
 #[structopt(name = "tornado")]
