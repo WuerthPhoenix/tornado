@@ -272,6 +272,7 @@ checksum = "024be5a7f9eb5fec68b658789a67238c9e9780b61c351f18b562ed0fdd7bbe79"
 dependencies = [
  "ajars_actix_web",
  "ajars_core",
+ "ajars_reqwest",
 ]
 
 [[package]]
@@ -292,6 +293,18 @@ version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d73ed2d50df4162f6cc371c0378d4056242d48ed8f943b60f6a130550d4dc06"
 dependencies = [
+ "serde",
+]
+
+[[package]]
+name = "ajars_reqwest"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "411608a2908d51c209276e1b77dc934b878205b5c74e35f8f57a72e594c86d35"
+dependencies = [
+ "ajars_core",
+ "http",
+ "reqwest",
  "serde",
 ]
 
@@ -3614,6 +3627,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "actix-web",
+ "ajars",
  "async-trait",
  "chrono",
  "clap 3.0.0-beta.4",

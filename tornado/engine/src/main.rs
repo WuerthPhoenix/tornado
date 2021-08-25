@@ -1,5 +1,6 @@
 use crate::config::{Opt, SubCommand};
 use clap::Clap;
+use crate::command::apm_tracing::apm_tracing;
 
 pub mod actor;
 mod api;
@@ -16,12 +17,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let rules_dir = opt.rules_dir();
     let drafts_dir = opt.drafts_dir();
 
-    match opt.command {
+    match &opt.command {
         SubCommand::Check => command::check::check(config_dir, rules_dir, drafts_dir).await,
         SubCommand::Daemon => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
         SubCommand::RulesUpgrade => command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir).await,
-        SubCommand::ApmTracing {command} => {
-            panic!("ApmTracing not implemented yet for command: {:?}", command)
-        },
+        SubCommand::ApmTracing {command} => apm_tracing(config_dir, command).await,
     }
 }

@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 actix = "0.12"
 actix-web = "4.0.0-beta.8"
+ajars = { version = "0.5", features = ["reqwest"] }
 async-trait = "0.1"
 chrono = "0.4"
 clap = { version = "3.0.0-beta.4", default-features = false, features = ["derive", "std"] }
