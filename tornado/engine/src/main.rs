@@ -1,5 +1,5 @@
 use crate::config::{Opt, SubCommand};
-use structopt::StructOpt;
+use clap::Clap;
 
 pub mod actor;
 mod api;
@@ -10,7 +10,7 @@ mod monitoring;
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
 
-    let opt: Opt = Opt::from_args();
+    let opt: Opt = Opt::parse();
 
     let config_dir = opt.config_dir();
     let rules_dir = opt.rules_dir();

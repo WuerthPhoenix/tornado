@@ -1,3 +1,4 @@
+use clap::Clap;
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
@@ -15,23 +16,22 @@ use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
-use structopt::StructOpt;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
-#[derive(StructOpt, Debug)]
-#[structopt(name = "tornado")]
+#[derive(Clap, Debug)]
+#[clap(name = "tornado")]
 pub struct Opt {
-    #[structopt(long = "config-dir")]
+    #[clap(long = "config-dir")]
     /// The filesystem folder where the Tornado configuration is saved
     config_dir: Option<String>,
-    #[structopt(long = "rules-dir")]
+    #[clap(long = "rules-dir")]
     /// The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`
     rules_dir: Option<String>,
-    #[structopt(long = "drafts-dir")]
+    #[clap(long = "drafts-dir")]
     /// The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`
     drafts_dir: Option<String>,
-    #[structopt(subcommand)]
+    #[clap(subcommand)]
     pub command: SubCommand,
 }
 
@@ -67,7 +67,7 @@ impl Opt {
     }
 }
 
-#[derive(StructOpt, Debug)]
+#[derive(Clap, Debug)]
 pub enum SubCommand {
     /// Checks that the configuration is valid
     Check,
@@ -81,7 +81,7 @@ pub enum SubCommand {
     /*
     /// Verify the blockchain validity
     Verify {
-        #[structopt(flatten)]
+        #[clap(flatten)]
         opts: VerifyCommandOpts,
     },
 
