@@ -17,7 +17,6 @@ pub async fn apm_tracing(
 
 }
 
-
 async fn call_apm_tracing_endpoint(
     web_server_ip: &str,
     web_server_port: u16,
@@ -35,6 +34,7 @@ async fn call_apm_tracing_endpoint(
 
     let base_url = format!("http://{}:{}/api{}", web_server_ip, web_server_port, RUNTIME_CONFIG_ENDPOINT_V1_BASE);
     println!("Using tornado base endpoint: {}", base_url);
+
     let ajars = AjarsReqwest::new(ClientBuilder::new().build()?, base_url);
 
     let auth_header = base64::encode(serde_json::to_string(&Auth {
@@ -65,3 +65,49 @@ async fn call_apm_tracing_endpoint(
     println!("Apm-tracing correctly set.");
     Ok(())
 }
+
+#[cfg(test)]
+mod test {
+
+    use super::*;
+    use httpmock::MockServer;
+    use httpmock::Method::POST;
+    use ajars::RestType;
+
+    #[tokio::test]
+    async fn should_call_the_apm_priority_endpoint() {
+        // Arrange
+        let server = MockServer::start();
+        let endpoint = server.mock(|when, then| {
+            when.method(POST).path(format!("/api{}{}", RUNTIME_CONFIG_ENDPOINT_V1_BASE, SET_APM_PRIORITY_CONFIG_REST.path()));
+            then.json_body(()).status(200);
+        });
+
+        let port = server.port();
+
+        // Act
+        call_apm_tracing_endpoint("127.0.0.1", port, &EnableOrDisableSubCommand::Enable).await.unwrap();
+
+        // Assert
+        endpoint.assert_hits(1);
+    }
+
+    #[tokio::test]
+    async fn should_call_the_stdout_priority_endpoint() {
+        // Arrange
+        let server = MockServer::start();
+        let endpoint = server.mock(|when, then| {
+            when.method(POST).path(format!("/api{}{}", RUNTIME_CONFIG_ENDPOINT_V1_BASE, SET_STDOUT_PRIORITY_CONFIG_REST.path()));
+            then.json_body(()).status(200);
+        });
+
+        let port = server.port();
+
+        // Act
+        call_apm_tracing_endpoint("127.0.0.1", port, &EnableOrDisableSubCommand::Disable).await.unwrap();
+
+        // Assert
+        endpoint.assert_hits(1);
+    }
+}
+

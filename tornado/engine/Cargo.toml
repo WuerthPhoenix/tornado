@@ -47,6 +47,7 @@ tracing-futures = "0.2"
 [dev-dependencies]
 actix-rt = "2.2"
 chrono = "0.4"
+httpmock = "0.6"
 lazy_static = "1.4"
 fs_extra = "1.2"
 maplit = "1.0"

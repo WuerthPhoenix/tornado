@@ -3634,6 +3634,7 @@ dependencies = [
  "clap 3.0.0-beta.4",
  "config",
  "fs_extra",
+ "httpmock",
  "lazy_static",
  "log",
  "maplit",
