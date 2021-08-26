@@ -19,7 +19,7 @@ args = [
     "daemon",
 ]
 
-# Starts the Tornado Engine.
+# Executes the apm-tracing command.
 #
 # Execute with:
 # > cargo make run-apm-tracing
