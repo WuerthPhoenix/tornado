@@ -54,8 +54,8 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
     }
 
     async fn set_apm_first_configuration(&self, dto: SetApmPriorityConfigurationRequestDto) -> Result<(), ApiError> {
-        info!("RuntimeConfigApiHandlerImpl - set_apm_first_configuration");
         let logger_level = dto.logger_level.unwrap_or_else(|| "info,tornado=debug".to_owned());
+        info!("RuntimeConfigApiHandlerImpl - set_apm_first_configuration with logger level [{}]", logger_level);
         self.logger_guard.set_apm_enabled(true)
             .and_then(|_| self.logger_guard.set_level(logger_level))
             .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
