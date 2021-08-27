@@ -360,7 +360,7 @@ impl PartialOrd for Value {
                 _ => None,
             },
             Value::Bool(first) => match other {
-                Value::Bool(second) => first.partial_cmp(&second),
+                Value::Bool(second) => first.partial_cmp(second),
                 _ => None,
             },
             Value::Null => match other {
@@ -368,7 +368,7 @@ impl PartialOrd for Value {
                 _ => None,
             },
             Value::Array(first) => match other {
-                Value::Array(second) => first.partial_cmp(&second),
+                Value::Array(second) => first.partial_cmp(second),
                 _ => None,
             },
             Value::Map(..) => None,

@@ -67,7 +67,7 @@ impl Icinga2Executor {
 
         let payload = &icinga2_action.payload;
         let response =
-            self.api_client.api_post_action(&icinga2_action.name, payload).await?;
+            self.api_client.api_post_action(icinga2_action.name, payload).await?;
 
         let method = response.method;
         let url = response.url;

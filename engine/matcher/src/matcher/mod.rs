@@ -147,7 +147,7 @@ impl Matcher {
         let mut result_nodes = vec![];
 
         let filter_status = if filter.active {
-            if filter.filter.evaluate(&internal_event, None) {
+            if filter.filter.evaluate(internal_event, None) {
                 trace!(
                         "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
                         filter_name
@@ -203,7 +203,7 @@ impl Matcher {
                     &rule.name
                 );
 
-                match rule.extractor.process_all(&internal_event, &mut extracted_vars) {
+                match rule.extractor.process_all(internal_event, &mut extracted_vars) {
                     Ok(_) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
 

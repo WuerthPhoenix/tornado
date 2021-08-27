@@ -18,7 +18,7 @@ impl Not {
         args: &config::rule::Operator,
         builder: &OperatorBuilder,
     ) -> Result<Not, MatcherError> {
-        let operator = builder.build(rule_name, &args)?;
+        let operator = builder.build(rule_name, args)?;
         Ok(Not { operator })
     }
 }
