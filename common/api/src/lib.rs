@@ -34,13 +34,13 @@ impl Event {
     }
 }
 
-impl Into<Value> for Event {
-    fn into(self) -> Value {
+impl From<Event> for Value {
+    fn from(event: Event) -> Self {
         let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
-        payload.insert("type".to_owned(), Value::Text(self.event_type));
-        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(self.created_ms)));
-        payload.insert("payload".to_owned(), Value::Map(self.payload));
+        payload.insert("trace_id".to_owned(), Value::Text(event.trace_id));
+        payload.insert("type".to_owned(), Value::Text(event.event_type));
+        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(event.created_ms)));
+        payload.insert("payload".to_owned(), Value::Map(event.payload));
         Value::Map(payload)
     }
 }

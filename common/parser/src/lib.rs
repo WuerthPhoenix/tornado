@@ -137,15 +137,15 @@ impl ValueGetter {
     }
 }
 
-impl Into<ValueGetter> for &str {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Map { key: self.to_owned() }
+impl From<&str> for ValueGetter {
+    fn from(key: &str) -> Self {
+        ValueGetter::Map { key: key.to_owned() }
     }
 }
 
-impl Into<ValueGetter> for usize {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Array { index: self }
+impl From<usize> for ValueGetter {
+    fn from(index: usize) -> Self {
+        ValueGetter::Array { index }
     }
 }
 
