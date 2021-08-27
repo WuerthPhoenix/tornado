@@ -96,7 +96,7 @@ impl Number {
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self {
-            Number::PosInt(v) => (i64::max_value() as u64) >= *v,
+            Number::PosInt(v) => (i64::MAX as u64) >= *v,
             Number::NegInt(_) => true,
             Number::Float(_) => false,
         }
@@ -123,7 +123,7 @@ impl Number {
         match self {
             Number::PosInt(n) => {
                 let n = *n;
-                if n <= i64::max_value() as u64 {
+                if n <= i64::MAX as u64 {
                     Some(n as i64)
                 } else {
                     None
