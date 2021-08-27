@@ -31,7 +31,7 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
     for FilteredLayer<S, L, F>
 {
     fn on_event(&self, event: &Event, context: Context<S>) {
-        if self.filter(event.metadata(), &context) {
+        if (self.filter)(event.metadata(), &context) {
             self.layer.on_event(event, context);
         }
     }
