@@ -83,7 +83,7 @@ impl Icinga2Executor {
                         code: None,
                         data: data.into()
                     },
-                    Err(err) => err.into()
+                    Err(err) => err
                 }
             })?;
 
