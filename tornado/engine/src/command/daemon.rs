@@ -334,7 +334,6 @@ pub async fn daemon(
                 .expect("'event_socket_ip' must be provided to start the tornado TCP server"),
             daemon_config
                 .event_socket_port
-                .clone()
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();
