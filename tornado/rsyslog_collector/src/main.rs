@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     // Setup logger
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(collector_config.logger)?;
 
     info!("Rsyslog collector started");
 

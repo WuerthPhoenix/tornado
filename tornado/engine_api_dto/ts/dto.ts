@@ -141,3 +141,7 @@ export type SetLoggerApmRequestDto = { enabled: boolean };
 export type SetLoggerLevelRequestDto = { level: string };
 
 export type SetLoggerStdoutRequestDto = { enabled: boolean };
+
+export type SetApmPriorityConfigurationRequestDto = { logger_level: string | null };
+
+export type SetStdoutPriorityConfigurationRequestDto = {};

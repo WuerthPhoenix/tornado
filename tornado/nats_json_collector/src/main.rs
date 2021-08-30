@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         ))?;
     }
 
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(collector_config.logger)?;
 
     info!("Starting Nats JSON Collector");
 
