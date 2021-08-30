@@ -50,7 +50,7 @@ commands and global options that apply to every command.
 Tornado commands:
 - __apm-tracing enable|disable__ : Enable or disable the APM priority logger output.
 
-  When use with `enable`, it:
+  When used with `enable`, it:
   - enables the APM logger
   - disables the stdout logger output
   - sets logger level to `info,tornado=debug`
