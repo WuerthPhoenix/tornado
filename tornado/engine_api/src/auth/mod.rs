@@ -1,6 +1,3 @@
-pub mod convert;
-pub mod web;
-
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
