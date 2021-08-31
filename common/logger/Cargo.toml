@@ -10,12 +10,14 @@ edition = "2018"
 arc-swap = "1"
 chrono = "0.4"
 log = "0.4"
+# reqwest features required to enable system level certificates to be used by tracing-elastic-apm
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
 serde = { version = "1.0", features = ['derive'] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"
 tracing = "0.1"
 tracing-appender = "0.1"
-tracing-elastic-apm = { version = "3.0" }
+tracing-elastic-apm = { version = "3.0", default-features = false, features = ["rustls-tls"] }
 tracing-futures = "0.2"
 tracing-log = "0.1"
 tracing-subscriber = "0.2"
