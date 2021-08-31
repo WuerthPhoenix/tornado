@@ -7,10 +7,12 @@ use log::*;
 use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SET_APM_PRIORITY_CONFIG_REST, SetApmPriorityConfigurationRequestDto, SET_STDOUT_PRIORITY_CONFIG_REST, SetStdoutPriorityConfigurationRequestDto};
 use crate::error::ApiError;
 
+pub const RUNTIME_CONFIG_ENDPOINT_V1_BASE: &str = "/v1_beta/runtime_config";
+
 pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
     data: ApiData<RuntimeConfigApi<A>>,
 ) -> Scope {
-    web::scope("/v1_beta/runtime_config")
+    web::scope(RUNTIME_CONFIG_ENDPOINT_V1_BASE)
         .app_data(Data::new(data))
         .service(
             web::resource("/logger/level")

@@ -9,9 +9,11 @@ edition = "2018"
 [dependencies]
 actix = "0.12"
 actix-web = "4.0.0-beta.8"
+ajars = { version = "0.5", features = ["reqwest"] }
 async-trait = "0.1"
+base64 = "0.13"
 chrono = "0.4"
-clap = "2.33"
+clap = { version = "3.0.0-beta.4", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
 log = "0.4"
 num_cpus = "1.13"
@@ -45,6 +47,7 @@ tracing-futures = "0.2"
 [dev-dependencies]
 actix-rt = "2.2"
 chrono = "0.4"
+httpmock = "0.6"
 lazy_static = "1.4"
 fs_extra = "1.2"
 maplit = "1.0"

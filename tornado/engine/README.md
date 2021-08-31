@@ -48,6 +48,17 @@ Running the Tornado executable without any arguments returns a list of all avail
 commands and global options that apply to every command.
 
 Tornado commands:
+- __apm-tracing enable|disable__ : Enable or disable the APM priority logger output.
+
+  When used with `enable`, it:
+  - enables the APM logger
+  - disables the stdout logger output
+  - sets logger level to `info,tornado=debug`
+
+  When used with `disable`, it:
+  - disables the APM logger
+  - enables the stdout logger output
+  - sets logger level to value from the configuration file
 - __check__ : Checks that the configuration is valid.
 - __daemon__ : Starts the Tornado daemon.
 - __help__ : Prints the general help page, or the specific help of the given command.
