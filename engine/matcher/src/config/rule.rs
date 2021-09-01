@@ -133,7 +133,7 @@ impl From<Action> for Value {
 
 impl Rule {
     pub fn from_json(json: &str) -> Result<Rule, MatcherError> {
-        serde_json::from_str(&json).map_err(|e| MatcherError::JsonDeserializationError {
+        serde_json::from_str(json).map_err(|e| MatcherError::JsonDeserializationError {
             message: format!("Cannot deserialize Rule. Error [{}]", e),
         })
     }

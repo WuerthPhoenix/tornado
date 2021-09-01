@@ -264,9 +264,9 @@ pub struct Icinga2ActionOwned {
     pub payload: Option<Payload>,
 }
 
-impl<'a> Into<Icinga2Action<'a>> for &'a Icinga2ActionOwned {
-    fn into(self) -> Icinga2Action<'a> {
-        Icinga2Action { name: &self.name, payload: self.payload.as_ref() }
+impl<'a> From<&'a Icinga2ActionOwned> for Icinga2Action<'a> {
+    fn from(action_owned: &'a Icinga2ActionOwned) -> Self {
+        Icinga2Action { name: &action_owned.name, payload: action_owned.payload.as_ref() }
     }
 }
 

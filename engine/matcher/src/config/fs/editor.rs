@@ -129,7 +129,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
         FsMatcherConfigManager::copy_and_override(
             tempdir.path(),
-            &self.get_draft_config_dir_path(&draft_id),
+            &self.get_draft_config_dir_path(draft_id),
         )
         .await?;
 
@@ -149,7 +149,7 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
 
     async fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError> {
         info!("Delete draft with id {}", draft_id);
-        let draft_path = self.get_draft_path(&draft_id);
+        let draft_path = self.get_draft_path(draft_id);
 
         if exists(Path::new(&draft_path)).await {
             remove_dir_all(&draft_path).await.map_err(|err| MatcherError::InternalSystemError {

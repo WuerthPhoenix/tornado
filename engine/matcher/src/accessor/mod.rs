@@ -130,7 +130,7 @@ impl Accessor {
         extracted_vars: Option<&'o Value>,
     ) -> Option<Cow<'o, Value>> {
         match &self {
-            Accessor::Constant { value } => Some(Cow::Borrowed(&value)),
+            Accessor::Constant { value } => Some(Cow::Borrowed(value)),
             Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
             Accessor::ExtractedVar { rule_name, parser } => {
                 extracted_vars.and_then(|global_vars| {
