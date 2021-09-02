@@ -44,7 +44,7 @@ impl<'a> AuthContext<'a> {
         if !self.valid {
             return Err(ApiError::UnauthenticatedError {});
         };
-        Ok(&self)
+        Ok(self)
     }
 
     // Returns an error if user does not have the permission
@@ -63,7 +63,7 @@ impl<'a> AuthContext<'a> {
             if let Some(roles_with_permission) = self.permission_roles_map.get(permission) {
                 for user_role in &self.auth.roles {
                     if roles_with_permission.contains(user_role) {
-                        return Ok(&self);
+                        return Ok(self);
                     }
                 }
             }
@@ -98,7 +98,7 @@ impl<'a> AuthContext<'a> {
         self.is_authenticated()?;
         let owner = obj.get_owner_id();
         if self.auth.user == owner {
-            Ok(&self)
+            Ok(self)
         } else {
             let mut params = HashMap::new();
             params.insert("OWNER".to_owned(), owner.to_owned());
@@ -187,7 +187,7 @@ impl AuthService {
     /// Generates the auth HTTP header in the form:
     /// Bearer: <TOKEN>
     pub fn auth_to_token_header(auth: &Auth) -> Result<String, ApiError> {
-        Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthService::auth_to_token_string(&auth)?))
+        Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthService::auth_to_token_string(auth)?))
     }
 }
 

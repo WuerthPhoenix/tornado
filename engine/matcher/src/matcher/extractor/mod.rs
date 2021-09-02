@@ -469,13 +469,11 @@ impl RegexValueExtractor {
 
 fn get_named_groups(captures: &Captures, regex: &RustRegex) -> Option<HashMap<String, Value>> {
     let mut groups = HashMap::new();
-    for name in regex.capture_names() {
-        if let Some(name) = name {
-            if let Some(matched) = captures.name(name) {
-                groups.insert(name.to_owned(), Value::Text(matched.as_str().to_owned()));
-            } else {
-                return None;
-            }
+    for name in regex.capture_names().flatten() {
+        if let Some(matched) = captures.name(name) {
+            groups.insert(name.to_owned(), Value::Text(matched.as_str().to_owned()));
+        } else {
+            return None;
         }
     }
     Some(groups)

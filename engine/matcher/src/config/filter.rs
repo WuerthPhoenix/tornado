@@ -13,7 +13,7 @@ pub struct Filter {
 
 impl Filter {
     pub fn from_json(json: &str) -> Result<Filter, MatcherError> {
-        serde_json::from_str(&json).map_err(|e| MatcherError::JsonDeserializationError {
+        serde_json::from_str(json).map_err(|e| MatcherError::JsonDeserializationError {
             message: format!("Cannot deserialize Filter. Error [{}]", e),
         })
     }

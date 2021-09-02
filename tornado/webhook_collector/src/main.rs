@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let webhooks_dir =
         arg_matches.value_of("webhooks-dir").expect("webhooks-dir should be provided");
 
-    let mut collector_config = config::build_config(&config_dir)?;
+    let mut collector_config = config::build_config(config_dir)?;
     if let Some(tracing_elastic_apm_config) = &mut collector_config.logger.tracing_elastic_apm {
         tracing_elastic_apm_config.read_apm_server_api_credentials_if_not_set(&format!(
             "{}/{}",

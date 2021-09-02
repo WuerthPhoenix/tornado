@@ -30,7 +30,7 @@ impl Operator for Contains {
                 Value::Text(first) => {
                     let option_substring = self.second.get(event, extracted_vars);
                     match cow_to_str(&option_substring) {
-                        Some(substring) => (&first).contains(substring),
+                        Some(substring) => first.contains(substring),
                         None => false,
                     }
                 }

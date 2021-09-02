@@ -77,7 +77,7 @@ impl NatsClientConfig {
     fn get_auth(&self) -> &NatsClientAuth {
         match &self.auth {
             None => &NatsClientAuth::None,
-            Some(auth) => &auth,
+            Some(auth) => auth,
         }
     }
 }

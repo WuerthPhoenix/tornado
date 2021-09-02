@@ -72,7 +72,7 @@ fn upgrade_action(
         println!("Migrating {} inner actions", ACTION_ID_FOREACH);
         if let Some(Value::Array(inner_actions)) = action.payload.get_mut("actions") {
             for inner_action in inner_actions {
-                let mut new_action = value_to_action(&inner_action)?;
+                let mut new_action = value_to_action(inner_action)?;
                 upgrade_action(&mut new_action)?;
                 *inner_action = new_action.into();
             }
