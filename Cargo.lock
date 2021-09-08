@@ -462,6 +462,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "async-stream"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "171374e7e3b2504e0e5236e3b59260560f9fe94bfe9ac39ba5e4e929c5590625"
+dependencies = [
+ "async-stream-impl",
+ "futures-core",
+]
+
+[[package]]
+name = "async-stream-impl"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "648ed8c8d2ce5409ccd57453d9d1b214b342a0d69376a6feda1fd6cae3299308"
+dependencies = [
+ "proc-macro2 1.0.28",
+ "quote 1.0.9",
+ "syn 1.0.74",
+]
+
+[[package]]
 name = "async-task"
 version = "4.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1104,6 +1125,9 @@ name = "either"
 version = "1.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e78d4f1cc4ae33bbfc157ed5d5a5ef3bc29227303d595861deb238fcec4e9457"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "ena"
@@ -3283,9 +3307,9 @@ checksum = "cda74da7e1a664f795bb1f8a87ec406fb89a02522cf6e50620d016add6dbbf5c"
 
 [[package]]
 name = "tokio"
-version = "1.9.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b7b349f11a7047e6d1276853e612d152f5e8a352c61917887cc2169e2366b4c"
+checksum = "b4efe6fc2395938c8155973d7be49fe8d03a843726e285e100a8a383cc0154ce"
 dependencies = [
  "autocfg",
  "bytes",
@@ -3332,6 +3356,19 @@ dependencies = [
  "futures-core",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tokio-test"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "53474327ae5e166530d17f2d956afcb4f8a004de581b3cae10f12006bc8163e3"
+dependencies = [
+ "async-stream",
+ "bytes",
+ "futures-core",
+ "tokio",
+ "tokio-stream",
 ]
 
 [[package]]
@@ -3463,6 +3500,15 @@ dependencies = [
  "tracing-futures",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tornado_common_netstring"
+version = "0.0.1"
+dependencies = [
+ "pin-project-lite",
+ "tokio",
+ "tokio-test",
 ]
 
 [[package]]
@@ -3778,6 +3824,27 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+]
+
+[[package]]
+name = "tornado_icinga2_satellite_executor"
+version = "0.0.1"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "async-trait",
+ "base64 0.13.0",
+ "either",
+ "httpmock",
+ "log",
+ "maplit",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-rustls",
+ "tornado_common_api",
+ "tornado_common_netstring",
+ "tornado_executor_common",
 ]
 
 [[package]]

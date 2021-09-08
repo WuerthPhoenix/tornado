@@ -3,6 +3,7 @@
 members = [
    "common/api",
    "common/logger",
+   "common/netstring",
    "common/parser",
    "collector/common",
    "collector/email",
@@ -15,6 +16,7 @@ members = [
    "executor/elasticsearch",
    "executor/foreach",
    "executor/icinga2",
+   "executor/icinga2-satellite",
    "executor/logger",
    "executor/monitoring",
    "executor/script",

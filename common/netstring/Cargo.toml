@@ -1,0 +1,15 @@
+[package]
+name = "tornado_common_netstring"
+version = "0.0.1"
+authors = ["William Calliari <william.calliari@wuerth.phoenix.com>"]
+edition = "2018"
+
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+tokio = { version = "1.11", features = ["io-util"] }
+pin-project-lite = "0.2"
+
+[dev-dependencies]
+tokio-test = "0.4"
