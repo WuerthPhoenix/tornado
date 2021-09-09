@@ -176,7 +176,7 @@ pub fn setup_logger(
         (
             FilteredLayer::new(
                 Layer::new().with_ansi(false).with_writer(non_blocking),
-                move |_metadata, _ctx| stdout_enabled.load(Ordering::Relaxed),
+                move |_ctx| stdout_enabled.load(Ordering::Relaxed),
             ),
             Some(stdout_guard),
         )
@@ -204,7 +204,7 @@ pub fn setup_logger(
         let enabled = Arc::new(AtomicBool::new(true));
         apm_enabled = Some(enabled.clone());
 
-        Some(FilteredLayer::new(apm_layer, move |_metadata, _ctx| enabled.load(Ordering::Relaxed)))
+        Some(FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)))
     } else {
         None
     };
