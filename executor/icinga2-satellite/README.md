@@ -12,10 +12,7 @@ This executor expects a Tornado Action to include the following elements in its 
 1. A __service__ (optional): The parameters of the Icinga2 satellite action.
 1. A __cr__ (optional): The result of the check, which is an object that is defined by icinga2 [here](https://icinga.com/docs/icinga-2/latest/doc/08-advanced-topics/#advanced-value-types-checkresult)
    1. none of these values are necessary. The state will default to `OK` and all other values will be left blank.
-   1. It is not adviced to set the `active` attribute, since all checks performed by tornado are passive for icinga2.
-
-The __payload__ should contain at least all mandatory parameters expected by the
-specific Icinga2 action.
+   1. It is not advised to set the `active` attribute, since all checks performed by tornado are passive for icinga2.
 
 An example for a valid tornado action could look like this:
 ```json

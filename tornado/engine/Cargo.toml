@@ -33,6 +33,7 @@ tornado_executor_director = { path = "../../executor/director", version = "0.0.1
 tornado_executor_elasticsearch = { path = "../../executor/elasticsearch", version = "0.0.1" }
 tornado_executor_foreach = { path = "../../executor/foreach", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../../executor/icinga2", version = "0.0.1" }
+tornado_executor_icinga2_satellite = { path = "../../executor/icinga2-satellite", version = "0.0.1" }
 tornado_executor_logger = { path = "../../executor/logger", version = "0.0.1" }
 tornado_executor_monitoring = { path = "../../executor/monitoring", version = "0.0.1" }
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }

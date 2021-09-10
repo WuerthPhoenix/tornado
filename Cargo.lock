@@ -3579,6 +3579,7 @@ dependencies = [
  "tornado_executor_elasticsearch",
  "tornado_executor_foreach",
  "tornado_executor_icinga2",
+ "tornado_executor_icinga2_satellite",
  "tornado_executor_logger",
  "tornado_executor_monitoring",
  "tornado_executor_script",
@@ -3742,6 +3743,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado_executor_icinga2_satellite"
+version = "0.0.1"
+dependencies = [
+ "actix-rt",
+ "actix-web",
+ "async-trait",
+ "base64 0.13.0",
+ "either",
+ "httpmock",
+ "log",
+ "maplit",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-rustls",
+ "tornado_common_api",
+ "tornado_common_netstring",
+ "tornado_executor_common",
+]
+
+[[package]]
 name = "tornado_executor_logger"
 version = "0.0.1"
 dependencies = [
@@ -3824,27 +3846,6 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
-]
-
-[[package]]
-name = "tornado_icinga2_satellite_executor"
-version = "0.0.1"
-dependencies = [
- "actix-rt",
- "actix-web",
- "async-trait",
- "base64 0.13.0",
- "either",
- "httpmock",
- "log",
- "maplit",
- "serde",
- "serde_json",
- "tokio",
- "tokio-rustls",
- "tornado_common_api",
- "tornado_common_netstring",
- "tornado_executor_common",
 ]
 
 [[package]]

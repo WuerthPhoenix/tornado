@@ -1,5 +1,5 @@
 [package]
-name = "tornado_icinga2_satellite_executor"
+name = "tornado_executor_icinga2_satellite"
 version = "0.0.1"
 authors = [
     "Francesco Cina <mr.francesco.cina@gmail.com>",

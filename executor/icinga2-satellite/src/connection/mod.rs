@@ -85,7 +85,6 @@ impl Connection {
                 Action::Flush => writer.flush().await,
                 Action::Shutdown => {
                     // give the master time to process all messages before closing the connection
-                    tokio::time::sleep(Duration::from_secs(20)).await;
                     writer.shutdown().await.expect("Connection lost");
                     return;
                 }

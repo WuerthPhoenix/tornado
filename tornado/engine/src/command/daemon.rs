@@ -191,6 +191,28 @@ pub async fn daemon(
         )
     };
 
+    // Start smart_monitoring_check_result executor actor
+    let icinga2_satellite_executor_addr = {
+        let executor =
+            tornado_executor_icinga2_satellite::Icinga2Executor::new(
+                tornado_executor_icinga2_satellite::Icinga2ClientConfig {
+                    server_api_url: "neteye-master-clean".to_string(),
+                    port: 5665,
+                    cn: "neteye-satellite".to_string(),
+                    master_cn: "neteye-master-clean".to_string()
+                }
+            ).await
+                .expect("Cannot start the SmartMonitoringExecutor Executor");
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                // fixme: spawn single instance / keep instance alive
+                CommandPool::new(1, executor),
+            )),
+        )
+    };
+
     // Configure action dispatcher
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
@@ -208,6 +230,11 @@ pub async fn daemon(
                     "icinga2" => {
                         icinga2_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'icinga2' executor. Err: {:?}", err)
+                        })
+                    }
+                    "icinga2_satellite" => {
+                        icinga2_satellite_executor_addr.try_send(message).map_err(|err| {
+                            format!("Error sending message to 'icinga2-satellite' executor. Err: {:?}", err)
                         })
                     }
                     "director" => {

@@ -1,14 +1,12 @@
 use std::sync::Arc;
 
 use log::*;
-use serde::Serialize;
 
 use tornado_common_api::Action;
-use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 use crate::client::ApiClient;
-use crate::config::Icinga2ClientConfig;
+pub use crate::config::Icinga2ClientConfig;
 use crate::message::Message;
 use tokio::sync::Mutex;
 
@@ -16,11 +14,6 @@ pub mod client;
 pub mod config;
 mod connection;
 mod message;
-
-pub const ICINGA2_ACTION_NAME_KEY: &str = "icinga2_action_name";
-pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
-
-pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
 
 /// An executor that logs received actions at the 'info' level
 pub struct Icinga2Executor {
@@ -71,10 +64,4 @@ impl StatelessExecutor for Icinga2Executor {
 
         self.perform_request(action).await
     }
-}
-
-#[derive(Debug, PartialEq, Serialize)]
-pub struct Icinga2Action<'a> {
-    pub name: &'a str,
-    pub payload: Option<&'a Payload>,
 }
