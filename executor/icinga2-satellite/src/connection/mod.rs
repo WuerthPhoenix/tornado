@@ -67,8 +67,14 @@ impl Connection {
         let msg = serde_json::to_vec(&HEARTBEAT).expect("Is constant and will always serialize");
         tokio::time::sleep(Duration::from_secs(20)).await;
 
-        while writer.send(Action::Send(msg.clone())).await.is_ok() {
-            tokio::time::sleep(Duration::from_secs(20)).await;
+        loop {
+            let res1 = writer.send(Action::Send(msg.clone())).await;
+            let res2 = writer.send(Action::Flush).await;
+
+            match res1.is_ok() && res2.is_ok() {
+                true => tokio::time::sleep(Duration::from_secs(20)).await,
+                false => break
+            }
         }
 
         warn!("Icinga2ConnectionHeartbeat - Could not continue sending the heartbeat. Dropping task");
