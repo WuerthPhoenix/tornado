@@ -196,7 +196,7 @@ pub async fn daemon(
         let executor =
             tornado_executor_icinga2_satellite::Icinga2Executor::new(
                 tornado_executor_icinga2_satellite::Icinga2ClientConfig {
-                    server_api_url: "neteye-master-clean".to_string(),
+                    server_api_url: "neteye-master".to_string(),
                     port: 5665,
                     cn: "neteye-satellite".to_string(),
                     master_cn: "neteye-master".to_string()
