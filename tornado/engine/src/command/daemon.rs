@@ -199,7 +199,7 @@ pub async fn daemon(
                     server_api_url: "neteye-master-clean".to_string(),
                     port: 5665,
                     cn: "neteye-satellite".to_string(),
-                    master_cn: "neteye-master-clean".to_string()
+                    master_cn: "neteye-master".to_string()
                 }
             ).await
                 .expect("Cannot start the SmartMonitoringExecutor Executor");
