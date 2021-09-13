@@ -1,6 +1,5 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use arc_swap::ArcSwap;
-use crate::filter::FilteredLayer;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -10,11 +9,10 @@ use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
-use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
+use tracing_subscriber::{fmt, layer::SubscriberExt, EnvFilter, Layer, Registry};
+use tracing_subscriber::filter::{filter_fn};
 
 pub mod elastic_apm;
-
-mod filter;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -161,7 +159,7 @@ pub fn setup_logger(
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(guard))
+        (Some(fmt::Layer::new().with_ansi(false).with_writer(non_blocking)), Some(guard))
     } else {
         (None, None)
     };
@@ -174,10 +172,7 @@ pub fn setup_logger(
         let stdout_enabled = stdout_enabled.clone();
 
         (
-            FilteredLayer::new(
-                Layer::new().with_ansi(false).with_writer(non_blocking),
-                move |_ctx| stdout_enabled.load(Ordering::Relaxed),
-            ),
+            fmt::Layer::new().with_ansi(false).with_writer(non_blocking).with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
             Some(stdout_guard),
         )
     };
@@ -204,7 +199,7 @@ pub fn setup_logger(
         let enabled = Arc::new(AtomicBool::new(true));
         apm_enabled = Some(enabled.clone());
 
-        Some(FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)))
+        Some(apm_layer.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))))
     } else {
         None
     };
