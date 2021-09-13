@@ -201,7 +201,7 @@ pub fn setup_logger(
                     err
                 ),
             })?;
-        let enabled = Arc::new(AtomicBool::new(true));
+        let enabled = Arc::new(AtomicBool::new(apm_tracing_config.apm_output));
         apm_enabled = Some(enabled.clone());
 
         Some(FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)))

@@ -16,6 +16,7 @@ The logger configuration is based on the following entries:
 The configuration subsection `logger.tracing_elastic_apm` allows to configure the connection to Elastic APM for the tracing
 functionality. If this section is not provided traces will be sent to the APM Server.
 The following entries can be configured:
+- __apm_output__:  Whether the Logger data should be sent to the Elastic APM Server. Valid values are *true* and *false*.
 - __apm_server_url__:  The url of the Elastic APM Server.
 - __apm_server_api_credentials.id__:  (Optional) the ID of the Api Key for authenticating to the Elastic APM server.
 - __apm_server_api_credentials.key__:  (Optional) the key of the Api Key for authenticating to the Elastic APM server.
