@@ -3592,7 +3592,6 @@ dependencies = [
  "tracing-appender",
  "tracing-elastic-apm",
  "tracing-futures",
- "tracing-log",
  "tracing-subscriber",
 ]
 
@@ -4074,8 +4073,6 @@ dependencies = [
 [[package]]
 name = "tracing-elastic-apm"
 version = "3.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2521e1e0cfe423781653ea30996fe07f24864db359fdea57c94bee7a4b619cf4"
 dependencies = [
  "anyhow",
  "base64 0.13.0",

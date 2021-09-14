@@ -78,7 +78,7 @@ mod test {
     use super::*;
     use std::sync::Arc;
     use tornado_common_logger::LoggerConfig;
-    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::filter::Targets;
     use std::str::FromStr;
     use std::sync::atomic::AtomicBool;
 
@@ -92,7 +92,7 @@ mod test {
             tracing_elastic_apm: None,
             level: logger_level.clone()
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -125,7 +125,7 @@ mod test {
             tracing_elastic_apm: None,
             level: logger_level.clone()
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -155,7 +155,7 @@ mod test {
             tracing_elastic_apm: None,
             level: logger_level.clone()
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -185,7 +185,7 @@ mod test {
             tracing_elastic_apm: None,
             level: logger_level.clone()
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
