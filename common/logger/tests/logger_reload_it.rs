@@ -23,7 +23,7 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         tracing_elastic_apm: None,
     };
 
-    let guard = setup_logger(&config).unwrap();
+    let guard = setup_logger(config).unwrap();
 
     debug!("level debug - this is debug");
     info!("level debug - this is info");

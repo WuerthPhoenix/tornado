@@ -53,7 +53,7 @@ pub async fn daemon(
                 ))?);
         }
     }
-    let logger_guard = Arc::new(setup_logger(&global_config.logger)?);
+    let logger_guard = Arc::new(setup_logger(global_config.logger)?);
 
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 

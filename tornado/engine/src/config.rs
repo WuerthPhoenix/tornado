@@ -1,4 +1,4 @@
-use clap::{App, Arg, ArgMatches, SubCommand};
+use clap::Clap;
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
@@ -19,31 +19,87 @@ use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheck
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
-pub const SUBCOMMAND_CHECK: &str = "check";
-pub const SUBCOMMAND_DAEMON: &str = "daemon";
-pub const SUBCOMMAND_RULES_UPGRADE: &str = "rules-upgrade";
+#[derive(Clap, Debug)]
+#[clap(name = "tornado")]
+pub struct Opt {
+    #[clap(long = "config-dir")]
+    /// The filesystem folder where the Tornado configuration is saved
+    config_dir: Option<String>,
+    #[clap(long = "rules-dir")]
+    /// The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`
+    rules_dir: Option<String>,
+    #[clap(long = "drafts-dir")]
+    /// The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`
+    drafts_dir: Option<String>,
+    #[clap(subcommand)]
+    pub command: SubCommand,
+}
 
-pub fn arg_matches<'a>() -> ArgMatches<'a> {
-    App::new("tornado_daemon")
-        .arg(Arg::with_name("config-dir")
-            .long("config-dir")
-            .help("The filesystem folder where the Tornado configuration is saved")
-            .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado")))
-        .arg(Arg::with_name("rules-dir")
-            .long("rules-dir")
-            .help("The folder where the processing tree configuration is saved in JSON format. This folder is relative to the `config-dir`")
-            .default_value("/rules.d/"))
-        .arg(Arg::with_name("drafts-dir")
-            .long("drafts-dir")
-            .help("The folder where the configuration drafts are saved in JSON format. This folder is relative to the `config-dir`")
-            .default_value("/drafts/"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_CHECK )
-            .help("Checks that the configuration is valid"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_DAEMON )
-            .help("Starts the Tornado daemon"))
-        .subcommand(SubCommand::with_name(SUBCOMMAND_RULES_UPGRADE)
-            .help("Starts the Tornado Rules upgrade process"))
-        .get_matches()
+impl Opt {
+    pub fn config_dir(&self) -> &str {
+        let config_dir = match &self.config_dir {
+            Some(config_dir) => config_dir,
+            None => CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado"),
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Start with configuration directory: [{}]", config_dir);
+        config_dir
+    }
+
+    pub fn rules_dir(&self) -> &str {
+        let rules_dir = match &self.rules_dir {
+            Some(rules_dir) => rules_dir,
+            None => "/rules.d/",
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Using rules_dir directory: [{}]", rules_dir);
+        rules_dir
+    }
+
+    pub fn drafts_dir(&self) -> &str {
+        let drafts_dir = match &self.drafts_dir {
+            Some(drafts_dir) => drafts_dir,
+            None => "/drafts/",
+        };
+        // here the logger is not yet available, so print it to stdout
+        println!("Using drafts_dir directory: [{}]", drafts_dir);
+        drafts_dir
+    }
+}
+
+#[derive(Clap, Debug)]
+pub enum SubCommand {
+    /// Checks that the configuration is valid
+    Check,
+
+    /// Starts the Tornado daemon
+    Daemon,
+
+    /// Starts the Tornado Rules upgrade process
+    RulesUpgrade,
+
+    /// Enable or disable the APM logger priority configuration.
+    /// When used with `enable`, it:
+    /// - enables the elastic-APM logger output
+    /// - disables the stdout logger output
+    /// - increases the logger level to debug
+    ///
+    /// When used with `disable`, it:
+    /// - sets the logger level back to original value from the configuration file
+    /// - enables the stdout logger output
+    /// - disables the elastic-APM logger output
+    ///
+    ApmTracing {
+        #[clap(subcommand)]
+        command: EnableOrDisableSubCommand,
+    },
+
+}
+
+#[derive(Clap, Debug)]
+pub enum EnableOrDisableSubCommand {
+    Enable,
+    Disable
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

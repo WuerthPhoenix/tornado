@@ -19,7 +19,7 @@ fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         tracing_elastic_apm: None,
     };
 
-    let _guard = setup_logger(&config).unwrap();
+    let _guard = setup_logger(config).unwrap();
 
     debug!("main - this is debug");
     info!("main - this is info");

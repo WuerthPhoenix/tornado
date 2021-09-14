@@ -18,5 +18,5 @@ tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
 maplit = "1.0"
-httpmock = "0.5"
+httpmock = "0.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

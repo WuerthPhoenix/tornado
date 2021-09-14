@@ -306,3 +306,29 @@ Endpoint: Enable or disable the logger output to Elastic APM
     "enabled": true
   }
   ```
+
+### Set the logger configuration with priority to Elastic APM
+Endpoint: This will disable the stdout and enable the Elastic APM logger; in addition,
+the logger level will be set to the one provided, or to "info,tornado=debug" if not present.
+- HTTP Method: __POST__
+- path : __/api/v1_beta/runtime_config/logger/set_apm_priority_configuration__
+- response: http status code 200 if the request was performed correctly
+- request body type: __JSON__
+- request body:
+  ```json
+  {
+    "logger_level": true
+  }
+  ```
+
+### Set the logger configuration with priority to stdout
+Endpoint: This will disable the Elastic APM logger and enable the stdout; in addition,
+the logger level will be set to the one provided in the configuration file.
+- HTTP Method: __POST__
+- path : __/api/v1_beta/runtime_config/logger/set_stdout_priority_configuration__
+- response: http status code 200 if the request was performed correctly
+- request body type: __JSON__
+- request body:
+  ```json
+  {}
+  ```
