@@ -8,6 +8,10 @@ pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_creden
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApmTracingConfig {
+
+    // Whether the Logger data should be sent to the Elastic APM Server.
+     pub apm_output: bool,
+
     // The url of the Elastic APM server.
     pub apm_server_url: String,
 

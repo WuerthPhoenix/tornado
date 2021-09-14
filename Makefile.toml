@@ -19,6 +19,23 @@ args = [
     "daemon",
 ]
 
+# Executes the apm-tracing command.
+#
+# Execute with:
+# > cargo make run-apm-tracing
+[tasks.run-apm-tracing]
+workspace = false
+command = "cargo"
+args = [
+    "run",
+    "--bin",
+    "tornado_engine",
+    "--",
+    "--config-dir=./tornado/engine/config",
+    "apm-tracing",
+    "disable"
+]
+
 
 # Starts the rsyslog-collector and the spike_rsyslog_collector_writer.
 #

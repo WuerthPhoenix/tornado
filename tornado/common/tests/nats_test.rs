@@ -585,7 +585,7 @@ fn start_logger() {
         file_output_path: None,
         tracing_elastic_apm: None,
     };
-    if let Err(err) = tornado_common_logger::setup_logger(&conf) {
+    if let Err(err) = tornado_common_logger::setup_logger(conf) {
         println!("Warn: err starting logger: {:?}", err)
     };
 }

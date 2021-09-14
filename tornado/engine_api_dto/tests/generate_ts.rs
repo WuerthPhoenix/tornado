@@ -174,6 +174,8 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &runtime_config::SetLoggerApmRequestDto::type_script_ify());
     push_ts(&mut ts_code, &runtime_config::SetLoggerLevelRequestDto::type_script_ify());
     push_ts(&mut ts_code, &runtime_config::SetLoggerStdoutRequestDto::type_script_ify());
+    push_ts(&mut ts_code, &runtime_config::SetApmPriorityConfigurationRequestDto::type_script_ify());
+    push_ts(&mut ts_code, &runtime_config::SetStdoutPriorityConfigurationRequestDto::type_script_ify());
 
     ts_code
 }

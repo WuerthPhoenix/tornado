@@ -18,7 +18,7 @@ fn main() {
     };
 
     // Setup logger
-    let _guard = setup_logger(&logger_config).unwrap();
+    let _guard = setup_logger(logger_config).unwrap();
 
     // Load events from fs
     let events = read_events_from_config(&conf.io.json_events_path);
