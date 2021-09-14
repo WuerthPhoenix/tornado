@@ -34,13 +34,13 @@ impl Event {
     }
 }
 
-impl Into<Value> for Event {
-    fn into(self) -> Value {
+impl From<Event> for Value {
+    fn from(event: Event) -> Self {
         let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
-        payload.insert("type".to_owned(), Value::Text(self.event_type));
-        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(self.created_ms)));
-        payload.insert("payload".to_owned(), Value::Map(self.payload));
+        payload.insert("trace_id".to_owned(), Value::Text(event.trace_id));
+        payload.insert("type".to_owned(), Value::Text(event.event_type));
+        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(event.created_ms)));
+        payload.insert("payload".to_owned(), Value::Map(event.payload));
         Value::Map(payload)
     }
 }
@@ -88,21 +88,15 @@ pub enum Number {
 
 impl Number {
     pub fn from_serde_number(n: &serde_json::Number) -> Option<Self> {
-        if let Some(num) = n.as_u64() {
-            Some(Number::PosInt(num))
-        } else if let Some(num) = n.as_i64() {
-            Some(Number::NegInt(num))
-        } else if let Some(num) = n.as_f64() {
-            Some(Number::Float(num))
-        } else {
-            None
-        }
+        n.as_u64().map(Number::PosInt)
+            .or_else(|| n.as_i64().map(Number::NegInt))
+            .or_else(|| n.as_f64().map(Number::Float))
     }
 
     #[inline]
     pub fn is_i64(&self) -> bool {
         match self {
-            Number::PosInt(v) => (i64::max_value() as u64) >= *v,
+            Number::PosInt(v) => (i64::MAX as u64) >= *v,
             Number::NegInt(_) => true,
             Number::Float(_) => false,
         }
@@ -129,7 +123,7 @@ impl Number {
         match self {
             Number::PosInt(n) => {
                 let n = *n;
-                if n <= i64::max_value() as u64 {
+                if n <= i64::MAX as u64 {
                     Some(n as i64)
                 } else {
                     None
@@ -360,7 +354,7 @@ impl PartialOrd for Value {
                 _ => None,
             },
             Value::Bool(first) => match other {
-                Value::Bool(second) => first.partial_cmp(&second),
+                Value::Bool(second) => first.partial_cmp(second),
                 _ => None,
             },
             Value::Null => match other {
@@ -368,7 +362,7 @@ impl PartialOrd for Value {
                 _ => None,
             },
             Value::Array(first) => match other {
-                Value::Array(second) => first.partial_cmp(&second),
+                Value::Array(second) => first.partial_cmp(second),
                 _ => None,
             },
             Value::Map(..) => None,

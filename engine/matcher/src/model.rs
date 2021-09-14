@@ -12,24 +12,24 @@ pub struct InternalEvent {
     pub payload: Value,
 }
 
-impl Into<InternalEvent> for Event {
-    fn into(self) -> InternalEvent {
+impl From<Event> for InternalEvent {
+    fn from(event: Event) -> Self {
         InternalEvent {
-            trace_id: self.trace_id,
-            event_type: Value::Text(self.event_type),
-            created_ms: Value::Number(Number::PosInt(self.created_ms)),
-            payload: Value::Map(self.payload),
+            trace_id: event.trace_id,
+            event_type: Value::Text(event.event_type),
+            created_ms: Value::Number(Number::PosInt(event.created_ms)),
+            payload: Value::Map(event.payload),
         }
     }
 }
 
-impl Into<Value> for InternalEvent {
-    fn into(self) -> Value {
+impl From<InternalEvent> for Value {
+    fn from(event: InternalEvent) -> Self {
         let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::Text(self.trace_id));
-        payload.insert("type".to_owned(), self.event_type);
-        payload.insert("created_ms".to_owned(), self.created_ms);
-        payload.insert("payload".to_owned(), self.payload);
+        payload.insert("trace_id".to_owned(), Value::Text(event.trace_id));
+        payload.insert("type".to_owned(), event.event_type);
+        payload.insert("created_ms".to_owned(), event.created_ms);
+        payload.insert("payload".to_owned(), event.payload);
         Value::Map(payload)
     }
 }

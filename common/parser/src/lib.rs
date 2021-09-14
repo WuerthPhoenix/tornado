@@ -77,7 +77,7 @@ impl Parser {
                         && result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER)
                     {
                         result = result[1..(result.len() - 1)].to_string();
-                        let index = usize::from_str_radix(&result, 10).map_err(|err| {
+                        let index = result.parse().map_err(|err| {
                             ParserError::ConfigurationError {
                                 message: format!(
                                     "Cannot parse value [{}] to number: {}",
@@ -137,15 +137,15 @@ impl ValueGetter {
     }
 }
 
-impl Into<ValueGetter> for &str {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Map { key: self.to_owned() }
+impl From<&str> for ValueGetter {
+    fn from(key: &str) -> Self {
+        ValueGetter::Map { key: key.to_owned() }
     }
 }
 
-impl Into<ValueGetter> for usize {
-    fn into(self) -> ValueGetter {
-        ValueGetter::Array { index: self }
+impl From<usize> for ValueGetter {
+    fn from(index: usize) -> Self {
+        ValueGetter::Array { index }
     }
 }
 

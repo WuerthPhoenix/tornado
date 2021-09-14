@@ -61,7 +61,7 @@ impl ActionResolverBuilder {
                 .insert(
                     payload_key.to_owned(),
                     ActionResolverBuilder::build_action_value_processor(
-                        &rule_name,
+                        rule_name,
                         &self.accessor,
                         payload_value,
                     )?,

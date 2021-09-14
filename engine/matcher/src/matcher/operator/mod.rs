@@ -94,13 +94,13 @@ impl OperatorBuilder {
     ) -> Result<Box<dyn Operator>, MatcherError> {
         let result: Result<Box<dyn Operator>, MatcherError> = match config {
             rule::Operator::And { operators } => {
-                Ok(Box::new(crate::matcher::operator::and::And::build("", &operators, self)?))
+                Ok(Box::new(crate::matcher::operator::and::And::build("", operators, self)?))
             }
             rule::Operator::Or { operators } => {
-                Ok(Box::new(crate::matcher::operator::or::Or::build("", &operators, self)?))
+                Ok(Box::new(crate::matcher::operator::or::Or::build("", operators, self)?))
             }
             rule::Operator::Not { operator } => {
-                Ok(Box::new(crate::matcher::operator::not::Not::build("", &operator, self)?))
+                Ok(Box::new(crate::matcher::operator::not::Not::build("", operator, self)?))
             }
             rule::Operator::Equals { first, second } => {
                 Ok(Box::new(crate::matcher::operator::equals::Equals::build(

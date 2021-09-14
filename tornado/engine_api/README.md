@@ -26,26 +26,7 @@ The token should be a base64 encoded JSON with this user data:
 
 In the coming releases the current token format will be replaced by a 
 [JSON Web Token (JWT)](https://en.wikipedia.org/wiki/JSON_Web_Token).
- 
 
-### Auth endpoints
-
-Endpoint: get list of draft ids
-- HTTP Method: __GET__
-- path : **/api/v1_beta/auth/who_am_i**
-- response type: __JSON__
-- response: a AuthWithPermissionDto with the current user profile  
-- response example:
-  ```json
-  {
-     "user": "USERNAME",
-     "permissions": ["ConfigEdit", "ConfigView"],
-     "preferences": {
-        "language": "en_US"
-     }
-  }
-  ```
-  
   
 ## Tornado 'Config' Backend API
 

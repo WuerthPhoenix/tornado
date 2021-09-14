@@ -20,7 +20,7 @@ impl Or {
     ) -> Result<Or, MatcherError> {
         let mut operators = vec![];
         for entry in args {
-            let operator = builder.build(rule_name, &entry)?;
+            let operator = builder.build(rule_name, entry)?;
             operators.push(operator)
         }
         Ok(Or { operators })

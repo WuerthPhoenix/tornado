@@ -334,7 +334,6 @@ pub async fn daemon(
                 .expect("'event_socket_ip' must be provided to start the tornado TCP server"),
             daemon_config
                 .event_socket_port
-                .clone()
                 .expect("'event_socket_port' must be provided to start the tornado TCP server")
         );
         let json_matcher_addr_clone = matcher_addr.clone();
@@ -375,7 +374,6 @@ pub async fn daemon(
         let daemon_config = daemon_config.clone();
         let logger_guard = logger_guard.clone();
 
-        let auth_api = ApiData { auth: auth_service.clone(), api: () };
         let config_api = ApiData {
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
@@ -402,7 +400,6 @@ pub async fn daemon(
                                 .unwrap_or(MAX_JSON_PAYLOAD_SIZE),
                         ), // Limit request payload size in byte
                     )
-                    .service(tornado_engine_api::auth::web::build_auth_endpoints(auth_api))
                     .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(event_api))
                     .service(

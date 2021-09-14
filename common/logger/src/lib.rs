@@ -129,9 +129,9 @@ impl LogWorkerGuard {
         self.apm_enabled
             .as_ref()
             .ok_or_else(|| LoggerError::LoggerConfigurationError {
-                message: format!(
-                    "Cannot enable/disable the apm logger because it is not configured."
-                ),
+                message:
+                    "Cannot enable/disable the apm logger because it is not configured.".to_owned()
+                ,
             })
             .map(|apm_enabled| apm_enabled.store(enabled, Ordering::Relaxed))
     }

@@ -39,9 +39,9 @@ pub enum Defaultable<T: Serialize + Clone> {
     Default {},
 }
 
-impl<T: Serialize + Clone> Into<Option<T>> for Defaultable<T> {
-    fn into(self) -> Option<T> {
-        match self {
+impl <T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
+    fn from(default: Defaultable<T>) -> Self {
+        match default {
             Defaultable::Value(value) => Some(value),
             Defaultable::Default {} => None,
         }

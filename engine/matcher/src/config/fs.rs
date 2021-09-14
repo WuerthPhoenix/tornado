@@ -280,7 +280,7 @@ impl FsMatcherConfigManager {
         name
     }
 
-    fn filename(path: &PathBuf) -> Result<&str, MatcherError> {
+    fn filename(path: &Path) -> Result<&str, MatcherError> {
         path.file_name().and_then(OsStr::to_str).ok_or_else(|| MatcherError::ConfigurationError {
             message: format!("Error processing path name: [{}]", path.display()),
         })
