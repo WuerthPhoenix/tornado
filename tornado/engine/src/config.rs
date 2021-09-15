@@ -298,7 +298,7 @@ mod test {
                 Permission::RuntimeConfigEdit,
                 Permission::RuntimeConfigView
             ],
-            config.tornado.daemon.auth.role_permissions["ADMIN"]
+            config.tornado.daemon.auth.role_permissions["admin"]
         );
 
     }

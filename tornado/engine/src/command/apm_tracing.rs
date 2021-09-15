@@ -39,7 +39,7 @@ async fn call_apm_tracing_endpoint(
 
     let auth_header = base64::encode(serde_json::to_string(&Auth {
         user: "tornado".to_owned(),
-        roles: vec!["ADMIN".to_owned()],
+        roles: vec!["admin".to_owned()],
         preferences: None
     })?);
 
