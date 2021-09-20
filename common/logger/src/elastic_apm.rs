@@ -21,10 +21,18 @@ pub struct ApmTracingConfig {
 impl ApmTracingConfig {
     pub fn read_apm_server_api_credentials_if_not_set(
         &mut self,
-        filename: &str,
+        filepath: &str,
     ) -> Result<(), LoggerError> {
         if self.apm_server_api_credentials.is_none() {
-            self.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(filename)?);
+            self.apm_server_api_credentials =
+                Some(ApmServerApiCredentials::from_file(filepath).map_err(|err| {
+                    LoggerError::LoggerConfigurationError {
+                        message: format!(
+                            "Could not set APM Server credentials from file '{}'. Error: {:?}",
+                            filepath, err
+                        ),
+                    }
+                })?);
         }
         Ok(())
     }

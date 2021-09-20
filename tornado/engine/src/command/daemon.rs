@@ -52,10 +52,7 @@ pub async fn daemon(
 
     let logger_guard = Arc::new(setup_logger(global_config.logger)?);
     if let Err(apm_credentials_read_error) = apm_credentials_read_result {
-        warn!(
-            "Could not set APM Server credentials from file '{}'. Error: {:?}",
-            apm_server_api_credentials_filepath, apm_credentials_read_error
-        );
+        warn!("{:?}", apm_credentials_read_error);
     }
 
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
