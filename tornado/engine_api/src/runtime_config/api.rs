@@ -18,7 +18,7 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
     async fn set_apm_enabled(
         &self,
         logger_config: SetLoggerApmRequestDto,
-    ) -> Result<(), ApiError>;
+    ) -> ();
 
     async fn set_stdout_enabled(
         &self,
@@ -71,7 +71,8 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
         dto: SetLoggerApmRequestDto,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
-        self.handler.set_apm_enabled(dto).await
+        self.handler.set_apm_enabled(dto).await;
+        Ok(())
     }
 
     /// Enable or disable logging to stdout
@@ -129,8 +130,8 @@ pub mod test {
             Ok(())
         }
 
-        async fn set_apm_enabled(&self, _logger_config: SetLoggerApmRequestDto) -> Result<(), ApiError> {
-            Ok(())
+        async fn set_apm_enabled(&self, _logger_config: SetLoggerApmRequestDto) -> () {
+            ()
         }
 
         async fn set_stdout_enabled(&self, _logger_config: SetLoggerStdoutRequestDto) -> Result<(), ApiError> {

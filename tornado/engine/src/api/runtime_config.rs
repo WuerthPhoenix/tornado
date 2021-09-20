@@ -39,9 +39,9 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
     async fn set_apm_enabled(
         &self,
         logger_config: SetLoggerApmRequestDto,
-    ) -> Result<(), ApiError> {
+    ) -> () {
         info!("RuntimeConfigApiHandlerImpl - set_apm_enabled to: [{}]", logger_config.enabled);
-        self.logger_guard.set_apm_enabled(logger_config.enabled).map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})
+        self.logger_guard.set_apm_enabled(logger_config.enabled)
     }
 
     async fn set_stdout_enabled(
@@ -56,8 +56,8 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
     async fn set_apm_first_configuration(&self, dto: SetApmPriorityConfigurationRequestDto) -> Result<(), ApiError> {
         let logger_level = dto.logger_level.unwrap_or_else(|| "info,tornado=debug".to_owned());
         info!("RuntimeConfigApiHandlerImpl - set_apm_first_configuration with logger level [{}]", logger_level);
-        self.logger_guard.set_apm_enabled(true)
-            .and_then(|_| self.logger_guard.set_level(logger_level))
+        self.logger_guard.set_apm_enabled(true);
+        self.logger_guard.set_level(logger_level)
             .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
         self.logger_guard.set_stdout_enabled(false);
         Ok(())
@@ -67,7 +67,7 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         info!("RuntimeConfigApiHandlerImpl - set_stdout_first_configuration");
         self.logger_guard.set_stdout_enabled(true);
         self.logger_guard.reset_level()
-            .and_then(|_| self.logger_guard.set_apm_enabled(false))
+            .map(|_| self.logger_guard.set_apm_enabled(false))
             .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err)})?;
         Ok(())
     }
@@ -81,6 +81,7 @@ mod test {
     use tracing_subscriber::EnvFilter;
     use std::str::FromStr;
     use std::sync::atomic::AtomicBool;
+    use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
     #[actix_rt::test]
     async fn should_set_the_logger_level() {
@@ -89,7 +90,7 @@ mod test {
         let config = LoggerConfig {
             file_output_path: None, 
             stdout_output: false,
-            tracing_elastic_apm: None,
+            tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone()
         };
         let env_filter = EnvFilter::from_str(&logger_level).unwrap();
@@ -97,7 +98,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(true).into(), None,reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(true).into(), AtomicBool::new(false).into(),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard);
 
@@ -122,7 +123,7 @@ mod test {
         let config = LoggerConfig {
             file_output_path: None, 
             stdout_output: false,
-            tracing_elastic_apm: None,
+            tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone()
         };
         let env_filter = EnvFilter::from_str(&logger_level).unwrap();
@@ -130,7 +131,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(false).into(), AtomicBool::new(false).into(),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
@@ -139,7 +140,7 @@ mod test {
 
         api.set_apm_enabled(SetLoggerApmRequestDto{
             enabled: true
-        }).await.unwrap();
+        }).await;
 
         // Assert
         assert!(log_guard.apm_enabled());
@@ -152,7 +153,7 @@ mod test {
         let config = LoggerConfig {
             file_output_path: None, 
             stdout_output: false,
-            tracing_elastic_apm: None,
+            tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone()
         };
         let env_filter = EnvFilter::from_str(&logger_level).unwrap();
@@ -160,7 +161,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(false).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(false).into(), AtomicBool::new(false).into(),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
@@ -182,7 +183,7 @@ mod test {
         let config = LoggerConfig {
             file_output_path: None, 
             stdout_output: false,
-            tracing_elastic_apm: None,
+            tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone()
         };
         let env_filter = EnvFilter::from_str(&logger_level).unwrap();
@@ -190,7 +191,7 @@ mod test {
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(true).into(), Some(AtomicBool::new(false).into()),reloadable_env_filter_handle));
+        let log_guard = Arc::new(LogWorkerGuard::new(None,None, config.clone().into(), AtomicBool::new(true).into(), AtomicBool::new(false).into(),reloadable_env_filter_handle));
 
         let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 

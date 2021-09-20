@@ -2,6 +2,7 @@ use log::{debug, warn};
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
 use tracing::info;
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 mod inner {
     use super::*;
@@ -20,7 +21,7 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_reload_it::inner=warn".to_owned(),
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig::default(),
     };
 
     let guard = setup_logger(config).unwrap();

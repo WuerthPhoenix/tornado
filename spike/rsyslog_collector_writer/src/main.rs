@@ -6,6 +6,7 @@ use std::io;
 use std::{thread, time};
 use tornado_common_api::{Payload, Value};
 use tornado_common_logger::{setup_logger, LoggerConfig};
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 fn main() {
     let conf = config::Conf::build();
@@ -14,7 +15,7 @@ fn main() {
         level: "Debug".to_owned(),
         stdout_output: true,
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig::default(),
     };
 
     // Setup logger

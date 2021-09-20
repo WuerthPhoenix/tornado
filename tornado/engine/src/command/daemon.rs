@@ -10,6 +10,7 @@ use actix_web::{web, App, HttpServer};
 use log::*;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::path::Path;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
 use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
@@ -44,13 +45,15 @@ pub async fn daemon(
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let mut global_config = build_config(config_dir)?;
-    if let Some(tracing_elastic_apm_config) = &mut global_config.logger.tracing_elastic_apm {
-        if tracing_elastic_apm_config.apm_server_api_credentials.is_none() {
-            tracing_elastic_apm_config.apm_server_api_credentials =
-                Some(ApmServerApiCredentials::from_file(&format!(
-                    "{}/{}",
-                    config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
-                ))?);
+    if global_config.logger.tracing_elastic_apm.apm_server_api_credentials.is_none() {
+        let apm_server_credentials_filepath = format!(
+            "{}/{}",
+            config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
+        );
+        if Path::new(&apm_server_credentials_filepath).exists() {
+            global_config.logger.tracing_elastic_apm.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(&apm_server_credentials_filepath)?)
+        } else {
+            warn!("APM Server credentials file '{}' does not exist. No credentials will be used to connect to APM Server.", apm_server_credentials_filepath)
         }
     }
     let logger_guard = Arc::new(setup_logger(global_config.logger)?);

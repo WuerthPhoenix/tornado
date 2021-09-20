@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
 use tracing_elastic_apm::config::ApiKey;
+use std::path::Path;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
 
@@ -24,13 +25,22 @@ impl ApmTracingConfig {
         &mut self,
         filename: &str,
     ) -> Result<(), LoggerError> {
-        if self.apm_server_api_credentials.is_none() {
+        if self.apm_server_api_credentials.is_none() && Path::new(&filename).exists(){
             self.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(filename)?);
         }
         Ok(())
     }
 }
 
+impl Default for ApmTracingConfig {
+    fn default() -> Self {
+        Self {
+            apm_output: false,
+            apm_server_url: "".to_string(),
+            apm_server_api_credentials: None
+        }
+    }
+}
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct ApmServerApiCredentials {
     pub id: String,
