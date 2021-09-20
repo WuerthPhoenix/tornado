@@ -11,6 +11,15 @@ stdout_output = true
 # A file path in the file system; if provided, the Logger will append any output to it.
 # file_output_path = "/output/file.log"
 
+[logger.tracing_elastic_apm]
+# Whether the Logger data should be sent to the Elastic APM Server.
+# Valid values: true, false
+apm_output = false
+## The url of the Elastic APM server.
+apm_server_url = "http://localhost:8200"
+#apm_server_api_credentials.id = "api_id"
+#apm_server_api_credentials.key = "api_key"
+
 [nats_json_collector]
 
 # Set the size of the in-memory queue where messages will be stored before being written

@@ -1,4 +1,5 @@
 use log::{debug, warn};
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
 use tracing::{info, span, Level};
@@ -42,7 +43,7 @@ async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
         stdout_output: true,
         level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig::default(),
     };
 
     let _guard = setup_logger(config).unwrap();

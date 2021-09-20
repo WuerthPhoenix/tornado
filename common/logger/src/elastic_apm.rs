@@ -8,9 +8,8 @@ pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_creden
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApmTracingConfig {
-
     // Whether the Logger data should be sent to the Elastic APM Server.
-     pub apm_output: bool,
+    pub apm_output: bool,
 
     // The url of the Elastic APM server.
     pub apm_server_url: String,
@@ -22,15 +21,28 @@ pub struct ApmTracingConfig {
 impl ApmTracingConfig {
     pub fn read_apm_server_api_credentials_if_not_set(
         &mut self,
-        filename: &str,
+        filepath: &str,
     ) -> Result<(), LoggerError> {
         if self.apm_server_api_credentials.is_none() {
-            self.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(filename)?);
+            self.apm_server_api_credentials =
+                Some(ApmServerApiCredentials::from_file(filepath).map_err(|err| {
+                    LoggerError::LoggerConfigurationError {
+                        message: format!(
+                            "Could not set APM Server credentials from file '{}'. Error: {:?}",
+                            filepath, err
+                        ),
+                    }
+                })?);
         }
         Ok(())
     }
 }
 
+impl Default for ApmTracingConfig {
+    fn default() -> Self {
+        Self { apm_output: false, apm_server_url: "".to_string(), apm_server_api_credentials: None }
+    }
+}
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct ApmServerApiCredentials {
     pub id: String,

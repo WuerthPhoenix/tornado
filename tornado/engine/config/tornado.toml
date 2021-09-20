@@ -21,8 +21,8 @@ stdout_output = true
 apm_output = false
 ## The url of the Elastic APM server.
 apm_server_url = "http://localhost:8200"
-apm_server_api_credentials.id = "api_id"
-apm_server_api_credentials.key = "api_key"
+#apm_server_api_credentials.id = "api_id"
+#apm_server_api_credentials.key = "api_key"
 
 [tornado]
 
