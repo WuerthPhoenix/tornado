@@ -1,9 +1,9 @@
 use log::{debug, warn};
 use std::path::Path;
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
 use tracing::info;
-use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 #[test]
 fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {

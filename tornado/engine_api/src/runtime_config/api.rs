@@ -1,13 +1,15 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SetApmPriorityConfigurationRequestDto, SetStdoutPriorityConfigurationRequestDto};
+use tornado_engine_api_dto::runtime_config::{
+    LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
+};
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
 #[async_trait::async_trait(?Send)]
 pub trait RuntimeConfigApiHandler: Send + Sync {
-
     async fn get_logger_configuration(&self) -> Result<LoggerConfigDto, ApiError>;
 
     async fn set_logger_level(
@@ -15,10 +17,7 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
         logger_config: SetLoggerLevelRequestDto,
     ) -> Result<(), ApiError>;
 
-    async fn set_apm_enabled(
-        &self,
-        logger_config: SetLoggerApmRequestDto,
-    ) -> ();
+    async fn set_apm_enabled(&self, logger_config: SetLoggerApmRequestDto) -> ();
 
     async fn set_stdout_enabled(
         &self,
@@ -121,7 +120,11 @@ pub mod test {
     #[async_trait::async_trait(?Send)]
     impl RuntimeConfigApiHandler for TestRuntimeConfigApiHandler {
         async fn get_logger_configuration(&self) -> Result<LoggerConfigDto, ApiError> {
-            Ok(LoggerConfigDto { level: "debug".to_owned(), apm_enabled: true, stdout_enabled: false })
+            Ok(LoggerConfigDto {
+                level: "debug".to_owned(),
+                apm_enabled: true,
+                stdout_enabled: false,
+            })
         }
         async fn set_logger_level(
             &self,
@@ -134,15 +137,24 @@ pub mod test {
             ()
         }
 
-        async fn set_stdout_enabled(&self, _logger_config: SetLoggerStdoutRequestDto) -> Result<(), ApiError> {
+        async fn set_stdout_enabled(
+            &self,
+            _logger_config: SetLoggerStdoutRequestDto,
+        ) -> Result<(), ApiError> {
             Ok(())
         }
 
-        async fn set_apm_first_configuration(&self, _dto: SetApmPriorityConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_apm_first_configuration(
+            &self,
+            _dto: SetApmPriorityConfigurationRequestDto,
+        ) -> Result<(), ApiError> {
             Ok(())
         }
 
-        async fn set_stdout_first_configuration(&self, _dto: SetStdoutPriorityConfigurationRequestDto) -> Result<(), ApiError> {
+        async fn set_stdout_first_configuration(
+            &self,
+            _dto: SetStdoutPriorityConfigurationRequestDto,
+        ) -> Result<(), ApiError> {
             Ok(())
         }
     }
@@ -289,5 +301,4 @@ pub mod test {
         assert!(api.set_stdout_priority_configuration(auth_view, dto.clone()).await.is_err());
         assert!(api.set_stdout_priority_configuration(auth_edit, dto).await.is_ok());
     }
-
 }

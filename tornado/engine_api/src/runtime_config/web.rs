@@ -1,11 +1,15 @@
+use crate::error::ApiError;
 use crate::model::ApiData;
 use crate::runtime_config::api::{RuntimeConfigApi, RuntimeConfigApiHandler};
 use actix_web::web::{Data, Json};
 use actix_web::{web, HttpRequest, Scope};
 use ajars::actix_web::ActixWebHandler;
 use log::*;
-use tornado_engine_api_dto::runtime_config::{LoggerConfigDto, SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto, SET_APM_PRIORITY_CONFIG_REST, SetApmPriorityConfigurationRequestDto, SET_STDOUT_PRIORITY_CONFIG_REST, SetStdoutPriorityConfigurationRequestDto};
-use crate::error::ApiError;
+use tornado_engine_api_dto::runtime_config::{
+    LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
+    SET_APM_PRIORITY_CONFIG_REST, SET_STDOUT_PRIORITY_CONFIG_REST,
+};
 
 pub const RUNTIME_CONFIG_ENDPOINT_V1_BASE: &str = "/v1_beta/runtime_config";
 
@@ -15,26 +19,14 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
     web::scope(RUNTIME_CONFIG_ENDPOINT_V1_BASE)
         .app_data(Data::new(data))
         .service(
-            web::resource("/logger/level")
-                .route(web::post().to(set_current_logger_level::<A>)),
+            web::resource("/logger/level").route(web::post().to(set_current_logger_level::<A>)),
         )
+        .service(web::resource("/logger/stdout").route(web::post().to(set_stdout::<A>)))
+        .service(web::resource("/logger/apm").route(web::post().to(set_apm::<A>)))
+        .service(SET_APM_PRIORITY_CONFIG_REST.handle(set_apm_priority_config::<A>))
+        .service(SET_STDOUT_PRIORITY_CONFIG_REST.handle(set_stdout_priority_config::<A>))
         .service(
-            web::resource("/logger/stdout")
-                .route(web::post().to(set_stdout::<A>)),
-        )
-        .service(
-            web::resource("/logger/apm")
-                .route(web::post().to(set_apm::<A>)),
-        )
-        .service(
-            SET_APM_PRIORITY_CONFIG_REST.handle(set_apm_priority_config::<A>)
-        )
-        .service(
-            SET_STDOUT_PRIORITY_CONFIG_REST.handle(set_stdout_priority_config::<A>)
-        )
-        .service(
-            web::resource("/logger")
-            .route(web::get().to(get_current_logger_configuration::<A>))
+            web::resource("/logger").route(web::get().to(get_current_logger_configuration::<A>)),
         )
 }
 
@@ -111,7 +103,9 @@ mod test {
     use crate::runtime_config::web::build_runtime_config_endpoints;
     use actix_web::{http::header, http::StatusCode, test, App};
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_api_dto::runtime_config::{SetLoggerLevelRequestDto, SetLoggerApmRequestDto, SetLoggerStdoutRequestDto};
+    use tornado_engine_api_dto::runtime_config::{
+        SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto,
+    };
 
     #[actix_rt::test]
     async fn current_logger_config_should_return_status_code_unauthorized_if_no_token(
@@ -185,7 +179,8 @@ mod test {
                     .unwrap(),
             ))
             .set_payload(
-                serde_json::to_string(&SetLoggerLevelRequestDto { level: "info".to_owned() }).unwrap(),
+                serde_json::to_string(&SetLoggerLevelRequestDto { level: "info".to_owned() })
+                    .unwrap(),
             )
             .uri("/v1_beta/runtime_config/logger/level")
             .to_request();
@@ -205,7 +200,7 @@ mod test {
                 auth: test_auth_service(),
                 api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -215,9 +210,7 @@ mod test {
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["runtime_config_edit"]))
                     .unwrap(),
             ))
-            .set_payload(
-                serde_json::to_string(&SetLoggerApmRequestDto { enabled: false }).unwrap(),
-            )
+            .set_payload(serde_json::to_string(&SetLoggerApmRequestDto { enabled: false }).unwrap())
             .uri("/v1_beta/runtime_config/logger/apm")
             .to_request();
 
@@ -236,14 +229,12 @@ mod test {
                 auth: test_auth_service(),
                 api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
             .insert_header((header::CONTENT_TYPE, "application/json"))
-            .set_payload(
-                serde_json::to_string(&SetLoggerApmRequestDto { enabled: false }).unwrap(),
-            )
+            .set_payload(serde_json::to_string(&SetLoggerApmRequestDto { enabled: false }).unwrap())
             .uri("/v1_beta/runtime_config/logger/apm")
             .to_request();
 
@@ -262,7 +253,7 @@ mod test {
                 auth: test_auth_service(),
                 api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -293,7 +284,7 @@ mod test {
                 auth: test_auth_service(),
                 api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()

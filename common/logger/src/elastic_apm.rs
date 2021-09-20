@@ -3,15 +3,13 @@ use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
 use tracing_elastic_apm::config::ApiKey;
-use std::path::Path;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApmTracingConfig {
-
     // Whether the Logger data should be sent to the Elastic APM Server.
-     pub apm_output: bool,
+    pub apm_output: bool,
 
     // The url of the Elastic APM server.
     pub apm_server_url: String,
@@ -25,7 +23,7 @@ impl ApmTracingConfig {
         &mut self,
         filename: &str,
     ) -> Result<(), LoggerError> {
-        if self.apm_server_api_credentials.is_none() && Path::new(&filename).exists(){
+        if self.apm_server_api_credentials.is_none() {
             self.apm_server_api_credentials = Some(ApmServerApiCredentials::from_file(filename)?);
         }
         Ok(())
@@ -34,11 +32,7 @@ impl ApmTracingConfig {
 
 impl Default for ApmTracingConfig {
     fn default() -> Self {
-        Self {
-            apm_output: false,
-            apm_server_url: "".to_string(),
-            apm_server_api_credentials: None
-        }
+        Self { apm_output: false, apm_server_url: "".to_string(), apm_server_api_credentials: None }
     }
 }
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]

@@ -22,12 +22,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let config_dir = arg_matches.value_of("config-dir").expect("config-dir should be provided");
     let streams_dir = arg_matches.value_of("streams-dir").expect("streams-dir should be provided");
     let mut collector_config = config::build_config(config_dir)?;
-    collector_config.logger.tracing_elastic_apm.read_apm_server_api_credentials_if_not_set(&format!(
-        "{}/{}",
-        config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
-    ))?;
+    let apm_server_api_credentials_filepath =
+        format!("{}/{}", config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
+    // Get the result and log the error later because the logger is not available yet
+    let apm_credentials_read_result = collector_config
+        .logger
+        .tracing_elastic_apm
+        .read_apm_server_api_credentials_if_not_set(&apm_server_api_credentials_filepath);
 
     let _guard = setup_logger(collector_config.logger.clone())?;
+    if let Err(apm_credentials_read_error) = apm_credentials_read_result {
+        warn!(
+            "Could not set APM Server credentials from file '{}'. Error: {:?}",
+            apm_server_api_credentials_filepath, apm_credentials_read_error
+        );
+    }
 
     let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
     let streams_config = config::read_streams_from_config(&streams_dir_full_path)?;

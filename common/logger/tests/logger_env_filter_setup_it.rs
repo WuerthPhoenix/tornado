@@ -1,8 +1,8 @@
 use log::{debug, warn};
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
 use tracing::{info, span, Level};
-use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 mod inner1 {
     use super::*;
