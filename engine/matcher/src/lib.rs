@@ -16,6 +16,7 @@ pub mod test_root {
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tornado_common_logger::{setup_logger, LoggerConfig};
+    use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
     lazy_static! {
         static ref INITIALIZED: Mutex<bool> = Mutex::new(false);
@@ -37,7 +38,7 @@ pub mod test_root {
             level: String::from("info,tornado=trace"),
             stdout_output: true,
             file_output_path: None,
-            tracing_elastic_apm: None,
+            tracing_elastic_apm: ApmTracingConfig::default(),
         };
         let _guard = setup_logger(conf).unwrap();
     }
