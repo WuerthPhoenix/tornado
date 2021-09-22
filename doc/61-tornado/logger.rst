@@ -25,8 +25,7 @@ The configuration is based on three entries:
 
 The configuration subsection `logger.tracing_elastic_apm` allows to
 configure the connection to Elastic APM for the tracing
-functionality. If this section is not provided traces will be sent to
-the APM Server.  The following entries can be configured:
+functionality. The following entries can be configured:
 
 - __apm_output__: Whether the Logger data should be sent to the
   Elastic APM Server. Valid values are *true* and *false*.
