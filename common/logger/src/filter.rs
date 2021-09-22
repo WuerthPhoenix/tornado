@@ -12,14 +12,14 @@ pub struct FilteredLayer<S, L, F>
 where
     S: Subscriber,
     L: Layer<S>,
-    F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool,
+    F: 'static + Fn(&Context<'_, S>) -> bool,
 {
     layer: L,
     filter: F,
     phantom_s: PhantomData<S>,
 }
 
-impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool>
+impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool>
     FilteredLayer<S, L, F>
 {
     pub fn new(layer: L, filter: F) -> Self {
@@ -27,15 +27,9 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
     }
 }
 
-impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> bool> Layer<S>
+impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool> Layer<S>
     for FilteredLayer<S, L, F>
 {
-    fn on_event(&self, event: &Event, context: Context<S>) {
-        if (self.filter)(event.metadata(), &context) {
-            self.layer.on_event(event, context);
-        }
-    }
-
     fn register_callsite(&self, metadata: &'static Metadata<'static>) -> Interest {
         self.layer.register_callsite(metadata)
     }
@@ -44,8 +38,8 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
         self.layer.enabled(metadata, ctx)
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, ctx: Context<'_, S>) {
-        self.layer.new_span(attrs, id, ctx)
+    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, context: Context<'_, S>) {
+       self.layer.new_span(attrs, id, context)
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
@@ -60,6 +54,12 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
         self.layer.on_follows_from(span, follows, ctx)
     }
 
+    fn on_event(&self, event: &Event, context: Context<S>) {
+        if (self.filter)(&context) {
+            self.layer.on_event(event, context);
+        }
+    }
+
     fn on_enter(&self, id: &span::Id, ctx: Context<'_, S>) {
         self.layer.on_enter(id, ctx)
     }
@@ -69,7 +69,9 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Metadata, &Context<'_, S>) -> 
     }
 
     fn on_close(&self, id: span::Id, ctx: Context<'_, S>) {
-        self.layer.on_close(id, ctx)
+        if (self.filter)(&ctx) {
+            self.layer.on_close(id, ctx)
+        }
     }
 
     fn on_id_change(&self, old: &span::Id, new: &span::Id, ctx: Context<'_, S>) {

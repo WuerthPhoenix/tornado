@@ -29,7 +29,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         ))?;
     }
 
-    let _guard = setup_logger(&collector_config.logger)?;
+    let _guard = setup_logger(collector_config.logger.clone())?;
 
     let streams_dir_full_path = format!("{}/{}", &config_dir, &streams_dir);
     let streams_config = config::read_streams_from_config(&streams_dir_full_path)?;
