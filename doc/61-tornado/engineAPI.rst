@@ -34,26 +34,6 @@ The token should be a base64 encoded JSON with this user data:
 In the coming releases the current token format will be replaced by a
 `JSON Web Token (JWT) <https://en.wikipedia.org/wiki/JSON_Web_Token>`__.
 
-.. rubric:: Auth endpoints
-
-Endpoint: get list of draft ids
-
--  HTTP Method: **GET**
--  path : **/api/v1_beta/auth/who_am_i**
--  response type: **JSON**
--  response: a AuthWithPermissionDto with the current user profile
--  response example:
-   
-   .. code:: json
-
-      {
-         "user": "USERNAME",
-         "permissions": ["ConfigEdit", "ConfigView"],
-         "preferences": {
-            "language": "en_US"
-         }
-      }
-
 Tornado 'Config' Backend API
 ++++++++++++++++++++++++++++
 
@@ -70,7 +50,7 @@ Endpoint: get the current Tornado configuration
 -  path : **/api/v1_beta/config/current**
 -  response type: **JSON**
 -  response example:
-   
+
    .. code:: json
 
        {
@@ -114,7 +94,7 @@ Endpoint: get list of draft ids
 -  response type: **JSON**
 -  response: An array of *String* ids
 -  response example:
-   
+
    .. code:: json
 
       ["id1", "id2"]
@@ -126,7 +106,7 @@ Endpoint: get a draft by id
 -  response type: **JSON**
 -  response: the draft content
 -  response example:
-   
+
    .. code:: json
 
        {
@@ -155,7 +135,7 @@ is added if not present.
 -  response type: **JSON**
 -  response: the draft content
 -  response example:
-   
+
    .. code:: json
 
       {
@@ -294,6 +274,125 @@ Endpoint: match an event on a specific Tornado draft
 -  request/response example: same request and response of the
    **/api/v1_beta/event/current/send** endpoint
 
+Tornado 'RuntimeConfig' Backend API
+```````````````````````````````````
+
+These endpoints allow inspecting and changing the tornado
+configuration at runtime. Please note that whatever configuration
+change performed with these endpoints will be lost when tornado is
+restarted.
+
+Get the logger configuration
+++++++++++++++++++++++++++++
+
+Endpoint: get the current logger level configuration
+
+- HTTP Method: **GET**
+- path : **/api/v1_beta/runtime_config/logger**
+- response type: **JSON**
+- response example:
+
+  .. code:: json
+
+     {
+       "level": "info",
+       "stdout_enabled": true,
+       "apm_enabled": false
+     }
+
+Set the logger level
+++++++++++++++++++++
+
+Endpoint: set the current logger level configuration
+
+- HTTP Method: **POST**
+- path : **/api/v1_beta/runtime_config/logger/level**
+- response: http status code 200 if the request was performed
+  correctly
+- request body type: **JSON**
+- request body:
+
+  .. code::   json
+
+     {
+       "level": "warn,
+       tornado=trace"
+     }
+
+Set the logger stdout output
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Endpoint: Enable or disable the logger stdout output
+
+- HTTP Method: **POST**
+- path : **/api/v1_beta/runtime_config/logger/stdout**
+- response: http status code 200 if the request was performed
+  correctly
+- request body type: **JSON**
+- request body:
+
+  .. code:: json
+
+     {
+       "enabled": true
+     }
+
+Set the logger output to Elastic APM
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Endpoint: Enable or disable the logger output to Elastic APM
+
+- HTTP Method: **POST**
+- path : **/api/v1_beta/runtime_config/logger/apm**
+- response: http status code 200 if the request was performed
+  correctly
+- request body type: **JSON**
+- request body:
+
+  .. code:: json
+
+     {
+       "enabled": true
+     }
+
+Set the logger configuration with priority to Elastic APM
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Endpoint: This will disable the stdout and enable the Elastic APM
+logger; in addition, the logger level will be set to the one provided,
+or to "info,tornado=debug" if not present.
+
+- HTTP Method: **POST**
+- ath : **/api/v1_beta/runtime_config/logger/set_apm_priority_configuration**
+- response: http status code 200 if the request was performed
+  correctly
+- request body type: **JSON**
+- request body:
+
+ .. code::  json
+
+    {
+      "logger_level": true
+    }
+
+Set the logger configuration with priority to stdout
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Endpoint: This will disable the Elastic APM logger and enable the
+stdout; in addition, the logger level will be set to the one provided in
+the configuration file.
+
+- HTTP Method: **POST**
+- path : **/api/v1_beta/runtime_config/logger/set_stdout_priority_configuration**
+- response: http status code 200 if the request was performed correctly
+- request body type: **JSON**
+- request body:
+
+  .. code:: json
+
+     {}
+
+
 Tornado API DTOs
 ````````````````
 
@@ -323,6 +422,6 @@ For example:
 
 .. code:: bash
 
-   TORNADO_DTO_BUILD_REGENERATE_TS_FILES=true cargo test 
+   TORNADO_DTO_BUILD_REGENERATE_TS_FILES=true cargo test
 
 The resulting *ts* will be generated in the **ts** subfolder.

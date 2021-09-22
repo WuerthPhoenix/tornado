@@ -54,6 +54,20 @@ command.
 
 Tornado commands:
 
+- __apm-tracing enable|disable__ : Enable or disable the APM priority logger output.
+
+  When used with `enable`, it:
+
+  - enables the APM logger
+  - disables the stdout logger output
+  - sets logger level to `info,tornado=debug`
+
+  When used with `disable`, it:
+
+  - disables the APM logger
+  - enables the stdout logger output
+  - sets logger level to value from the configuration file
+
 -  **check** : Checks that the configuration is valid.
 -  **daemon** : Starts the Tornado daemon.
 -  **help** : Prints the general help page, or the specific help of the
@@ -138,12 +152,12 @@ available in the file *'config-dir'/tornado.toml*:
    -  **nats.client.auth.type**: The type of authentication used to
       authenticate to NATS (Optional. Valid values are ``None`` and
       ``Tls``. Defaults to ``None`` if not provided).
-   -  **nats.client.auth.path_to_pkcs12_bundle**: The path to a PKCS12
-      file that will be used for authenticating to NATS (Mandatory if
-      ``nats.client.auth.type`` is set to ``Tls``).
-   -  **nats.client.auth.pkcs12_bundle_password**: The password to
-      decrypt the provided PKCS12 file (Mandatory if
-      ``nats.client.auth.type`` is set to ``Tls``).
+   -  **nats.client.auth.certificate_path**: The path to the client
+      certificate that will be used for authenticating to NATS.
+      (Mandatory if `nats.client.auth.type` is set to `Tls`).
+   -  **nats.client.auth.private_key_path**: The path to the client
+      certificate private key that will be used for authenticating to
+      NATS.  (Mandatory if `nats.client.auth.type` is set to `Tls`).
    -  **nats.client.auth.path_to_root_certificate**: The path to a root
       certificate (in ``.pem`` format) to trust in addition to system's
       trust root. May be useful if the NATS server is not trusted by the
@@ -168,7 +182,7 @@ the default value:
 
 .. code:: bash
 
-   TORNADO_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+   TORNADO_CONFIG_DIR_DEFAULT=/my/custom/path cargo build
 
 The command-specific options should always be used after the command
 name, while the global ones always precede it. An example of a full
@@ -176,9 +190,9 @@ startup command is:
 
 .. code:: bash
 
-   ./tornado_engine 
+   ./tornado_engine
        --config-dir=./tornado/engine/config \
-       daemon 
+       daemon
 
 In this case, the CLI executes the **daemon** command that starts the
 Engine with the configuration read from the *./tornado/engine/config*
@@ -1859,7 +1873,7 @@ the extracted value. The available modifiers are:
 
 -  *Lowercase*: it converts the resulting String to lower
    case. Syntax:
-   
+
    .. code:: json
 
          {
@@ -1867,7 +1881,7 @@ the extracted value. The available modifiers are:
          }
 
 -  *Map*: it maps a string to another string value. Syntax:
-   
+
    .. code:: json
 
         {
@@ -1886,7 +1900,7 @@ the extracted value. The available modifiers are:
    values that do not have a corresponding key in the ``mapping`` field.
    When not provided, the extractor will fail if a specific mapping is
    not found.
-   
+
 -  *ReplaceAll*: it returns a new string with all matches of a substring
    replaced by the new text; the ``find`` property is parsed as a regex
    if ``is_regex`` is true, otherwise it is evaluated as a static
@@ -1898,20 +1912,20 @@ the extracted value. The available modifiers are:
              "type": "ReplaceAll",
              "find": "the string to be found",
              "replace": "to be replaced with",
-             "is_regex": false 
+             "is_regex": false
          }
 
    In addition, when ``is_regex`` is true, is possible to interpolate
    the regex captured groups in the ``replace`` string, using the
    ``$<position>`` syntax, for example:
-   
+
    .. code:: json
 
        {
            "type": "ReplaceAll",
            "find": "(?P<lastname>[^,\\s]+),\\s+(?P<firstname>\\S+)",
            "replace": "firstname: $2, lastname: $1",
-           "is_regex": true 
+           "is_regex": true
        }
 
    Valid forms of the ``replace`` field are:
@@ -1922,7 +1936,7 @@ the extracted value. The available modifiers are:
 
 -  *ToNumber*: it transforms the resulting String into a
    number. Syntax:
-   
+
    .. code:: json
 
          {
@@ -1930,7 +1944,7 @@ the extracted value. The available modifiers are:
          }
 
 -  *Trim*: it trims the resulting String. Syntax:
-   
+
    .. code:: json
 
          {
@@ -1939,7 +1953,7 @@ the extracted value. The available modifiers are:
 
 A full example of a WITH clause using modifiers is:
 
-.. code:: 
+.. code::
 
    {
      "WITH": {
