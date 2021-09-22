@@ -1,6 +1,7 @@
 use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::actor::matcher::{EventMessage, MatcherActor};
+use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
@@ -17,17 +18,14 @@ use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
-use tornado_common_logger::elastic_apm::{
-    ApmServerApiCredentials, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME,
-};
+use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
-use tornado_engine_matcher::dispatcher::Dispatcher;
-use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
+use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -44,16 +42,18 @@ pub async fn daemon(
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let mut global_config = build_config(config_dir)?;
-    if let Some(tracing_elastic_apm_config) = &mut global_config.logger.tracing_elastic_apm {
-        if tracing_elastic_apm_config.apm_server_api_credentials.is_none() {
-            tracing_elastic_apm_config.apm_server_api_credentials =
-                Some(ApmServerApiCredentials::from_file(&format!(
-                    "{}/{}",
-                    config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
-                ))?);
-        }
-    }
+    let apm_server_api_credentials_filepath =
+        format!("{}/{}", config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
+    // Get the result and log the error later because the logger is not available yet
+    let apm_credentials_read_result = global_config
+        .logger
+        .tracing_elastic_apm
+        .read_apm_server_api_credentials_if_not_set(&apm_server_api_credentials_filepath);
+
     let logger_guard = Arc::new(setup_logger(global_config.logger)?);
+    if let Err(apm_credentials_read_error) = apm_credentials_read_result {
+        warn!("{:?}", apm_credentials_read_error);
+    }
 
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
@@ -198,7 +198,7 @@ pub async fn daemon(
             callback: move |action| {
                 let action = Arc::new(action);
                 let span = tracing::Span::current();
-                let message = ActionMessage { action, span};
+                let message = ActionMessage { action, span };
                 let send_result = match message.action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(message).map_err(|err| {

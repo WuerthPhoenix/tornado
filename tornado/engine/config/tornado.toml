@@ -21,8 +21,8 @@ stdout_output = true
 apm_output = false
 ## The url of the Elastic APM server.
 apm_server_url = "http://localhost:8200"
-apm_server_api_credentials.id = "api_id"
-apm_server_api_credentials.key = "api_key"
+#apm_server_api_credentials.id = "api_id"
+#apm_server_api_credentials.key = "api_key"
 
 [tornado]
 
@@ -71,5 +71,6 @@ web_max_json_payload_size = 1048000
 message_queue_size = 10000
 
 [tornado.daemon.auth.role_permissions]
-ADMIN = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView"]
-VIEWER = ["ConfigView"]
+admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView"]
+edit = ["ConfigEdit"]
+view = ["ConfigView"]

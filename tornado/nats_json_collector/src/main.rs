@@ -12,14 +12,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let topics_dir = arg_matches.value_of("topics-dir").expect("topics-dir should be provided");
 
     let mut collector_config = config::build_config(config_dir)?;
-    if let Some(tracing_elastic_apm_config) = &mut collector_config.logger.tracing_elastic_apm {
-        tracing_elastic_apm_config.read_apm_server_api_credentials_if_not_set(&format!(
-            "{}/{}",
-            config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME
-        ))?;
-    }
+    let apm_server_api_credentials_filepath =
+        format!("{}/{}", config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
+    // Get the result and log the error later because the logger is not available yet
+    let apm_credentials_read_result = collector_config
+        .logger
+        .tracing_elastic_apm
+        .read_apm_server_api_credentials_if_not_set(&apm_server_api_credentials_filepath);
 
     let _guard = setup_logger(collector_config.logger)?;
+    if let Err(apm_credentials_read_error) = apm_credentials_read_result {
+        warn!("{:?}", apm_credentials_read_error);
+    }
 
     info!("Starting Nats JSON Collector");
 
