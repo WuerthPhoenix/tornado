@@ -1,3 +1,5 @@
+.. _tornado-network-common:
+
 Network Common
 ``````````````
 
@@ -5,6 +7,8 @@ In order to keep Tornado independent from the network layer, the
 *tornado_network_common* crate contains high level traits not bound to
 any specific technology. These traits define the API for sending and
 receiving Events and Actions across the network.
+
+.. _tornado-simple-network:
 
 Simple Network
 ``````````````

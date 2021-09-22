@@ -1,3 +1,15 @@
+Executor Common
+```````````````
+
+The *tornado_executor_common* crate contains the Trait definitions for
+the Executors.
+
+An Executor is in charge of performing a specific Action (usually only
+one, but sometimes more). It receives an action description from the
+Tornado engine and delivers the operation linked to it.
+
+.. _tornado-director-executor:
+
 Director Executor
 `````````````````
 
@@ -48,6 +60,8 @@ An example of a valid Tornado Action is:
        }
    }
    
+.. _tornado-logger-executor:
+
 Logger Executor
 ```````````````
 
@@ -59,6 +73,7 @@ How it Works
 The Logger executor simply outputs the whole Action body to the standard
 `log <https://crates.io/crates/log>`__ at the *info* level.
 
+.. _tornado-script-executor:
 
 Script Executor
 ```````````````
@@ -206,6 +221,8 @@ There are different ways to pass the arguments for a script:
 
       ./usr/script/my_script.sh
 
+.. _tornado-monitoring-executor:
+
 Monitoring Executor
 ```````````````````
 
@@ -308,6 +325,7 @@ relation to Icinga2 and Icinga Director REST APIs.
 
    Flowchart of Monitoring Executor.
 
+.. _tornado-foreach-executor:
 
 Foreach Executor
 ````````````````
@@ -382,15 +400,8 @@ Then the **target** of the foreach action is the array
 actions is executed three times; the first time with *item* = "ONE",
 then with *item* = "TWO" and, finally, with *item* = "THREE".
 
-Executor Common
-```````````````
 
-The *tornado_executor_common* crate contains the Trait definitions for
-the Executors.
-
-An Executor is in charge of performing a specific Action (usually only
-one, but sometimes more). It receives an action description from the
-Tornado engine and delivers the operation linked to it.
+.. _tornado-archive-executor:
 
 Archive Executor
 ````````````````
@@ -516,6 +527,8 @@ Instead, the archiver will return an error.
 The Event from the payload is written into the log file in JSON format,
 one event per line.
 
+.. _tornado-elasticsearch-executor:
+
 Elasticsearch Executor
 ``````````````````````
 
@@ -631,6 +644,8 @@ examples.
           }
       }
 
+.. _tornado-icinga-executor:
+
 Icinga2 Executor
 ````````````````
 
@@ -670,7 +685,9 @@ An example of a valid Tornado Action is:
            }
        }
    }
-   
+
+.. _tornado-smartmon-check-executor:
+
 Smart Monitoring Check Result Executor
 ``````````````````````````````````````
 

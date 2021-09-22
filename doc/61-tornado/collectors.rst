@@ -1,3 +1,16 @@
+
+Collector Common
+````````````````
+
+The *tornado_collector_common* crate contains the Trait definitions for
+the Collectors. A *Collector* is an event data source. It receives
+information from one or more unstructured sources (e.g. emails or log
+files), produces structured Events, and sends them to the Tornado
+engine.
+
+
+.. _tornado-json-collectors:
+
 JSON Collectors
 ```````````````
 
@@ -338,15 +351,6 @@ The email collector follows these rules to generate the Tornado Event:
 -  The email subparts are not scanned recursively, thus only the
    subparts at the root level are evaluated
 
-
-Collector Common
-````````````````
-
-The *tornado_collector_common* crate contains the Trait definitions for
-the Collectors. A *Collector* is an event data source. It receives
-information from one or more unstructured sources (e.g. emails or log
-files), produces structured Events, and sends them to the Tornado
-engine.
 
 Tornado Email Collector (Executable)
 ````````````````````````````````````
@@ -1595,8 +1599,8 @@ To test the collector, verify that snmptrapd is installed on the machine
 and follow the collector configuration instructions above.
 
 As a prerequisite, the Tornado Engine should be up and running on the
-same machine (`See the dedicated Tornado engine
-documentation <../engine/README.md>`__).
+same machine (:ref:`See the dedicated Tornado engine documentation
+<tornado-engine>`).
 
 In addition the *snmptrap* tool is required to send fake snmptrapd
 messages.

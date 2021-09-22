@@ -1,3 +1,5 @@
+.. _tornado-engine:
+
 Tornado Engine (Executable)
 ```````````````````````````
 
@@ -156,8 +158,8 @@ available in the file *'config-dir'/tornado.toml*:
       by a Tornado endpoint. (Optional. Defaults to 67108860 (i.e.
       64MB))
 
-More information about the logger configuration is available
-`here <../../common/logger/README.md>`__.
+More information about the logger configuration is available in
+section :ref:`tornado-common-logger`.
 
 The default **config-dir** value can be customized at build time by
 specifying the environment variable *TORNADO_CONFIG_DIR_DEFAULT*. For
@@ -299,7 +301,7 @@ used:
 
 .. rubric:: Structure and Configuration: The JSON Collector
 
-The `JSON collector <../../collector/json/README.md>`__ embedded in
+The :ref:`JSON collector <tornado-json-collectors>` embedded in
 Tornado receives Events in JSON format and passes them to the matcher
 engine.
 
@@ -396,9 +398,9 @@ to decrypt the file.
 
 .. rubric:: Structure and Configuration: The Matching Engine
 
-The `matching engine <../../engine/matcher/README.md>`__ is the core of
-the Tornado Engine. It receives Events from the collectors, processes
-them with the configured Rules, and, in case of a match, generates the
+The :ref:`matching engine <tornado-matcher-engine>` is the core of the
+Tornado Engine. It receives Events from the collectors, processes them
+with the configured Rules, and, in case of a match, generates the
 Actions to be performed.
 
 Two startup parameters determine the path to the processing tree
@@ -488,13 +490,13 @@ pass the **Event** to the filter's children, otherwise it will ignore
 them.
 
 More information and examples about the processing tree configuration
-and runtime behavior can be found in the `matching engine
-documentation <../../engine/matcher/README.md>`__
+and runtime behavior can be found in the :ref:`matching engine
+documentation <tornado-matcher-engine>`.
 
 .. rubric:: Structure and Configuration: The Archive Executor
 
-The `archive executor <../../executor/archive/README.md>`__ processes
-and executes Actions of type "archive". This executor configuration is
+The :ref:`archive executor <tornado-archive-executor>` processes and
+executes Actions of type "archive". This executor configuration is
 specified in the ``archive_executor.toml`` file in the Tornado config
 folder.
 
@@ -520,12 +522,12 @@ The archive_executor.toml file has the following structure:
    "one" = "/one/file.log"
 
 More details about the meaning of each entry and how the archive
-executor functions can be found in the `executor
-documentation <../../executor/archive/README.md>`__.
+executor functions can be found in the :ref:`executor documentation
+<tornado-archive-executor>`.
 
 .. rubric:: Structure and Configuration: The Elasticsearch Executor
 
-The `Elasticsearch executor <../../executor/elasticsearch/README.md>`__
+The :ref:`Elasticsearch executor <tornado-elasticsearch-executor>`
 processes and executes Actions of type "elasticsearch". The
 configuration for this executor is specified in the
 ``elasticsearch_executor.toml`` file into the Tornado config folder.
@@ -539,12 +541,12 @@ For instance, if Tornado is started with the command:
 then the configuration file's full path will be
 ``/tornado/config/elasticsearch_executor.toml``.
 
-The elasticsearch_executor.toml has an optional ``default_auth`` section
-that allows to define the default authentication method to be used with
-Elasticsearch. An action can override the default method by specifying
-the ``auth`` payload parameter. All the authentication types defined in
-`Elasticsearch executor <../../executor/elasticsearch/README.md>`__ are
-supported.
+The elasticsearch_executor.toml has an optional ``default_auth``
+section that allows to define the default authentication method to be
+used with Elasticsearch. An action can override the default method by
+specifying the ``auth`` payload parameter. All the authentication
+types defined in :ref:`Elasticsearch executor
+<tornado-elasticsearch-executor>` are supported.
 
 In case the ``default_auth`` section is omitted, no default
 authentication is available.
@@ -570,24 +572,24 @@ authentication is available.
       private_key_path = "/path/to/tornado/conf/certs/private/tornado.key.pem"
       ca_certificate_path = "/path/to/tornado/conf/certs/root-ca.crt"
 
-More details about the executor can be found in the `Elasticsearch
-executor <../../executor/elasticsearch/README.md>`__.
+More details about the executor can be found in the
+:ref:`Elasticsearch executor <tornado-elasticsearch-executor>`.
 
 .. rubric:: Structure and Configuration: The Foreach Executor
 
 
-The `foreach executor <../../executor/foreach/README.md>`__ allows the
+The :ref:`foreach executor <tornado-foreach-executor>` allows the
 recursive executions of a set of actions with dynamic parameters.
 
-More details about the executor can be found in the `foreach executor
-documentation <../../executor/foreach/README.md>`__.
+More details about the executor can be found in the :ref:`foreach
+executor <tornado-foreach-executor>`.
 
 .. rubric:: Structure and Configuration: The Icinga2 Executor
 
-The `Icinga2 executor <../../executor/icinga2/README.md>`__ processes
-and executes Actions of type "icinga2". The configuration for this
-executor is specified in the ``icinga2_client_executor.toml`` file into
-the Tornado config folder.
+The :ref:`Icinga2 executor <tornado-icinga-executor>` processes and
+executes Actions of type "icinga2". The configuration for this
+executor is specified in the ``icinga2_client_executor.toml`` file
+into the Tornado config folder.
 
 For instance, if Tornado is started with the command:
 
@@ -609,12 +611,12 @@ options:
 -  (**optional**) **timeout_secs**: The timeout in seconds for a call to
    the Icinga2 APIs. If not provided, it defaults to 10 seconds.
 
-More details about the executor can be found in the `Icinga2 executor
-documentation <../../executor/icinga2/README.md>`__.
+More details about the executor can be found in the :ref:`Icinga2 executor
+documentation <tornado-icinga-executor>`.
 
 .. rubric:: Structure and Configuration: The Director Executor
 
-The `Director executor <../../executor/director/README.md>`__ processes
+The :ref:`Director executor <tornado-director-executor>` processes
 and executes Actions of type "director". The configuration for this
 executor is specified in the ``director_client_executor.toml`` file into
 the Tornado config folder.
@@ -640,35 +642,32 @@ options:
    the Icinga Director REST APIs. If not provided, it defaults to 10
    seconds.
 
-More details about the executor can be found in the `Director executor
-documentation <../../executor/director/README.md>`__.
+More details about the executor can be found in the :ref:`Director
+executor documentation <tornado-director-executor>`.
 
 .. rubric:: Structure and Configuration: The Logger Executor
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `logger executor <../../executor/logger/README.md>`__ logs the whole
+The :ref:`logger executor <tornado-logger-executor>` logs the whole
 Action body to the standard `log <https://crates.io/crates/log>`__ at
 the *info* level.
 
 This executor has no specific configuration.
 
 .. rubric:: Structure and Configuration: The Script Executor
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The `script executor <../../executor/script/README.md>`__ processes and
+The :ref:`script executor <tornado-script-executor>` processes and
 executes Actions of type "script".
 
 This executor has no specific configuration, since everything required
 for script execution is contained in the Action itself as described in
-the `executor documentation <../../executor/script/README.md>`__
+the :ref:`executor documentation <tornado-script-executor>`.
 
 .. rubric:: Structure and Configuration: The Smart Monitoring Check Result Executor
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The configuration of the `smart_monitoring_check_result
-executor <../../executor/smart_monitoring_check_result/README.md>`__ is
-specified in the ``smart_monitoring_check_result.toml`` file into the
-Tornado config folder.
+The configuration of the :ref:`smart_monitoring_check_result executor
+<tornado-smartmon-check-executor>` is specified in the
+``smart_monitoring_check_result.toml`` file into the Tornado config
+folder.
 
 The smart_monitoring_check_result.toml has the following configuration
 options:
@@ -687,16 +686,16 @@ provided, the following default values will be used:
 -  **pending_object_set_status_retries_sleep_ms** = 2000
 
 More details about the executor can be found in the
-`smart_monitoring_check_result
-documentation <../../executor/smart_monitoring_check_result/README.md>`__.
+:ref:`smart_monitoring_check_result documentation
+<tornado-smartmon-check-executor>`.
 
 Tornado API
 +++++++++++
 
 The Tornado API endpoints allow to interact with a Tornado instance.
 
-More details about the API can be found in the `Tornado backend
-documentation <../engine_api/README.md>`__.
+More details about the API can be found in the :ref:`Tornado backend
+documentation <tornado-backend>`.
 
 Self-Monitoring API
 +++++++++++++++++++
@@ -710,7 +709,6 @@ errors.
 At this time, only a simple *ping* endpoint is available.
 
 .. rubric:: Ping endpoint
-~~~~~~~~~~~~~
 
 This endpoint returns a simple message "pong - " followed by the current
 date in ISO 8601 format.
@@ -728,6 +726,7 @@ Details:
         "message": "pong - 2019-04-12T10:11:31.300075398+02:00",
       }
 
+.. _tornado-matcher-engine:
 
 Matcher Engine
 ``````````````
@@ -736,7 +735,7 @@ The *tornado_engine_matcher* crate contains the core functions of the
 Tornado Engine. It defines the logic for parsing Rules and Filters as
 well as for matching Events.
 
-The Matcher implementation details are `available here <./implementation.md>`.
+The Matcher implementation details are :ref:`available here <tornado-matcher-details>`.
 
 The Processing Tree
 +++++++++++++++++++
