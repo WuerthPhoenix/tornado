@@ -1,3 +1,5 @@
+.. _tornado-common-api:
+
 Common API
 ``````````
 

@@ -1,3 +1,4 @@
+.. _tornado-common-collector:
 
 Collector Common
 ````````````````
@@ -21,6 +22,8 @@ There are currently two available implementations:
 
 1. The *JsonEventCollector*
 2. The *JsonPayloadCollector*
+
+.. _tornado-jsonevent-collector:
 
 JsonEventCollector
 ++++++++++++++++++
@@ -47,6 +50,8 @@ The JSON input format should respect the Event structure, for example:
        }
      }
    }
+
+.. _tornado-jsonpayload-collector:
 
 JsonPayloadCollector
 ++++++++++++++++++++
@@ -106,7 +111,7 @@ will generate this Event:
 The Event "type" property must be specified when the collector is
 instantiated.
 
-.. _tornado-jmespath:
+.. _tornado-jmespath-collector:
 
 JMESPath Collector
 ``````````````````
@@ -351,6 +356,7 @@ The email collector follows these rules to generate the Tornado Event:
 -  The email subparts are not scanned recursively, thus only the
    subparts at the root level are evaluated
 
+.. _tornado-email-collector-exec:
 
 Tornado Email Collector (Executable)
 ````````````````````````````````````
@@ -514,6 +520,8 @@ An example of a full startup command is:
 In this example the Email Collector starts up and then reads the
 configuration from the */tornado-email-collector/config* directory.
 
+.. _tornado-rsyslog-collector-exec:
+
 Tornado Rsyslog Collector (executable)
 ``````````````````````````````````````
 
@@ -668,6 +676,8 @@ build an executable that uses */my/custom/path* as the default value:
 
    TORNADO_RSYSLOG_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build
 
+.. _tornado-webhook-collector-exec:
+
 Tornado Webhook Collector (executable)
 ``````````````````````````````````````
 
@@ -683,7 +693,7 @@ The webhook collector executable is an HTTP server built on
 
 On startup, it creates a dedicated REST endpoint for each configured
 webhook. Calls received by an endpoint are processed by the embedded
-:ref:`tornado-jmespath` that uses them to produce Tornado Events. In
+:ref:`tornado-jmespath-collector` that uses them to produce Tornado Events. In
 the final step, the Events are forwarded to the Tornado Engine through
 the configured connection type.
 
@@ -701,7 +711,7 @@ create an endpoint:
 -  *collector_config*: The transformation logic that converts a webhook
    JSON object into a Tornado Event. It consists of a JMESPath collector
    configuration as described in its :ref:`specific
-   documentation <tornado-jmespath>`.
+   documentation <tornado-jmespath-collector>`.
 
 Configuration
 +++++++++++++
@@ -920,7 +930,9 @@ then the resulting Event will be:
 
 The Event creation logic is handled internally by the JMESPath
 collector, a detailed description of which is available in its
-:ref:`specific documentation <tornado-jmespath>`.
+:ref:`specific documentation <tornado-jmespath-collector>`.
+
+.. _tornado-nats-json-collector-exec:
 
 Tornado Nats JSON Collector (executable)
 ````````````````````````````````````````
@@ -937,7 +949,7 @@ The Nats JSON collector executable is built on
 
 On startup, it connects to a set of topics on a Nats server. Calls
 received are then processed by the embedded :ref:`jmespath collector
-<tornado-jmespath>` that uses them to produce Tornado Events. In the
+<tornado-jmespath-collector>` that uses them to produce Tornado Events. In the
 final step, the Events are forwarded to the Tornado Engine through the
 configured connection type.
 
@@ -949,7 +961,7 @@ configure them:
 -  *collector_config*: (Optional) The transformation logic that
    converts a JSON object received from Nats into a Tornado Event. It
    consists of a JMESPath collector configuration as described in its
-   :ref:`specific documentation <tornado-jmespath>`.
+   :ref:`specific documentation <tornado-jmespath-collector>`.
 
 Configuration
 +++++++++++++
@@ -1121,7 +1133,7 @@ then the resulting Event will be:
 
 The Event creation logic is handled internally by the JMESPath
 collector, a detailed description of which is available in its
-:ref:`specific documentation <tornado-jmespath>`.
+:ref:`specific documentation <tornado-jmespath-collector>`.
 
 .. rubric:: Default values
 
@@ -1161,6 +1173,8 @@ In this case the generated Tornado Events have *type* equals to the
 topic name and the whole source data in their payload.
 
 
+.. _tornado-icinga-collector-exec:
+
 Tornado Icinga2 Collector (executable)
 ``````````````````````````````````````
 
@@ -1180,7 +1194,7 @@ On startup, it connects to an existing `Icinga2 Server API
 subscribes to user defined `Event Streams
 <https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-streams>`__.
 Each Icinga2 Event published on the stream, is processed by the
-embedded :ref:`jmespath collector <tornado-jmespath>` that uses them
+embedded :ref:`jmespath collector <tornado-jmespath-collector>` that uses them
 to produce Tornado Events which are, finally, forwarded to the Tornado
 Engine's TCP address.
 
@@ -1200,7 +1214,7 @@ must provide two values in order to successfully create a subscription:
 -  *collector_config*: The transformation logic that converts an Icinga2
    Event into a Tornado Event. It consists of a JMESPath collector
    configuration as described in its :ref:`specific
-   documentation <tornado-jmespath>`.
+   documentation <tornado-jmespath-collector>`.
 
 .. note:: Based on the `Icinga2 Event Streams documentation
    <https://icinga.com/docs/icinga2/latest/doc/12-icinga2-api/#event-streams>`__,
@@ -1372,7 +1386,9 @@ with key 'icinga2_event'.
 
 The Event creation logic is handled internally by the JMESPath
 collector, a detailed description of which is available in its
-:ref:`specific documentation <tornado-jmespath>`.
+:ref:`specific documentation <tornado-jmespath-collector>`.
+
+.. _tornado-snmptrap-collector:
 
 SNMP Trap Daemon Collectors
 ```````````````````````````
@@ -1600,7 +1616,7 @@ and follow the collector configuration instructions above.
 
 As a prerequisite, the Tornado Engine should be up and running on the
 same machine (:ref:`See the dedicated Tornado engine documentation
-<tornado-engine>`).
+<tornado-engine-exec>`).
 
 In addition the *snmptrap* tool is required to send fake snmptrapd
 messages.
