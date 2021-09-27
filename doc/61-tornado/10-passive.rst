@@ -245,3 +245,11 @@ https://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 <LICENSE-MIT or https://opensource.org/licenses/MIT>, at your option.
 All files in the project carrying such notice may not be copied,
 modified, or distributed except according to those terms.
+
+.. include:: /61-tornado/collectors.rst
+.. include:: /61-tornado/commonAPI.rst
+.. include:: /61-tornado/engine.rst
+.. include:: /61-tornado/engineAPI.rst
+.. include:: /61-tornado/executor.rst
+.. include:: /61-tornado/implementation.rst
+.. include:: /61-tornado/network.rst

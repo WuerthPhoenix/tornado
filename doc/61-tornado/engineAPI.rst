@@ -320,7 +320,7 @@ Endpoint: set the current logger level configuration
      }
 
 Set the logger stdout output
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++
 
 Endpoint: Enable or disable the logger stdout output
 
@@ -338,7 +338,7 @@ Endpoint: Enable or disable the logger stdout output
      }
 
 Set the logger output to Elastic APM
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++
 
 Endpoint: Enable or disable the logger output to Elastic APM
 
@@ -356,7 +356,7 @@ Endpoint: Enable or disable the logger output to Elastic APM
      }
 
 Set the logger configuration with priority to Elastic APM
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Endpoint: This will disable the stdout and enable the Elastic APM
 logger; in addition, the logger level will be set to the one provided,
@@ -376,7 +376,7 @@ or to "info,tornado=debug" if not present.
     }
 
 Set the logger configuration with priority to stdout
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 Endpoint: This will disable the Elastic APM logger and enable the
 stdout; in addition, the logger level will be set to the one provided in
