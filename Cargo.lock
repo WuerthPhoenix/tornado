@@ -312,15 +312,6 @@ dependencies = [
 
 [[package]]
 name = "ansi_term"
-version = "0.11.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee49baf6cb617b853aa8d93bf420db2383fab46d314482ca2803b40d5fde979b"
-dependencies = [
- "winapi",
-]
-
-[[package]]
-name = "ansi_term"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d52a9bb7ec0cf484c551830a7ce27bd20d67eac647e1befb56b0be4ee39a55d2"
@@ -783,13 +774,9 @@ version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37e58ac78573c40708d45522f0d80fa2f01cc4f9b4e2bf749807255454312002"
 dependencies = [
- "ansi_term 0.11.0",
- "atty",
  "bitflags",
- "strsim",
  "textwrap 0.11.0",
  "unicode-width",
- "vec_map",
 ]
 
 [[package]]
@@ -3121,12 +3108,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "strsim"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8ea5119cdb4c55b55d432abb513a0429384878c15dde60cc77b1c99de1a95a6a"
-
-[[package]]
 name = "subtle"
 version = "2.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3543,7 +3524,7 @@ version = "0.0.1"
 dependencies = [
  "actix",
  "actix-rt",
- "clap 2.33.3",
+ "clap 3.0.0-beta.4",
  "config",
  "log",
  "serde",
@@ -3827,7 +3808,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "chrono",
- "clap 2.33.3",
+ "clap 3.0.0-beta.4",
  "config",
  "futures",
  "log",
@@ -3852,7 +3833,7 @@ dependencies = [
  "actix",
  "actix-rt",
  "chrono",
- "clap 2.33.3",
+ "clap 3.0.0-beta.4",
  "config",
  "log",
  "maplit",
@@ -3890,7 +3871,7 @@ version = "0.0.1"
 dependencies = [
  "actix",
  "actix-rt",
- "clap 2.33.3",
+ "clap 3.0.0-beta.4",
  "config",
  "log",
  "serde",
@@ -3923,7 +3904,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "chrono",
- "clap 2.33.3",
+ "clap 3.0.0-beta.4",
  "config",
  "log",
  "serde",
@@ -4055,7 +4036,7 @@ version = "0.2.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fdd0568dbfe3baf7048b7908d2b32bca0d81cd56bec6d2a8f894b01d74f86be3"
 dependencies = [
- "ansi_term 0.12.1",
+ "ansi_term",
  "chrono",
  "lazy_static",
  "matchers",
