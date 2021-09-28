@@ -5,23 +5,19 @@ use serde::{Deserialize, Serialize};
 use tornado_common_api::Value;
 use tornado_common::actors::message::TornadoCommonActorError;
 
-
-#[derive(Serialize, Deserialize)]
-struct Timestamps {
-    #[serde(with = "serde_regex")]
-    pattern: Regex,
-}
-
-pub enum NatsExtractor{
+#[derive(Serialize, Deserialize, Clone)]
+#[serde(tag = "type")]
+pub enum NatsExtractor {
     /// Uses a regular expression to extract the tenant_id from the subject name
     TenantIdFromSubject {
+        #[serde(with = "serde_regex")]
         regex: Regex
     }
 }
 
 impl NatsExtractor {
 
-    fn process(&self, subject: &str, mut event: InternalEvent) -> Result<InternalEvent, TornadoCommonActorError> {
+    pub fn process(&self, subject: &str, mut event: InternalEvent) -> Result<InternalEvent, TornadoCommonActorError> {
         match self {
             NatsExtractor::TenantIdFromSubject { regex } => {
                 match regex.captures(subject).and_then(|captures| captures.get(1)) {
