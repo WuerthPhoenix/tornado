@@ -6,6 +6,7 @@ pub mod actor;
 mod api;
 mod command;
 pub mod config;
+mod enrich;
 mod monitoring;
 
 #[actix_web::main]
