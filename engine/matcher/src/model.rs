@@ -9,6 +9,7 @@ pub struct InternalEvent {
     #[serde(rename = "type")]
     pub event_type: Value,
     pub created_ms: Value,
+    pub metadata: Value,
     pub payload: Value,
 }
 
@@ -18,6 +19,7 @@ impl From<Event> for InternalEvent {
             trace_id: event.trace_id,
             event_type: Value::Text(event.event_type),
             created_ms: Value::Number(Number::PosInt(event.created_ms)),
+            metadata: Value::Null,
             payload: Value::Map(event.payload),
         }
     }
