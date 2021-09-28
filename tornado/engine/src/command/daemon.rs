@@ -29,6 +29,8 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tracing_actix_web::TracingLogger;
+use tornado_common_api::Event;
+use tornado_engine_matcher::model::InternalEvent;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -299,10 +301,11 @@ pub async fn daemon(
 
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let mut event = serde_json::from_slice(&msg.msg.data)
+                let event: Event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
 
+                let mut event: InternalEvent = event.into();
                 for extractor in &nats_extractors {
                     event = extractor.process(&msg.msg.subject, event)?;
                 }
