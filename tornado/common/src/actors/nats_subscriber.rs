@@ -1,11 +1,17 @@
-use crate::actors::message::{BytesMessage, TornadoCommonActorError};
+use crate::actors::message::TornadoCommonActorError;
 use crate::actors::nats_publisher::{wait_for_nats_connection, NatsClientConfig};
 use crate::TornadoError;
 use actix::prelude::*;
-use async_nats::Connection;
+use async_nats::{Connection, Message};
 use futures_util::stream;
 use log::*;
 use serde::{Deserialize, Serialize};
+
+#[derive(Message, Debug)]
+#[rtype(result = "Result<(), TornadoCommonActorError>")]
+pub struct NatsMessage {
+    pub msg: Message,
+}
 
 #[derive(Deserialize, Serialize, Clone)]
 pub struct NatsSubscriberConfig {
@@ -14,7 +20,7 @@ pub struct NatsSubscriberConfig {
 }
 
 pub async fn subscribe_to_nats<
-    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(NatsMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 >(
     config: NatsSubscriberConfig,
     message_mailbox_capacity: usize,
@@ -29,7 +35,7 @@ pub async fn subscribe_to_nats<
     info!("NatsSubscriberActor - Created Nats subscription to subject [{}]", config.subject);
 
     let message_stream = stream::unfold(subscription, |sub| async {
-        sub.next().await.map(|msg| (BytesMessage { msg: msg.data }, sub))
+        sub.next().await.map(|msg| (NatsMessage { msg }, sub))
     });
 
     NatsSubscriberActor::create(|ctx| {
@@ -63,7 +69,7 @@ pub async fn subscribe_to_nats<
 
 struct NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(NatsMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     callback: F,
     // The client must live as long as the actor, otherwise the connection is dropped when the client is deallocated
@@ -73,18 +79,18 @@ where
 
 impl<F> Actor for NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(NatsMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Context = Context<Self>;
 }
 
-impl<F> Handler<BytesMessage> for NatsSubscriberActor<F>
+impl<F> Handler<NatsMessage> for NatsSubscriberActor<F>
 where
-    F: 'static + FnMut(BytesMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
+    F: 'static + FnMut(NatsMessage) -> Result<(), TornadoCommonActorError> + Sized + Unpin,
 {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: BytesMessage, _: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, msg: NatsMessage, _: &mut Context<Self>) -> Self::Result {
         trace!("NatsSubscriberActor - message received");
         (&mut self.callback)(msg)
     }

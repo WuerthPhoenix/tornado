@@ -157,7 +157,7 @@ async fn nats_subscriber_should_receive_from_nats() {
     nc_1.publish(&subject, &serde_json::to_vec(&event).unwrap()).await.unwrap();
     info!("Message sent");
 
-    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg);
+    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg.data);
 }
 
 #[actix_rt::test]
@@ -238,7 +238,7 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
 }
 
 #[actix_rt::test]
@@ -288,7 +288,7 @@ async fn should_publish_to_nats_with_tls() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
 }
 
 #[actix_rt::test]

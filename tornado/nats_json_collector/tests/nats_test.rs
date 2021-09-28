@@ -55,7 +55,7 @@ async fn should_subscribe_to_nats_topics() {
         },
         10000,
         move |msg| {
-            let event: Event = serde_json::from_slice(&msg.msg).unwrap();
+            let event: Event = serde_json::from_slice(&msg.msg.data).unwrap();
             sender.send(event).unwrap();
             Ok(())
         },

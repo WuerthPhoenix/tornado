@@ -298,7 +298,7 @@ pub async fn daemon(
 
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let event = serde_json::from_slice(&msg.msg)
+                let event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
                 matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
