@@ -295,12 +295,18 @@ pub async fn daemon(
         let addresses = nats_config.client.addresses.clone();
         let subject = nats_config.subject.clone();
         let matcher_addr_clone = matcher_addr.clone();
+        let nats_extractors = daemon_config.nats_extractors.clone();
 
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let event = serde_json::from_slice(&msg.msg.data)
+                let mut event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+
+                for extractor in &nats_extractors {
+                    event = extractor.process(&msg.msg.subject, event)?;
+                }
+
                 matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
