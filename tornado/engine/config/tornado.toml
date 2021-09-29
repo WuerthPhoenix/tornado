@@ -46,7 +46,7 @@ nats_enabled = false
 
 # List of data extractors for incoming Nats messages
 nats_extractors = [
-    { type = "TenantIdFromSubject", regex = "(.*)\\.tornado\\.events" }
+    { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" }
 ]
 
 # The addresses of the NATS server
