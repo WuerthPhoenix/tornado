@@ -94,13 +94,12 @@ pub enum SubCommand {
         #[clap(subcommand)]
         command: EnableOrDisableSubCommand,
     },
-
 }
 
 #[derive(Clap, Debug)]
 pub enum EnableOrDisableSubCommand {
     Enable,
-    Disable
+    Disable,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -303,7 +302,6 @@ mod test {
             ],
             config.tornado.daemon.auth.role_permissions["admin"]
         );
-
     }
 
     #[tokio::test]

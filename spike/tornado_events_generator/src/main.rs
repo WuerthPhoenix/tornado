@@ -6,6 +6,7 @@ use std::io::prelude::*;
 use std::net::TcpStream;
 use std::{thread, time};
 use tornado_common_api::Event;
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::{setup_logger, LoggerConfig};
 
 fn main() {
@@ -15,7 +16,7 @@ fn main() {
         level: "Debug".to_owned(),
         stdout_output: true,
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig::default(),
     };
 
     // Setup logger

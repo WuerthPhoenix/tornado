@@ -1,6 +1,6 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
-use arc_swap::ArcSwap;
 use crate::filter::FilteredLayer;
+use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -32,7 +32,7 @@ pub struct LoggerConfig {
     // otherwise, it will log on the stdout.
     pub file_output_path: Option<String>,
 
-    pub tracing_elastic_apm: Option<ApmTracingConfig>,
+    pub tracing_elastic_apm: ApmTracingConfig,
 }
 
 #[derive(Error, Debug)]
@@ -66,7 +66,7 @@ pub struct LogWorkerGuard {
 
     logger_level: ArcSwap<String>,
     stdout_enabled: Arc<AtomicBool>,
-    apm_enabled: Option<Arc<AtomicBool>>,
+    apm_enabled: Arc<AtomicBool>,
 
     reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
 }
@@ -77,11 +77,19 @@ impl LogWorkerGuard {
         stdout_guard: Option<WorkerGuard>,
         config: Arc<LoggerConfig>,
         stdout_enabled: Arc<AtomicBool>,
-        apm_enabled: Option<Arc<AtomicBool>>,
+        apm_enabled: Arc<AtomicBool>,
         reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
     ) -> Self {
         let logger_level = ArcSwap::from(Arc::new(config.level.clone()));
-        Self { file_guard, stdout_guard, config, logger_level, stdout_enabled, apm_enabled, reload_handle }
+        Self {
+            file_guard,
+            stdout_guard,
+            config,
+            logger_level,
+            stdout_enabled,
+            apm_enabled,
+            reload_handle,
+        }
     }
 
     pub fn level(&self) -> String {
@@ -91,16 +99,14 @@ impl LogWorkerGuard {
     /// Reloads the logger global filter
     pub fn set_level<S: Into<String>>(&self, env_filter_str: S) -> Result<(), LoggerError> {
         let filter = env_filter_str.into();
-        let env_filter = EnvFilter::from_str(&filter).map_err(|err| {
+        let env_filter =
+            EnvFilter::from_str(&filter).map_err(|err| LoggerError::LoggerConfigurationError {
+                message: format!("Cannot parse the logger level: [{}]. err: {:?}", filter, err),
+            })?;
+        self.reload_handle.reload(env_filter).map_err(|err| {
             LoggerError::LoggerConfigurationError {
-                message: format!(
-                    "Cannot parse the logger level: [{}]. err: {:?}",
-                    filter, err
-                ),
+                message: format!("Cannot reload the logger configuration. err: {:?}", err),
             }
-        })?;
-        self.reload_handle.reload(env_filter).map_err(|err| LoggerError::LoggerConfigurationError {
-            message: format!("Cannot reload the logger configuration. err: {:?}", err),
         })?;
 
         self.logger_level.store(Arc::new(filter));
@@ -122,27 +128,18 @@ impl LogWorkerGuard {
     }
 
     pub fn apm_enabled(&self) -> bool {
-        self.apm_enabled.as_ref().map(|val| val.load(Ordering::Relaxed)).unwrap_or(false)
+        self.apm_enabled.load(Ordering::Relaxed)
     }
 
-    pub fn set_apm_enabled(&self, enabled: bool) -> Result<(), LoggerError> {
-        self.apm_enabled
-            .as_ref()
-            .ok_or_else(|| LoggerError::LoggerConfigurationError {
-                message:
-                    "Cannot enable/disable the apm logger because it is not configured.".to_owned()
-                ,
-            })
-            .map(|apm_enabled| apm_enabled.store(enabled, Ordering::Relaxed))
+    pub fn set_apm_enabled(&self, enabled: bool) {
+        self.apm_enabled.store(enabled, Ordering::Relaxed)
     }
 }
 
 /// Configures the underlying logger implementation and activates it.
-pub fn setup_logger(
-    logger_config: LoggerConfig,
-) -> Result<LogWorkerGuard, LoggerError> {
+pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
     let config_logger_level = Arc::new(logger_config.level.to_owned());
-    let logger_level = ArcSwap::new(config_logger_level.clone());
+    let logger_level = ArcSwap::new(config_logger_level);
     let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
@@ -182,13 +179,13 @@ pub fn setup_logger(
         )
     };
 
-    let mut apm_enabled = None;
-
-    let apm_layer = if let Some(apm_tracing_config) = logger_config.tracing_elastic_apm.clone() {
-        let mut apm_config =
-            tracing_elastic_apm::config::Config::new(apm_tracing_config.apm_server_url.clone());
+    let (apm_layer, apm_enabled) = {
+        let apm_tracing_config = logger_config.tracing_elastic_apm.clone();
+        let mut apm_config = tracing_elastic_apm::config::Config::new(
+            logger_config.tracing_elastic_apm.apm_server_url.clone(),
+        );
         apm_config = if let Some(apm_server_api_credentials) =
-            apm_tracing_config.apm_server_api_credentials
+            logger_config.tracing_elastic_apm.apm_server_api_credentials.clone()
         {
             apm_config.with_authorization(Authorization::ApiKey(apm_server_api_credentials.into()))
         } else {
@@ -202,11 +199,9 @@ pub fn setup_logger(
                 ),
             })?;
         let enabled = Arc::new(AtomicBool::new(apm_tracing_config.apm_output));
-        apm_enabled = Some(enabled.clone());
+        let enabled_clone = enabled.clone();
 
-        Some(FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)))
-    } else {
-        None
+        (FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)), enabled_clone)
     };
 
     let subscriber = tracing_subscriber::registry()
@@ -217,7 +212,15 @@ pub fn setup_logger(
 
     set_global_logger(subscriber)?;
 
-    Ok(LogWorkerGuard { file_guard, stdout_guard, config: logger_config.into(), logger_level, reload_handle: reloadable_env_filter_handle, stdout_enabled, apm_enabled })
+    Ok(LogWorkerGuard {
+        file_guard,
+        stdout_guard,
+        config: logger_config.into(),
+        logger_level,
+        reload_handle: reloadable_env_filter_handle,
+        stdout_enabled,
+        apm_enabled,
+    })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
@@ -295,13 +298,13 @@ mod test {
             level: "info".to_owned(),
             stdout_output: true,
             file_output_path: None,
-            tracing_elastic_apm: None
+            tracing_elastic_apm: ApmTracingConfig::default(),
         };
         let env_filter = EnvFilter::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let guard = LogWorkerGuard {
-            apm_enabled: None,
+            apm_enabled: AtomicBool::new(false).into(),
             stdout_enabled: AtomicBool::new(true).into(),
             file_guard: None,
             config: Arc::new(config.clone()),
@@ -325,13 +328,13 @@ mod test {
             level: "info".to_owned(),
             stdout_output: true,
             file_output_path: None,
-            tracing_elastic_apm: None
+            tracing_elastic_apm: ApmTracingConfig::default(),
         };
         let env_filter = EnvFilter::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let guard = LogWorkerGuard {
-            apm_enabled: Some(AtomicBool::new(true).into()),
+            apm_enabled: AtomicBool::new(true).into(),
             stdout_enabled: AtomicBool::new(true).into(),
             config: Arc::new(config.clone()),
             logger_level,
@@ -341,37 +344,11 @@ mod test {
         };
 
         // Act
-        guard.set_apm_enabled(true).unwrap();
+        guard.set_apm_enabled(true);
         assert!(guard.apm_enabled());
 
-        guard.set_apm_enabled(false).unwrap();
+        guard.set_apm_enabled(false);
         assert!(!guard.apm_enabled());
-    }
-
-    #[test]
-    fn log_worker_guard_should_fail_if_set_apm_enabled_without_config() {
-        // Arrange
-        let config = LoggerConfig {
-            level: "info".to_owned(),
-            stdout_output: true,
-            file_output_path: None,
-            tracing_elastic_apm: None
-        };
-        let env_filter = EnvFilter::from_str(&config.level).unwrap();
-        let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
-
-        let guard = LogWorkerGuard {
-            apm_enabled: None,
-            stdout_enabled: AtomicBool::new(true).into(),
-            config: Arc::new(config.clone()),
-            logger_level,
-            file_guard: None,
-            stdout_guard: None,
-            reload_handle: tracing_subscriber::reload::Layer::new(env_filter).1,
-        };
-
-        // Act
-        assert!(guard.set_apm_enabled(true).is_err());
     }
 
     #[test]
@@ -381,7 +358,7 @@ mod test {
             level: "info".to_owned(),
             stdout_output: true,
             file_output_path: None,
-            tracing_elastic_apm: None
+            tracing_elastic_apm: ApmTracingConfig::default(),
         };
         let env_filter = EnvFilter::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
@@ -389,11 +366,10 @@ mod test {
         let (reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let _subscriber = tracing_subscriber::registry()
-        .with(reloadable_env_filter);
+        let _subscriber = tracing_subscriber::registry().with(reloadable_env_filter);
 
         let guard = LogWorkerGuard {
-            apm_enabled: None,
+            apm_enabled: AtomicBool::new(false).into(),
             stdout_enabled: AtomicBool::new(true).into(),
             file_guard: None,
             config: Arc::new(config.clone()),
@@ -419,7 +395,7 @@ mod test {
             level: "warn,tornado=debug".to_owned(),
             stdout_output: true,
             file_output_path: None,
-            tracing_elastic_apm: None
+            tracing_elastic_apm: ApmTracingConfig::default(),
         };
         let env_filter = EnvFilter::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
@@ -427,11 +403,10 @@ mod test {
         let (reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
 
-        let _subscriber = tracing_subscriber::registry()
-            .with(reloadable_env_filter);
+        let _subscriber = tracing_subscriber::registry().with(reloadable_env_filter);
 
         let guard = LogWorkerGuard {
-            apm_enabled: None,
+            apm_enabled: AtomicBool::new(false).into(),
             stdout_enabled: AtomicBool::new(true).into(),
             file_guard: None,
             config: Arc::new(config.clone()),

@@ -1,6 +1,6 @@
+use crate::command::apm_tracing::apm_tracing;
 use crate::config::{Opt, SubCommand};
 use clap::Clap;
-use crate::command::apm_tracing::apm_tracing;
 
 pub mod actor;
 mod api;
@@ -11,7 +11,6 @@ mod monitoring;
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-
     let opt: Opt = Opt::parse();
 
     let config_dir = opt.config_dir();
@@ -21,7 +20,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     match &opt.command {
         SubCommand::Check => command::check::check(config_dir, rules_dir, drafts_dir).await,
         SubCommand::Daemon => command::daemon::daemon(config_dir, rules_dir, drafts_dir).await,
-        SubCommand::RulesUpgrade => command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir).await,
-        SubCommand::ApmTracing {command} => apm_tracing(config_dir, command).await,
+        SubCommand::RulesUpgrade => {
+            command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir).await
+        }
+        SubCommand::ApmTracing { command } => apm_tracing(config_dir, command).await,
     }
 }
