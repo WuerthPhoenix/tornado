@@ -141,6 +141,7 @@ pub struct DaemonCommandConfig {
 
     pub nats_enabled: Option<bool>,
     pub nats: Option<NatsSubscriberConfig>,
+    #[serde(default)]
     pub nats_extractors: Vec<NatsExtractor>,
 
     pub web_server_ip: String,
