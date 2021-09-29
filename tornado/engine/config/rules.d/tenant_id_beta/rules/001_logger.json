@@ -14,7 +14,7 @@
     {
       "id": "logger",
       "payload": {
-        "tenant_id": "beta",
+        "message": "Hello world from tenant BETA",
         "event": "${event}"
       }
     }
