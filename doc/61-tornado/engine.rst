@@ -322,6 +322,10 @@ The rule can access the event's fields as follows:
 -  ``${event.payload.oids."key.with.dots"}``: Returns **38:10:38:30.98**
 -  ``${event.payload}``: Returns the entire payload
 -  ``${event}``: Returns the entire event
+-  ``${event.metadata.key}``: Returns the value of the
+   key *key* from the *metadata*. The *metadata* is a special field of an event
+   created by Tornado to store additional information where needed
+   (e.g. the *tenant_id*, etc.)
 
 .. rubric:: String interpolation
 
