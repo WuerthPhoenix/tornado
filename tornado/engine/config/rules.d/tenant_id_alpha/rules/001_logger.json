@@ -1,0 +1,22 @@
+{
+  "name": "log",
+  "description": "Log",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": []
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "logger",
+      "payload": {
+        "message": "Hello world from tenant ALPHA",
+        "event": "${event}"
+      }
+    }
+  ]
+}
