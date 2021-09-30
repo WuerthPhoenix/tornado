@@ -2,18 +2,17 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
-use tornado_common_api::Event;
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_matcher::model::{ProcessedEvent, InternalEvent};
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
-    pub event: tornado_common_api::Event,
+    pub event: InternalEvent,
     pub process_type: ProcessType,
     pub include_metadata: bool,
 }
@@ -21,7 +20,7 @@ pub struct EventMessageWithReply {
 #[derive(Debug, Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageAndConfigWithReply {
-    pub event: tornado_common_api::Event,
+    pub event: InternalEvent,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -30,7 +29,7 @@ pub struct EventMessageAndConfigWithReply {
 #[derive(Message)]
 #[rtype(result = "Result<(), error::MatcherError>")]
 pub struct EventMessage {
-    pub event: tornado_common_api::Event,
+    pub event: InternalEvent,
 }
 
 #[derive(Message)]
@@ -68,7 +67,7 @@ impl MatcherActor {
     fn process_event_with_reply(
         &self,
         matcher: &Matcher,
-        event: Event,
+        event: InternalEvent,
         process_type: ProcessType,
         include_metadata: bool,
     ) -> ProcessedEvent {

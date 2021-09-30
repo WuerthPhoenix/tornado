@@ -13,7 +13,7 @@ use crate::model::{
 use crate::validator::MatcherConfigValidator;
 use log::*;
 use std::collections::HashMap;
-use tornado_common_api::{Event, Value};
+use tornado_common_api::Value;
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
 ///   from the config::rule::Rule.
@@ -108,14 +108,13 @@ impl Matcher {
 
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
-    #[tracing::instrument(skip(self, event, include_metadata), fields(event_type=event.event_type.as_str(), event_created_ms=event.created_ms))]
-    pub fn process(&self, event: Event, include_metadata: bool) -> ProcessedEvent {
+    pub fn process<E: Into<InternalEvent>>(&self, event: E, include_metadata: bool) -> ProcessedEvent {
+        let internal_event: InternalEvent = event.into();
         trace!(
             "Matcher process - processing event: [{:?}], include metadata: [{}]",
-            &event,
+            &internal_event,
             include_metadata
         );
-        let internal_event: InternalEvent = event.into();
         let result = Matcher::process_node(&self.node, &internal_event, include_metadata);
         ProcessedEvent { event: internal_event, result }
     }

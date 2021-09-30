@@ -25,7 +25,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageWithReply {
-                event: event.event,
+                event: event.event.into(),
                 process_type: event.process_type,
                 include_metadata: true,
             })
@@ -42,7 +42,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
-                event: event.event,
+                event: event.event.into(),
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,

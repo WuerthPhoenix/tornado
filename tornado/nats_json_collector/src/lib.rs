@@ -87,7 +87,7 @@ async fn subscribe_to_topics(
             subscribe_to_nats(nats_subscriber_config, message_queue_size, move |data| {
                 debug!("Topic [{}] called", topic);
 
-                let event = std::str::from_utf8(&data.msg)
+                let event = std::str::from_utf8(&data.msg.data)
                     .map_err(|err| CollectorError::EventCreationError {
                         message: format!("{}", err),
                     })

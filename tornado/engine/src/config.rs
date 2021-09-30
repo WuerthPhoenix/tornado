@@ -16,6 +16,7 @@ use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
+use crate::enrich::nats::NatsExtractor;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
@@ -139,6 +140,8 @@ pub struct DaemonCommandConfig {
 
     pub nats_enabled: Option<bool>,
     pub nats: Option<NatsSubscriberConfig>,
+    #[serde(default)]
+    pub nats_extractors: Vec<NatsExtractor>,
 
     pub web_server_ip: String,
     pub web_server_port: u16,
@@ -382,6 +385,7 @@ mod test {
             event_socket_port: None,
             nats_enabled: Some(true),
             nats: None,
+            nats_extractors: vec![],
             web_server_ip: "".to_string(),
             web_server_port: 0,
             web_max_json_payload_size: None,
@@ -409,6 +413,7 @@ mod test {
             event_socket_port: None,
             nats_enabled: None,
             nats: None,
+            nats_extractors: vec![],
             web_server_ip: "".to_string(),
             web_server_port: 0,
             web_max_json_payload_size: None,
