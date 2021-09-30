@@ -103,8 +103,8 @@ available in the file *'config-dir'/tornado.toml*:
    -  **nats_extractors**: List of data extractors for incoming Nats messages (Optional).
       Valid extractors are:
 
-        - **FromSubject**: using a regex, extracts a value from the Nats subject and
-          adds it to the *event.metadata* scope using the specified key. Example:
+        - **FromSubject**: using a regex, extracts the first matching group from the Nats subject and
+          adds its value to the *event.metadata* scope using the specified key. Example:
 
           .. code:: toml
 
