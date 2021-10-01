@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use typescript_definitions::TypeScriptify;
+use tornado_engine_matcher::config::MatcherConfig;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct RuleDto {
@@ -132,4 +133,42 @@ pub struct MatcherConfigDraftDataDto {
     pub created_ts_ms: i64,
     pub updated_ts_ms: i64,
     pub draft_id: String,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+#[serde(tag = "type")]
+pub enum ProcessingTreeNodeConfigDto {
+    Filter {
+        name: String,
+        rule_count: usize,
+        children_count: usize,
+        description: String,
+    },
+    Ruleset {
+        name: String,
+        rule_count: usize,
+    },
+}
+
+impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
+    fn from(matcher_config_node: &MatcherConfig) -> Self {
+
+        match matcher_config_node {
+            MatcherConfig::Filter { name, filter, .. } => {
+                ProcessingTreeNodeConfigDto::Filter {
+                    name: name.to_owned(),
+                    rule_count: matcher_config_node.get_all_rules_count(),
+                    children_count: matcher_config_node.get_direct_child_nodes_count(),
+                    description: filter.to_owned().description
+                }
+            },
+
+            MatcherConfig::Ruleset { name, .. } => {
+                ProcessingTreeNodeConfigDto::Ruleset {
+                    name: name.to_owned(),
+                    rule_count: matcher_config_node.get_all_rules_count(),
+                }
+            }
+        }
+    }
 }
