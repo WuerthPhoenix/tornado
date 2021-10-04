@@ -108,7 +108,11 @@ impl Matcher {
 
     /// Processes an incoming Event and compares it against the set of Rules defined at the Matcher's creation time.
     /// The result is a ProcessedEvent.
-    pub fn process<E: Into<InternalEvent>>(&self, event: E, include_metadata: bool) -> ProcessedEvent {
+    pub fn process<E: Into<InternalEvent>>(
+        &self,
+        event: E,
+        include_metadata: bool,
+    ) -> ProcessedEvent {
         let internal_event: InternalEvent = event.into();
         trace!(
             "Matcher process - processing event: [{:?}], include metadata: [{}]",
@@ -2539,7 +2543,6 @@ mod test {
                 for action in &rules.rules[0].actions {
                     assert_eq!(&event.trace_id, &action.trace_id)
                 }
-
             }
             _ => assert!(false),
         };

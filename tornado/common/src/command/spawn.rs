@@ -22,9 +22,12 @@ impl<I: 'static, O, W: 'static + Command<I, O>> Command<I, ()> for SpawnCommand<
     async fn execute(&self, message: I) {
         let span = tracing::Span::current();
         let command = self.command.clone();
-        actix::spawn(async move {
-            command.execute(message).await;
-        }.instrument(span));
+        actix::spawn(
+            async move {
+                command.execute(message).await;
+            }
+            .instrument(span),
+        );
     }
 }
 

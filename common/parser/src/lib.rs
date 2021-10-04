@@ -77,14 +77,13 @@ impl Parser {
                         && result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER)
                     {
                         result = result[1..(result.len() - 1)].to_string();
-                        let index = result.parse().map_err(|err| {
-                            ParserError::ConfigurationError {
+                        let index =
+                            result.parse().map_err(|err| ParserError::ConfigurationError {
                                 message: format!(
                                     "Cannot parse value [{}] to number: {}",
                                     &result, err
                                 ),
-                            }
-                        })?;
+                            })?;
                         return Ok(ValueGetter::Array { index });
                     }
                     if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {

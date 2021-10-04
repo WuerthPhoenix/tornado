@@ -1,8 +1,8 @@
+use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use tornado_common_api::{Action, Event, Number, Payload, Value};
 use typescript_definitions::TypeScriptify;
-use crate::error::MatcherError;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct InternalEvent {
@@ -49,16 +49,14 @@ impl InternalEvent {
                 payload.insert(key, value);
                 self.metadata = Value::Map(payload);
                 Ok(())
-            },
+            }
             Value::Map(payload) => {
                 payload.insert(key, value);
                 Ok(())
-            },
-            _ => {
-                Err(MatcherError::InternalSystemError {
-                    message: "InternalEvent metadata should be a Map".to_owned()
-                })
             }
+            _ => Err(MatcherError::InternalSystemError {
+                message: "InternalEvent metadata should be a Map".to_owned(),
+            }),
         }
     }
 }
@@ -156,8 +154,8 @@ pub struct ValueMetaData {
 
 #[cfg(test)]
 mod test {
-    use tornado_common_api::{Payload, Value, Number, Event};
     use crate::model::InternalEvent;
+    use tornado_common_api::{Event, Number, Payload, Value};
 
     #[test]
     fn should_convert_between_event_and_internal_event() {
@@ -200,8 +198,8 @@ mod test {
                 assert_eq!(2, payload.len());
                 assert_eq!(&value_1, payload.get(key_1).unwrap());
                 assert_eq!(&value_2, payload.get(key_2).unwrap());
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -225,8 +223,8 @@ mod test {
             Value::Map(payload) => {
                 assert_eq!(1, payload.len());
                 assert_eq!(&value_2, payload.get(key_1).unwrap());
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -239,7 +237,6 @@ mod test {
 
         let key_1 = "random_key_1";
         let value_1 = Value::Number(Number::PosInt(123));
-
 
         // Act
         let result = event.add_to_metadata(key_1.to_owned(), value_1.clone());

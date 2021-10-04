@@ -1,10 +1,10 @@
+use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
 use thiserror::Error;
 use tornado_common_api::{Action, RetriableError};
-use std::fmt::Display;
-use std::collections::HashMap;
-use serde::Serialize;
-use serde_json::Value;
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
@@ -24,8 +24,15 @@ pub trait StatelessExecutor: Display {
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExecutorError {
-    #[error("ActionExecutionError: [{message}], can_retry: {can_retry}, code: {code:?}, data: {data}")]
-    ActionExecutionError { message: String, can_retry: bool, code: Option<&'static str>, data: PrintAsJson<HashMap<&'static str, Value>> },
+    #[error(
+        "ActionExecutionError: [{message}], can_retry: {can_retry}, code: {code:?}, data: {data}"
+    )]
+    ActionExecutionError {
+        message: String,
+        can_retry: bool,
+        code: Option<&'static str>,
+        data: PrintAsJson<HashMap<&'static str, Value>>,
+    },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
     #[error("JsonError: {cause}")]
@@ -41,7 +48,7 @@ pub enum ExecutorError {
 #[derive(Default, PartialEq)]
 pub struct PrintAsJson<S: Serialize>(S);
 
-impl <S: Serialize> std::fmt::Display for PrintAsJson<S> {
+impl<S: Serialize> std::fmt::Display for PrintAsJson<S> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Ok(json) = serde_json::to_string(&self.0) {
             write!(formatter, "{}", json)
@@ -51,7 +58,7 @@ impl <S: Serialize> std::fmt::Display for PrintAsJson<S> {
     }
 }
 
-impl <S: Serialize> std::fmt::Debug for PrintAsJson<S> {
+impl<S: Serialize> std::fmt::Debug for PrintAsJson<S> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
         if let Ok(json) = serde_json::to_string(&self.0) {
             write!(formatter, "{}", json)
@@ -61,7 +68,7 @@ impl <S: Serialize> std::fmt::Debug for PrintAsJson<S> {
     }
 }
 
-impl <S: Serialize> From<S> for PrintAsJson<S> {
+impl<S: Serialize> From<S> for PrintAsJson<S> {
     fn from(data: S) -> Self {
         Self(data)
     }
