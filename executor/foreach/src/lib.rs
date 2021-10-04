@@ -38,9 +38,11 @@ impl StatelessExecutor for ForEachExecutor {
         match action.payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
                 let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
-                    Some(Value::Array(actions)) => {
-                        actions.iter().map(|value| to_action(trace_id, value)).filter_map(Result::ok).collect()
-                    }
+                    Some(Value::Array(actions)) => actions
+                        .iter()
+                        .map(|value| to_action(trace_id, value))
+                        .filter_map(Result::ok)
+                        .collect(),
                     _ => {
                         return Err(ExecutorError::MissingArgumentError {
                             message: format!(
@@ -83,9 +85,11 @@ fn to_action(trace_id: &str, value: &Value) -> Result<Action, ExecutorError> {
     match value {
         Value::Map(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::Text(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Map(payload)) => {
-                    Ok(Action { trace_id: trace_id.to_owned(), id: id.to_owned(), payload: payload.clone() })
-                }
+                Some(Value::Map(payload)) => Ok(Action {
+                    trace_id: trace_id.to_owned(),
+                    id: id.to_owned(),
+                    payload: payload.clone(),
+                }),
                 _ => {
                     let message =
                         "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
@@ -353,14 +357,20 @@ mod test {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_one.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_one", payload),
+                action_one.get(0).unwrap()
+            );
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_one.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_one", payload),
+                action_one.get(1).unwrap()
+            );
         }
 
         let action_two = lock.get("id_two").unwrap();
@@ -372,7 +382,10 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::Text("a first_item bb <first_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_two", payload),
+                action_two.get(0).unwrap()
+            );
         }
 
         {
@@ -381,7 +394,10 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::Text("a second_item bb <second_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_two", payload),
+                action_two.get(1).unwrap()
+            );
         }
     }
 
@@ -473,13 +489,19 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_two", payload),
+                action_two.get(0).unwrap()
+            );
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_two", payload),
+                action_two.get(1).unwrap()
+            );
         }
     }
 
@@ -556,13 +578,19 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("value".to_owned(), Value::Text("first + second".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_one", payload),
+                action_two.get(0).unwrap()
+            );
         }
 
         {
             let mut payload = HashMap::new();
             payload.insert("value".to_owned(), Value::Text("third + fourth".to_owned()));
-            assert_eq!(&Action::new_with_payload("", "id_one", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("", "id_one", payload),
+                action_two.get(1).unwrap()
+            );
         }
     }
 

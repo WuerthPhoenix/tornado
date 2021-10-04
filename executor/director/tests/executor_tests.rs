@@ -24,13 +24,15 @@ async fn should_perform_a_post_request() {
         HttpServer::new(move || {
             let url = format!("{}{}", api, "/host");
             let sender = sender.clone();
-            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(web::post().to(
-                move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
-                    println!("Server received a call");
-                    sender.send(body.into_inner()).unwrap();
-                    ""
-                },
-            )))
+            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(
+                web::post().to(
+                    move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
+                        println!("Server received a call");
+                        sender.send(body.into_inner()).unwrap();
+                        ""
+                    },
+                ),
+            ))
         })
         .bind("127.0.0.1:0")
         .and_then(|server| {
@@ -51,7 +53,7 @@ async fn should_perform_a_post_request() {
                 let executor = DirectorExecutor::new(config).unwrap();
                 println!("Executor created");
 
-                let mut action = Action::new("","");
+                let mut action = Action::new("", "");
                 action.payload.insert(
                     DIRECTOR_ACTION_NAME_KEY.to_owned(),
                     Value::Text("create_host".to_owned()),
@@ -112,7 +114,7 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
     })
     .unwrap();
 
-    let mut action = Action::new("","");
+    let mut action = Action::new("", "");
     action
         .payload
         .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));
@@ -131,14 +133,14 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
 
     // Assert
     assert!(result.is_err());
-    assert_eq!(result, Err(ExecutorError::ActionExecutionError { 
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError {
         message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", "422 Unprocessable Entity", server_response), 
-        can_retry: true, 
+        can_retry: true,
         code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE),
         data: hashmap! {
             "method" => "POST".into(),
             "url" => format!("{}/host", server.url("")).into(),
             "payload" => serde_json::to_value(action.payload.get(DIRECTOR_ACTION_PAYLOAD_KEY)).unwrap()
-        }.into(), 
+        }.into(),
     }))
 }

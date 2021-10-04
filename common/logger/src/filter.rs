@@ -19,9 +19,7 @@ where
     phantom_s: PhantomData<S>,
 }
 
-impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool>
-    FilteredLayer<S, L, F>
-{
+impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool> FilteredLayer<S, L, F> {
     pub fn new(layer: L, filter: F) -> Self {
         Self { layer, filter, phantom_s: PhantomData }
     }
@@ -39,7 +37,7 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool> Layer
     }
 
     fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, context: Context<'_, S>) {
-       self.layer.new_span(attrs, id, context)
+        self.layer.new_span(attrs, id, context)
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {

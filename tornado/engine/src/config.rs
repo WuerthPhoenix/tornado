@@ -1,3 +1,4 @@
+use crate::enrich::nats::NatsExtractor;
 use clap::Clap;
 use config_rs::{Config, ConfigError, File};
 use log::*;
@@ -16,7 +17,6 @@ use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheckResultConfig;
-use crate::enrich::nats::NatsExtractor;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 

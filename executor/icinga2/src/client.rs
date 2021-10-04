@@ -50,28 +50,27 @@ impl ApiClient {
 
         trace!("Icinga2Executor - HTTP POST - url: {}", url);
 
-        match self.client
+        match self
+            .client
             .post(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .json(payload)
             .send()
-            .await {
-            Ok(response) => Ok(ResponseData {
-                response,
-                url,
-                method: "POST"
-            }),
+            .await
+        {
+            Ok(response) => Ok(ResponseData { response, url, method: "POST" }),
             Err(err) => Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
                 data: hashmap![
-                            "method" => "POST".into(),
-                            "url" => url.into(),
-                            "payload" => serde_json::to_value(payload)?
-                        ].into()
-            })
+                    "method" => "POST".into(),
+                    "url" => url.into(),
+                    "payload" => serde_json::to_value(payload)?
+                ]
+                .into(),
+            }),
         }
     }
 
@@ -81,30 +80,32 @@ impl ApiClient {
 
         trace!("Icinga2Executor - HTTP GET - url: {}", url);
 
-        match self.client
+        match self
+            .client
             .get(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .send()
-            .await {
-            Ok(response) => Ok(ResponseData {
-                response,
-                url,
-                method: "GET"
-            }),
+            .await
+        {
+            Ok(response) => Ok(ResponseData { response, url, method: "GET" }),
             Err(err) => Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Icinga2Executor - Connection failed. Err: {:?}", err),
                 code: None,
                 data: hashmap![
-                            "method" => "GET".into(),
-                            "url" => url.into(),
-                        ].into()
-            })
+                    "method" => "GET".into(),
+                    "url" => url.into(),
+                ]
+                .into(),
+            }),
         }
     }
 
-    pub async fn api_get_objects_host(&self, host_name: &str) -> Result<ResponseData, ExecutorError> {
+    pub async fn api_get_objects_host(
+        &self,
+        host_name: &str,
+    ) -> Result<ResponseData, ExecutorError> {
         self.get(&format!("/v1/objects/hosts/{}", host_name)).await
     }
 
@@ -129,7 +130,7 @@ impl ApiClient {
 pub struct ResponseData {
     pub url: String,
     pub method: &'static str,
-    pub response: Response
+    pub response: Response,
 }
 
 #[cfg(test)]

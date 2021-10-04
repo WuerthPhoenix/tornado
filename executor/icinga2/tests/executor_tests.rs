@@ -26,13 +26,15 @@ async fn should_perform_a_post_request() {
         HttpServer::new(move || {
             let url = format!("{}{}", api, "/v1/actions/icinga2-api-action");
             let sender = sender.clone();
-            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(web::post().to(
-                move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
-                    println!("Server received a call");
-                    sender.send(body.into_inner()).unwrap();
-                    ""
-                },
-            )))
+            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(
+                web::post().to(
+                    move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
+                        println!("Server received a call");
+                        sender.send(body.into_inner()).unwrap();
+                        ""
+                    },
+                ),
+            ))
         })
         .bind("127.0.0.1:0")
         .and_then(|server| {
@@ -54,7 +56,7 @@ async fn should_perform_a_post_request() {
 
                 println!("Executor created");
 
-                let mut action = Action::new("","");
+                let mut action = Action::new("", "");
                 action.payload.insert(
                     ICINGA2_ACTION_NAME_KEY.to_owned(),
                     Value::Text("icinga2-api-action".to_owned()),
@@ -107,7 +109,7 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
     })
     .unwrap();
 
-    let mut action = Action::new("","");
+    let mut action = Action::new("", "");
     action
         .payload
         .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("icinga2-api-action".to_owned()));

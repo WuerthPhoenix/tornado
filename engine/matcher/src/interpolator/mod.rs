@@ -266,7 +266,8 @@ mod test {
         // Arrange
         let payload = Payload::new();
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "constant string";
 
@@ -289,7 +290,8 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "type: ${event.type} - body: ${event.payload.body}";
 
@@ -312,7 +314,8 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
         let mut extracted_vars_inner = HashMap::new();
         extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1".to_owned()));
         extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2".to_owned()));
@@ -366,7 +369,8 @@ mod test {
         payload.insert("success".to_owned(), Value::Bool(true));
         payload.insert("fail".to_owned(), Value::Bool(false));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "success: ${event.payload.success} - fail: ${event.payload.fail}";
 
@@ -388,7 +392,8 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("void".to_owned(), Value::Null);
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = " void:  ${event.payload.void} ";
 
@@ -411,7 +416,8 @@ mod test {
         payload.insert("first".to_owned(), Value::Text("first line".to_owned()));
         payload.insert("second".to_owned(), Value::Text("second line".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "${event.payload.first}\n${event.payload.second}";
 
@@ -432,7 +438,8 @@ mod test {
         // Arrange
         let payload = Payload::new();
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "${event.payload.second}";
 
@@ -453,7 +460,8 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Array(body));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "${event.payload.body}";
 
@@ -475,7 +483,8 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Map(body));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+        let event =
+            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let template = "${event.payload.body}";
 

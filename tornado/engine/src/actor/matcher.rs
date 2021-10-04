@@ -6,7 +6,7 @@ use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::{ProcessedEvent, InternalEvent};
+use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
@@ -33,9 +33,7 @@ pub struct EventMessage {
 }
 
 #[derive(Message)]
-#[rtype(
-    result = "Result<Arc<MatcherConfig>, error::MatcherError>"
-)]
+#[rtype(result = "Result<Arc<MatcherConfig>, error::MatcherError>")]
 pub struct ReconfigureMessage {}
 
 #[derive(Message)]
@@ -166,28 +164,25 @@ impl Handler<ReconfigureMessage> for MatcherActor {
         info!("MatcherActor - received ReconfigureMessage.");
 
         Box::pin(
-                        async move {
-                            let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
-                            let matcher = Arc::new(Matcher::build(&matcher_config)?);
-                            Ok((matcher, matcher_config))
-                        }
-                        .into_actor(self) // converts future to ActorFuture
-                            .map(|result, this, _ctx| {
-                                match result {
-                                    Ok((matcher, matcher_config)) => {
-                                        this.matcher_config = matcher_config.clone();
-                                        this.matcher = matcher;
-                                        info!("MatcherActor - Tornado configuration updated successfully.");
-                                        Ok(matcher_config)
-                                    }
-                                    Err(err) => {
-                                        error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err);
-                                        Err(err)
-                                    },
-                                }
-                            }),
-                    )
-
+            async move {
+                let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
+                let matcher = Arc::new(Matcher::build(&matcher_config)?);
+                Ok((matcher, matcher_config))
+            }
+            .into_actor(self) // converts future to ActorFuture
+            .map(|result, this, _ctx| match result {
+                Ok((matcher, matcher_config)) => {
+                    this.matcher_config = matcher_config.clone();
+                    this.matcher = matcher;
+                    info!("MatcherActor - Tornado configuration updated successfully.");
+                    Ok(matcher_config)
+                }
+                Err(err) => {
+                    error!("MatcherActor - Cannot reconfigure the matcher: {:?}", err);
+                    Err(err)
+                }
+            }),
+        )
     }
 }
 

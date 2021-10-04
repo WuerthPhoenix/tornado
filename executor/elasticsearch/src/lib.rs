@@ -323,7 +323,11 @@ mod test {
     async fn should_fail_if_index_is_missing() {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
-        let mut action = Action { trace_id: "t".to_owned(), id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut action = Action {
+            trace_id: "t".to_owned(),
+            id: "elasticsearch".to_string(),
+            payload: HashMap::new(),
+        };
         let mut es_document = HashMap::new();
         es_document
             .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
@@ -348,7 +352,11 @@ mod test {
     async fn should_fail_if_endpoint_is_missing() {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
-        let mut action = Action { trace_id: "t".to_owned(), id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut action = Action {
+            trace_id: "t".to_owned(),
+            id: "elasticsearch".to_string(),
+            payload: HashMap::new(),
+        };
         let mut es_document = HashMap::new();
         es_document
             .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
@@ -371,7 +379,11 @@ mod test {
     async fn should_fail_if_data_is_missing() {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
-        let mut action = Action { trace_id: "t".to_owned(), id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut action = Action {
+            trace_id: "t".to_owned(),
+            id: "elasticsearch".to_string(),
+            payload: HashMap::new(),
+        };
         let mut es_document = HashMap::new();
         es_document
             .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
@@ -396,7 +408,11 @@ mod test {
     async fn should_fail_if_index_is_not_text() {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
-        let mut action = Action { trace_id: "t".to_owned(), id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut action = Action {
+            trace_id: "t".to_owned(),
+            id: "elasticsearch".to_string(),
+            payload: HashMap::new(),
+        };
         let mut es_document = HashMap::new();
         es_document
             .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
@@ -422,7 +438,11 @@ mod test {
     async fn should_fail_if_endpoint_is_not_text() {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
-        let mut action = Action { trace_id: "t".to_owned(), id: "elasticsearch".to_string(), payload: HashMap::new() };
+        let mut action = Action {
+            trace_id: "t".to_owned(),
+            id: "elasticsearch".to_string(),
+            payload: HashMap::new(),
+        };
         let mut es_document = HashMap::new();
         es_document
             .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
