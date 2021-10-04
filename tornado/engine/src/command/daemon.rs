@@ -18,6 +18,7 @@ use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
+use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
@@ -26,6 +27,7 @@ use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::model::ApiData;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
+use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -295,12 +297,19 @@ pub async fn daemon(
         let addresses = nats_config.client.addresses.clone();
         let subject = nats_config.subject.clone();
         let matcher_addr_clone = matcher_addr.clone();
+        let nats_extractors = daemon_config.nats_extractors.clone();
 
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let event = serde_json::from_slice(&msg.msg)
+                let event: Event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+
+                let mut event: InternalEvent = event.into();
+                for extractor in &nats_extractors {
+                    event = extractor.process(&msg.msg.subject, event)?;
+                }
+
                 matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
@@ -342,7 +351,7 @@ pub async fn daemon(
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
                 JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
-                    json_matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                    json_matcher_addr_clone.try_send(EventMessage { event: event.into() }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
             .await

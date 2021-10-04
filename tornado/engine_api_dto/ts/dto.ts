@@ -89,7 +89,7 @@ export type RuleDto = {     name: string; description: string; continue: boolean
 /* 'event' types */
 /* ------------- */
 
-export type EventDto = { type: string; created_ms: number; payload: { [key: string]: Value } };
+export type EventDto = {     type: string; trace_id: string | null; created_ms: number; payload:     { [key: string]: Value } };
 
 export enum ProcessType { Full = "Full", SkipActions = "SkipActions" };
 

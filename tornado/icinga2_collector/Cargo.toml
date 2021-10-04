@@ -8,7 +8,7 @@ edition = "2018"
 actix = "0.12"
 actix-rt = "2.2"
 chrono = "0.4"
-clap = "2.33"
+clap = { version = "3.0.0-beta.4", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
 futures = "0.3"
 log = "0.4"
@@ -25,5 +25,5 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
-actix-web = "4.0.0-beta.8"
+actix-web = "4.0.0-beta.9"
 maplit = "1.0"

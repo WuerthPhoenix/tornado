@@ -22,11 +22,12 @@ impl Default for AccessorBuilder {
 }
 
 const IGNORED_EXPRESSION_PREFIXES: &[&str] = &["item"];
-const CURRENT_RULE_EXTRACTED_VAR_SUFFIX: &str = "_variables.";
+const CURRENT_RULE_EXTRACTED_VAR_PREFIX: &str = "_variables.";
 const EVENT_KEY: &str = "event";
 const EVENT_TYPE_KEY: &str = "event.type";
 const EVENT_CREATED_MS_KEY: &str = "event.created_ms";
-const EVENT_PAYLOAD_SUFFIX: &str = "event.payload";
+const EVENT_METADATA_PREFIX: &str = "event.metadata";
+const EVENT_PAYLOAD_PREFIX: &str = "event.payload";
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
@@ -66,18 +67,28 @@ impl AccessorBuilder {
                     EVENT_KEY => Ok(Accessor::Event {}),
                     EVENT_TYPE_KEY => Ok(Accessor::Type {}),
                     EVENT_CREATED_MS_KEY => Ok(Accessor::CreatedMs {}),
-                    val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_SUFFIX))
-                        || val.eq(EVENT_PAYLOAD_SUFFIX)) =>
+                    val if (val.starts_with(&format!("{}.", EVENT_METADATA_PREFIX))
+                        || val.eq(EVENT_METADATA_PREFIX)) =>
                     {
-                        let key = val[EVENT_PAYLOAD_SUFFIX.len()..].trim();
+                        let key = val[EVENT_METADATA_PREFIX.len()..].trim();
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::Metadata { parser })
+                    }
+                    val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_PREFIX))
+                        || val.eq(EVENT_PAYLOAD_PREFIX)) =>
+                    {
+                        let key = val[EVENT_PAYLOAD_PREFIX.len()..].trim();
                         let parser = Parser::build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
                         ))?;
                         Ok(Accessor::Payload { parser })
                     }
-                    val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_SUFFIX) => {
-                        let key = val[CURRENT_RULE_EXTRACTED_VAR_SUFFIX.len()..].trim();
+                    val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_PREFIX) => {
+                        let key = val[CURRENT_RULE_EXTRACTED_VAR_PREFIX.len()..].trim();
                         let parser = Parser::build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
@@ -118,6 +129,7 @@ pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
     ExtractedVar { rule_name: String, parser: Parser },
+    Metadata { parser: Parser },
     Payload { parser: Parser },
     Type,
     Event,
@@ -140,6 +152,7 @@ impl Accessor {
                         .or_else(|| parser.parse_value(global_vars))
                 })
             }
+            Accessor::Metadata { parser } => parser.parse_value(&event.metadata),
             Accessor::Payload { parser } => parser.parse_value(&event.payload),
             Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
             Accessor::Event => {
@@ -156,6 +169,7 @@ impl Accessor {
             Accessor::Constant { .. } => false,
             Accessor::CreatedMs
             | Accessor::ExtractedVar { .. }
+            | Accessor::Metadata { .. }
             | Accessor::Payload { .. }
             | Accessor::Type
             | Accessor::Event => true,
@@ -743,5 +757,69 @@ mod test {
         // Assert
         let expected = Accessor::Constant { value: Value::Text(value) };
         assert_eq!(expected, accessor);
+    }
+
+    #[test]
+    fn metadata_accessor_should_return_with_expected_key() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "${event.metadata.tenant_id}".to_owned();
+
+        let accessor = builder.build("", &value).unwrap();
+
+        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        event
+            .add_to_metadata(
+                "tenant_id".to_owned(),
+                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+            )
+            .unwrap();
+
+        // Act
+        let result = accessor.get(&event, None).unwrap();
+
+        // Assert
+        assert_eq!("A_TENANT_ID_FROM_METADATA", result.as_ref());
+    }
+
+    #[test]
+    fn metadata_accessor_should_return_entire_object() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "${event.metadata}".to_owned();
+
+        let accessor = builder.build("", &value).unwrap();
+
+        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        event
+            .add_to_metadata(
+                "tenant_id".to_owned(),
+                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+            )
+            .unwrap();
+
+        // Act
+        let result = accessor.get(&event, None).unwrap();
+
+        // Assert
+        assert_eq!(&event.metadata, result.as_ref());
+    }
+
+    #[test]
+    fn metadata_accessor_should_return_none_if_no_value() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "${event.metadata.tenant_id}".to_owned();
+
+        let accessor = builder.build("", &value).unwrap();
+
+        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        event.add_to_metadata("other".to_owned(), Value::Text("something".to_owned())).unwrap();
+
+        // Act
+        let result = accessor.get(&event, None);
+
+        // Assert
+        assert!(result.is_none());
     }
 }

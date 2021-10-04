@@ -39,7 +39,7 @@ pub enum Defaultable<T: Serialize + Clone> {
     Default {},
 }
 
-impl <T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
+impl<T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
     fn from(default: Defaultable<T>) -> Self {
         match default {
             Defaultable::Value(value) => Some(value),

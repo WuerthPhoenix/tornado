@@ -15,8 +15,8 @@ pub mod test_root {
 
     use lazy_static::lazy_static;
     use std::sync::Mutex;
-    use tornado_common_logger::{setup_logger, LoggerConfig};
     use tornado_common_logger::elastic_apm::ApmTracingConfig;
+    use tornado_common_logger::{setup_logger, LoggerConfig};
 
     lazy_static! {
         static ref INITIALIZED: Mutex<bool> = Mutex::new(false);

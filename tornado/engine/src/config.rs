@@ -1,3 +1,4 @@
+use crate::enrich::nats::NatsExtractor;
 use clap::Clap;
 use config_rs::{Config, ConfigError, File};
 use log::*;
@@ -139,6 +140,8 @@ pub struct DaemonCommandConfig {
 
     pub nats_enabled: Option<bool>,
     pub nats: Option<NatsSubscriberConfig>,
+    #[serde(default)]
+    pub nats_extractors: Vec<NatsExtractor>,
 
     pub web_server_ip: String,
     pub web_server_port: u16,
@@ -314,7 +317,7 @@ mod test {
         match config {
             MatcherConfig::Filter { name, nodes, .. } => {
                 assert_eq!("root", name);
-                assert_eq!(2, nodes.len());
+                assert_eq!(4, nodes.len());
             }
             _ => assert!(false),
         }
@@ -382,6 +385,7 @@ mod test {
             event_socket_port: None,
             nats_enabled: Some(true),
             nats: None,
+            nats_extractors: vec![],
             web_server_ip: "".to_string(),
             web_server_port: 0,
             web_max_json_payload_size: None,
@@ -409,6 +413,7 @@ mod test {
             event_socket_port: None,
             nats_enabled: None,
             nats: None,
+            nats_extractors: vec![],
             web_server_ip: "".to_string(),
             web_server_port: 0,
             web_max_json_payload_size: None,

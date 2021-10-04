@@ -23,8 +23,8 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
         )
         .service(web::resource("/logger/stdout").route(web::post().to(set_stdout::<A>)))
         .service(web::resource("/logger/apm").route(web::post().to(set_apm::<A>)))
-        .service(SET_APM_PRIORITY_CONFIG_REST.handle(set_apm_priority_config::<A>))
-        .service(SET_STDOUT_PRIORITY_CONFIG_REST.handle(set_stdout_priority_config::<A>))
+        .service(SET_APM_PRIORITY_CONFIG_REST.to(set_apm_priority_config::<A>))
+        .service(SET_STDOUT_PRIORITY_CONFIG_REST.to(set_stdout_priority_config::<A>))
         .service(
             web::resource("/logger").route(web::get().to(get_current_logger_configuration::<A>)),
         )

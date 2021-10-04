@@ -66,12 +66,14 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     assert_eq!(icinga_mock.hits(), 1);
 
     match result {
-        Err(ExecutorError::ActionExecutionError{message, ..}) => {
+        Err(ExecutorError::ActionExecutionError { message, .. }) => {
             assert!(message.contains("Response status: 500 Internal Server Error"));
-            assert!(message.contains(&format!("{}/v1/actions/process-check-result", icinga_server.url(""))));
-        },
-        _ => assert!(false)
-    };}
+            assert!(message
+                .contains(&format!("{}/v1/actions/process-check-result", icinga_server.url(""))));
+        }
+        _ => assert!(false),
+    };
+}
 
 #[tokio::test]
 async fn should_return_ok_if_process_check_result_is_successful() {
@@ -269,11 +271,12 @@ async fn should_return_return_error_on_object_creation_failure() {
     assert_eq!(director_mock.hits(), 1);
 
     match result {
-        Err(ExecutorError::ActionExecutionError{message, ..}) => {
+        Err(ExecutorError::ActionExecutionError { message, .. }) => {
             assert!(message.contains("Response status: 500 Internal Server Error"));
-            assert!(message.contains(&format!("{}/host?live-creation=true", director_server.url(""))));
-        },
-        _ => assert!(false)
+            assert!(
+                message.contains(&format!("{}/host?live-creation=true", director_server.url("")))
+            );
+        }
+        _ => assert!(false),
     };
-
 }

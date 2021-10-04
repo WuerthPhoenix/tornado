@@ -100,6 +100,18 @@ available in the file *'config-dir'/tornado.toml*:
    -  **nats_enabled**: Whether to connect to the NATS server (Optional.
       Valid values are ``true`` and ``false``. Defaults to ``false`` if
       not provided).
+   -  **nats_extractors**: List of data extractors for incoming Nats messages (Optional).
+      Valid extractors are:
+
+        - **FromSubject**: using a regex, extracts the first matching group from the Nats subject and
+          adds its value to the *event.metadata* scope using the specified key. Example:
+
+          .. code:: toml
+
+             nats_extractors = [
+                 { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" }
+             ]
+
    -  **nats.client.addresses**: Array of addresses of the NATS nodes of
       a cluster. (Mandatory if ``nats_enabled`` is set to true).
    -  **nats.subject**: The NATS Subject where tornado will subscribe

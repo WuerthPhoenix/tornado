@@ -116,49 +116,59 @@ impl DirectorExecutor {
         trace!("DirectorExecutor - calling url: {}", url);
 
         let payload = serde_json::to_value(&director_action.payload)?;
-        
+
         let response = match client
-        .post(&url)
-        .header(reqwest::header::ACCEPT, "application/json")
-        .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
-        .json(&payload)
-        .send()
-        .await {
+            .post(&url)
+            .header(reqwest::header::ACCEPT, "application/json")
+            .header(reqwest::header::AUTHORIZATION, http_auth_header.as_str())
+            .json(&payload)
+            .send()
+            .await
+        {
             Ok(response) => response,
-            Err(err) => return Err(ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
-                code: None,
-                data: hashmap![
-                    "method" => "POST".into(),
-                    "url" => url.into(),
-                    "payload" => payload
-                ].into()
-            })
+            Err(err) => {
+                return Err(ExecutorError::ActionExecutionError {
+                    can_retry: true,
+                    message: format!("DirectorExecutor - Connection failed. Err: {:?}", err),
+                    code: None,
+                    data: hashmap![
+                        "method" => "POST".into(),
+                        "url" => url.into(),
+                        "payload" => payload
+                    ]
+                    .into(),
+                })
+            }
         };
 
         let response_status = response.status();
 
         let response_body = match response.text().await {
             Ok(response_body) => response_body,
-            Err(err) => return Err(ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!("DirectorExecutor - Cannot extract response body. Err: {:?}", err),
-                code: None,
-                data: hashmap![
-                    "method" => "POST".into(),
-                    "url" => url.into(),
-                    "payload" => payload
-                ].into()
-            })
+            Err(err) => {
+                return Err(ExecutorError::ActionExecutionError {
+                    can_retry: true,
+                    message: format!(
+                        "DirectorExecutor - Cannot extract response body. Err: {:?}",
+                        err
+                    ),
+                    code: None,
+                    data: hashmap![
+                        "method" => "POST".into(),
+                        "url" => url.into(),
+                        "payload" => payload
+                    ]
+                    .into(),
+                })
+            }
         };
 
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::ActionExecutionError { 
+            Err(ExecutorError::ActionExecutionError {
                 message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), 
-                can_retry: true, 
+                can_retry: true,
                 code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE),
                 data: hashmap![
                     "method" => "POST".into(),
@@ -221,7 +231,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("","");
+        let action = Action::new("", "");
 
         // Act
         let result = executor.parse_action(&action);
@@ -247,7 +257,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_service".to_owned()));
@@ -272,7 +282,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));

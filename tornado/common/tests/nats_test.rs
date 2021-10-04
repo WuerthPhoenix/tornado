@@ -21,6 +21,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -157,7 +158,7 @@ async fn nats_subscriber_should_receive_from_nats() {
     nc_1.publish(&subject, &serde_json::to_vec(&event).unwrap()).await.unwrap();
     info!("Message sent");
 
-    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg);
+    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap().msg.data);
 }
 
 #[actix_rt::test]
@@ -238,7 +239,7 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
 }
 
 #[actix_rt::test]
@@ -288,7 +289,7 @@ async fn should_publish_to_nats_with_tls() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg).unwrap());
+    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
 }
 
 #[actix_rt::test]
@@ -583,7 +584,11 @@ fn start_logger() {
         level: String::from("trace"),
         stdout_output: true,
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig {
+            apm_output: false,
+            apm_server_url: "".to_owned(),
+            apm_server_api_credentials: None,
+        },
     };
     if let Err(err) = tornado_common_logger::setup_logger(conf) {
         println!("Warn: err starting logger: {:?}", err)

@@ -4,8 +4,8 @@ use log::*;
 use std::marker::PhantomData;
 use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
-use tracing_futures::Instrument;
 use tracing::Span;
+use tracing_futures::Instrument;
 
 pub struct ReplyRequest<I, O> {
     pub span: Span,
@@ -66,7 +66,10 @@ impl<I: 'static, O: 'static> CommandMutPool<I, O> {
                     match receiver.recv().await {
                         Ok(message) => {
                             let _entered_span = message.span.enter();
-                            let response = command.execute(message.message).instrument(message.span.clone()).await;
+                            let response = command
+                                .execute(message.message)
+                                .instrument(message.span.clone())
+                                .await;
                             if let Err(err) = message.responder.try_send(response) {
                                 error!(
                                     "CommandMutPool cannot send the response message. Err: {:?}",

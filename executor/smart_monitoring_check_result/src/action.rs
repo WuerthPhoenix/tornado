@@ -205,7 +205,8 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action = serde_json::from_str(&json).unwrap();
+        let action: tornado_engine_matcher::config::rule::Action =
+            serde_json::from_str(&json).unwrap();
 
         // Act
         let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
@@ -221,7 +222,8 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action = serde_json::from_str(&json).unwrap();
+        let action: tornado_engine_matcher::config::rule::Action =
+            serde_json::from_str(&json).unwrap();
 
         // Act
         let action = SimpleCreateAndProcess::new(&action.payload).unwrap();

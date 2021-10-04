@@ -147,7 +147,7 @@ impl MonitoringExecutor {
                     "MonitoringExecutor - Director host creation action failed with error {:?}.",
                     err
                 );
-                Err(ExecutorError::ActionExecutionError { 
+                Err(ExecutorError::ActionExecutionError {
                     message: format!("MonitoringExecutor - Error during the host creation. DirectorExecutor failed with error: {:?}", err), can_retry: err.can_retry(), code: None, data: Default::default(), })
             }
         }?;
@@ -325,7 +325,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -378,7 +378,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -422,7 +422,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
@@ -466,7 +466,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
@@ -518,7 +518,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             "action_name".to_owned(),
             Value::Text("create_and_or_process_host_passive_check_result".to_owned()),

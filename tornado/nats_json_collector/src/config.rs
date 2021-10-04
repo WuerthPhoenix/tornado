@@ -11,15 +11,15 @@ use tornado_common_logger::LoggerConfig;
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT");
 
-pub fn arg_matches<'a>() -> ArgMatches<'a> {
+pub fn arg_matches() -> ArgMatches {
     App::new("tornado_nats_json_collector")
-        .arg(Arg::with_name("config-dir")
+        .arg(Arg::new("config-dir")
             .long("config-dir")
-            .help("The filesystem folder where the Tornado Nats JSON collector configuration is saved")
+            .about("The filesystem folder where the Tornado Nats JSON collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_nats_json_collector")))
-        .arg(Arg::with_name("topics-dir")
+        .arg(Arg::new("topics-dir")
             .long("topics-dir")
-            .help("The folder where the topics Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .about("The folder where the topics Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/topics/"))
         .get_matches()
 }

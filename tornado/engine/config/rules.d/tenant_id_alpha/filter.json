@@ -1,0 +1,9 @@
+{
+  "description": "This filter allows events for tenant_id alpha",
+  "active": true,
+  "filter": {
+    "type": "equals",
+    "first": "${event.metadata.tenant_id}",
+    "second": "alpha"
+  }
+} 
