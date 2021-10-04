@@ -91,6 +91,7 @@ mod test {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
                 created_ms: 0,
+                trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
@@ -110,6 +111,7 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
+        assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
     }
 
     #[actix_rt::test]
@@ -126,6 +128,7 @@ mod test {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
                 created_ms: 0,
+                trace_id: None,
             },
             process_type: ProcessType::SkipActions,
         };
@@ -145,5 +148,6 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
+        assert!(dto.event.trace_id.is_some());
     }
 }

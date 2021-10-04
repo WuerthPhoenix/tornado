@@ -317,7 +317,7 @@ mod test {
         match config {
             MatcherConfig::Filter { name, nodes, .. } => {
                 assert_eq!("root", name);
-                assert_eq!(2, nodes.len());
+                assert_eq!(4, nodes.len());
             }
             _ => assert!(false),
         }

@@ -21,6 +21,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
+use tornado_common_logger::elastic_apm::ApmTracingConfig;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -583,7 +584,11 @@ fn start_logger() {
         level: String::from("trace"),
         stdout_output: true,
         file_output_path: None,
-        tracing_elastic_apm: None,
+        tracing_elastic_apm: ApmTracingConfig {
+            apm_output: false,
+            apm_server_url: "".to_owned(),
+            apm_server_api_credentials: None,
+        },
     };
     if let Err(err) = tornado_common_logger::setup_logger(conf) {
         println!("Warn: err starting logger: {:?}", err)

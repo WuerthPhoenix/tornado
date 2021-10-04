@@ -1,6 +1,6 @@
 use chrono::prelude::Local;
 use num_cmp::NumCmp;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -11,6 +11,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
     #[serde(default = "default_trace_id")]
+    #[serde(deserialize_with = "deserialize_null_trace_id")]
     pub trace_id: String,
     #[serde(rename = "type")]
     pub event_type: String,
@@ -18,8 +19,17 @@ pub struct Event {
     pub payload: Payload,
 }
 
+#[inline]
 fn default_trace_id() -> String {
     uuid::Uuid::new_v4().to_string()
+}
+
+fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_else(|| default_trace_id()))
 }
 
 impl Event {
@@ -30,7 +40,7 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { trace_id: default_trace_id() ,event_type: event_type.into(), created_ms, payload }
+        Event { trace_id: default_trace_id(), event_type: event_type.into(), created_ms, payload }
     }
 }
 
@@ -58,7 +68,11 @@ impl Action {
     pub fn new<T: Into<String>, S: Into<String>>(trace_id: T, id: S) -> Action {
         Action::new_with_payload(trace_id, id, HashMap::new())
     }
-    pub fn new_with_payload<T: Into<String>, S: Into<String>>(trace_id: T, id: S, payload: Payload) -> Action {
+    pub fn new_with_payload<T: Into<String>, S: Into<String>>(
+        trace_id: T,
+        id: S,
+        payload: Payload,
+    ) -> Action {
         Action { trace_id: trace_id.into(), id: id.into(), payload }
     }
 }
@@ -88,7 +102,8 @@ pub enum Number {
 
 impl Number {
     pub fn from_serde_number(n: &serde_json::Number) -> Option<Self> {
-        n.as_u64().map(Number::PosInt)
+        n.as_u64()
+            .map(Number::PosInt)
             .or_else(|| n.as_i64().map(Number::NegInt))
             .or_else(|| n.as_f64().map(Number::Float))
     }
@@ -708,7 +723,10 @@ mod test {
         let value_from_event: Value = event.into();
 
         // Assert
-        assert_eq!("my-event-type", value_from_event.get_from_map("type").unwrap().get_text().unwrap());
+        assert_eq!(
+            "my-event-type",
+            value_from_event.get_from_map("type").unwrap().get_text().unwrap()
+        );
         assert_eq!(&created_ms, value_from_event.get_from_map("created_ms").unwrap());
         assert_eq!(&Value::Map(payload), value_from_event.get_from_map("payload").unwrap());
     }
@@ -849,6 +867,26 @@ mod test {
     }
 
     #[test]
+    fn deserializing_an_event_should_generate_trace_if_null() {
+        // Arrange
+        let json = r#"
+{
+  "trace_id": null,
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
+    #[test]
     fn deserializing_an_event_should_use_trace_if_present() {
         // Arrange
         let json = r#"
@@ -865,7 +903,6 @@ mod test {
 
         // Assert
         assert_eq!("abcdefghilmon", event.trace_id);
-
     }
 
     #[test]
@@ -877,5 +914,4 @@ mod test {
         assert!(!event.trace_id.is_empty());
         assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
     }
-
 }
