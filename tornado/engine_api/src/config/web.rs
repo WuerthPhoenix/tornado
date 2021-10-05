@@ -452,4 +452,29 @@ mod test {
         assert_eq!(StatusCode::OK, response.status());
         Ok(())
     }
+
+    #[actix_rt::test]
+    async fn v2_should_return_status_code_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+        })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
+            ))
+            .uri("/config/active/tree")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
 }
