@@ -32,29 +32,20 @@ pub enum MatcherConfig {
 
 impl MatcherConfig {
     // Returns child nodes of a node found by a path
-    pub fn get_child_nodes_by_path(&self, path:&[&str]) -> Option<Vec<&MatcherConfig>> {
-
+    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
         let mut target_nodes = vec![self];
 
         for node_name in path {
             if let Some(node) = target_nodes.iter().find(|el| match el {
-                MatcherConfig::Filter { name, .. } => {
-                    name == node_name
-                },
-                MatcherConfig::Ruleset { .. } => {
-                    false
-                }
+                MatcherConfig::Filter { name, .. } => name == node_name,
+                MatcherConfig::Ruleset { .. } => false,
             }) {
                 match node {
-                    MatcherConfig::Filter { nodes, .. } => {
-                        target_nodes = nodes.iter().collect()
-                    },
-                    _ => {
-                        return None
-                    }
+                    MatcherConfig::Filter { nodes, .. } => target_nodes = nodes.iter().collect(),
+                    _ => return None,
                 }
             } else {
-                return None
+                return None;
             }
         }
 
@@ -65,7 +56,7 @@ impl MatcherConfig {
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {
             MatcherConfig::Filter { nodes, .. } => nodes.len(),
-            MatcherConfig::Ruleset { .. } => 0
+            MatcherConfig::Ruleset { .. } => 0,
         }
     }
 
@@ -74,8 +65,8 @@ impl MatcherConfig {
         match self {
             MatcherConfig::Filter { nodes, .. } => {
                 nodes.iter().map(MatcherConfig::get_all_rules_count).sum()
-            },
-            MatcherConfig::Ruleset { rules, .. } => rules.len()
+            }
+            MatcherConfig::Ruleset { rules, .. } => rules.len(),
         }
     }
 }
@@ -89,7 +80,7 @@ pub enum Defaultable<T: Serialize + Clone> {
     Default {},
 }
 
-impl <T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
+impl<T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
     fn from(default: Defaultable<T>) -> Self {
         match default {
             Defaultable::Value(value) => Some(value),
@@ -149,8 +140,8 @@ pub trait MatcherConfigEditor: Sync + Send {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::rule::Constraint;
     use super::*;
+    use crate::config::rule::Constraint;
 
     #[test]
     fn test_get_direct_child_nodes_count() {
@@ -160,9 +151,9 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
-            nodes: vec![]
+            nodes: vec![],
         };
 
         let config_one_children = MatcherConfig::Filter {
@@ -170,14 +161,12 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
-            nodes: vec![
-                MatcherConfig::Ruleset {
-                    name: "child_ruleset1".to_string(),
-                    rules: vec![]
-                }
-            ]
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "child_ruleset1".to_string(),
+                rules: vec![],
+            }],
         };
 
         let config_more_children = MatcherConfig::Filter {
@@ -185,32 +174,29 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
             nodes: vec![
-                MatcherConfig::Ruleset {
-                    name: "child_ruleset1".to_string(),
-                    rules: vec![]
-                },
+                MatcherConfig::Ruleset { name: "child_ruleset1".to_string(), rules: vec![] },
                 MatcherConfig::Filter {
                     name: "child_filter2".to_string(),
-                    filter:Filter {
+                    filter: Filter {
                         description: "".to_string(),
                         active: false,
-                        filter: Defaultable::Default {}
+                        filter: Defaultable::Default {},
                     },
                     nodes: vec![
                         MatcherConfig::Ruleset {
                             name: "filter1_child_ruleset1".to_string(),
-                            rules: vec![]
+                            rules: vec![],
                         },
                         MatcherConfig::Ruleset {
                             name: "filter1_child_ruleset2".to_string(),
-                            rules: vec![]
+                            rules: vec![],
                         },
-                    ]
+                    ],
                 },
-            ]
+            ],
         };
 
         // Act
@@ -232,9 +218,9 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
-            nodes: vec![]
+            nodes: vec![],
         };
 
         let config_no_rules = MatcherConfig::Filter {
@@ -242,14 +228,12 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
-            nodes: vec![
-                MatcherConfig::Ruleset {
-                    name: "child_ruleset1".to_string(),
-                    rules: vec![]
-                }
-            ]
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "child_ruleset1".to_string(),
+                rules: vec![],
+            }],
         };
 
         let config_one_rules = MatcherConfig::Filter {
@@ -257,23 +241,19 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
-            nodes: vec![
-                MatcherConfig::Ruleset {
-                    name: "child_ruleset1".to_string(),
-                    rules: vec![
-                        Rule {
-                            name: "rule1".to_string(),
-                            description: "".to_string(),
-                            do_continue: false,
-                            active: false,
-                            constraint: Constraint { where_operator: None, with: Default::default() },
-                            actions: vec![]
-                        }
-                    ]
-                },
-            ]
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "child_ruleset1".to_string(),
+                rules: vec![Rule {
+                    name: "rule1".to_string(),
+                    description: "".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
         };
 
         let config_more_rules = MatcherConfig::Filter {
@@ -281,7 +261,7 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
             nodes: vec![
                 MatcherConfig::Ruleset {
@@ -292,64 +272,72 @@ mod tests {
                             description: "".to_string(),
                             do_continue: false,
                             active: false,
-                            constraint: Constraint { where_operator: None, with: Default::default() },
-                            actions: vec![]
+                            constraint: Constraint {
+                                where_operator: None,
+                                with: Default::default(),
+                            },
+                            actions: vec![],
                         },
                         Rule {
                             name: "rule2".to_string(),
                             description: "".to_string(),
                             do_continue: false,
                             active: false,
-                            constraint: Constraint { where_operator: None, with: Default::default() },
-                            actions: vec![]
-                        }
-                    ]
+                            constraint: Constraint {
+                                where_operator: None,
+                                with: Default::default(),
+                            },
+                            actions: vec![],
+                        },
+                    ],
                 },
                 MatcherConfig::Ruleset {
                     name: "child_ruleset2".to_string(),
-                    rules: vec![
-                        Rule {
-                            name: "rule3".to_string(),
-                            description: "".to_string(),
-                            do_continue: false,
-                            active: false,
-                            constraint: Constraint { where_operator: None, with: Default::default() },
-                            actions: vec![]
-                        },
-                    ]
+                    rules: vec![Rule {
+                        name: "rule3".to_string(),
+                        description: "".to_string(),
+                        do_continue: false,
+                        active: false,
+                        constraint: Constraint { where_operator: None, with: Default::default() },
+                        actions: vec![],
+                    }],
                 },
                 MatcherConfig::Filter {
                     name: "child_filter2".to_string(),
-                    filter:Filter {
+                    filter: Filter {
                         description: "".to_string(),
                         active: false,
-                        filter: Defaultable::Default {}
+                        filter: Defaultable::Default {},
                     },
-                    nodes: vec![
-                        MatcherConfig::Ruleset {
-                            name: "child_ruleset3".to_string(),
-                            rules: vec![
-                                Rule {
-                                    name: "rule4".to_string(),
-                                    description: "".to_string(),
-                                    do_continue: false,
-                                    active: false,
-                                    constraint: Constraint { where_operator: None, with: Default::default() },
-                                    actions: vec![]
+                    nodes: vec![MatcherConfig::Ruleset {
+                        name: "child_ruleset3".to_string(),
+                        rules: vec![
+                            Rule {
+                                name: "rule4".to_string(),
+                                description: "".to_string(),
+                                do_continue: false,
+                                active: false,
+                                constraint: Constraint {
+                                    where_operator: None,
+                                    with: Default::default(),
                                 },
-                                Rule {
-                                    name: "rule5".to_string(),
-                                    description: "".to_string(),
-                                    do_continue: false,
-                                    active: false,
-                                    constraint: Constraint { where_operator: None, with: Default::default() },
-                                    actions: vec![]
-                                }
-                            ]
-                        },
-                    ]
+                                actions: vec![],
+                            },
+                            Rule {
+                                name: "rule5".to_string(),
+                                description: "".to_string(),
+                                do_continue: false,
+                                active: false,
+                                constraint: Constraint {
+                                    where_operator: None,
+                                    with: Default::default(),
+                                },
+                                actions: vec![],
+                            },
+                        ],
+                    }],
                 },
-            ]
+            ],
         };
 
         // Act
@@ -373,7 +361,7 @@ mod tests {
             filter: Filter {
                 description: "".to_string(),
                 active: false,
-                filter: Defaultable::Default {}
+                filter: Defaultable::Default {},
             },
             nodes: vec![
                 MatcherConfig::Filter {
@@ -381,54 +369,59 @@ mod tests {
                     filter: Filter {
                         description: "".to_string(),
                         active: false,
-                        filter: Defaultable::Default {}
+                        filter: Defaultable::Default {},
                     },
-                    nodes: vec![]
+                    nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
                     filter: Filter {
                         description: "".to_string(),
                         active: false,
-                        filter: Defaultable::Default {}
+                        filter: Defaultable::Default {},
                     },
-                    nodes: vec![
-                        MatcherConfig::Filter {
-                            name: "filter3".to_string(),
-                            filter: Filter {
-                                description: "".to_string(),
-                                active: false,
-                                filter: Defaultable::Default {}
-                            },
-                            nodes: vec![
-                                MatcherConfig::Ruleset {
-                                    name: "ruleset1".to_string(),
-                                    rules: vec![]
-                                }
-                            ]
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
                         },
-                    ]
-                }
-            ]
+                        nodes: vec![MatcherConfig::Ruleset {
+                            name: "ruleset1".to_string(),
+                            rules: vec![],
+                        }],
+                    }],
+                },
+            ],
         };
 
         // Act
         let empty_path = config.get_child_nodes_by_path(&vec![]);
         let one_level = config.get_child_nodes_by_path(&vec!["root"]);
         let nested_levels = config.get_child_nodes_by_path(&vec!["root", "filter2"]);
-        let nested_levels_path_with_ruleset = config.get_child_nodes_by_path(&vec!["root", "filter2", "filter3", "ruleset1"]);
+        let nested_levels_path_with_ruleset =
+            config.get_child_nodes_by_path(&vec!["root", "filter2", "filter3", "ruleset1"]);
         let not_existing_path = config.get_child_nodes_by_path(&vec!["foo", "bar"]);
 
         // Assert
         assert_eq!(empty_path.clone().unwrap().len(), 1);
-        assert!(matches!(empty_path.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "root"));
+        assert!(
+            matches!(empty_path.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
+        );
 
         assert_eq!(one_level.clone().unwrap().len(), 2);
-        assert!(matches!(one_level.clone().unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1"));
-        assert!(matches!(one_level.unwrap().get(1).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter2"));
+        assert!(
+            matches!(one_level.clone().unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1")
+        );
+        assert!(
+            matches!(one_level.unwrap().get(1).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter2")
+        );
 
         assert_eq!(nested_levels.clone().unwrap().len(), 1);
-        assert!(matches!(nested_levels.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3"));
+        assert!(
+            matches!(nested_levels.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3")
+        );
 
         assert_eq!(nested_levels_path_with_ruleset, None);
         assert_eq!(not_existing_path, None);

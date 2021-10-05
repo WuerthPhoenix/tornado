@@ -7,7 +7,9 @@ use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::{MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto};
+use tornado_engine_api_dto::config::{
+    MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
+};
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub fn build_config_endpoints<
@@ -45,19 +47,14 @@ pub fn build_config_v2_endpoints<
 >(
     data: ApiData<ConfigApi<A, CM>>,
 ) -> Scope {
-    web::scope("/config")
-        .app_data(Data::new(data))
-        .service(
-            web::scope("/active")
-                .service(
-                    web::resource("/tree")
-                        .route(web::get().to(get_tree_node::<A, CM>))
-                )
-                .service(
-                    web::resource("/tree/{node_path}")
-                    .route(web::get().to(get_tree_node_with_node_path::<A, CM>))
-                )
-        )
+    web::scope("/config").app_data(Data::new(data)).service(
+        web::scope("/active")
+            .service(web::resource("/tree").route(web::get().to(get_tree_node::<A, CM>)))
+            .service(
+                web::resource("/tree/{node_path}")
+                    .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+            ),
+    )
 }
 
 async fn get_tree_node<
@@ -69,7 +66,10 @@ async fn get_tree_node<
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_current_config_processing_tree_nodes_by_path(auth_ctx, &"".to_string()).await?;
+    let result = data
+        .api
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &"".to_string())
+        .await?;
     Ok(Json(result))
 }
 
@@ -83,7 +83,10 @@ async fn get_tree_node_with_node_path<
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_current_config_processing_tree_nodes_by_path(auth_ctx, &node_path.into_inner()).await?;
+    let result = data
+        .api
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &node_path.into_inner())
+        .await?;
     Ok(Json(result))
 }
 
@@ -460,7 +463,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()

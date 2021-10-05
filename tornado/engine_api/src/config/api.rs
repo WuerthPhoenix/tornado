@@ -2,10 +2,10 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
+use tornado_engine_api_dto::config::ProcessingTreeNodeConfigDto;
 use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
 };
-use tornado_engine_api_dto::config::ProcessingTreeNodeConfigDto;
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -47,7 +47,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let path: Vec<_> = node_path.split(",").filter(|&part| !part.is_empty()).collect();
 
         if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
-            let result = child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
+            let result =
+                child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
             Ok(result)
         } else {
             Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
@@ -426,9 +427,24 @@ mod test {
             create_users(&permissions_map);
 
         // Act & Assert
-        assert!(api.get_current_config_processing_tree_nodes_by_path(not_owner_edit_and_view, &"".to_string()).await.is_ok());
-        assert!(api.get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string()).await.is_ok());
-        assert!(api.get_current_config_processing_tree_nodes_by_path(owner_edit, &"".to_string()).await.is_err());
-        assert!(api.get_current_config_processing_tree_nodes_by_path(owner_edit_and_view, &"".to_string()).await.is_ok());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(
+                not_owner_edit_and_view,
+                &"".to_string()
+            )
+            .await
+            .is_ok());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string())
+            .await
+            .is_ok());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_edit, &"".to_string())
+            .await
+            .is_err());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_edit_and_view, &"".to_string())
+            .await
+            .is_ok());
     }
 }
