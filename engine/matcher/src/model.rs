@@ -33,6 +33,7 @@ impl From<InternalEvent> for Value {
         payload.insert("type".to_owned(), event.event_type);
         payload.insert("created_ms".to_owned(), event.created_ms);
         payload.insert("payload".to_owned(), event.payload);
+        payload.insert("metadata".to_owned(), event.metadata);
         Value::Map(payload)
     }
 }
@@ -243,5 +244,20 @@ mod test {
 
         // Assert
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn should_convert_to_value_and_back() {
+        // Arrange
+
+        let mut event = InternalEvent::new(Event::default());
+        event.metadata = Value::Array(vec![]);
+
+        // Act
+        let value: Value = event.clone().into();
+        let event_from_value: InternalEvent = serde_json::from_value(serde_json::to_value(value).unwrap()).unwrap();
+
+        // Assert
+        assert_eq!(event, event_from_value);
     }
 }

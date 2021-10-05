@@ -404,11 +404,18 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let mut event = InternalEvent::new(Event::new_with_payload("event_type_string", payload.clone()));
+        event.metadata = Value::Map(payload);
+
         let result = accessor.get(&event, None).unwrap();
 
         let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
+
+        let json_from_result = serde_json::to_string(result.as_ref()).unwrap();
+        let event_from_result: InternalEvent = serde_json::from_str(&json_from_result).unwrap();
+        assert_eq!(event, event_from_result);
+
         assert!(accessor.dynamic_value());
     }
 
