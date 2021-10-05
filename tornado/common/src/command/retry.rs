@@ -147,8 +147,8 @@ impl<I: Clone + Debug, O, E: RetriableError, T: Command<I, Result<O, E>>> RetryC
 }
 
 #[async_trait::async_trait(?Send)]
-impl<I: Clone + Debug, O, E: RetriableError + Debug, T: Command<I, Result<O, E>>> Command<I, Result<O, E>>
-    for RetryCommand<I, O, E, T>
+impl<I: Clone + Debug, O, E: RetriableError + Debug, T: Command<I, Result<O, E>>>
+    Command<I, Result<O, E>> for RetryCommand<I, O, E, T>
 {
     async fn execute(&self, message: I) -> Result<O, E> {
         trace!("RetryCommand - received new message");

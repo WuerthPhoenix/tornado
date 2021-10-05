@@ -116,7 +116,6 @@ impl EventProcessor {
             .to_owned();
         let mut event = Event::new(event_type);
 
-
         for (key, value_processor) in &self.payload {
             event.payload.insert(key.clone(), value_processor.process(var)?);
         }

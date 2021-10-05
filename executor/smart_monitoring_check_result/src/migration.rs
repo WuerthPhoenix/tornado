@@ -91,10 +91,8 @@ mod test {
 
         // Act
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
-        let migrated_action = Action {
-                id: "smart_monitoring_check_result".to_owned(),
-                payload: migrated_payload
-            };
+        let migrated_action =
+            Action { id: "smart_monitoring_check_result".to_owned(), payload: migrated_payload };
 
         // Assert
         assert_eq!(dest_action, migrated_action);

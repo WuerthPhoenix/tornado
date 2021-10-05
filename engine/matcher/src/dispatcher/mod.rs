@@ -20,14 +20,16 @@ impl Dispatcher {
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
             ProcessedNode::Ruleset { rules, name, .. } => {
-                let _span = tracing::error_span!("dispatch_ruleset", name = name.as_str()).entered();
+                let _span =
+                    tracing::error_span!("dispatch_ruleset", name = name.as_str()).entered();
                 for rule in rules.rules {
-                    let _span = tracing::error_span!("dispatch_rule", name = rule.name.as_str()).entered();
+                    let _span =
+                        tracing::error_span!("dispatch_rule", name = rule.name.as_str()).entered();
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
                             self.dispatch(rule.actions)?
-                        },
+                        }
                         _ => {
                             trace!("Rule [{}] not matched, ignoring actions", rule.name);
                         }
@@ -46,7 +48,12 @@ impl Dispatcher {
 
     fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
-            let _span = tracing::error_span!("dispatch_action", action = index, action_id = action.id.as_str()).entered();
+            let _span = tracing::error_span!(
+                "dispatch_action",
+                action = index,
+                action_id = action.id.as_str()
+            )
+            .entered();
             self.event_bus.publish_action(action)
         }
         Ok(())
@@ -86,8 +93,16 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action { trace_id: "".to_owned(), id: action_id.clone(), payload: HashMap::new() });
-        rule.actions.push(Action { trace_id: "".to_owned(), id: action_id.clone(), payload: HashMap::new() });
+        rule.actions.push(Action {
+            trace_id: "".to_owned(),
+            id: action_id.clone(),
+            payload: HashMap::new(),
+        });
+        rule.actions.push(Action {
+            trace_id: "".to_owned(),
+            id: action_id.clone(),
+            payload: HashMap::new(),
+        });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -124,7 +139,11 @@ mod test {
         let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
-        rule.actions.push(Action { trace_id: "".to_owned(), id: action_id.clone(), payload: HashMap::new() });
+        rule.actions.push(Action {
+            trace_id: "".to_owned(),
+            id: action_id.clone(),
+            payload: HashMap::new(),
+        });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -162,7 +181,11 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action { trace_id: "".to_owned(), id: action_id.clone(), payload: HashMap::new() });
+        rule.actions.push(Action {
+            trace_id: "".to_owned(),
+            id: action_id.clone(),
+            payload: HashMap::new(),
+        });
 
         let node = ProcessedNode::Filter {
             name: "".to_owned(),

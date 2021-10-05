@@ -69,14 +69,14 @@ impl AccessorBuilder {
                     EVENT_CREATED_MS_KEY => Ok(Accessor::CreatedMs {}),
                     val if (val.starts_with(&format!("{}.", EVENT_METADATA_PREFIX))
                         || val.eq(EVENT_METADATA_PREFIX)) =>
-                        {
-                            let key = val[EVENT_METADATA_PREFIX.len()..].trim();
-                            let parser = Parser::build_parser(&format!(
-                                "{}{}{}",
-                                EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
-                            ))?;
-                            Ok(Accessor::Metadata { parser })
-                        }
+                    {
+                        let key = val[EVENT_METADATA_PREFIX.len()..].trim();
+                        let parser = Parser::build_parser(&format!(
+                            "{}{}{}",
+                            EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
+                        ))?;
+                        Ok(Accessor::Metadata { parser })
+                    }
                     val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_PREFIX))
                         || val.eq(EVENT_PAYLOAD_PREFIX)) =>
                     {
@@ -768,7 +768,12 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut event = InternalEvent::new(Event::new("event_type_string"));
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("A_TENANT_ID_FROM_METADATA".to_owned())).unwrap();
+        event
+            .add_to_metadata(
+                "tenant_id".to_owned(),
+                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+            )
+            .unwrap();
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -786,7 +791,12 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut event = InternalEvent::new(Event::new("event_type_string"));
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("A_TENANT_ID_FROM_METADATA".to_owned())).unwrap();
+        event
+            .add_to_metadata(
+                "tenant_id".to_owned(),
+                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+            )
+            .unwrap();
 
         // Act
         let result = accessor.get(&event, None).unwrap();

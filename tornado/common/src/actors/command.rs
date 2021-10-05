@@ -39,24 +39,32 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
-
         let command = self.command.clone();
 
         let action = msg.action;
-        actix::spawn(async move {
-            let action_id = action.id.clone();
-            trace!("CommandExecutorActor - received new action [{:?}]", &action);
-            debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
+        actix::spawn(
+            async move {
+                let action_id = action.id.clone();
+                trace!("CommandExecutorActor - received new action [{:?}]", &action);
+                debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
 
-            match command.execute(action).await {
-                Ok(_) => {
-                    debug!("CommandExecutorActor - Action [{}] executed successfully", &action_id);
-                }
-                Err(e) => {
-                    error!("CommandExecutorActor - Failed to execute action [{}]: {:?}", &action_id, e);
+                match command.execute(action).await {
+                    Ok(_) => {
+                        debug!(
+                            "CommandExecutorActor - Action [{}] executed successfully",
+                            &action_id
+                        );
+                    }
+                    Err(e) => {
+                        error!(
+                            "CommandExecutorActor - Failed to execute action [{}]: {:?}",
+                            &action_id, e
+                        );
+                    }
                 }
             }
-        }.instrument(msg.span));
+            .instrument(msg.span),
+        );
         Ok(())
     }
 }

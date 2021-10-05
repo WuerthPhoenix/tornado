@@ -21,6 +21,7 @@ pub enum ProcessType {
 pub struct EventDto {
     #[serde(rename = "type")]
     pub event_type: String,
+    pub trace_id: Option<String>,
     pub created_ms: u64,
     pub payload: HashMap<String, Value>,
 }

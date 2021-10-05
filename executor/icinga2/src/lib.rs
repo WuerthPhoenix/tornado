@@ -2,12 +2,12 @@ use crate::client::ApiClient;
 use crate::config::Icinga2ClientConfig;
 use log::*;
 use serde::Serialize;
+use serde_json::Value;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
-use std::collections::HashMap;
-use serde_json::Value;
 
 pub mod client;
 pub mod config;
@@ -64,28 +64,28 @@ impl Icinga2Executor {
         &self,
         icinga2_action: &'a Icinga2Action<'a>,
     ) -> Result<(), ExecutorError> {
-
         let payload = &icinga2_action.payload;
-        let response =
-            self.api_client.api_post_action(icinga2_action.name, payload).await?;
+        let response = self.api_client.api_post_action(icinga2_action.name, payload).await?;
 
         let method = response.method;
         let url = response.url;
 
         let response_status = response.response.status();
 
-        let response_body =
-            response.response.text().await.map_err(|err| {
-                match to_err_data(method, &url, payload) {
-                    Ok(data) => ExecutorError::ActionExecutionError {
-                        can_retry: true,
-                        message: format!("Icinga2Executor - Cannot extract response body. Err: {:?}", err),
-                        code: None,
-                        data: data.into()
-                    },
-                    Err(err) => err
-                }
-            })?;
+        let response_body = response.response.text().await.map_err(|err| {
+            match to_err_data(method, &url, payload) {
+                Ok(data) => ExecutorError::ActionExecutionError {
+                    can_retry: true,
+                    message: format!(
+                        "Icinga2Executor - Cannot extract response body. Err: {:?}",
+                        err
+                    ),
+                    code: None,
+                    data: data.into(),
+                },
+                Err(err) => err,
+            }
+        })?;
 
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
@@ -112,7 +112,11 @@ impl Icinga2Executor {
     }
 }
 
-fn to_err_data(method: &str, url: &str, payload: &Option<&Payload>) -> Result<HashMap<&'static str, Value>, ExecutorError> {
+fn to_err_data(
+    method: &str,
+    url: &str,
+    payload: &Option<&Payload>,
+) -> Result<HashMap<&'static str, Value>, ExecutorError> {
     let mut data = HashMap::<&'static str, Value>::default();
     data.insert("method", method.into());
     data.insert("url", url.into());
@@ -154,7 +158,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("","");
+        let action = Action::new("", "");
 
         // Act
         let result = executor.parse_action(&action);
@@ -181,7 +185,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action
             .payload
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
@@ -205,7 +209,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("","");
+        let mut action = Action::new("", "");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::Text("process-check-result".to_owned()),
