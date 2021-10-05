@@ -404,7 +404,8 @@ mod test {
         payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
 
-        let mut event = InternalEvent::new(Event::new_with_payload("event_type_string", payload.clone()));
+        let mut event =
+            InternalEvent::new(Event::new_with_payload("event_type_string", payload.clone()));
         event.metadata = Value::Map(payload);
 
         let result = accessor.get(&event, None).unwrap();

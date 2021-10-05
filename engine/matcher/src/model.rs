@@ -255,7 +255,8 @@ mod test {
 
         // Act
         let value: Value = event.clone().into();
-        let event_from_value: InternalEvent = serde_json::from_value(serde_json::to_value(value).unwrap()).unwrap();
+        let event_from_value: InternalEvent =
+            serde_json::from_value(serde_json::to_value(value).unwrap()).unwrap();
 
         // Assert
         assert_eq!(event, event_from_value);
