@@ -179,11 +179,11 @@ Tornado 'Config' Backend API Version 2
 The 'config' APIs require the caller to pass an authorization token in
 the headers as in the 'auth' API.
 
-.. rubric:: Working with configuration
+.. rubric:: Reading the current configuration
 
-This endpoint allows to read the current configuration tree root node
+These endpoints allow to read the current configuration tree
 
-Endpoint: get the current Tornado configuration
+Endpoint: get the current configuration tree root node
 
 -  HTTP Method: **GET**
 -  path : **/api/v2/config/active/tree**
@@ -202,11 +202,7 @@ Endpoint: get the current Tornado configuration
        }
      ]
 
-.. rubric:: Working with configuration
-
-This endpoint allows to read a current configuration tree specific node
-
-Endpoint: get the current Tornado configuration
+Endpoint: get a current configuration tree specific node
 
 -  HTTP Method: **GET**
 -  path : **/api/v2/config/active/tree/root,foo**
