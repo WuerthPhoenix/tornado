@@ -39,12 +39,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     pub async fn get_current_config_processing_tree_nodes_by_path(
         &self,
         auth: AuthContext<'_>,
-        node_path: &String,
+        node_path: &str,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
 
         let config = self.config_manager.get_config().await?;
-        let path: Vec<_> = node_path.split(",").filter(|&part| !part.is_empty()).collect();
+        let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
 
         if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
             let result =

@@ -36,14 +36,13 @@ impl MatcherConfig {
         let mut target_nodes = vec![self];
 
         for node_name in path {
-            if let Some(node) = target_nodes.iter().find(|el| match el {
+            let found_node = target_nodes.iter().find(|el| match el {
                 MatcherConfig::Filter { name, .. } => name == node_name,
                 MatcherConfig::Ruleset { .. } => false,
-            }) {
-                match node {
-                    MatcherConfig::Filter { nodes, .. } => target_nodes = nodes.iter().collect(),
-                    _ => return None,
-                }
+            });
+
+            if let Some(MatcherConfig::Filter { nodes, .. }) = found_node {
+                target_nodes = nodes.iter().collect();
             } else {
                 return None;
             }
