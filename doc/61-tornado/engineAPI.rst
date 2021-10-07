@@ -183,7 +183,7 @@ the headers as in the 'auth' API.
 
 These endpoints allow to read the current configuration tree
 
-Endpoint: get the current configuration tree root node
+Endpoint: get the current configuration tree of the root node.
 
 -  HTTP Method: **GET**
 -  path : **/api/v2/config/active/tree**
@@ -202,7 +202,8 @@ Endpoint: get the current configuration tree root node
        }
      ]
 
-Endpoint: get a current configuration tree specific node
+Endpoint: get the current configuration tree of a specific node.
+Node names must be separated by a comma.
 
 -  HTTP Method: **GET**
 -  path : **/api/v2/config/active/tree/root,foo**
