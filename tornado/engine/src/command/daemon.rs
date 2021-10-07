@@ -383,7 +383,11 @@ pub async fn daemon(
         let daemon_config = daemon_config.clone();
         let logger_guard = logger_guard.clone();
 
-        let config_api = ApiData {
+        let v1_config_api = ApiData {
+            auth: auth_service.clone(),
+            api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
+        };
+        let v2_config_api = ApiData {
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
@@ -409,12 +413,15 @@ pub async fn daemon(
                                 .unwrap_or(MAX_JSON_PAYLOAD_SIZE),
                         ), // Limit request payload size in byte
                     )
-                    .service(tornado_engine_api::config::web::build_config_endpoints(config_api))
+                    .service(tornado_engine_api::config::web::build_config_endpoints(v1_config_api))
                     .service(tornado_engine_api::event::web::build_event_endpoints(event_api))
                     .service(
                         tornado_engine_api::runtime_config::web::build_runtime_config_endpoints(
                             runtime_config_api,
                         ),
+                    )
+                    .service(web::scope("/v2")
+                                 .service(tornado_engine_api::config::web::build_config_v2_endpoints(v2_config_api))
                     ),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))

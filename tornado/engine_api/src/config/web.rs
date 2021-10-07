@@ -7,7 +7,9 @@ use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::{MatcherConfigDraftDto, MatcherConfigDto};
+use tornado_engine_api_dto::config::{
+    MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
+};
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub fn build_config_endpoints<
@@ -37,6 +39,55 @@ pub fn build_config_endpoints<
             web::resource("/drafts/{draft_id}/take_over")
                 .route(web::post().to(draft_take_over::<A, CM>)),
         )
+}
+
+pub fn build_config_v2_endpoints<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    data: ApiData<ConfigApi<A, CM>>,
+) -> Scope {
+    web::scope("/config").app_data(Data::new(data)).service(
+        web::scope("/active")
+            .service(web::resource("/tree").route(web::get().to(get_tree_node::<A, CM>)))
+            .service(
+                web::resource("/tree/{node_path}")
+                    .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+            ),
+    )
+}
+
+async fn get_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let result = data
+        .api
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &"".to_string())
+        .await?;
+    Ok(Json(result))
+}
+
+async fn get_tree_node_with_node_path<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    node_path: Path<String>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let result = data
+        .api
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &node_path.into_inner())
+        .await?;
+    Ok(Json(result))
 }
 
 async fn get_current_configuration<
@@ -396,6 +447,31 @@ mod test {
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             ))
             .uri("/v1_beta/config/drafts/draft123/take_over")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_should_return_status_code_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+        })))
+        .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
+            ))
+            .uri("/config/active/tree")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
