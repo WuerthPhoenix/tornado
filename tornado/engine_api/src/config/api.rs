@@ -2,6 +2,7 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
+use tornado_engine_api_dto::config::ProcessingTreeNodeConfigDto;
 use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
 };
@@ -31,6 +32,27 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<MatcherConfig, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_config().await?)
+    }
+
+    /// Returns child processing tree nodes of a node found by a path
+    /// of the current configuration of tornado
+    pub async fn get_current_config_processing_tree_nodes_by_path(
+        &self,
+        auth: AuthContext<'_>,
+        node_path: &str,
+    ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+
+        let config = self.config_manager.get_config().await?;
+        let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
+
+        if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
+            let result =
+                child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
+            Ok(result)
+        } else {
+            Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
+        }
     }
 
     /// Returns the list of available drafts
@@ -394,5 +416,35 @@ mod test {
         assert!(api.draft_take_over(owner_view, "id").await.is_err());
         assert!(api.draft_take_over(owner_edit, "id").await.is_ok());
         assert!(api.draft_take_over(owner_edit_and_view, "id").await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_by_path_should_require_view_permission() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
+            create_users(&permissions_map);
+
+        // Act & Assert
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(
+                not_owner_edit_and_view,
+                &"".to_string()
+            )
+            .await
+            .is_ok());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string())
+            .await
+            .is_ok());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_edit, &"".to_string())
+            .await
+            .is_err());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(owner_edit_and_view, &"".to_string())
+            .await
+            .is_ok());
     }
 }

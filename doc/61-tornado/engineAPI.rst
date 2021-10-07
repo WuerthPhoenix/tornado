@@ -173,6 +173,55 @@ Endpoint: deploy an existing draft
 -  response type: **JSON**
 -  response: an empty json object
 
+Tornado 'Config' Backend API Version 2
+++++++++++++++++++++++++++++++++++++++
+
+The 'config' APIs require the caller to pass an authorization token in
+the headers as in the 'auth' API.
+
+.. rubric:: Reading the current configuration
+
+These endpoints allow to read the current configuration tree
+
+Endpoint: get the current configuration tree of the root node.
+
+-  HTTP Method: **GET**
+-  path : **/api/v2/config/active/tree**
+-  response type: **JSON**
+-  response example:
+
+   .. code:: json
+
+     [
+       {
+         "type": "Filter",
+         "name": "root",
+         "rules_count": 60,
+         "description": "This is the root node",
+         "children_count": 2
+       }
+     ]
+
+Endpoint: get the current configuration tree of a specific node.
+Node names must be separated by a comma.
+
+-  HTTP Method: **GET**
+-  path : **/api/v2/config/active/tree/root,foo**
+-  response type: **JSON**
+-  response example:
+
+   .. code:: json
+
+     [
+       {
+         "type": "Filter",
+         "name": "foo",
+         "rules_count": 40,
+         "description": "This is the foo node",
+         "children_count": 4
+       }
+     ]
+
 Tornado 'Event' Backend API
 +++++++++++++++++++++++++++
 
