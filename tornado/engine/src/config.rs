@@ -79,6 +79,9 @@ pub enum SubCommand {
     /// Starts the Tornado Rules upgrade process
     RulesUpgrade,
 
+    /// Creates a Filter in Tornado configuration
+    FilterCreate(FilterCreateOpt),
+
     /// Enable or disable the APM logger priority configuration.
     /// When used with `enable`, it:
     /// - enables the elastic-APM logger output
@@ -94,6 +97,17 @@ pub enum SubCommand {
         #[clap(subcommand)]
         command: EnableOrDisableSubCommand,
     },
+}
+
+#[derive(Clap, Debug)]
+pub struct FilterCreateOpt {
+    /// The name of the Filter to be created.
+    #[clap(short, long)]
+    pub name: String,
+
+    /// The full filepath to the JSON definition of the Filter to be created.
+    #[clap(short, long)]
+    pub from_filepath: String
 }
 
 #[derive(Clap, Debug)]
