@@ -18,12 +18,14 @@ pub async fn create_filter(
     let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
     let config_manager = configs.matcher_config;
 
+    println!("Creating filter {} in current configuration.", filter_name);
     let mut current_config = config_manager.get_config().await?;
     add_filter(&mut current_config, filter_name, filter.clone())?;
     config_manager.deploy_config(&current_config).await?;
 
     let drafts = config_manager.get_drafts().await?;
     for draft_id in drafts {
+        println!("Creating filter {} in draft: {}.", filter_name, &draft_id);
         let mut config_draft = config_manager.get_draft(&draft_id).await?.config;
         add_filter(&mut config_draft, filter_name, filter.clone())?;
         config_manager.update_draft(&draft_id, "root".to_string(), &config_draft).await?;
@@ -50,17 +52,30 @@ fn add_filter(
                             && filter.active == filter_to_add.active
                         {
                             println!(
-                                "Filter with name {} already exists. Nothing to do.",
+                                "Filter with name {} already exists and does not need to be updated. Nothing to do.",
                                 filter_to_add_name
                             );
                             return Ok(());
                         }
                         *name = node_backup_name(name);
+                        println!(
+                            "Filter with name {} already exists and needs to be updated. A backup Filter will be created with the name: {}.",
+                            filter_to_add_name, name
+                        );
                     }
                     MatcherConfig::Ruleset { name, rules: _ } => {
                         *name = node_backup_name(name);
+                        println!(
+                            "Node with name {} already exists and needs to be updated. A backup Ruleset will be created with the name: {}.",
+                            filter_to_add_name, name
+                        );
                     }
                 }
+            } else {
+                println!(
+                    "No node found with name: {}. Filter {} will be created.",
+                    filter_to_add_name, filter_to_add_name
+                );
             }
             nodes.push(MatcherConfig::Filter {
                 name: filter_to_add_name.to_string(),
@@ -82,7 +97,6 @@ fn add_filter(
 
 fn node_backup_name(name: &str) -> String {
     let backup_node_name = format!("{}_backup", name);
-    println!("Node with name {} will be renamed to {}.", name, &backup_node_name);
     backup_node_name
 }
 
