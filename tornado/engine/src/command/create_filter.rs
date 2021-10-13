@@ -1,5 +1,5 @@
 use crate::config::{FilterCreateOpt, parse_config_files};
-use tornado_engine_matcher::config::{MatcherConfigReader, MatcherConfig};
+use tornado_engine_matcher::config::{MatcherConfigReader, MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_common::TornadoError;
 
@@ -10,27 +10,26 @@ pub async fn create_filter(
     opts: &FilterCreateOpt
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     let filter_name = &opts.name;
-    let filter_filepath = &opts.from_filepath;
-    println!("Creating Filter with name {}. Filter definition will be read from {}", filter_name, filter_filepath);
+    let filter_definition = &opts.json_definition;
+    println!("Creating Filter with name {}. Filter definition: {}", filter_name, filter_definition);
 
-    let filter = read_filter_from_file(filter_filepath);
+    let filter = Filter::from_json(filter_definition)?;
 
     let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
     let config_manager = configs.matcher_config;
-    let mut current_config = config_manager.get_config().await?;
-    add_filter(&mut current_config, filter_name, filter)?;
 
-    // let drafts = config_manager.get_drafts()?;
-    // for draft in drafts {
-    //     config_manager.get_draft(draft)
-    // }
-    // let matcher_config_clone = matcher_config.clone();
+    let mut current_config = config_manager.get_config().await?;
+    add_filter(&mut current_config, filter_name, filter.clone())?;
+    config_manager.deploy_config(&current_config).await?;
+
+    let drafts = config_manager.get_drafts().await?;
+    for draft_id in drafts {
+        let mut config_draft = config_manager.get_draft(&draft_id).await?.config;
+        add_filter(&mut config_draft, filter_name, filter.clone())?;
+        config_manager.update_draft(&draft_id, "root".to_string(), &config_draft).await?;
+    }
 
     Ok(())
-}
-
-fn read_filter_from_file(_filepath: &String) -> Filter {
-    unimplemented!()
 }
 
 fn add_filter(
@@ -48,12 +47,13 @@ fn add_filter(
                 match node_with_same_name {
                     MatcherConfig::Filter { name, filter, nodes: _ } => {
                         if filter.filter == filter_to_add.filter && filter.active == filter_to_add.active {
+                            println!("Filter with name {} already exists. Nothing to do.", filter_to_add_name);
                             return Ok(());
                         }
-                        *name = node_backup_name(&name);
+                        *name = node_backup_name(name);
                     }
                     MatcherConfig::Ruleset { name, rules: _ } => {
-                        *name = node_backup_name(&name);
+                        *name = node_backup_name(name);
                     }
                 }
             }
@@ -71,7 +71,9 @@ fn add_filter(
 }
 
 fn node_backup_name (name: &str) -> String {
-    format!("{}_backup", name)
+    let backup_node_name = format!("{}_backup", name);
+    println!("Node with name {} will be renamed to {}.", name, &backup_node_name);
+    backup_node_name
 }
 
 #[cfg(test)]
@@ -196,10 +198,10 @@ pub mod test {
                 assert_eq!(name, "root");
                 assert_eq!(nodes.len(), 5);
                 let backup_node = nodes.iter().find(|node| match node {
-                    MatcherConfig::Filter { name, .. } => { name == "ruleset_01_backup"}
+                    MatcherConfig::Ruleset { name, rules, } => { name == "ruleset_01_backup" && rules.len() == 10}
                     _ => false
                 });
-                assert_eq!(backup_node.unwrap().get_direct_child_nodes_count(), 1);
+                assert!(backup_node.is_some());
 
                 let added_node = nodes.iter().find(|node| match node {
                     MatcherConfig::Filter { name, .. } => { name == filter_to_add_name}

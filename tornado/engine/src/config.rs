@@ -105,9 +105,9 @@ pub struct FilterCreateOpt {
     #[clap(short, long)]
     pub name: String,
 
-    /// The full filepath to the JSON definition of the Filter to be created.
+    /// The JSON representation of the Filter to be created.
     #[clap(short, long)]
-    pub from_filepath: String
+    pub json_definition: String
 }
 
 #[derive(Clap, Debug)]
