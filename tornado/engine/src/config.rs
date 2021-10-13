@@ -107,7 +107,7 @@ pub struct FilterCreateOpt {
 
     /// The JSON representation of the Filter to be created.
     #[clap(short, long)]
-    pub json_definition: String
+    pub json_definition: String,
 }
 
 #[derive(Clap, Debug)]
