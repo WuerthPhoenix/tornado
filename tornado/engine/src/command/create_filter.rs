@@ -49,7 +49,6 @@ fn add_filter(
                 match node_with_same_name {
                     MatcherConfig::Filter { name, filter, nodes: _ } => {
                         if filter.filter == filter_to_add.filter
-                            && filter.active == filter_to_add.active
                         {
                             println!(
                                 "Filter with name {} already exists and does not need to be updated. Nothing to do.",
