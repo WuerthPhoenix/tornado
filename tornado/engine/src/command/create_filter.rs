@@ -4,6 +4,8 @@ use tornado_common::TornadoError;
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 
+const TORNADO_USER: &str = "tornado";
+
 pub async fn create_filter(
     config_dir: &str,
     rules_dir: &str,
@@ -29,7 +31,7 @@ pub async fn create_filter(
         println!("Creating filter {} in draft: {}.", filter_name, &draft_id);
         let mut config_draft = config_manager.get_draft(&draft_id).await?.config;
         add_filter(&mut config_draft, filter_name, filter.clone())?;
-        config_manager.update_draft(&draft_id, "root".to_string(), &config_draft).await?;
+        config_manager.update_draft(&draft_id, TORNADO_USER.to_string(), &config_draft).await?;
     }
 
     Ok(())
