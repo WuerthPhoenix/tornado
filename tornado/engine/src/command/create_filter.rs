@@ -1,4 +1,5 @@
 use crate::config::{parse_config_files, FilterCreateOpt};
+use chrono::Local;
 use tornado_common::TornadoError;
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
@@ -48,8 +49,7 @@ fn add_filter(
             if let Some(node_with_same_name) = node_with_same_name {
                 match node_with_same_name {
                     MatcherConfig::Filter { name, filter, nodes: _ } => {
-                        if filter.filter == filter_to_add.filter
-                        {
+                        if filter.filter == filter_to_add.filter {
                             println!(
                                 "Filter with name {} already exists and does not need to be updated. Nothing to do.",
                                 filter_to_add_name
@@ -95,7 +95,7 @@ fn add_filter(
 }
 
 fn node_backup_name(name: &str) -> String {
-    let backup_node_name = format!("{}_backup", name);
+    let backup_node_name = format!("{}_backup_{}", name, Local::now().timestamp_millis());
     backup_node_name
 }
 
@@ -176,7 +176,9 @@ pub mod test {
                 assert_eq!(name, "root");
                 assert_eq!(nodes.len(), 5);
                 let backup_node = nodes.iter().find(|node| match node {
-                    MatcherConfig::Filter { name, .. } => name == "tenant_id_alpha_backup",
+                    MatcherConfig::Filter { name, .. } => {
+                        name.starts_with("tenant_id_alpha_backup_")
+                    }
                     _ => false,
                 });
                 assert_eq!(backup_node.unwrap().get_direct_child_nodes_count(), 1);
@@ -221,7 +223,7 @@ pub mod test {
                 assert_eq!(nodes.len(), 5);
                 let backup_node = nodes.iter().find(|node| match node {
                     MatcherConfig::Ruleset { name, rules } => {
-                        name == "ruleset_01_backup" && rules.len() == 10
+                        name.starts_with("ruleset_01_backup_") && rules.len() == 10
                     }
                     _ => false,
                 });

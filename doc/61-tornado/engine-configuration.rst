@@ -30,6 +30,25 @@ Tornado commands:
    given command.
 -  **rules-upgrade** : Checks the current configuration and, if
    available, upgrades the rules structure to the most recent one.
+-  **filter-create** : Creates a filter at the root level of the current
+   configuration and of the open drafts.
+
+   Parameters:
+
+      - **--name**: The name of the filter to be created.
+      - **--json-definition**: The JSON representation of the filter.
+
+   In case a Node with the same name already exists at the root level of the
+   configuration, the following will happen:
+
+      - If the existing node is a Ruleset, it will be renamed to: `<ruleset_name>_backup_<timestamp_in_milliseconds>`.
+
+      - If the existing node is a Filter having a different `filter` definition,
+        it will be renamed to: `<filter_name>_backup_<timestamp_in_milliseconds>`.
+
+      - If the existing node is a Filter having the same `filter` definition,
+        nothing will be done.
+
 
 Each CLI command provides its own help and usage information, you can
 display using the ``help`` command.
