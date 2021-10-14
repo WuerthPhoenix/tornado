@@ -404,4 +404,67 @@ pub mod test {
             MatcherConfig::Ruleset { .. } => assert!(false),
         }
     }
+
+    #[tokio::test]
+    async fn create_filter_should_update_drafts_without_taking_over() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+        let draft_user = "original_user";
+        let draft_id = configs.matcher_config.create_draft(draft_user.to_owned()).await.unwrap();
+
+        let draft_before = configs.matcher_config.get_draft(&draft_id).await.unwrap();
+        let matcher_config_before = configs.matcher_config.get_config().await.unwrap();
+
+        let filter_to_add_name = "my_new_filter";
+        let filter_to_add = Filter {
+            description: "my new filter".to_string(),
+            active: true,
+            filter: Defaultable::Value(Operator::Equals {
+                first: Value::Text("1".to_owned()),
+                second: Value::Text("1".to_owned()),
+            }),
+        };
+
+        // Act
+        create_filter(
+            &config_dir,
+            &rules_dir,
+            &drafts_dir,
+            &FilterCreateOpt {
+                name: filter_to_add_name.to_owned(),
+                json_definition: serde_json::to_string(&filter_to_add).unwrap(),
+            },
+        )
+        .await
+        .unwrap();
+
+        // Assert
+        let configs_after = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+        assert_ne!(matcher_config_before, configs_after.matcher_config.get_config().await.unwrap());
+
+        let draft_after = configs_after.matcher_config.get_draft(&draft_id).await.unwrap();
+
+        assert_eq!(draft_before.data.user, draft_after.data.user);
+        assert_eq!(draft_before.data.draft_id, draft_after.data.draft_id);
+        assert_eq!(draft_before.data.created_ts_ms, draft_after.data.created_ts_ms);
+
+        assert_ne!(draft_before.data.updated_ts_ms, draft_after.data.updated_ts_ms);
+        assert_ne!(draft_before.config, draft_after.config);
+        match draft_after.config {
+            MatcherConfig::Filter { name, filter: _, nodes } => {
+                assert_eq!(name, "root");
+                assert_eq!(nodes.len(), 5);
+                let added_node = nodes.iter().find(|node| match node {
+                    MatcherConfig::Filter { name, filter, nodes } => {
+                        name == filter_to_add_name && filter == &filter_to_add && nodes.len() == 0
+                    }
+                    _ => false,
+                });
+                assert!(added_node.is_some());
+            }
+            MatcherConfig::Ruleset { .. } => assert!(false),
+        }
+    }
 }
