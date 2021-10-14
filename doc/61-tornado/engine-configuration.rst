@@ -35,8 +35,8 @@ Tornado commands:
 
    Parameters:
 
-      - **--name**: The name of the filter to be created.
-      - **--json-definition**: The JSON representation of the filter.
+      - **name**: The name of the filter to be created.
+      - **json-definition**: The JSON representation of the filter.
 
    In case a Node with the same name already exists at the root level of the
    configuration, the following will happen:
