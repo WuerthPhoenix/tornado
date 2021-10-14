@@ -2,7 +2,9 @@ use crate::config::{parse_config_files, FilterCreateOpt};
 use chrono::Local;
 use tornado_common::TornadoError;
 use tornado_engine_matcher::config::filter::Filter;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
+use tornado_engine_matcher::config::{
+    Defaultable, MatcherConfig, MatcherConfigEditor, MatcherConfigReader,
+};
 
 const TORNADO_USER: &str = "tornado";
 
@@ -82,18 +84,39 @@ fn add_filter(
                 name: filter_to_add_name.to_string(),
                 filter: filter_to_add,
                 nodes: vec![],
-            })
+            });
+            Ok(())
         }
-        MatcherConfig::Ruleset { name, rules } => {
-            return Err(TornadoError::ConfigurationError {
+        MatcherConfig::Ruleset { name, rules } => match rules.len() {
+            0 => {
+                println!(
+                        "Found an empty Ruleset as root node, named: {}. Ruleset will be transformed into a Filter. The Filter {} will be a child of the Filter {}.",
+                        name, filter_to_add_name, name
+                    );
+
+                *matcher_config = MatcherConfig::Filter {
+                    name: name.to_owned(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: true,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: filter_to_add_name.to_owned(),
+                        filter: filter_to_add,
+                        nodes: vec![],
+                    }],
+                };
+                Ok(())
+            }
+            _ => Err(TornadoError::ConfigurationError {
                 message: format!(
-                    "Unexpected ruleset at root level. Ruleset name: {}. Rules: {:?}",
+                    "Unexpected non-empty ruleset at root level. Ruleset name: {}. Rules: {:?}",
                     name, rules
                 ),
-            })
-        }
+            }),
+        },
     }
-    Ok(())
 }
 
 fn node_backup_name(name: &str) -> String {
@@ -106,7 +129,7 @@ pub mod test {
     use super::*;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use tornado_common_api::Value;
-    use tornado_engine_matcher::config::rule::Operator;
+    use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::Defaultable;
 
     #[tokio::test]
@@ -265,5 +288,119 @@ pub mod test {
 
         // Assert
         assert_eq!(matcher_config_before, matcher_config);
+    }
+
+    #[tokio::test]
+    async fn should_add_filter_if_root_node_is_an_empty_ruleset() {
+        // Arrange
+        let mut matcher_config = MatcherConfig::Ruleset { name: "root".to_string(), rules: vec![] };
+        let matcher_config_before = matcher_config.clone();
+
+        let filter_to_add_name = "tenant_id_alpha";
+        let filter_to_add = Filter {
+            description: "my new filter".to_string(),
+            active: true,
+            filter: Defaultable::Default {},
+        };
+
+        // Act
+        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
+
+        // Assert
+        assert_ne!(matcher_config_before, matcher_config);
+        match matcher_config {
+            MatcherConfig::Filter { name, filter: _, nodes } => {
+                assert_eq!(name, "root");
+                assert_eq!(nodes.len(), 1);
+
+                match nodes.get(0).unwrap() {
+                    MatcherConfig::Filter { name, filter: _, nodes } => {
+                        assert_eq!(name, filter_to_add_name);
+                        assert_eq!(nodes.len(), 0);
+                    }
+                    _ => assert!(false),
+                };
+            }
+            MatcherConfig::Ruleset { .. } => assert!(false),
+        }
+    }
+
+    #[tokio::test]
+    async fn add_filter_should_return_err_if_root_node_is_a_non_empty_ruleset() {
+        // Arrange
+        let mut matcher_config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![Rule {
+                name: "my rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+
+        let filter_to_add_name = "tenant_id_alpha";
+        let filter_to_add = Filter {
+            description: "my new filter".to_string(),
+            active: true,
+            filter: Defaultable::Default {},
+        };
+
+        // Act
+        let result = add_filter(&mut matcher_config, filter_to_add_name, filter_to_add);
+
+        // Assert
+        assert!(result.is_err());
+    }
+
+    #[tokio::test]
+    async fn should_add_filter_if_root_is_an_empty_filter() {
+        let mut matcher_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: true,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+        let matcher_config_before = matcher_config.clone();
+
+        let filter_to_add_name = "tenant_id_alpha";
+        let filter_to_add = Filter {
+            description: "my new filter".to_string(),
+            active: true,
+            filter: Defaultable::Default {},
+        };
+
+        // Act
+        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
+
+        // Assert
+        assert_ne!(matcher_config_before, matcher_config);
+        match matcher_config {
+            MatcherConfig::Filter { name, filter, nodes } => {
+                assert_eq!(name, "root");
+                assert_eq!(
+                    filter,
+                    Filter {
+                        description: "".to_string(),
+                        active: true,
+                        filter: Defaultable::Default {}
+                    }
+                );
+                assert_eq!(nodes.len(), 1);
+
+                match nodes.get(0).unwrap() {
+                    MatcherConfig::Filter { name, filter: _, nodes } => {
+                        assert_eq!(name, filter_to_add_name);
+                        assert_eq!(nodes.len(), 0);
+                    }
+                    _ => assert!(false),
+                };
+            }
+            MatcherConfig::Ruleset { .. } => assert!(false),
+        }
     }
 }
