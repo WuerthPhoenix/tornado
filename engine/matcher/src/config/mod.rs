@@ -51,6 +51,33 @@ impl MatcherConfig {
         Some(target_nodes)
     }
 
+    // Returns child nodes of a node found by a path
+    pub fn get_node_details_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
+        let mut target_nodes = vec![self];
+
+        // for node_name in path {
+        for (index, node_name) in path.iter().enumerate() {
+            let found_node = target_nodes.iter().find(|el| match el {
+                // # root node: cycle through child nodes and search for path
+                // # Filter node not last in path: same as root
+                MatcherConfig::Filter { name, .. } => name == node_name,
+                MatcherConfig::Ruleset { name, .. } => name == node_name,
+            });
+
+            if index == (path.len() - 1) {
+                // # Filter node last in path: return itself
+                // # Ruleset node last in path: return itself
+                return found_node.copied();
+            } else if let Some(MatcherConfig::Filter { nodes, .. }) = found_node {
+                target_nodes = nodes.iter().collect();
+            } else {
+                // # Ruleset node not last in path: return None
+                return None;
+            }
+        }
+        None
+    }
+
     // Returns the total amount of direct children of a node
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {

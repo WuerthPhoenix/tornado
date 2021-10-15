@@ -9,6 +9,7 @@ use log::*;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
+    ProcessingTreeNodeDetailsDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
@@ -53,6 +54,10 @@ pub fn build_config_v2_endpoints<
             .service(
                 web::resource("/tree/{node_path}")
                     .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+            )
+            .service(
+                web::resource("/tree/{node_path}/details")
+                    .route(web::get().to(get_tree_node_details::<A, CM>)),
             ),
     )
 }
@@ -87,6 +92,21 @@ async fn get_tree_node_with_node_path<
         .api
         .get_current_config_processing_tree_nodes_by_path(auth_ctx, &node_path.into_inner())
         .await?;
+    Ok(Json(result))
+}
+
+async fn get_tree_node_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    node_path: Path<String>,
+    data: Data<ApiData<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let result =
+        data.api.get_current_config_node_details_by_path(auth_ctx, &node_path.into_inner()).await?;
     Ok(Json(result))
 }
 

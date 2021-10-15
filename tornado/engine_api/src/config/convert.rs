@@ -32,18 +32,9 @@ pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto
         },
         MatcherConfig::Filter { name, filter, nodes } => MatcherConfigDto::Filter {
             name,
-            filter: filter_into_dto(filter)?,
+            filter: filter.into(),
             nodes: nodes.into_iter().map(matcher_config_into_dto).collect::<Result<Vec<_>, _>>()?,
         },
-    })
-}
-
-fn filter_into_dto(filter: Filter) -> Result<FilterDto, Error> {
-    let option_filter: Option<_> = filter.filter.into();
-    Ok(FilterDto {
-        description: filter.description,
-        filter: option_filter.map(operator_into_dto).transpose()?,
-        active: filter.active,
     })
 }
 
@@ -64,71 +55,13 @@ fn action_into_dto(action: Action) -> Result<ActionDto, Error> {
 
 fn constraint_into_dto(constraint: Constraint) -> Result<ConstraintDto, Error> {
     Ok(ConstraintDto {
-        where_operator: constraint.where_operator.map(operator_into_dto).transpose()?,
+        where_operator: constraint.where_operator.map(OperatorDto::from),
         with: constraint
             .with
             .into_iter()
             .map(|(key, value)| (key, extractor_into_dto(value)))
             .collect(),
     })
-}
-
-fn operator_into_dto(operator: Operator) -> Result<OperatorDto, Error> {
-    let result = match operator {
-        Operator::And { operators } => OperatorDto::And {
-            operators: operators
-                .into_iter()
-                .map(operator_into_dto)
-                .collect::<Result<Vec<_>, _>>()?,
-        },
-        Operator::Or { operators } => OperatorDto::Or {
-            operators: operators
-                .into_iter()
-                .map(operator_into_dto)
-                .collect::<Result<Vec<_>, _>>()?,
-        },
-        Operator::Not { operator } => {
-            OperatorDto::Not { operator: Box::new(operator_into_dto(*operator)?) }
-        }
-        Operator::Contains { first, second } => OperatorDto::Contains {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::ContainsIgnoreCase { first, second } => OperatorDto::ContainsIgnoreCase {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::Equals { first, second } => OperatorDto::Equals {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::EqualsIgnoreCase { first, second } => OperatorDto::EqualsIgnoreCase {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::GreaterEqualThan { first, second } => OperatorDto::GreaterEqualThan {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::GreaterThan { first, second } => OperatorDto::GreaterThan {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::LessEqualThan { first, second } => OperatorDto::LessEqualThan {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::LessThan { first, second } => OperatorDto::LessThan {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::NotEquals { first, second } => OperatorDto::NotEquals {
-            first: serde_json::to_value(&first)?,
-            second: serde_json::to_value(&second)?,
-        },
-        Operator::Regex { regex, target } => OperatorDto::Regex { regex, target },
-    };
-    Ok(result)
 }
 
 fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {

@@ -2,7 +2,7 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::ProcessingTreeNodeConfigDto;
+use tornado_engine_api_dto::config::{ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto};
 use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
 };
@@ -49,6 +49,26 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
             let result =
                 child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
+            Ok(result)
+        } else {
+            Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
+        }
+    }
+
+    /// Returns processing tree node details by path
+    /// in the current configuration of tornado
+    pub async fn get_current_config_node_details_by_path(
+        &self,
+        auth: AuthContext<'_>,
+        node_path: &str,
+    ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+
+        let config = self.config_manager.get_config().await?;
+        let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
+
+        if let Some(node) = config.get_node_details_by_path(path.as_slice()) {
+            let result = ProcessingTreeNodeDetailsDto::from(node);
             Ok(result)
         } else {
             Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
