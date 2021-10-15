@@ -23,6 +23,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
         SubCommand::RulesUpgrade => {
             command::upgrade_rules::upgrade_rules(config_dir, rules_dir, drafts_dir).await
         }
+        SubCommand::FilterCreate(opts) => {
+            command::create_filter::create_filter(config_dir, rules_dir, drafts_dir, opts).await
+        }
         SubCommand::ApmTracing { command } => apm_tracing(config_dir, command).await,
     }
 }
