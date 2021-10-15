@@ -128,7 +128,7 @@ pub enum OperatorDto {
 
 impl From<&Operator> for OperatorDto {
     fn from(operator: &Operator) -> Self {
-        let result = match operator {
+        match operator {
             Operator::And { operators } => {
                 OperatorDto::And { operators: operators.iter().map(OperatorDto::from).collect() }
             }
@@ -177,8 +177,7 @@ impl From<&Operator> for OperatorDto {
             Operator::Regex { regex, target } => {
                 OperatorDto::Regex { regex: regex.to_owned(), target: target.to_owned() }
             }
-        };
-        result
+        }
     }
 }
 
