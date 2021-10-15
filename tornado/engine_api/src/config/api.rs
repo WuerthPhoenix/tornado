@@ -67,7 +67,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let config = self.config_manager.get_config().await?;
         let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
 
-        if let Some(node) = config.get_node_details_by_path(path.as_slice()) {
+        if let Some(node) = config.get_node_by_path(path.as_slice()) {
             let result = ProcessingTreeNodeDetailsDto::from(node);
             Ok(result)
         } else {
