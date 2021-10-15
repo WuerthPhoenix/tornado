@@ -477,41 +477,26 @@ mod test {
             create_users(&permissions_map);
 
         // Act & Assert
-        assert!(
-            ! matches!(
-                api.get_current_config_node_details_by_path(
-                    not_owner_edit_and_view,
-                    &"root".to_string()
-                ).await,
-                Err(ApiError::ForbiddenError {..})
+        assert!(!matches!(
+            api.get_current_config_node_details_by_path(
+                not_owner_edit_and_view,
+                &"root".to_string()
             )
-        );
-        assert!(
-            ! matches!(
-                api.get_current_config_node_details_by_path(
-                    owner_view,
-                    &"root".to_string()
-                ).await,
-                Err(ApiError::ForbiddenError {..})
-            )
-        );
-        assert!(
-            matches!(
-                api.get_current_config_node_details_by_path(
-                    owner_edit,
-                    &"root".to_string()
-                ).await,
-                Err(ApiError::ForbiddenError {..})
-            )
-        );
-        assert!(
-            ! matches!(
-                api.get_current_config_node_details_by_path(
-                    owner_edit_and_view,
-                    &"root".to_string()
-                ).await,
-                Err(ApiError::ForbiddenError {..})
-            )
-        );
+            .await,
+            Err(ApiError::ForbiddenError { .. })
+        ));
+        assert!(!matches!(
+            api.get_current_config_node_details_by_path(owner_view, &"root".to_string()).await,
+            Err(ApiError::ForbiddenError { .. })
+        ));
+        assert!(matches!(
+            api.get_current_config_node_details_by_path(owner_edit, &"root".to_string()).await,
+            Err(ApiError::ForbiddenError { .. })
+        ));
+        assert!(!matches!(
+            api.get_current_config_node_details_by_path(owner_edit_and_view, &"root".to_string())
+                .await,
+            Err(ApiError::ForbiddenError { .. })
+        ));
     }
 }
