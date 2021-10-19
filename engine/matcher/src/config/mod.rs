@@ -32,26 +32,19 @@ pub enum MatcherConfig {
 
 impl MatcherConfig {
     // Returns child nodes of a node found by a path
+    // If the path is empty [], the [self] is returned
     pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
-        let mut target_nodes = vec![self];
-
-        for node_name in path {
-            let found_node = target_nodes.iter().find(|el| match el {
-                MatcherConfig::Filter { name, .. } => name == node_name,
-                MatcherConfig::Ruleset { .. } => false,
-            });
-
-            if let Some(MatcherConfig::Filter { nodes, .. }) = found_node {
-                target_nodes = nodes.iter().collect();
-            } else {
-                return None;
-            }
+        if path.is_empty() {
+            return Some(vec![self])
         }
-
-        Some(target_nodes)
+        match self.get_node_by_path(path) {
+            Some(MatcherConfig::Filter {nodes,..}) => Some(nodes.iter().collect()),
+            _ => None
+        }
     }
 
-    // Returns child nodes of a node found by a path
+    // Returns a node details found by a specified path
+    // If not found returns None
     pub fn get_node_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
         let mut target_nodes = vec![self];
 
