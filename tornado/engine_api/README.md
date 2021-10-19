@@ -159,6 +159,81 @@ Endpoint: deploy an existing draft
 - response type: __JSON__
 - response: an empty json object
 
+## Tornado 'Config' Backend API Version 2
+
+The 'config' APIs require the caller to pass an authorization token in
+the headers as in the 'auth' API.
+
+### Reading the current configuration
+
+These endpoints allow to read the current configuration tree
+
+Endpoint: get the current configuration tree of the root node.
+-  HTTP Method: **GET**
+-  path : **/api/v2/config/active/tree**
+-  response type: **JSON**
+-  response example:
+
+   ```json
+   [
+       {
+           "type": "Filter",
+           "name": "root",
+           "rules_count": 60,
+           "description": "This is the root node",
+           "children_count": 2
+       }
+   ]
+   ```
+
+Endpoint: get the current configuration tree of a specific node.
+Node names must be separated by a comma.
+-  HTTP Method: **GET**
+-  path : **/api/v2/config/active/tree/root,foo**
+-  response type: **JSON**
+-  response example:
+
+   ```json
+   [
+       {
+           "type": "Filter",
+           "name": "foo",
+           "rules_count": 40,
+           "description": "This is the foo node",
+           "children_count": 4
+       }
+   ]
+   ```
+
+## Tornado 'Node Details' Backend API Version 2
+
+The 'node details' APIs require the caller to pass an authorization token in
+the headers as in the 'auth' API.
+
+### Reading the current configuration details
+
+These endpoints allow to read the current configuration tree nodes details
+
+Endpoint: get the node details of the current configuration tree
+
+- HTTP Method: **GET**
+- path : **/api/v2/config/active/tree/root,foo/details**
+- response type: **JSON**
+- response example:
+
+   ```json
+   {
+       "type":"Filter",
+       "name":"foo",
+       "description":"This filter allows events for Linux hosts",
+       "active":true,
+       "filter":{
+           "type":"equals",
+           "first":"${event.metadata.os}",
+           "second":"linux"
+       }
+   }
+   ```
 
 ## Tornado 'Event' Backend API
 
