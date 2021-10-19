@@ -129,6 +129,8 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &config::OperatorDto::type_script_ify());
     push_ts(&mut ts_code, &config::RuleDto::type_script_ify());
     push_ts(&mut ts_code, &config::ProcessingTreeNodeConfigDto::type_script_ify());
+    push_ts(&mut ts_code, &config::ProcessingTreeNodeDetailsDto::type_script_ify());
+    push_ts(&mut ts_code, &config::RuleDetailsDto::type_script_ify());
 
     // Push 'event' ts types
     push_ts(

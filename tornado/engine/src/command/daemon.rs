@@ -420,7 +420,7 @@ pub async fn daemon(
                             runtime_config_api,
                         ),
                     )
-                    .service(web::scope("/v2").service(
+                    .service(web::scope("/v2_beta").service(
                         tornado_engine_api::config::web::build_config_v2_endpoints(v2_config_api),
                     )),
             )

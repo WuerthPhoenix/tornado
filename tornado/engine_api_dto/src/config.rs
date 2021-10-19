@@ -1,8 +1,33 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use tornado_engine_matcher::config::MatcherConfig;
+use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::rule::{Operator, Rule};
+use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 use typescript_definitions::TypeScriptify;
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct RuleDetailsDto {
+    #[serde(default)]
+    pub name: String,
+    pub description: String,
+    #[serde(rename = "continue")]
+    pub do_continue: bool,
+    pub active: bool,
+    pub actions: Vec<String>,
+}
+
+impl From<&Rule> for RuleDetailsDto {
+    fn from(rule: &Rule) -> Self {
+        RuleDetailsDto {
+            name: rule.name.to_owned(),
+            description: rule.description.to_owned(),
+            do_continue: rule.do_continue,
+            active: rule.active,
+            actions: rule.actions.iter().map(|action| action.to_owned().id).collect(),
+        }
+    }
+}
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct RuleDto {
@@ -101,6 +126,61 @@ pub enum OperatorDto {
     Regex { regex: String, target: String },
 }
 
+impl From<&Operator> for OperatorDto {
+    fn from(operator: &Operator) -> Self {
+        match operator {
+            Operator::And { operators } => {
+                OperatorDto::And { operators: operators.iter().map(OperatorDto::from).collect() }
+            }
+            Operator::Or { operators } => {
+                OperatorDto::Or { operators: operators.iter().map(OperatorDto::from).collect() }
+            }
+            Operator::Not { operator } => {
+                OperatorDto::Not { operator: Box::new(OperatorDto::from(operator.as_ref())) }
+            }
+            Operator::Contains { first, second } => OperatorDto::Contains {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::ContainsIgnoreCase { first, second } => OperatorDto::ContainsIgnoreCase {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::Equals { first, second } => OperatorDto::Equals {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::EqualsIgnoreCase { first, second } => OperatorDto::EqualsIgnoreCase {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::GreaterEqualThan { first, second } => OperatorDto::GreaterEqualThan {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::GreaterThan { first, second } => OperatorDto::GreaterThan {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::LessEqualThan { first, second } => OperatorDto::LessEqualThan {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::LessThan { first, second } => OperatorDto::LessThan {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::NotEquals { first, second } => OperatorDto::NotEquals {
+                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+            },
+            Operator::Regex { regex, target } => {
+                OperatorDto::Regex { regex: regex.to_owned(), target: target.to_owned() }
+            }
+        }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ActionDto {
     pub id: String,
@@ -119,6 +199,18 @@ pub struct FilterDto {
 pub enum MatcherConfigDto {
     Filter { name: String, filter: FilterDto, nodes: Vec<MatcherConfigDto> },
     Ruleset { name: String, rules: Vec<RuleDto> },
+}
+impl From<Filter> for FilterDto {
+    fn from(filter: Filter) -> Self {
+        FilterDto {
+            description: filter.description.to_owned(),
+            filter: match &filter.filter {
+                Defaultable::Value(operator) => Some(operator.into()),
+                Defaultable::Default { .. } => None,
+            },
+            active: filter.active,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
@@ -156,6 +248,37 @@ impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
                 name: name.to_owned(),
                 rules_count: matcher_config_node.get_all_rules_count(),
             },
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+#[serde(tag = "type")]
+pub enum ProcessingTreeNodeDetailsDto {
+    Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Ruleset { name: String, rules: Vec<RuleDetailsDto> },
+}
+
+impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
+    fn from(matcher_config_node: &MatcherConfig) -> Self {
+        match matcher_config_node {
+            MatcherConfig::Filter { name, filter, .. } => ProcessingTreeNodeDetailsDto::Filter {
+                name: name.to_owned(),
+                description: filter.to_owned().description,
+                active: filter.clone().active,
+                filter: match &filter.filter {
+                    Defaultable::Value(operator) => Some(operator.into()),
+                    Defaultable::Default { .. } => None,
+                },
+            },
+
+            MatcherConfig::Ruleset { name, rules, .. } => {
+                let rules_details_dto = rules.iter().map(RuleDetailsDto::from).collect();
+                ProcessingTreeNodeDetailsDto::Ruleset {
+                    name: name.to_owned(),
+                    rules: rules_details_dto,
+                }
+            }
         }
     }
 }

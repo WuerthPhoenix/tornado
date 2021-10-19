@@ -31,24 +31,53 @@ pub enum MatcherConfig {
 }
 
 impl MatcherConfig {
-    // Returns child nodes of a node found by a path
-    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
-        let mut target_nodes = vec![self];
+    fn get_name(&self) -> &str {
+        match self {
+            MatcherConfig::Filter { name, .. } => name,
+            MatcherConfig::Ruleset { name, .. } => name,
+        }
+    }
 
-        for node_name in path {
-            let found_node = target_nodes.iter().find(|el| match el {
-                MatcherConfig::Filter { name, .. } => name == node_name,
-                MatcherConfig::Ruleset { .. } => false,
-            });
+    fn get_child_node_by_name(&self, child_name: &str) -> Option<&MatcherConfig> {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter().find(|child| child.get_name() == child_name)
+            }
+            MatcherConfig::Ruleset { .. } => None,
+        }
+    }
 
-            if let Some(MatcherConfig::Filter { nodes, .. }) = found_node {
-                target_nodes = nodes.iter().collect();
+    pub fn get_node_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
+        // empty path returns None
+        if path.is_empty() {
+            return None;
+        }
+        // first element must be current node
+        if path[0] != self.get_name() {
+            return None;
+        }
+        let mut root = self;
+        // drill down from root
+        for &node_name in path[1..].iter() {
+            if let Some(new_root) = root.get_child_node_by_name(node_name) {
+                root = new_root
             } else {
                 return None;
             }
         }
+        Some(root)
+    }
 
-        Some(target_nodes)
+    // Returns child nodes of a node found by a path
+    // If the path is empty [], the [self] is returned
+    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
+        if path.is_empty() || (path.len() == 1 && path[0].is_empty()) {
+            return Some(vec![self]);
+        }
+        match self.get_node_by_path(path) {
+            Some(MatcherConfig::Filter { nodes, .. }) => Some(nodes.iter().collect()),
+            _ => None,
+        }
     }
 
     // Returns the total amount of direct children of a node
@@ -424,5 +453,71 @@ mod tests {
 
         assert_eq!(nested_levels_path_with_ruleset, None);
         assert_eq!(not_existing_path, None);
+    }
+
+    #[test]
+    fn test_get_node_by_path() {
+        // Arrange
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter2".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![
+                            MatcherConfig::Filter {
+                                name: "filter1".to_string(),
+                                filter: Filter {
+                                    description: "Filter at last level".to_string(),
+                                    active: false,
+                                    filter: Defaultable::Default {},
+                                },
+                                nodes: vec![],
+                            },
+                            MatcherConfig::Ruleset { name: "ruleset2".to_string(), rules: vec![] },
+                        ],
+                    }],
+                },
+                MatcherConfig::Ruleset { name: "Ruleset1".to_string(), rules: vec![] },
+            ],
+        };
+
+        // Act
+        let result_with_empty_path = config.get_node_by_path(&vec![]);
+        let result_with_wrong_path = config.get_node_by_path(&vec!["root", "foo"]);
+        let result_with_first_level_path = config.get_node_by_path(&vec!["root"]);
+        let result_with_filter_same_name =
+            config.get_node_by_path(&vec!["root", "filter1", "filter2", "filter1"]);
+        let result_with_ruleset =
+            config.get_node_by_path(&vec!["root", "filter1", "filter2", "ruleset2"]);
+
+        // Assert
+        assert_eq!(result_with_empty_path, None);
+        assert_eq!(result_with_wrong_path, None);
+        assert!(
+            matches!(result_with_first_level_path.unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
+        );
+        assert!(
+            matches!(result_with_filter_same_name.unwrap(), MatcherConfig::Filter {name, filter, ..} if name == "filter1" && filter.description == "Filter at last level")
+        );
+        assert!(
+            matches!(result_with_ruleset.unwrap(), MatcherConfig::Ruleset {name, ..} if name == "ruleset2")
+        );
     }
 }
