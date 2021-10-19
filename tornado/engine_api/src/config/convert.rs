@@ -55,7 +55,7 @@ fn action_into_dto(action: Action) -> Result<ActionDto, Error> {
 
 fn constraint_into_dto(constraint: Constraint) -> Result<ConstraintDto, Error> {
     Ok(ConstraintDto {
-        where_operator: constraint.where_operator.map(OperatorDto::from),
+        where_operator: constraint.where_operator.map(|operator_dto| OperatorDto::from(&operator_dto)),
         with: constraint
             .with
             .into_iter()

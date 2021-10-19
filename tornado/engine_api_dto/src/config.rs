@@ -181,12 +181,6 @@ impl From<&Operator> for OperatorDto {
     }
 }
 
-impl From<Operator> for OperatorDto {
-    fn from(operator: Operator) -> Self {
-        OperatorDto::from(&operator)
-    }
-}
-
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ActionDto {
     pub id: String,
