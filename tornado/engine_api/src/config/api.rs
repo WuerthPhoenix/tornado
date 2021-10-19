@@ -44,14 +44,14 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth.has_permission(&Permission::ConfigView)?;
 
         let config = self.config_manager.get_config().await?;
-        let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
+        let path: Vec<_> = node_path.split(',').collect();
 
         if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
             let result =
                 child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
             Ok(result)
         } else {
-            Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
+            Err(ApiError::NodeNotFoundError { message: format!("Node for path {} not found", node_path) })
         }
     }
 
@@ -65,13 +65,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth.has_permission(&Permission::ConfigView)?;
 
         let config = self.config_manager.get_config().await?;
-        let path: Vec<_> = node_path.split(',').filter(|&part| !part.is_empty()).collect();
+        let path: Vec<_> = node_path.split(',').collect();
 
         if let Some(node) = config.get_node_by_path(path.as_slice()) {
             let result = ProcessingTreeNodeDetailsDto::from(node);
             Ok(result)
         } else {
-            Err(ApiError::BadRequestError { cause: "Node path not found".to_string() })
+            Err(ApiError::NodeNotFoundError { message: format!("Node for path {} not found", node_path) })
         }
     }
 

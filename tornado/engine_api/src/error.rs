@@ -32,6 +32,9 @@ pub enum ApiError {
 
     #[error("ForbiddenError [{message}]")]
     ForbiddenError { code: String, message: String, params: HashMap<String, String> },
+
+    #[error("NodeNotFoundError [{message}]")]
+    NodeNotFoundError { message: String },
 }
 
 impl From<MatcherError> for ApiError {
@@ -81,6 +84,7 @@ impl actix_web::error::ResponseError for ApiError {
             ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::BadRequestError { .. } => HttpResponse::BadRequest().finish(),
             ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::NodeNotFoundError { .. } => HttpResponse::NotFound().finish(),
             ApiError::InvalidTokenError { .. }
             | ApiError::ExpiredTokenError { .. }
             | ApiError::MissingAuthTokenError { .. }
