@@ -31,44 +31,53 @@ pub enum MatcherConfig {
 }
 
 impl MatcherConfig {
-    // Returns child nodes of a node found by a path
-    // If the path is empty [], the [self] is returned
-    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
-        if path.is_empty() {
-            return Some(vec![self])
-        }
-        match self.get_node_by_path(path) {
-            Some(MatcherConfig::Filter {nodes,..}) => Some(nodes.iter().collect()),
-            _ => None
+    fn get_name(&self) -> &str {
+        match self {
+            MatcherConfig::Filter { name, .. } => name,
+            MatcherConfig::Ruleset { name, .. } => name,
         }
     }
 
-    // Returns a node details found by a specified path
-    // If not found returns None
+    fn get_child_node_by_name(&self, child_name: &str) -> Option<&MatcherConfig> {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter().find(|child| child.get_name() == child_name)
+            }
+            MatcherConfig::Ruleset { .. } => None,
+        }
+    }
+
     pub fn get_node_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
-        let mut target_nodes = vec![self];
-
-        // for node_name in path {
-        for (index, node_name) in path.iter().enumerate() {
-            let found_node = target_nodes.iter().find(|el| match el {
-                // # root node: cycle through child nodes and search for path
-                // # Filter node not last in path: same as root
-                MatcherConfig::Filter { name, .. } => name == node_name,
-                MatcherConfig::Ruleset { name, .. } => name == node_name,
-            });
-
-            if index == (path.len() - 1) {
-                // # Filter node last in path: return itself
-                // # Ruleset node last in path: return itself
-                return found_node.copied();
-            } else if let Some(MatcherConfig::Filter { nodes, .. }) = found_node {
-                target_nodes = nodes.iter().collect();
+        // empty path returns None
+        if path.is_empty() {
+            return None;
+        }
+        // first element must be current node
+        if path[0] != self.get_name() {
+            return None;
+        }
+        let mut root = self;
+        // drill down from root
+        for &node_name in path[1..].iter() {
+            if let Some(new_root) = root.get_child_node_by_name(node_name) {
+                root = new_root
             } else {
-                // # Ruleset node not last in path: return None
                 return None;
             }
         }
-        None
+        Some(root)
+    }
+
+    // Returns child nodes of a node found by a path
+    // If the path is empty [], the [self] is returned
+    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
+        if path.is_empty() || (path.len() == 1 && path[0].is_empty()) {
+            return Some(vec![self]);
+        }
+        match self.get_node_by_path(path) {
+            Some(MatcherConfig::Filter { nodes, .. }) => Some(nodes.iter().collect()),
+            _ => None,
+        }
     }
 
     // Returns the total amount of direct children of a node

@@ -51,7 +51,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
                 child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
             Ok(result)
         } else {
-            Err(ApiError::NodeNotFoundError { message: format!("Node for path {} not found", node_path) })
+            Err(ApiError::NodeNotFoundError {
+                message: format!("Node for path {} not found", node_path),
+            })
         }
     }
 
@@ -71,7 +73,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             let result = ProcessingTreeNodeDetailsDto::from(node);
             Ok(result)
         } else {
-            Err(ApiError::NodeNotFoundError { message: format!("Node for path {} not found", node_path) })
+            Err(ApiError::NodeNotFoundError {
+                message: format!("Node for path {} not found", node_path),
+            })
         }
     }
 
