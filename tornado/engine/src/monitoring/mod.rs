@@ -4,8 +4,11 @@ use actix_web::web::Json;
 use actix_web::{web, HttpRequest, HttpResponse, Result, Scope};
 use chrono::prelude::Local;
 use serde::{Deserialize, Serialize};
+use tornado_common_metrics::Metrics;
+use std::sync::Arc;
+use tornado_common_metrics::endpoint::actix_web::metrics_endpoints;
 
-pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig) -> Scope {
+pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig, metrics: Arc<Metrics>) -> Scope {
     scope
         .app_data(Data::new(daemon_command_config))
         .service(web::resource("").route(web::get().to(index)))
@@ -14,6 +17,7 @@ pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandCo
             web::resource("/communication_channel_config")
                 .route(web::get().to(communication_channel_config)),
         )
+        .service(metrics_endpoints(metrics))
 }
 
 async fn index(_req: HttpRequest) -> HttpResponse {
@@ -82,7 +86,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
         )
         .await;
 
@@ -117,7 +121,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
         )
         .await;
 
@@ -152,7 +156,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config)),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
         )
         .await;
 

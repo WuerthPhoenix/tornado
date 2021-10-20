@@ -29,6 +29,7 @@ use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
+use tornado_common_metrics::Metrics;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -399,6 +400,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
+        let metrics = Arc::new(Metrics::default());
 
         App::new()
             .wrap(Logger::default())
@@ -424,7 +426,7 @@ pub async fn daemon(
                         tornado_engine_api::config::web::build_config_v2_endpoints(v2_config_api),
                     )),
             )
-            .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
+            .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics))
     })
     .bind(format!("{}:{}", web_server_ip, web_server_port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
