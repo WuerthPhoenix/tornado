@@ -1,5 +1,5 @@
 use crate::enrich::nats::NatsExtractor;
-use clap::Clap;
+use clap::Parser;
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ use tornado_executor_smart_monitoring_check_result::config::SmartMonitoringCheck
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> = option_env!("TORNADO_CONFIG_DIR_DEFAULT");
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 #[clap(name = "tornado")]
 pub struct Opt {
     #[clap(long = "config-dir")]
@@ -68,7 +68,7 @@ impl Opt {
     }
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub enum SubCommand {
     /// Checks that the configuration is valid
     Check,
@@ -99,7 +99,7 @@ pub enum SubCommand {
     },
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub struct FilterCreateOpt {
     /// The name of the Filter to be created.
     #[clap(short, long)]
@@ -110,7 +110,7 @@ pub struct FilterCreateOpt {
     pub json_definition: String,
 }
 
-#[derive(Clap, Debug)]
+#[derive(Parser, Debug)]
 pub enum EnableOrDisableSubCommand {
     Enable,
     Disable,
