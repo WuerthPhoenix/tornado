@@ -6,6 +6,8 @@ use opentelemetry::metrics::{Counter, ValueRecorder, Unit};
 pub use opentelemetry;
 pub use prometheus;
 
+pub mod endpoint;
+
 pub struct Metrics {
     pub prometheus_exporter: PrometheusExporter,
     pub http_requests_counter: Counter<u64>,

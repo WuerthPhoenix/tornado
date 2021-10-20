@@ -26,6 +26,7 @@ tokio = { version = "1", features = ["sync"] }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
+tornado_common_metrics = { path = "../../common/metrics", version = "0.0.1", features = ["actix_web"] }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_engine_api = { path = "../engine_api", version = "0.0.1" }

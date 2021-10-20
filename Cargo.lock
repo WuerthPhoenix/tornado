@@ -3582,6 +3582,7 @@ dependencies = [
 name = "tornado_common_metrics"
 version = "0.0.1"
 dependencies = [
+ "actix-web",
  "log",
  "opentelemetry",
  "opentelemetry-prometheus",
@@ -3654,6 +3655,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tornado_common_metrics",
  "tornado_engine_api",
  "tornado_engine_api_dto",
  "tornado_engine_matcher",
