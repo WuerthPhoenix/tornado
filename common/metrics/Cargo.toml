@@ -1,0 +1,18 @@
+[package]
+name = "tornado_common_metrics"
+version = "0.0.1"
+authors = [
+    "Francesco Cina <mr.francesco.cina@gmail.com>"
+]
+edition = "2018"
+
+[dependencies]
+log = "0.4"
+opentelemetry = { version = "0.16", features = ["metrics", "rt-tokio"] }
+opentelemetry-prometheus = "0.9"
+prometheus = "0.12"
+
+[dev-dependencies]
+rand = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
