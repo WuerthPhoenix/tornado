@@ -66,6 +66,8 @@ mod test {
     use crate::config::AuthConfig;
     use actix_web::{test, App};
     use chrono::DateTime;
+    use actix_web::http::StatusCode;
+    use tornado_common_metrics::opentelemetry::Key;
 
     #[actix_rt::test]
     async fn index_should_have_links_to_the_endpoints() {
@@ -169,5 +171,55 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!(channel_config.event_tcp_socket_enabled, true);
         assert_eq!(channel_config.nats_enabled, false);
+    }
+
+    #[actix_rt::test]
+    async fn should_expose_a_metrics_endpoint() {
+        // Arrange
+        let daemon_config = DaemonCommandConfig {
+            event_tcp_socket_enabled: Some(true),
+            event_socket_ip: None,
+            event_socket_port: None,
+            nats_enabled: None,
+            nats: None,
+            nats_extractors: vec![],
+            web_server_ip: "".to_string(),
+            web_server_port: 0,
+            web_max_json_payload_size: None,
+            message_queue_size: 0,
+            thread_pool_config: None,
+            retry_strategy: Default::default(),
+            auth: AuthConfig::default(),
+        };
+        let metrics = Arc::new(Metrics::default());
+        let mut srv = test::init_service(
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics.clone())),
+        )
+            .await;
+
+        // Record a metric
+        {
+            let labels = vec![
+                Key::from_static_str("test").string("something"),
+            ];
+            metrics.http_requests_counter.add(1, &labels);
+            metrics.http_requests_duration_seconds.record(
+                123f64,
+                &labels,
+            );
+        }
+
+        let request =
+            test::TestRequest::get().uri("/monitoring/metrics/text").to_request();
+
+        // Act
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+
+        let metrics = test::read_body(response).await;
+        let content = std::str::from_utf8(&metrics).unwrap();
+        assert!(content.contains(r#"test="something""#))
     }
 }
