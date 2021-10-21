@@ -3582,6 +3582,7 @@ dependencies = [
 name = "tornado_common_metrics"
 version = "0.0.1"
 dependencies = [
+ "actix-rt",
  "actix-web",
  "log",
  "opentelemetry",
