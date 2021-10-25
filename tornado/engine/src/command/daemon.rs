@@ -5,7 +5,7 @@ use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
-use crate::monitoring::monitoring_endpoints;
+use crate::monitoring::endpoint::monitoring_endpoints;
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -130,6 +130,8 @@ pub async fn daemon(
             )),
         )
     };
+
+    elasticsearch_executor_addr.
 
     // Start icinga2 executor actor
     let icinga2_executor_addr = {
