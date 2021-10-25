@@ -304,14 +304,14 @@ pub async fn daemon(
         let matcher_addr_clone = matcher_addr.clone();
         let nats_extractors = daemon_config.nats_extractors.clone();
 
-        let tornado_meter = tornado_meter.clone();
+        let tornado_meter_nats = tornado_meter.clone();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let event: Event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
 
-                tornado_meter.events_received_counter.add(1, &[
+                tornado_meter_nats.events_received_counter.add(1, &[
                     EVENT_SOURCE_LABEL_KEY.string("nats"),
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                 ]);
@@ -358,9 +358,10 @@ pub async fn daemon(
         );
         let json_matcher_addr_clone = matcher_addr.clone();
 
+        let tornado_meter_tcp = tornado_meter.clone();
         actix::spawn(async move {
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
-                let tornado_meter = tornado_meter.clone();
+                let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
                 JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
                     tornado_meter.events_received_counter.add(1, &[
@@ -390,7 +391,7 @@ pub async fn daemon(
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
         daemon_config.auth.role_permissions.clone(),
     )));
-    let api_handler = MatcherApiHandler::new(matcher_addr);
+    let api_handler = MatcherApiHandler::new(matcher_addr, tornado_meter.clone());
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
 
