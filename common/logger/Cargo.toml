@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "1"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
