@@ -1,6 +1,9 @@
 use tornado_common_metrics::opentelemetry::metrics::{Counter, ValueRecorder, Unit};
+use tornado_common_metrics::opentelemetry::Key;
 
 pub const TORNADO_APP: &str = "tornado";
+pub const EVENT_TYPE_LABEL_KEY: Key = Key::from_static_str("event_type");
+pub const EVENT_SOURCE_LABEL_KEY: Key = Key::from_static_str("source");
 
 pub struct TornadoMeter {
     /// Counts the total events received
@@ -37,12 +40,12 @@ impl Default for TornadoMeter {
             .init();
 
         let http_requests_counter = meter
-            .u64_counter("http_requests.counter")
+            .u64_counter("http_requests_counter")
             .with_description("HTTP requests count")
             .init();
 
         let http_requests_duration_seconds = meter
-            .f64_value_recorder("http_requests.duration_secs")
+            .f64_value_recorder("http_requests_duration_secs")
             .with_description("HTTP requests duration")
             .with_unit(Unit::new("seconds"))
             .init();
