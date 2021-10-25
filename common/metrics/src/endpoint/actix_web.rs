@@ -37,7 +37,7 @@ mod test {
     async fn should_expose_a_metrics_endpoint() {
 
         // Arrange
-        let metrics = Arc::new(Metrics::default());
+        let metrics = Arc::new(Metrics::new("tornado"));
         let mut srv = test::init_service(
             App::new().service(metrics_endpoints(metrics.clone())),
         )
@@ -45,14 +45,16 @@ mod test {
 
         // Record a metric
         {
+            let meter = opentelemetry::global::meter("tornado");
+
+            let http_requests_counter = meter
+                .u64_counter("http_requests.counter")
+                .init();
+
             let labels = vec![
                 Key::from_static_str("test").string("something"),
             ];
-            metrics.http_requests_counter.add(1, &labels);
-            metrics.http_requests_duration_seconds.record(
-                123f64,
-                &labels,
-            );
+            http_requests_counter.add(1, &labels);
         }
 
         let request =

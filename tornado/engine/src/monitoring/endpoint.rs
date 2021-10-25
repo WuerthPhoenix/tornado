@@ -88,7 +88,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
         )
             .await;
 
@@ -123,7 +123,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
         )
             .await;
 
@@ -158,7 +158,7 @@ mod test {
             auth: AuthConfig::default(),
         };
         let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::default()))),
+            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
         )
             .await;
 
@@ -191,7 +191,7 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let metrics = Arc::new(Metrics::default());
+        let metrics = Arc::new(Metrics::new("aa"));
         let mut srv = test::init_service(
             App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics.clone())),
         )
@@ -199,14 +199,18 @@ mod test {
 
         // Record a metric
         {
-            let labels = vec![
-                Key::from_static_str("test").string("something"),
-            ];
-            metrics.http_requests_counter.add(1, &labels);
-            metrics.http_requests_duration_seconds.record(
-                123f64,
-                &labels,
-            );
+            {
+                let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
+
+                let http_requests_counter = meter
+                    .u64_counter("http_requests.counter")
+                    .init();
+
+                let labels = vec![
+                    Key::from_static_str("test").string("something"),
+                ];
+                http_requests_counter.add(1, &labels);
+            }
         }
 
         let request =

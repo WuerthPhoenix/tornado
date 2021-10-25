@@ -30,6 +30,7 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
 use tornado_common_metrics::Metrics;
+use crate::monitoring::metrics::TORNADO_APP;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -61,6 +62,7 @@ pub async fn daemon(
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
     // start system
+    let metrics = Arc::new(Metrics::new(TORNADO_APP));
     let daemon_config = global_config.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
@@ -130,8 +132,6 @@ pub async fn daemon(
             )),
         )
     };
-
-    elasticsearch_executor_addr.
 
     // Start icinga2 executor actor
     let icinga2_executor_addr = {
@@ -402,7 +402,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
-        let metrics = Arc::new(Metrics::default());
+        let metrics = metrics.clone();
 
         App::new()
             .wrap(Logger::default())
