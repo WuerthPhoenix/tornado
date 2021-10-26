@@ -6,6 +6,9 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
 use crate::monitoring::endpoint::monitoring_endpoints;
+use crate::monitoring::metrics::{
+    TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY, TORNADO_APP,
+};
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -21,6 +24,7 @@ use tornado_common::command::retry::RetryCommand;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
@@ -29,8 +33,6 @@ use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
-use tornado_common_metrics::Metrics;
-use crate::monitoring::metrics::{TORNADO_APP, TornadoMeter, EVENT_TYPE_LABEL_KEY, EVENT_SOURCE_LABEL_KEY};
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -203,7 +205,6 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |action| {
-
                 let action = Arc::new(action);
                 let span = tracing::Span::current();
                 let message = ActionMessage { action, span };

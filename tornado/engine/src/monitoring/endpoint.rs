@@ -4,11 +4,15 @@ use actix_web::web::Json;
 use actix_web::{web, HttpRequest, HttpResponse, Result, Scope};
 use chrono::prelude::Local;
 use serde::{Deserialize, Serialize};
-use tornado_common_metrics::Metrics;
 use std::sync::Arc;
 use tornado_common_metrics::endpoint::actix_web::metrics_endpoints;
+use tornado_common_metrics::Metrics;
 
-pub fn monitoring_endpoints(scope: Scope, daemon_command_config: DaemonCommandConfig, metrics: Arc<Metrics>) -> Scope {
+pub fn monitoring_endpoints(
+    scope: Scope,
+    daemon_command_config: DaemonCommandConfig,
+    metrics: Arc<Metrics>,
+) -> Scope {
     scope
         .app_data(Data::new(daemon_command_config))
         .service(web::resource("").route(web::get().to(index)))
@@ -64,9 +68,9 @@ pub struct CommunicationChannelConfig {
 mod test {
     use super::*;
     use crate::config::AuthConfig;
+    use actix_web::http::StatusCode;
     use actix_web::{test, App};
     use chrono::DateTime;
-    use actix_web::http::StatusCode;
     use tornado_common_metrics::opentelemetry::Key;
 
     #[actix_rt::test]
@@ -87,10 +91,12 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
-        )
-            .await;
+        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+            web::scope("/monitoring"),
+            daemon_config,
+            Arc::new(Metrics::new("a")),
+        )))
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring").to_request();
@@ -122,10 +128,12 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
-        )
-            .await;
+        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+            web::scope("/monitoring"),
+            daemon_config,
+            Arc::new(Metrics::new("a")),
+        )))
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring/ping").to_request();
@@ -157,10 +165,12 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, Arc::new(Metrics::new("a")))),
-        )
-            .await;
+        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+            web::scope("/monitoring"),
+            daemon_config,
+            Arc::new(Metrics::new("a")),
+        )))
+        .await;
 
         // Act
         let request =
@@ -192,23 +202,21 @@ mod test {
             auth: AuthConfig::default(),
         };
         let metrics = Arc::new(Metrics::new("aa"));
-        let mut srv = test::init_service(
-            App::new().service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics.clone())),
-        )
-            .await;
+        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+            web::scope("/monitoring"),
+            daemon_config,
+            metrics.clone(),
+        )))
+        .await;
 
         // Record a metric
         {
             {
                 let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
 
-                let http_requests_counter = meter
-                    .u64_counter("http_requests.counter")
-                    .init();
+                let http_requests_counter = meter.u64_counter("http_requests.counter").init();
 
-                let labels = vec![
-                    Key::from_static_str("test").string("something"),
-                ];
+                let labels = vec![Key::from_static_str("test").string("something")];
                 http_requests_counter.add(1, &labels);
             }
         }

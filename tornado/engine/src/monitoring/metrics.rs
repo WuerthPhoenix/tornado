@@ -1,4 +1,4 @@
-use tornado_common_metrics::opentelemetry::metrics::{Counter, ValueRecorder, Unit};
+use tornado_common_metrics::opentelemetry::metrics::{Counter, Unit, ValueRecorder};
 use tornado_common_metrics::opentelemetry::Key;
 
 pub const TORNADO_APP: &str = "tornado";
@@ -16,11 +16,9 @@ pub struct TornadoMeter {
     pub http_requests_counter: Counter<u64>,
     /// Counts the total http requests processing seconds
     pub http_requests_duration_seconds: ValueRecorder<f64>,
-
 }
 
 impl Default for TornadoMeter {
-
     fn default() -> Self {
         let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
 
@@ -56,8 +54,7 @@ impl Default for TornadoMeter {
             events_processed_counter,
             events_processed_duration_seconds,
             http_requests_counter,
-            http_requests_duration_seconds
+            http_requests_duration_seconds,
         }
     }
-
 }

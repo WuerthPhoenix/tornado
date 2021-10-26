@@ -1,15 +1,15 @@
 use crate::actor::dispatcher::ProcessedEventMessage;
+use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
-use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
-use std::time::SystemTime;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
@@ -92,19 +92,21 @@ impl MatcherActor {
         event: InternalEvent,
         include_metadata: bool,
     ) -> ProcessedEvent {
-
         let timer = SystemTime::now();
-        let labels = [
-            EVENT_TYPE_LABEL_KEY.string(event.event_type.get_text().map(|event_type| event_type.to_owned()).unwrap_or_else(|| "".to_owned())),
-        ];
+        let labels = [EVENT_TYPE_LABEL_KEY.string(
+            event
+                .event_type
+                .get_text()
+                .map(|event_type| event_type.to_owned())
+                .unwrap_or_else(|| "".to_owned()),
+        )];
 
         let process = matcher.process(event, include_metadata);
 
         self.meter.events_processed_counter.add(1, &labels);
-        self.meter.events_processed_duration_seconds.record(
-            timer.elapsed().map(|t| t.as_secs_f64()).unwrap_or_default(),
-            &labels,
-        );
+        self.meter
+            .events_processed_duration_seconds
+            .record(timer.elapsed().map(|t| t.as_secs_f64()).unwrap_or_default(), &labels);
 
         process
     }
@@ -235,7 +237,9 @@ mod test {
         let dispatcher_addr = FakeDispatcher {}.start().recipient();
 
         let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default()).await.unwrap();
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
 
         let draft_id = config_manager.create_draft("user_1".to_owned()).await.unwrap();
         let draft = config_manager.get_draft(&draft_id).await.unwrap();
@@ -261,7 +265,9 @@ mod test {
         let config_manager = configs.matcher_config.clone();
         let dispatcher_addr = FakeDispatcher {}.start().recipient();
         let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default()).await.unwrap();
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
 
         // Act
         let returned_config = matcher_actor.send(GetCurrentConfigMessage {}).await.unwrap();

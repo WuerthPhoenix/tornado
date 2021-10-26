@@ -12,14 +12,10 @@ pub struct Metrics {
 }
 
 impl Metrics {
-
     pub fn new(app_name: &'static str) -> Self {
         let prometheus_exporter = opentelemetry_prometheus::exporter()
             .with_resource(Resource::new(vec![KeyValue::new("app", app_name)]))
             .init();
-        Self {
-            prometheus_exporter,
-        }
+        Self { prometheus_exporter }
     }
-
 }
