@@ -9,7 +9,7 @@ use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 use std::sync::Arc;
-use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY};
+use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use std::time::SystemTime;
 
 pub mod runtime_config;
@@ -29,6 +29,11 @@ impl EventApiHandler for MatcherApiHandler {
 
         let timer = SystemTime::now();
 
+        let labels = [
+            EVENT_SOURCE_LABEL_KEY.string("http"),
+            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
+        ];
+
         let request = self
             .matcher
             .send(EventMessageWithReply {
@@ -37,10 +42,6 @@ impl EventApiHandler for MatcherApiHandler {
                 include_metadata: true,
             })
             .await?;
-
-        let labels = [
-            EVENT_SOURCE_LABEL_KEY.string("http"),
-        ];
         self.meter.events_received_counter.add(1, &labels);
         self.meter.http_requests_counter.add(1, &[]);
         self.meter.http_requests_duration_seconds.record(
@@ -71,6 +72,7 @@ impl EventApiHandler for MatcherApiHandler {
 
         let labels = [
             EVENT_SOURCE_LABEL_KEY.string("http"),
+            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
         ];
         self.meter.events_received_counter.add(1, &labels);
         self.meter.http_requests_counter.add(1, &[]);
