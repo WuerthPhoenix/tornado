@@ -3540,6 +3540,7 @@ dependencies = [
  "tornado_collector_json",
  "tornado_common_api",
  "tornado_common_logger",
+ "tornado_common_metrics",
  "tornado_executor_common",
  "tracing",
  "tracing-futures",

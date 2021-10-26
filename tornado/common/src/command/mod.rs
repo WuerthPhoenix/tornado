@@ -8,7 +8,6 @@ use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor
 pub mod callback;
 pub mod pool;
 pub mod retry;
-pub mod spawn;
 
 /// Basic Trait to implement the Command Design Pattern.
 /// See: https://refactoring.guru/design-patterns/command

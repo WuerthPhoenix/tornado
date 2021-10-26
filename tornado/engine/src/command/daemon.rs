@@ -6,9 +6,7 @@ use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
 use crate::monitoring::endpoint::monitoring_endpoints;
-use crate::monitoring::metrics::{
-    TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY, TORNADO_APP,
-};
+use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY, TORNADO_APP};
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -33,6 +31,7 @@ use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
+use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -66,6 +65,7 @@ pub async fn daemon(
     // start system
     let metrics = Arc::new(Metrics::new(TORNADO_APP));
     let tornado_meter = Arc::new(TornadoMeter::default());
+    let action_meter = Arc::new(ActionMeter::new(TORNADO_APP));
 
     let daemon_config = global_config.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
@@ -94,6 +94,7 @@ pub async fn daemon(
                     tornado_executor_archive::ArchiveExecutor::new(&archive_config)
                 }),
             )),
+            action_meter.clone()
         )
     };
 
@@ -106,6 +107,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -118,6 +120,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -134,6 +137,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -148,6 +152,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -163,6 +168,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -179,6 +185,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -197,6 +204,7 @@ pub async fn daemon(
                 retry_strategy.clone(),
                 CommandPool::new(threads_per_queue, executor),
             )),
+            action_meter.clone()
         )
     };
 
@@ -208,6 +216,11 @@ pub async fn daemon(
                 let action = Arc::new(action);
                 let span = tracing::Span::current();
                 let message = ActionMessage { action, span };
+
+                action_meter.actions_received_counter.add(1, &[
+                    ACTION_ID_LABEL_KEY.string(message.action.id.to_owned())
+                ]);
+
                 let send_result = match message.action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(message).map_err(|err| {

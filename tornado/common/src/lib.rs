@@ -2,6 +2,7 @@ use thiserror::Error;
 
 pub mod actors;
 pub mod command;
+pub mod metrics;
 
 #[derive(Error, Debug)]
 pub enum TornadoError {
