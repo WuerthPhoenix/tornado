@@ -224,6 +224,7 @@ mod test {
 
         let metrics = test::read_body(response).await;
         let content = std::str::from_utf8(&metrics).unwrap();
+        //println!("metric endpoint content: \n{}", content);
         assert!(content.contains(r#"test="something""#))
     }
 }
