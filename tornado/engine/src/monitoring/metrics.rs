@@ -16,6 +16,7 @@ pub struct TornadoMeter {
     pub http_requests_counter: Counter<u64>,
     /// Counts the total http requests processing seconds
     pub http_requests_duration_seconds: ValueRecorder<f64>,
+
 }
 
 impl Default for TornadoMeter {

@@ -214,7 +214,7 @@ mod test {
         }
 
         let request =
-            test::TestRequest::get().uri("/monitoring/metrics/text").to_request();
+            test::TestRequest::get().uri("/monitoring/v1/metrics/prometheus").to_request();
 
         // Act
         let response = test::call_service(&mut srv, request).await;

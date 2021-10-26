@@ -31,7 +31,7 @@ impl EventApiHandler for MatcherApiHandler {
 
         let labels = [
             EVENT_SOURCE_LABEL_KEY.string("http"),
-            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
+            //EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
         ];
 
         let request = self
@@ -72,7 +72,7 @@ impl EventApiHandler for MatcherApiHandler {
 
         let labels = [
             EVENT_SOURCE_LABEL_KEY.string("http"),
-            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
+            //EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
         ];
         self.meter.events_received_counter.add(1, &labels);
         self.meter.http_requests_counter.add(1, &[]);

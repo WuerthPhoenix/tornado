@@ -203,6 +203,7 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |action| {
+
                 let action = Arc::new(action);
                 let span = tracing::Span::current();
                 let message = ActionMessage { action, span };

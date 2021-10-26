@@ -6,9 +6,9 @@ use prometheus::{TextEncoder, Encoder};
 use opentelemetry::metrics::MetricsError;
 
 pub fn metrics_endpoints(metrics: Arc<Metrics>) -> Scope {
-    web::scope("/metrics")
+    web::scope("/v1/metrics")
         .app_data::<Data<Metrics>>(metrics.into())
-        .service(web::resource("/text").route(web::get().to(text_metrics)))
+        .service(web::resource("/prometheus").route(web::get().to(text_metrics)))
 }
 
 async fn text_metrics(metrics: Data<Metrics>) -> HttpResponse {
@@ -58,7 +58,7 @@ mod test {
         }
 
         let request =
-            test::TestRequest::get().uri("/metrics/text").to_request();
+            test::TestRequest::get().uri("/v1/metrics/prometheus").to_request();
 
         // Act
         let response = test::call_service(&mut srv, request).await;
