@@ -86,14 +86,71 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::command::retry::test::{AlwaysFailExecutor, AlwaysOkExecutor};
+    use tokio::sync::mpsc::unbounded_channel;
+    use tornado_common_metrics::prometheus::{TextEncoder, Encoder};
+    use tornado_common_metrics::opentelemetry::sdk::Resource;
+    use tornado_common_metrics::opentelemetry::KeyValue;
 
     #[actix_rt::test]
     async fn should_increase_counter_if_action_succeeds() {
-        unimplemented!()
+        // Arrange
+        let prometheus_exporter = opentelemetry_prometheus::exporter()
+            .with_resource(Resource::new(vec![KeyValue::new("app", "test_app")]))
+            .init();
+        let (sender, mut receiver) = unbounded_channel();
+
+        let action = Arc::new(Action::new("trace_id", "id"));
+        let span = tracing::Span::current();
+        let message = ActionMessage { action, span };
+        let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
+        let executor = CommandExecutorActor::start_new(
+            10,
+            Rc::new(AlwaysOkExecutor { sender: sender.clone() }),
+            action_meter.clone()
+        );
+
+        // Act
+        executor.try_send(message).unwrap();
+        let _received = receiver.recv().await.unwrap();
+
+        // Assert
+        let encoder = TextEncoder::new();
+        let metric_families = prometheus_exporter.registry().gather();
+        let mut buf = Vec::new();
+        encoder.encode(&metric_families, &mut buf).unwrap();
+        let result = std::str::from_utf8(&buf).unwrap();
+        assert!(result.contains("actions_processed_counter{action_id=\"id\",action_result=\"success\",app=\"test_app\"} 1"));
     }
 
     #[actix_rt::test]
     async fn should_increase_counter_if_action_fails() {
-        unimplemented!()
+        // Arrange
+        let prometheus_exporter = opentelemetry_prometheus::exporter()
+            .with_resource(Resource::new(vec![KeyValue::new("app", "test_app")]))
+            .init();
+        let (sender, mut receiver) = unbounded_channel();
+
+        let action = Arc::new(Action::new("trace_id", "id"));
+        let span = tracing::Span::current();
+        let message = ActionMessage { action, span };
+        let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
+        let executor = CommandExecutorActor::start_new(
+            10,
+            Rc::new(AlwaysFailExecutor { sender: sender.clone(), can_retry: true }),
+            action_meter.clone()
+        );
+
+        // Act
+        executor.try_send(message).unwrap();
+        let _received = receiver.recv().await.unwrap();
+
+        // Assert
+        let encoder = TextEncoder::new();
+        let metric_families = prometheus_exporter.registry().gather();
+        let mut buf = Vec::new();
+        encoder.encode(&metric_families, &mut buf).unwrap();
+        let result = std::str::from_utf8(&buf).unwrap();
+        assert!(result.contains("actions_processed_counter{action_id=\"id\",action_result=\"failure\",app=\"test_app\"} 1"));
     }
 }

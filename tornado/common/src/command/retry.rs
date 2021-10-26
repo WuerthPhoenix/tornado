@@ -467,9 +467,9 @@ pub mod test {
         }
     }
 
-    struct AlwaysFailExecutor {
-        can_retry: bool,
-        sender: UnboundedSender<Arc<Action>>,
+    pub struct AlwaysFailExecutor {
+        pub can_retry: bool,
+        pub sender: UnboundedSender<Arc<Action>>,
     }
 
     #[async_trait::async_trait(?Send)]
@@ -491,8 +491,8 @@ pub mod test {
         }
     }
 
-    struct AlwaysOkExecutor {
-        sender: UnboundedSender<Arc<Action>>,
+    pub struct AlwaysOkExecutor {
+        pub sender: UnboundedSender<Arc<Action>>,
     }
 
     #[async_trait::async_trait(?Send)]

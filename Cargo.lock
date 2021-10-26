@@ -3525,6 +3525,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "log",
+ "opentelemetry-prometheus",
  "port_check",
  "rand 0.8.4",
  "reqwest",
