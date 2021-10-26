@@ -6,6 +6,8 @@ pub const EVENT_TYPE_LABEL_KEY: Key = Key::from_static_str("event_type");
 pub const EVENT_SOURCE_LABEL_KEY: Key = Key::from_static_str("source");
 
 pub struct TornadoMeter {
+    /// Counts the total invalid events received
+    pub invalid_events_received_counter: Counter<u64>,
     /// Counts the total events received
     pub events_received_counter: Counter<u64>,
     /// Counts the total events processed
@@ -21,6 +23,11 @@ pub struct TornadoMeter {
 impl Default for TornadoMeter {
     fn default() -> Self {
         let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
+
+        let invalid_events_received_counter = meter
+            .u64_counter("invalid_events_received_counter")
+            .with_description("Invalid events received count")
+            .init();
 
         let events_received_counter = meter
             .u64_counter("events_received_counter")
@@ -50,6 +57,7 @@ impl Default for TornadoMeter {
             .init();
 
         Self {
+            invalid_events_received_counter,
             events_received_counter,
             events_processed_counter,
             events_processed_duration_seconds,

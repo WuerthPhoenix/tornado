@@ -310,12 +310,19 @@ pub async fn daemon(
         let tornado_meter_nats = tornado_meter.clone();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
+                let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
+
                 let event: Event = serde_json::from_slice(&msg.msg.data)
-                    .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
+                    .map_err(|err| {
+                        tornado_meter_nats.invalid_events_received_counter.add(1, &[
+                            meter_event_souce_label.clone(),
+                        ]);
+                        TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
+                    })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
 
                 tornado_meter_nats.events_received_counter.add(1, &[
-                    EVENT_SOURCE_LABEL_KEY.string("nats"),
+                    meter_event_souce_label,
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                 ]);
 
