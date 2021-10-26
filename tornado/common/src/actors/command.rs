@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
-use crate::metrics::{ActionMeter, ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, ACTION_RESULT_SUCCESS, ACTION_RESULT_FAILURE};
+use tornado_common_api::metrics::{ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, ACTION_RESULT_SUCCESS, ACTION_RESULT_FAILURE, ActionMeter};
 
 pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,

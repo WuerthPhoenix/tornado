@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor};
+use tornado_common_api::metrics::{ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, ACTION_RESULT_SUCCESS};
 
 pub mod callback;
 pub mod pool;
@@ -20,7 +21,14 @@ pub trait Command<Message, Output> {
 #[async_trait::async_trait(?Send)]
 impl<T: StatelessExecutor> Command<Arc<Action>, Result<(), ExecutorError>> for T {
     async fn execute(&self, message: Arc<Action>) -> Result<(), ExecutorError> {
-        (self as &T).execute(message).await
+        let result = (self as &T).execute(message.clone()).await;
+        if result.is_err() {
+            (self as &T).get_action_meter().action_failed_retries_counter.add(1, &[
+                ACTION_ID_LABEL_KEY.string(message.id.to_owned()),
+                ACTION_RESULT_KEY.string(ACTION_RESULT_SUCCESS)
+            ]);
+        };
+        result
     }
 }
 

@@ -13,8 +13,8 @@ pub struct ActionMeter {
     pub actions_received_counter: Counter<u64>,
     /// Counts the total actions processed
     pub actions_processed_counter: Counter<u64>,
-    /// Counts the total action retries performed
-    pub action_retries_counter: Counter<u64>,
+    /// Counts the total number of failed action retries
+    pub action_failed_retries_counter: Counter<u64>,
 }
 
 impl ActionMeter {
@@ -31,15 +31,15 @@ impl ActionMeter {
             .with_description("Actions processed count")
             .init();
 
-        let action_retries_counter = meter
-            .u64_counter("action_retries_counter")
-            .with_description("Action retries performed count")
+        let action_failed_retries_counter = meter
+            .u64_counter("action_failed_retries_counter")
+            .with_description("Failed Action retries count")
             .init();
 
         Self {
             actions_received_counter,
             actions_processed_counter,
-            action_retries_counter
+            action_failed_retries_counter
         }
 
     }
