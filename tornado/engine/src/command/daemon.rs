@@ -288,6 +288,7 @@ pub async fn daemon(
         dispatcher_addr.clone().recipient(),
         configs.matcher_config.clone(),
         message_queue_size,
+        tornado_meter.clone(),
     )
     .await?;
 

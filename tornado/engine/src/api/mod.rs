@@ -126,7 +126,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47, Default::default())
                 .await
                 .unwrap();
 
@@ -158,7 +158,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47)
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47, Default::default())
                 .await
                 .unwrap();
 
@@ -203,7 +203,7 @@ mod test {
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
         let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
+            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47, Default::default())
                 .await
                 .unwrap();
 
