@@ -1,4 +1,4 @@
-use tornado_common_metrics::opentelemetry::metrics::{Counter};
+use tornado_common_metrics::opentelemetry::metrics::Counter;
 use tornado_common_metrics::opentelemetry::Key;
 
 pub const ACTION_ID_LABEL_KEY: Key = Key::from_static_str("action_id");
@@ -6,7 +6,6 @@ pub const ACTION_RESULT_KEY: Key = Key::from_static_str("action_result");
 pub const ATTEMPT_RESULT_KEY: Key = Key::from_static_str("attempt_result");
 pub const RESULT_SUCCESS: &str = "success";
 pub const RESULT_FAILURE: &str = "failure";
-
 
 pub struct ActionMeter {
     /// Counts the total actions received
@@ -39,8 +38,7 @@ impl ActionMeter {
         Self {
             actions_received_counter,
             actions_processed_counter,
-            actions_processing_attempts_counter
+            actions_processing_attempts_counter,
         }
-
     }
 }

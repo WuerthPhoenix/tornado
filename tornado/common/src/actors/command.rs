@@ -1,5 +1,8 @@
 use crate::actors::message::ActionMessage;
 use crate::command::Command;
+use crate::metrics::{
+    ActionMeter, ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, RESULT_FAILURE, RESULT_SUCCESS,
+};
 use actix::{Actor, Addr, Context, Handler};
 use log::*;
 use std::rc::Rc;
@@ -7,18 +10,17 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
-use crate::metrics::{ActionMeter, ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, RESULT_SUCCESS, RESULT_FAILURE};
 
 pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
-    action_meter: Arc<ActionMeter>
+    action_meter: Arc<ActionMeter>,
 }
 
 impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> CommandExecutorActor<T> {
     pub fn start_new(
         message_mailbox_capacity: usize,
         command: Rc<T>,
-        action_meter: Arc<ActionMeter>
+        action_meter: Arc<ActionMeter>,
     ) -> Addr<CommandExecutorActor<T>> {
         CommandExecutorActor::create(move |ctx| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
@@ -56,20 +58,18 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
 
                 match command.execute(action).await {
                     Ok(_) => {
-                        action_meter.actions_processed_counter.add(1, &[
-                            action_id_label,
-                            ACTION_RESULT_KEY.string(RESULT_SUCCESS)
-                        ]);
+                        action_meter
+                            .actions_processed_counter
+                            .add(1, &[action_id_label, ACTION_RESULT_KEY.string(RESULT_SUCCESS)]);
                         debug!(
                             "CommandExecutorActor - Action [{}] executed successfully",
                             &action_id
                         );
                     }
                     Err(e) => {
-                        action_meter.actions_processed_counter.add(1, &[
-                            action_id_label,
-                            ACTION_RESULT_KEY.string(RESULT_FAILURE)
-                        ]);
+                        action_meter
+                            .actions_processed_counter
+                            .add(1, &[action_id_label, ACTION_RESULT_KEY.string(RESULT_FAILURE)]);
                         error!(
                             "CommandExecutorActor - Failed to execute action [{}]: {:?}",
                             &action_id, e
@@ -87,11 +87,11 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
 mod test {
     use super::*;
     use crate::command::retry::test::{AlwaysFailExecutor, AlwaysOkExecutor};
-    use tokio::sync::mpsc::unbounded_channel;
-    use tornado_common_metrics::prometheus::{TextEncoder, Encoder};
     use crate::command::StatelessExecutorCommand;
-    use tokio::time::Duration;
     use crate::root_test::prometheus_exporter;
+    use tokio::sync::mpsc::unbounded_channel;
+    use tokio::time::Duration;
+    use tornado_common_metrics::prometheus::{Encoder, TextEncoder};
 
     #[actix_rt::test]
     async fn should_increase_processed_and_attempts_counters_if_action_succeeds() {
@@ -112,7 +112,7 @@ mod test {
         let executor = CommandExecutorActor::start_new(
             10,
             Rc::new(stateless_executor_command),
-            action_meter.clone()
+            action_meter.clone(),
         );
 
         // Act
@@ -130,7 +130,10 @@ mod test {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         assert!(result.contains(&format!("action_id=\"{}\",action_result=\"success\"", action_id)));
-        assert!(result.contains(&format!("action_id=\"{}\",app=\"test_app\",attempt_result=\"success\"", action_id)));
+        assert!(result.contains(&format!(
+            "action_id=\"{}\",app=\"test_app\",attempt_result=\"success\"",
+            action_id
+        )));
     }
 
     #[actix_rt::test]
@@ -151,7 +154,7 @@ mod test {
         let executor = CommandExecutorActor::start_new(
             10,
             Rc::new(stateless_executor_command),
-            action_meter.clone()
+            action_meter.clone(),
         );
 
         // Act
@@ -169,6 +172,9 @@ mod test {
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
         assert!(result.contains(&format!("action_id=\"{}\",action_result=\"failure\"", action_id)));
-        assert!(result.contains(&format!("action_id=\"{}\",app=\"test_app\",attempt_result=\"failure\"", action_id)));
+        assert!(result.contains(&format!(
+            "action_id=\"{}\",app=\"test_app\",attempt_result=\"failure\"",
+            action_id
+        )));
     }
 }

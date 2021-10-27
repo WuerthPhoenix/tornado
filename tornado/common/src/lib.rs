@@ -18,10 +18,10 @@ pub enum TornadoError {
 
 #[cfg(test)]
 pub mod root_test {
+    use once_cell::sync::OnceCell;
+    use opentelemetry_prometheus::PrometheusExporter;
     use tornado_common_metrics::opentelemetry::sdk::Resource;
     use tornado_common_metrics::opentelemetry::KeyValue;
-    use opentelemetry_prometheus::PrometheusExporter;
-    use once_cell::sync::OnceCell;
 
     pub fn prometheus_exporter() -> &'static PrometheusExporter {
         static PROMETHEUS_EXPORTER: OnceCell<PrometheusExporter> = OnceCell::new();

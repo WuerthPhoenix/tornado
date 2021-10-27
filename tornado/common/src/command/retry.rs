@@ -195,13 +195,13 @@ impl<I: Clone + Debug, O, E: RetriableError + Debug, T: Command<I, Result<O, E>>
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use crate::command::StatelessExecutorCommand;
+    use crate::metrics::ActionMeter;
     use rand::Rng;
     use std::sync::Arc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
     use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
-    use crate::command::StatelessExecutorCommand;
-    use crate::metrics::ActionMeter;
 
     #[test]
     fn retry_policy_none_should_never_retry() {
@@ -376,7 +376,7 @@ pub mod test {
             retry_strategy.clone(),
             StatelessExecutorCommand::new(
                 Arc::new(ActionMeter::new("test_meter")),
-                                          AlwaysFailExecutor { sender: sender.clone(), can_retry: true }
+                AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
             ),
         );
 
@@ -401,11 +401,13 @@ pub mod test {
 
         let action = Arc::new(Action::new("", "hello"));
 
-        let command =
-            RetryCommand::new(retry_strategy.clone(),             StatelessExecutorCommand::new(
+        let command = RetryCommand::new(
+            retry_strategy.clone(),
+            StatelessExecutorCommand::new(
                 Arc::new(ActionMeter::new("test_meter")),
-                AlwaysOkExecutor { sender: sender.clone() }
-            ));
+                AlwaysOkExecutor { sender: sender.clone() },
+            ),
+        );
 
         actix::spawn(async move {
             let _res = command.execute(action).await;
@@ -430,7 +432,7 @@ pub mod test {
             retry_strategy.clone(),
             StatelessExecutorCommand::new(
                 Arc::new(ActionMeter::new("test_meter")),
-                AlwaysFailExecutor { sender: sender.clone(), can_retry: false }
+                AlwaysFailExecutor { sender: sender.clone(), can_retry: false },
             ),
         );
 
@@ -458,7 +460,7 @@ pub mod test {
             retry_strategy.clone(),
             StatelessExecutorCommand::new(
                 Arc::new(ActionMeter::new("test_meter")),
-                AlwaysFailExecutor { sender: sender.clone(), can_retry: true }
+                AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
             ),
         );
 
