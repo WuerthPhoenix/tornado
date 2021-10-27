@@ -1,8 +1,11 @@
 use crate::actor::matcher::{
     EventMessageAndConfigWithReply, EventMessageWithReply, MatcherActor, ReconfigureMessage,
 };
+use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use actix::Addr;
 use async_trait::async_trait;
+use std::sync::Arc;
+use std::time::SystemTime;
 use tornado_engine_api::config::api::ConfigApiHandler;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
@@ -14,6 +17,7 @@ pub mod runtime_config;
 #[derive(Clone)]
 pub struct MatcherApiHandler {
     matcher: Addr<MatcherActor>,
+    meter: Arc<TornadoMeter>,
 }
 
 #[async_trait(?Send)]
@@ -22,6 +26,12 @@ impl EventApiHandler for MatcherApiHandler {
         &self,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
+        let timer = SystemTime::now();
+        let labels = [
+            EVENT_SOURCE_LABEL_KEY.string("http"),
+            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
+        ];
+
         let request = self
             .matcher
             .send(EventMessageWithReply {
@@ -30,6 +40,11 @@ impl EventApiHandler for MatcherApiHandler {
                 include_metadata: true,
             })
             .await?;
+        self.meter.events_received_counter.add(1, &labels);
+        self.meter.http_requests_counter.add(1, &[]);
+        self.meter
+            .http_requests_duration_seconds
+            .record(timer.elapsed().map(|t| t.as_secs_f64()).unwrap_or_default(), &[]);
 
         Ok(request?)
     }
@@ -39,6 +54,12 @@ impl EventApiHandler for MatcherApiHandler {
         event: SendEventRequest,
         matcher_config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError> {
+        let timer = SystemTime::now();
+        let labels = [
+            EVENT_SOURCE_LABEL_KEY.string("http"),
+            EVENT_TYPE_LABEL_KEY.string(event.event.event_type.to_owned()),
+        ];
+
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
@@ -48,6 +69,12 @@ impl EventApiHandler for MatcherApiHandler {
                 include_metadata: true,
             })
             .await?;
+
+        self.meter.events_received_counter.add(1, &labels);
+        self.meter.http_requests_counter.add(1, &[]);
+        self.meter
+            .http_requests_duration_seconds
+            .record(timer.elapsed().map(|t| t.as_secs_f64()).unwrap_or_default(), &[]);
 
         Ok(request?)
     }
@@ -65,8 +92,8 @@ impl ConfigApiHandler for MatcherApiHandler {
 }
 
 impl MatcherApiHandler {
-    pub fn new(matcher: Addr<MatcherActor>) -> MatcherApiHandler {
-        MatcherApiHandler { matcher }
+    pub fn new(matcher: Addr<MatcherActor>, meter: Arc<TornadoMeter>) -> MatcherApiHandler {
+        MatcherApiHandler { matcher, meter }
     }
 }
 
@@ -95,12 +122,16 @@ mod test {
         let dispatcher_addr =
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
-        let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
-                .await
-                .unwrap();
+        let matcher_addr = MatcherActor::start(
+            dispatcher_addr.clone().recipient(),
+            config_manager,
+            47,
+            Default::default(),
+        )
+        .await
+        .unwrap();
 
-        let api = MatcherApiHandler { matcher: matcher_addr };
+        let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
@@ -127,12 +158,16 @@ mod test {
         let dispatcher_addr =
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
-        let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager.clone(), 47)
-                .await
-                .unwrap();
+        let matcher_addr = MatcherActor::start(
+            dispatcher_addr.clone().recipient(),
+            config_manager.clone(),
+            47,
+            Default::default(),
+        )
+        .await
+        .unwrap();
 
-        let api = MatcherApiHandler { matcher: matcher_addr };
+        let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
         // Act
         let res = config_manager.get_config().await;
@@ -172,12 +207,16 @@ mod test {
         let dispatcher_addr =
             DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
 
-        let matcher_addr =
-            MatcherActor::start(dispatcher_addr.clone().recipient(), config_manager, 47)
-                .await
-                .unwrap();
+        let matcher_addr = MatcherActor::start(
+            dispatcher_addr.clone().recipient(),
+            config_manager,
+            47,
+            Default::default(),
+        )
+        .await
+        .unwrap();
 
-        let api = MatcherApiHandler { matcher: matcher_addr };
+        let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,

@@ -1,6 +1,6 @@
-use clap::Clap;
+use clap::Parser;
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 #[clap(rename_all = "kebab-case")]
 pub struct Io {
     /// The filesystem folder where Events are saved in JSON format
@@ -16,7 +16,7 @@ pub struct Io {
     pub repeat_sleep_ms: u64,
 }
 
-#[derive(Debug, Clap)]
+#[derive(Debug, Parser)]
 pub struct Conf {
     #[clap(flatten)]
     pub io: Io,

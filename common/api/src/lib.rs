@@ -29,7 +29,7 @@ where
     D: Deserializer<'de>,
 {
     let opt = Option::deserialize(deserializer)?;
-    Ok(opt.unwrap_or_else(|| default_trace_id()))
+    Ok(opt.unwrap_or_else(default_trace_id))
 }
 
 impl Event {

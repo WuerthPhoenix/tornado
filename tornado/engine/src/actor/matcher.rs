@@ -1,7 +1,9 @@
 use crate::actor::dispatcher::ProcessedEventMessage;
+use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
 use std::sync::Arc;
+use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
@@ -45,6 +47,7 @@ pub struct MatcherActor {
     matcher_config_manager: Arc<dyn MatcherConfigReader>,
     matcher_config: Arc<MatcherConfig>,
     matcher: Arc<matcher::Matcher>,
+    meter: Arc<TornadoMeter>,
 }
 
 impl MatcherActor {
@@ -52,13 +55,14 @@ impl MatcherActor {
         dispatcher_addr: Recipient<ProcessedEventMessage>,
         matcher_config_manager: Arc<dyn MatcherConfigReader>,
         message_mailbox_capacity: usize,
+        meter: Arc<TornadoMeter>,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
         let matcher_config = Arc::new(matcher_config_manager.get_config().await?);
         let matcher = Arc::new(Matcher::build(&matcher_config)?);
 
         Ok(actix::Supervisor::start(move |ctx: &mut Context<MatcherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            MatcherActor { dispatcher_addr, matcher_config_manager, matcher_config, matcher }
+            MatcherActor { dispatcher_addr, matcher_config_manager, matcher_config, matcher, meter }
         }))
     }
 
@@ -69,7 +73,7 @@ impl MatcherActor {
         process_type: ProcessType,
         include_metadata: bool,
     ) -> ProcessedEvent {
-        let processed_event = matcher.process(event, include_metadata);
+        let processed_event = self.process(matcher, event, include_metadata);
 
         match process_type {
             ProcessType::Full => self
@@ -79,6 +83,32 @@ impl MatcherActor {
         }
 
         processed_event
+    }
+
+    #[inline]
+    fn process(
+        &self,
+        matcher: &Matcher,
+        event: InternalEvent,
+        include_metadata: bool,
+    ) -> ProcessedEvent {
+        let timer = SystemTime::now();
+        let labels = [EVENT_TYPE_LABEL_KEY.string(
+            event
+                .event_type
+                .get_text()
+                .map(|event_type| event_type.to_owned())
+                .unwrap_or_else(|| "".to_owned()),
+        )];
+
+        let process = matcher.process(event, include_metadata);
+
+        self.meter.events_processed_counter.add(1, &labels);
+        self.meter
+            .events_processed_duration_seconds
+            .record(timer.elapsed().map(|t| t.as_secs_f64()).unwrap_or_default(), &labels);
+
+        process
     }
 }
 
@@ -103,7 +133,7 @@ impl Handler<EventMessage> for MatcherActor {
         let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
-        let processed_event = self.matcher.process(msg.event, false);
+        let processed_event = self.process(&self.matcher, msg.event, false);
         self.dispatcher_addr.try_send(ProcessedEventMessage { span: span.exit(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
@@ -207,7 +237,9 @@ mod test {
         let dispatcher_addr = FakeDispatcher {}.start().recipient();
 
         let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
 
         let draft_id = config_manager.create_draft("user_1".to_owned()).await.unwrap();
         let draft = config_manager.get_draft(&draft_id).await.unwrap();
@@ -233,7 +265,9 @@ mod test {
         let config_manager = configs.matcher_config.clone();
         let dispatcher_addr = FakeDispatcher {}.start().recipient();
         let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10).await.unwrap();
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
 
         // Act
         let returned_config = matcher_actor.send(GetCurrentConfigMessage {}).await.unwrap();

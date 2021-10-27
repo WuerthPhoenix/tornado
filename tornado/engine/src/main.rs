@@ -1,6 +1,6 @@
 use crate::command::apm_tracing::apm_tracing;
 use crate::config::{Opt, SubCommand};
-use clap::Clap;
+use clap::Parser;
 
 pub mod actor;
 mod api;

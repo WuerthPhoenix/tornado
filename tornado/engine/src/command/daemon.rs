@@ -5,7 +5,10 @@ use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
-use crate::monitoring::monitoring_endpoints;
+use crate::monitoring::endpoint::monitoring_endpoints;
+use crate::monitoring::metrics::{
+    TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY, TORNADO_APP,
+};
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -18,9 +21,12 @@ use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
+use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand};
+use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
@@ -60,6 +66,10 @@ pub async fn daemon(
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
     // start system
+    let metrics = Arc::new(Metrics::new(TORNADO_APP));
+    let tornado_meter = Arc::new(TornadoMeter::default());
+    let action_meter = Arc::new(ActionMeter::new(TORNADO_APP));
+
     let daemon_config = global_config.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
@@ -76,6 +86,7 @@ pub async fn daemon(
     // Start ForEach executor actor
     let foreach_executor_addr = ForEachExecutorActor::start_new(message_queue_size);
 
+    let archive_action_meter = action_meter.clone();
     // Start archive executor actor
     let archive_executor_addr = {
         let archive_config = configs.archive_executor_config.clone();
@@ -84,33 +95,43 @@ pub async fn daemon(
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
                 CommandMutPool::new(1, move || {
-                    tornado_executor_archive::ArchiveExecutor::new(&archive_config)
+                    StatefulExecutorCommand::new(
+                        archive_action_meter.clone(),
+                        tornado_executor_archive::ArchiveExecutor::new(&archive_config),
+                    )
                 }),
             )),
+            action_meter.clone(),
         )
     };
 
     // Start script executor actor
     let script_executor_addr = {
         let executor = tornado_executor_script::ScriptExecutor::new();
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
     // Start logger executor actor
     let logger_executor_addr = {
         let executor = tornado_executor_logger::LoggerExecutor::new();
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -121,12 +142,15 @@ pub async fn daemon(
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
                 .await
                 .expect("Cannot start the Elasticsearch Executor");
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -135,12 +159,15 @@ pub async fn daemon(
         let executor =
             tornado_executor_icinga2::Icinga2Executor::new(configs.icinga2_executor_config.clone())
                 .expect("Cannot start the Icinga2Executor Executor");
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -150,12 +177,15 @@ pub async fn daemon(
         let executor =
             tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
                 .expect("Cannot start the DirectorExecutor Executor");
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -166,12 +196,15 @@ pub async fn daemon(
             configs.director_executor_config.clone(),
         )
         .expect("Cannot start the MonitoringExecutor Executor");
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -184,12 +217,15 @@ pub async fn daemon(
                 configs.director_executor_config.clone(),
             )
             .expect("Cannot start the SmartMonitoringExecutor Executor");
+        let stateless_executor_command =
+            StatelessExecutorCommand::new(action_meter.clone(), executor);
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
+            action_meter.clone(),
         )
     };
 
@@ -201,6 +237,11 @@ pub async fn daemon(
                 let action = Arc::new(action);
                 let span = tracing::Span::current();
                 let message = ActionMessage { action, span };
+
+                action_meter
+                    .actions_received_counter
+                    .add(1, &[ACTION_ID_LABEL_KEY.string(message.action.id.to_owned())]);
+
                 let send_result = match message.action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(message).map_err(|err| {
@@ -283,6 +324,7 @@ pub async fn daemon(
         dispatcher_addr.clone().recipient(),
         configs.matcher_config.clone(),
         message_queue_size,
+        tornado_meter.clone(),
     )
     .await?;
 
@@ -299,11 +341,24 @@ pub async fn daemon(
         let matcher_addr_clone = matcher_addr.clone();
         let nats_extractors = daemon_config.nats_extractors.clone();
 
+        let tornado_meter_nats = tornado_meter.clone();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
+                let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
+
                 let event: Event = serde_json::from_slice(&msg.msg.data)
-                    .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
+                    .map_err(|err| {
+                        tornado_meter_nats.invalid_events_received_counter.add(1, &[
+                            meter_event_souce_label.clone(),
+                        ]);
+                        TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
+                    })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+
+                tornado_meter_nats.events_received_counter.add(1, &[
+                    meter_event_souce_label,
+                    EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                ]);
 
                 let mut event: InternalEvent = event.into();
                 for extractor in &nats_extractors {
@@ -313,20 +368,20 @@ pub async fn daemon(
                 matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
-            .await
-            .map(|_| {
-                info!(
-                    "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
-                    addresses, subject
-                );
-            })
-            .unwrap_or_else(|err| {
-                error!(
-                    "NATS connection failed started at [{:#?}], subject [{}]. Err: {:?}",
-                    addresses, subject, err
-                );
-                std::process::exit(1);
-            });
+                .await
+                .map(|_| {
+                    info!(
+                        "NATS connection started at [{:#?}]. Listening for incoming events on subject [{}]",
+                        addresses, subject
+                    );
+                })
+                .unwrap_or_else(|err| {
+                    error!(
+                        "NATS connection failed started at [{:#?}], subject [{}]. Err: {:?}",
+                        addresses, subject, err
+                    );
+                    std::process::exit(1);
+                });
         });
     } else {
         info!("NATS connection is disabled. Do not start it.")
@@ -347,22 +402,28 @@ pub async fn daemon(
         );
         let json_matcher_addr_clone = matcher_addr.clone();
 
+        let tornado_meter_tcp = tornado_meter.clone();
         actix::spawn(async move {
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
+                let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
                 JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
+                    tornado_meter.events_received_counter.add(1, &[
+                        EVENT_SOURCE_LABEL_KEY.string("tcp"),
+                        EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                    ]);
                     json_matcher_addr_clone.try_send(EventMessage { event: event.into() }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
-            .await
-            .map(|_| {
-                info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot start TCP server at [{}]. Err: {:?}", tcp_address, err);
-                std::process::exit(1);
-            });
+                .await
+                .map(|_| {
+                    info!("Started TCP server at [{}]. Listening for incoming events", tcp_address);
+                })
+                // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+                .unwrap_or_else(|err| {
+                    error!("Cannot start TCP server at [{}]. Err: {:?}", tcp_address, err);
+                    std::process::exit(1);
+                });
         });
     } else {
         info!("TCP server is disabled. Do not start it.")
@@ -374,7 +435,7 @@ pub async fn daemon(
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
         daemon_config.auth.role_permissions.clone(),
     )));
-    let api_handler = MatcherApiHandler::new(matcher_addr);
+    let api_handler = MatcherApiHandler::new(matcher_addr, tornado_meter.clone());
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
 
@@ -399,6 +460,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
+        let metrics = metrics.clone();
 
         App::new()
             .wrap(Logger::default())
@@ -424,7 +486,7 @@ pub async fn daemon(
                         tornado_engine_api::config::web::build_config_v2_endpoints(v2_config_api),
                     )),
             )
-            .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
+            .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics))
     })
     .bind(format!("{}:{}", web_server_ip, web_server_port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
