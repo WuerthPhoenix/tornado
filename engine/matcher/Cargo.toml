@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 fs_extra = "1.2"
 lazy_static = "1.4"
 log = "0.4"
@@ -26,7 +26,7 @@ typescript-definitions = { package = "typescript-definitions-ufo-patch", version
 tracing = "0.1"
 
 [dev-dependencies]
-chrono = "0.4"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 criterion = "0.3"
 maplit = "1.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

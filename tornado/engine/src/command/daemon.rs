@@ -5,7 +5,10 @@ use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
-use crate::monitoring::monitoring_endpoints;
+use crate::monitoring::endpoint::monitoring_endpoints;
+use crate::monitoring::metrics::{
+    TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY, TORNADO_APP,
+};
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
@@ -21,6 +24,7 @@ use tornado_common::command::retry::RetryCommand;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
@@ -29,7 +33,6 @@ use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
-use tornado_common_metrics::Metrics;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -61,6 +64,9 @@ pub async fn daemon(
     let configs = config::parse_config_files(config_dir, rules_dir, drafts_dir)?;
 
     // start system
+    let metrics = Arc::new(Metrics::new(TORNADO_APP));
+    let tornado_meter = Arc::new(TornadoMeter::default());
+
     let daemon_config = global_config.tornado.daemon;
     let thread_pool_config = daemon_config.thread_pool_config.clone().unwrap_or_default();
     let threads_per_queue = thread_pool_config.get_threads_count();
@@ -284,6 +290,7 @@ pub async fn daemon(
         dispatcher_addr.clone().recipient(),
         configs.matcher_config.clone(),
         message_queue_size,
+        tornado_meter.clone(),
     )
     .await?;
 
@@ -300,11 +307,24 @@ pub async fn daemon(
         let matcher_addr_clone = matcher_addr.clone();
         let nats_extractors = daemon_config.nats_extractors.clone();
 
+        let tornado_meter_nats = tornado_meter.clone();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
+                let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
+
                 let event: Event = serde_json::from_slice(&msg.msg.data)
-                    .map_err(|err| TornadoCommonActorError::SerdeError { message: format! {"{}", err} })?;
+                    .map_err(|err| {
+                        tornado_meter_nats.invalid_events_received_counter.add(1, &[
+                            meter_event_souce_label.clone(),
+                        ]);
+                        TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
+                    })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+
+                tornado_meter_nats.events_received_counter.add(1, &[
+                    meter_event_souce_label,
+                    EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                ]);
 
                 let mut event: InternalEvent = event.into();
                 for extractor in &nats_extractors {
@@ -348,10 +368,16 @@ pub async fn daemon(
         );
         let json_matcher_addr_clone = matcher_addr.clone();
 
+        let tornado_meter_tcp = tornado_meter.clone();
         actix::spawn(async move {
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
+                let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
                 JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
+                    tornado_meter.events_received_counter.add(1, &[
+                        EVENT_SOURCE_LABEL_KEY.string("tcp"),
+                        EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                    ]);
                     json_matcher_addr_clone.try_send(EventMessage { event: event.into() }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
@@ -375,7 +401,7 @@ pub async fn daemon(
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
         daemon_config.auth.role_permissions.clone(),
     )));
-    let api_handler = MatcherApiHandler::new(matcher_addr);
+    let api_handler = MatcherApiHandler::new(matcher_addr, tornado_meter.clone());
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
 
@@ -400,7 +426,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
         };
-        let metrics = Arc::new(Metrics::default());
+        let metrics = metrics.clone();
 
         App::new()
             .wrap(Logger::default())
