@@ -94,7 +94,7 @@ mod test {
     use crate::root_test::prometheus_exporter;
 
     #[actix_rt::test]
-    async fn should_increase_counter_if_action_succeeds() {
+    async fn should_increase_processed_and_attempts_counters_if_action_succeeds() {
         // Arrange
         let prometheus_exporter = prometheus_exporter();
         let (sender, mut receiver) = unbounded_channel();
@@ -134,7 +134,7 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn should_increase_counter_if_action_fails() {
+    async fn should_increase_processed_and_attempts_counters_if_action_fails() {
         // Arrange
         let prometheus_exporter = prometheus_exporter();
         let (sender, mut receiver) = unbounded_channel();
@@ -168,7 +168,6 @@ mod test {
             result = std::str::from_utf8(&buf).unwrap();
             tokio::time::sleep(Duration::from_millis(50)).await;
         }
-        println!("{}",result);
         assert!(result.contains(&format!("action_id=\"{}\",action_result=\"failure\"", action_id)));
         assert!(result.contains(&format!("action_id=\"{}\",app=\"test_app\",attempt_result=\"failure\"", action_id)));
     }
