@@ -1,11 +1,11 @@
 use tornado_common_metrics::opentelemetry::metrics::{Counter};
 use tornado_common_metrics::opentelemetry::Key;
 
-pub const TORNADO_APP: &str = "tornado";
 pub const ACTION_ID_LABEL_KEY: Key = Key::from_static_str("action_id");
 pub const ACTION_RESULT_KEY: Key = Key::from_static_str("action_result");
-pub const ACTION_RESULT_SUCCESS: &str = "success";
-pub const ACTION_RESULT_FAILURE: &str = "failure";
+pub const ATTEMPT_RESULT_KEY: Key = Key::from_static_str("attempt_result");
+pub const RESULT_SUCCESS: &str = "success";
+pub const RESULT_FAILURE: &str = "failure";
 
 
 pub struct ActionMeter {
@@ -13,8 +13,8 @@ pub struct ActionMeter {
     pub actions_received_counter: Counter<u64>,
     /// Counts the total actions processed
     pub actions_processed_counter: Counter<u64>,
-    /// Counts the total number of failed action retries
-    pub action_failed_retries_counter: Counter<u64>,
+    /// Counts the number of the action execution attempts performed
+    pub actions_processing_attempts_counter: Counter<u64>,
 }
 
 impl ActionMeter {
@@ -31,15 +31,15 @@ impl ActionMeter {
             .with_description("Actions processed count")
             .init();
 
-        let action_failed_retries_counter = meter
-            .u64_counter("action_failed_retries_counter")
-            .with_description("Failed Action retries count")
+        let actions_processing_attempts_counter = meter
+            .u64_counter("actions_processing_attempts_counter")
+            .with_description("Counter of the actions execution attempts")
             .init();
 
         Self {
             actions_received_counter,
             actions_processed_counter,
-            action_failed_retries_counter
+            actions_processing_attempts_counter
         }
 
     }

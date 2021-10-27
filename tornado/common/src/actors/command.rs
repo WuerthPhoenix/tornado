@@ -7,7 +7,7 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
-use tornado_common_api::metrics::{ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, ACTION_RESULT_SUCCESS, ACTION_RESULT_FAILURE, ActionMeter};
+use crate::metrics::{ActionMeter, ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, RESULT_SUCCESS, RESULT_FAILURE};
 
 pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
@@ -58,7 +58,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                     Ok(_) => {
                         action_meter.actions_processed_counter.add(1, &[
                             action_id_label,
-                            ACTION_RESULT_KEY.string(ACTION_RESULT_SUCCESS)
+                            ACTION_RESULT_KEY.string(RESULT_SUCCESS)
                         ]);
                         debug!(
                             "CommandExecutorActor - Action [{}] executed successfully",
@@ -68,7 +68,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                     Err(e) => {
                         action_meter.actions_processed_counter.add(1, &[
                             action_id_label,
-                            ACTION_RESULT_KEY.string(ACTION_RESULT_FAILURE)
+                            ACTION_RESULT_KEY.string(RESULT_FAILURE)
                         ]);
                         error!(
                             "CommandExecutorActor - Failed to execute action [{}]: {:?}",
@@ -89,24 +89,29 @@ mod test {
     use crate::command::retry::test::{AlwaysFailExecutor, AlwaysOkExecutor};
     use tokio::sync::mpsc::unbounded_channel;
     use tornado_common_metrics::prometheus::{TextEncoder, Encoder};
-    use tornado_common_metrics::opentelemetry::sdk::Resource;
-    use tornado_common_metrics::opentelemetry::KeyValue;
+    use crate::command::StatelessExecutorCommand;
+    use tokio::time::Duration;
+    use crate::root_test::prometheus_exporter;
 
     #[actix_rt::test]
     async fn should_increase_counter_if_action_succeeds() {
         // Arrange
-        let prometheus_exporter = opentelemetry_prometheus::exporter()
-            .with_resource(Resource::new(vec![KeyValue::new("app", "test_app")]))
-            .init();
+        let prometheus_exporter = prometheus_exporter();
         let (sender, mut receiver) = unbounded_channel();
 
-        let action = Arc::new(Action::new("trace_id", "id"));
+        let action_id = format!("{}", rand::random::<usize>());
+        let action = Arc::new(Action::new("trace_id", action_id.clone()));
         let span = tracing::Span::current();
         let message = ActionMessage { action, span };
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
+
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            AlwaysOkExecutor { sender: sender.clone() },
+        );
         let executor = CommandExecutorActor::start_new(
             10,
-            Rc::new(AlwaysOkExecutor { sender: sender.clone() }),
+            Rc::new(stateless_executor_command),
             action_meter.clone()
         );
 
@@ -115,29 +120,37 @@ mod test {
         let _received = receiver.recv().await.unwrap();
 
         // Assert
-        let encoder = TextEncoder::new();
-        let metric_families = prometheus_exporter.registry().gather();
+        let mut result = "";
         let mut buf = Vec::new();
-        encoder.encode(&metric_families, &mut buf).unwrap();
-        let result = std::str::from_utf8(&buf).unwrap();
-        assert!(result.contains("actions_processed_counter{action_id=\"id\",action_result=\"success\",app=\"test_app\"} 1"));
+        while result.is_empty() {
+            let encoder = TextEncoder::new();
+            let metric_families = prometheus_exporter.registry().gather();
+            encoder.encode(&metric_families, &mut buf).unwrap();
+            result = std::str::from_utf8(&buf).unwrap();
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        assert!(result.contains(&format!("action_id=\"{}\",action_result=\"success\"", action_id)));
+        assert!(result.contains(&format!("action_id=\"{}\",app=\"test_app\",attempt_result=\"success\"", action_id)));
     }
 
     #[actix_rt::test]
     async fn should_increase_counter_if_action_fails() {
         // Arrange
-        let prometheus_exporter = opentelemetry_prometheus::exporter()
-            .with_resource(Resource::new(vec![KeyValue::new("app", "test_app")]))
-            .init();
+        let prometheus_exporter = prometheus_exporter();
         let (sender, mut receiver) = unbounded_channel();
 
-        let action = Arc::new(Action::new("trace_id", "id"));
+        let action_id = format!("{}", rand::random::<usize>());
+        let action = Arc::new(Action::new("trace_id", action_id.clone()));
         let span = tracing::Span::current();
         let message = ActionMessage { action, span };
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            AlwaysFailExecutor { sender: sender.clone(), can_retry: true },
+        );
         let executor = CommandExecutorActor::start_new(
             10,
-            Rc::new(AlwaysFailExecutor { sender: sender.clone(), can_retry: true }),
+            Rc::new(stateless_executor_command),
             action_meter.clone()
         );
 
@@ -148,9 +161,15 @@ mod test {
         // Assert
         let encoder = TextEncoder::new();
         let metric_families = prometheus_exporter.registry().gather();
+        let mut result = "";
         let mut buf = Vec::new();
-        encoder.encode(&metric_families, &mut buf).unwrap();
-        let result = std::str::from_utf8(&buf).unwrap();
-        assert!(result.contains("actions_processed_counter{action_id=\"id\",action_result=\"failure\",app=\"test_app\"} 1"));
+        while result.is_empty() {
+            encoder.encode(&metric_families, &mut buf).unwrap();
+            result = std::str::from_utf8(&buf).unwrap();
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+        println!("{}",result);
+        assert!(result.contains(&format!("action_id=\"{}\",action_result=\"failure\"", action_id)));
+        assert!(result.contains(&format!("action_id=\"{}\",app=\"test_app\",attempt_result=\"failure\"", action_id)));
     }
 }

@@ -32,6 +32,7 @@ use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
+use tornado_common::command::StatelessExecutorCommand;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -101,11 +102,15 @@ pub async fn daemon(
     // Start script executor actor
     let script_executor_addr = {
         let executor = tornado_executor_script::ScriptExecutor::new();
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone(),
         )
@@ -114,11 +119,15 @@ pub async fn daemon(
     // Start logger executor actor
     let logger_executor_addr = {
         let executor = tornado_executor_logger::LoggerExecutor::new();
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )
@@ -131,11 +140,15 @@ pub async fn daemon(
             tornado_executor_elasticsearch::ElasticsearchExecutor::new(es_authentication)
                 .await
                 .expect("Cannot start the Elasticsearch Executor");
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )
@@ -146,11 +159,15 @@ pub async fn daemon(
         let executor =
             tornado_executor_icinga2::Icinga2Executor::new(configs.icinga2_executor_config.clone())
                 .expect("Cannot start the Icinga2Executor Executor");
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )
@@ -162,11 +179,15 @@ pub async fn daemon(
         let executor =
             tornado_executor_director::DirectorExecutor::new(director_client_config.clone())
                 .expect("Cannot start the DirectorExecutor Executor");
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )
@@ -179,11 +200,15 @@ pub async fn daemon(
             configs.director_executor_config.clone(),
         )
         .expect("Cannot start the MonitoringExecutor Executor");
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )
@@ -198,11 +223,15 @@ pub async fn daemon(
                 configs.director_executor_config.clone(),
             )
             .expect("Cannot start the SmartMonitoringExecutor Executor");
+        let stateless_executor_command = StatelessExecutorCommand::new(
+            action_meter.clone(),
+            executor,
+        );
         CommandExecutorActor::start_new(
             message_queue_size,
             Rc::new(RetryCommand::new(
                 retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, executor),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
             )),
             action_meter.clone()
         )

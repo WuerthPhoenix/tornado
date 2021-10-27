@@ -5,7 +5,6 @@ use std::fmt::Display;
 use std::sync::Arc;
 use thiserror::Error;
 use tornado_common_api::{Action, RetriableError};
-use tornado_common_api::metrics::ActionMeter;
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
@@ -21,9 +20,6 @@ pub trait StatefulExecutor: Display {
 pub trait StatelessExecutor: Display {
     /// Executes the operation linked to the received Action.
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError>;
-
-    /// Returns the ActionMeter of this Executor.
-    fn get_action_meter(&self) -> ActionMeter;
 }
 
 #[derive(Error, Debug, PartialEq)]

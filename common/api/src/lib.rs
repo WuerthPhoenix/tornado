@@ -5,8 +5,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-pub mod metrics;
-
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.

@@ -4,7 +4,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor};
-use tornado_common_api::metrics::{ACTION_ID_LABEL_KEY, ACTION_RESULT_KEY, ACTION_RESULT_SUCCESS};
+use crate::metrics::{ACTION_ID_LABEL_KEY, RESULT_SUCCESS, ActionMeter, RESULT_FAILURE, ATTEMPT_RESULT_KEY};
+use std::borrow::Cow;
 
 pub mod callback;
 pub mod pool;
@@ -17,19 +18,44 @@ pub trait Command<Message, Output> {
     async fn execute(&self, message: Message) -> Output;
 }
 
-/// Implement the Command pattern for StatelessExecutor
+pub struct StatelessExecutorCommand<T: StatelessExecutor> {
+    action_meter: Arc<ActionMeter>,
+    executor: T
+}
+
+impl<T: StatelessExecutor> StatelessExecutorCommand<T> {
+    pub fn new(action_meter: Arc<ActionMeter>, executor: T ) -> Self {
+        Self  {
+            action_meter,
+            executor,
+        }
+    }
+}
+
+/// Implement the Command pattern for StatelessExecutorCommand
 #[async_trait::async_trait(?Send)]
-impl<T: StatelessExecutor> Command<Arc<Action>, Result<(), ExecutorError>> for T {
+impl<T: StatelessExecutor> Command<Arc<Action>, Result<(), ExecutorError>> for StatelessExecutorCommand<T> {
     async fn execute(&self, message: Arc<Action>) -> Result<(), ExecutorError> {
-        let result = (self as &T).execute(message.clone()).await;
-        if result.is_err() {
-            (self as &T).get_action_meter().action_failed_retries_counter.add(1, &[
-                ACTION_ID_LABEL_KEY.string(message.id.to_owned()),
-                ACTION_RESULT_KEY.string(ACTION_RESULT_SUCCESS)
-            ]);
-        };
+        let action_id = message.id.to_owned();
+        let result = self.executor.execute(message).await;
+        increment_processing_attempt_counter(&result, action_id, self.action_meter.as_ref());
         result
     }
+}
+
+#[inline]
+fn increment_processing_attempt_counter<T: Into<Cow<'static, str>>>(result: &Result<(), ExecutorError>, action_id: T, action_meter: &ActionMeter) {
+    let action_id_label = ACTION_ID_LABEL_KEY.string(action_id);
+    match result {
+        Ok(_) => action_meter.actions_processing_attempts_counter.add(1, &[
+            action_id_label,
+            ATTEMPT_RESULT_KEY.string(RESULT_SUCCESS)
+        ]),
+        Err(_) => action_meter.actions_processing_attempts_counter.add(1, &[
+            action_id_label,
+            ATTEMPT_RESULT_KEY.string(RESULT_FAILURE)
+        ])
+    };
 }
 
 /// Basic Trait to implement the Command Design Pattern.
@@ -39,11 +65,35 @@ pub trait CommandMut<Message, Output> {
     async fn execute(&mut self, message: Message) -> Output;
 }
 
-/// Implement the Command pattern for StatefulExecutor
 #[async_trait::async_trait(?Send)]
 impl<T: StatefulExecutor> CommandMut<Arc<Action>, Result<(), ExecutorError>> for T {
     async fn execute(&mut self, message: Arc<Action>) -> Result<(), ExecutorError> {
         (self as &mut T).execute(message).await
+    }
+}
+
+pub struct StatefulExecutorCommand<T: StatefulExecutor> {
+    action_meter: Arc<ActionMeter>,
+    executor: T
+}
+
+impl<T: StatefulExecutor> StatefulExecutorCommand<T> {
+    pub fn new(action_meter: Arc<ActionMeter>, executor: T ) -> Self {
+        Self  {
+            action_meter,
+            executor,
+        }
+    }
+}
+
+/// Implement the Command pattern for StatefulExecutorCommand
+#[async_trait::async_trait(?Send)]
+impl<T: StatefulExecutor> CommandMut<Arc<Action>, Result<(), ExecutorError>> for StatefulExecutorCommand<T> {
+    async fn execute(&mut self, message: Arc<Action>) -> Result<(), ExecutorError> {
+        let action_id = message.id.to_owned();
+        let result = self.executor.execute(message).await;
+        increment_processing_attempt_counter(&result, action_id, self.action_meter.as_ref());
+        result
     }
 }
 
