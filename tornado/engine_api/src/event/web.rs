@@ -7,6 +7,7 @@ use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 use tornado_engine_matcher::config::MatcherConfigEditor;
+use crate::event::api_v2::EventApiV2;
 
 pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
     data: ApiData<EventApi<T, CM>>,
@@ -19,6 +20,21 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
         )
         .service(
             web::resource("/drafts/{draft_id}/send")
+                .route(web::post().to(send_event_to_draft::<T, CM>)),
+        )
+}
+
+pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+    data: ApiData<EventApiV2<T, CM>>,
+) -> Scope {
+    web::scope("/event")
+        .app_data(Data::new(data))
+        .service(
+            web::resource("/active/{param_auth}")
+                .route(web::post().to(send_event_to_current_config::<T, CM>)),
+        )
+        .service(
+            web::resource("/drafts/{draft_id}/{param_auth}")
                 .route(web::post().to(send_event_to_draft::<T, CM>)),
         )
 }

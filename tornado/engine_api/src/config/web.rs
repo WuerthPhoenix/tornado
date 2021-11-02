@@ -50,13 +50,13 @@ pub fn build_config_v2_endpoints<
 ) -> Scope {
     web::scope("/config").app_data(Data::new(data)).service(
         web::scope("/active")
-            .service(web::resource("/tree").route(web::get().to(get_tree_node::<A, CM>)))
+            .service(web::resource("/tree/children/{param_auth}").route(web::get().to(get_tree_node::<A, CM>)))
             .service(
-                web::resource("/tree/{node_path}")
+                web::resource("/tree/children/{param_auth}/{node_path}")
                     .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
             )
             .service(
-                web::resource("/tree/{node_path}/details")
+                web::resource("/tree/details/{param_auth}/{node_path}")
                     .route(web::get().to(get_tree_node_details::<A, CM>)),
             ),
     )
@@ -68,6 +68,7 @@ async fn get_tree_node<
 >(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi<A, CM>>>,
+    _param_auth: String,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
@@ -83,6 +84,7 @@ async fn get_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
+    _param_auth: String,
     node_path: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
@@ -100,6 +102,7 @@ async fn get_tree_node_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
+    _param_auth: String,
     node_path: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
@@ -491,7 +494,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             ))
-            .uri("/config/active/tree")
+            .uri("/config/active/tree/children/my_auth")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
