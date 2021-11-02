@@ -79,3 +79,4 @@ message_queue_size = 10000
 admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView"]
 edit = ["ConfigEdit"]
 view = ["ConfigView"]
+events_full_process = ["EventsFullProcess"]
