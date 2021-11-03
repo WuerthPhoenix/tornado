@@ -1,4 +1,5 @@
-use crate::event::api::{EventApi, EventApiHandler};
+use std::borrow::Borrow;
+use crate::event::api::{EventApi, EventApiHandler, SendEventRequest};
 use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
 use crate::model::ApiData;
 use actix_web::web::{Data, Json, Path};
@@ -7,6 +8,8 @@ use log::*;
 use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 use tornado_engine_matcher::config::MatcherConfigEditor;
+use crate::auth::{AuthContext, AuthService};
+use crate::error::ApiError;
 use crate::event::api_v2::EventApiV2;
 
 pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
@@ -31,11 +34,11 @@ pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigE
         .app_data(Data::new(data))
         .service(
             web::resource("/active/{param_auth}")
-                .route(web::post().to(send_event_to_current_config::<T, CM>)),
+                .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
         )
         .service(
             web::resource("/drafts/{draft_id}/{param_auth}")
-                .route(web::post().to(send_event_to_draft::<T, CM>)),
+                .route(web::post().to(send_event_to_draft_v2::<T, CM>)),
         )
 }
 
@@ -47,6 +50,18 @@ async fn send_event_to_current_config<
     data: Data<ApiData<EventApi<T, CM>>>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
+    let (auth_ctx, send_event_request) = prepare_data_for_send_event_to_current_config(&req, &data.auth, body)?;
+
+    let processed_event =
+        data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
+    Ok(Json(processed_event_into_dto(processed_event)?))
+}
+
+fn prepare_data_for_send_event_to_current_config<'a>(
+    req: &HttpRequest,
+    auth: &'a AuthService,
+    body: Json<SendEventRequestDto>
+) -> Result<(AuthContext<'a>, SendEventRequest), ApiError> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
 
     if log_enabled!(Level::Debug) {
@@ -54,11 +69,43 @@ async fn send_event_to_current_config<
         debug!("API - received send_event_to_current_config request: {}", json_string);
     }
 
-    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let auth_ctx = auth.auth_from_request(req)?;
     let send_event_request = dto_into_send_event_request(body.into_inner())?;
+    Ok((auth_ctx, send_event_request))
+}
+
+async fn send_event_to_current_config_v2<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    data: Data<ApiData<EventApiV2<T, CM>>>,
+    body: Json<SendEventRequestDto>,
+) -> actix_web::Result<Json<ProcessedEventDto>> {
+    let (auth_ctx, send_event_request) = prepare_data_for_send_event_to_current_config(&req, &data.auth, body)?;
+
     let processed_event =
         data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
+}
+
+async fn prepare_data_for_send_event_to_draft<'a>(
+    req: &HttpRequest,
+    auth: &'a AuthService,
+    draft_id: &Path<String>,
+    body: Json<SendEventRequestDto>,
+) -> Result<(AuthContext<'a>, SendEventRequest), ApiError> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let draft_id = draft_id.borrow();
+
+    if log_enabled!(Level::Debug) {
+        let json_string = serde_json::to_string(body.deref()).unwrap();
+        debug!("API - received send_event_to_draft [{}] request: {}", draft_id, json_string);
+    }
+
+    let auth_ctx = auth.auth_from_request(req)?;
+    let send_event_request = dto_into_send_event_request(body.into_inner())?;
+    Ok((auth_ctx, send_event_request))
 }
 
 async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
@@ -67,16 +114,19 @@ async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEdit
     draft_id: Path<String>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let draft_id = draft_id.into_inner();
+    let (auth_ctx, send_event_request) = prepare_data_for_send_event_to_draft(&req, &data.auth, &draft_id, body).await?;
+    let processed_event =
+        data.api.send_event_to_draft(auth_ctx, &draft_id, send_event_request).await?;
+    Ok(Json(processed_event_into_dto(processed_event)?))
+}
 
-    if log_enabled!(Level::Debug) {
-        let json_string = serde_json::to_string(body.deref()).unwrap();
-        debug!("API - received send_event_to_draft [{}] request: {}", draft_id, json_string);
-    }
-
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let send_event_request = dto_into_send_event_request(body.into_inner())?;
+async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+    req: HttpRequest,
+    data: Data<ApiData<EventApiV2<T, CM>>>,
+    draft_id: Path<String>,
+    body: Json<SendEventRequestDto>,
+) -> actix_web::Result<Json<ProcessedEventDto>> {
+    let (auth_ctx, send_event_request) = prepare_data_for_send_event_to_draft(&req, &data.auth, &draft_id, body).await?;
     let processed_event =
         data.api.send_event_to_draft(auth_ctx, &draft_id, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
