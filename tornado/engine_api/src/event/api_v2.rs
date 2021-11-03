@@ -21,13 +21,12 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         auth: AuthContext<'_>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
+        auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
         match event.process_type {
-            ProcessType::Full => auth.has_permission(&Permission::EventsFullProcess)?,
-            ProcessType::SkipActions => auth.has_any_permission(&[
-                &Permission::ConfigEdit,
-                &Permission::ConfigView,
-                &Permission::EventsFullProcess,
-            ])?,
+            ProcessType::Full => {
+                auth.has_permission(&Permission::EventsFullProcess)?;
+            }
+            ProcessType::SkipActions => {}
         };
 
         self.handler.send_event_to_current_config(event).await
@@ -42,11 +41,12 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
 
+        auth.has_permission(&Permission::ConfigEdit)?;
         match event.process_type {
-            ProcessType::Full => auth.has_permission(&Permission::EventsFullProcess)?,
-            ProcessType::SkipActions => {
-                auth.has_any_permission(&[&Permission::ConfigEdit, &Permission::EventsFullProcess])?
+            ProcessType::Full => {
+                auth.has_permission(&Permission::EventsFullProcess)?;
             }
+            ProcessType::SkipActions => {}
         };
 
         self.handler.send_event_to_config(event, draft.config).await
@@ -191,8 +191,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_configuration_with_skip_action_should_require_edit_view_or_full_permission(
-    ) {
+    async fn send_event_to_configuration_with_skip_action_should_require_edit_or_view_permission() {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
@@ -209,7 +208,10 @@ pub mod test {
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
         assert!(api.send_event_to_current_config(user_view, request.clone()).await.is_ok());
-        assert!(api.send_event_to_current_config(user_full_process, request.clone()).await.is_ok());
+        assert!(api
+            .send_event_to_current_config(user_full_process, request.clone())
+            .await
+            .is_err());
         assert!(api
             .send_event_to_current_config(user_no_permission, request.clone())
             .await
@@ -217,12 +219,28 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_configuration_with_full_execution_should_require_events_full_process_permission(
+    async fn send_event_to_configuration_with_full_execution_should_require_events_full_process_and_view_or_edit_permission(
     ) {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions = auth_permissions();
         let (user_view, user_edit, user_full_process) = create_users(&permissions);
+        let user_view_and_full_process = AuthContext::new(
+            Auth {
+                user: "user_id".to_owned(),
+                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                preferences: None,
+            },
+            &permissions,
+        );
+        let user_edit_and_full_process = AuthContext::new(
+            Auth {
+                user: "user_id".to_owned(),
+                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                preferences: None,
+            },
+            &permissions,
+        );
 
         let request =
             SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
@@ -230,12 +248,22 @@ pub mod test {
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_err());
         assert!(api.send_event_to_current_config(user_view, request.clone()).await.is_err());
-        assert!(api.send_event_to_current_config(user_full_process, request.clone()).await.is_ok());
+        assert!(api
+            .send_event_to_current_config(user_full_process, request.clone())
+            .await
+            .is_err());
+        assert!(api
+            .send_event_to_current_config(user_view_and_full_process, request.clone())
+            .await
+            .is_ok());
+        assert!(api
+            .send_event_to_current_config(user_edit_and_full_process, request.clone())
+            .await
+            .is_ok());
     }
 
     #[actix_rt::test]
-    async fn send_event_to_draft_with_skip_action_should_have_edit_or_full_process_permission_and_ownership(
-    ) {
+    async fn send_event_to_draft_with_skip_action_should_have_edit_permission_and_ownership() {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
@@ -264,12 +292,12 @@ pub mod test {
         assert!(api
             .send_event_to_draft(user_full_process.clone(), "id", request.clone())
             .await
-            .is_ok());
+            .is_err());
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
     }
 
     #[actix_rt::test]
-    async fn send_event_to_draft_with_full_execution_should_have_full_process_permission_and_ownership(
+    async fn send_event_to_draft_with_full_execution_should_have_full_process_and_edit_permission_and_ownership(
     ) {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
@@ -281,6 +309,22 @@ pub mod test {
             event: Event::new("event_for_draft"),
             process_type: ProcessType::Full,
         };
+        let mut user_view_and_full_process = AuthContext::new(
+            Auth {
+                user: "user_id".to_owned(),
+                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                preferences: None,
+            },
+            &permissions_map,
+        );
+        let mut user_edit_and_full_process = AuthContext::new(
+            Auth {
+                user: "user_id".to_owned(),
+                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                preferences: None,
+            },
+            &permissions_map,
+        );
 
         // Act & Assert
         assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
@@ -289,17 +333,35 @@ pub mod test {
             .send_event_to_draft(user_full_process.clone(), "id", request.clone())
             .await
             .is_err());
+        assert!(api
+            .send_event_to_draft(user_view_and_full_process.clone(), "id", request.clone())
+            .await
+            .is_err());
+        assert!(api
+            .send_event_to_draft(user_edit_and_full_process.clone(), "id", request.clone())
+            .await
+            .is_err());
 
         // Set the users as owners of the draft
         user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
         user_view.auth.user = DRAFT_OWNER_ID.to_owned();
         user_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
+        user_view_and_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
+        user_edit_and_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
 
         assert!(api
             .send_event_to_draft(user_full_process.clone(), "id", request.clone())
             .await
-            .is_ok());
+            .is_err());
         assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
+        assert!(api
+            .send_event_to_draft(user_view_and_full_process.clone(), "id", request.clone())
+            .await
+            .is_err());
+        assert!(api
+            .send_event_to_draft(user_edit_and_full_process.clone(), "id", request.clone())
+            .await
+            .is_ok());
     }
 }
