@@ -7,6 +7,7 @@ pub mod error;
 pub mod interpolator;
 pub mod matcher;
 pub mod model;
+pub mod permission;
 pub mod regex;
 pub mod validator;
 
