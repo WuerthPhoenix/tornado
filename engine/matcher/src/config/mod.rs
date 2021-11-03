@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod filter;
 pub mod fs;
+pub mod operation;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

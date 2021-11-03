@@ -290,7 +290,7 @@ mod test {
                                 ])
                             ))
                         ])
-                    ))
+                    )),
                     ("child_2".to_owned(), NodeFilter::AllChildren),
                     ("child_3".to_owned(), NodeFilter::NoChildren),
                     ("child_4".to_owned(), NodeFilter::AllChildren),
@@ -385,7 +385,7 @@ mod test {
             ]
         };
 
-        assert_eq!(Some(config), filtered_config);
+        assert_eq!(Some(expected_config), filtered_config);
     }
 
 
