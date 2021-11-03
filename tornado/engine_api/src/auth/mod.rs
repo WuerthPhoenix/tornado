@@ -3,9 +3,12 @@ use actix_web::HttpRequest;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Debug;
 use std::sync::Arc;
 use tornado_engine_api_dto::auth::Auth;
 use tornado_engine_matcher::config::MatcherConfigDraft;
+
+pub mod auth_v2;
 
 pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
@@ -139,7 +142,7 @@ impl AuthService {
         Self { permission_roles_map }
     }
 
-    pub fn token_string_from_request<'a>(&self, req: &'a HttpRequest) -> Result<&'a str, ApiError> {
+    pub fn token_string_from_request(req: &HttpRequest) -> Result<&str, ApiError> {
         if let Some(header) = req.headers().get(JWT_TOKEN_HEADER) {
             return header
                 .to_str()
@@ -159,21 +162,25 @@ impl AuthService {
     }
 
     pub fn auth_from_request(&self, req: &HttpRequest) -> Result<AuthContext, ApiError> {
-        self.token_string_from_request(req).and_then(|token| self.auth_from_token_string(token))
+        Self::token_string_from_request(req).and_then(|token| self.auth_from_token_string(token))
     }
 
     pub fn auth_from_token_string(&self, token: &str) -> Result<AuthContext, ApiError> {
-        let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
-        })?;
-        let auth_str = String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Invalid UTF8 token content. Err: {:?}", err),
-        })?;
+        let auth_str = AuthService::decode_token_from_base64(token)?;
         let auth = serde_json::from_str(&auth_str).map_err(|err| ApiError::InvalidTokenError {
             message: format!("Invalid JSON token content. Err: {:?}", err),
         })?;
         trace!("Auth built from request: [{:?}]", auth);
         Ok(AuthContext::new(auth, &self.permission_roles_map))
+    }
+
+    pub fn decode_token_from_base64(token: &str) -> Result<String, ApiError> {
+        let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
+            message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
+        })?;
+        String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
+            message: format!("Invalid UTF8 token content. Err: {:?}", err),
+        })
     }
 
     /// Generates the auth token
