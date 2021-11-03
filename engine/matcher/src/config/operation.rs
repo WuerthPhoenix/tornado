@@ -26,7 +26,7 @@ fn path_to_node_filter(filters: &mut HashMap<String, NodeFilter>, path: &[&str])
         if is_last {
             filters.insert(name, NodeFilter::AllChildren);
         } else {
-            let entries = filters.entry(name).or_insert_with(HashMap::default);
+            let entries = filters.entry(name).or_insert_with(|| NodeFilter::SelectedChildren(HashMap::default()));
             match entries {
                 NodeFilter::AllChildren => {}
                 NodeFilter::SelectedChildren(children_filters) => {
