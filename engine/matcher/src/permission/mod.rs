@@ -20,6 +20,20 @@ pub fn matcher_config_filter(matcher_config: &MatcherConfig, filter: &HashMap<St
             MatcherConfig::Filter { name, filter, nodes } => {
                 let mut children = vec![];
 
+                match node_filter {
+                    NodeFilter::AllChildren => {
+                        children = nodes.clone();
+                    }
+                    NodeFilter::NoChildren => {}
+                    NodeFilter::SelectedChildren(selected_children) => {
+                        for node in nodes {
+                            if let Some(child_node) = matcher_config_filter(node, selected_children) {
+                                children.push(child_node)
+                            }
+                        }
+                    }
+                }
+
                 Some(MatcherConfig::Filter { name: name.to_owned(), filter: filter.to_owned(), nodes: children })
             },
         }
