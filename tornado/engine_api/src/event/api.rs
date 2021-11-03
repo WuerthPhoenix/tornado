@@ -31,7 +31,7 @@ pub struct SendEventRequest {
     pub process_type: ProcessType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProcessType {
     Full,
     SkipActions,
