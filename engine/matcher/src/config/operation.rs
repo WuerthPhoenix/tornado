@@ -1,6 +1,7 @@
 use crate::config::MatcherConfig;
 use std::collections::HashMap;
 
+#[derive(Debug, PartialEq)]
 pub enum NodeFilter {
     /// All children of the node are accepted
     AllChildren,
@@ -9,31 +10,35 @@ pub enum NodeFilter {
 }
 
 impl NodeFilter {
-    pub fn map_from(paths: &[&[&str]]) -> HashMap<String, NodeFilter> {
+    pub fn map_from(paths: &[Vec<String>]) -> HashMap<String, NodeFilter> {
         let mut filters = HashMap::new();
         for path in paths {
-            path_to_node_filter(&mut filters, path)
+            path_to_node_filter(&mut filters, &(*path))
         }
         filters
     }
 }
 
-fn path_to_node_filter(filters: &mut HashMap<String, NodeFilter>, path: &[&str]) {
+fn path_to_node_filter(filters: &mut HashMap<String, NodeFilter>, path: &[String]) {
 
-        let is_last = path.len() == 1;
-        let name = path[0].to_owned();
+    if path.is_empty() {
+        return;
+    }
 
-        if is_last {
-            filters.insert(name, NodeFilter::AllChildren);
-        } else {
-            let entries = filters.entry(name).or_insert_with(|| NodeFilter::SelectedChildren(HashMap::default()));
-            match entries {
-                NodeFilter::AllChildren => {}
-                NodeFilter::SelectedChildren(children_filters) => {
-                    path_to_node_filter(children_filters, &path[1..]);
-                }
+    let is_last = path.len() == 1;
+    let name = path[0].to_owned();
+
+    if is_last {
+        filters.insert(name, NodeFilter::AllChildren);
+    } else {
+        let entries = filters.entry(name).or_insert_with(|| NodeFilter::SelectedChildren(HashMap::default()));
+        match entries {
+            NodeFilter::AllChildren => {}
+            NodeFilter::SelectedChildren(children_filters) => {
+                path_to_node_filter(children_filters, &path[1..]);
             }
         }
+    }
 
 }
 
@@ -372,6 +377,189 @@ mod test {
         assert_eq!(Some(expected_config), filtered_config);
     }
 
+    #[test]
+    fn node_filter_map_from_should_return_empty_map() {
+        // Arrange
+        let paths = [];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        assert!(filter_map.is_empty());
+    }
+
+    #[test]
+    fn node_filter_map_from_should_return_empty_map_for_empty_path() {
+        // Arrange
+        let paths = vec![
+            vec![]
+        ];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        assert!(filter_map.is_empty());
+    }
+
+    #[test]
+    fn node_filter_map_from_should_return_root_all_children() {
+        // Arrange
+        let paths = vec![
+            vec!["root".to_owned()]
+        ];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        let expected_filter_map = HashMap::from([
+            ("root".to_owned(), NodeFilter::AllChildren)
+        ]);
+
+        assert_eq!(expected_filter_map, filter_map);
+    }
+
+    #[test]
+    fn node_filter_map_from_should_return_path_from_root() {
+        // Arrange
+        let paths = vec![
+            vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned()],
+        ];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        let expected_filter_map = HashMap::from([
+            ("root".to_owned(), NodeFilter::SelectedChildren(
+                HashMap::from([
+                    ("child_1".to_owned(), NodeFilter::SelectedChildren(
+                        HashMap::from([
+                            ("child_1_2".to_owned(), NodeFilter::AllChildren)
+                        ])
+                    ))
+                ])
+            ))
+        ]);
+
+        assert_eq!(expected_filter_map, filter_map);
+    }
+
+    #[test]
+    fn node_filter_map_from_should_merge_multiple_paths() {
+        // Arrange
+        let paths = vec![
+            vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned()],
+            vec!["root".to_owned(), "child_1".to_owned()],
+            vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned(), "child_1_3".to_owned()],
+            vec!["root".to_owned(), "child_2".to_owned(), "child_2_1".to_owned()],
+            vec!["root".to_owned(), "child_3".to_owned()],
+            vec!["another_root".to_owned(), "child_1".to_owned()],
+        ];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        let expected_filter_map = HashMap::from([
+            ("root".to_owned(), NodeFilter::SelectedChildren(
+                HashMap::from([
+                    ("child_1".to_owned(), NodeFilter::AllChildren),
+                    ("child_2".to_owned(), NodeFilter::SelectedChildren(
+                        HashMap::from([
+                            ("child_2_1".to_owned(), NodeFilter::AllChildren)
+                        ])
+                    )),
+                    ("child_3".to_owned(), NodeFilter::AllChildren),
+                ])
+            )),
+            ("another_root".to_owned(), NodeFilter::SelectedChildren(
+                HashMap::from([
+                    ("child_1".to_owned(), NodeFilter::AllChildren)
+                ])
+            ))
+        ]);
+
+        assert_eq!(expected_filter_map, filter_map);
+    }
+
+    #[test]
+    fn node_filter_map_from_should_return_root_all_children_from_merged_paths() {
+        // Arrange
+        let paths = vec![
+            vec!["root".to_owned(), "child_1".to_owned()],
+            vec!["root".to_owned()],
+            vec!["root".to_owned(), "child_2".to_owned()],
+        ];
+
+        // Act
+        let filter_map = NodeFilter::map_from(&paths);
+
+        // Assert
+        let expected_filter_map = HashMap::from([
+            ("root".to_owned(), NodeFilter::AllChildren)
+        ]);
+
+        assert_eq!(expected_filter_map, filter_map);
+    }
+
+    #[test]
+    fn should_filter_a_config_starting_from_paths() {
+        // Arrange
+        let config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_1".to_owned(),
+                            nodes: vec![]
+                        }
+                    ]
+                },
+                MatcherConfig::Ruleset {
+                    name: "hi".to_owned(),
+                    rules: vec![]
+                }
+            ]
+        };
+
+        let paths = vec![
+            vec!["root".to_owned(), "child_1".to_owned()],
+            vec!["root".to_owned(), "child_2".to_owned()],
+        ];
+
+        // Act
+        let filter = NodeFilter::map_from(&paths);
+        let filtered_config = matcher_config_filter(&config, &filter);
+
+        // Assert
+        let expected_config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_1".to_owned(),
+                            nodes: vec![]
+                        }
+                    ]
+                },
+            ]
+        };
+
+        assert_eq!(Some(expected_config), filtered_config);
+    }
 
     fn filter_definition() -> Filter {
         Filter {
