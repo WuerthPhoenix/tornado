@@ -50,7 +50,10 @@ pub fn build_config_v2_endpoints<
 ) -> Scope {
     web::scope("/config").app_data(Data::new(data)).service(
         web::scope("/active")
-            .service(web::resource("/tree/children/{param_auth}").route(web::get().to(get_tree_node::<A, CM>)))
+            .service(
+                web::resource("/tree/children/{param_auth}")
+                    .route(web::get().to(get_tree_node::<A, CM>)),
+            )
             .service(
                 web::resource("/tree/children/{param_auth}/{node_path}")
                     .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
