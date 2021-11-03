@@ -4,10 +4,37 @@ use std::collections::HashMap;
 pub enum NodeFilter {
     /// All children of the node are accepted
     AllChildren,
-    /// No children of the node are accepted
-    NoChildren,
     /// Only the selected children of the nodes are accepted
     SelectedChildren(HashMap<String, NodeFilter>),
+}
+
+impl NodeFilter {
+    pub fn map_from(paths: &[&[&str]]) -> HashMap<String, NodeFilter> {
+        let mut filters = HashMap::new();
+        for path in paths {
+            path_to_node_filter(&mut filters, path)
+        }
+        filters
+    }
+}
+
+fn path_to_node_filter(filters: &mut HashMap<String, NodeFilter>, path: &[&str]) {
+
+        let is_last = path.len() == 1;
+        let name = path[0].to_owned();
+
+        if is_last {
+            filters.insert(name, NodeFilter::AllChildren);
+        } else {
+            let entries = filters.entry(name).or_insert_with(HashMap::default);
+            match entries {
+                NodeFilter::AllChildren => {}
+                NodeFilter::SelectedChildren(children_filters) => {
+                    path_to_node_filter(children_filters, &path[1..]);
+                }
+            }
+        }
+
 }
 
 /// Returns a new matcher config that contains only the
@@ -24,7 +51,6 @@ pub fn matcher_config_filter(matcher_config: &MatcherConfig, filter: &HashMap<St
                     NodeFilter::AllChildren => {
                         children = nodes.clone();
                     }
-                    NodeFilter::NoChildren => {}
                     NodeFilter::SelectedChildren(selected_children) => {
                         for node in nodes {
                             if let Some(child_node) = matcher_config_filter(node, selected_children) {
@@ -144,42 +170,6 @@ mod test {
     }
 
     #[test]
-    fn filter_should_return_only_root() {
-        // Arrange
-        let config = MatcherConfig::Filter {
-            filter: filter_definition(),
-            name: "root".to_owned(),
-            nodes: vec![
-                MatcherConfig::Filter {
-                    filter: filter_definition(),
-                    name: "child_1".to_owned(),
-                    nodes: vec![
-                        MatcherConfig::Filter {
-                            filter: filter_definition(),
-                            name: "child_1_1".to_owned(),
-                            nodes: vec![]
-                        }
-                    ]
-                }
-            ]
-        };
-
-        let filter = HashMap::from([
-            ("root".to_owned(), NodeFilter::NoChildren)
-        ]);
-
-        // Act
-        let filtered_config = matcher_config_filter(&config, &filter);
-
-        // Assert
-        assert_eq!(Some(MatcherConfig::Filter {
-            filter: filter_definition(),
-            name: "root".to_owned(),
-            nodes: vec![]
-        }), filtered_config);
-    }
-
-    #[test]
     fn filter_should_return_only_selected_nodes() {
         // Arrange
         let config = MatcherConfig::Filter {
@@ -286,13 +276,12 @@ mod test {
                             ("child_1_1".to_owned(), NodeFilter::AllChildren),
                             ("child_1_2".to_owned(), NodeFilter::SelectedChildren(
                                 HashMap::from([
-                                    ("child_1_2_2".to_owned(), NodeFilter::NoChildren)
+                                    ("child_1_2_2".to_owned(), NodeFilter::AllChildren)
                                 ])
                             ))
                         ])
                     )),
                     ("child_2".to_owned(), NodeFilter::AllChildren),
-                    ("child_3".to_owned(), NodeFilter::NoChildren),
                     ("child_4".to_owned(), NodeFilter::AllChildren),
                 ])
             ))
@@ -371,11 +360,6 @@ mod test {
                             ]
                         }
                     ]
-                },
-                MatcherConfig::Filter {
-                    filter: filter_definition(),
-                    name: "child_3".to_owned(),
-                    nodes: vec![]
                 },
                 MatcherConfig::Ruleset {
                     name: "child_4".to_owned(),
