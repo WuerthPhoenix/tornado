@@ -143,6 +143,252 @@ mod test {
         assert_eq!(Some(config), filtered_config);
     }
 
+    #[test]
+    fn filter_should_return_only_root() {
+        // Arrange
+        let config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_1".to_owned(),
+                            nodes: vec![]
+                        }
+                    ]
+                }
+            ]
+        };
+
+        let filter = HashMap::from([
+            ("root".to_owned(), NodeFilter::NoChildren)
+        ]);
+
+        // Act
+        let filtered_config = matcher_config_filter(&config, &filter);
+
+        // Assert
+        assert_eq!(Some(MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![]
+        }), filtered_config);
+    }
+
+    #[test]
+    fn filter_should_return_only_selected_nodes() {
+        // Arrange
+        let config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_1".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_1_1".to_owned(),
+                                    nodes: vec![]
+                                },
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_1_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        },
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_2".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_2_1".to_owned(),
+                                    nodes: vec![]
+                                },
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_2_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_2".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_2_1".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Ruleset {
+                                    name: "child_2_1_1".to_owned(),
+                                    rules: vec![]
+                                },
+                            ]
+                        },
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_2_2".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_2_2_1".to_owned(),
+                                    nodes: vec![]
+                                },
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_2_2_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_3".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_3_1".to_owned(),
+                            nodes: vec![]
+                        },
+                    ]
+                },
+                MatcherConfig::Ruleset {
+                    name: "child_4".to_owned(),
+                    rules: vec![]
+                },
+                MatcherConfig::Ruleset {
+                    name: "child_5".to_owned(),
+                    rules: vec![]
+                },
+            ]
+        };
+
+        let filter = HashMap::from([
+            ("root".to_owned(), NodeFilter::SelectedChildren(
+                HashMap::from([
+                    ("child_1".to_owned(), NodeFilter::SelectedChildren(
+                        HashMap::from([
+                            ("child_1_1".to_owned(), NodeFilter::AllChildren),
+                            ("child_1_2".to_owned(), NodeFilter::SelectedChildren(
+                                HashMap::from([
+                                    ("child_1_2_2".to_owned(), NodeFilter::NoChildren)
+                                ])
+                            ))
+                        ])
+                    ))
+                    ("child_2".to_owned(), NodeFilter::AllChildren),
+                    ("child_3".to_owned(), NodeFilter::NoChildren),
+                    ("child_4".to_owned(), NodeFilter::AllChildren),
+                ])
+            ))
+        ]);
+
+        // Act
+        let filtered_config = matcher_config_filter(&config, &filter);
+
+        // Assert
+
+        let expected_config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_1".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_1_1".to_owned(),
+                                    nodes: vec![]
+                                },
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_1_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        },
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_1_2".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_1_2_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_2".to_owned(),
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_2_1".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Ruleset {
+                                    name: "child_2_1_1".to_owned(),
+                                    rules: vec![]
+                                },
+                            ]
+                        },
+                        MatcherConfig::Filter {
+                            filter: filter_definition(),
+                            name: "child_2_2".to_owned(),
+                            nodes: vec![
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_2_2_1".to_owned(),
+                                    nodes: vec![]
+                                },
+                                MatcherConfig::Filter {
+                                    filter: filter_definition(),
+                                    name: "child_2_2_2".to_owned(),
+                                    nodes: vec![]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_3".to_owned(),
+                    nodes: vec![]
+                },
+                MatcherConfig::Ruleset {
+                    name: "child_4".to_owned(),
+                    rules: vec![]
+                },
+
+            ]
+        };
+
+        assert_eq!(Some(config), filtered_config);
+    }
+
+
     fn filter_definition() -> Filter {
         Filter {
             description: "desc".to_owned(),
