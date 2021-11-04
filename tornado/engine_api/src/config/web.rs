@@ -2,7 +2,7 @@ use crate::config::api::{ConfigApi, ConfigApiHandler};
 use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
 };
-use crate::model::ApiData;
+use crate::model::{ApiData, ApiDataV2};
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
@@ -46,7 +46,7 @@ pub fn build_config_v2_endpoints<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
-    data: ApiData<ConfigApi<A, CM>>,
+    data: ApiDataV2<ConfigApi<A, CM>>,
 ) -> Scope {
     web::scope("/config").app_data(Data::new(data)).service(
         web::scope("/active")
@@ -84,7 +84,7 @@ async fn get_tree_node_with_node_path<
 >(
     req: HttpRequest,
     node_path: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
@@ -227,7 +227,8 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{test_auth_service, AuthService};
+    use crate::auth::test::{test_auth_service, test_auth_service_v2};
+    use crate::auth::AuthService;
     use crate::error::ApiError;
     use actix_web::{
         http::{header, StatusCode},
@@ -236,10 +237,13 @@ mod test {
     use async_trait::async_trait;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
+    use tornado_engine_api_dto::auth_v2::{AuthInstance, AuthV2};
     use tornado_engine_matcher::config::{
         MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
+    use maplit::hashmap;
+    use crate::auth::auth_v2::AuthServiceV2;
 
     struct ConfigManager {}
 
@@ -479,8 +483,8 @@ mod test {
     #[actix_rt::test]
     async fn v2_should_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiData {
-            auth: test_auth_service(),
+        let mut srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+            auth: test_auth_service_v2(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
         .await;
@@ -489,7 +493,16 @@ mod test {
         let request = test::TestRequest::get()
             .insert_header((
                 header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
+                AuthServiceV2::auth_to_token_header(&AuthV2 {
+                    user: "admin".to_string(),
+                    auths: hashmap!{
+                        "auth1".to_owned() => AuthInstance {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned(), "edit".to_owned()],
+                        }
+                    },
+                    preferences: None
+                })?,
             ))
             .uri("/config/active/tree")
             .to_request();

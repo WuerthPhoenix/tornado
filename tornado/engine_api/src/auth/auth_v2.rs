@@ -1,4 +1,4 @@
-use crate::auth::{AuthService, Permission};
+use crate::auth::{AuthService, JWT_TOKEN_HEADER_SUFFIX, Permission};
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
@@ -41,5 +41,18 @@ impl AuthServiceV2 {
         })?;
         trace!("Auth built from request: [{:?}]", auth);
         Ok(AuthContextV2::new(auth, &self.permission_roles_map))
+    }
+
+    /// Generates the auth token
+    fn auth_to_token_string(auth: &AuthV2) -> Result<String, ApiError> {
+        let auth_str =
+            serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
+                cause: format!("Cannot serialize auth into string. Err: {:?}", err),
+            })?;
+        Ok(base64::encode(auth_str.as_bytes()))
+    }
+
+    pub fn auth_to_token_header(auth: &AuthV2) -> Result<String, ApiError> {
+        Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthServiceV2::auth_to_token_string(auth)?))
     }
 }

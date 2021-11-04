@@ -69,7 +69,8 @@ async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::{test_auth_service, AuthService};
+    use crate::auth::test::test_auth_service;
+    use crate::auth::AuthService;
     use crate::event::api::test::{TestApiHandler, TestConfigManager, DRAFT_OWNER_ID};
     use actix_web::{http::header, test, App};
     use std::collections::HashMap;

@@ -184,7 +184,7 @@ impl AuthService {
     }
 
     /// Generates the auth token
-    pub fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
+    fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
         let auth_str =
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
@@ -209,20 +209,31 @@ impl WithOwner for MatcherConfigDraft {
 }
 
 #[cfg(test)]
-pub fn test_auth_service() -> AuthService {
-    let mut permission_roles_map = BTreeMap::new();
-    permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-    permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-    permission_roles_map
-        .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
-    permission_roles_map
-        .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
-    AuthService::new(Arc::new(permission_roles_map))
-}
-
-#[cfg(test)]
-mod test {
+pub mod test {
+    use crate::auth::auth_v2::AuthServiceV2;
     use super::*;
+
+    pub fn test_auth_service() -> AuthService {
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
+        AuthService::new(Arc::new(permission_roles_map))
+    }
+
+    pub fn test_auth_service_v2() -> AuthServiceV2 {
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
+        AuthServiceV2::new(Arc::new(permission_roles_map))
+    }
 
     #[test]
     fn auth_service_should_create_base64_token() -> Result<(), ApiError> {
