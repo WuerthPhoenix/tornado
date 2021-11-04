@@ -96,7 +96,7 @@ pub mod test {
     impl EventApiHandler for TestApiHandler {
         async fn send_event_to_current_config(
             &self,
-            config_filter: HashMap<String, NodeFilter>,
+            _config_filter: HashMap<String, NodeFilter>,
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
@@ -114,7 +114,7 @@ pub mod test {
         async fn send_event_to_config(
             &self,
             event: SendEventRequest,
-            config: MatcherConfig,
+            _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
                 event: event.event.into(),
