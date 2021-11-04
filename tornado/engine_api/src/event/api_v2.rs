@@ -4,6 +4,9 @@ use crate::event::api::{EventApiHandler, ProcessType, SendEventRequest};
 use std::sync::Arc;
 use tornado_engine_matcher::config::MatcherConfigEditor;
 use tornado_engine_matcher::model::ProcessedEvent;
+use std::collections::HashMap;
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::operation::NodeFilter;
 
 pub struct EventApiV2<A: EventApiHandler, CM: MatcherConfigEditor> {
     handler: A,
@@ -28,8 +31,11 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
             }
             ProcessType::SkipActions => {}
         };
+        let config_filter = HashMap::from([
+            (ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)
+        ]);
 
-        self.handler.send_event_to_current_config(event).await
+        self.handler.send_event_to_current_config(config_filter, event).await
     }
 
     pub async fn send_event_to_draft(

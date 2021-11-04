@@ -12,6 +12,7 @@ use tornado_engine_api_dto::config::{
     ProcessingTreeNodeDetailsDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
+use serde::Deserialize;
 
 pub fn build_config_endpoints<
     A: ConfigApiHandler + 'static,
@@ -65,16 +66,23 @@ pub fn build_config_v2_endpoints<
     )
 }
 
+#[derive(Deserialize)]
+struct EndpointPath {
+    param_auth: String,
+    node_path: String
+}
+
 async fn get_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-    _param_auth: String,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    param_auth: String,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let auth_ctx = data.auth.auth_from_request(&req, Some(&param_auth))?;
+
     let result = data
         .api
         .get_current_config_processing_tree_nodes_by_path(auth_ctx, &"".to_string())
@@ -87,15 +95,14 @@ async fn get_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    _param_auth: String,
-    node_path: Path<String>,
+    endpoint_params: Path<EndpointPath>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let auth_ctx = data.auth.auth_from_request(&req, Some(&endpoint_params.param_auth))?;
     let result = data
         .api
-        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &node_path.into_inner())
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &endpoint_params.node_path)
         .await?;
     Ok(Json(result))
 }
@@ -105,14 +112,13 @@ async fn get_tree_node_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    _param_auth: String,
-    node_path: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
+    endpoint_params: Path<EndpointPath>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let auth_ctx = data.auth.auth_from_request(&req, Some(&endpoint_params.param_auth))?;
     let result =
-        data.api.get_current_config_node_details_by_path(auth_ctx, &node_path.into_inner()).await?;
+        data.api.get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path).await?;
     Ok(Json(result))
 }
 

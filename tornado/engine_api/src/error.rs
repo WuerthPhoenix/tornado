@@ -23,6 +23,8 @@ pub enum ApiError {
     MissingAuthTokenError,
     #[error("ParseAuthHeaderError: [{message}]")]
     ParseAuthHeaderError { message: String },
+    #[error("InvalidAuthKeyError: [{message}]")]
+    InvalidAuthKeyError { message: String },
     #[error("InvalidTokenError: [{message}]")]
     InvalidTokenError { message: String },
     #[error("ExpiredTokenError: [{message}]")]

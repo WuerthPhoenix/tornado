@@ -4,9 +4,16 @@ use std::collections::HashMap;
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct AuthV2 {
+pub struct AuthHeaderV2 {
     pub user: String,
     pub auths: HashMap<String, AuthInstance>,
+    pub preferences: Option<UserPreferences>,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct AuthV2 {
+    pub user: String,
+    pub auth_instance: AuthInstance,
     pub preferences: Option<UserPreferences>,
 }
 
