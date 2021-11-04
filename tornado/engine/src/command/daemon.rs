@@ -30,12 +30,13 @@ use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
-use tornado_engine_api::model::ApiData;
+use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
 use tornado_engine_api::event::api_v2::EventApiV2;
+use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -436,6 +437,9 @@ pub async fn daemon(
     let auth_service = AuthService::new(Arc::new(roles_map_to_permissions_map(
         daemon_config.auth.role_permissions.clone(),
     )));
+    let auth_service_v2 = AuthServiceV2::new(Arc::new(roles_map_to_permissions_map(
+        daemon_config.auth.role_permissions.clone(),
+    )));
     let api_handler = MatcherApiHandler::new(matcher_addr, tornado_meter.clone());
     let daemon_config = daemon_config.clone();
     let matcher_config = configs.matcher_config.clone();
@@ -449,8 +453,8 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let v2_config_api = ApiData {
-            auth: auth_service.clone(),
+        let v2_config_api = ApiDataV2 {
+            auth: auth_service_v2.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
         let event_api = ApiData {
