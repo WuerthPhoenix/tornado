@@ -1,11 +1,11 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
-use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
-use tornado_engine_matcher::config::operation::NodeFilter;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::Event;
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -58,9 +58,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        let config_filter = HashMap::from([
-            (ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)
-        ]);
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
         self.handler.send_event_to_current_config(config_filter, event).await
     }
 
@@ -96,7 +94,7 @@ pub mod test {
     impl EventApiHandler for TestApiHandler {
         async fn send_event_to_current_config(
             &self,
-            config_filter: HashMap<String, NodeFilter>,
+            _config_filter: HashMap<String, NodeFilter>,
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
@@ -114,7 +112,7 @@ pub mod test {
         async fn send_event_to_config(
             &self,
             event: SendEventRequest,
-            config: MatcherConfig,
+            _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
                 event: event.event.into(),
@@ -220,10 +218,7 @@ pub mod test {
         let (user_view, user_edit) = create_users(&permissions_map);
 
         let request =
-            SendEventRequest { 
-                event: Event::new("event"), 
-                process_type: ProcessType::Full,
-             };
+            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -239,8 +234,8 @@ pub mod test {
         let (mut user_view, mut user_edit) = create_users(&permissions_map);
 
         let request = SendEventRequest {
-            event:Event::new("event_for_draft"),
-            process_type:ProcessType::SkipActions, 
+            event: Event::new("event_for_draft"),
+            process_type: ProcessType::SkipActions,
         };
 
         // Act & Assert
