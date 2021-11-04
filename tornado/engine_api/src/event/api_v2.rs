@@ -63,45 +63,10 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
 pub mod test {
     use super::*;
     use crate::auth::Permission;
-    use crate::error::ApiError;
-    use async_trait::async_trait;
-    use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::{Event, Value};
+    use std::collections::BTreeMap;
+    use tornado_common_api::{Event};
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{
-        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
-    };
-    use tornado_engine_matcher::error::MatcherError;
-    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
-
-    pub struct TestApiHandler {}
-
-    #[async_trait(?Send)]
-    impl EventApiHandler for TestApiHandler {
-        async fn send_event_to_current_config(
-            &self,
-            event: SendEventRequest,
-        ) -> Result<ProcessedEvent, ApiError> {
-            Ok(ProcessedEvent {
-                event: event.event.into(),
-                result: ProcessedNode::Ruleset {
-                    name: "ruleset".to_owned(),
-                    rules: ProcessedRules {
-                        rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
-                    },
-                },
-            })
-        }
-
-        async fn send_event_to_config(
-            &self,
-            event: SendEventRequest,
-            _config: MatcherConfig,
-        ) -> Result<ProcessedEvent, ApiError> {
-            self.send_event_to_current_config(event).await
-        }
-    }
+    use crate::event::api::test::{TestApiHandler, TestConfigManager};
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
         let mut permission_roles_map = BTreeMap::new();
@@ -138,63 +103,6 @@ pub mod test {
     }
 
     pub const DRAFT_OWNER_ID: &str = "OWNER";
-
-    pub struct TestConfigManager {}
-
-    #[async_trait::async_trait(?Send)]
-    impl MatcherConfigEditor for TestConfigManager {
-        async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
-            Ok(vec![])
-        }
-
-        async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
-            Ok(MatcherConfigDraft {
-                data: MatcherConfigDraftData {
-                    user: DRAFT_OWNER_ID.to_owned(),
-                    draft_id: draft_id.to_owned(),
-                    created_ts_ms: 0,
-                    updated_ts_ms: 0,
-                },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
-            })
-        }
-
-        async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
-            Ok("".to_owned())
-        }
-
-        async fn update_draft(
-            &self,
-            _draft_id: &str,
-            _user: String,
-            _config: &MatcherConfig,
-        ) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
-        }
-
-        async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn draft_take_over(
-            &self,
-            _draft_id: &str,
-            _user: String,
-        ) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn deploy_config(
-            &self,
-            _config: &MatcherConfig,
-        ) -> Result<MatcherConfig, MatcherError> {
-            unimplemented!()
-        }
-    }
 
     #[actix_rt::test]
     async fn send_event_to_configuration_with_skip_action_should_require_edit_or_view_permission() {

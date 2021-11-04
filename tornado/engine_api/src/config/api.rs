@@ -170,6 +170,7 @@ mod test {
         MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
+    use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
     const DRAFT_OWNER_ID: &str = "OWNER";
 
@@ -287,6 +288,60 @@ mod test {
             Auth {
                 user: DRAFT_OWNER_ID.to_owned(),
                 roles: vec!["edit".to_owned(), "view".to_owned()],
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view)
+    }
+
+    fn create_users_v2(
+        permissions_map: &BTreeMap<Permission, Vec<String>>,
+    ) -> (AuthContextV2, AuthContextV2, AuthContextV2, AuthContextV2) {
+        let not_owner_edit_and_view = AuthContextV2::new(
+            AuthV2 {
+                user: "a_user".to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned(), "view".to_owned()]
+                },
+                preferences: None
+            },
+            permissions_map,
+        );
+
+        let owner_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_edit = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_edit_and_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned(), "view".to_owned()],
+                },
                 preferences: None,
             },
             permissions_map,
@@ -449,7 +504,7 @@ mod test {
         let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
         let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
-            create_users(&permissions_map);
+            create_users_v2(&permissions_map);
 
         // Act & Assert
         assert!(api
@@ -479,7 +534,7 @@ mod test {
         let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
         let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
-            create_users(&permissions_map);
+            create_users_v2(&permissions_map);
 
         // Act & Assert
         assert!(!matches!(

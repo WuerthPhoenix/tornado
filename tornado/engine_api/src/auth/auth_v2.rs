@@ -14,6 +14,10 @@ pub struct AuthContextV2<'a> {
 }
 
 impl<'a> AuthContextV2<'a> {
+    pub fn new(auth: AuthV2, permission_roles_map: &'a BTreeMap<Permission, Vec<String>>) -> Self {
+        AuthContextV2 { valid: !auth.user.is_empty(), auth, permission_roles_map }
+    }
+
     pub fn from_header(mut auth_header: AuthHeaderV2, auth_key: &str, permission_roles_map: &'a BTreeMap<Permission, Vec<String>>) -> Result<Self, ApiError> {
         let authorization = auth_header.auths.remove(auth_key).ok_or(
             ApiError::InvalidAuthKeyError { message: format!("Authentication header does not contain auth key: {}", auth_key) }
@@ -93,7 +97,7 @@ impl AuthServiceV2 {
     }
 
     /// Generates the auth token
-    fn auth_to_token_string(auth: &AuthV2) -> Result<String, ApiError> {
+    fn auth_to_token_string(auth: &AuthHeaderV2) -> Result<String, ApiError> {
         let auth_str =
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
@@ -101,15 +105,13 @@ impl AuthServiceV2 {
         Ok(base64::encode(auth_str.as_bytes()))
     }
 
-    pub fn auth_to_token_header(auth: &AuthV2) -> Result<String, ApiError> {
+    pub fn auth_to_token_header(auth: &AuthHeaderV2) -> Result<String, ApiError> {
         Ok(format!("{}{}", JWT_TOKEN_HEADER_SUFFIX, AuthServiceV2::auth_to_token_string(auth)?))
     }
 }
 
 #[cfg(test)]
 pub mod test {
-    use super::*;
-
     #[test]
     fn auth_from_request_should_keep_only_auth_passed(){
         unimplemented!()

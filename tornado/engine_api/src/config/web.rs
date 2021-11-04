@@ -249,7 +249,7 @@ mod test {
     use async_trait::async_trait;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_api_dto::auth_v2::{Authorization, AuthV2};
+    use tornado_engine_api_dto::auth_v2::{Authorization, AuthHeaderV2};
     use tornado_engine_matcher::config::{
         MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
@@ -505,7 +505,7 @@ mod test {
         let request = test::TestRequest::get()
             .insert_header((
                 header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthV2 {
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
                     auths: hashmap!{
                         "auth1".to_owned() => Authorization {
@@ -516,7 +516,7 @@ mod test {
                     preferences: None
                 })?,
             ))
-            .uri("/config/active/tree/children/my_auth")
+            .uri("/config/active/tree/children/auth1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
