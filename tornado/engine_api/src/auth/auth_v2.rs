@@ -1,8 +1,8 @@
-use crate::auth::{AuthService, JWT_TOKEN_HEADER_SUFFIX, Permission};
+use crate::auth::{AuthService, JWT_TOKEN_HEADER_SUFFIX, Permission, FORBIDDEN_MISSING_REQUIRED_PERMISSIONS};
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tornado_engine_api_dto::auth_v2::{AuthV2, AuthHeaderV2};
 
@@ -15,15 +15,54 @@ pub struct AuthContextV2<'a> {
 
 impl<'a> AuthContextV2<'a> {
     pub fn from_header(mut auth_header: AuthHeaderV2, auth_key: &str, permission_roles_map: &'a BTreeMap<Permission, Vec<String>>) -> Result<Self, ApiError> {
-        let auth_instance = auth_header.auths.remove(auth_key).ok_or(
-            Err(ApiError::InvalidAuthKeyError { message: format!("Authentication header does not contain auth key: {}", auth_key) })
+        let authorization = auth_header.auths.remove(auth_key).ok_or(
+            ApiError::InvalidAuthKeyError { message: format!("Authentication header does not contain auth key: {}", auth_key) }
         )?;
         let auth = AuthV2 {
             user: auth_header.user,
-            auth_instance,
+            authorization,
             preferences: auth_header.preferences
         };
         Ok(AuthContextV2 { valid: !auth.user.is_empty(), auth, permission_roles_map })
+    }
+
+    // Returns an error if user is not authenticated
+    pub fn is_authenticated(&self) -> Result<&Self, ApiError> {
+        if !self.valid {
+            return Err(ApiError::UnauthenticatedError {});
+        };
+        Ok(self)
+    }
+
+    // Returns an error if user does not have the permission
+    pub fn has_permission(&self, permission: &Permission) -> Result<&Self, ApiError> {
+        self.has_any_permission(&[permission])
+    }
+
+    // Returns an error if user does not have at least one of the permissions
+    pub fn has_any_permission(
+        &self,
+        permissions: &[&Permission],
+    ) -> Result<&Self, ApiError> {
+        self.is_authenticated()?;
+
+        for permission in permissions {
+            if let Some(roles_with_permission) = self.permission_roles_map.get(permission) {
+                for user_role in &self.auth.authorization.roles {
+                    if roles_with_permission.contains(user_role) {
+                        return Ok(self);
+                    }
+                }
+            }
+        }
+        Err(ApiError::ForbiddenError {
+            code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
+            params: HashMap::new(),
+            message: format!(
+                "User [{}] does not have the required permissions [{:?}]",
+                self.auth.user, permissions
+            ),
+        })
     }
 }
 

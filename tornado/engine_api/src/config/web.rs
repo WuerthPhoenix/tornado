@@ -52,15 +52,15 @@ pub fn build_config_v2_endpoints<
     web::scope("/config").app_data(Data::new(data)).service(
         web::scope("/active")
             .service(
-                web::resource("/tree/children/{param_auth}")
+                web::resource("/tree/children/{auth_key}")
                     .route(web::get().to(get_tree_node::<A, CM>)),
             )
             .service(
-                web::resource("/tree/children/{param_auth}/{node_path}")
+                web::resource("/tree/children/{auth_key}/{node_path}")
                     .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
             )
             .service(
-                web::resource("/tree/details/{param_auth}/{node_path}")
+                web::resource("/tree/details/{auth_key}/{node_path}")
                     .route(web::get().to(get_tree_node_details::<A, CM>)),
             ),
     )
@@ -68,7 +68,7 @@ pub fn build_config_v2_endpoints<
 
 #[derive(Deserialize)]
 struct EndpointPath {
-    param_auth: String,
+    auth_key: String,
     node_path: String
 }
 
@@ -78,10 +78,10 @@ async fn get_tree_node<
 >(
     req: HttpRequest,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-    param_auth: String,
+    auth_key: Path<String>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, Some(&param_auth))?;
+    let auth_ctx = data.auth.auth_from_request(&req, &auth_key)?;
 
     let result = data
         .api
@@ -99,7 +99,7 @@ async fn get_tree_node_with_node_path<
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, Some(&endpoint_params.param_auth))?;
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.auth_key)?;
     let result = data
         .api
         .get_current_config_processing_tree_nodes_by_path(auth_ctx, &endpoint_params.node_path)
@@ -116,7 +116,7 @@ async fn get_tree_node_details<
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, Some(&endpoint_params.param_auth))?;
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.auth_key)?;
     let result =
         data.api.get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path).await?;
     Ok(Json(result))
@@ -249,7 +249,7 @@ mod test {
     use async_trait::async_trait;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_api_dto::auth_v2::{AuthInstance, AuthV2};
+    use tornado_engine_api_dto::auth_v2::{Authorization, AuthV2};
     use tornado_engine_matcher::config::{
         MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
@@ -508,7 +508,7 @@ mod test {
                 AuthServiceV2::auth_to_token_header(&AuthV2 {
                     user: "admin".to_string(),
                     auths: hashmap!{
-                        "auth1".to_owned() => AuthInstance {
+                        "auth1".to_owned() => Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned(), "edit".to_owned()],
                         }

@@ -91,7 +91,8 @@ impl actix_web::error::ResponseError for ApiError {
             | ApiError::ExpiredTokenError { .. }
             | ApiError::MissingAuthTokenError { .. }
             | ApiError::ParseAuthHeaderError { .. }
-            | ApiError::UnauthenticatedError => HttpResponse::Unauthorized().finish(),
+            | ApiError::UnauthenticatedError
+            | ApiError::InvalidAuthKeyError { .. } => HttpResponse::Unauthorized().finish(),
             ApiError::ForbiddenError { code, params, .. } => {
                 let http_code = http::StatusCode::FORBIDDEN;
                 HttpResponseBuilder::new(http_code).json(WebError {

@@ -65,7 +65,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: AuthContextV2<'_>,
         node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        // auth.has_permission(&Permission::ConfigView)?;
+        auth.has_permission(&Permission::ConfigView)?;
 
         let config = self.config_manager.get_config().await?;
         let path: Vec<_> = node_path.split(',').collect();
