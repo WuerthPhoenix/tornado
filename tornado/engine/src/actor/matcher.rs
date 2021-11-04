@@ -2,18 +2,18 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader, Defaultable};
+use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
+use tornado_engine_matcher::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
-use std::collections::HashMap;
-use tornado_engine_matcher::config::operation::{NodeFilter, matcher_config_filter};
-use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
-use tornado_engine_matcher::config::filter::Filter;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
@@ -160,7 +160,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
                     active: false,
                     filter: Defaultable::Default {},
                 },
-                nodes: vec![]
+                nodes: vec![],
             });
         let matcher = Matcher::build(&filtered_config)?;
 
@@ -240,9 +240,9 @@ mod test {
     use crate::actor::dispatcher::ProcessedEventMessage;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
-    use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
     use tornado_common_api::{Event, Value};
     use tornado_engine_matcher::model::ProcessedNode;
+    use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
 
     #[actix::test]
     async fn should_reconfigure_the_matcher_and_return_the_new_config() {
@@ -315,25 +315,29 @@ mod test {
         event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
 
         // Act
-        let processed_event: ProcessedEvent = matcher_actor.send(EventMessageWithReply {
-            event,
-            config_filter: HashMap::from([
-                (ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)
-            ]),
-            include_metadata: false,
-            process_type: ProcessType::Full
-        }).await.unwrap().unwrap();
+        let processed_event: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event,
+                config_filter: HashMap::from([(
+                    ROOT_NODE_NAME.to_owned(),
+                    NodeFilter::AllChildren,
+                )]),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
 
         // Assert
         match processed_event.result {
             ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| {
-                    match n {
-                        ProcessedNode::Filter { name, filter, .. } => {
-                            name.eq("tenant_id_alpha") && filter.status == ProcessedFilterStatus::Matched
-                        },
-                        _ => false
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
                     }
+                    _ => false,
                 });
 
                 assert!(tenant_node_matched);
@@ -358,44 +362,55 @@ mod test {
                 .unwrap();
 
         let mut event_tenant_alpha: InternalEvent = Event::new("test").into();
-        event_tenant_alpha.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+        event_tenant_alpha
+            .add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned()))
+            .unwrap();
 
         let mut event_tenant_beta: InternalEvent = Event::new("test").into();
-        event_tenant_beta.add_to_metadata("tenant_id".to_owned(), Value::Text("beta".to_owned())).unwrap();
+        event_tenant_beta
+            .add_to_metadata("tenant_id".to_owned(), Value::Text("beta".to_owned()))
+            .unwrap();
 
-        let config_filter = HashMap::from([
-            (ROOT_NODE_NAME.to_owned(), NodeFilter::SelectedChildren(
-                HashMap::from([
-                    ("tenant_id_beta".to_owned(), NodeFilter::AllChildren)
-                ])
-            ))
-        ]);
+        let config_filter = HashMap::from([(
+            ROOT_NODE_NAME.to_owned(),
+            NodeFilter::SelectedChildren(HashMap::from([(
+                "tenant_id_beta".to_owned(),
+                NodeFilter::AllChildren,
+            )])),
+        )]);
 
         // Act
-        let processed_event_alpha: ProcessedEvent = matcher_actor.send(EventMessageWithReply {
-            event: event_tenant_alpha,
-            config_filter: config_filter.clone(),
-            include_metadata: false,
-            process_type: ProcessType::Full
-        }).await.unwrap().unwrap();
+        let processed_event_alpha: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event: event_tenant_alpha,
+                config_filter: config_filter.clone(),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
 
-        let processed_event_beta: ProcessedEvent = matcher_actor.send(EventMessageWithReply {
-            event: event_tenant_beta,
-            config_filter: config_filter.clone(),
-            include_metadata: false,
-            process_type: ProcessType::Full
-        }).await.unwrap().unwrap();
+        let processed_event_beta: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event: event_tenant_beta,
+                config_filter: config_filter.clone(),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
 
         // Assert
         match processed_event_alpha.result {
             ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| {
-                    match n {
-                        ProcessedNode::Filter { name, filter, .. } => {
-                            name.eq("tenant_id_alpha") && filter.status == ProcessedFilterStatus::Matched
-                        },
-                        _ => false
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
                     }
+                    _ => false,
                 });
 
                 assert!(!tenant_node_matched);
@@ -405,13 +420,11 @@ mod test {
 
         match processed_event_beta.result {
             ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| {
-                    match n {
-                        ProcessedNode::Filter { name, filter, .. } => {
-                            name.eq("tenant_id_beta") && filter.status == ProcessedFilterStatus::Matched
-                        },
-                        _ => false
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_beta") && filter.status == ProcessedFilterStatus::Matched
                     }
+                    _ => false,
                 });
 
                 assert!(tenant_node_matched);
@@ -419,7 +432,6 @@ mod test {
             _ => assert!(false),
         };
     }
-
 
     struct FakeDispatcher {}
 

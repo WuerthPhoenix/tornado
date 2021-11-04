@@ -4,13 +4,13 @@ use crate::actor::matcher::{
 use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use actix::Addr;
 use async_trait::async_trait;
-use tornado_engine_matcher::config::operation::NodeFilter;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::config::api::ConfigApiHandler;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -109,7 +109,7 @@ mod test {
     use std::sync::Arc;
     use tornado_common_api::{Event, Value};
     use tornado_engine_api::event::api::ProcessType;
-    use tornado_engine_matcher::config::fs::{ROOT_NODE_NAME, FsMatcherConfigManager};
+    use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
@@ -142,9 +142,7 @@ mod test {
             event: Event::new("test-type"),
         };
 
-        let config_filter = HashMap::from([
-            (ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)
-        ]);
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
         // Act
         let res = api.send_event_to_current_config(config_filter, send_event_request).await;
