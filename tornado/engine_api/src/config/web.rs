@@ -6,13 +6,13 @@ use crate::model::{ApiData, ApiDataV2};
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
+use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
     ProcessingTreeNodeDetailsDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
-use serde::Deserialize;
 
 pub fn build_config_endpoints<
     A: ConfigApiHandler + 'static,
@@ -69,7 +69,7 @@ pub fn build_config_v2_endpoints<
 #[derive(Deserialize)]
 struct EndpointPath {
     auth_key: String,
-    node_path: String
+    node_path: String,
 }
 
 async fn get_tree_node<
@@ -117,8 +117,10 @@ async fn get_tree_node_details<
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.auth_key)?;
-    let result =
-        data.api.get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path).await?;
+    let result = data
+        .api
+        .get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path)
+        .await?;
     Ok(Json(result))
 }
 
@@ -239,6 +241,7 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::auth_v2::AuthServiceV2;
     use crate::auth::test::{test_auth_service, test_auth_service_v2};
     use crate::auth::AuthService;
     use crate::error::ApiError;
@@ -247,15 +250,14 @@ mod test {
         test, App,
     };
     use async_trait::async_trait;
+    use maplit::hashmap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_api_dto::auth_v2::{Authorization, AuthHeaderV2};
+    use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use tornado_engine_matcher::config::{
         MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
-    use maplit::hashmap;
-    use crate::auth::auth_v2::AuthServiceV2;
 
     struct ConfigManager {}
 
@@ -495,11 +497,12 @@ mod test {
     #[actix_rt::test]
     async fn v2_should_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -507,13 +510,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap!{
+                    auths: hashmap! {
                         "auth1".to_owned() => Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned(), "edit".to_owned()],
                         }
                     },
-                    preferences: None
+                    preferences: None,
                 })?,
             ))
             .uri("/config/active/tree/children/auth1")

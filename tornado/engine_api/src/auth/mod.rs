@@ -210,13 +210,14 @@ impl WithOwner for MatcherConfigDraft {
 
 #[cfg(test)]
 pub mod test {
-    use crate::auth::auth_v2::AuthServiceV2;
     use super::*;
+    use crate::auth::auth_v2::AuthServiceV2;
 
     pub fn test_auth_service() -> AuthService {
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
         permission_roles_map
             .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
         permission_roles_map
@@ -227,7 +228,8 @@ pub mod test {
     pub fn test_auth_service_v2() -> AuthServiceV2 {
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
         permission_roles_map
             .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
         permission_roles_map

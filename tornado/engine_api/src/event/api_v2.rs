@@ -1,12 +1,12 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use crate::event::api::{EventApiHandler, ProcessType, SendEventRequest};
-use std::sync::Arc;
-use tornado_engine_matcher::config::MatcherConfigEditor;
-use tornado_engine_matcher::model::ProcessedEvent;
 use std::collections::HashMap;
+use std::sync::Arc;
 use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::NodeFilter;
+use tornado_engine_matcher::config::MatcherConfigEditor;
+use tornado_engine_matcher::model::ProcessedEvent;
 
 pub struct EventApiV2<A: EventApiHandler, CM: MatcherConfigEditor> {
     handler: A,
@@ -31,9 +31,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
             }
             ProcessType::SkipActions => {}
         };
-        let config_filter = HashMap::from([
-            (ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)
-        ]);
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
         self.handler.send_event_to_current_config(config_filter, event).await
     }
@@ -63,10 +61,10 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
 pub mod test {
     use super::*;
     use crate::auth::Permission;
-    use std::collections::BTreeMap;
-    use tornado_common_api::{Event};
-    use tornado_engine_api_dto::auth::Auth;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
+    use std::collections::BTreeMap;
+    use tornado_common_api::Event;
+    use tornado_engine_api_dto::auth::Auth;
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
         let mut permission_roles_map = BTreeMap::new();
