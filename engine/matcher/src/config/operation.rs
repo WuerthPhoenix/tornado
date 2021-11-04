@@ -1,7 +1,7 @@
 use crate::config::MatcherConfig;
 use std::collections::HashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum NodeFilter {
     /// All children of the node are accepted
     AllChildren,

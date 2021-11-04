@@ -5,16 +5,21 @@ use log::*;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader, Defaultable};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
+use std::collections::HashMap;
+use tornado_engine_matcher::config::operation::{NodeFilter, matcher_config_filter};
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::filter::Filter;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
     pub event: InternalEvent,
+    pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
 }
@@ -147,8 +152,20 @@ impl Handler<EventMessageWithReply> for MatcherActor {
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
+        let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
+            .unwrap_or_else(|| MatcherConfig::Filter {
+                name: ROOT_NODE_NAME.to_owned(),
+                filter: Filter {
+                    description: "".to_owned(),
+                    active: false,
+                    filter: Defaultable::Default {},
+                },
+                nodes: vec![]
+            });
+        let matcher = Matcher::build(&filtered_config)?;
+
         Ok(self.process_event_with_reply(
-            &self.matcher,
+            &matcher,
             msg.event,
             msg.process_type,
             msg.include_metadata,
