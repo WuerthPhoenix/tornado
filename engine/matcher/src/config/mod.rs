@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod filter;
 pub mod fs;
+pub mod operation;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -31,7 +32,7 @@ pub enum MatcherConfig {
 }
 
 impl MatcherConfig {
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         match self {
             MatcherConfig::Filter { name, .. } => name,
             MatcherConfig::Ruleset { name, .. } => name,
