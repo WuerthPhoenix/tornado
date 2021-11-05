@@ -53,7 +53,10 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
             return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
         }
-        let absolute_path = Self::get_node_absolute_path(&auth, node_path, base_path)?;
+        let relative_path: Vec<_> =
+            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
+
+        let absolute_path = Self::get_node_absolute_path(base_path, relative_path)?;
 
         if let Some(child_nodes) =
             filtered_matcher.get_child_nodes_by_path(absolute_path.as_slice())
@@ -69,17 +72,14 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     }
 
     fn get_node_absolute_path<'a>(
-        auth: &'a AuthContextV2,
-        node_path: &'a str,
         base_path: Vec<&'a str>,
+        mut relative_path: Vec<&'a str>,
     ) -> Result<Vec<&'a str>, ApiError> {
         let mut absolute_path: Vec<_> = base_path;
-        let mut relative_path: Vec<_> =
-            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
 
         if absolute_path.pop().is_none() {
             let message = "The authorized node path cannot be empty.";
-            warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
+            warn!("{}", message);
             return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
         };
         absolute_path.append(&mut relative_path);
