@@ -19,7 +19,7 @@ pub enum PermissionDto {
     ConfigView,
     RuntimeConfigEdit,
     RuntimeConfigView,
-    EventsFullProcess,
+    TestEventExecuteActions,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]

@@ -30,7 +30,7 @@ export type Auth = { user: string; roles: string []; preferences: UserPreference
 
 export type AuthWithPermissionsDto = {     user: string; permissions: PermissionDto []; preferences:     UserPreferences | null };
 
-export enum PermissionDto {     ConfigEdit = "ConfigEdit", ConfigView = "ConfigView", RuntimeConfigEdit =     "RuntimeConfigEdit", RuntimeConfigView = "RuntimeConfigView",     EventsFullProcess = "EventsFullProcess" };
+export enum PermissionDto {     ConfigEdit = "ConfigEdit", ConfigView = "ConfigView", RuntimeConfigEdit =     "RuntimeConfigEdit", RuntimeConfigView = "RuntimeConfigView",     TestEventExecuteActions = "TestEventExecuteActions" };
 
 export type UserPreferences = { language: string | null };
 

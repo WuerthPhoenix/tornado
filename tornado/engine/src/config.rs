@@ -313,7 +313,7 @@ mod test {
                 Permission::ConfigView,
                 Permission::RuntimeConfigEdit,
                 Permission::RuntimeConfigView,
-                Permission::EventsFullProcess,
+                Permission::TestEventExecuteActions,
             ],
             config.tornado.daemon.auth.role_permissions["admin"]
         );

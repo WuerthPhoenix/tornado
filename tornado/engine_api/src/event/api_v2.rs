@@ -27,7 +27,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
         match event.process_type {
             ProcessType::Full => {
-                auth.has_permission(&Permission::EventsFullProcess)?;
+                auth.has_permission(&Permission::TestEventExecuteActions)?;
             }
             ProcessType::SkipActions => {}
         };
@@ -48,7 +48,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         auth.has_permission(&Permission::ConfigEdit)?;
         match event.process_type {
             ProcessType::Full => {
-                auth.has_permission(&Permission::EventsFullProcess)?;
+                auth.has_permission(&Permission::TestEventExecuteActions)?;
             }
             ProcessType::SkipActions => {}
         };
@@ -71,7 +71,7 @@ pub mod test {
         permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
         permission_roles_map.insert(Permission::ConfigView, vec!["view".to_owned()]);
         permission_roles_map
-            .insert(Permission::EventsFullProcess, vec!["events_full_process".to_owned()]);
+            .insert(Permission::TestEventExecuteActions, vec!["test_event_execute_actions".to_owned()]);
         permission_roles_map
     }
 
@@ -91,7 +91,7 @@ pub mod test {
         let user_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned()],
                 preferences: None,
             },
             permissions_map,
@@ -131,7 +131,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_configuration_with_full_execution_should_require_events_full_process_and_view_or_edit_permission(
+    async fn send_event_to_configuration_with_full_execution_should_require_test_event_execute_actions_and_view_or_edit_permission(
     ) {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
@@ -140,7 +140,7 @@ pub mod test {
         let user_view_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
                 preferences: None,
             },
             &permissions,
@@ -148,7 +148,7 @@ pub mod test {
         let user_edit_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
                 preferences: None,
             },
             &permissions,
@@ -224,7 +224,7 @@ pub mod test {
         let mut user_view_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
                 preferences: None,
             },
             &permissions_map,
@@ -232,7 +232,7 @@ pub mod test {
         let mut user_edit_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
                 preferences: None,
             },
             &permissions_map,
