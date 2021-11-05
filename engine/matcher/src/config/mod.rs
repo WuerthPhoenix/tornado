@@ -72,7 +72,7 @@ impl MatcherConfig {
     // Returns child nodes of a node found by a path
     // If the path is empty [], the [self] is returned
     pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
-        if path.is_empty() || (path.len() == 1 && path[0].is_empty()) {
+        if path.is_empty() {
             return Some(vec![self]);
         }
         match self.get_node_by_path(path) {

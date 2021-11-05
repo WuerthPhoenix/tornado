@@ -254,8 +254,10 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
+    use tornado_engine_api_dto::config::FilterDto;
+    use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::{
-        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+        Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
 
@@ -264,7 +266,15 @@ mod test {
     #[async_trait::async_trait(?Send)]
     impl MatcherConfigReader for ConfigManager {
         async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
+            Ok(MatcherConfig::Filter {
+                name: "root".to_owned(),
+                filter: Filter {
+                    description: "".to_string(),
+                    filter: Defaultable::Default {},
+                    active: false,
+                },
+                nodes: vec![],
+            })
         }
     }
 
@@ -426,9 +436,10 @@ mod test {
             test::read_response_json(&mut srv, request).await;
 
         assert_eq!(
-            tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
-                name: "ruleset".to_owned(),
-                rules: vec![]
+            tornado_engine_api_dto::config::MatcherConfigDto::Filter {
+                name: "root".to_owned(),
+                filter: FilterDto { description: "".to_string(), active: false, filter: None },
+                nodes: vec![]
             },
             dto
         );
@@ -495,7 +506,43 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_should_return_status_code_ok() -> Result<(), ApiError> {
+    async fn v2_endpoint_get_children_should_return_status_code_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: hashmap! {
+                        "auth1".to_owned() => Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        }
+                    },
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/active/tree/children/auth1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_get_children_by_node_path_should_return_status_code_ok(
+    ) -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -519,7 +566,44 @@ mod test {
                     preferences: None,
                 })?,
             ))
-            .uri("/config/active/tree/children/auth1")
+            .uri("/config/active/tree/children/auth1/root")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        println!("{:?}", response);
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_get_details_by_node_path_should_return_status_code_ok(
+    ) -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: hashmap! {
+                        "auth1".to_owned() => Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        }
+                    },
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/active/tree/details/auth1/root")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
