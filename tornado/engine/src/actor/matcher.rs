@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
-use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
@@ -153,7 +152,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
         let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
             .ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("The config filter does not match any existing node")
+                message: "The config filter does not match any existing node".to_owned()
             })?;
         let matcher = Matcher::build(&filtered_config)?;
 
