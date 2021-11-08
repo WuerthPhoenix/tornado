@@ -1,8 +1,11 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::Event;
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -14,6 +17,7 @@ pub trait EventApiHandler: Send + Sync {
     /// Executes an Event on the current Tornado Configuration
     async fn send_event_to_current_config(
         &self,
+        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError>;
 
@@ -54,7 +58,8 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        self.handler.send_event_to_current_config(event).await
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        self.handler.send_event_to_current_config(config_filter, event).await
     }
 
     pub async fn send_event_to_draft(
@@ -89,6 +94,7 @@ pub mod test {
     impl EventApiHandler for TestApiHandler {
         async fn send_event_to_current_config(
             &self,
+            _config_filter: HashMap<String, NodeFilter>,
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
@@ -108,7 +114,16 @@ pub mod test {
             event: SendEventRequest,
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
-            self.send_event_to_current_config(event).await
+            Ok(ProcessedEvent {
+                event: event.event.into(),
+                result: ProcessedNode::Ruleset {
+                    name: "ruleset".to_owned(),
+                    rules: ProcessedRules {
+                        rules: vec![],
+                        extracted_vars: Value::Map(HashMap::new()),
+                    },
+                },
+            })
         }
     }
 

@@ -2,9 +2,11 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::event::api::ProcessType;
+use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
@@ -15,6 +17,7 @@ use tornado_engine_matcher::{error, matcher};
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
     pub event: InternalEvent,
+    pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
 }
@@ -147,8 +150,14 @@ impl Handler<EventMessageWithReply> for MatcherActor {
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
+        let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
+            .ok_or_else(|| MatcherError::ConfigurationError {
+                message: "The config filter does not match any existing node".to_owned(),
+            })?;
+        let matcher = Matcher::build(&filtered_config)?;
+
         Ok(self.process_event_with_reply(
-            &self.matcher,
+            &matcher,
             msg.event,
             msg.process_type,
             msg.include_metadata,
@@ -223,7 +232,10 @@ mod test {
     use crate::actor::dispatcher::ProcessedEventMessage;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
-    use tornado_engine_matcher::config::MatcherConfigEditor;
+    use tornado_common_api::{Event, Value};
+    use tornado_engine_matcher::model::ProcessedNode;
+    use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
+    use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 
     #[actix::test]
     async fn should_reconfigure_the_matcher_and_return_the_new_config() {
@@ -275,6 +287,182 @@ mod test {
         // Assert
         let matcher_config = config_manager.get_config().await.unwrap();
         assert_eq!(&matcher_config, returned_config.as_ref());
+    }
+
+    #[actix::test]
+    async fn should_execute_event_to_filtered_config_from_root() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+
+        let config_manager = configs.matcher_config.clone();
+        let dispatcher_addr = FakeDispatcher {}.start().recipient();
+        let matcher_actor =
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
+
+        let mut event: InternalEvent = Event::new("test").into();
+        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+
+        // Act
+        let processed_event: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event,
+                config_filter: HashMap::from([(
+                    ROOT_NODE_NAME.to_owned(),
+                    NodeFilter::AllChildren,
+                )]),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
+
+        // Assert
+        match processed_event.result {
+            ProcessedNode::Filter { nodes, .. } => {
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
+                    }
+                    _ => false,
+                });
+
+                assert!(tenant_node_matched);
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[actix::test]
+    async fn should_execute_event_to_filtered_config_for_tenant() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+
+        let config_manager = configs.matcher_config.clone();
+        let dispatcher_addr = FakeDispatcher {}.start().recipient();
+        let matcher_actor =
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
+
+        let mut event_tenant_alpha: InternalEvent = Event::new("test").into();
+        event_tenant_alpha
+            .add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned()))
+            .unwrap();
+
+        let mut event_tenant_beta: InternalEvent = Event::new("test").into();
+        event_tenant_beta
+            .add_to_metadata("tenant_id".to_owned(), Value::Text("beta".to_owned()))
+            .unwrap();
+
+        let config_filter = HashMap::from([(
+            ROOT_NODE_NAME.to_owned(),
+            NodeFilter::SelectedChildren(HashMap::from([(
+                "tenant_id_beta".to_owned(),
+                NodeFilter::AllChildren,
+            )])),
+        )]);
+
+        // Act
+        let processed_event_alpha: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event: event_tenant_alpha,
+                config_filter: config_filter.clone(),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
+
+        let processed_event_beta: ProcessedEvent = matcher_actor
+            .send(EventMessageWithReply {
+                event: event_tenant_beta,
+                config_filter: config_filter.clone(),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap()
+            .unwrap();
+
+        // Assert
+        match processed_event_alpha.result {
+            ProcessedNode::Filter { nodes, .. } => {
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
+                    }
+                    _ => false,
+                });
+
+                assert!(!tenant_node_matched);
+            }
+            _ => assert!(false),
+        };
+
+        match processed_event_beta.result {
+            ProcessedNode::Filter { nodes, .. } => {
+                let tenant_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_beta") && filter.status == ProcessedFilterStatus::Matched
+                    }
+                    _ => false,
+                });
+
+                assert!(tenant_node_matched);
+            }
+            _ => assert!(false),
+        };
+    }
+
+    #[actix::test]
+    async fn should_return_error_if_the_filter_matches_no_nodes() {
+        // Arrange
+        let tempdir = tempfile::tempdir().unwrap();
+        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
+
+        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
+
+        let config_manager = configs.matcher_config.clone();
+        let dispatcher_addr = FakeDispatcher {}.start().recipient();
+        let matcher_actor =
+            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
+                .await
+                .unwrap();
+
+        let mut event: InternalEvent = Event::new("test").into();
+        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+
+        // Act
+        let processed_event = matcher_actor
+            .send(EventMessageWithReply {
+                event,
+                config_filter: HashMap::from([(
+                    ROOT_NODE_NAME.to_owned(),
+                    NodeFilter::SelectedChildren(HashMap::from([(
+                        "NOT_EXISTING_NODE_NAME".to_owned(),
+                        NodeFilter::AllChildren,
+                    )])),
+                )]),
+                include_metadata: false,
+                process_type: ProcessType::Full,
+            })
+            .await
+            .unwrap();
+
+        // Assert
+        assert!(processed_event.is_err());
     }
 
     struct FakeDispatcher {}
