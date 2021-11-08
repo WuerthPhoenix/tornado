@@ -52,27 +52,33 @@ pub fn matcher_config_filter(
         match matcher_config {
             MatcherConfig::Ruleset { .. } => Some(matcher_config.clone()),
             MatcherConfig::Filter { name, filter, nodes } => {
-                let mut children = vec![];
-
                 match node_filter {
                     NodeFilter::AllChildren => {
-                        children = nodes.clone();
+                        Some(MatcherConfig::Filter {
+                            name: name.to_owned(),
+                            filter: filter.to_owned(),
+                            nodes: nodes.clone(),
+                        })
                     }
                     NodeFilter::SelectedChildren(selected_children) => {
+                        let mut children = vec![];
                         for node in nodes {
                             if let Some(child_node) = matcher_config_filter(node, selected_children)
                             {
                                 children.push(child_node)
                             }
                         }
+                        if children.is_empty() {
+                            None
+                        } else {
+                            Some(MatcherConfig::Filter {
+                                name: name.to_owned(),
+                                filter: filter.to_owned(),
+                                nodes: children,
+                            })
+                        }
                     }
                 }
-
-                Some(MatcherConfig::Filter {
-                    name: name.to_owned(),
-                    filter: filter.to_owned(),
-                    nodes: children,
-                })
             }
         }
     } else {
@@ -525,6 +531,39 @@ mod test {
 
         assert_eq!(Some(expected_config), filtered_config);
     }
+
+    #[test]
+    fn node_filter_map_from_should_return_none_if_not_a_full_path_match() {
+        // Arrange
+        let config = MatcherConfig::Filter {
+            filter: filter_definition(),
+            name: "root".to_owned(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    filter: filter_definition(),
+                    name: "child_1".to_owned(),
+                    nodes: vec![MatcherConfig::Filter {
+                        filter: filter_definition(),
+                        name: "child_1_1".to_owned(),
+                        nodes: vec![],
+                    }],
+                },
+                MatcherConfig::Ruleset { name: "hi".to_owned(), rules: vec![] },
+            ],
+        };
+
+        let paths = vec![
+            vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned()],
+        ];
+
+        // Act
+        let filter = NodeFilter::map_from(&paths);
+        let filtered_config = matcher_config_filter(&config, &filter);
+
+        // Assert
+        assert!(filtered_config.is_none());
+    }
+
 
     fn filter_definition() -> Filter {
         Filter { description: "desc".to_owned(), active: true, filter: Defaultable::Default {} }
