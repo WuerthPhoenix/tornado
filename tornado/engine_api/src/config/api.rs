@@ -45,45 +45,37 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         node_path: &str,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        let filtered_matcher = self.get_filtered_matcher(&auth).await?;
-
-        let base_path: Vec<_> = auth.auth.authorization.path.iter().map(|s| s as &str).collect();
-        if filtered_matcher.get_node_by_path(&base_path).is_none() {
-            let message = "The authorized node path does not exist.";
-            warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
-            return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
-        }
-        let relative_path: Vec<_> =
-            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
-
-        let absolute_path = Self::get_node_absolute_path(base_path, relative_path)?;
-
-        if let Some(child_nodes) =
-            filtered_matcher.get_child_nodes_by_path(absolute_path.as_slice())
-        {
-            let result =
-                child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
-            Ok(result)
-        } else {
-            Err(ApiError::NodeNotFoundError {
-                message: format!("Node for path {:?} not found", absolute_path),
-            })
-        }
+        self.get_authorized_child_nodes(&auth, node_path).await
     }
 
-    fn get_node_absolute_path<'a>(
-        base_path: Vec<&'a str>,
-        mut relative_path: Vec<&'a str>,
-    ) -> Result<Vec<&'a str>, ApiError> {
-        let mut absolute_path: Vec<_> = base_path;
+    async fn get_authorized_child_nodes(
+        &self,
+        auth: &AuthContextV2<'_>,
+        node_path: &str,
+    ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
+        let filtered_matcher = self.get_filtered_matcher(auth).await?;
 
+        let mut relative_path: Vec<_> =
+            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
+
+        let mut absolute_path: Vec<_> =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect();
+
+        // We must remove the last element of the authorized path because the endpoint is expected
+        // to return the entry point of the authorized tree, when node_path is empty.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
         if absolute_path.pop().is_none() {
             let message = "The authorized node path cannot be empty.";
             warn!("{}", message);
             return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
         };
         absolute_path.append(&mut relative_path);
-        Ok(absolute_path)
+        let child_nodes = filtered_matcher
+            .get_child_nodes_by_path(absolute_path.as_slice())
+            .ok_or(ApiError::NodeNotFoundError {
+                message: format!("Node for path {:?} not found", absolute_path),
+            })?;
+        Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
     }
 
     async fn get_filtered_matcher(

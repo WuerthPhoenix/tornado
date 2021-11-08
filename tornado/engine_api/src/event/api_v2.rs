@@ -70,8 +70,10 @@ pub mod test {
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
         permission_roles_map.insert(Permission::ConfigView, vec!["view".to_owned()]);
-        permission_roles_map
-            .insert(Permission::TestEventExecuteActions, vec!["test_event_execute_actions".to_owned()]);
+        permission_roles_map.insert(
+            Permission::TestEventExecuteActions,
+            vec!["test_event_execute_actions".to_owned()],
+        );
         permission_roles_map
     }
 
