@@ -25,6 +25,7 @@ pub enum Permission {
     ConfigView,
     RuntimeConfigEdit,
     RuntimeConfigView,
+    EventsFullProcess,
 }
 
 #[derive(Debug, Clone)]
