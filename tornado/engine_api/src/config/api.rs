@@ -10,6 +10,8 @@ use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
 };
 
+const NODE_PATH_SEPARATOR: &str = ",";
+
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
@@ -42,38 +44,40 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     pub async fn get_current_config_processing_tree_nodes_by_path(
         &self,
         auth: AuthContextV2<'_>,
-        node_path: &str,
+        node_path: Option<&str>,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        self.get_authorized_child_nodes(&auth, node_path).await
+        let relative_node_path: Vec<_> = match node_path {
+            None => { vec![] }
+            Some(node_path) => {node_path.split(NODE_PATH_SEPARATOR).collect()}
+        };
+
+        self.get_authorized_child_nodes(&auth, relative_node_path).await
     }
 
     async fn get_authorized_child_nodes(
         &self,
         auth: &AuthContextV2<'_>,
-        node_path: &str,
+        mut relative_node_path: Vec<&str>,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         let filtered_matcher = self.get_filtered_matcher(auth).await?;
 
-        let mut relative_path: Vec<_> =
-            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
+        let mut absolute_path =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
-        let mut absolute_path: Vec<_> =
-            auth.auth.authorization.path.iter().map(|s| s as &str).collect();
-
-        // We must remove the last element of the authorized path because the endpoint is expected
-        // to return the entry point of the authorized tree, when node_path is empty.
+        // We must remove the last element of the authorized path because node_path starts from
+        // the entry point (included) of the authorized tree.
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
         if absolute_path.pop().is_none() {
             let message = "The authorized node path cannot be empty.";
             warn!("{}", message);
             return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
         };
-        absolute_path.append(&mut relative_path);
+        absolute_path.append(&mut relative_node_path);
         let child_nodes = filtered_matcher
             .get_child_nodes_by_path(absolute_path.as_slice())
             .ok_or(ApiError::NodeNotFoundError {
-                message: format!("Node for path {:?} not found", absolute_path),
+                message: format!("Node for path {:?} not found", relative_node_path),
             })?;
         Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
     }
@@ -99,18 +103,35 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
+        let relative_node_path = node_path.split(NODE_PATH_SEPARATOR).collect();
+        self.get_node_details(&auth, relative_node_path).await
+    }
 
-        let config = self.config_manager.get_config().await?;
-        let path: Vec<_> = node_path.split(',').collect();
+    async fn get_node_details(
+        &self,
+        auth: &AuthContextV2<'_>,
+        mut relative_node_path: Vec<&str>,
+    ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
+        let filtered_matcher = self.get_filtered_matcher(auth).await?;
 
-        if let Some(node) = config.get_node_by_path(path.as_slice()) {
-            let result = ProcessingTreeNodeDetailsDto::from(node);
-            Ok(result)
-        } else {
-            Err(ApiError::NodeNotFoundError {
-                message: format!("Node for path {} not found", node_path),
-            })
-        }
+        let mut absolute_path =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
+
+        // We must remove the last element of the authorized path because node_path starts from
+        // the entry point (included) of the authorized tree.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
+        if absolute_path.pop().is_none() {
+            let message = "The authorized node path cannot be empty.";
+            warn!("{}", message);
+            return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
+        };
+        absolute_path.append(&mut relative_node_path);
+        let node = filtered_matcher
+            .get_node_by_path(absolute_path.as_slice())
+            .ok_or(ApiError::NodeNotFoundError {
+                message: format!("Node for path {:?} not found", relative_node_path),
+            })?;
+        Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
     /// Returns the list of available drafts
@@ -206,6 +227,7 @@ mod test {
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
+    use tornado_engine_api_dto::config::RuleDetailsDto;
 
     const DRAFT_OWNER_ID: &str = "OWNER";
 
@@ -618,26 +640,26 @@ mod test {
         assert_eq!(
             api.get_current_config_processing_tree_nodes_by_path(
                 not_owner_edit_and_view,
-                &"".to_string()
+                None
             )
             .await
             .unwrap(),
             expected_result
         );
         assert_eq!(
-            api.get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string())
+            api.get_current_config_processing_tree_nodes_by_path(owner_view, None)
                 .await
                 .unwrap(),
             expected_result
         );
         assert!(api
-            .get_current_config_processing_tree_nodes_by_path(owner_edit, &"".to_string())
+            .get_current_config_processing_tree_nodes_by_path(owner_edit, None)
             .await
             .is_err());
         assert_eq!(
             api.get_current_config_processing_tree_nodes_by_path(
                 owner_edit_and_view,
-                &"".to_string()
+                None
             )
             .await
             .unwrap(),
@@ -665,7 +687,7 @@ mod test {
 
         // Act
         let res = api
-            .get_current_config_processing_tree_nodes_by_path(user_root_1, &"".to_string())
+            .get_current_config_processing_tree_nodes_by_path(user_root_1, None)
             .await
             .unwrap();
 
@@ -699,7 +721,7 @@ mod test {
 
         // Act
         let res = api
-            .get_current_config_processing_tree_nodes_by_path(user_root_3, &"".to_string())
+            .get_current_config_processing_tree_nodes_by_path(user_root_3, None)
             .await;
 
         // Assert
@@ -722,7 +744,7 @@ mod test {
         );
 
         // Act
-        let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
+        let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
         assert!(res.is_err());
@@ -747,7 +769,7 @@ mod test {
         );
 
         // Act
-        let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
+        let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
         assert!(res.is_err());
@@ -772,7 +794,7 @@ mod test {
 
         // Act
         let res = api
-            .get_current_config_processing_tree_nodes_by_path(user_root_1, &"root_1".to_string())
+            .get_current_config_processing_tree_nodes_by_path(user_root_1, Some(&"root_1".to_string()))
             .await
             .unwrap();
 
@@ -814,7 +836,7 @@ mod test {
 
         // Act & Assert
         assert!(api
-            .get_current_config_processing_tree_nodes_by_path(user_root_3, &"root".to_string())
+            .get_current_config_processing_tree_nodes_by_path(user_root_3, Some(&"root".to_string()))
             .await
             .is_err());
     }
@@ -850,4 +872,65 @@ mod test {
             Err(ApiError::ForbiddenError { .. })
         ));
     }
+
+    #[actix_rt::test]
+    async fn get_current_config_node_details_by_path_should_return_details_starting_from_authorized_path(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res = api
+            .get_current_config_node_details_by_path(user, &"root_1,root_1_2".to_string())
+            .await.unwrap();
+
+        // Assert
+        let expected_res = ProcessingTreeNodeDetailsDto::Ruleset { name: "root_1_2".to_string(), rules: vec![
+            RuleDetailsDto{
+                name: "root_1_2_1".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: true,
+                actions: vec![]
+            }] };
+        assert_eq!(res, expected_res);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_node_details_by_path_should_return_error_if_authorized_path_does_not_exist(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user_root_3 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_3".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act & Assert
+        assert!(api
+            .get_current_config_node_details_by_path(user_root_3, &"root".to_string())
+            .await
+            .is_err());
+    }
+
 }

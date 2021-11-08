@@ -85,7 +85,7 @@ async fn get_tree_node<
 
     let result = data
         .api
-        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &"".to_string())
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, None)
         .await?;
     Ok(Json(result))
 }
@@ -102,7 +102,7 @@ async fn get_tree_node_with_node_path<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_current_config_processing_tree_nodes_by_path(auth_ctx, &endpoint_params.node_path)
+        .get_current_config_processing_tree_nodes_by_path(auth_ctx, Some(&endpoint_params.node_path))
         .await?;
     Ok(Json(result))
 }
@@ -273,7 +273,17 @@ mod test {
                     filter: Defaultable::Default {},
                     active: false,
                 },
-                nodes: vec![],
+                nodes: vec![
+                    MatcherConfig::Filter {
+                        name: "child_1".to_owned(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            filter: Defaultable::Default {},
+                            active: false,
+                        },
+                        nodes: vec![],
+                    }
+                ],
             })
         }
     }
@@ -436,10 +446,16 @@ mod test {
             test::read_response_json(&mut srv, request).await;
 
         assert_eq!(
-            tornado_engine_api_dto::config::MatcherConfigDto::Filter {
+            MatcherConfigDto::Filter {
                 name: "root".to_owned(),
                 filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                nodes: vec![]
+                nodes: vec![
+                    MatcherConfigDto::Filter {
+                        name: "child_1".to_owned(),
+                        filter: FilterDto { description: "".to_string(), active: false, filter: None },
+                        nodes: vec![]
+                    },
+                ]
             },
             dto
         );
@@ -571,7 +587,6 @@ mod test {
 
         let response = test::call_service(&mut srv, request).await;
 
-        println!("{:?}", response);
         // Assert
         assert_eq!(StatusCode::OK, response.status());
         Ok(())
@@ -596,14 +611,14 @@ mod test {
                     user: "admin".to_string(),
                     auths: hashmap! {
                         "auth1".to_owned() => Authorization {
-                            path: vec!["root".to_owned()],
+                            path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["view".to_owned()],
                         }
                     },
                     preferences: None,
                 })?,
             ))
-            .uri("/config/active/tree/details/auth1/root")
+            .uri("/config/active/tree/details/auth1/child_1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
