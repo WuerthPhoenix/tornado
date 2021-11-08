@@ -152,7 +152,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
         let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
             .ok_or_else(|| MatcherError::ConfigurationError {
-                message: "The config filter does not match any existing node".to_owned()
+                message: "The config filter does not match any existing node".to_owned(),
             })?;
         let matcher = Matcher::build(&filtered_config)?;
 
@@ -462,7 +462,6 @@ mod test {
 
         // Assert
         assert!(processed_event.is_err());
-
     }
 
     struct FakeDispatcher {}
