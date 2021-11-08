@@ -250,7 +250,6 @@ mod test {
         test, App,
     };
     use async_trait::async_trait;
-    use maplit::hashmap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
@@ -260,6 +259,7 @@ mod test {
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
+    use std::collections::HashMap;
 
     struct ConfigManager {}
 
@@ -521,12 +521,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
@@ -557,12 +558,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned(), "edit".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
@@ -594,12 +596,14 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
