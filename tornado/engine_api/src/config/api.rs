@@ -953,6 +953,25 @@ mod test {
     }
 
     #[actix_rt::test]
+    async fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
+        // Arrange
+        let test = MatcherConfig::Ruleset {
+            name: "root".to_owned(),
+            rules: vec![],
+        };
+
+        let root = test.get_child_nodes_by_path(&[]).unwrap();
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 0, filters_count: 0 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
     async fn get_tree_info_should_work_on_empty_config() {
         // Arrange
         let root = [];
