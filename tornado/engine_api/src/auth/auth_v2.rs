@@ -120,6 +120,7 @@ impl AuthServiceV2 {
 #[cfg(test)]
 pub mod test {
     use super::*;
+    use actix_web::{http::header, test};
     use tornado_engine_api_dto::auth::UserPreferences;
     use tornado_engine_api_dto::auth_v2::Authorization;
 
@@ -394,5 +395,48 @@ pub mod test {
 
         // Assert
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn auth_from_request_should_build_auth_from_http_request() {
+        // Arrange
+        let permission_map = permission_map();
+        let auth_service = AuthServiceV2::new(Arc::new(permission_map.clone()));
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })
+                .unwrap(),
+            ))
+            .to_http_request();
+
+        // Act
+        let result = auth_service.auth_from_request(&request, "auth1").unwrap();
+
+        // Assert
+        let expected = AuthContextV2::new(
+            AuthV2 {
+                user: "admin".to_string(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permission_map,
+        );
+
+        assert_eq!(result, expected)
     }
 }
