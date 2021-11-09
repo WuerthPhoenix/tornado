@@ -241,8 +241,9 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::auth_v2::test::test_auth_service_v2;
     use crate::auth::auth_v2::AuthServiceV2;
-    use crate::auth::test::{test_auth_service, test_auth_service_v2};
+    use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
     use crate::error::ApiError;
     use actix_web::{
@@ -250,6 +251,7 @@ mod test {
         test, App,
     };
     use async_trait::async_trait;
+    use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
@@ -259,7 +261,6 @@ mod test {
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
-    use std::collections::HashMap;
 
     struct ConfigManager {}
 
