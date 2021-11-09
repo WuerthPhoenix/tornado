@@ -1,8 +1,11 @@
+use crate::auth::auth_v2::AuthContextV2;
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
+use log::*;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto};
+use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
 };
@@ -38,30 +41,61 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     /// of the current configuration of tornado
     pub async fn get_current_config_processing_tree_nodes_by_path(
         &self,
-        auth: AuthContext<'_>,
+        auth: AuthContextV2<'_>,
         node_path: &str,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
+        self.get_authorized_child_nodes(&auth, node_path).await
+    }
 
+    async fn get_authorized_child_nodes(
+        &self,
+        auth: &AuthContextV2<'_>,
+        node_path: &str,
+    ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
+        let filtered_matcher = self.get_filtered_matcher(auth).await?;
+
+        let mut relative_path: Vec<_> =
+            if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
+
+        let mut absolute_path: Vec<_> =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect();
+
+        // We must remove the last element of the authorized path because the endpoint is expected
+        // to return the entry point of the authorized tree, when node_path is empty.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
+        if absolute_path.pop().is_none() {
+            let message = "The authorized node path cannot be empty.";
+            warn!("{}", message);
+            return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
+        };
+        absolute_path.append(&mut relative_path);
+        let child_nodes = filtered_matcher
+            .get_child_nodes_by_path(absolute_path.as_slice())
+            .ok_or(ApiError::NodeNotFoundError {
+                message: format!("Node for path {:?} not found", absolute_path),
+            })?;
+        Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
+    }
+
+    async fn get_filtered_matcher(
+        &self,
+        auth: &AuthContextV2<'_>,
+    ) -> Result<MatcherConfig, ApiError> {
         let config = self.config_manager.get_config().await?;
-        let path: Vec<_> = node_path.split(',').collect();
-
-        if let Some(child_nodes) = config.get_child_nodes_by_path(path.as_slice()) {
-            let result =
-                child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect();
-            Ok(result)
-        } else {
-            Err(ApiError::NodeNotFoundError {
-                message: format!("Node for path {} not found", node_path),
-            })
-        }
+        let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
+        matcher_config_filter(&config, &node_filter).ok_or({
+            let message = "The authorized node path does not exist.";
+            warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
+            ApiError::InvalidAuthorizedPath { message: message.to_owned() }
+        })
     }
 
     /// Returns processing tree node details by path
     /// in the current configuration of tornado
     pub async fn get_current_config_node_details_by_path(
         &self,
-        auth: AuthContext<'_>,
+        auth: AuthContextV2<'_>,
         node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
@@ -165,8 +199,11 @@ mod test {
     use std::collections::BTreeMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
+    use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
+    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
-        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+        Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
     };
     use tornado_engine_matcher::error::MatcherError;
 
@@ -177,7 +214,74 @@ mod test {
     #[async_trait::async_trait(?Send)]
     impl MatcherConfigReader for TestConfigManager {
         async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] })
+            Ok(MatcherConfig::Filter {
+                name: "root".to_owned(),
+                filter: Filter {
+                    description: "".to_string(),
+                    active: false,
+                    filter: Defaultable::Default {},
+                },
+                nodes: vec![
+                    MatcherConfig::Filter {
+                        name: "root_1".to_owned(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![
+                            MatcherConfig::Filter {
+                                name: "root_1_1".to_owned(),
+                                filter: Filter {
+                                    description: "".to_string(),
+                                    active: false,
+                                    filter: Defaultable::Default {},
+                                },
+                                nodes: vec![],
+                            },
+                            MatcherConfig::Ruleset {
+                                name: "root_1_2".to_string(),
+                                rules: vec![Rule {
+                                    name: "root_1_2_1".to_string(),
+                                    description: "".to_string(),
+                                    do_continue: false,
+                                    active: true,
+                                    constraint: Constraint {
+                                        where_operator: None,
+                                        with: Default::default(),
+                                    },
+                                    actions: vec![],
+                                }],
+                            },
+                        ],
+                    },
+                    MatcherConfig::Filter {
+                        name: "root_2".to_owned(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![
+                            MatcherConfig::Ruleset {
+                                name: "root_2_1".to_string(),
+                                rules: vec![Rule {
+                                    name: "root_2_1_1".to_string(),
+                                    description: "".to_string(),
+                                    do_continue: false,
+                                    active: true,
+                                    constraint: Constraint {
+                                        where_operator: None,
+                                        with: Default::default(),
+                                    },
+                                    actions: vec![],
+                                }],
+                            },
+                            MatcherConfig::Ruleset { name: "root_2_2".to_string(), rules: vec![] },
+                        ],
+                    },
+                ],
+            })
         }
     }
 
@@ -286,6 +390,60 @@ mod test {
             Auth {
                 user: DRAFT_OWNER_ID.to_owned(),
                 roles: vec!["edit".to_owned(), "view".to_owned()],
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view)
+    }
+
+    fn create_users_v2(
+        permissions_map: &BTreeMap<Permission, Vec<String>>,
+    ) -> (AuthContextV2, AuthContextV2, AuthContextV2, AuthContextV2) {
+        let not_owner_edit_and_view = AuthContextV2::new(
+            AuthV2 {
+                user: "a_user".to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned(), "view".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_edit = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_edit_and_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned(), "view".to_owned()],
+                },
                 preferences: None,
             },
             permissions_map,
@@ -448,28 +606,228 @@ mod test {
         let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
         let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
-            create_users(&permissions_map);
+            create_users_v2(&permissions_map);
 
         // Act & Assert
-        assert!(api
-            .get_current_config_processing_tree_nodes_by_path(
+        let expected_result = vec![ProcessingTreeNodeConfigDto::Filter {
+            name: "root".to_string(),
+            rules_count: 2,
+            children_count: 2,
+            description: "".to_string(),
+        }];
+        assert_eq!(
+            api.get_current_config_processing_tree_nodes_by_path(
                 not_owner_edit_and_view,
                 &"".to_string()
             )
             .await
-            .is_ok());
-        assert!(api
-            .get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string())
-            .await
-            .is_ok());
+            .unwrap(),
+            expected_result
+        );
+        assert_eq!(
+            api.get_current_config_processing_tree_nodes_by_path(owner_view, &"".to_string())
+                .await
+                .unwrap(),
+            expected_result
+        );
         assert!(api
             .get_current_config_processing_tree_nodes_by_path(owner_edit, &"".to_string())
             .await
             .is_err());
-        assert!(api
-            .get_current_config_processing_tree_nodes_by_path(owner_edit_and_view, &"".to_string())
+        assert_eq!(
+            api.get_current_config_processing_tree_nodes_by_path(
+                owner_edit_and_view,
+                &"".to_string()
+            )
             .await
-            .is_ok());
+            .unwrap(),
+            expected_result
+        );
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_by_empty_path_should_return_authorized_subtree_entry(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user_root_1 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_1, &"".to_string()).await.unwrap();
+        let res = api
+            .get_current_config_processing_tree_nodes_by_path(user_root_1, &"".to_string())
+            .await
+            .unwrap();
+
+        // Assert
+        let expected_result = vec![ProcessingTreeNodeConfigDto::Filter {
+            name: "root_1".to_string(),
+            rules_count: 1,
+            children_count: 2,
+            description: "".to_string(),
+        }];
+        assert_eq!(res, expected_result);
+        assert_eq!(res_authorized_child_nodes, expected_result);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_by_empty_path_should_return_error_if_authorized_path_does_not_exist(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user_root_3 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_3".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_3, &"".to_string()).await;
+        let res = api
+            .get_current_config_processing_tree_nodes_by_path(user_root_3, &"".to_string())
+            .await;
+
+        // Assert
+        assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_should_return_error_if_authorized_path_is_empty(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization { path: vec![], roles: vec!["view".to_owned()] },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user, &"".to_string()).await;
+        let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
+
+        // Assert
+        assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_should_return_error_if_authorized_path_root_does_not_exist(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["non_existing".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user, &"".to_string()).await;
+        let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
+
+        // Assert
+        assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_by_path_should_start_from_authorized_path() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user_root_1 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_1, &"root_1".to_string()).await.unwrap();
+        let res = api
+            .get_current_config_processing_tree_nodes_by_path(user_root_1, &"root_1".to_string())
+            .await
+            .unwrap();
+
+        // Assert
+        let expected = vec![
+            ProcessingTreeNodeConfigDto::Filter {
+                name: "root_1_1".to_string(),
+                rules_count: 0,
+                children_count: 0,
+                description: "".to_string(),
+            },
+            ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
+        ];
+        assert_eq!(res, expected);
+        assert_eq!(res_authorized_child_nodes, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_processing_tree_nodes_by_path_should_return_error_if_authorized_path_does_not_exist(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user_root_3 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_3".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act & Assert
+        assert!(api.get_authorized_child_nodes(&user_root_3, &"root".to_string()).await.is_err());
+        assert!(api
+            .get_current_config_processing_tree_nodes_by_path(user_root_3, &"root".to_string())
+            .await
+            .is_err());
     }
 
     #[actix_rt::test]
@@ -478,7 +836,7 @@ mod test {
         let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
         let (not_owner_edit_and_view, owner_view, owner_edit, owner_edit_and_view) =
-            create_users(&permissions_map);
+            create_users_v2(&permissions_map);
 
         // Act & Assert
         assert!(!matches!(

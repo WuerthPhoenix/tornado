@@ -1,7 +1,10 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use crate::event::api::{EventApiHandler, ProcessType, SendEventRequest};
+use std::collections::HashMap;
 use std::sync::Arc;
+use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfigEditor;
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -24,12 +27,13 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
         match event.process_type {
             ProcessType::Full => {
-                auth.has_permission(&Permission::EventsFullProcess)?;
+                auth.has_permission(&Permission::TestEventExecuteActions)?;
             }
             ProcessType::SkipActions => {}
         };
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
-        self.handler.send_event_to_current_config(event).await
+        self.handler.send_event_to_current_config(config_filter, event).await
     }
 
     pub async fn send_event_to_draft(
@@ -44,7 +48,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         auth.has_permission(&Permission::ConfigEdit)?;
         match event.process_type {
             ProcessType::Full => {
-                auth.has_permission(&Permission::EventsFullProcess)?;
+                auth.has_permission(&Permission::TestEventExecuteActions)?;
             }
             ProcessType::SkipActions => {}
         };
@@ -57,52 +61,19 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
 pub mod test {
     use super::*;
     use crate::auth::Permission;
-    use crate::error::ApiError;
-    use async_trait::async_trait;
-    use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::{Event, Value};
+    use crate::event::api::test::{TestApiHandler, TestConfigManager};
+    use std::collections::BTreeMap;
+    use tornado_common_api::Event;
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{
-        MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
-    };
-    use tornado_engine_matcher::error::MatcherError;
-    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
-
-    pub struct TestApiHandler {}
-
-    #[async_trait(?Send)]
-    impl EventApiHandler for TestApiHandler {
-        async fn send_event_to_current_config(
-            &self,
-            event: SendEventRequest,
-        ) -> Result<ProcessedEvent, ApiError> {
-            Ok(ProcessedEvent {
-                event: event.event.into(),
-                result: ProcessedNode::Ruleset {
-                    name: "ruleset".to_owned(),
-                    rules: ProcessedRules {
-                        rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
-                    },
-                },
-            })
-        }
-
-        async fn send_event_to_config(
-            &self,
-            event: SendEventRequest,
-            _config: MatcherConfig,
-        ) -> Result<ProcessedEvent, ApiError> {
-            self.send_event_to_current_config(event).await
-        }
-    }
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
         let mut permission_roles_map = BTreeMap::new();
         permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
         permission_roles_map.insert(Permission::ConfigView, vec!["view".to_owned()]);
-        permission_roles_map
-            .insert(Permission::EventsFullProcess, vec!["events_full_process".to_owned()]);
+        permission_roles_map.insert(
+            Permission::TestEventExecuteActions,
+            vec!["test_event_execute_actions".to_owned()],
+        );
         permission_roles_map
     }
 
@@ -122,7 +93,7 @@ pub mod test {
         let user_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned()],
                 preferences: None,
             },
             permissions_map,
@@ -132,63 +103,6 @@ pub mod test {
     }
 
     pub const DRAFT_OWNER_ID: &str = "OWNER";
-
-    pub struct TestConfigManager {}
-
-    #[async_trait::async_trait(?Send)]
-    impl MatcherConfigEditor for TestConfigManager {
-        async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
-            Ok(vec![])
-        }
-
-        async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
-            Ok(MatcherConfigDraft {
-                data: MatcherConfigDraftData {
-                    user: DRAFT_OWNER_ID.to_owned(),
-                    draft_id: draft_id.to_owned(),
-                    created_ts_ms: 0,
-                    updated_ts_ms: 0,
-                },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
-            })
-        }
-
-        async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
-            Ok("".to_owned())
-        }
-
-        async fn update_draft(
-            &self,
-            _draft_id: &str,
-            _user: String,
-            _config: &MatcherConfig,
-        ) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
-            Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
-        }
-
-        async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn draft_take_over(
-            &self,
-            _draft_id: &str,
-            _user: String,
-        ) -> Result<(), MatcherError> {
-            Ok(())
-        }
-
-        async fn deploy_config(
-            &self,
-            _config: &MatcherConfig,
-        ) -> Result<MatcherConfig, MatcherError> {
-            unimplemented!()
-        }
-    }
 
     #[actix_rt::test]
     async fn send_event_to_configuration_with_skip_action_should_require_edit_or_view_permission() {
@@ -219,7 +133,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_configuration_with_full_execution_should_require_events_full_process_and_view_or_edit_permission(
+    async fn send_event_to_configuration_with_full_execution_should_require_test_event_execute_actions_and_view_or_edit_permission(
     ) {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
@@ -228,7 +142,7 @@ pub mod test {
         let user_view_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
                 preferences: None,
             },
             &permissions,
@@ -236,7 +150,7 @@ pub mod test {
         let user_edit_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
                 preferences: None,
             },
             &permissions,
@@ -312,7 +226,7 @@ pub mod test {
         let mut user_view_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "view".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
                 preferences: None,
             },
             &permissions_map,
@@ -320,7 +234,7 @@ pub mod test {
         let mut user_edit_and_full_process = AuthContext::new(
             Auth {
                 user: "user_id".to_owned(),
-                roles: vec!["events_full_process".to_owned(), "edit".to_owned()],
+                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
                 preferences: None,
             },
             &permissions_map,

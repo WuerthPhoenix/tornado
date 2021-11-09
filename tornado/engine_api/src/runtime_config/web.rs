@@ -95,7 +95,8 @@ async fn set_stdout_priority_config<A: RuntimeConfigApiHandler + 'static>(
 
 #[cfg(test)]
 mod test {
-    use crate::auth::{test_auth_service, AuthService};
+    use crate::auth::test::test_auth_service;
+    use crate::auth::AuthService;
     use crate::error::ApiError;
     use crate::model::ApiData;
     use crate::runtime_config::api::test::TestRuntimeConfigApiHandler;

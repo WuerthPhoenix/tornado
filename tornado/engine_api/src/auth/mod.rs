@@ -3,9 +3,12 @@ use actix_web::HttpRequest;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
+use std::fmt::Debug;
 use std::sync::Arc;
 use tornado_engine_api_dto::auth::Auth;
 use tornado_engine_matcher::config::MatcherConfigDraft;
+
+pub mod auth_v2;
 
 pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
@@ -25,7 +28,7 @@ pub enum Permission {
     ConfigView,
     RuntimeConfigEdit,
     RuntimeConfigView,
-    EventsFullProcess,
+    TestEventExecuteActions,
 }
 
 #[derive(Debug, Clone)]
@@ -60,23 +63,18 @@ impl<'a> AuthContext<'a> {
     ) -> Result<&AuthContext, ApiError> {
         self.is_authenticated()?;
 
-        for permission in permissions {
-            if let Some(roles_with_permission) = self.permission_roles_map.get(permission) {
-                for user_role in &self.auth.roles {
-                    if roles_with_permission.contains(user_role) {
-                        return Ok(self);
-                    }
-                }
-            }
+        if roles_contain_any_permission(self.permission_roles_map, &self.auth.roles, permissions) {
+            Ok(self)
+        } else {
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
+                params: HashMap::new(),
+                message: format!(
+                    "User [{}] does not have the required permissions [{:?}]",
+                    self.auth.user, permissions
+                ),
+            })
         }
-        Err(ApiError::ForbiddenError {
-            code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
-            params: HashMap::new(),
-            message: format!(
-                "User [{}] does not have the required permissions [{:?}]",
-                self.auth.user, permissions
-            ),
-        })
     }
 
     // Returns an error if user does not have the permission
@@ -116,6 +114,23 @@ impl<'a> AuthContext<'a> {
     }
 }
 
+fn roles_contain_any_permission(
+    permission_roles_map: &BTreeMap<Permission, Vec<String>>,
+    roles: &[String],
+    permissions: &[&Permission],
+) -> bool {
+    for permission in permissions {
+        if let Some(roles_with_permission) = permission_roles_map.get(permission) {
+            for user_role in roles {
+                if roles_with_permission.contains(user_role) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
 // Reverts a role->permissions map to a permission->roles map
 pub fn roles_map_to_permissions_map(
     role_permissions: BTreeMap<String, Vec<Permission>>,
@@ -139,7 +154,7 @@ impl AuthService {
         Self { permission_roles_map }
     }
 
-    pub fn token_string_from_request<'a>(&self, req: &'a HttpRequest) -> Result<&'a str, ApiError> {
+    pub fn token_string_from_request(req: &HttpRequest) -> Result<&str, ApiError> {
         if let Some(header) = req.headers().get(JWT_TOKEN_HEADER) {
             return header
                 .to_str()
@@ -159,16 +174,11 @@ impl AuthService {
     }
 
     pub fn auth_from_request(&self, req: &HttpRequest) -> Result<AuthContext, ApiError> {
-        self.token_string_from_request(req).and_then(|token| self.auth_from_token_string(token))
+        Self::token_string_from_request(req).and_then(|token| self.auth_from_token_string(token))
     }
 
     pub fn auth_from_token_string(&self, token: &str) -> Result<AuthContext, ApiError> {
-        let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
-        })?;
-        let auth_str = String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
-            message: format!("Invalid UTF8 token content. Err: {:?}", err),
-        })?;
+        let auth_str = AuthService::decode_token_from_base64(token)?;
         let auth = serde_json::from_str(&auth_str).map_err(|err| ApiError::InvalidTokenError {
             message: format!("Invalid JSON token content. Err: {:?}", err),
         })?;
@@ -176,8 +186,17 @@ impl AuthService {
         Ok(AuthContext::new(auth, &self.permission_roles_map))
     }
 
+    pub fn decode_token_from_base64(token: &str) -> Result<String, ApiError> {
+        let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
+            message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
+        })?;
+        String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
+            message: format!("Invalid UTF8 token content. Err: {:?}", err),
+        })
+    }
+
     /// Generates the auth token
-    pub fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
+    fn auth_to_token_string(auth: &Auth) -> Result<String, ApiError> {
         let auth_str =
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
@@ -202,20 +221,20 @@ impl WithOwner for MatcherConfigDraft {
 }
 
 #[cfg(test)]
-pub fn test_auth_service() -> AuthService {
-    let mut permission_roles_map = BTreeMap::new();
-    permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-    permission_roles_map.insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-    permission_roles_map
-        .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
-    permission_roles_map
-        .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
-    AuthService::new(Arc::new(permission_roles_map))
-}
-
-#[cfg(test)]
-mod test {
+pub mod test {
     use super::*;
+
+    pub fn test_auth_service() -> AuthService {
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
+        AuthService::new(Arc::new(permission_roles_map))
+    }
 
     #[test]
     fn auth_service_should_create_base64_token() -> Result<(), ApiError> {
@@ -561,6 +580,41 @@ mod test {
             }
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn roles_contain_any_permission_should_return_whether_any_role_has_any_permissions() {
+        let roles = vec!["role_non_existing".to_owned(), "role1".to_owned()];
+
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit.to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView.to_owned(), vec!["role2".to_owned()]);
+
+        assert!(roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigEdit]
+        ));
+        assert!(roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigEdit, &Permission::RuntimeConfigEdit]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigView]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigView, &Permission::RuntimeConfigEdit]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &vec!["role_non_existing".to_owned()],
+            &[&Permission::ConfigView, &Permission::RuntimeConfigEdit]
+        ));
     }
 
     struct Ownable {
