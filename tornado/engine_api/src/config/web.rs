@@ -83,10 +83,7 @@ async fn get_tree_node<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
 
-    let result = data
-        .api
-        .get_current_config_processing_tree_nodes_by_path(auth_ctx, None)
-        .await?;
+    let result = data.api.get_current_config_processing_tree_nodes_by_path(auth_ctx, None).await?;
     Ok(Json(result))
 }
 
@@ -102,7 +99,10 @@ async fn get_tree_node_with_node_path<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_current_config_processing_tree_nodes_by_path(auth_ctx, Some(&endpoint_params.node_path))
+        .get_current_config_processing_tree_nodes_by_path(
+            auth_ctx,
+            Some(&endpoint_params.node_path),
+        )
         .await?;
     Ok(Json(result))
 }
@@ -274,17 +274,15 @@ mod test {
                     filter: Defaultable::Default {},
                     active: false,
                 },
-                nodes: vec![
-                    MatcherConfig::Filter {
-                        name: "child_1".to_owned(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            filter: Defaultable::Default {},
-                            active: false,
-                        },
-                        nodes: vec![],
-                    }
-                ],
+                nodes: vec![MatcherConfig::Filter {
+                    name: "child_1".to_owned(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        filter: Defaultable::Default {},
+                        active: false,
+                    },
+                    nodes: vec![],
+                }],
             })
         }
     }
@@ -450,13 +448,11 @@ mod test {
             MatcherConfigDto::Filter {
                 name: "root".to_owned(),
                 filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                nodes: vec![
-                    MatcherConfigDto::Filter {
-                        name: "child_1".to_owned(),
-                        filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                        nodes: vec![]
-                    },
-                ]
+                nodes: vec![MatcherConfigDto::Filter {
+                    name: "child_1".to_owned(),
+                    filter: FilterDto { description: "".to_string(), active: false, filter: None },
+                    nodes: vec![]
+                },]
             },
             dto
         );
