@@ -187,4 +187,10 @@ pub mod test {
             .is_ok());
     }
 
+    #[actix_rt::test]
+    async fn send_event_to_configuration_should_operate_only_on_user_visible_nodes(
+    ) {
+        // ToDo
+        assert!(false)
+    }
 }
