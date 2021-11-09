@@ -75,7 +75,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .ok_or(ApiError::NodeNotFoundError {
                 message: format!("Node for path {:?} not found", absolute_path),
             })?;
-        Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
+        Ok(child_nodes.iter().map(ProcessingTreeNodeConfigDto::from).collect())
     }
 
     async fn get_filtered_matcher(
