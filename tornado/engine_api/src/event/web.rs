@@ -29,7 +29,7 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 }
 
 pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
-    data: ApiData<EventApiV2<T, CM>>,
+    data: ApiDataV2<EventApiV2<T, CM>>,
 ) -> Scope {
     web::scope("/event")
         .app_data(Data::new(data))
@@ -149,10 +149,12 @@ async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::auth_v2::test::test_auth_service_v2;
     use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
     use crate::event::api::test::{TestApiHandler, TestConfigManager, DRAFT_OWNER_ID};
     use actix_web::{http::header, test, App};
+    use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
@@ -235,8 +237,8 @@ mod test {
     #[actix_rt::test]
     async fn should_send_event_to_current_config_v2() {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiData {
-            auth: test_auth_service(),
+        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
+            auth: test_auth_service_v2(),
             api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
         .await;
@@ -253,57 +255,85 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .uri("/event/active/my_auth")
+            .uri("/event/active/auth1")
             .insert_header((header::CONTENT_TYPE, "application/json"))
             .insert_header((
                 header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit", "view"]))
-                    .unwrap(),
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                }).unwrap(),
             ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
 
         // Assert
-        let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&mut srv, request).await;
+
+        let resp = test::call_service(&srv, request).await;
+        //println!("resp: [{:?}]", resp);
+        
+        assert_eq!(200, resp.status());
+
+        let dto: tornado_engine_api_dto::event::ProcessedEventDto = test::read_body_json(resp).await;
+
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
+
     }
 
     #[actix_rt::test]
-    async fn should_send_event_to_draft_v2() {
+    async fn send_event_to_current_config_v2_should_return_unauthorized() {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiData {
-            auth: test_auth_service(),
+        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
+            auth: test_auth_service_v2(),
             api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
         .await;
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
-                event_type: "my_test_event_for_draft".to_owned(),
+                event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
+
         // Act
         let request = test::TestRequest::post()
-            .uri("/event/drafts/mydraft/myauth")
+            .uri("/event/active/auth2")
             .insert_header((header::CONTENT_TYPE, "application/json"))
             .insert_header((
                 header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new(DRAFT_OWNER_ID, vec!["edit"]))
-                    .unwrap(),
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                }).unwrap(),
             ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
 
         // Assert
-        let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&mut srv, request).await;
-        assert_eq!("my_test_event_for_draft", dto.event.event_type);
-        assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
+        let resp = test::call_service(&srv, request).await;
+        //println!("resp: [{:?}]", resp);
+        
+        assert_eq!(401, resp.status());
+
     }
+
 }
