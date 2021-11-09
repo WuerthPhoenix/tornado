@@ -687,7 +687,7 @@ mod test {
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, &"".to_string()).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec![]).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_1, None)
             .await
@@ -724,7 +724,7 @@ mod test {
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_3, &"".to_string()).await;
+            api.get_authorized_child_nodes(&user_root_3, vec![]).await;
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_3, None)
             .await;
@@ -751,7 +751,7 @@ mod test {
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user, &"".to_string()).await;
+            api.get_authorized_child_nodes(&user, vec![]).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -779,7 +779,7 @@ mod test {
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user, &"".to_string()).await;
+            api.get_authorized_child_nodes(&user, vec![]).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -806,7 +806,7 @@ mod test {
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, &"root_1".to_string()).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec!["root_1"]).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_1, Some(&"root_1".to_string()))
             .await
@@ -845,7 +845,7 @@ mod test {
         );
 
         // Act & Assert
-        assert!(api.get_authorized_child_nodes(&user_root_3, &"root".to_string()).await.is_err());
+        assert!(api.get_authorized_child_nodes(&user_root_3, vec!["root"]).await.is_err());
         assert!(api
             .get_current_config_processing_tree_nodes_by_path(user_root_3, Some(&"root".to_string()))
             .await
