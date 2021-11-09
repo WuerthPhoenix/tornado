@@ -241,8 +241,9 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::auth_v2::test::test_auth_service_v2;
     use crate::auth::auth_v2::AuthServiceV2;
-    use crate::auth::test::{test_auth_service, test_auth_service_v2};
+    use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
     use crate::error::ApiError;
     use actix_web::{
@@ -250,7 +251,7 @@ mod test {
         test, App,
     };
     use async_trait::async_trait;
-    use maplit::hashmap;
+    use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
@@ -537,12 +538,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
@@ -573,12 +575,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned(), "edit".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
@@ -609,12 +612,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: hashmap! {
-                        "auth1".to_owned() => Authorization {
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
                             path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["view".to_owned()],
-                        }
-                    },
+                        },
+                    )]),
                     preferences: None,
                 })?,
             ))
