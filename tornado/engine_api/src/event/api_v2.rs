@@ -44,7 +44,7 @@ pub mod test {
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
     use std::collections::BTreeMap;
     use tornado_common_api::Event;
-    use tornado_engine_api_dto::auth::Auth;
+    use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
         let mut permission_roles_map = BTreeMap::new();
@@ -59,27 +59,45 @@ pub mod test {
 
     fn create_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
-    ) -> (AuthContext, AuthContext, AuthContext) {
-        let user_view = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec!["view".to_owned()], preferences: None },
-            permissions_map,
-        );
+    ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
 
-        let user_edit = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
-            permissions_map,
-        );
-
-        let user_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned()],
+        let owner_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
                 preferences: None,
             },
             permissions_map,
         );
 
-        (user_view, user_edit, user_full_process)
+        let owner_edit = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        (owner_view, owner_edit, owner_full_process)
     }
 
     pub const DRAFT_OWNER_ID: &str = "OWNER";
@@ -91,8 +109,15 @@ pub mod test {
         let permissions_map = auth_permissions();
 
         let (user_view, user_edit, user_full_process) = create_users(&permissions_map);
-        let user_no_permission = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec![], preferences: None },
+        let user_no_permission = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec![],
+                },
+                preferences: None,
+            },
             &permissions_map,
         );
 
@@ -119,18 +144,24 @@ pub mod test {
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions = auth_permissions();
         let (user_view, user_edit, user_full_process) = create_users(&permissions);
-        let user_view_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
+        let user_view_and_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
+                },
                 preferences: None,
             },
             &permissions,
-        );
-        let user_edit_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
+        ); 
+        let user_edit_and_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
+                },
                 preferences: None,
             },
             &permissions,
