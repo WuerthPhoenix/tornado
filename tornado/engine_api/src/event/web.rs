@@ -91,6 +91,7 @@ async fn send_event_to_current_config_v2<
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
+#[allow(clippy::needless_lifetimes)] // clippy gets this wrong, if we remove the lifetimes, it does not compile anymore
 async fn prepare_data_for_send_event_to_draft<'a>(
     req: &HttpRequest,
     auth: &'a AuthService,
