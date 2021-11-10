@@ -88,8 +88,16 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 
         let filtered_matcher = self.get_filtered_matcher(auth).await?;
 
-        let absolute_path: Vec<_> =
+        let mut absolute_path: Vec<_> =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect();
+
+        // We must remove the last element of the authorized path because the endpoint is expected
+        // to return the entry point of the authorized tree, when node_path is empty.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
+        if absolute_path.pop().is_none() {
+            warn!("The authorized node path cannot be empty.");
+            return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
+        }
 
         let child_nodes = filtered_matcher
             .get_child_nodes_by_path(absolute_path.as_slice())
@@ -165,7 +173,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_draft_and_check_owner(&auth, draft_id).await
     }
 
-    /// Creats a new draft and returns the id
+    /// Creates a new draft and returns the id
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
@@ -955,10 +963,7 @@ mod test {
     #[actix_rt::test]
     async fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
         // Arrange
-        let test = MatcherConfig::Ruleset {
-            name: "root".to_owned(),
-            rules: vec![],
-        };
+        let test = MatcherConfig::Ruleset { name: "root".to_owned(), rules: vec![] };
 
         let root = test.get_child_nodes_by_path(&[]).unwrap();
 
@@ -1017,5 +1022,45 @@ mod test {
         // Assert
         assert!(res1.is_ok());
         assert!(matches!(res2, Err(ApiError::ForbiddenError { .. })));
+    }
+
+    #[actix_rt::test]
+    async fn get_authorized_tree_info_should_include_root_node() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user1 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+        let user2 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned(), "root_1_2".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let result1 = api.get_authorized_tree_info(&user1).await.unwrap();
+        let result2 = api.get_authorized_tree_info(&user2).await.unwrap();
+
+        // Assert
+        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4 };
+        let expected2 = TreeInfoDto { rules_count: 1, filters_count: 0 };
+
+        assert_eq!(expected1, result1);
+        assert_eq!(expected2, result2);
     }
 }
