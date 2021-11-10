@@ -4,7 +4,9 @@ use crate::error::ApiError;
 use log::*;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
-use tornado_engine_api_dto::config::{ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto};
+use tornado_engine_api_dto::config::{
+    ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto, TreeInfoDto,
+};
 use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigEditor, MatcherConfigReader,
@@ -75,7 +77,50 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .ok_or(ApiError::NodeNotFoundError {
                 message: format!("Node for path {:?} not found", absolute_path),
             })?;
-        Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
+        Ok(child_nodes.iter().map(ProcessingTreeNodeConfigDto::from).collect())
+    }
+
+    pub async fn get_authorized_tree_info(
+        &self,
+        auth: &AuthContextV2<'_>,
+    ) -> Result<TreeInfoDto, ApiError> {
+        auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
+
+        let filtered_matcher = self.get_filtered_matcher(auth).await?;
+
+        let mut absolute_path: Vec<_> =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect();
+
+        // We must remove the last element of the authorized path because the endpoint is expected
+        // to return the entry point of the authorized tree, when node_path is empty.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
+        if absolute_path.pop().is_none() {
+            let message = "The authorized node path cannot be empty.";
+            warn!("{}", message);
+            return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
+        }
+
+        let child_nodes = filtered_matcher
+            .get_child_nodes_by_path(absolute_path.as_slice())
+            .ok_or(ApiError::NodeNotFoundError {
+                message: format!("Node for path {:?} not found", absolute_path),
+            })?;
+
+        Ok(Self::fetch_tree_info(child_nodes.as_slice()))
+    }
+
+    fn fetch_tree_info(children: &[MatcherConfig]) -> TreeInfoDto {
+        children
+            .iter()
+            .map(|child| match child {
+                MatcherConfig::Filter { nodes, .. } => {
+                    TreeInfoDto { filters_count: 1, rules_count: 0 } + Self::fetch_tree_info(nodes)
+                }
+                MatcherConfig::Ruleset { rules, .. } => {
+                    TreeInfoDto { filters_count: 0, rules_count: rules.len() }
+                }
+            })
+            .sum()
     }
 
     /// Returns processing tree node details by path
@@ -116,7 +161,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_draft_and_check_owner(&auth, draft_id).await
     }
 
-    /// Creats a new draft and returns the id
+    /// Creates a new draft and returns the id
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
@@ -860,5 +905,174 @@ mod test {
                 .await,
             Err(ApiError::ForbiddenError { .. })
         ));
+    }
+
+    #[actix_rt::test]
+    async fn get_tree_info_should_return_aggregate_number_of_filters_and_rules() {
+        // Arrange
+        let test = TestConfigManager {}.get_config().await.unwrap();
+        let root = test.get_child_nodes_by_path(&[]).unwrap();
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 2, filters_count: 4 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_tree_info_should_work_on_filter_without_children() {
+        // Arrange
+        let test = MatcherConfig::Filter {
+            name: "root".to_owned(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        let root = test.get_child_nodes_by_path(&[]).unwrap();
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 0, filters_count: 1 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_tree_info_should_work_on_ruleset_as_only_node() {
+        // Arrange
+        let test = MatcherConfig::Ruleset {
+            name: "root".to_owned(),
+            rules: vec![Rule {
+                name: "".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+
+        let root = test.get_child_nodes_by_path(&[]).unwrap();
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 1, filters_count: 0 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
+        // Arrange
+        let test = MatcherConfig::Ruleset { name: "root".to_owned(), rules: vec![] };
+
+        let root = test.get_child_nodes_by_path(&[]).unwrap();
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 0, filters_count: 0 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_tree_info_should_work_on_empty_config() {
+        // Arrange
+        let root = [];
+
+        // Act
+        let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
+
+        // Assert
+        let expected = TreeInfoDto { rules_count: 0, filters_count: 0 };
+
+        assert_eq!(result, expected);
+    }
+
+    #[actix_rt::test]
+    async fn get_authorized_tree_info_should_require_permissions() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user1 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+        let user2 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization { path: vec!["root".to_owned()], roles: vec![] },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res1 = api.get_authorized_tree_info(&user1).await;
+        let res2 = api.get_authorized_tree_info(&user2).await;
+
+        // Assert
+        assert!(res1.is_ok());
+        assert!(matches!(res2, Err(ApiError::ForbiddenError { .. })));
+    }
+
+    #[actix_rt::test]
+    async fn get_authorized_tree_info_should_include_root_node() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user1 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+        let user2 = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned(), "root_1_2".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let result1 = api.get_authorized_tree_info(&user1).await.unwrap();
+        let result2 = api.get_authorized_tree_info(&user2).await.unwrap();
+
+        // Assert
+        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4 };
+        let expected2 = TreeInfoDto { rules_count: 1, filters_count: 0 };
+
+        assert_eq!(expected1, result1);
+        assert_eq!(expected2, result2);
     }
 }

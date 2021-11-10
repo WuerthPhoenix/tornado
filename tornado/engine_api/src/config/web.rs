@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
-    ProcessingTreeNodeDetailsDto,
+    ProcessingTreeNodeDetailsDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
@@ -62,6 +62,10 @@ pub fn build_config_v2_endpoints<
             .service(
                 web::resource("/tree/details/{param_auth}/{node_path}")
                     .route(web::get().to(get_tree_node_details::<A, CM>)),
+            )
+            .service(
+                web::resource("/tree/info/{param_auth}")
+                    .route(web::get().to(get_tree_info::<A, CM>)),
             ),
     )
 }
@@ -121,6 +125,20 @@ async fn get_tree_node_details<
         .api
         .get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path)
         .await?;
+    Ok(Json(result))
+}
+
+async fn get_tree_info<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<String>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<TreeInfoDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params)?;
+    let result = data.api.get_authorized_tree_info(&auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -609,6 +627,43 @@ mod test {
                 })?,
             ))
             .uri("/config/active/tree/details/auth1/root")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_get_tree_info_return_status_code_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/active/tree/info/auth1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
