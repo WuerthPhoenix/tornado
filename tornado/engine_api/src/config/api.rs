@@ -95,7 +95,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         // to return the entry point of the authorized tree, when node_path is empty.
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
         if absolute_path.pop().is_none() {
-            warn!("The authorized node path cannot be empty.");
+            let message = "The authorized node path cannot be empty.";
+            warn!("{}", message);
             return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
         }
 
