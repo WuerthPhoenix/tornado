@@ -47,12 +47,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         node_path: Option<&str>,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        let relative_node_path: Vec<_> = match node_path {
-            None => {
-                vec![]
-            }
-            Some(node_path) => node_path.split(NODE_PATH_SEPARATOR).collect(),
-        };
+        let relative_node_path: Vec<_> = node_path
+            .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
+            .unwrap_or_default();
 
         self.get_authorized_child_nodes(&auth, relative_node_path).await
     }
@@ -119,6 +116,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
+        if authorized_path.last() != relative_node_path.first() {
+            return Err(ApiError::ForbiddenError {
+                code: "403".to_string(),
+                message: "Cannot access node outside authorized path".to_string(),
+                params: Default::default(),
+            });
+        };
         // We must remove the last element of the authorized path because node_path starts from
         // the entry point (included) of the authorized tree.
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
@@ -216,13 +220,24 @@ fn pop_authorized_path_and_append_relative_path<'a>(
     mut base_path: Vec<&'a str>,
     mut relative_path: Vec<&'a str>,
 ) -> Result<Vec<&'a str>, ApiError> {
-    if base_path.pop().is_none() {
-        let message = "The authorized node path cannot be empty.";
-        warn!("ConfigApi - {}", message);
-        return Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() });
-    };
-    base_path.append(&mut relative_path);
-    Ok(base_path)
+    match base_path.pop() {
+        None => {
+            let message = "The authorized node path cannot be empty.";
+            warn!("ConfigApi - {}", message);
+            Err(ApiError::InvalidAuthorizedPath { message: message.to_owned() })
+        }
+        Some(last_node_base_path) => match relative_path.first() {
+            Some(first_node_relative_path) if first_node_relative_path != &last_node_base_path => {
+                Err(ApiError::BadRequestError {
+                    cause: "Node path does not comply with authorized path".to_string(),
+                })
+            }
+            _ => {
+                base_path.append(&mut relative_path);
+                Ok(base_path)
+            }
+        },
+    }
 }
 
 #[cfg(test)]
@@ -956,6 +971,31 @@ mod test {
             .is_err());
     }
 
+    #[actix_rt::test]
+    async fn get_current_config_node_details_by_path_should_return_error_if_node_path_outside_authorized_path(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act & Assert
+        assert!(matches!(
+            api.get_node_details(&user, &"root,root_2".to_string()).await,
+            Err(ApiError::ForbiddenError { .. })
+        ))
+    }
+
     #[test]
     fn pop_authorized_path_and_append_relative_path_should_pop_and_append() {
         // Arrange
@@ -982,5 +1022,19 @@ mod test {
 
         // Assert
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn pop_authorized_path_and_append_relative_path_should_return_error_if_relative_path_starts_with_element_different_than_last_element_of_authorized_path(
+    ) {
+        // Arrange
+        let base_path = vec!["root"];
+        let relative_path = vec!["root_wrong", "child_1"];
+
+        // Act
+        let result = pop_authorized_path_and_append_relative_path(base_path, relative_path);
+
+        // Assert
+        assert!(matches!(result, Err(ApiError::BadRequestError { .. })));
     }
 }
