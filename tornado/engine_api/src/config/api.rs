@@ -96,7 +96,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let filtered_matcher = self.get_filtered_matcher(auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
 
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
