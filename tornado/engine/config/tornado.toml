@@ -76,6 +76,7 @@ web_max_json_payload_size = 1048000
 message_queue_size = 10000
 
 [tornado.daemon.auth.role_permissions]
-admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView"]
+admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView", "TestEventExecuteActions"]
 edit = ["ConfigEdit"]
 view = ["ConfigView"]
+test_event_execute_actions = ["TestEventExecuteActions"]

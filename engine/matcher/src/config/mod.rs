@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::error::MatcherError;
@@ -5,6 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod filter;
 pub mod fs;
+pub mod operation;
 pub mod rule;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -31,7 +33,7 @@ pub enum MatcherConfig {
 }
 
 impl MatcherConfig {
-    fn get_name(&self) -> &str {
+    pub fn get_name(&self) -> &str {
         match self {
             MatcherConfig::Filter { name, .. } => name,
             MatcherConfig::Ruleset { name, .. } => name,
@@ -70,12 +72,12 @@ impl MatcherConfig {
 
     // Returns child nodes of a node found by a path
     // If the path is empty [], the [self] is returned
-    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Vec<&MatcherConfig>> {
-        if path.is_empty() || (path.len() == 1 && path[0].is_empty()) {
-            return Some(vec![self]);
+    pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Cow<Vec<MatcherConfig>>> {
+        if path.is_empty() {
+            return Some(Cow::Owned(vec![self.to_owned()]));
         }
         match self.get_node_by_path(path) {
-            Some(MatcherConfig::Filter { nodes, .. }) => Some(nodes.iter().collect()),
+            Some(MatcherConfig::Filter { nodes, .. }) => Some(Cow::Borrowed(nodes)),
             _ => None,
         }
     }

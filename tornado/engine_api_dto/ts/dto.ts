@@ -30,7 +30,7 @@ export type Auth = { user: string; roles: string []; preferences: UserPreference
 
 export type AuthWithPermissionsDto = {     user: string; permissions: PermissionDto []; preferences:     UserPreferences | null };
 
-export enum PermissionDto {     ConfigEdit = "ConfigEdit", ConfigView = "ConfigView", RuntimeConfigEdit =     "RuntimeConfigEdit", RuntimeConfigView = "RuntimeConfigView" };
+export enum PermissionDto {     ConfigEdit = "ConfigEdit", ConfigView = "ConfigView", RuntimeConfigEdit =     "RuntimeConfigEdit", RuntimeConfigView = "RuntimeConfigView",     TestEventExecuteActions = "TestEventExecuteActions" };
 
 export type UserPreferences = { language: string | null };
 
@@ -93,6 +93,8 @@ export type ProcessingTreeNodeDetailsDto =
  | { type: "Ruleset"; name: string; rules: RuleDetailsDto [] };
 
 export type RuleDetailsDto = {     name: string; description: string; continue: boolean; active:     boolean; actions: string [] };
+
+export type TreeInfoDto = { rules_count: number; filters_count: number };
 
 
 /* ------------- */

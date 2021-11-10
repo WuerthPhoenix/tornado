@@ -23,6 +23,10 @@ pub enum ApiError {
     MissingAuthTokenError,
     #[error("ParseAuthHeaderError: [{message}]")]
     ParseAuthHeaderError { message: String },
+    #[error("InvalidAuthKeyError: [{message}]")]
+    InvalidAuthKeyError { message: String },
+    #[error("InvalidAuthorizedPath: [{message}]")]
+    InvalidAuthorizedPath { message: String },
     #[error("InvalidTokenError: [{message}]")]
     InvalidTokenError { message: String },
     #[error("ExpiredTokenError: [{message}]")]
@@ -89,7 +93,9 @@ impl actix_web::error::ResponseError for ApiError {
             | ApiError::ExpiredTokenError { .. }
             | ApiError::MissingAuthTokenError { .. }
             | ApiError::ParseAuthHeaderError { .. }
-            | ApiError::UnauthenticatedError => HttpResponse::Unauthorized().finish(),
+            | ApiError::UnauthenticatedError
+            | ApiError::InvalidAuthKeyError { .. }
+            | ApiError::InvalidAuthorizedPath { .. } => HttpResponse::Unauthorized().finish(),
             ApiError::ForbiddenError { code, params, .. } => {
                 let http_code = http::StatusCode::FORBIDDEN;
                 HttpResponseBuilder::new(http_code).json(WebError {

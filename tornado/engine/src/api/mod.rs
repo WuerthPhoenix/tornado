@@ -4,11 +4,13 @@ use crate::actor::matcher::{
 use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use actix::Addr;
 use async_trait::async_trait;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
 use tornado_engine_api::config::api::ConfigApiHandler;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfig;
 use tornado_engine_matcher::model::ProcessedEvent;
 
@@ -24,6 +26,7 @@ pub struct MatcherApiHandler {
 impl EventApiHandler for MatcherApiHandler {
     async fn send_event_to_current_config(
         &self,
+        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         let timer = SystemTime::now();
@@ -36,6 +39,7 @@ impl EventApiHandler for MatcherApiHandler {
             .matcher
             .send(EventMessageWithReply {
                 event: event.event.into(),
+                config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
             })
@@ -105,7 +109,7 @@ mod test {
     use std::sync::Arc;
     use tornado_common_api::{Event, Value};
     use tornado_engine_api::event::api::ProcessType;
-    use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+    use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
@@ -138,8 +142,10 @@ mod test {
             event: Event::new("test-type"),
         };
 
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+
         // Act
-        let res = api.send_event_to_current_config(send_event_request).await;
+        let res = api.send_event_to_current_config(config_filter, send_event_request).await;
 
         // Assert
         assert!(res.is_ok());
