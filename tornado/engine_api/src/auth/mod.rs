@@ -63,23 +63,18 @@ impl<'a> AuthContext<'a> {
     ) -> Result<&AuthContext, ApiError> {
         self.is_authenticated()?;
 
-        for permission in permissions {
-            if let Some(roles_with_permission) = self.permission_roles_map.get(permission) {
-                for user_role in &self.auth.roles {
-                    if roles_with_permission.contains(user_role) {
-                        return Ok(self);
-                    }
-                }
-            }
+        if roles_contain_any_permission(self.permission_roles_map, &self.auth.roles, permissions) {
+            Ok(self)
+        } else {
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
+                params: HashMap::new(),
+                message: format!(
+                    "User [{}] does not have the required permissions [{:?}]",
+                    self.auth.user, permissions
+                ),
+            })
         }
-        Err(ApiError::ForbiddenError {
-            code: FORBIDDEN_MISSING_REQUIRED_PERMISSIONS.to_owned(),
-            params: HashMap::new(),
-            message: format!(
-                "User [{}] does not have the required permissions [{:?}]",
-                self.auth.user, permissions
-            ),
-        })
     }
 
     // Returns an error if user does not have the permission
@@ -117,6 +112,23 @@ impl<'a> AuthContext<'a> {
             })
         }
     }
+}
+
+fn roles_contain_any_permission(
+    permission_roles_map: &BTreeMap<Permission, Vec<String>>,
+    roles: &[String],
+    permissions: &[&Permission],
+) -> bool {
+    for permission in permissions {
+        if let Some(roles_with_permission) = permission_roles_map.get(permission) {
+            for user_role in roles {
+                if roles_with_permission.contains(user_role) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
 }
 
 // Reverts a role->permissions map to a permission->roles map
@@ -211,7 +223,6 @@ impl WithOwner for MatcherConfigDraft {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::auth::auth_v2::AuthServiceV2;
 
     pub fn test_auth_service() -> AuthService {
         let mut permission_roles_map = BTreeMap::new();
@@ -223,18 +234,6 @@ pub mod test {
         permission_roles_map
             .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
         AuthService::new(Arc::new(permission_roles_map))
-    }
-
-    pub fn test_auth_service_v2() -> AuthServiceV2 {
-        let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map
-            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
-        permission_roles_map
-            .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
-        permission_roles_map
-            .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
-        AuthServiceV2::new(Arc::new(permission_roles_map))
     }
 
     #[test]
@@ -581,6 +580,41 @@ pub mod test {
             }
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn roles_contain_any_permission_should_return_whether_any_role_has_any_permissions() {
+        let roles = vec!["role_non_existing".to_owned(), "role1".to_owned()];
+
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit.to_owned(), vec!["role1".to_owned()]);
+        permission_roles_map.insert(Permission::ConfigView.to_owned(), vec!["role2".to_owned()]);
+
+        assert!(roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigEdit]
+        ));
+        assert!(roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigEdit, &Permission::RuntimeConfigEdit]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigView]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &roles,
+            &[&Permission::ConfigView, &Permission::RuntimeConfigEdit]
+        ));
+        assert!(!roles_contain_any_permission(
+            &permission_roles_map,
+            &vec!["role_non_existing".to_owned()],
+            &[&Permission::ConfigView, &Permission::RuntimeConfigEdit]
+        ));
     }
 
     struct Ownable {

@@ -55,7 +55,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         node_path: &str,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        let filtered_matcher = self.get_filtered_matcher(auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
 
         let mut relative_path: Vec<_> =
             if node_path.is_empty() { vec![] } else { node_path.split(',').collect() };
@@ -121,19 +121,6 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
                 }
             })
             .sum()
-    }
-
-    async fn get_filtered_matcher(
-        &self,
-        auth: &AuthContextV2<'_>,
-    ) -> Result<MatcherConfig, ApiError> {
-        let config = self.config_manager.get_config().await?;
-        let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
-        matcher_config_filter(&config, &node_filter).ok_or({
-            let message = "The authorized node path does not exist.";
-            warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
-            ApiError::InvalidAuthorizedPath { message: message.to_owned() }
-        })
     }
 
     /// Returns processing tree node details by path
@@ -233,6 +220,19 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth.is_owner(&draft)?;
         Ok(draft)
     }
+}
+
+pub async fn get_filtered_matcher(
+    config_manager: & dyn MatcherConfigReader,
+    auth: &AuthContextV2<'_>,
+) -> Result<MatcherConfig, ApiError> {
+    let config = config_manager.get_config().await?;
+    let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
+    matcher_config_filter(&config, &node_filter).ok_or({
+        let message = "The authorized node path does not exist.";
+        warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
+        ApiError::InvalidAuthorizedPath { message: message.to_owned() }
+    })
 }
 
 #[cfg(test)]
@@ -709,6 +709,8 @@ mod test {
         );
 
         // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_1, &"".to_string()).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_1, &"".to_string())
             .await
@@ -722,6 +724,7 @@ mod test {
             description: "".to_string(),
         }];
         assert_eq!(res, expected_result);
+        assert_eq!(res_authorized_child_nodes, expected_result);
     }
 
     #[actix_rt::test]
@@ -743,12 +746,15 @@ mod test {
         );
 
         // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_3, &"".to_string()).await;
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_3, &"".to_string())
             .await;
 
         // Assert
         assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
     }
 
     #[actix_rt::test]
@@ -767,10 +773,13 @@ mod test {
         );
 
         // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user, &"".to_string()).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
 
         // Assert
         assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
     }
 
     #[actix_rt::test]
@@ -792,10 +801,13 @@ mod test {
         );
 
         // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user, &"".to_string()).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, &"".to_string()).await;
 
         // Assert
         assert!(res.is_err());
+        assert!(res_authorized_child_nodes.is_err());
     }
 
     #[actix_rt::test]
@@ -816,27 +828,25 @@ mod test {
         );
 
         // Act
+        let res_authorized_child_nodes =
+            api.get_authorized_child_nodes(&user_root_1, &"root_1".to_string()).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(user_root_1, &"root_1".to_string())
             .await
             .unwrap();
 
         // Assert
-        assert_eq!(
-            res,
-            vec![
-                ProcessingTreeNodeConfigDto::Filter {
-                    name: "root_1_1".to_string(),
-                    rules_count: 0,
-                    children_count: 0,
-                    description: "".to_string(),
-                },
-                ProcessingTreeNodeConfigDto::Ruleset {
-                    name: "root_1_2".to_string(),
-                    rules_count: 1,
-                },
-            ]
-        );
+        let expected = vec![
+            ProcessingTreeNodeConfigDto::Filter {
+                name: "root_1_1".to_string(),
+                rules_count: 0,
+                children_count: 0,
+                description: "".to_string(),
+            },
+            ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
+        ];
+        assert_eq!(res, expected);
+        assert_eq!(res_authorized_child_nodes, expected);
     }
 
     #[actix_rt::test]
@@ -858,6 +868,7 @@ mod test {
         );
 
         // Act & Assert
+        assert!(api.get_authorized_child_nodes(&user_root_3, &"root".to_string()).await.is_err());
         assert!(api
             .get_current_config_processing_tree_nodes_by_path(user_root_3, &"root".to_string())
             .await

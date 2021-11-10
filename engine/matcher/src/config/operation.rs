@@ -51,35 +51,30 @@ pub fn matcher_config_filter(
     if let Some(node_filter) = filter.get(node_name) {
         match matcher_config {
             MatcherConfig::Ruleset { .. } => Some(matcher_config.clone()),
-            MatcherConfig::Filter { name, filter, nodes } => {
-                match node_filter {
-                    NodeFilter::AllChildren => {
+            MatcherConfig::Filter { name, filter, nodes } => match node_filter {
+                NodeFilter::AllChildren => Some(MatcherConfig::Filter {
+                    name: name.to_owned(),
+                    filter: filter.to_owned(),
+                    nodes: nodes.clone(),
+                }),
+                NodeFilter::SelectedChildren(selected_children) => {
+                    let mut children = vec![];
+                    for node in nodes {
+                        if let Some(child_node) = matcher_config_filter(node, selected_children) {
+                            children.push(child_node)
+                        }
+                    }
+                    if children.is_empty() {
+                        None
+                    } else {
                         Some(MatcherConfig::Filter {
                             name: name.to_owned(),
                             filter: filter.to_owned(),
-                            nodes: nodes.clone(),
+                            nodes: children,
                         })
                     }
-                    NodeFilter::SelectedChildren(selected_children) => {
-                        let mut children = vec![];
-                        for node in nodes {
-                            if let Some(child_node) = matcher_config_filter(node, selected_children)
-                            {
-                                children.push(child_node)
-                            }
-                        }
-                        if children.is_empty() {
-                            None
-                        } else {
-                            Some(MatcherConfig::Filter {
-                                name: name.to_owned(),
-                                filter: filter.to_owned(),
-                                nodes: children,
-                            })
-                        }
-                    }
                 }
-            }
+            },
         }
     } else {
         None
@@ -552,9 +547,7 @@ mod test {
             ],
         };
 
-        let paths = vec![
-            vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned()],
-        ];
+        let paths = vec![vec!["root".to_owned(), "child_1".to_owned(), "child_1_2".to_owned()]];
 
         // Act
         let filter = NodeFilter::map_from(&paths);
@@ -563,7 +556,6 @@ mod test {
         // Assert
         assert!(filtered_config.is_none());
     }
-
 
     fn filter_definition() -> Filter {
         Filter { description: "desc".to_owned(), active: true, filter: Defaultable::Default {} }

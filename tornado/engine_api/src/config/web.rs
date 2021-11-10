@@ -259,8 +259,9 @@ async fn draft_take_over<
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::auth::auth_v2::test::test_auth_service_v2;
     use crate::auth::auth_v2::AuthServiceV2;
-    use crate::auth::test::{test_auth_service, test_auth_service_v2};
+    use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
     use crate::error::ApiError;
     use actix_web::{

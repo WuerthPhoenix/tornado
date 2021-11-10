@@ -1,9 +1,8 @@
-use crate::auth::{AuthContext, Permission};
+use crate::auth::auth_v2::AuthContextV2;
+use crate::auth::Permission;
 use crate::error::ApiError;
 use crate::event::api::{EventApiHandler, ProcessType, SendEventRequest};
-use std::collections::HashMap;
 use std::sync::Arc;
-use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfigEditor;
 use tornado_engine_matcher::model::ProcessedEvent;
@@ -21,7 +20,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
     /// Executes an event on the current Tornado configuration
     pub async fn send_event_to_current_config(
         &self,
-        auth: AuthContext<'_>,
+        auth: AuthContextV2<'_>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
@@ -31,30 +30,11 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
             }
             ProcessType::SkipActions => {}
         };
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let config_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
 
         self.handler.send_event_to_current_config(config_filter, event).await
     }
 
-    pub async fn send_event_to_draft(
-        &self,
-        auth: AuthContext<'_>,
-        draft_id: &str,
-        event: SendEventRequest,
-    ) -> Result<ProcessedEvent, ApiError> {
-        let draft = self.config_manager.get_draft(draft_id).await?;
-        auth.is_owner(&draft)?;
-
-        auth.has_permission(&Permission::ConfigEdit)?;
-        match event.process_type {
-            ProcessType::Full => {
-                auth.has_permission(&Permission::TestEventExecuteActions)?;
-            }
-            ProcessType::SkipActions => {}
-        };
-
-        self.handler.send_event_to_config(event, draft.config).await
-    }
 }
 
 #[cfg(test)]
@@ -64,7 +44,7 @@ pub mod test {
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
     use std::collections::BTreeMap;
     use tornado_common_api::Event;
-    use tornado_engine_api_dto::auth::Auth;
+    use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
         let mut permission_roles_map = BTreeMap::new();
@@ -79,27 +59,45 @@ pub mod test {
 
     fn create_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
-    ) -> (AuthContext, AuthContext, AuthContext) {
-        let user_view = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec!["view".to_owned()], preferences: None },
-            permissions_map,
-        );
+    ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
 
-        let user_edit = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
-            permissions_map,
-        );
-
-        let user_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned()],
+        let owner_view = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
                 preferences: None,
             },
             permissions_map,
         );
 
-        (user_view, user_edit, user_full_process)
+        let owner_edit = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let owner_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        (owner_view, owner_edit, owner_full_process)
     }
 
     pub const DRAFT_OWNER_ID: &str = "OWNER";
@@ -111,8 +109,15 @@ pub mod test {
         let permissions_map = auth_permissions();
 
         let (user_view, user_edit, user_full_process) = create_users(&permissions_map);
-        let user_no_permission = AuthContext::new(
-            Auth { user: "user_id".to_owned(), roles: vec![], preferences: None },
+        let user_no_permission = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec![],
+                },
+                preferences: None,
+            },
             &permissions_map,
         );
 
@@ -139,18 +144,24 @@ pub mod test {
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions = auth_permissions();
         let (user_view, user_edit, user_full_process) = create_users(&permissions);
-        let user_view_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
+        let user_view_and_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
+                },
                 preferences: None,
             },
             &permissions,
-        );
-        let user_edit_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
+        ); 
+        let user_edit_and_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
+                },
                 preferences: None,
             },
             &permissions,
@@ -176,106 +187,4 @@ pub mod test {
             .is_ok());
     }
 
-    #[actix_rt::test]
-    async fn send_event_to_draft_with_skip_action_should_have_edit_permission_and_ownership() {
-        // Arrange
-        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
-        let permissions_map = auth_permissions();
-
-        let (mut user_view, mut user_edit, mut user_full_process) = create_users(&permissions_map);
-
-        let request = SendEventRequest {
-            event: Event::new("event_for_draft"),
-            process_type: ProcessType::SkipActions,
-        };
-
-        // Act & Assert
-        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
-        assert!(api
-            .send_event_to_draft(user_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-
-        // Set the users as owners of the draft
-        user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_view.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
-
-        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_ok());
-        assert!(api
-            .send_event_to_draft(user_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
-    }
-
-    #[actix_rt::test]
-    async fn send_event_to_draft_with_full_execution_should_have_full_process_and_edit_permission_and_ownership(
-    ) {
-        // Arrange
-        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
-        let permissions_map = auth_permissions();
-
-        let (mut user_view, mut user_edit, mut user_full_process) = create_users(&permissions_map);
-
-        let request = SendEventRequest {
-            event: Event::new("event_for_draft"),
-            process_type: ProcessType::Full,
-        };
-        let mut user_view_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "view".to_owned()],
-                preferences: None,
-            },
-            &permissions_map,
-        );
-        let mut user_edit_and_full_process = AuthContext::new(
-            Auth {
-                user: "user_id".to_owned(),
-                roles: vec!["test_event_execute_actions".to_owned(), "edit".to_owned()],
-                preferences: None,
-            },
-            &permissions_map,
-        );
-
-        // Act & Assert
-        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
-        assert!(api
-            .send_event_to_draft(user_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-        assert!(api
-            .send_event_to_draft(user_view_and_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-        assert!(api
-            .send_event_to_draft(user_edit_and_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-
-        // Set the users as owners of the draft
-        user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_view.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_view_and_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
-        user_edit_and_full_process.auth.user = DRAFT_OWNER_ID.to_owned();
-
-        assert!(api
-            .send_event_to_draft(user_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
-        assert!(api
-            .send_event_to_draft(user_view_and_full_process.clone(), "id", request.clone())
-            .await
-            .is_err());
-        assert!(api
-            .send_event_to_draft(user_edit_and_full_process.clone(), "id", request.clone())
-            .await
-            .is_ok());
-    }
 }
