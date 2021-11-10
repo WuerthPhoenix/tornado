@@ -461,8 +461,8 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: EventApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let event_api_v2 = ApiData {
-            auth: auth_service.clone(),
+        let event_api_v2 = ApiDataV2 {
+            auth: auth_service_v2.clone(),
             api: EventApiV2::new(api_handler.clone(), matcher_config.clone()),
         };
         let runtime_config_api = ApiData {
