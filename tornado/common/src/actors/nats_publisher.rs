@@ -10,9 +10,12 @@ use std::rc::Rc;
 use tokio::time;
 use tracing_futures::Instrument;
 
+const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
+
 pub struct NatsPublisherActor {
     config: NatsPublisherConfig,
     nats_connection: Rc<Option<Connection>>,
+    restarted: bool,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -89,7 +92,7 @@ impl NatsPublisherActor {
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config, nats_connection: Rc::new(None) }
+            NatsPublisherActor { config, nats_connection: Rc::new(None), restarted: false }
         }))
     }
 }
@@ -105,8 +108,16 @@ impl Actor for NatsPublisherActor {
 
         let client_config = self.config.client.clone();
         let nats_connection = self.nats_connection.clone();
+        let restarted = self.restarted;
         ctx.wait(
             async move {
+                if restarted {
+                    info!(
+                        "NatsPublisherActor was restarted after a failure. Waiting {} seconds before proceeding ...",
+                        WAIT_BETWEEN_RESTARTS_SEC
+                    );
+                    time::sleep(time::Duration::from_secs(WAIT_BETWEEN_RESTARTS_SEC)).await;
+                }
                 if let Some(connection) = nats_connection.deref() {
                     connection.close().await.unwrap();
                     match connection.close().await {
@@ -142,6 +153,7 @@ impl Actor for NatsPublisherActor {
 impl actix::Supervised for NatsPublisherActor {
     fn restarting(&mut self, _ctx: &mut Context<NatsPublisherActor>) {
         info!("Restarting NatsPublisherActor");
+        self.restarted = true;
     }
 }
 
