@@ -1,6 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::iter::Sum;
+use std::ops::Add;
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{Operator, Rule};
 use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
@@ -280,5 +282,30 @@ impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
                 }
             }
         }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Debug, Default, Serialize, Deserialize, TypeScriptify)]
+pub struct TreeInfoDto {
+    pub rules_count: usize,
+    pub filters_count: usize,
+}
+
+impl Add for TreeInfoDto {
+    type Output = TreeInfoDto;
+
+    fn add(self, rhs: Self) -> Self::Output {
+        TreeInfoDto {
+            filters_count: self.filters_count + rhs.filters_count,
+            rules_count: self.rules_count + rhs.rules_count,
+        }
+    }
+}
+
+impl Sum for TreeInfoDto {
+    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
+        iter
+            .reduce(|l, r| l + r )
+            .unwrap_or(TreeInfoDto { rules_count: 0, filters_count: 0 })
     }
 }
