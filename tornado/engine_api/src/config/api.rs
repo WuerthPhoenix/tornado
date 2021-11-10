@@ -59,7 +59,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: Vec<&str>,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        let filtered_matcher = self.get_filtered_matcher(auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
 
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
@@ -78,19 +78,6 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             message: format!("Node for relative path {:?} not found", relative_node_path),
         })?;
         Ok(child_nodes.iter().map(|node| ProcessingTreeNodeConfigDto::from(*node)).collect())
-    }
-
-    async fn get_filtered_matcher(
-        &self,
-        auth: &AuthContextV2<'_>,
-    ) -> Result<MatcherConfig, ApiError> {
-        let config = self.config_manager.get_config().await?;
-        let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
-        matcher_config_filter(&config, &node_filter).ok_or({
-            let message = "The authorized node path does not exist.";
-            warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
-            ApiError::InvalidAuthorizedPath { message: message.to_owned() }
-        })
     }
 
     /// Returns processing tree node details by path
@@ -214,6 +201,19 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth.is_owner(&draft)?;
         Ok(draft)
     }
+}
+
+pub async fn get_filtered_matcher(
+    config_manager: & dyn MatcherConfigReader,
+    auth: &AuthContextV2<'_>,
+) -> Result<MatcherConfig, ApiError> {
+    let config = config_manager.get_config().await?;
+    let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
+    matcher_config_filter(&config, &node_filter).ok_or({
+        let message = "The authorized node path does not exist.";
+        warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
+        ApiError::InvalidAuthorizedPath { message: message.to_owned() }
+    })
 }
 
 fn pop_authorized_path_and_append_relative_path<'a>(
