@@ -23,20 +23,21 @@ use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
 use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand};
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
+use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_common_metrics::Metrics;
+use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
+use tornado_engine_api::event::api_v2::EventApiV2;
 use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tornado_engine_matcher::model::InternalEvent;
 use tracing_actix_web::TracingLogger;
-use tornado_engine_api::event::api_v2::EventApiV2;
-use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -445,9 +446,9 @@ pub async fn daemon(
     let matcher_config = configs.matcher_config.clone();
 
     // Start API and monitoring endpoint
-    HttpServer::new(move || {
+    let service_logger_guard = logger_guard.clone();
+    let server_binding_result = HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
-        let logger_guard = logger_guard.clone();
 
         let v1_config_api = ApiData {
             auth: auth_service.clone(),
@@ -467,7 +468,9 @@ pub async fn daemon(
         };
         let runtime_config_api = ApiData {
             auth: auth_service.clone(),
-            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
+            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
+                service_logger_guard.clone(),
+            )),
         };
         let metrics = metrics.clone();
         App::new()
@@ -490,25 +493,30 @@ pub async fn daemon(
                             runtime_config_api,
                         ),
                     )
-                    .service(web::scope("/v2_beta")
-                        .service(
-                        tornado_engine_api::config::web::build_config_v2_endpoints(v2_config_api),
-                        )
-                        .service(
-                            tornado_engine_api::event::web::build_event_v2_endpoints(event_api_v2)
-                        )
+                    .service(
+                        web::scope("/v2_beta")
+                            .service(tornado_engine_api::config::web::build_config_v2_endpoints(
+                                v2_config_api,
+                            ))
+                            .service(tornado_engine_api::event::web::build_event_v2_endpoints(
+                                event_api_v2,
+                            )),
                     ),
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config, metrics))
     })
-    .bind(format!("{}:{}", web_server_ip, web_server_port))
-    // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-    .unwrap_or_else(|err| {
-        error!("Web Server cannot start on port {}. Err: {:?}", web_server_port, err);
-        std::process::exit(1);
-    })
-    .run()
-    .await?;
+    .bind(format!("{}:{}", web_server_ip, web_server_port));
 
-    Ok(())
+    match server_binding_result {
+        Ok(server) => {
+            server.run().await?;
+            Ok(())
+        }
+        Err(err) => {
+            let error =
+                format!("Web Server cannot start on port {}. Err: {:?}", web_server_port, err);
+            error!("{}", error);
+            Err(TornadoError::ExecutionError { message: error }.into())
+        }
+    }
 }
