@@ -513,8 +513,10 @@ pub async fn daemon(
             Ok(())
         }
         Err(err) => {
-            let error =
-                format!("Web Server cannot start on port {}. Err: {:?}", web_server_port, err);
+            let error = format!(
+                "Web Server cannot start on address {}:{}. Err: {:?}",
+                web_server_ip, web_server_port, err
+            );
             error!("{}", error);
             Err(TornadoError::ExecutionError { message: error }.into())
         }
