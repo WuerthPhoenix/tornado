@@ -18,6 +18,7 @@ use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
 use tornado_common::command::retry::RetryCommand;
+use tornado_common::TornadoError;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
@@ -370,9 +371,9 @@ pub async fn daemon(
     let matcher_config = configs.matcher_config.clone();
 
     // Start API and monitoring endpoint
-    HttpServer::new(move || {
+    let service_logger_guard = logger_guard.clone();
+    let server_binding_result = HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
-        let logger_guard = logger_guard.clone();
 
         let config_api = ApiData {
             auth: auth_service.clone(),
@@ -384,7 +385,9 @@ pub async fn daemon(
         };
         let runtime_config_api = ApiData {
             auth: auth_service.clone(),
-            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(logger_guard)),
+            api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
+                service_logger_guard.clone(),
+            )),
         };
 
         App::new()
@@ -410,14 +413,20 @@ pub async fn daemon(
             )
             .service(monitoring_endpoints(web::scope("/monitoring"), daemon_config))
     })
-    .bind(format!("{}:{}", web_server_ip, web_server_port))
-    // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-    .unwrap_or_else(|err| {
-        error!("Web Server cannot start on port {}. Err: {:?}", web_server_port, err);
-        std::process::exit(1);
-    })
-    .run()
-    .await?;
+    .bind(format!("{}:{}", web_server_ip, web_server_port));
 
-    Ok(())
+    match server_binding_result {
+        Ok(server) => {
+            server.run().await?;
+            Ok(())
+        }
+        Err(err) => {
+            let error = format!(
+                "Web Server cannot start on address {}:{}. Err: {:?}",
+                web_server_ip, web_server_port, err
+            );
+            error!("{}", error);
+            Err(TornadoError::ExecutionError { message: error }.into())
+        }
+    }
 }
