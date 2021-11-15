@@ -12,7 +12,7 @@ use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfig;
-use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
 
 pub mod runtime_config;
 
@@ -38,7 +38,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageWithReply {
-                event: event.event.into(),
+                event: InternalEvent::new_with_metadata(event.event, event.metadata),
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
@@ -67,7 +67,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
-                event: event.event.into(),
+                event: InternalEvent::new_with_metadata(event.event, event.metadata),
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,

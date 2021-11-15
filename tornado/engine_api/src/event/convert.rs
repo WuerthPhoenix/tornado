@@ -15,7 +15,7 @@ use tornado_engine_matcher::model::{
 };
 
 pub fn dto_into_send_event_request(mut dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
-    let metadata = serde_json::to_value(take(&mut dto.event.metadata))?;
+    let metadata = serde_json::from_value(take(&mut dto.event.metadata))?;
     Ok(SendEventRequest {
         process_type: match dto.process_type {
             ProcessType::Full => crate::event::api::ProcessType::Full,
