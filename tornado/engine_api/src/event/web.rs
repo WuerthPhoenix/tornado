@@ -170,11 +170,15 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([
+            ("something".to_owned(), serde_json::Value::String(format!("{}", rand::random::<usize>())))
+        ]);
+
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: Default::default(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -197,6 +201,7 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -208,11 +213,15 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([
+            ("something".to_owned(), serde_json::Value::String(format!("{}", rand::random::<usize>())))
+        ]);
+        
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
-                metadata: Default::default(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: None,
             },
@@ -235,6 +244,7 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
         assert!(dto.event.trace_id.is_some());
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -246,11 +256,15 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([
+            ("something".to_owned(), serde_json::Value::String(format!("{}", rand::random::<usize>())))
+        ]);
+
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: Default::default(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -286,9 +300,10 @@ mod test {
         assert_eq!(200, resp.status());
 
         let dto: tornado_engine_api_dto::event::ProcessedEventDto = test::read_body_json(resp).await;
-
+        
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
 
     }
 
