@@ -219,7 +219,7 @@ pub mod test {
         let (user_view, user_edit) = create_users(&permissions_map);
 
         let request =
-            SendEventRequest { event: Event::new("event"), metadata: Default::default(), process_type: ProcessType::Full };
+            SendEventRequest { event: Event::new("event"), metadata: Value::Map(Default::default()), process_type: ProcessType::Full };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -237,7 +237,7 @@ pub mod test {
         let request = SendEventRequest {
             event: Event::new("event_for_draft"),
             process_type: ProcessType::SkipActions,
-            metadata: Default::default(),
+            metadata: Value::Map(Default::default()),
         };
 
         // Act & Assert
