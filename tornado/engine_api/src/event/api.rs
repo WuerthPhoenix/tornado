@@ -280,7 +280,8 @@ pub mod test {
         let api = EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
 
-        let (_user_view, user_edit) = create_users(&permissions_map);
+        let (_user_view, mut user_edit) = create_users(&permissions_map);
+        user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
 
         let metadata = Value::Map(HashMap::from([
             ("something".to_owned(), Value::Text(format!("{}", rand::random::<usize>())))
