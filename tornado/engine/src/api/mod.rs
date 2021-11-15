@@ -140,6 +140,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
+            metadata: Default::default(),
         };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
@@ -227,6 +228,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type-custom"),
+            metadata: Default::default(),
         };
 
         let config = MatcherConfig::Ruleset {

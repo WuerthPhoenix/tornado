@@ -174,6 +174,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: Default::default(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -211,6 +212,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
+                metadata: Default::default(),
                 created_ms: 0,
                 trace_id: None,
             },
@@ -248,6 +250,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: Default::default(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -302,6 +305,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: Default::default(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },

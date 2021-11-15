@@ -42,7 +42,7 @@ pub mod test {
     use super::*;
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
-    use std::collections::BTreeMap;
+    use std::collections::{BTreeMap};
     use tornado_common_api::Event;
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
@@ -122,7 +122,7 @@ pub mod test {
         );
 
         let request =
-            SendEventRequest { event: Event::new("event"), process_type: ProcessType::SkipActions };
+            SendEventRequest { event: Event::new("event"), metadata: Default::default(), process_type: ProcessType::SkipActions };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -168,7 +168,7 @@ pub mod test {
         );
 
         let request =
-            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
+            SendEventRequest { event: Event::new("event"), metadata: Default::default(), process_type: ProcessType::Full };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_err());
