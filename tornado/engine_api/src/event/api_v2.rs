@@ -42,7 +42,7 @@ pub mod test {
     use super::*;
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
-    use std::collections::{BTreeMap};
+    use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Event, Value};
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
@@ -185,6 +185,29 @@ pub mod test {
             .send_event_to_current_config(user_edit_and_full_process, request.clone())
             .await
             .is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn send_event_should_propagate_metadata() {
+        // Arrange
+        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (_user_view, user_edit, _user_full_process) = create_users(&permissions_map);
+
+        let metadata = Value::Map(HashMap::from([
+            ("something".to_owned(), Value::Text(format!("{}", rand::random::<usize>())))
+        ]));
+
+        let request =
+            SendEventRequest { event: Event::new("event"), metadata: metadata.clone(), process_type: ProcessType::SkipActions };
+
+        // Act
+        let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
+
+        // Assert
+        assert_eq!(metadata, result.event.metadata);
+        
     }
 
 }
