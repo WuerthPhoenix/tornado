@@ -10,7 +10,7 @@ use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
-    ProcessingTreeNodeDetailsDto, TreeInfoDto,
+    ProcessingTreeNodeDetailsDto, RuleDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
@@ -66,14 +66,25 @@ pub fn build_config_v2_endpoints<
             .service(
                 web::resource("/tree/info/{param_auth}")
                     .route(web::get().to(get_tree_info::<A, CM>)),
+            )
+            .service(
+                web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
+                    .route(web::get().to(get_rule_details::<A, CM>)),
             ),
     )
 }
 
 #[derive(Deserialize)]
-struct EndpointPath {
+struct AuthAndNodePath {
     param_auth: String,
     node_path: String,
+}
+
+#[derive(Deserialize)]
+struct RuleDetailsParams {
+    param_auth: String,
+    ruleset_path: String,
+    rule_name: String,
 }
 
 async fn get_tree_node<
@@ -96,7 +107,7 @@ async fn get_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<EndpointPath>,
+    endpoint_params: Path<AuthAndNodePath>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
@@ -116,7 +127,7 @@ async fn get_tree_node_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<EndpointPath>,
+    endpoint_params: Path<AuthAndNodePath>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
@@ -139,6 +150,23 @@ async fn get_tree_info<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params)?;
     let result = data.api.get_authorized_tree_info(&auth_ctx).await?;
+    Ok(Json(result))
+}
+
+async fn get_rule_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<RuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<RuleDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .get_rule_details(&auth_ctx, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .await?;
     Ok(Json(result))
 }
 
