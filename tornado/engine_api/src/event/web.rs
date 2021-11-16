@@ -31,12 +31,10 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
     data: ApiDataV2<EventApiV2<T, CM>>,
 ) -> Scope {
-    web::scope("/event")
-        .app_data(Data::new(data))
-        .service(
-            web::resource("/active/{param_auth}")
-                .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
-        )
+    web::scope("/event").app_data(Data::new(data)).service(
+        web::resource("/active/{param_auth}")
+            .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
+    )
 }
 
 async fn send_event_to_current_config<
@@ -77,7 +75,6 @@ struct EndpointParamAuthPath {
     param_auth: String,
 }
 
-
 fn prepare_data_for_send_event_to_current_config_v2<'a>(
     req: &HttpRequest,
     auth: &'a AuthServiceV2,
@@ -106,8 +103,12 @@ async fn send_event_to_current_config_v2<
     body: Json<SendEventRequestDto>,
     _param_auth: Path<String>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
-    let (auth_ctx, send_event_request) =
-        prepare_data_for_send_event_to_current_config_v2(&req, &data.auth, &params.param_auth, body)?;
+    let (auth_ctx, send_event_request) = prepare_data_for_send_event_to_current_config_v2(
+        &req,
+        &data.auth,
+        &params.param_auth,
+        body,
+    )?;
 
     let processed_event =
         data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
@@ -155,10 +156,10 @@ mod test {
     use crate::auth::AuthService;
     use crate::event::api::test::{TestApiHandler, TestConfigManager, DRAFT_OWNER_ID};
     use actix_web::{http::header, test, App};
-    use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
+    use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
 
     #[actix_rt::test]
@@ -170,10 +171,16 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([(
+            "something".to_owned(),
+            serde_json::Value::String(format!("{}", rand::random::<usize>())),
+        )]);
+
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -196,6 +203,7 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -207,10 +215,16 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([(
+            "something".to_owned(),
+            serde_json::Value::String(format!("{}", rand::random::<usize>())),
+        )]);
+
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: None,
             },
@@ -233,6 +247,7 @@ mod test {
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
         assert!(dto.event.trace_id.is_some());
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -244,10 +259,16 @@ mod test {
         })))
         .await;
 
+        let metadata = HashMap::from([(
+            "something".to_owned(),
+            serde_json::Value::String(format!("{}", rand::random::<usize>())),
+        )]);
+
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: serde_json::to_value(&metadata).unwrap(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -270,7 +291,8 @@ mod test {
                         },
                     )]),
                     preferences: None,
-                }).unwrap(),
+                })
+                .unwrap(),
             ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
@@ -279,14 +301,15 @@ mod test {
 
         let resp = test::call_service(&srv, request).await;
         //println!("resp: [{:?}]", resp);
-        
+
         assert_eq!(200, resp.status());
 
-        let dto: tornado_engine_api_dto::event::ProcessedEventDto = test::read_body_json(resp).await;
+        let dto: tornado_engine_api_dto::event::ProcessedEventDto =
+            test::read_body_json(resp).await;
 
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
-
+        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -302,6 +325,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
+                metadata: Default::default(),
                 created_ms: 0,
                 trace_id: Some("my_trace_id".to_owned()),
             },
@@ -324,7 +348,8 @@ mod test {
                         },
                     )]),
                     preferences: None,
-                }).unwrap(),
+                })
+                .unwrap(),
             ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
@@ -332,9 +357,7 @@ mod test {
         // Assert
         let resp = test::call_service(&srv, request).await;
         //println!("resp: [{:?}]", resp);
-        
+
         assert_eq!(401, resp.status());
-
     }
-
 }

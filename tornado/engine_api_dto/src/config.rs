@@ -303,9 +303,7 @@ impl Add for TreeInfoDto {
 }
 
 impl Sum for TreeInfoDto {
-    fn sum<I: Iterator<Item=Self>>(iter: I) -> Self {
-        iter
-            .reduce(|l, r| l + r )
-            .unwrap_or(TreeInfoDto { rules_count: 0, filters_count: 0 })
+    fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
+        iter.reduce(|l, r| l + r).unwrap_or(TreeInfoDto { rules_count: 0, filters_count: 0 })
     }
 }

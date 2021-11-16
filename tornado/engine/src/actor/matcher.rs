@@ -233,9 +233,9 @@ mod test {
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
     use tornado_common_api::{Event, Value};
+    use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
     use tornado_engine_matcher::model::ProcessedNode;
     use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
-    use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 
     #[actix::test]
     async fn should_reconfigure_the_matcher_and_return_the_new_config() {
