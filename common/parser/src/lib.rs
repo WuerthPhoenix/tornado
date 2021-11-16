@@ -1,7 +1,7 @@
 use crate::interpolator::StringInterpolator;
 use lazy_static::*;
 use regex::Regex;
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 use thiserror::Error;
 use tornado_common_api::Value;
 
@@ -118,6 +118,23 @@ impl Parser {
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
+    }
+}
+
+pub enum ValueWrapper<'o> {
+    HashMap(&'o HashMap<&'o str, &'o Value>),
+    Value(&'o Value),
+}
+
+impl <'o> From<&'o Value> for ValueWrapper<'o> {
+    fn from(value: &'o Value) -> Self {
+        ValueWrapper::Value(value)
+    }
+}
+
+impl <'o> From<&'o HashMap<&'o str, &'o Value>> for ValueWrapper<'o> {
+    fn from(value: &'o HashMap<&'o str, &'o Value>) -> Self {
+        ValueWrapper::HashMap(value)
     }
 }
 
