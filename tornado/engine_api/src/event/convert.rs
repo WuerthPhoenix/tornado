@@ -14,14 +14,16 @@ use tornado_engine_matcher::model::{
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
 
-pub fn dto_into_send_event_request(mut dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
+pub fn dto_into_send_event_request(
+    mut dto: SendEventRequestDto,
+) -> Result<SendEventRequest, Error> {
     let metadata = serde_json::from_value(take(&mut dto.event.metadata))?;
     Ok(SendEventRequest {
         process_type: match dto.process_type {
             ProcessType::Full => crate::event::api::ProcessType::Full,
             ProcessType::SkipActions => crate::event::api::ProcessType::SkipActions,
         },
-        metadata, 
+        metadata,
         event: serde_json::from_value(serde_json::to_value(dto.event)?)?,
     })
 }

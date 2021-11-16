@@ -113,7 +113,9 @@ mod test {
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
-    use tornado_engine_matcher::model::{ProcessedFilterStatus, ProcessedNode, ProcessedRuleStatus};
+    use tornado_engine_matcher::model::{
+        ProcessedFilterStatus, ProcessedNode, ProcessedRuleStatus,
+    };
 
     #[actix_rt::test]
     async fn should_send_an_event_to_the_current_config_and_return_the_processed_event() {
@@ -287,9 +289,7 @@ mod test {
 
         let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
-        let metadata = HashMap::from([
-            ("tenant_id".to_owned(), Value::Text("beta".to_owned()))
-        ]);
+        let metadata = HashMap::from([("tenant_id".to_owned(), Value::Text("beta".to_owned()))]);
 
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
@@ -300,7 +300,8 @@ mod test {
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
         // Act
-        let res = api.send_event_to_current_config(config_filter, send_event_request).await.unwrap();
+        let res =
+            api.send_event_to_current_config(config_filter, send_event_request).await.unwrap();
 
         // Assert
         match res.result {
@@ -315,7 +316,8 @@ mod test {
 
                 let tenant_alpha_node_matched = nodes.iter().any(|n| match n {
                     ProcessedNode::Filter { name, filter, .. } => {
-                        name.eq("tenant_id_alpha") && filter.status == ProcessedFilterStatus::Matched
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
                     }
                     _ => false,
                 });

@@ -218,8 +218,11 @@ pub mod test {
 
         let (user_view, user_edit) = create_users(&permissions_map);
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: Value::Map(Default::default()), process_type: ProcessType::Full };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Map(Default::default()),
+            process_type: ProcessType::Full,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -259,19 +262,22 @@ pub mod test {
 
         let (_user_view, user_edit) = create_users(&permissions_map);
 
-        let metadata = Value::Map(HashMap::from([
-            ("something".to_owned(), Value::Text(format!("{}", rand::random::<usize>())))
-        ]));
+        let metadata = Value::Map(HashMap::from([(
+            "something".to_owned(),
+            Value::Text(format!("{}", rand::random::<usize>())),
+        )]));
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: metadata.clone(), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
 
         // Assert
         assert_eq!(metadata, result.event.metadata);
-        
     }
 
     #[actix_rt::test]
@@ -283,18 +289,21 @@ pub mod test {
         let (_user_view, mut user_edit) = create_users(&permissions_map);
         user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
 
-        let metadata = Value::Map(HashMap::from([
-            ("something".to_owned(), Value::Text(format!("{}", rand::random::<usize>())))
-        ]));
+        let metadata = Value::Map(HashMap::from([(
+            "something".to_owned(),
+            Value::Text(format!("{}", rand::random::<usize>())),
+        )]));
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: metadata.clone(), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act
         let result = api.send_event_to_draft(user_edit, "id", request.clone()).await.unwrap();
 
         // Assert
         assert_eq!(metadata, result.event.metadata);
-        
     }
 }

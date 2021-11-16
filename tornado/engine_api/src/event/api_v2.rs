@@ -34,7 +34,6 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
 
         self.handler.send_event_to_current_config(config_filter, event).await
     }
-
 }
 
 #[cfg(test)]
@@ -60,7 +59,6 @@ pub mod test {
     fn create_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
     ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
-
         let owner_view = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -112,17 +110,17 @@ pub mod test {
         let user_no_permission = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
-                authorization: Authorization {
-                    path: vec!["root".to_owned()],
-                    roles: vec![],
-                },
+                authorization: Authorization { path: vec!["root".to_owned()], roles: vec![] },
                 preferences: None,
             },
             &permissions_map,
         );
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: Value::Map(Default::default()), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Map(Default::default()),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -154,7 +152,7 @@ pub mod test {
                 preferences: None,
             },
             &permissions,
-        ); 
+        );
         let user_edit_and_full_process = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -167,8 +165,11 @@ pub mod test {
             &permissions,
         );
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: Value::Map(Default::default()), process_type: ProcessType::Full };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Map(Default::default()),
+            process_type: ProcessType::Full,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_err());
@@ -195,19 +196,21 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_users(&permissions_map);
 
-        let metadata = Value::Map(HashMap::from([
-            ("something".to_owned(), Value::Text(format!("{}", rand::random::<usize>())))
-        ]));
+        let metadata = Value::Map(HashMap::from([(
+            "something".to_owned(),
+            Value::Text(format!("{}", rand::random::<usize>())),
+        )]));
 
-        let request =
-            SendEventRequest { event: Event::new("event"), metadata: metadata.clone(), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
 
         // Assert
         assert_eq!(metadata, result.event.metadata);
-        
     }
-
 }
