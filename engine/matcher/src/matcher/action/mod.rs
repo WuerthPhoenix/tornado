@@ -7,7 +7,6 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
-use crate::interpolator::StringInterpolator;
 use crate::model::{
     ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
 };
@@ -99,12 +98,7 @@ impl ActionResolverBuilder {
                 Ok(ActionValueProcessor::Array(processor_values))
             }
             Value::Text(text) => {
-                let interpolator = StringInterpolator::build(text.as_str(), rule_name, accessor)?;
-                if interpolator.is_interpolation_required() {
-                    Ok(ActionValueProcessor::Interpolator(interpolator))
-                } else {
-                    Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
-                }
+                Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
             Value::Number(number) => Ok(ActionValueProcessor::Number(*number)),
@@ -112,6 +106,7 @@ impl ActionResolverBuilder {
         }
     }
 }
+
 
 /// An Action resolver creates Actions from a InternalEvent.
 pub struct ActionResolver {
@@ -177,7 +172,6 @@ enum ActionValueProcessor {
     Null,
     Bool(bool),
     Number(Number),
-    Interpolator(StringInterpolator),
     Array(Vec<ActionValueProcessor>),
     Map(HashMap<String, ActionValueProcessor>),
 }
@@ -199,9 +193,6 @@ impl ActionValueProcessor {
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 })?
                 .into_owned()),
-            ActionValueProcessor::Interpolator(interpolator) => {
-                interpolator.render(event, extracted_vars).map(Value::Text)
-            }
             ActionValueProcessor::Null => Ok(Value::Null),
             ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
@@ -252,16 +243,6 @@ impl ActionValueProcessor {
                     EnrichedValue {
                         content: EnrichedValueContent::Single { content: value },
                         meta: ValueMetaData { is_leaf: true, modified: accessor.dynamic_value() },
-                    },
-                ))
-            }
-            ActionValueProcessor::Interpolator(interpolator) => {
-                let value = interpolator.render(event, extracted_vars).map(Value::Text)?;
-                Ok((
-                    value.clone(),
-                    EnrichedValue {
-                        content: EnrichedValueContent::Single { content: value },
-                        meta: ValueMetaData { is_leaf: true, modified: true },
                     },
                 ))
             }
@@ -375,45 +356,6 @@ mod test {
             &ActionValueProcessor::Accessor(Accessor::Constant { value: Value::Text(value) }),
             action_payload.get("key").unwrap()
         )
-    }
-
-    #[test]
-    fn action_resolver_builder_should_identify_whether_interpolation_is_required() {
-        // Arrange
-        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-
-        action.payload.insert("constant".to_owned(), Value::Text("constant value".to_owned()));
-        action.payload.insert("expression".to_owned(), Value::Text("${event.type}".to_owned()));
-        action.payload.insert(
-            "interpolation".to_owned(),
-            Value::Text("event type: ${event.type}".to_owned()),
-        );
-
-        let config = vec![action];
-
-        // Act
-        let actions = ActionResolverBuilder::new().build_all("", &config).unwrap();
-
-        // Assert
-        assert_eq!(1, actions.len());
-        assert_eq!("an_action_id", &actions.get(0).unwrap().id);
-
-        let action_payload = &actions.get(0).unwrap().payload;
-        assert_eq!(3, action_payload.len());
-
-        assert_eq!(
-            &ActionValueProcessor::Accessor(Accessor::Constant {
-                value: Value::Text("constant value".to_owned())
-            }),
-            &action_payload["constant"]
-        );
-
-        assert_eq!(&ActionValueProcessor::Accessor(Accessor::Type), &action_payload["expression"]);
-
-        match &action_payload["interpolation"] {
-            ActionValueProcessor::Interpolator(..) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
