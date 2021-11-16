@@ -1043,6 +1043,39 @@ mod test {
     }
 
     #[actix_rt::test]
+    async fn get_current_config_rule_by_path_should_return_dto(
+    ) {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_get_rule_details =
+            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await.unwrap();
+
+        // Assert
+        let expected_res = RuleDetailsDto {
+            name: "root_1_2_1".to_string(),
+            description: "".to_string(),
+            do_continue: false,
+            active: true,
+            actions: vec![],
+        };
+        assert_eq!(res_get_rule_details, expected_res);
+    }
+
+    #[actix_rt::test]
     async fn get_current_config_node_details_by_path_should_return_error_if_authorized_path_does_not_exist(
     ) {
         // Arrange
