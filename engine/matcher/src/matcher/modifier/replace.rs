@@ -2,7 +2,7 @@ use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use regex::Regex;
-use tornado_common_api::{Value, ValueExt};
+use tornado_common_api::{Value};
 
 #[inline]
 pub fn replace_all(

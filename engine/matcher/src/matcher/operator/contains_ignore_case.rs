@@ -4,7 +4,7 @@ use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use log::*;
 use std::borrow::Borrow;
-use tornado_common_api::{Value, ValueExt};
+use tornado_common_api::{Value};
 
 const OPERATOR_NAME: &str = "containsIgnoreCase";
 

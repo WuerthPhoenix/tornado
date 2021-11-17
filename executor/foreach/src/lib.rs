@@ -154,7 +154,7 @@ mod test {
     use std::collections::hash_map::Entry;
     use std::collections::HashMap;
     use std::sync::RwLock;
-    use tornado_common_api::{Number, ValueExt};
+    use tornado_common_api::{Number};
     use tornado_network_simple::SimpleEventBus;
 
     #[test]

@@ -13,7 +13,7 @@ use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
 use std::collections::HashMap;
-use tornado_common_api::{Value, ValueExt};
+use tornado_common_api::{Value};
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -507,7 +507,7 @@ mod test {
     use crate::config::rule::{ExtractorRegex, Modifier};
     use maplit::*;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::{Event, ValueExt};
 
     #[test]
     fn should_build_an_extractor() {

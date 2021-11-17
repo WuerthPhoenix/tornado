@@ -38,14 +38,14 @@ impl Icinga2Executor {
     }
 
     fn get_payload<'a>(&self, payload: &'a Payload) -> Option<&'a Payload> {
-        payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::ValueExt::get_map)
+        payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
     }
 
     fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
-            .and_then(tornado_common_api::ValueExt::get_text)
+            .and_then(tornado_common_api::Value::get_text)
         {
             Some(icinga2_action) => {
                 trace!("Icinga2Executor - perform Icinga2Action: \n[{:?}]", icinga2_action);

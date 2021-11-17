@@ -2,7 +2,6 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
-use tornado_common_api::ValueExt;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;

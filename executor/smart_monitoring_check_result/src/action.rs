@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tornado_common_api::{Payload, Value, ValueExt};
+use tornado_common_api::{Payload, Value};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;

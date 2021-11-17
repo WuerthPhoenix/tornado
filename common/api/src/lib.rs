@@ -201,12 +201,6 @@ impl PartialOrd for Number {
 pub trait ValueExt {
     fn get_from_map(&self, key: &str) -> Option<&Value>;
     fn get_from_array(&self, index: usize) -> Option<&Value>;
-    fn get_map(&self) -> Option<&HashMap<String, Value>>;
-    fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>>;
-    fn get_array(&self) -> Option<&Vec<Value>>;
-    fn get_text(&self) -> Option<&str>;
-    fn get_bool(&self) -> Option<&bool>;
-    fn get_number(&self) -> Option<&Number>;
 }
 
 impl ValueExt for Value {
@@ -223,37 +217,46 @@ impl ValueExt for Value {
             _ => None,
         }
     }
-    fn get_map(&self) -> Option<&HashMap<String, Value>> {
+}
+
+impl Value {
+
+    pub fn get_map(&self) -> Option<&HashMap<String, Value>> {
         match self {
             Value::Map(payload) => Some(payload),
             _ => None,
         }
     }
-    fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
+
+    pub fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
         match self {
             Value::Map(payload) => Some(payload),
             _ => None,
         }
     }
-    fn get_array(&self) -> Option<&Vec<Value>> {
+
+    pub fn get_array(&self) -> Option<&Vec<Value>> {
         match self {
             Value::Array(array) => Some(array),
             _ => None,
         }
     }
-    fn get_text(&self) -> Option<&str> {
+
+    pub fn get_text(&self) -> Option<&str> {
         match self {
             Value::Text(value) => Some(value),
             _ => None,
         }
     }
-    fn get_bool(&self) -> Option<&bool> {
+
+    pub fn get_bool(&self) -> Option<&bool> {
         match self {
             Value::Bool(value) => Some(value),
             _ => None,
         }
     }
-    fn get_number(&self) -> Option<&Number> {
+
+    pub fn get_number(&self) -> Option<&Number> {
         match self {
             Value::Number(value) => Some(value),
             _ => None,
@@ -434,29 +437,6 @@ impl <'o >ValueExt for HashMap<&'o str, &'o Value> {
         None
     }
 
-    fn get_map(&self) -> Option<&HashMap<String, Value>> {
-        None
-    }
-
-    fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
-        None
-    }
-
-    fn get_array(&self) -> Option<&Vec<Value>> {
-        None
-    }
-
-    fn get_text(&self) -> Option<&str> {
-        None
-    }
-
-    fn get_bool(&self) -> Option<&bool> {
-        None
-    }
-
-    fn get_number(&self) -> Option<&Number> {
-        None
-    }
 }
 
 #[cfg(test)]

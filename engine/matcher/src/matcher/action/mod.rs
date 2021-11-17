@@ -331,7 +331,7 @@ mod test {
     use crate::accessor::Accessor;
     use maplit::*;
     use std::collections::HashMap;
-    use tornado_common_api::{Event, Payload, ValueExt};
+    use tornado_common_api::{Event, Payload};
 
     #[test]
     fn should_build_a_matcher_action() {
