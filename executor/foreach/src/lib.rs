@@ -39,7 +39,7 @@ impl StatelessExecutor for ForEachExecutor {
                 let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
                     Some(Value::Array(actions)) => actions
                         .iter()
-                        .map(|value| to_action(trace_id, value))
+                        .map(|value| to_action(trace_id.as_ref(), value))
                         .filter_map(Result::ok)
                         .collect(),
                     _ => {
@@ -80,12 +80,12 @@ impl StatelessExecutor for ForEachExecutor {
     }
 }
 
-fn to_action(trace_id: &str, value: &Value) -> Result<Action, ExecutorError> {
+fn to_action(trace_id: Option<&String>, value: &Value) -> Result<Action, ExecutorError> {
     match value {
         Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
                 Some(Value::Object(payload)) => Ok(Action {
-                    trace_id: trace_id.to_owned(),
+                    trace_id: trace_id.map(|s| s.to_owned()),
                     id: id.to_owned(),
                     payload: payload.clone(),
                 }),
@@ -166,21 +166,21 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
-        let trace_id = "asfse3t23tegre";
+        let trace_id = Some("asfse3t23tegre".to_owned());
 
         // Act
-        let action = to_action(trace_id, &action_value).unwrap();
+        let action = to_action(trace_id.as_ref(), &action_value).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
         assert_eq!(payload_map, action.payload);
-        assert_eq!(trace_id, &action.trace_id);
+        assert_eq!(trace_id, action.trace_id);
     }
 
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action("", &Value::Array(vec![]));
+        let result = to_action(None, &Value::Array(vec![]));
 
         // Assert
         assert!(result.is_err());
@@ -198,7 +198,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action("", &action_value);
+        let result = to_action(None, &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -217,7 +217,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action("", &action_value);
+        let result = to_action(None, &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -232,7 +232,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action("", &action_value);
+        let result = to_action(None, &action_value);
 
         // Assert
         assert!(result.is_err());
@@ -250,7 +250,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action("", &action_value);
+        let result = to_action(None, &action_value);
 
         // Assert
         assert!(result.is_err());

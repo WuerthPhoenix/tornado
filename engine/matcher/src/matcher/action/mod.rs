@@ -12,7 +12,7 @@ use crate::model::{
 };
 use std::collections::HashMap;
 use serde_json::{Map, Number, Value};
-use tornado_common_api::{Action};
+use tornado_common_api::{Action, WithEventData};
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -124,7 +124,7 @@ impl ActionResolver {
         extracted_vars: Option<&Value>,
     ) -> Result<Action, MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id.clone(),
+            trace_id: event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
@@ -145,7 +145,7 @@ impl ActionResolver {
         extracted_vars: Option<&Value>,
     ) -> Result<(Action, ActionMetaData), MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id.clone(),
+            trace_id: event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
@@ -413,10 +413,10 @@ mod test {
         assert_eq!(&"body_value", &result.payload.get("payload_body").unwrap());
         assert_eq!(&"subject_value", &result.payload.get("payload_subject").unwrap());
         assert_eq!(&"constant value", &result.payload.get("constant").unwrap());
-        assert_eq!(&event.created_ms, result.payload.get("created_ms").unwrap());
+        assert_eq!(&event.created_ms().unwrap(), result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
-        assert_eq!(&event.trace_id, &result.trace_id);
+        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 
     #[test]
@@ -953,6 +953,6 @@ mod test {
         let result = matcher_action.resolve(&event, None).unwrap();
 
         // Assert
-        assert_eq!(&event.trace_id, &result.trace_id);
+        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 }

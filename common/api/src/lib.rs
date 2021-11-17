@@ -111,7 +111,7 @@ impl Event {
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
-    pub trace_id: String,
+    pub trace_id: Option<String>,
     pub id: String,
     pub payload: Payload,
 }
@@ -125,7 +125,7 @@ impl Action {
         id: S,
         payload: Payload,
     ) -> Action {
-        Action { trace_id: trace_id.into(), id: id.into(), payload }
+        Action { trace_id: Some(trace_id.into()), id: id.into(), payload }
     }
 }
 

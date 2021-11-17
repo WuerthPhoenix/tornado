@@ -323,7 +323,7 @@ mod test {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action {
-            trace_id: "t".to_owned(),
+            trace_id: Some("t".to_owned()),
             id: "elasticsearch".to_string(),
             payload: Map::new(),
         };
@@ -352,7 +352,7 @@ mod test {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action {
-            trace_id: "t".to_owned(),
+            trace_id: Some("t".to_owned()),
             id: "elasticsearch".to_string(),
             payload: Map::new(),
         };
@@ -379,7 +379,7 @@ mod test {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action {
-            trace_id: "t".to_owned(),
+            trace_id: Some("t".to_owned()),
             id: "elasticsearch".to_string(),
             payload: Map::new(),
         };
@@ -408,7 +408,7 @@ mod test {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action {
-            trace_id: "t".to_owned(),
+            trace_id: Some("t".to_owned()),
             id: "elasticsearch".to_string(),
             payload: Map::new(),
         };
@@ -438,7 +438,7 @@ mod test {
         // Arrange
         let executor = ElasticsearchExecutor::new(None).await.unwrap();
         let mut action = Action {
-            trace_id: "t".to_owned(),
+            trace_id: None,
             id: "elasticsearch".to_string(),
             payload: Map::new(),
         };

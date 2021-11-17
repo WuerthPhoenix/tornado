@@ -2540,7 +2540,7 @@ mod test {
                 assert!(!rules.rules[0].actions.is_empty());
 
                 for action in &rules.rules[0].actions {
-                    assert_eq!(&event.trace_id, &action.trace_id)
+                    assert_eq!(&event.trace_id, &action.trace_id.unwrap())
                 }
             }
             _ => assert!(false),

@@ -57,7 +57,7 @@ mod test {
 
         // Act
         bus.publish_action(Action {
-            trace_id: "".to_owned(),
+            trace_id: None,
             id: String::from(action_id),
             payload: Map::new(),
         });
