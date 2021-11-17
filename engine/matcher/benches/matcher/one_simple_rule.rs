@@ -1,4 +1,5 @@
 use criterion::Criterion;
+use tornado_common_api::Map;
 use std::collections::HashMap;
 use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::rule::*;
@@ -31,7 +32,7 @@ pub fn bench(c: &mut Criterion) {
         );
 
         // Add action
-        let mut action = Action { id: "log".to_owned(), payload: HashMap::new() };
+        let mut action = Action { id: "log".to_owned(), payload: Map::new() };
 
         action
             .payload

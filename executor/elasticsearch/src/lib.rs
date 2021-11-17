@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
@@ -208,8 +208,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::HashMap;
-    use tornado_common_api::Value;
+    use tornado_common_api::{Map, Value};
 
     // This can be used for local testing. It requires Elasticsearch running on localhost
     // #[tokio::test]
@@ -222,8 +221,8 @@ mod test {
     //            ca_certificate_path: "/neteye/shared/tornado/conf/certs/root-ca.crt".to_string(),
     //        });
     //        let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
-    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //        let mut es_document = HashMap::new();
+    //        let mut action = Action { id: "elasticsearch".to_string(), payload: Map::new() };
+    //        let mut es_document = Map::new();
     //        es_document
     //            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
     //        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -247,8 +246,8 @@ mod test {
     //        // Arrange
     //        let es_authentication = Some(ElasticsearchAuthentication::None {});
     //        let mut executor = ElasticsearchExecutor::new(es_authentication).unwrap();
-    //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //        let mut es_document = HashMap::new();
+    //        let mut action = Action { id: "elasticsearch".to_string(), payload: Map::new() };
+    //        let mut es_document = Map::new();
     //        es_document
     //            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
     //        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -259,7 +258,7 @@ mod test {
     //            Value::String("https://elasticsearch.neteyelocal:9200".to_owned()),
     //        );
     //
-    //        let mut auth = HashMap::new();
+    //        let mut auth = Map::new();
     //        auth.insert("type".to_owned(), Value::String("PemCertificatePath".to_owned()));
     //        auth.insert(
     //            "certificate_path".to_owned(),
@@ -288,8 +287,8 @@ mod test {
     //     // Arrange
     //     let es_authentication = Some(ElasticsearchAuthentication::None {});
     //     let executor = ElasticsearchExecutor::new(es_authentication).await.unwrap();
-    //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //     let mut es_document = HashMap::new();
+    //     let mut action = Action { id: "elasticsearch".to_string(), payload: Map::new() };
+    //     let mut es_document = Map::new();
     //     es_document
     //         .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
     //     es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -300,8 +299,8 @@ mod test {
     //         Value::String("http://localhost:9200".to_owned()),
     //     );
     //
-    //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
-    //     let mut es_document = HashMap::new();
+    //     let mut action = Action { id: "elasticsearch".to_string(), payload: Map::new() };
+    //     let mut es_document = Map::new();
     //     es_document
     //         .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
     //     es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -326,9 +325,9 @@ mod test {
         let mut action = Action {
             trace_id: "t".to_owned(),
             id: "elasticsearch".to_string(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
-        let mut es_document = HashMap::new();
+        let mut es_document = Map::new();
         es_document
             .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
         es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -355,9 +354,9 @@ mod test {
         let mut action = Action {
             trace_id: "t".to_owned(),
             id: "elasticsearch".to_string(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
-        let mut es_document = HashMap::new();
+        let mut es_document = Map::new();
         es_document
             .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
         es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -382,9 +381,9 @@ mod test {
         let mut action = Action {
             trace_id: "t".to_owned(),
             id: "elasticsearch".to_string(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
-        let mut es_document = HashMap::new();
+        let mut es_document = Map::new();
         es_document
             .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
         es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -411,9 +410,9 @@ mod test {
         let mut action = Action {
             trace_id: "t".to_owned(),
             id: "elasticsearch".to_string(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
-        let mut es_document = HashMap::new();
+        let mut es_document = Map::new();
         es_document
             .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
         es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
@@ -441,9 +440,9 @@ mod test {
         let mut action = Action {
             trace_id: "t".to_owned(),
             id: "elasticsearch".to_string(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
-        let mut es_document = HashMap::new();
+        let mut es_document = Map::new();
         es_document
             .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
         es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));

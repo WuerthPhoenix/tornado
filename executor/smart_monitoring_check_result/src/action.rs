@@ -3,6 +3,7 @@ use tornado_common_api::{Payload, Value};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;
+use tornado_common_api::ValueExt;
 
 const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";

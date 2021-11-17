@@ -101,7 +101,7 @@ impl ActionResolverBuilder {
                 Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
-            Value::Number(number) => Ok(ActionValueProcessor::Number(*number)),
+            Value::Number(number) => Ok(ActionValueProcessor::Number(number.clone())),
             Value::Null => Ok(ActionValueProcessor::Null),
         }
     }
@@ -194,7 +194,7 @@ impl ActionValueProcessor {
                 })?
                 .into_owned()),
             ActionValueProcessor::Null => Ok(Value::Null),
-            ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
+            ActionValueProcessor::Number(number) => Ok(Value::Number(number.clone())),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ActionValueProcessor::Map(payload) => {
                 let mut processor_payload = Map::new();
@@ -257,7 +257,7 @@ impl ActionValueProcessor {
                 ))
             }
             ActionValueProcessor::Number(number) => {
-                let value = Value::Number(*number);
+                let value = Value::Number(number.clone());
                 Ok((
                     value.clone(),
                     EnrichedValue {

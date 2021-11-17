@@ -56,7 +56,7 @@ impl PathMatcher {
         for param in self.parameters.iter() {
             let var_value = payload
                 .get(&param.simple)
-                .and_then(tornado_common_api::Value::get_text)
+                .and_then(tornado_common_api::ValueExt::get_text)
                 .ok_or_else(|| {
                     let message = format!(
                         "Cannot resolve path parameter [{}] for path [{}]",

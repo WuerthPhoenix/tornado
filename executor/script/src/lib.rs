@@ -2,7 +2,7 @@ use log::*;
 use std::fmt;
 use std::sync::Arc;
 use tokio::process::Command;
-use tornado_common_api::{Action, Number, Value};
+use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
@@ -25,11 +25,7 @@ impl ScriptExecutor {
                 cmd.arg(&arg.to_string());
             }
             Value::Number(arg) => {
-                match arg {
-                    Number::NegInt(num) => cmd.arg(&num.to_string()),
-                    Number::PosInt(num) => cmd.arg(&num.to_string()),
-                    Number::Float(num) => cmd.arg(&num.to_string()),
-                };
+                cmd.arg(&arg.to_string());
             }
             Value::Array(args) => {
                 for value in args {
@@ -61,7 +57,7 @@ impl StatelessExecutor for ScriptExecutor {
         let script = action
             .payload
             .get(SCRIPT_TYPE_KEY)
-            .and_then(tornado_common_api::Value::get_text)
+            .and_then(tornado_common_api::ValueExt::get_text)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 can_retry: false,
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),
@@ -130,8 +126,7 @@ impl StatelessExecutor for ScriptExecutor {
 mod test_unix {
 
     use super::*;
-    use std::collections::HashMap;
-    use tornado_common_api::Value;
+    use tornado_common_api::{Map, Value};
 
     #[tokio::test]
     async fn should_return_error_if_script_not_found() {
@@ -304,7 +299,7 @@ mod test_unix {
         let first_content = "First_HelloRustyWorld!";
         let second_content = "Second Hello Rusty World!";
 
-        let mut args = HashMap::new();
+        let mut args = Map::new();
         args.insert("first".to_owned(), Value::String(first_content.to_owned()));
         args.insert("second".to_owned(), Value::String(second_content.to_owned()));
 

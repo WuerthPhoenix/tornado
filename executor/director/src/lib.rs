@@ -2,6 +2,7 @@ use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use maplit::*;
 use serde::*;
+use tornado_common_api::ValueExt;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
@@ -217,6 +218,7 @@ pub struct DirectorAction<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use serde_json::json;
     use tornado_common_api::Value;
 
     #[test]
@@ -288,7 +290,7 @@ mod test {
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_host".to_owned()));
         action.payload.insert(
             DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
-            Value::Object(hashmap![
+            json!(hashmap![
                 "filter".to_owned() => Value::String("filter_value".to_owned()),
                 "type".to_owned() => Value::String("Host".to_owned())
             ]),
@@ -301,10 +303,7 @@ mod test {
         assert_eq!(
             Ok(DirectorAction {
                 name: DirectorActionName::CreateHost,
-                payload: &hashmap![
-                    "filter".to_owned() => Value::String("filter_value".to_owned()),
-                    "type".to_owned() => Value::String("Host".to_owned())
-                ],
+                payload: action.payload[DIRECTOR_ACTION_PAYLOAD_KEY].get_map().unwrap(),
                 live_creation: false
             }),
             result

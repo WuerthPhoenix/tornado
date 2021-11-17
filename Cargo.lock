@@ -3063,17 +3063,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "spike_jmespath"
-version = "0.0.1"
-dependencies = [
- "criterion",
- "jmespatch",
- "serde_json",
- "tornado_common_api",
- "tornado_engine_matcher",
-]
-
-[[package]]
 name = "spike_rsyslog_collector_writer"
 version = "0.0.1"
 dependencies = [
@@ -3975,17 +3964,6 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
-]
-
-[[package]]
-name = "tornado_spike_parser_jmespath"
-version = "0.0.1"
-dependencies = [
- "jmespatch",
- "serde",
- "serde_json",
- "thiserror",
- "tornado_common_api",
 ]
 
 [[package]]
