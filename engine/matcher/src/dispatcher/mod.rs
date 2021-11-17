@@ -64,9 +64,8 @@ impl Dispatcher {
 mod test {
     use super::*;
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
-    use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
-    use tornado_common_api::Value;
+    use tornado_common_api::{Value, Map};
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -96,17 +95,17 @@ mod test {
         rule.actions.push(Action {
             trace_id: "".to_owned(),
             id: action_id.clone(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
         rule.actions.push(Action {
             trace_id: "".to_owned(),
             id: action_id.clone(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(HashMap::new()) },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(Map::new()) },
         };
 
         // Act
@@ -142,12 +141,12 @@ mod test {
         rule.actions.push(Action {
             trace_id: "".to_owned(),
             id: action_id.clone(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(HashMap::new()) },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(Map::new()) },
         };
 
         // Act
@@ -184,7 +183,7 @@ mod test {
         rule.actions.push(Action {
             trace_id: "".to_owned(),
             id: action_id.clone(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
 
         let node = ProcessedNode::Filter {
@@ -195,14 +194,14 @@ mod test {
                     name: "node0".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: Value::Object(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
                 ProcessedNode::Ruleset {
                     name: "node1".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: Value::Object(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
             ],

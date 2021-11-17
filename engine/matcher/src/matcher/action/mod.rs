@@ -330,8 +330,9 @@ mod test {
     use super::*;
     use crate::accessor::Accessor;
     use maplit::*;
+    use serde_json::json;
     use std::collections::HashMap;
-    use tornado_common_api::{Event, Payload};
+    use tornado_common_api::{Event, Payload, ValueExt};
 
     #[test]
     fn should_build_a_matcher_action() {
@@ -396,11 +397,11 @@ mod test {
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
-        let mut extracted_vars_inner = HashMap::new();
+        let mut extracted_vars_inner = Map::new();
         extracted_vars_inner.insert("test1".to_owned(), Value::String("var_test_1_value".to_owned()));
         extracted_vars_inner.insert("test2".to_owned(), Value::String("var_test_2_value".to_owned()));
 
-        let mut extracted_vars = HashMap::new();
+        let mut extracted_vars = Map::new();
         extracted_vars.insert("rule_for_test".to_owned(), Value::Object(extracted_vars_inner));
 
         // Act
@@ -576,8 +577,9 @@ mod test {
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action.payload.insert("type".to_owned(),
-                                     Value::Object(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::String("${event.type}".to_owned())]
+                                     json!(hashmap![
+                                         "one".to_owned() => json!(123456.0),
+                                         "two".to_owned() => Value::String("${event.type}".to_owned())]
                                      ));
 
         let rule_name = "rule_for_test";
@@ -597,8 +599,10 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Object(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::String("event_type_value".to_owned())]),
+            &json!(hashmap![
+                "one".to_owned() => json!(123456.0),
+                "two".to_owned() => Value::String("event_type_value".to_owned())
+            ]),
             result.payload.get("type").unwrap()
         );
     }
@@ -621,7 +625,7 @@ mod test {
         let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
-        let mut body = HashMap::new();
+        let mut body = Map::new();
         body.insert("inner".to_owned(), Value::String("inner_body_value".to_owned()));
 
         let mut payload = Payload::new();

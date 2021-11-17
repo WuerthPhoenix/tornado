@@ -278,8 +278,9 @@ mod test {
     use crate::config::filter::Filter;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
     use crate::config::Defaultable;
+    use serde_json::json;
     use std::collections::HashMap;
-    use tornado_common_api::*;
+    use tornado_common_api::{Event, ValueGet, ValueExt, Payload};
 
     #[test]
     fn should_build_the_matcher_with_a_rule_set() {
@@ -617,7 +618,7 @@ mod test {
             },
         );
 
-        let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+        let mut action = Action { id: String::from("action_id"), payload: Map::new() };
 
         action
             .payload
@@ -768,7 +769,7 @@ mod test {
             },
         );
 
-        let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+        let mut action = Action { id: String::from("action_id"), payload: Map::new() };
 
         action
             .payload
@@ -784,7 +785,7 @@ mod test {
         })
         .unwrap();
 
-        let mut event_payload = HashMap::new();
+        let mut event_payload = Map::new();
         event_payload.insert(String::from("temp"), Value::String(String::from("temp_value")));
 
         // Act
@@ -1802,7 +1803,7 @@ mod test {
         // Value equal to 1000 should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(1000)));
+            payload.insert("value".to_owned(), json!(1000));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1820,7 +1821,7 @@ mod test {
         // Value equal to 2000 should not match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(2000)));
+            payload.insert("value".to_owned(), json!(2000));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1838,7 +1839,7 @@ mod test {
         // Value less than 0 should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::NegInt(-1000)));
+            payload.insert("value".to_owned(), json!(-1000));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1856,7 +1857,7 @@ mod test {
         // Value more than 2000 (not included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::Float(1000000000.0)));
+            payload.insert("value".to_owned(), json!(1000000000.0));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1874,7 +1875,7 @@ mod test {
         // Value between 100 and 200 (included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(100)));
+            payload.insert("value".to_owned(), json!(100));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1892,7 +1893,7 @@ mod test {
         // Value between 100 and 200 (included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(110)));
+            payload.insert("value".to_owned(), json!(110));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1910,7 +1911,7 @@ mod test {
         // Value between 100 and 200 (included) should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(200)));
+            payload.insert("value".to_owned(), json!(200));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1928,7 +1929,7 @@ mod test {
         // test for `NOT` operator
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(140)));
+            payload.insert("value".to_owned(), json!(140));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1947,7 +1948,7 @@ mod test {
         // test for `ne` operator
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(150)));
+            payload.insert("value".to_owned(), json!(150));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -1966,7 +1967,7 @@ mod test {
         // test for `notEqual` alias
         {
             // Act
-            payload.insert("value".to_owned(), Value::Number(Number::PosInt(160)));
+            payload.insert("value".to_owned(), json!(160));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -2382,7 +2383,7 @@ mod test {
                 },
             );
 
-            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            let mut action = Action { id: String::from("action_id"), payload: Map::new() };
             action.payload.insert(
                 "value".to_owned(),
                 Value::String("${_variables.collision_name.VALUE}".to_owned()),
@@ -2397,7 +2398,7 @@ mod test {
         let rule_3 = {
             let mut rule = new_rule("rule3", None);
 
-            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
+            let mut action = Action { id: String::from("action_id"), payload: Map::new() };
             action.payload.insert(
                 "value".to_owned(),
                 Value::String("${_variables.collision_name.VALUE}".to_owned()),
@@ -2434,7 +2435,7 @@ mod test {
                         .expect("should contain collision_name.VALUE")
                 );
 
-                let mut vars = HashMap::new();
+                let mut vars = Map::new();
                 vars.insert("VALUE".to_owned(), Value::String("999".to_owned()));
                 let vars = Value::Object(vars);
                 assert_eq!(
@@ -2467,9 +2468,9 @@ mod test {
     fn should_return_processed_rule_metadata() {
         // Arrange
         let mut rule = new_rule("rule_name", None);
-        rule.actions.push(Action { id: String::from("action_1"), payload: HashMap::new() });
-        rule.actions.push(Action { id: String::from("action_2"), payload: HashMap::new() });
-        rule.actions.push(Action { id: String::from("action_3"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_1"), payload: Map::new() });
+        rule.actions.push(Action { id: String::from("action_2"), payload: Map::new() });
+        rule.actions.push(Action { id: String::from("action_3"), payload: Map::new() });
 
         let matcher =
             new_matcher(&MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule] })
@@ -2519,7 +2520,7 @@ mod test {
             },
         );
 
-        let action = Action { id: String::from("action_id"), payload: HashMap::new() };
+        let action = Action { id: String::from("action_id"), payload: Map::new() };
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {

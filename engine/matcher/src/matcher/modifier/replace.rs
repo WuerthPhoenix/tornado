@@ -64,7 +64,7 @@ mod test {
     use crate::regex::RegexWrapper;
     use maplit::*;
     use std::collections::HashMap;
-    use tornado_common_api::Event;
+    use tornado_common_api::{Event, Map};
 
     #[test]
     fn replace_all_modifier_should_replace_a_string() {
@@ -177,7 +177,7 @@ mod test {
         }
 
         {
-            let mut input = Value::Object(HashMap::new());
+            let mut input = Value::Object(Map::new());
             assert!(
                 replace_all("", &mut input, find_text, &replace_text, &event, variables).is_err()
             );

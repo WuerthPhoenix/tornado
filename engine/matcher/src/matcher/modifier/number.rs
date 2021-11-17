@@ -38,26 +38,27 @@ pub fn to_number(variable_name: &str, value: &mut Value) -> Result<(), MatcherEr
 #[cfg(test)]
 mod test {
     use super::*;
+    use serde_json::json;
 
     #[test]
     fn to_number_modifier_should_return_a_positive_number() {
         let mut input = Value::String("12".to_owned());
         to_number("", &mut input).unwrap();
-        assert_eq!(Value::Number(Number::PosInt(12)), input);
+        assert_eq!(json!(12), input);
     }
 
     #[test]
     fn to_number_modifier_should_return_a_negative_number() {
         let mut input = Value::String("-3412".to_owned());
         to_number("", &mut input).unwrap();
-        assert_eq!(Value::Number(Number::NegInt(-3412)), input);
+        assert_eq!(json!(-3412), input);
     }
 
     #[test]
     fn to_number_modifier_should_return_a_float() {
         let mut input = Value::String("3.14".to_owned());
         to_number("", &mut input).unwrap();
-        assert_eq!(Value::Number(Number::Float(3.14)), input);
+        assert_eq!(json!(3.14), input);
     }
 
     #[test]

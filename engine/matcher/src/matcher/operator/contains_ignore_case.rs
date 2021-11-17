@@ -73,8 +73,8 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use maplit::*;
-    use std::collections::HashMap;
-    use tornado_common_api::*;
+    use serde_json::json;
+    use tornado_common_api::{Event, Map};
 
     #[test]
     fn should_return_the_operator_name() {
@@ -172,7 +172,7 @@ mod test {
         )
         .unwrap();
 
-        let mut payload = HashMap::new();
+        let mut payload = Map::new();
         payload.insert("type".to_owned(), Value::String("tyPe".to_owned()));
 
         let event = Event::new_with_payload("TEst_Type", payload);
@@ -230,7 +230,7 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("TEst_type");
-        event.payload.insert("value".to_owned(), Value::Number(Number::Float(999.99)));
+        event.payload.insert("value".to_owned(), json!(999.99));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -244,7 +244,7 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("TEst_type");
-        event.payload.insert("value".to_owned(), Value::Number(Number::Float(999.99)));
+        event.payload.insert("value".to_owned(), json!(999.99));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -257,12 +257,12 @@ mod test {
                     "",
                     &Value::Array(vec![
                         Value::String("two or one".to_owned()),
-                        Value::Number(Number::PosInt(999)),
+                        json!(999),
                     ]),
                 )
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Number(Number::PosInt(999)))
+                .build_from_value("", &json!(999))
                 .unwrap(),
         )
         .unwrap();
@@ -298,7 +298,7 @@ mod test {
                     "",
                     &Value::Array(vec![
                         Value::String("two or ONE".to_owned()),
-                        Value::Number(Number::PosInt(999)),
+                        json!(999),
                     ]),
                 )
                 .unwrap(),
@@ -330,7 +330,7 @@ mod test {
             "array".to_owned(),
             Value::Array(vec![
                 Value::String("tWo or oNE".to_owned()),
-                Value::Number(Number::PosInt(999)),
+                json!(999),
             ]),
         );
         event.payload.insert("value".to_owned(), Value::String("TWo or one".to_owned()));
@@ -355,7 +355,7 @@ mod test {
             "array".to_owned(),
             Value::Array(vec![
                 Value::String("two or one".to_owned()),
-                Value::Number(Number::PosInt(999)),
+                json!(999),
             ]),
         );
         event.payload.insert("value".to_owned(), Value::String("two or one or three".to_owned()));
@@ -378,7 +378,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_TWO".to_owned() => Value::Null,
             )),
@@ -403,7 +403,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),

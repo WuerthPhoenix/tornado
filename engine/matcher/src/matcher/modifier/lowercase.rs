@@ -21,6 +21,7 @@ pub fn lowercase(variable_name: &str, value: &mut Value) -> Result<(), MatcherEr
 mod test {
     use super::*;
     use std::collections::HashMap;
+    use tornado_common_api::Map;
 
     #[test]
     fn lowercase_modifier_should_lowercase_a_string() {
@@ -51,7 +52,7 @@ mod test {
         }
 
         {
-            let mut input = Value::Object(HashMap::new());
+            let mut input = Value::Object(Map::new());
             assert!(lowercase("", &mut input).is_err());
         }
 

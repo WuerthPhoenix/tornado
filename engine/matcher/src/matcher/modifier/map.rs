@@ -36,6 +36,7 @@ pub fn map(
 mod test {
 
     use super::*;
+    use serde_json::json;
     use std::collections::HashMap;
     use tornado_common_api::Number;
 
@@ -78,7 +79,7 @@ mod test {
         let default_value = Some("default_value".to_owned());
 
         {
-            let mut input = Value::Number(Number::PosInt(3));
+            let mut input = json!(3);
             assert!(map("", &mut input, &mapping, &default_value).is_err());
         }
     }
