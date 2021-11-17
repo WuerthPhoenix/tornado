@@ -4,7 +4,7 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use log::*;
 use std::borrow::Cow;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
 pub struct AccessorBuilder {

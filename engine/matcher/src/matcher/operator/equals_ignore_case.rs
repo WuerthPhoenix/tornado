@@ -3,7 +3,7 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use log::*;
-use tornado_common_api::{cow_to_str, Value};
+use tornado_common_api::{Value, ValueExt, cow_to_str};
 
 const OPERATOR_NAME: &str = "equalsIgnoreCase";
 

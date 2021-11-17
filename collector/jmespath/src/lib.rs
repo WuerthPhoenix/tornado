@@ -1,5 +1,6 @@
 use jmespath::Rcvar;
 use log::trace;
+use tornado_common_api::ValueExt;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::Payload;

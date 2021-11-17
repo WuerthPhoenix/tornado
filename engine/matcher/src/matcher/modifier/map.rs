@@ -1,6 +1,6 @@
 use crate::error::MatcherError;
 use std::collections::HashMap;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 
 #[inline]
 pub fn map(

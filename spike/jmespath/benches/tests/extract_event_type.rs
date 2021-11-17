@@ -1,6 +1,6 @@
 use criterion::Criterion;
 use std::fs;
-use tornado_common_api::Event;
+use tornado_common_api::{Event, ValueExt};
 use tornado_engine_matcher::accessor::AccessorBuilder;
 use tornado_engine_matcher::model::InternalEvent;
 

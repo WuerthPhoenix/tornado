@@ -133,7 +133,7 @@ impl StatefulExecutor for ArchiveExecutor {
         let path = match action
             .payload
             .get(ARCHIVE_TYPE_KEY)
-            .and_then(tornado_common_api::Value::get_text)
+            .and_then(tornado_common_api::ValueExt::get_text)
         {
             Some(archive_type) => match self.paths.get(archive_type) {
                 Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),

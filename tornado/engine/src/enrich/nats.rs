@@ -54,6 +54,7 @@ impl NatsExtractor {
 mod test {
     use crate::enrich::nats::NatsExtractor;
     use regex::Regex;
+    use tornado_common_api::ValueExt;
     use tornado_engine_matcher::model::InternalEvent;
 
     #[test]

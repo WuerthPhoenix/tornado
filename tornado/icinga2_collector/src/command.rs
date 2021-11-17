@@ -137,6 +137,7 @@ mod test {
     use maplit::*;
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
     use tornado_common_api::Value;
+    use tornado_common_api::ValueExt;
     //use tornado_common_logger::{setup_logger, LoggerConfig};
 
     #[actix_rt::test]

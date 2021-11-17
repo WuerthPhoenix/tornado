@@ -1,9 +1,9 @@
 use crate::interpolator::StringInterpolator;
 use lazy_static::*;
 use regex::Regex;
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow};
 use thiserror::Error;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 
 mod interpolator;
 
@@ -99,10 +99,9 @@ impl Parser {
             .collect()
     }
 
-    pub fn parse_value<'o, V: Into<ValueWrapper<'o>>>(&'o self, value: V) -> Option<Cow<'o, Value>> {
+    pub fn parse_value<'o>(&'o self, value: &'o Value) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
-                let value = value.into();
                 let mut temp_value = Some(value);
 
                 let mut count = 0;
@@ -122,22 +121,6 @@ impl Parser {
     }
 }
 
-pub enum ValueWrapper<'o> {
-    HashMap(&'o HashMap<&'o str, &'o Value>),
-    Value(&'o Value),
-}
-
-impl <'o> From<&'o Value> for ValueWrapper<'o> {
-    fn from(value: &'o Value) -> Self {
-        ValueWrapper::Value(value)
-    }
-}
-
-impl <'o> From<&'o HashMap<&'o str, &'o Value>> for ValueWrapper<'o> {
-    fn from(value: &'o HashMap<&'o str, &'o Value>) -> Self {
-        ValueWrapper::HashMap(value)
-    }
-}
 
 #[derive(PartialEq, Debug)]
 pub enum ValueGetter {
@@ -146,7 +129,7 @@ pub enum ValueGetter {
 }
 
 impl ValueGetter {
-    pub fn get<'o>(&self, value: &'o ValueWrapper<'o>) -> Option<&'o Value> {
+    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
         match self {
             ValueGetter::Map { key } => value.get_from_map(key),
             ValueGetter::Array { index } => value.get_from_array(*index),

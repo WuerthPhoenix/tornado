@@ -13,7 +13,7 @@ use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
 use std::collections::HashMap;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]

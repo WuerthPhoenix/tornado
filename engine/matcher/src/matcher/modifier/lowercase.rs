@@ -1,5 +1,5 @@
 use crate::error::MatcherError;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 
 #[inline]
 pub fn lowercase(variable_name: &str, value: &mut Value) -> Result<(), MatcherError> {

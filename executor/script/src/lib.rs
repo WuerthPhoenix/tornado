@@ -61,7 +61,7 @@ impl StatelessExecutor for ScriptExecutor {
         let script = action
             .payload
             .get(SCRIPT_TYPE_KEY)
-            .and_then(tornado_common_api::Value::get_text)
+            .and_then(tornado_common_api::ValueExt::get_text)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
                 can_retry: false,
                 message: format!("Cannot find entry [{}] in the action payload.", SCRIPT_TYPE_KEY),

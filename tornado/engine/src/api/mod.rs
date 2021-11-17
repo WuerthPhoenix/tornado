@@ -114,7 +114,8 @@ mod test {
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
     use tornado_engine_matcher::model::{ProcessedNode, ProcessedRuleStatus};
-
+    use tornado_common_api::ValueExt;
+    
     #[actix_rt::test]
     async fn should_send_an_event_to_the_current_config_and_return_the_processed_event() {
         // Arrange

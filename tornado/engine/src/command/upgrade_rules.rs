@@ -2,7 +2,7 @@ use crate::command::daemon::{
     ACTION_ID_FOREACH, ACTION_ID_MONITORING, ACTION_ID_SMART_MONITORING_CHECK_RESULT,
 };
 use crate::config::parse_config_files;
-use tornado_common_api::Value;
+use tornado_common_api::{Value, ValueExt};
 use tornado_engine_matcher::config::rule::Action;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;

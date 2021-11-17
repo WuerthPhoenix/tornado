@@ -137,6 +137,8 @@ fn extract_body_and_attachments(
 #[cfg(test)]
 mod test {
 
+    use tornado_common_api::ValueExt;
+
     use super::*;
     use std::fs;
 

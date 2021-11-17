@@ -2,6 +2,7 @@ use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use maplit::*;
 use serde::*;
+use tornado_common_api::ValueExt;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
