@@ -1,16 +1,33 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, ValueGet};
 use typescript_definitions::TypeScriptify;
 
-pub type InternalEvent = Value;
+pub struct InternalEvent<'o> {
+    pub event: &'o Value,
+    pub extracted_variables: &'o mut Value
+}
+
+impl <'o> ValueGet for InternalEvent<'o> {
+    fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
+        match key {
+            "event" => Some(self.event),
+            "_variables" => Some(self.extracted_variables),
+            _ => None
+        }
+    }
+
+    fn get_from_array(&self, _index: usize) -> Option<&tornado_common_api::Value> {
+        None
+    }
+}
 
 /// A ProcessedEvent is the result of the matcher process.
 /// It contains the original Event along with the result of the matching operation.
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent {
-    pub event: InternalEvent,
+    pub event: Value,
     pub result: ProcessedNode,
 }
 

@@ -11,12 +11,11 @@ pub fn replace_all(
     value: &mut Value,
     find: &str,
     replace: &Accessor,
-    event: &InternalEvent,
-    extracted_vars: Option<&Value>,
+    event: &InternalEvent
 ) -> Result<(), MatcherError> {
     if let Some(text) = value.get_text() {
         if text.contains(find) {
-            if let Some(replace_get) = replace.get(event, extracted_vars) {
+            if let Some(replace_get) = replace.get(event) {
                 if let Some(replace_value) = replace_get.get_text() {
                     *value = Value::String(text.replace(find, replace_value));
                     return Ok(());
@@ -39,10 +38,9 @@ pub fn replace_all_with_regex(
     find_regex: &Regex,
     replace: &Accessor,
     event: &InternalEvent,
-    extracted_vars: Option<&Value>,
 ) -> Result<(), MatcherError> {
     if let Some(text) = value.get_text() {
-        if let Some(replace_get) = replace.get(event, extracted_vars) {
+        if let Some(replace_get) = replace.get(event) {
             if let Some(replace_value) = replace_get.get_text() {
                 let result = find_regex.replace_all(text, replace_value);
                 *value = Value::String(result.into_owned());

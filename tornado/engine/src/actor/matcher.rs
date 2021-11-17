@@ -11,13 +11,13 @@ use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilte
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
+use tornado_engine_matcher::model::{Value, ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
-    pub event: InternalEvent,
+    pub event: Value,
     pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -26,7 +26,7 @@ pub struct EventMessageWithReply {
 #[derive(Debug, Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageAndConfigWithReply {
-    pub event: InternalEvent,
+    pub event: Value,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -35,7 +35,7 @@ pub struct EventMessageAndConfigWithReply {
 #[derive(Message)]
 #[rtype(result = "Result<(), error::MatcherError>")]
 pub struct EventMessage {
-    pub event: InternalEvent,
+    pub event: Value,
 }
 
 #[derive(Message)]
@@ -73,7 +73,7 @@ impl MatcherActor {
     fn process_event_with_reply(
         &self,
         matcher: &Matcher,
-        event: InternalEvent,
+        event: Value,
         process_type: ProcessType,
         include_metadata: bool,
     ) -> ProcessedEvent {
@@ -93,7 +93,7 @@ impl MatcherActor {
     fn process(
         &self,
         matcher: &Matcher,
-        event: InternalEvent,
+        event: Value,
         include_metadata: bool,
     ) -> ProcessedEvent {
         let timer = SystemTime::now();
@@ -305,7 +305,7 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: InternalEvent = Event::new("test").into();
+        let mut event: Value = Event::new("test").into();
         event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
@@ -355,12 +355,12 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event_tenant_alpha: InternalEvent = Event::new("test").into();
+        let mut event_tenant_alpha: Value = Event::new("test").into();
         event_tenant_alpha
             .add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned()))
             .unwrap();
 
-        let mut event_tenant_beta: InternalEvent = Event::new("test").into();
+        let mut event_tenant_beta: Value = Event::new("test").into();
         event_tenant_beta
             .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
             .unwrap();
@@ -442,7 +442,7 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: InternalEvent = Event::new("test").into();
+        let mut event: Value = Event::new("test").into();
         event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act

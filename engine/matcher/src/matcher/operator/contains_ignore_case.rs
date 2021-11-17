@@ -28,12 +28,12 @@ impl Operator for ContainsIgnoreCase {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        match self.second.get(event, extracted_vars) {
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        match self.second.get(event) {
             Some(second_arg_value) => {
                 match second_arg_value.get_text().map(|val| val.to_lowercase()) {
                     Some(second_arg_lowercased) => {
-                        let option_first = self.first.get(event, extracted_vars);
+                        let option_first = self.first.get(event);
                         match option_first {
                             Some(first_arg_value) => match first_arg_value.borrow() {
                                 Value::String(first_arg_string) => (first_arg_string.to_lowercase())

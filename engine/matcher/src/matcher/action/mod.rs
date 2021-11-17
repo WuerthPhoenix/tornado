@@ -7,9 +7,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
-use crate::model::{
-    ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
-};
+use crate::model::{ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData};
 use std::collections::HashMap;
 use serde_json::{Map, Number, Value};
 use tornado_common_api::{Action, WithEventData};
@@ -120,11 +118,10 @@ impl ActionResolver {
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn resolve(
         &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<Action, MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id().map(|s| s.to_string()),
+            trace_id: data.event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
@@ -132,7 +129,7 @@ impl ActionResolver {
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
                 key.to_owned(),
-                action_value_processor.process(&self.rule_name, &self.id, event, extracted_vars)?,
+                action_value_processor.process(&self.rule_name, &self.id, data)?,
             );
         }
 
@@ -141,11 +138,11 @@ impl ActionResolver {
 
     pub fn resolve_with_meta(
         &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
+
     ) -> Result<(Action, ActionMetaData), MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id().map(|s| s.to_string()),
+            trace_id: data.event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
@@ -155,8 +152,7 @@ impl ActionResolver {
             let (value, value_enriched) = action_value_processor.process_enriched(
                 &self.rule_name,
                 &self.id,
-                event,
-                extracted_vars,
+                data,
             )?;
             action.payload.insert(key.to_owned(), value);
             action_meta.payload.insert(key.to_owned(), value_enriched);
@@ -181,12 +177,11 @@ impl ActionValueProcessor {
         &self,
         rule_name: &str,
         action_id: &str,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
-                .get(event, extracted_vars)
+                .get(data)
                 .ok_or(MatcherError::CreateActionError {
                     action_id: action_id.to_owned(),
                     rule_name: rule_name.to_owned(),
@@ -201,7 +196,7 @@ impl ActionValueProcessor {
                 for (key, value) in payload {
                     processor_payload.insert(
                         key.to_owned(),
-                        value.process(rule_name, action_id, event, extracted_vars)?,
+                        value.process(rule_name, action_id, data)?,
                     );
                 }
                 Ok(Value::Object(processor_payload))
@@ -212,8 +207,7 @@ impl ActionValueProcessor {
                     processor_values.push(value.process(
                         rule_name,
                         action_id,
-                        event,
-                        extracted_vars,
+                        data,
                     )?)
                 }
                 Ok(Value::Array(processor_values))
@@ -225,13 +219,12 @@ impl ActionValueProcessor {
         &self,
         rule_name: &str,
         action_id: &str,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<(Value, EnrichedValue), MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => {
                 let value = accessor
-                    .get(event, extracted_vars)
+                    .get(data)
                     .ok_or(MatcherError::CreateActionError {
                         action_id: action_id.to_owned(),
                         rule_name: rule_name.to_owned(),
@@ -283,7 +276,7 @@ impl ActionValueProcessor {
 
                 for (key, value) in payload {
                     let (value, enriched_value) =
-                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                        value.process_enriched(rule_name, action_id, data)?;
                     modified = modified || enriched_value.meta.modified;
                     processor_payload.insert(key.to_owned(), value);
                     processor_payload_enriched.insert(key.to_owned(), enriched_value);
@@ -305,7 +298,7 @@ impl ActionValueProcessor {
 
                 for value in values {
                     let (value, enriched_value) =
-                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                        value.process_enriched(rule_name, action_id, data)?;
                     modified = modified || enriched_value.meta.modified;
                     processor_values.push(value);
                     processor_payload_enriched.push(enriched_value);

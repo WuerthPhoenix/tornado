@@ -8,7 +8,7 @@ use tornado_engine_api_dto::event::{
     SendEventRequestDto,
 };
 use tornado_engine_matcher::model::{
-    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
+    Value, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
 
@@ -31,7 +31,7 @@ pub fn processed_event_into_dto(
     })
 }
 
-pub fn internal_event_into_dto(internal_event: InternalEvent) -> Result<EventDto, Error> {
+pub fn internal_event_into_dto(internal_event: Value) -> Result<EventDto, Error> {
     let event_value: tornado_common_api::Value = internal_event.into();
     let dto = serde_json::from_value(serde_json::to_value(event_value)?)?;
     Ok(dto)

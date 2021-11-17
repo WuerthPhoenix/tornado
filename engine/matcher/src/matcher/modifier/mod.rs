@@ -1,7 +1,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Modifier;
 use crate::error::MatcherError;
-use crate::model::InternalEvent;
+use crate::model::{InternalEvent};
 use crate::regex::RegexWrapper;
 use log::*;
 use serde_json::Value;
@@ -81,7 +81,6 @@ impl ValueModifier {
         variable_name: &str,
         value: &mut Value,
         event: &InternalEvent,
-        extracted_vars: Option<&Value>,
     ) -> Result<(), MatcherError> {
         match self {
             ValueModifier::Lowercase => lowercase::lowercase(variable_name, value),
@@ -89,7 +88,7 @@ impl ValueModifier {
                 map::map(variable_name, value, mapping, default_value)
             }
             ValueModifier::ReplaceAll { find, replace } => {
-                replace::replace_all(variable_name, value, find, replace, event, extracted_vars)
+                replace::replace_all(variable_name, value, find, replace, event)
             }
             ValueModifier::ReplaceAllRegex { find_regex, replace } => {
                 replace::replace_all_with_regex(
@@ -98,7 +97,6 @@ impl ValueModifier {
                     find_regex,
                     replace,
                     event,
-                    extracted_vars,
                 )
             }
             ValueModifier::ToNumber => number::to_number(variable_name, value),

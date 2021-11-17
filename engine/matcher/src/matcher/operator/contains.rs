@@ -1,7 +1,6 @@
-use crate::accessor::Accessor;
+use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::InternalEvent;
 use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "contains";
@@ -24,25 +23,25 @@ impl Operator for Contains {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        match self.first.get(event, extracted_vars) {
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        match self.first.get(event) {
             Some(first_value) => match first_value.as_ref() {
                 Value::String(first) => {
-                    let option_substring = self.second.get(event, extracted_vars);
+                    let option_substring = self.second.get(event);
                     match cow_to_str(&option_substring) {
                         Some(substring) => first.contains(substring),
                         None => false,
                     }
                 }
                 Value::Array(array) => {
-                    if let Some(value) = self.second.get(event, extracted_vars) {
+                    if let Some(value) = self.second.get(event) {
                         array.contains(value.as_ref())
                     } else {
                         false
                     }
                 }
                 Value::Object(map) => {
-                    let second = self.second.get(event, extracted_vars);
+                    let second = self.second.get(event);
                     match cow_to_str(&second) {
                         Some(key) => map.contains_key(key),
                         None => false,

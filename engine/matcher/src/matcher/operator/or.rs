@@ -2,7 +2,6 @@ use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "or";
 
@@ -32,8 +31,8 @@ impl Operator for Or {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        self.operators.iter().any(|op| op.evaluate(event, extracted_vars))
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        self.operators.iter().any(|op| op.evaluate(event))
     }
 }
 

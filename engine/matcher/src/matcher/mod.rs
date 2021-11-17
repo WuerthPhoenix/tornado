@@ -6,10 +6,7 @@ pub mod operator;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use crate::model::{
-    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
-    ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules,
-};
+use crate::model::{InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode, ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules};
 use crate::validator::MatcherConfigValidator;
 use log::*;
 use serde_json::{Map, Value};
@@ -109,7 +106,7 @@ impl Matcher {
     /// The result is a ProcessedEvent.
     pub fn process(
         &self,
-        event: InternalEvent,
+        event: Value,
         include_metadata: bool,
     ) -> ProcessedEvent {
         trace!(
@@ -123,7 +120,7 @@ impl Matcher {
 
     fn process_node(
         node: &ProcessingNode,
-        internal_event: &InternalEvent,
+        internal_event: &Value,
         include_metadata: bool,
     ) -> ProcessedNode {
         match node {
@@ -140,7 +137,7 @@ impl Matcher {
         filter_name: &str,
         filter: &MatcherFilter,
         nodes: &[ProcessingNode],
-        internal_event: &InternalEvent,
+        event: &Value,
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of filter: [{}]", filter_name);
@@ -148,14 +145,15 @@ impl Matcher {
         let mut result_nodes = vec![];
 
         let filter_status = if filter.active {
-            if filter.filter.evaluate(internal_event, None) {
+            let internal_event = InternalEvent { event, extracted_variables: &mut Value::Null };
+            if filter.filter.evaluate(&internal_event) {
                 trace!(
                         "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
                         filter_name
                     );
                 nodes.iter().for_each(|node| {
                     let processed_node =
-                        Matcher::process_node(node, internal_event, include_metadata);
+                        Matcher::process_node(node, event, include_metadata);
                     result_nodes.push(processed_node);
                 });
                 ProcessedFilterStatus::Matched
@@ -176,11 +174,13 @@ impl Matcher {
     fn process_rules(
         ruleset_name: &str,
         rules: &[MatcherRule],
-        internal_event: &InternalEvent,
+        event: &Value,
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
         let mut extracted_vars = Value::Object(Map::new());
+        let mut internal_event = InternalEvent { event, extracted_variables: &mut extracted_vars };
+
         let mut processed_rules = vec![];
 
         for rule in rules {
@@ -198,19 +198,18 @@ impl Matcher {
                 processed_rule.meta = Some(ProcessedRuleMetaData { actions: vec![] })
             }
 
-            if rule.operator.evaluate(internal_event, Some(&extracted_vars)) {
+            if rule.operator.evaluate(&internal_event) {
                 trace!(
                     "Matcher process - event matches rule: [{}]. Checking extracted variables.",
                     &rule.name
                 );
 
-                match rule.extractor.process_all(internal_event, &mut extracted_vars) {
+                match rule.extractor.process_all(&mut internal_event) {
                     Ok(_) => {
                         trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
 
                         match Matcher::process_actions(
-                            internal_event,
-                            Some(&extracted_vars),
+                            &internal_event,
                             &mut processed_rule,
                             &rule.actions,
                         ) {
@@ -251,20 +250,19 @@ impl Matcher {
 
     fn process_actions(
         processed_event: &InternalEvent,
-        extracted_vars: Option<&Value>,
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
         if let Some(metadata) = &mut processed_rule.meta {
             for action in actions {
                 let (action, action_metadata) =
-                    action.resolve_with_meta(processed_event, extracted_vars)?;
+                    action.resolve_with_meta(processed_event)?;
                 processed_rule.actions.push(action);
                 metadata.actions.push(action_metadata);
             }
         } else {
             for action in actions {
-                processed_rule.actions.push(action.resolve(processed_event, extracted_vars)?);
+                processed_rule.actions.push(action.resolve(processed_event)?);
             }
         }
         Ok(())

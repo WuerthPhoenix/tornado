@@ -1,7 +1,6 @@
 //! The accessor module contains the logic to extract data from an incoming Event.
 
-use crate::error::MatcherError;
-use crate::model::InternalEvent;
+use crate::{error::MatcherError, model::InternalEvent};
 use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
@@ -139,26 +138,22 @@ pub enum Accessor {
 impl Accessor {
     pub fn get<'o>(
         &'o self,
-        event: &'o InternalEvent,
-        extracted_vars: Option<&'o Value>,
+        data: &'o InternalEvent,
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(value)),
-            Accessor::CreatedMs => event.get("created_ms").map(|data| Cow::Borrowed(data)),
+            Accessor::CreatedMs => data.event.get("created_ms").map(|data| Cow::Borrowed(data)),
             Accessor::ExtractedVar { rule_name, parser } => {
-                extracted_vars.and_then(|global_vars| {
-                    global_vars
+                data.extracted_variables
                         .get_from_map(rule_name.as_str())
                         .and_then(|rule_vars| parser.parse_value(rule_vars))
-                        .or_else(|| parser.parse_value(global_vars))
-                })
+                        .or_else(|| parser.parse_value(data.extracted_variables))
             }
-            Accessor::Metadata { parser } => event.get("metadata").and_then(|data| parser.parse_value(data)),
-            Accessor::Payload { parser } => event.get("payload").and_then(|data| parser.parse_value(data)),
-            Accessor::Type => event.get("type").map(|data| Cow::Borrowed(data)),
+            Accessor::Metadata { parser } => data.event.get("metadata").and_then(|data| parser.parse_value(data)),
+            Accessor::Payload { parser } => data.event.get("payload").and_then(|data| parser.parse_value(data)),
+            Accessor::Type => data.event.get("type").map(|data| Cow::Borrowed(data)),
             Accessor::Event => {
-                let event_value: Value = event.clone().into();
-                Some(Cow::Owned(event_value))
+                Some(Cow::Borrowed(&data.event))
             }
         }
     }
@@ -416,7 +411,7 @@ mod test {
         assert_eq!(&event_value, result.as_ref());
 
         let json_from_result = serde_json::to_string(result.as_ref()).unwrap();
-        let event_from_result: InternalEvent = serde_json::from_str(&json_from_result).unwrap();
+        let event_from_result: Value = serde_json::from_str(&json_from_result).unwrap();
         assert_eq!(event, event_from_result);
 
         assert!(accessor.dynamic_value());

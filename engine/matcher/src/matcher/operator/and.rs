@@ -1,5 +1,3 @@
-use serde_json::Value;
-
 use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
@@ -33,8 +31,8 @@ impl Operator for And {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        self.operators.iter().all(|op| op.evaluate(event, extracted_vars))
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        self.operators.iter().all(|op| op.evaluate(event))
     }
 }
 

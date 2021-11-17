@@ -8,7 +8,7 @@ use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::{Extractor, ExtractorRegex};
 use crate::error::MatcherError;
 use crate::matcher::modifier::ValueModifier;
-use crate::model::InternalEvent;
+use crate::model::{InternalEvent};
 use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
@@ -117,17 +117,16 @@ impl MatcherExtractor {
     /// rule_name.extracted_var_name
     pub fn process_all(
         &self,
-        event: &InternalEvent,
-        extracted_vars: &mut Value,
+        event: &mut InternalEvent,
     ) -> Result<(), MatcherError> {
         if !self.extractors.is_empty() {
             let mut vars = Map::new();
             for (key, extractor) in &self.extractors {
-                let value = extractor.extract(key, event, Some(extracted_vars))?;
+                let value = extractor.extract(key, event)?;
                 vars.insert(extractor.key.to_string(), value);
             }
 
-            if let Some(map) = extracted_vars.get_map_mut() {
+            if let Some(map) = event.extracted_variables.get_map_mut() {
                 map.insert(self.rule_name.to_string(), Value::Object(vars));
             } else {
                 return Err(MatcherError::InternalSystemError {
@@ -164,12 +163,11 @@ impl ValueExtractor {
         &self,
         variable_name: &str,
         event: &InternalEvent,
-        extracted_vars: Option<&Value>,
     ) -> Result<Value, MatcherError> {
         let mut extracted_value =
-            self.regex_extractor.extract(variable_name, event, extracted_vars)?;
+            self.regex_extractor.extract(variable_name, event)?;
         for modifier in &self.modifiers_post {
-            modifier.apply(variable_name, &mut extracted_value, event, extracted_vars)?;
+            modifier.apply(variable_name, &mut extracted_value, event)?;
         }
         Ok(extracted_value)
     }
@@ -267,13 +265,12 @@ impl RegexValueExtractor {
         &self,
         variable_name: &str,
         event: &InternalEvent,
-        extracted_vars: Option<&Value>,
     ) -> Result<Value, MatcherError> {
         match self {
             // Note: the non-'multi' implementations could be avoided as they are a particular case of the 'multi' ones;
             // however, we can use an optimized logic if we know beforehand that only the first capture is required
             RegexValueExtractor::SingleMatchSingleGroup { regex, group_match_idx, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -296,7 +293,7 @@ impl RegexValueExtractor {
                     })
             }
             RegexValueExtractor::AllMatchesSingleGroup { regex, group_match_idx, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -329,7 +326,7 @@ impl RegexValueExtractor {
                 }
             }
             RegexValueExtractor::SingleMatchAllGroups { regex, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -354,7 +351,7 @@ impl RegexValueExtractor {
                 }
             }
             RegexValueExtractor::AllMatchesAllGroups { regex, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -384,7 +381,7 @@ impl RegexValueExtractor {
                 }
             }
             RegexValueExtractor::SingleMatchNamedGroups { regex, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -409,7 +406,7 @@ impl RegexValueExtractor {
                 })
             }
             RegexValueExtractor::AllMatchesNamedGroups { regex, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -438,7 +435,7 @@ impl RegexValueExtractor {
                 }
             }
             RegexValueExtractor::SingleKeyMatch { regex, target } => {
-                let cow_value = target.get(event, extracted_vars).ok_or_else(|| {
+                let cow_value = target.get(event).ok_or_else(|| {
                     MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     }
@@ -1594,7 +1591,7 @@ mod test {
         assert_eq!(Value::String("hello to be trimmed replaced_and lowercased".to_owned()), result);
     }
 
-    fn new_event(event_type: &str) -> InternalEvent {
+    fn new_event(event_type: &str) -> Value {
         json!(Event::new(event_type))
     }
 }

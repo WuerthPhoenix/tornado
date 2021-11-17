@@ -2,7 +2,6 @@ use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "not";
 
@@ -28,8 +27,8 @@ impl Operator for Not {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        !self.operator.evaluate(event, extracted_vars)
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        !self.operator.evaluate(event)
     }
 }
 

@@ -1,9 +1,8 @@
-use crate::accessor::Accessor;
+use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::InternalEvent;
 use std::cmp::Ordering;
-use tornado_common_api::{partial_cmp_option_cow_value, Value};
+use tornado_common_api::{partial_cmp_option_cow_value};
 
 const OPERATOR_NAME: &str = "ge";
 
@@ -26,9 +25,9 @@ impl Operator for GreaterEqualThan {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        let cmp = partial_cmp_option_cow_value(&self.first.get(event, extracted_vars), || {
-            self.second.get(event, extracted_vars)
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        let cmp = partial_cmp_option_cow_value(&self.first.get(event), || {
+            self.second.get(event)
         });
         cmp == Some(Ordering::Greater) || cmp == Some(Ordering::Equal)
     }

@@ -36,7 +36,7 @@ use tornado_engine_api::event::api_v2::EventApiV2;
 use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use tornado_engine_matcher::model::InternalEvent;
+use tornado_engine_matcher::model::Value;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -363,7 +363,7 @@ pub async fn daemon(
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                 ]);
 
-                let mut event: InternalEvent = event.into();
+                let mut event: Value = event.into();
                 for extractor in &nats_extractors {
                     event = extractor.process(&msg.msg.subject, event)?;
                 }

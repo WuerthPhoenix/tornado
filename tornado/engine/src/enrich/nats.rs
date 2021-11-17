@@ -3,7 +3,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tornado_common::actors::message::TornadoCommonActorError;
 use tornado_common_api::Value;
-use tornado_engine_matcher::model::InternalEvent;
+use tornado_engine_matcher::model::Value;
 
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(tag = "type")]
@@ -20,8 +20,8 @@ impl NatsExtractor {
     pub fn process(
         &self,
         subject: &str,
-        mut event: InternalEvent,
-    ) -> Result<InternalEvent, TornadoCommonActorError> {
+        mut event: Value,
+    ) -> Result<Value, TornadoCommonActorError> {
         match self {
             NatsExtractor::FromSubject { regex, key } => {
                 match regex.captures(subject).and_then(|captures| captures.get(1)) {
@@ -55,12 +55,12 @@ mod test {
     use crate::enrich::nats::NatsExtractor;
     use regex::Regex;
     use tornado_common_api::{ValueGet, ValueExt};
-    use tornado_engine_matcher::model::InternalEvent;
+    use tornado_engine_matcher::model::Value;
 
     #[test]
     fn should_extract_the_tenant_id() {
         // Arrange
-        let original_event = InternalEvent::new(Default::default());
+        let original_event = Value::new(Default::default());
 
         let extractor = NatsExtractor::FromSubject {
             regex: Regex::new("(.*)\\.tornado\\.events").unwrap(),
@@ -78,7 +78,7 @@ mod test {
     #[test]
     fn should_ignore_missing_tenant_id() {
         // Arrange
-        let original_event = InternalEvent::new(Default::default());
+        let original_event = Value::new(Default::default());
 
         let extractor = NatsExtractor::FromSubject {
             regex: Regex::new("(.*)\\.tornado\\.events").unwrap(),

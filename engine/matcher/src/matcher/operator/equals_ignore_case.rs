@@ -1,9 +1,8 @@
-use crate::accessor::Accessor;
+use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::InternalEvent;
 use log::*;
-use tornado_common_api::{Value, ValueExt, cow_to_str};
+use tornado_common_api::{ValueExt, cow_to_str};
 
 const OPERATOR_NAME: &str = "equalsIgnoreCase";
 
@@ -27,11 +26,11 @@ impl Operator for EqualsIgnoreCase {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        match self.first.get(event, extracted_vars) {
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        match self.first.get(event) {
             Some(first_value) => match first_value.get_text() {
                 Some(first) => {
-                    let option_substring = self.second.get(event, extracted_vars);
+                    let option_substring = self.second.get(event);
                     match cow_to_str(&option_substring) {
                         Some(substring) => (&first.to_lowercase()).eq(&substring.to_lowercase()),
                         None => {
