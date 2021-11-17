@@ -174,6 +174,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         ruleset_path: &str,
         rule_name: &str,
     ) -> Result<RuleDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+
         let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
 
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
@@ -198,17 +200,20 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 
         match node {
             MatcherConfig::Filter { .. } => Err(ApiError::NodeNotFoundError {
-                message: "Couldn't find the ruleset node".to_string(),
+                message: format!("Found filter instead of ruleset. Path: {:?}", ruleset_path),
             }),
             MatcherConfig::Ruleset { name: _, rules } => {
-                let rule = rules.iter().cloned().find(|rule| rule.name == rule_name);
-                if let Some(rule) = rule {
+                let rule = rules.iter().find(|rule| rule.name == rule_name);
+                if let Some(rule) = rule.cloned() {
                     rule_into_dto(rule).map_err(|err| ApiError::InternalServerError {
                         cause: format!("Couldn't convert rule into dto. Error: {}", err),
                     })
                 } else {
                     Err(ApiError::NodeNotFoundError {
-                        message: "Couldn't find the rule".to_string(),
+                        message: format!(
+                            "Couldn't find the rule {} in the {:?} ruleset.",
+                            rule_name, ruleset_path
+                        ),
                     })
                 }
             }
@@ -1043,8 +1048,7 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn get_current_config_rule_by_path_should_return_dto(
-    ) {
+    async fn get_current_config_rule_by_path_should_return_dto() {
         // Arrange
         let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
@@ -1074,6 +1078,37 @@ mod test {
             actions: vec![],
         };
         assert_eq!(res_get_rule_details, expected_res);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_rule_by_path_should_return_forbidden_if_user_is_not_viewer() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_get_rule_details_error =
+            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await;
+
+        // Assert
+        let expected_res = Err(ApiError::ForbiddenError {
+            code: "MISSING_REQUIRED_PERMISSIONS".to_string(),
+            message: "User [OWNER] does not have the required permissions [[ConfigView]]"
+                .to_string(),
+            params: Default::default(),
+        });
+        assert_eq!(expected_res, res_get_rule_details_error);
     }
 
     #[actix_rt::test]
