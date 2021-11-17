@@ -38,7 +38,7 @@ pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto
     })
 }
 
-fn rule_into_dto(rule: Rule) -> Result<RuleDto, Error> {
+pub fn rule_into_dto(rule: Rule) -> Result<RuleDto, Error> {
     Ok(RuleDto {
         active: rule.active,
         actions: rule.actions.into_iter().map(action_into_dto).collect::<Result<Vec<_>, _>>()?,
