@@ -199,6 +199,7 @@ impl PartialOrd for Number {
 }
 
 pub trait ValueExt {
+    fn as_value(&self) -> Option<&Value>;
     fn get_from_map(&self, key: &str) -> Option<&Value>;
     fn get_from_array(&self, index: usize) -> Option<&Value>;
     fn get_map(&self) -> Option<&HashMap<String, Value>>;
@@ -210,6 +211,11 @@ pub trait ValueExt {
 }
 
 impl ValueExt for Value {
+
+    fn as_value(&self) -> Option<&Value> {
+        Some(self)
+    }
+
     fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Map(payload) => payload.get(key),
@@ -258,6 +264,7 @@ impl ValueExt for Value {
             _ => None,
         }
     }
+
 }
 
 // Allows str == Value

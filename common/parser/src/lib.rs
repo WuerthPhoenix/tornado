@@ -99,15 +99,15 @@ impl Parser {
             .collect()
     }
 
-    pub fn parse_value<'o>(&'o self, value: &'o Value) -> Option<Cow<'o, Value>> {
+    pub fn parse_value<'o, I: ValueExt>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
-                let mut temp_value = Some(value);
+                let mut temp_value = value.as_value();
 
                 let mut count = 0;
 
                 while count < keys.len() && temp_value.is_some() {
-                    temp_value = temp_value.and_then(|val| keys[count].get(&val)).map(|val| val.into());
+                    temp_value = temp_value.and_then(|val| keys[count].get(val));
                     count += 1;
                 }
 
@@ -129,7 +129,7 @@ pub enum ValueGetter {
 }
 
 impl ValueGetter {
-    pub fn get<'o>(&self, value: &'o Value) -> Option<&'o Value> {
+    pub fn get<'o, I: ValueExt>(&self, value: &'o I) -> Option<&'o Value> {
         match self {
             ValueGetter::Map { key } => value.get_from_map(key),
             ValueGetter::Array { index } => value.get_from_array(*index),
@@ -239,7 +239,7 @@ mod test {
         "#;
 
         // Act
-        let value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         let result = parser.parse_value(&value);
 
         // Assert
@@ -259,7 +259,7 @@ mod test {
         "#;
 
         // Act
-        let value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         let result = parser.parse_value(&value);
 
         // Assert
@@ -277,7 +277,7 @@ mod test {
         "#;
 
         // Act
-        let value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         let result = parser.parse_value(&value);
 
         // Assert
@@ -296,7 +296,7 @@ mod test {
         "#;
 
         // Act
-        let value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         let result = parser.parse_value(&value);
 
         // Assert
@@ -345,7 +345,7 @@ mod test {
         "#;
 
         // Act
-        let value = serde_json::from_str(json).unwrap();
+        let value: Value = serde_json::from_str(json).unwrap();
         let result = parser.parse_value(&value);
 
         // Assert

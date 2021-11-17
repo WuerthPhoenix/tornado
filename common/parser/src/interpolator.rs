@@ -8,7 +8,7 @@
 use crate::{Parser, ParserError};
 use lazy_static::*;
 use regex::{Match, Regex};
-use tornado_common_api::{Number, Value};
+use tornado_common_api::{Number, Value, ValueExt};
 
 lazy_static! {
     static ref RE: Regex =
@@ -72,7 +72,7 @@ impl StringInterpolator {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render(&self, event: &Value) -> Result<String, ParserError> {
+    pub fn render<I: ValueExt>(&self, event: &I) -> Result<String, ParserError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
