@@ -43,6 +43,12 @@ impl InternalEvent {
         event.into()
     }
 
+    pub fn new_with_metadata(event: Event, metadata: Value) -> Self {
+        let mut internal_event: InternalEvent = event.into();
+        internal_event.metadata = metadata;
+        internal_event
+    }
+
     pub fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), MatcherError> {
         match &mut self.metadata {
             Value::Null => {
