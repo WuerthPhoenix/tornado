@@ -347,7 +347,7 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
-    use tornado_engine_api_dto::config::RuleDetailsDto;
+    use tornado_engine_api_dto::config::{ConstraintDto, RuleDetailsDto};
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
@@ -1065,11 +1065,12 @@ mod test {
             api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await.unwrap();
 
         // Assert
-        let expected_res = RuleDetailsDto {
+        let expected_res = RuleDto {
             name: "root_1_2_1".to_string(),
             description: "".to_string(),
             do_continue: false,
             active: true,
+            constraint: ConstraintDto { where_operator: None, with: Default::default() },
             actions: vec![],
         };
         assert_eq!(res_get_rule_details, expected_res);
