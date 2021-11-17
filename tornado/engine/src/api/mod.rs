@@ -107,7 +107,7 @@ mod test {
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tornado_common_api::{Event, Value};
+    use tornado_common_api::{Event, Value, ValueExt};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};

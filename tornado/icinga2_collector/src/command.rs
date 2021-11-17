@@ -136,7 +136,7 @@ mod test {
     use actix_web::{web, App, HttpServer};
     use maplit::*;
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
-    use tornado_common_api::Value;
+    use tornado_common_api::{Value, ValueExt};
     use tornado_common_api::ValueGet;
     //use tornado_common_logger::{setup_logger, LoggerConfig};
 

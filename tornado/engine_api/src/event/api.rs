@@ -82,7 +82,7 @@ pub mod test {
     use crate::error::ApiError;
     use async_trait::async_trait;
     use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::Value;
+    use tornado_common_api::{Value, Map};
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
     use tornado_engine_matcher::error::MatcherError;
@@ -103,7 +103,7 @@ pub mod test {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Object(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
             })
@@ -120,7 +120,7 @@ pub mod test {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Object(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
             })
