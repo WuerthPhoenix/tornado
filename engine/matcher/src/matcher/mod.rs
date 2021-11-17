@@ -182,7 +182,7 @@ impl Matcher {
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
-        let mut extracted_vars = Value::Map(HashMap::new());
+        let mut extracted_vars = Value::Object(HashMap::new());
         let mut processed_rules = vec![];
 
         for rule in rules {
@@ -288,8 +288,8 @@ mod test {
         let rule = new_rule(
             "rule_name",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
@@ -313,8 +313,8 @@ mod test {
     fn should_build_the_matcher_with_a_filter() {
         // Arrange
         let filter = new_filter(Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         });
 
         // Act
@@ -366,8 +366,8 @@ mod test {
     fn should_build_the_matcher_with_a_filter_recursively() {
         // Arrange
         let filter = new_filter(Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         });
 
         let nodes = vec![
@@ -429,8 +429,8 @@ mod test {
     fn build_should_fail_if_not_unique_name() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule_name", op.clone());
         let rule_2 = new_rule("rule_name", op.clone());
@@ -474,8 +474,8 @@ mod test {
     fn should_sort_the_rules_based_on_input_order() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule1", op.clone());
         let rule_2 = new_rule("rule2", op.clone());
@@ -507,8 +507,8 @@ mod test {
     fn should_ignore_non_active_rules() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let mut rule_1 = new_rule("rule1", op.clone());
         rule_1.active = false;
@@ -545,24 +545,24 @@ mod test {
         let rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
         let rule_2 = new_rule(
             "rule2_sms",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("sms".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("sms".to_owned()),
             },
         );
 
         let rule_3 = new_rule(
             "rule3_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -600,8 +600,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -622,7 +622,7 @@ mod test {
 
         action
             .payload
-            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
+            .insert("temp".to_owned(), Value::String("${_variables.extracted_temp}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -667,8 +667,8 @@ mod test {
         let rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -701,8 +701,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -751,8 +751,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -773,10 +773,10 @@ mod test {
 
         action
             .payload
-            .insert("temp".to_owned(), Value::Text("${_variables.extracted_temp}".to_owned()));
+            .insert("temp".to_owned(), Value::String("${_variables.extracted_temp}".to_owned()));
         action
             .payload
-            .insert("missing".to_owned(), Value::Text("${_variables.missing}".to_owned()));
+            .insert("missing".to_owned(), Value::String("${_variables.missing}".to_owned()));
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -786,7 +786,7 @@ mod test {
         .unwrap();
 
         let mut event_payload = HashMap::new();
-        event_payload.insert(String::from("temp"), Value::Text(String::from("temp_value")));
+        event_payload.insert(String::from("temp"), Value::String(String::from("temp_value")));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", event_payload), false);
@@ -815,8 +815,8 @@ mod test {
     fn should_stop_execution_if_continue_is_false() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let rule_1 = new_rule("rule1_email", op.clone());
@@ -855,8 +855,8 @@ mod test {
     fn should_not_stop_execution_if_continue_is_false_in_a_non_matching_rule() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let rule_1 = new_rule("rule1_email", op.clone());
@@ -864,8 +864,8 @@ mod test {
         let mut rule_2 = new_rule(
             "rule2_sms",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("sms".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("sms".to_owned()),
             },
         );
         rule_2.do_continue = false;
@@ -903,8 +903,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -958,8 +958,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -979,8 +979,8 @@ mod test {
         let mut rule_2 = new_rule(
             "rule2_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -1046,8 +1046,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -1067,8 +1067,8 @@ mod test {
         let mut rule_2 = new_rule(
             "rule2_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -1130,8 +1130,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1",
             Operator::Equals {
-                first: Value::Text("${event.payload.array[0]}".to_owned()),
-                second: Value::Text("aaa".to_owned()),
+                first: Value::String("${event.payload.array[0]}".to_owned()),
+                second: Value::String("aaa".to_owned()),
             },
         );
 
@@ -1157,7 +1157,7 @@ mod test {
         let mut payload = Payload::new();
         payload.insert(
             "array".to_owned(),
-            Value::Array(vec![Value::Text("aaa".to_owned()), Value::Text("zzz".to_owned())]),
+            Value::Array(vec![Value::String("aaa".to_owned()), Value::String("zzz".to_owned())]),
         );
 
         // Act
@@ -1191,8 +1191,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1",
             Operator::Equals {
-                first: Value::Text("${event.payload.map.key0}".to_owned()),
-                second: Value::Text("aaa".to_owned()),
+                first: Value::String("${event.payload.map.key0}".to_owned()),
+                second: Value::String("aaa".to_owned()),
             },
         );
 
@@ -1217,9 +1217,9 @@ mod test {
 
         let mut payload = Payload::new();
         let mut inner = Payload::new();
-        inner.insert("key0".to_owned(), Value::Text("aaa".to_owned()));
-        inner.insert("key1".to_owned(), Value::Text("zzz".to_owned()));
-        payload.insert("map".to_owned(), Value::Map(inner));
+        inner.insert("key0".to_owned(), Value::String("aaa".to_owned()));
+        inner.insert("key1".to_owned(), Value::String("zzz".to_owned()));
+        payload.insert("map".to_owned(), Value::Object(inner));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", payload), false);
@@ -1250,8 +1250,8 @@ mod test {
     fn should_process_rulesets_if_filter_has_no_operator() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let filter = new_filter(None);
@@ -1307,8 +1307,8 @@ mod test {
     fn should_process_all_filter_rulesets() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let filter = new_filter(op.clone());
@@ -1386,8 +1386,8 @@ mod test {
     fn should_process_filter_rulesets_recursively() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let filter = new_filter(op.clone());
@@ -1404,8 +1404,8 @@ mod test {
             MatcherConfig::Filter {
                 name: "node1".to_owned(),
                 filter: new_filter(Operator::Equals {
-                    first: Value::Text("${event.type}".to_owned()),
-                    second: Value::Text("trap".to_owned()),
+                    first: Value::String("${event.type}".to_owned()),
+                    second: Value::String("trap".to_owned()),
                 }),
                 nodes: vec![MatcherConfig::Ruleset {
                     name: "node".to_owned(),
@@ -1510,8 +1510,8 @@ mod test {
     fn should_process_no_rulesets_if_filter_is_inactive() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let mut filter = new_filter(None);
@@ -1550,13 +1550,13 @@ mod test {
     fn should_process_no_rulesets_if_filter_does_not_match() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let filter = new_filter(Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("trapd".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("trapd".to_owned()),
         });
 
         let nodes = vec![
@@ -1592,8 +1592,8 @@ mod test {
     fn should_process_rulesets_independently() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("${event.type}".to_owned()),
-            second: Value::Text("email".to_owned()),
+            first: Value::String("${event.type}".to_owned()),
+            second: Value::String("email".to_owned()),
         };
 
         let filter = new_filter(op.clone());
@@ -1724,7 +1724,7 @@ mod test {
                 .unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+        payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", payload), false);
@@ -1987,9 +1987,9 @@ mod test {
             // Act
             payload.insert(
                 "value".to_owned(),
-                Value::Text("This is a Contain alias test!".to_owned()),
+                Value::String("This is a Contain alias test!".to_owned()),
             );
-            payload.insert("message".to_owned(), Value::Text("WaRnInG".to_owned()));
+            payload.insert("message".to_owned(), Value::String("WaRnInG".to_owned()));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -2009,9 +2009,9 @@ mod test {
             // Act
             payload.insert(
                 "value".to_owned(),
-                Value::Text("This is a Contain alias test!".to_owned()),
+                Value::String("This is a Contain alias test!".to_owned()),
             );
-            payload.insert("message".to_owned(), Value::Text("WaRnInGs".to_owned()));
+            payload.insert("message".to_owned(), Value::String("WaRnInGs".to_owned()));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -2048,7 +2048,7 @@ mod test {
             // Act
             payload.insert(
                 "value".to_owned(),
-                Value::Text("The word Something should match".to_owned()),
+                Value::String("The word Something should match".to_owned()),
             );
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
@@ -2084,7 +2084,7 @@ mod test {
         // Value not containing (case insentitive) "something" should not match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Text("Some".to_owned()));
+            payload.insert("value".to_owned(), Value::String("Some".to_owned()));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -2122,8 +2122,8 @@ mod test {
             payload.insert(
                 "value".to_owned(),
                 Value::Array(vec![
-                    Value::Text("Something else".to_owned()),
-                    Value::Text("Something".to_owned()),
+                    Value::String("Something else".to_owned()),
+                    Value::String("Something".to_owned()),
                 ]),
             );
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
@@ -2163,8 +2163,8 @@ mod test {
             payload.insert(
                 "value".to_owned(),
                 Value::Array(vec![
-                    Value::Text("This is Something".to_owned()),
-                    Value::Text("Something else".to_owned()),
+                    Value::String("This is Something".to_owned()),
+                    Value::String("Something else".to_owned()),
                 ]),
             );
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
@@ -2202,7 +2202,7 @@ mod test {
         // Value containing "Contains test" should match
         {
             // Act
-            payload.insert("value".to_owned(), Value::Text("This is a Contains test!".to_owned()));
+            payload.insert("value".to_owned(), Value::String("This is a Contains test!".to_owned()));
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
             // Assert
@@ -2240,7 +2240,7 @@ mod test {
             // Act
             payload.insert(
                 "value".to_owned(),
-                Value::Text("This is a Contain alias test!".to_owned()),
+                Value::String("This is a Contain alias test!".to_owned()),
             );
             let result = matcher.process(Event::new_with_payload("email", payload.clone()), false);
 
@@ -2278,8 +2278,8 @@ mod test {
         let mut rule_2 = new_rule(
             "rule2",
             Operator::Equals {
-                first: Value::Text("${_variables.rule1.extracted}".to_owned()),
-                second: Value::Text("aaa".to_owned()),
+                first: Value::String("${_variables.rule1.extracted}".to_owned()),
+                second: Value::String("aaa".to_owned()),
             },
         );
 
@@ -2303,7 +2303,7 @@ mod test {
         .expect("should create a matcher");
 
         let mut payload = Payload::new();
-        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+        payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", payload), false);
@@ -2364,7 +2364,7 @@ mod test {
             let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
             action
                 .payload
-                .insert("value".to_owned(), Value::Text("${_variables.VALUE}".to_owned()));
+                .insert("value".to_owned(), Value::String("${_variables.VALUE}".to_owned()));
             rule.actions.push(action);
             rule
         };
@@ -2386,11 +2386,11 @@ mod test {
             let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
             action.payload.insert(
                 "value".to_owned(),
-                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+                Value::String("${_variables.collision_name.VALUE}".to_owned()),
             );
             action
                 .payload
-                .insert("full".to_owned(), Value::Text("${_variables.collision_name}".to_owned()));
+                .insert("full".to_owned(), Value::String("${_variables.collision_name}".to_owned()));
             rule.actions.push(action);
             rule
         };
@@ -2401,7 +2401,7 @@ mod test {
             let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
             action.payload.insert(
                 "value".to_owned(),
-                Value::Text("${_variables.collision_name.VALUE}".to_owned()),
+                Value::String("${_variables.collision_name.VALUE}".to_owned()),
             );
             rule.actions.push(action);
             rule
@@ -2414,7 +2414,7 @@ mod test {
         .expect("should create a matcher");
 
         let mut payload = Payload::new();
-        payload.insert("value".to_owned(), Value::Text("aaa999".to_owned()));
+        payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));
 
         // Act
         let result = matcher.process(Event::new_with_payload("email", payload), false);
@@ -2436,8 +2436,8 @@ mod test {
                 );
 
                 let mut vars = HashMap::new();
-                vars.insert("VALUE".to_owned(), Value::Text("999".to_owned()));
-                let vars = Value::Map(vars);
+                vars.insert("VALUE".to_owned(), Value::String("999".to_owned()));
+                let vars = Value::Object(vars);
                 assert_eq!(
                     &vars,
                     rules
@@ -2515,8 +2515,8 @@ mod test {
         let mut rule_1 = new_rule(
             "rule1_email",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 

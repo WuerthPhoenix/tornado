@@ -42,7 +42,7 @@ impl SimpleCreateAndProcess {
     ) -> Result<(Icinga2Action, DirectorAction, Option<DirectorAction>), ExecutorError> {
         self.host.insert(
             ICINGA_FIELD_FOR_SPECIFYING_OBJECT_TYPE.to_owned(),
-            Value::Text("Object".to_owned()),
+            Value::String("Object".to_owned()),
         );
         let host_object_name = self
             .host
@@ -64,11 +64,11 @@ impl SimpleCreateAndProcess {
         if let Some(service_payload) = &mut self.service {
             service_payload.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_OBJECT_TYPE.to_owned(),
-                Value::Text("Object".to_owned()),
+                Value::String("Object".to_owned()),
             );
             service_payload.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_HOST.to_owned(),
-                Value::Text(host_object_name.to_owned()),
+                Value::String(host_object_name.to_owned()),
             );
             let service_object_name = service_payload
                 .get(ICINGA_FIELD_FOR_SPECIFYING_OBJECT_NAME)
@@ -82,11 +82,11 @@ impl SimpleCreateAndProcess {
                 })?;
             self.check_result.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_TYPE.to_owned(),
-                Value::Text("Service".to_owned()),
+                Value::String("Service".to_owned()),
             );
             self.check_result.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_SERVICE.to_owned(),
-                Value::Text(format!("{}!{}", host_object_name, service_object_name)),
+                Value::String(format!("{}!{}", host_object_name, service_object_name)),
             );
             Ok((
                 Icinga2Action {
@@ -103,11 +103,11 @@ impl SimpleCreateAndProcess {
         } else {
             self.check_result.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_TYPE.to_owned(),
-                Value::Text("Host".to_owned()),
+                Value::String("Host".to_owned()),
             );
             self.check_result.insert(
                 ICINGA_FIELD_FOR_SPECIFYING_HOST.to_owned(),
-                Value::Text(host_object_name.to_owned()),
+                Value::String(host_object_name.to_owned()),
             );
             Ok((
                 Icinga2Action {
@@ -144,12 +144,12 @@ mod test {
     ) {
         // Arrange
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("host".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "service".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
 
@@ -173,14 +173,14 @@ mod test {
     ) {
         // Arrange
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
-        action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("service".to_owned(), Value::Object(hashmap!()));
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 

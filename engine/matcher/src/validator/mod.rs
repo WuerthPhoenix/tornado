@@ -114,8 +114,8 @@ mod test {
         let rule = new_rule(
             "rule_name",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
@@ -132,8 +132,8 @@ mod test {
         let rule = new_rule(
             "rule_name",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
@@ -150,16 +150,16 @@ mod test {
         let rule_1 = new_rule(
             "rule_name",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
         let rule_2 = new_rule(
             "rule_name_2",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
@@ -177,8 +177,8 @@ mod test {
         let rule_1 = new_rule(
             "",
             Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
         );
 
@@ -193,8 +193,8 @@ mod test {
     fn build_should_fail_if_not_unique_name() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule_name", op.clone());
         let rule_2 = new_rule("rule_name", op.clone());
@@ -216,8 +216,8 @@ mod test {
     fn build_should_fail_if_empty_spaces_in_rule_name() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule name", op.clone());
 
@@ -232,8 +232,8 @@ mod test {
     fn build_should_fail_if_not_correct_name() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule.name", op.clone());
 
@@ -248,8 +248,8 @@ mod test {
     fn build_should_fail_if_not_correct_extracted_var_name() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let mut rule_1 = new_rule("rule_name", op.clone());
 
@@ -277,8 +277,8 @@ mod test {
     fn build_should_fail_if_not_correct_action_id() {
         // Arrange
         let op = Operator::Equals {
-            first: Value::Text("1".to_owned()),
-            second: Value::Text("1".to_owned()),
+            first: Value::String("1".to_owned()),
+            second: Value::String("1".to_owned()),
         };
         let mut rule_1 = new_rule("rule_name", op.clone());
 

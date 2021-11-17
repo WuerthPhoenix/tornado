@@ -110,7 +110,7 @@ mod test {
         .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), Value::Text("type".to_owned()));
+        payload.insert("type".to_owned(), Value::String("type".to_owned()));
 
         let event = Event::new_with_payload("type", payload);
 
@@ -264,11 +264,11 @@ mod test {
         let mut payload = Payload::new();
         payload.insert("one".to_owned(), Value::Number(Number::Float(1.1)));
         payload.insert("two".to_owned(), Value::Bool(true));
-        payload.insert("three".to_owned(), Value::Text("hello".to_owned()));
+        payload.insert("three".to_owned(), Value::String("hello".to_owned()));
 
         let mut event = Event::new("test_type");
-        event.payload.insert("one".to_owned(), Value::Map(payload.clone()));
-        event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
+        event.payload.insert("one".to_owned(), Value::Object(payload.clone()));
+        event.payload.insert("two".to_owned(), Value::Object(payload.clone()));
 
         assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -286,10 +286,10 @@ mod test {
         payload.insert("two".to_owned(), Value::Bool(true));
 
         let mut event = Event::new("test_type");
-        event.payload.insert("one".to_owned(), Value::Map(payload.clone()));
+        event.payload.insert("one".to_owned(), Value::Object(payload.clone()));
 
-        payload.insert("three".to_owned(), Value::Text("hello".to_owned()));
-        event.payload.insert("two".to_owned(), Value::Map(payload.clone()));
+        payload.insert("three".to_owned(), Value::String("hello".to_owned()));
+        event.payload.insert("two".to_owned(), Value::Object(payload.clone()));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -303,7 +303,7 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert("one".to_owned(), Value::Text("1.2".to_owned()));
+        event.payload.insert("one".to_owned(), Value::String("1.2".to_owned()));
         event.payload.insert("two".to_owned(), Value::Number(Number::Float(1.2)));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));

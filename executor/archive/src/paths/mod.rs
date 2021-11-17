@@ -110,8 +110,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload).unwrap();
@@ -142,8 +142,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}/${three}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload);
@@ -159,8 +159,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}/${one}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload).unwrap();

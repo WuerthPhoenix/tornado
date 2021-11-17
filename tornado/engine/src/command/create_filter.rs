@@ -187,8 +187,8 @@ pub mod test {
             description: "my new filter".to_string(),
             active: true,
             filter: Defaultable::Value(Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             }),
         };
 
@@ -233,8 +233,8 @@ pub mod test {
             description: "my new filter".to_string(),
             active: true,
             filter: Defaultable::Value(Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             }),
         };
 
@@ -279,8 +279,8 @@ pub mod test {
             description: "my new filter".to_string(),
             active: true,
             filter: Defaultable::Value(Operator::Equals {
-                first: Value::Text("${event.metadata.tenant_id}".to_owned()),
-                second: Value::Text("alpha".to_owned()),
+                first: Value::String("${event.metadata.tenant_id}".to_owned()),
+                second: Value::String("alpha".to_owned()),
             }),
         };
 
@@ -422,8 +422,8 @@ pub mod test {
             description: "my new filter".to_string(),
             active: true,
             filter: Defaultable::Value(Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             }),
         };
 

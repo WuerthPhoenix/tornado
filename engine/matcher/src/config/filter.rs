@@ -35,8 +35,8 @@ mod test {
 
         assert_eq!(
             Defaultable::Value(Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned())
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned())
             }),
             filter.filter
         );

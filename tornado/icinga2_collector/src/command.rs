@@ -137,7 +137,7 @@ mod test {
     use maplit::*;
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
     use tornado_common_api::Value;
-    use tornado_common_api::ValueExt;
+    use tornado_common_api::ValueGet;
     //use tornado_common_logger::{setup_logger, LoggerConfig};
 
     #[actix_rt::test]
@@ -187,7 +187,7 @@ mod test {
                         collector: JMESPathEventCollector::build(JMESPathEventCollectorConfig {
                             event_type: "test".to_owned(),
                             payload: hashmap![
-                                "response".to_owned() => Value::Text("${@}".to_owned())
+                                "response".to_owned() => Value::String("${@}".to_owned())
                             ],
                         })
                         .unwrap(),

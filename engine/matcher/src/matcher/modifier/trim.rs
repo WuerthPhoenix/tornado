@@ -6,7 +6,7 @@ pub fn trim(variable_name: &str, value: &mut Value) -> Result<(), MatcherError> 
     if let Some(text) = value.get_text() {
         let trimmed = text.trim();
         if trimmed.len() < text.len() {
-            *value = Value::Text(trimmed.to_owned());
+            *value = Value::String(trimmed.to_owned());
         }
         Ok(())
     } else {
@@ -25,21 +25,21 @@ mod test {
     #[test]
     fn trim_modifier_should_trim_a_string() {
         {
-            let mut input = Value::Text("".to_owned());
+            let mut input = Value::String("".to_owned());
             trim("", &mut input).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("not to trim".to_owned());
+            let mut input = Value::String("not to trim".to_owned());
             trim("", &mut input).unwrap();
-            assert_eq!(Value::Text("not to trim".to_owned()), input);
+            assert_eq!(Value::String("not to trim".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text(" to be trimmed  ".to_owned());
+            let mut input = Value::String(" to be trimmed  ".to_owned());
             trim("", &mut input).unwrap();
-            assert_eq!(Value::Text("to be trimmed".to_owned()), input);
+            assert_eq!(Value::String("to be trimmed".to_owned()), input);
         }
     }
 
@@ -51,7 +51,7 @@ mod test {
         }
 
         {
-            let mut input = Value::Map(HashMap::new());
+            let mut input = Value::Object(HashMap::new());
             assert!(trim("", &mut input).is_err());
         }
 

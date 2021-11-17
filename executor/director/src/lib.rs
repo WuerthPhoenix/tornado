@@ -260,7 +260,7 @@ mod test {
         let mut action = Action::new("", "");
         action
             .payload
-            .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_service".to_owned()));
+            .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_service".to_owned()));
         action.payload.insert(DIRECTOR_ACTION_LIVE_CREATION_KEY.to_owned(), Value::Bool(true));
 
         // Act
@@ -285,12 +285,12 @@ mod test {
         let mut action = Action::new("", "");
         action
             .payload
-            .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));
+            .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_host".to_owned()));
         action.payload.insert(
             DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
-            Value::Map(hashmap![
-                "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                "type".to_owned() => Value::Text("Host".to_owned())
+            Value::Object(hashmap![
+                "filter".to_owned() => Value::String("filter_value".to_owned()),
+                "type".to_owned() => Value::String("Host".to_owned())
             ]),
         );
 
@@ -302,8 +302,8 @@ mod test {
             Ok(DirectorAction {
                 name: DirectorActionName::CreateHost,
                 payload: &hashmap![
-                    "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                    "type".to_owned() => Value::Text("Host".to_owned())
+                    "filter".to_owned() => Value::String("filter_value".to_owned()),
+                    "type".to_owned() => Value::String("Host".to_owned())
                 ],
                 live_creation: false
             }),

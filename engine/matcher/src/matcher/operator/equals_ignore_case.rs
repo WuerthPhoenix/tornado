@@ -186,7 +186,7 @@ mod test {
         .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), Value::Text("tyPe".to_owned()));
+        payload.insert("type".to_owned(), Value::String("tyPe".to_owned()));
 
         let event = Event::new_with_payload("Type", payload);
 
@@ -209,9 +209,9 @@ mod test {
     fn should_evaluate_to_false_if_array_contains_the_second_arg() {
         let operator = EqualsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Array(vec![Value::Text("one".to_owned())]))
+                .build_from_value("", &Value::Array(vec![Value::String("one".to_owned())]))
                 .unwrap(),
-            AccessorBuilder::new().build_from_value("", &Value::Text("one".to_owned())).unwrap(),
+            AccessorBuilder::new().build_from_value("", &Value::String("one".to_owned())).unwrap(),
         )
         .unwrap();
 
@@ -224,10 +224,10 @@ mod test {
     fn should_evaluate_to_false_if_map_contains_the_second_arg_as_key() {
         let operator = EqualsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.map}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.map}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -235,12 +235,12 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Map(hashmap!(
+            Value::Object(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),
         );
-        event.payload.insert("value".to_owned(), Value::Text("key_two".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("key_two".to_owned()));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }

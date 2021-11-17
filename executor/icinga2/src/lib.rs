@@ -188,7 +188,7 @@ mod test {
         let mut action = Action::new("", "");
         action
             .payload
-            .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
+            .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::String("action-test".to_owned()));
 
         // Act
         let result = executor.parse_action(&action);
@@ -212,13 +212,13 @@ mod test {
         let mut action = Action::new("", "");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
-            Value::Text("process-check-result".to_owned()),
+            Value::String("process-check-result".to_owned()),
         );
         action.payload.insert(
             ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
-            Value::Map(hashmap![
-                "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                "type".to_owned() => Value::Text("Host".to_owned())
+            Value::Object(hashmap![
+                "filter".to_owned() => Value::String("filter_value".to_owned()),
+                "type".to_owned() => Value::String("Host".to_owned())
             ]),
         );
 
@@ -230,8 +230,8 @@ mod test {
             Ok(Icinga2Action {
                 name: "process-check-result",
                 payload: Some(&hashmap![
-                    "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                    "type".to_owned() => Value::Text("Host".to_owned())
+                    "filter".to_owned() => Value::String("filter_value".to_owned()),
+                    "type".to_owned() => Value::String("Host".to_owned())
                 ])
             }),
             result

@@ -125,9 +125,9 @@ pub struct Action {
 impl From<Action> for Value {
     fn from(action: Action) -> Self {
         let mut new_value = HashMap::new();
-        new_value.insert("id".to_owned(), Value::Text(action.id));
-        new_value.insert("payload".to_owned(), Value::Map(action.payload));
-        Value::Map(new_value)
+        new_value.insert("id".to_owned(), Value::String(action.id));
+        new_value.insert("payload".to_owned(), Value::Object(action.payload));
+        Value::Object(new_value)
     }
 }
 

@@ -60,7 +60,7 @@ impl StatelessExecutor for ForEachExecutor {
 
                         let mut item = HashMap::new();
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_action(&Value::Map(item), action.clone())
+                        if let Err(err) = resolve_action(&Value::Object(item), action.clone())
                             .map(|action| self.bus.publish_action(action)) {
                             warn!(
                                 "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
@@ -83,9 +83,9 @@ impl StatelessExecutor for ForEachExecutor {
 
 fn to_action(trace_id: &str, value: &Value) -> Result<Action, ExecutorError> {
     match value {
-        Value::Map(action) => match action.get(FOREACH_ACTION_ID_KEY) {
-            Some(Value::Text(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Map(payload)) => Ok(Action {
+        Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
+            Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
+                Some(Value::Object(payload)) => Ok(Action {
                     trace_id: trace_id.to_owned(),
                     id: id.to_owned(),
                     payload: payload.clone(),
@@ -120,7 +120,7 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
 
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
-        Value::Text(text) => {
+        Value::String(text) => {
             if let Some(parse_result) = Parser::build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
@@ -138,7 +138,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
                 resolve_payload(item, element)?;
             }
         }
-        Value::Map(values) => {
+        Value::Object(values) => {
             for (_key, element) in values.iter_mut() {
                 resolve_payload(item, element)?;
             }
@@ -161,13 +161,13 @@ mod test {
     fn should_convert_value_to_action() {
         // Arrange
         let mut action_map = HashMap::new();
-        action_map.insert("id".to_owned(), Value::Text("my_action".to_owned()));
+        action_map.insert("id".to_owned(), Value::String("my_action".to_owned()));
 
         let mut payload_map = HashMap::new();
         payload_map.insert("key_one".to_owned(), Value::Array(vec![]));
-        action_map.insert("payload".to_owned(), Value::Map(payload_map.clone()));
+        action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
-        let action_value = Value::Map(action_map);
+        let action_value = Value::Object(action_map);
         let trace_id = "asfse3t23tegre";
 
         // Act
@@ -195,9 +195,9 @@ mod test {
 
         let mut payload_map = HashMap::new();
         payload_map.insert("key_one".to_owned(), Value::Array(vec![]));
-        action_map.insert("payload".to_owned(), Value::Map(payload_map.clone()));
+        action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
-        let action_value = Value::Map(action_map);
+        let action_value = Value::Object(action_map);
 
         // Act
         let result = to_action("", &action_value);
@@ -214,9 +214,9 @@ mod test {
 
         let mut payload_map = HashMap::new();
         payload_map.insert("key_one".to_owned(), Value::Array(vec![]));
-        action_map.insert("payload".to_owned(), Value::Map(payload_map.clone()));
+        action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
-        let action_value = Value::Map(action_map);
+        let action_value = Value::Object(action_map);
 
         // Act
         let result = to_action("", &action_value);
@@ -229,9 +229,9 @@ mod test {
     fn to_action_should_fail_if_payload_is_missing() {
         // Arrange
         let mut action_map = HashMap::new();
-        action_map.insert("id".to_owned(), Value::Text("my_action".to_owned()));
+        action_map.insert("id".to_owned(), Value::String("my_action".to_owned()));
 
-        let action_value = Value::Map(action_map);
+        let action_value = Value::Object(action_map);
 
         // Act
         let result = to_action("", &action_value);
@@ -244,12 +244,12 @@ mod test {
     fn to_action_should_fail_if_payload_is_not_map() {
         // Arrange
         let mut action_map = HashMap::new();
-        action_map.insert("id".to_owned(), Value::Text("my_action".to_owned()));
+        action_map.insert("id".to_owned(), Value::String("my_action".to_owned()));
 
         let mut payload_map = HashMap::new();
         payload_map.insert("payload".to_owned(), Value::Array(vec![]));
 
-        let action_value = Value::Map(action_map);
+        let action_value = Value::Object(action_map);
 
         // Act
         let result = to_action("", &action_value);
@@ -303,8 +303,8 @@ mod test {
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
-                Value::Text("first_item".to_owned()),
-                Value::Text("second_item".to_owned()),
+                Value::String("first_item".to_owned()),
+                Value::String("second_item".to_owned()),
             ]),
         );
 
@@ -312,28 +312,28 @@ mod test {
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_one".to_owned()));
 
             let mut payload_one = HashMap::new();
             payload_one.insert("key_one".to_owned(), Value::Array(vec![]));
-            payload_one.insert("item".to_owned(), Value::Text("${item}".to_owned()));
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+            payload_one.insert("item".to_owned(), Value::String("${item}".to_owned()));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_two".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_two".to_owned()));
 
             let mut payload_one = HashMap::new();
             payload_one.insert(
                 "item_with_interpolation".to_owned(),
-                Value::Text("a ${item} bb <${item}>".to_owned()),
+                Value::String("a ${item} bb <${item}>".to_owned()),
             );
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
@@ -356,7 +356,7 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
-            payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
+            payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
                 action_one.get(0).unwrap()
@@ -366,7 +366,7 @@ mod test {
         {
             let mut payload = HashMap::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
-            payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
+            payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
                 action_one.get(1).unwrap()
@@ -380,7 +380,7 @@ mod test {
             let mut payload = HashMap::new();
             payload.insert(
                 "item_with_interpolation".to_owned(),
-                Value::Text("a first_item bb <first_item>".to_owned()),
+                Value::String("a first_item bb <first_item>".to_owned()),
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
@@ -392,7 +392,7 @@ mod test {
             let mut payload = HashMap::new();
             payload.insert(
                 "item_with_interpolation".to_owned(),
-                Value::Text("a second_item bb <second_item>".to_owned()),
+                Value::String("a second_item bb <second_item>".to_owned()),
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
@@ -446,8 +446,8 @@ mod test {
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
-                Value::Text("first_item".to_owned()),
-                Value::Text("second_item".to_owned()),
+                Value::String("first_item".to_owned()),
+                Value::String("second_item".to_owned()),
             ]),
         );
 
@@ -455,19 +455,19 @@ mod test {
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
-            actions_array.push(Value::Map(action));
+            action.insert("id".to_owned(), Value::String("id_one".to_owned()));
+            actions_array.push(Value::Object(action));
         }
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_two".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_two".to_owned()));
 
             let mut payload_one = HashMap::new();
-            payload_one.insert("item".to_owned(), Value::Text("${item}".to_owned()));
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+            payload_one.insert("item".to_owned(), Value::String("${item}".to_owned()));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
@@ -488,7 +488,7 @@ mod test {
 
         {
             let mut payload = HashMap::new();
-            payload.insert("item".to_owned(), Value::Text("first_item".to_owned()));
+            payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
                 action_two.get(0).unwrap()
@@ -497,7 +497,7 @@ mod test {
 
         {
             let mut payload = HashMap::new();
-            payload.insert("item".to_owned(), Value::Text("second_item".to_owned()));
+            payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
                 action_two.get(1).unwrap()
@@ -535,12 +535,12 @@ mod test {
             "target".to_owned(),
             Value::Array(vec![
                 Value::Array(vec![
-                    Value::Text("first".to_owned()),
-                    Value::Text("second".to_owned()),
+                    Value::String("first".to_owned()),
+                    Value::String("second".to_owned()),
                 ]),
                 Value::Array(vec![
-                    Value::Text("third".to_owned()),
-                    Value::Text("fourth".to_owned()),
+                    Value::String("third".to_owned()),
+                    Value::String("fourth".to_owned()),
                 ]),
             ]),
         );
@@ -549,14 +549,14 @@ mod test {
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_one".to_owned()));
 
             let mut payload_one = HashMap::new();
             payload_one
-                .insert("value".to_owned(), Value::Text("${item[0]} + ${item[1]}".to_owned()));
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+                .insert("value".to_owned(), Value::String("${item[0]} + ${item[1]}".to_owned()));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
@@ -577,7 +577,7 @@ mod test {
 
         {
             let mut payload = HashMap::new();
-            payload.insert("value".to_owned(), Value::Text("first + second".to_owned()));
+            payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
                 action_two.get(0).unwrap()
@@ -586,7 +586,7 @@ mod test {
 
         {
             let mut payload = HashMap::new();
-            payload.insert("value".to_owned(), Value::Text("third + fourth".to_owned()));
+            payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
                 action_two.get(1).unwrap()
@@ -618,8 +618,8 @@ mod test {
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
-                Value::Text("first".to_owned()),
-                Value::Text("second".to_owned()),
+                Value::String("first".to_owned()),
+                Value::String("second".to_owned()),
             ])]),
         );
 
@@ -627,16 +627,16 @@ mod test {
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_one".to_owned()));
 
             let mut inner_map = HashMap::new();
-            inner_map.insert("value".to_owned(), Value::Text("${item[0]}".to_owned()));
+            inner_map.insert("value".to_owned(), Value::String("${item[0]}".to_owned()));
 
             let mut payload_one = HashMap::new();
-            payload_one.insert("inner".to_owned(), Value::Map(inner_map));
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+            payload_one.insert("inner".to_owned(), Value::Object(inner_map));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
@@ -652,7 +652,7 @@ mod test {
 
         let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = HashMap::new();
-        expected_map.insert("value".to_owned(), Value::Text("first".to_owned()));
+        expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
     }
 
@@ -680,8 +680,8 @@ mod test {
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
-                Value::Text("first".to_owned()),
-                Value::Text("second".to_owned()),
+                Value::String("first".to_owned()),
+                Value::String("second".to_owned()),
             ])]),
         );
 
@@ -689,17 +689,17 @@ mod test {
 
         {
             let mut action = HashMap::new();
-            action.insert("id".to_owned(), Value::Text("id_one".to_owned()));
+            action.insert("id".to_owned(), Value::String("id_one".to_owned()));
 
             let mut inner_array = vec![];
-            inner_array.push(Value::Text("${item[0]}".to_owned()));
-            inner_array.push(Value::Text("${item[1]}".to_owned()));
+            inner_array.push(Value::String("${item[0]}".to_owned()));
+            inner_array.push(Value::String("${item[1]}".to_owned()));
 
             let mut payload_one = HashMap::new();
             payload_one.insert("inner".to_owned(), Value::Array(inner_array));
-            action.insert("payload".to_owned(), Value::Map(payload_one.clone()));
+            action.insert("payload".to_owned(), Value::Object(payload_one.clone()));
 
-            actions_array.push(Value::Map(action));
+            actions_array.push(Value::Object(action));
         }
 
         action.payload.insert("actions".to_owned(), Value::Array(actions_array));
@@ -715,8 +715,8 @@ mod test {
 
         let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_array().unwrap();
         let mut expected_array = vec![];
-        expected_array.push(Value::Text("first".to_owned()));
-        expected_array.push(Value::Text("second".to_owned()));
+        expected_array.push(Value::String("first".to_owned()));
+        expected_array.push(Value::String("second".to_owned()));
         assert_eq!(&expected_array, value);
     }
 }

@@ -106,7 +106,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Map(HashMap::new()) },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(HashMap::new()) },
         };
 
         // Act
@@ -147,7 +147,7 @@ mod test {
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
-            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Map(HashMap::new()) },
+            rules: ProcessedRules { rules: vec![rule], extracted_vars: Value::Object(HashMap::new()) },
         };
 
         // Act
@@ -195,14 +195,14 @@ mod test {
                     name: "node0".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(HashMap::new()),
                     },
                 },
                 ProcessedNode::Ruleset {
                     name: "node1".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![rule.clone()],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(HashMap::new()),
                     },
                 },
             ],

@@ -27,7 +27,7 @@ impl Operator for Contains {
     fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
         match self.first.get(event, extracted_vars) {
             Some(first_value) => match first_value.as_ref() {
-                Value::Text(first) => {
+                Value::String(first) => {
                     let option_substring = self.second.get(event, extracted_vars);
                     match cow_to_str(&option_substring) {
                         Some(substring) => first.contains(substring),
@@ -41,7 +41,7 @@ impl Operator for Contains {
                         false
                     }
                 }
-                Value::Map(map) => {
+                Value::Object(map) => {
                     let second = self.second.get(event, extracted_vars);
                     match cow_to_str(&second) {
                         Some(key) => map.contains_key(key),
@@ -148,7 +148,7 @@ mod test {
         .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), Value::Text("type".to_owned()));
+        payload.insert("type".to_owned(), Value::String("type".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
@@ -203,7 +203,7 @@ mod test {
                 .build_from_value(
                     "",
                     &Value::Array(vec![
-                        Value::Text("two or one".to_owned()),
+                        Value::String("two or one".to_owned()),
                         Value::Number(Number::PosInt(999)),
                     ]),
                 )
@@ -223,10 +223,10 @@ mod test {
     fn should_evaluate_to_true_if_array_from_payload_contains_a_value() {
         let operator = Contains::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.array}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.array}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -235,11 +235,11 @@ mod test {
         event.payload.insert(
             "array".to_owned(),
             Value::Array(vec![
-                Value::Text("two or one".to_owned()),
+                Value::String("two or one".to_owned()),
                 Value::Number(Number::PosInt(999)),
             ]),
         );
-        event.payload.insert("value".to_owned(), Value::Text("two or one".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("two or one".to_owned()));
 
         assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -248,10 +248,10 @@ mod test {
     fn should_evaluate_to_false_if_array_does_not_contain_a_value() {
         let operator = Contains::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.array}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.array}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -260,11 +260,11 @@ mod test {
         event.payload.insert(
             "array".to_owned(),
             Value::Array(vec![
-                Value::Text("two or one".to_owned()),
+                Value::String("two or one".to_owned()),
                 Value::Number(Number::PosInt(999)),
             ]),
         );
-        event.payload.insert("value".to_owned(), Value::Text("two or one or three".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("two or one or three".to_owned()));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -273,10 +273,10 @@ mod test {
     fn should_evaluate_to_true_if_map_contains_a_key() {
         let operator = Contains::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.map}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.map}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -284,12 +284,12 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Map(hashmap!(
+            Value::Object(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),
         );
-        event.payload.insert("value".to_owned(), Value::Text("key_two".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("key_two".to_owned()));
 
         assert!(operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -298,10 +298,10 @@ mod test {
     fn should_evaluate_to_false_if_map_does_not_contain_a_key() {
         let operator = Contains::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.map}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.map}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -309,12 +309,12 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Map(hashmap!(
+            Value::Object(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),
         );
-        event.payload.insert("value".to_owned(), Value::Text("key_three".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("key_three".to_owned()));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }

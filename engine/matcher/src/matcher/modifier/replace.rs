@@ -17,7 +17,7 @@ pub fn replace_all(
         if text.contains(find) {
             if let Some(replace_get) = replace.get(event, extracted_vars) {
                 if let Some(replace_value) = replace_get.get_text() {
-                    *value = Value::Text(text.replace(find, replace_value));
+                    *value = Value::String(text.replace(find, replace_value));
                     return Ok(());
                 }
             }
@@ -44,7 +44,7 @@ pub fn replace_all_with_regex(
         if let Some(replace_get) = replace.get(event, extracted_vars) {
             if let Some(replace_value) = replace_get.get_text() {
                 let result = find_regex.replace_all(text, replace_value);
-                *value = Value::Text(result.into_owned());
+                *value = Value::String(result.into_owned());
                 return Ok(());
             }
         }
@@ -73,27 +73,27 @@ mod test {
         let variables = None;
 
         {
-            let mut input = Value::Text("".to_owned());
+            let mut input = Value::String("".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("not to replace".to_owned());
+            let mut input = Value::String("not to replace".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("not to replace".to_owned()), input);
+            assert_eq!(Value::String("not to replace".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("to replace text".to_owned());
+            let mut input = Value::String("to replace text".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("to replace new_text".to_owned()), input);
+            assert_eq!(Value::String("to replace new_text".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("to replace text and text".to_owned());
+            let mut input = Value::String("to replace text and text".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("to replace new_text and new_text".to_owned()), input);
+            assert_eq!(Value::String("to replace new_text and new_text".to_owned()), input);
         }
     }
 
@@ -106,15 +106,15 @@ mod test {
         let event = InternalEvent::new(Event::new_with_payload(
             "my_type",
             hashmap!(
-                "key_1".to_owned() => Value::Text("value_1_from_payload".to_owned()),
+                "key_1".to_owned() => Value::String("value_1_from_payload".to_owned()),
             ),
         ));
         let variables = None;
 
         {
-            let mut input = Value::Text("this is text".to_owned());
+            let mut input = Value::String("this is text".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("this is value_1_from_payload".to_owned()), input);
+            assert_eq!(Value::String("this is value_1_from_payload".to_owned()), input);
         }
     }
 
@@ -129,15 +129,15 @@ mod test {
     //     let event = InternalEvent::new(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
-    //             "key_1".to_owned() => Value::Text("value_1_from_payload".to_owned()),
+    //             "key_1".to_owned() => Value::String("value_1_from_payload".to_owned()),
     //         ),
     //     ));
     //     let variables = None;
     //
     //     {
-    //         let mut input = Value::Text("this is text".to_owned());
+    //         let mut input = Value::String("this is text".to_owned());
     //         replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-    //         assert_eq!(Value::Text("this is new_text and value_1_from_payload".to_owned()), input);
+    //         assert_eq!(Value::String("this is new_text and value_1_from_payload".to_owned()), input);
     //     }
     // }
 
@@ -149,15 +149,15 @@ mod test {
         let variables = None;
 
         {
-            let mut input = Value::Text("text".to_owned());
+            let mut input = Value::String("text".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("text".to_owned()), input);
+            assert_eq!(Value::String("text".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("TexT".to_owned());
+            let mut input = Value::String("TexT".to_owned());
             replace_all("", &mut input, find_text, &replace_text, &event, variables).unwrap();
-            assert_eq!(Value::Text("new_TexT".to_owned()), input);
+            assert_eq!(Value::String("new_TexT".to_owned()), input);
         }
     }
 
@@ -176,7 +176,7 @@ mod test {
         }
 
         {
-            let mut input = Value::Map(HashMap::new());
+            let mut input = Value::Object(HashMap::new());
             assert!(
                 replace_all("", &mut input, find_text, &replace_text, &event, variables).is_err()
             );
@@ -198,24 +198,24 @@ mod test {
         let variables = None;
 
         {
-            let mut input = Value::Text("".to_owned());
+            let mut input = Value::String("".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("not to replace".to_owned());
+            let mut input = Value::String("not to replace".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("not to replace".to_owned()), input);
+            assert_eq!(Value::String("not to replace".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("to replace 12 and 3".to_owned());
+            let mut input = Value::String("to replace 12 and 3".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("to replace replaced and replaced".to_owned()), input);
+            assert_eq!(Value::String("to replace replaced and replaced".to_owned()), input);
         }
     }
 
@@ -227,10 +227,10 @@ mod test {
         let variables = None;
 
         {
-            let mut input = Value::Text("Springsteen, Bruce".to_owned());
+            let mut input = Value::String("Springsteen, Bruce".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("Bruce Springsteen".to_owned()), input);
+            assert_eq!(Value::String("Bruce Springsteen".to_owned()), input);
         }
     }
 
@@ -242,10 +242,10 @@ mod test {
         let variables = None;
 
         {
-            let mut input = Value::Text("Deacon, John".to_owned());
+            let mut input = Value::String("Deacon, John".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("John Deacon".to_owned()), input);
+            assert_eq!(Value::String("John Deacon".to_owned()), input);
         }
     }
 
@@ -258,16 +258,16 @@ mod test {
         let event = InternalEvent::new(Event::new_with_payload(
             "my_type",
             hashmap!(
-                "role".to_owned() => Value::Text("$first $last: Great Bass Player".to_owned()),
+                "role".to_owned() => Value::String("$first $last: Great Bass Player".to_owned()),
             ),
         ));
         let variables = None;
 
         {
-            let mut input = Value::Text("Deacon, John".to_owned());
+            let mut input = Value::String("Deacon, John".to_owned());
             replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
                 .unwrap();
-            assert_eq!(Value::Text("John Deacon: Great Bass Player".to_owned()), input);
+            assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
         }
     }
 
@@ -283,16 +283,16 @@ mod test {
     //     let event = InternalEvent::new(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
-    //             "role".to_owned() => Value::Text("Great Bass Player".to_owned()),
+    //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),
     //         ),
     //     ));
     //     let variables = None;
     //
     //     {
-    //         let mut input = Value::Text("Deacon, John".to_owned());
+    //         let mut input = Value::String("Deacon, John".to_owned());
     //         replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
     //             .unwrap();
-    //         assert_eq!(Value::Text("John Deacon: Great Bass Player".to_owned()), input);
+    //         assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
     //     }
     // }
 
@@ -307,16 +307,16 @@ mod test {
     //     let event = InternalEvent::new(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
-    //             "role".to_owned() => Value::Text("Great Bass Player".to_owned()),
+    //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),
     //         ),
     //     ));
     //     let variables = None;
     //
     //     {
-    //         let mut input = Value::Text("Deacon, John".to_owned());
+    //         let mut input = Value::String("Deacon, John".to_owned());
     //         replace_all_with_regex("", &mut input, &find_regex, &replace_text, &event, variables)
     //             .unwrap();
-    //         assert_eq!(Value::Text("John Deacon: Great Bass Player".to_owned()), input);
+    //         assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
     //     }
     // }
 }

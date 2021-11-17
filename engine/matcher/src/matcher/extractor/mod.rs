@@ -60,7 +60,7 @@ impl MatcherExtractorBuilder {
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
     ///    let event: InternalEvent = Event::new("temp=44'C").into();
-    ///    let mut extracted_vars = Value::Map(HashMap::new());
+    ///    let mut extracted_vars = Value::Object(HashMap::new());
     ///
     ///    let result = matcher_extractor.process_all(&event, &mut extracted_vars);
     ///
@@ -126,7 +126,7 @@ impl MatcherExtractor {
             }
 
             if let Some(map) = extracted_vars.get_map_mut() {
-                map.insert(self.rule_name.to_string(), Value::Map(vars));
+                map.insert(self.rule_name.to_string(), Value::Object(vars));
             } else {
                 return Err(MatcherError::InternalSystemError {
                     message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
@@ -288,7 +288,7 @@ impl RegexValueExtractor {
                 })?;
                 captures
                     .get(*group_match_idx)
-                    .map(|matched| Value::Text(matched.as_str().to_owned()))
+                    .map(|matched| Value::String(matched.as_str().to_owned()))
                     .ok_or_else(|| MatcherError::MissingExtractedVariableError {
                         variable_name: variable_name.to_owned(),
                     })
@@ -309,7 +309,7 @@ impl RegexValueExtractor {
                 for captures in regex.captures_iter(text) {
                     if let Some(value) = captures
                         .get(*group_match_idx)
-                        .map(|matched| Value::Text(matched.as_str().to_owned()))
+                        .map(|matched| Value::String(matched.as_str().to_owned()))
                     {
                         result.push(value);
                     } else {
@@ -395,7 +395,7 @@ impl RegexValueExtractor {
 
                 if let Some(captures) = regex.captures(text) {
                     if let Some(groups) = get_named_groups(&captures, regex) {
-                        return Ok(Value::Map(groups));
+                        return Ok(Value::Object(groups));
                     } else {
                         return Err(MatcherError::MissingExtractedVariableError {
                             variable_name: variable_name.to_owned(),
@@ -420,7 +420,7 @@ impl RegexValueExtractor {
                 let mut result = vec![];
                 for captures in regex.captures_iter(text) {
                     if let Some(groups) = get_named_groups(&captures, regex) {
-                        result.push(Value::Map(groups));
+                        result.push(Value::Object(groups));
                     } else {
                         return Err(MatcherError::MissingExtractedVariableError {
                             variable_name: variable_name.to_owned(),
@@ -471,7 +471,7 @@ fn get_named_groups(captures: &Captures, regex: &RustRegex) -> Option<HashMap<St
     let mut groups = HashMap::new();
     for name in regex.capture_names().flatten() {
         if let Some(matched) = captures.name(name) {
-            groups.insert(name.to_owned(), Value::Text(matched.as_str().to_owned()));
+            groups.insert(name.to_owned(), Value::String(matched.as_str().to_owned()));
         } else {
             return None;
         }
@@ -483,7 +483,7 @@ fn get_indexed_groups(captures: &Captures) -> Option<Vec<Value>> {
     let mut groups = vec![];
     for capture in captures.iter() {
         if let Some(matched) = capture {
-            groups.push(Value::Text(matched.as_str().to_owned()))
+            groups.push(Value::String(matched.as_str().to_owned()))
         } else {
             return None;
         }
@@ -507,7 +507,7 @@ mod test {
     use crate::config::rule::{ExtractorRegex, Modifier};
     use maplit::*;
     use std::collections::HashMap;
-    use tornado_common_api::{Event, ValueExt};
+    use tornado_common_api::{Event, ValueGet};
 
     #[test]
     fn should_build_an_extractor() {
@@ -590,7 +590,7 @@ mod test {
         let event = new_event("http://stackoverflow.com/");
 
         assert_eq!(
-            Value::Text("http://stackoverflow.com/".to_owned()),
+            Value::String("http://stackoverflow.com/".to_owned()),
             extractor.extract("", &event, None).unwrap()
         );
     }
@@ -615,7 +615,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!(Value::Text("http".to_owned()), extractor.extract("", &event, None).unwrap());
+        assert_eq!(Value::String("http".to_owned()), extractor.extract("", &event, None).unwrap());
     }
 
     #[test]
@@ -639,7 +639,7 @@ mod test {
         let event = new_event("http://stackoverflow.com/\nftp://test.com");
 
         assert_eq!(
-            Value::Array(vec![Value::Text("http".to_owned()), Value::Text("ftp".to_owned()),]),
+            Value::Array(vec![Value::String("http".to_owned()), Value::String("ftp".to_owned()),]),
             extractor.extract("", &event, None).unwrap()
         );
     }
@@ -665,7 +665,7 @@ mod test {
         let event = new_event("http://stackoverflow.com/");
 
         assert_eq!(
-            Value::Text("stackoverflow.com".to_owned()),
+            Value::String("stackoverflow.com".to_owned()),
             extractor.extract("", &event, None).unwrap()
         );
     }
@@ -772,7 +772,7 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
-        let mut extracted_vars = Value::Map(HashMap::new());
+        let mut extracted_vars = Value::Object(HashMap::new());
 
         extractor.process_all(&event, &mut extracted_vars).unwrap();
 
@@ -821,7 +821,7 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let mut event = new_event("temp=44'C");
-        let mut extracted_vars = Value::Map(HashMap::new());
+        let mut extracted_vars = Value::Object(HashMap::new());
 
         assert!(extractor.process_all(&mut event, &mut extracted_vars).is_err());
     }
@@ -848,10 +848,10 @@ mod test {
 
         assert_eq!(
             Value::Array(vec![
-                Value::Text("http://stackoverflow.com/".to_owned()),
-                Value::Text("http".to_owned()),
-                Value::Text("stackoverflow.com".to_owned()),
-                Value::Text("/".to_owned()),
+                Value::String("http://stackoverflow.com/".to_owned()),
+                Value::String("http".to_owned()),
+                Value::String("stackoverflow.com".to_owned()),
+                Value::String("/".to_owned()),
             ]),
             extractor.extract("", &event, None).unwrap()
         );
@@ -881,16 +881,16 @@ mod test {
             extractor.extract("", &event, None).unwrap(),
             Value::Array(vec![
                 Value::Array(vec![
-                    Value::Text("http://stackoverflow.com".to_owned()),
-                    Value::Text("http".to_owned()),
-                    Value::Text("stackoverflow".to_owned()),
-                    Value::Text("com".to_owned()),
+                    Value::String("http://stackoverflow.com".to_owned()),
+                    Value::String("http".to_owned()),
+                    Value::String("stackoverflow".to_owned()),
+                    Value::String("com".to_owned()),
                 ]),
                 Value::Array(vec![
-                    Value::Text("ftp://test.org".to_owned()),
-                    Value::Text("ftp".to_owned()),
-                    Value::Text("test".to_owned()),
-                    Value::Text("org".to_owned()),
+                    Value::String("ftp://test.org".to_owned()),
+                    Value::String("ftp".to_owned()),
+                    Value::String("test".to_owned()),
+                    Value::String("org".to_owned()),
                 ])
             ]),
         );
@@ -988,10 +988,10 @@ mod test {
 
         assert_eq!(
             Value::Array(vec![
-                Value::Text("http://stackoverflow.com".to_owned()),
-                Value::Text("http".to_owned()),
-                Value::Text("stackoverflow".to_owned()),
-                Value::Text("com".to_owned()),
+                Value::String("http://stackoverflow.com".to_owned()),
+                Value::String("http".to_owned()),
+                Value::String("stackoverflow".to_owned()),
+                Value::String("com".to_owned()),
             ]),
             extractor.extract("", &event, None).unwrap()
         );
@@ -1019,10 +1019,10 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &event, None).unwrap(),
-            Value::Map(hashmap![
-                "PROTOCOL".to_string() => Value::Text("http".to_owned()),
-                "NAME".to_string() => Value::Text("stackoverflow".to_owned()),
-                "EXTENSION".to_string() => Value::Text("com".to_owned()),
+            Value::Object(hashmap![
+                "PROTOCOL".to_string() => Value::String("http".to_owned()),
+                "NAME".to_string() => Value::String("stackoverflow".to_owned()),
+                "EXTENSION".to_string() => Value::String("com".to_owned()),
             ]),
         );
     }
@@ -1049,9 +1049,9 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &event, None).unwrap(),
-            Value::Map(hashmap![
-                "PROTOCOL".to_string() => Value::Text("http".to_owned()),
-                "EXTENSION".to_string() => Value::Text("com".to_owned()),
+            Value::Object(hashmap![
+                "PROTOCOL".to_string() => Value::String("http".to_owned()),
+                "EXTENSION".to_string() => Value::String("com".to_owned()),
             ]),
         );
     }
@@ -1101,15 +1101,15 @@ mod test {
         assert_eq!(
             extractor.extract("", &event, None).unwrap(),
             Value::Array(vec![
-                Value::Map(hashmap![
-                    "PROTOCOL".to_string() => Value::Text("http".to_owned()),
-                    "NAME".to_string() => Value::Text("stackoverflow".to_owned()),
-                    "EXTENSION".to_string() => Value::Text("com".to_owned()),
+                Value::Object(hashmap![
+                    "PROTOCOL".to_string() => Value::String("http".to_owned()),
+                    "NAME".to_string() => Value::String("stackoverflow".to_owned()),
+                    "EXTENSION".to_string() => Value::String("com".to_owned()),
                 ]),
-                Value::Map(hashmap![
-                    "PROTOCOL".to_string() => Value::Text("ftp".to_owned()),
-                    "NAME".to_string() => Value::Text("test".to_owned()),
-                    "EXTENSION".to_string() => Value::Text("org".to_owned()),
+                Value::Object(hashmap![
+                    "PROTOCOL".to_string() => Value::String("ftp".to_owned()),
+                    "NAME".to_string() => Value::String("test".to_owned()),
+                    "EXTENSION".to_string() => Value::String("org".to_owned()),
                 ])
             ]),
         );
@@ -1158,7 +1158,7 @@ mod test {
         let mut payload = HashMap::new();
         payload.insert(
             "table".to_owned(),
-            Value::Text(
+            Value::String(
                 "483     00:00:00        76      JustynaG        1869AS0071      1
 440     00:13:05        629     ArturC  1869AS0031      2
 615     00:01:36        240     ArturC  1869AS0071      2
@@ -1172,37 +1172,37 @@ mod test {
         assert_eq!(
             extractor.extract("", &event, None).unwrap(),
             Value::Array(vec![
-                Value::Map(hashmap![
-                    "PID".to_string() => Value::Text("483".to_owned()),
-                    "Time".to_string() => Value::Text("00:00:00".to_owned()),
-                    "UserId".to_string() => Value::Text("76".to_owned()),
-                    "UserName".to_string() => Value::Text("JustynaG".to_owned()),
-                    "ServerName".to_string() => Value::Text("1869AS0071".to_owned()),
-                    "Level".to_string() => Value::Text("1".to_owned()),
+                Value::Object(hashmap![
+                    "PID".to_string() => Value::String("483".to_owned()),
+                    "Time".to_string() => Value::String("00:00:00".to_owned()),
+                    "UserId".to_string() => Value::String("76".to_owned()),
+                    "UserName".to_string() => Value::String("JustynaG".to_owned()),
+                    "ServerName".to_string() => Value::String("1869AS0071".to_owned()),
+                    "Level".to_string() => Value::String("1".to_owned()),
                 ]),
-                Value::Map(hashmap![
-                    "PID".to_string() => Value::Text("440".to_owned()),
-                    "Time".to_string() => Value::Text("00:13:05".to_owned()),
-                    "UserId".to_string() => Value::Text("629".to_owned()),
-                    "UserName".to_string() => Value::Text("ArturC".to_owned()),
-                    "ServerName".to_string() => Value::Text("1869AS0031".to_owned()),
-                    "Level".to_string() => Value::Text("2".to_owned()),
+                Value::Object(hashmap![
+                    "PID".to_string() => Value::String("440".to_owned()),
+                    "Time".to_string() => Value::String("00:13:05".to_owned()),
+                    "UserId".to_string() => Value::String("629".to_owned()),
+                    "UserName".to_string() => Value::String("ArturC".to_owned()),
+                    "ServerName".to_string() => Value::String("1869AS0031".to_owned()),
+                    "Level".to_string() => Value::String("2".to_owned()),
                 ]),
-                Value::Map(hashmap![
-                    "PID".to_string() => Value::Text("615".to_owned()),
-                    "Time".to_string() => Value::Text("00:01:36".to_owned()),
-                    "UserId".to_string() => Value::Text("240".to_owned()),
-                    "UserName".to_string() => Value::Text("ArturC".to_owned()),
-                    "ServerName".to_string() => Value::Text("1869AS0071".to_owned()),
-                    "Level".to_string() => Value::Text("2".to_owned()),
+                Value::Object(hashmap![
+                    "PID".to_string() => Value::String("615".to_owned()),
+                    "Time".to_string() => Value::String("00:01:36".to_owned()),
+                    "UserId".to_string() => Value::String("240".to_owned()),
+                    "UserName".to_string() => Value::String("ArturC".to_owned()),
+                    "ServerName".to_string() => Value::String("1869AS0071".to_owned()),
+                    "Level".to_string() => Value::String("2".to_owned()),
                 ]),
-                Value::Map(hashmap![
-                    "PID".to_string() => Value::Text("379".to_owned()),
-                    "Time".to_string() => Value::Text("00:01:07".to_owned()),
-                    "UserId".to_string() => Value::Text("30".to_owned()),
-                    "UserName".to_string() => Value::Text("JoannaS".to_owned()),
-                    "ServerName".to_string() => Value::Text("1869AS0041".to_owned()),
-                    "Level".to_string() => Value::Text("3".to_owned()),
+                Value::Object(hashmap![
+                    "PID".to_string() => Value::String("379".to_owned()),
+                    "Time".to_string() => Value::String("00:01:07".to_owned()),
+                    "UserId".to_string() => Value::String("30".to_owned()),
+                    "UserName".to_string() => Value::String("JoannaS".to_owned()),
+                    "ServerName".to_string() => Value::String("1869AS0041".to_owned()),
+                    "Level".to_string() => Value::String("3".to_owned()),
                 ]),
             ]),
         );
@@ -1288,22 +1288,22 @@ mod test {
         let mut oids = HashMap::new();
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.201476692".to_owned(),
-            Value::Text("0".to_owned()),
+            Value::String("0".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address.201476692".to_owned(),
-            Value::Text("1".to_owned()),
+            Value::String("1".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
-            Value::Text("2".to_owned()),
+            Value::String("2".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
-            Value::Text("3".to_owned()),
+            Value::String("3".to_owned()),
         );
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1320,14 +1320,14 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None);
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(Value::Text("1".to_owned()), result.unwrap());
+        assert_eq!(Value::String("1".to_owned()), result.unwrap());
     }
 
     #[test]
@@ -1336,14 +1336,14 @@ mod test {
         let mut oids = HashMap::new();
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
-            Value::Text("2".to_owned()),
+            Value::String("2".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
-            Value::Text("3".to_owned()),
+            Value::String("3".to_owned()),
         );
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1360,7 +1360,7 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1379,22 +1379,22 @@ mod test {
         let mut oids = HashMap::new();
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmNeIpv4Address.201476692".to_owned(),
-            Value::Text("0".to_owned()),
+            Value::String("0".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address.201476692".to_owned(),
-            Value::Text("1".to_owned()),
+            Value::String("1".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
-            Value::Text("2".to_owned()),
+            Value::String("2".to_owned()),
         );
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned(),
-            Value::Text("3".to_owned()),
+            Value::String("3".to_owned()),
         );
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1411,7 +1411,7 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1434,8 +1434,8 @@ mod test {
         payload.insert(
             "oids".to_owned(),
             Value::Array(vec![
-                Value::Text("MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned()),
-                Value::Text("MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned()),
+                Value::String("MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned()),
+                Value::String("MWRM2-NMS-MIB::netmasterAlarmStatus.201476692".to_owned()),
             ]),
         );
 
@@ -1454,7 +1454,7 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1471,11 +1471,11 @@ mod test {
     fn should_apply_the_trim_post_modifier() {
         // Arrange
         let mut oids = HashMap::new();
-        oids.insert("1".to_owned(), Value::Text("Hello not to be trimmed".to_owned()));
-        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
+        oids.insert("1".to_owned(), Value::String("Hello not to be trimmed".to_owned()));
+        oids.insert("2".to_owned(), Value::String("Hello to be trimmed  ".to_owned()));
 
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor_1 = ValueExtractor::build(
             "rule_name",
@@ -1506,25 +1506,25 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result_1 = extractor_1.extract("var", &event, None).unwrap();
         let result_2 = extractor_2.extract("var", &event, None).unwrap();
 
         // Assert
-        assert_eq!(Value::Text("Hello not to be trimmed".to_owned()), result_1);
-        assert_eq!(Value::Text("Hello to be trimmed".to_owned()), result_2);
+        assert_eq!(Value::String("Hello not to be trimmed".to_owned()), result_1);
+        assert_eq!(Value::String("Hello to be trimmed".to_owned()), result_2);
     }
 
     #[test]
     fn extractor_should_fail_if_trim_post_modifier_is_not_applied_to_string() {
         // Arrange
         let mut oids = HashMap::new();
-        oids.insert("2".to_owned(), Value::Text("Hello to be trimmed  ".to_owned()));
+        oids.insert("2".to_owned(), Value::String("Hello to be trimmed  ".to_owned()));
 
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1543,7 +1543,7 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1558,11 +1558,11 @@ mod test {
         let mut oids = HashMap::new();
         oids.insert(
             "1".to_owned(),
-            Value::Text("    Hello to be trimmed AND LOWERCASED    ".to_owned()),
+            Value::String("    Hello to be trimmed AND LOWERCASED    ".to_owned()),
         );
 
         let mut payload = HashMap::new();
-        payload.insert("oids".to_owned(), Value::Map(oids));
+        payload.insert("oids".to_owned(), Value::Object(oids));
 
         let extractor = ValueExtractor::build(
             "rule_name",
@@ -1589,13 +1589,13 @@ mod test {
         .unwrap();
 
         let mut event = new_event("event");
-        event.payload = Value::Map(payload);
+        event.payload = Value::Object(payload);
 
         // Act
         let result = extractor.extract("var", &event, None).unwrap();
 
         // Assert
-        assert_eq!(Value::Text("hello to be trimmed replaced_and lowercased".to_owned()), result);
+        assert_eq!(Value::String("hello to be trimmed replaced_and lowercased".to_owned()), result);
     }
 
     fn new_event(event_type: &str) -> InternalEvent {

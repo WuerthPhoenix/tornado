@@ -8,7 +8,8 @@
 use crate::{Parser, ParserError};
 use lazy_static::*;
 use regex::{Match, Regex};
-use tornado_common_api::{Number, Value, ValueExt};
+use serde_json::Value;
+use tornado_common_api::{ValueGet};
 
 lazy_static! {
     static ref RE: Regex =
@@ -72,7 +73,7 @@ impl StringInterpolator {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render<I: ValueExt>(&self, event: &I) -> Result<String, ParserError> {
+    pub fn render<I: ValueGet>(&self, event: &I) -> Result<String, ParserError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -91,15 +92,11 @@ impl StringInterpolator {
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 })?;
             match value.as_ref() {
-                Value::Text(text) => render.push_str(text),
+                Value::String(text) => render.push_str(text.as_str()),
                 Value::Bool(val) => render.push_str(&val.to_string()),
-                Value::Number(val) => match val {
-                    Number::NegInt(num) => render.push_str(&num.to_string()),
-                    Number::PosInt(num) => render.push_str(&num.to_string()),
-                    Number::Float(num) => render.push_str(&num.to_string()),
-                },
+                Value::Number(val) => render.push_str(&val.to_string()),
                 Value::Null => render.push_str("null"),
-                Value::Map(..) => return Err(ParserError::InterpolatorRenderError {
+                Value::Object(..) => return Err(ParserError::InterpolatorRenderError {
                     template: self.template.to_owned(),
                     cause: format!("Accessor [{:?}] returned a Map. Expected text, number, boolean or null.", accessor),
                 }),
@@ -128,6 +125,7 @@ impl StringInterpolator {
 mod test {
     use super::*;
     use crate::Parser;
+    use serde_json::json;
     use tornado_common_api::Payload;
 
     #[test]
@@ -211,13 +209,13 @@ mod test {
     fn should_render_numbers() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("created_ms".to_owned(), Value::Number(Number::PosInt(1554130814854)));
+        payload.insert("created_ms".to_owned(), json!("1554130814854"));
 
         let template = " ${created_ms} ";
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -237,7 +235,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
        // assert!(result.is_ok());
@@ -256,7 +254,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -269,14 +267,14 @@ mod test {
     fn should_render_with_line_break() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("first".to_owned(), Value::Text("first line".to_owned()));
-        payload.insert("second".to_owned(), Value::Text("second line".to_owned()));
+        payload.insert("first".to_owned(), Value::String("first line".to_owned()));
+        payload.insert("second".to_owned(), Value::String("second line".to_owned()));
 
         let template = "${first}\n${second}";
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_ok());
@@ -294,7 +292,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_err());
@@ -303,7 +301,7 @@ mod test {
     #[test]
     fn render_should_fail_if_value_is_an_array() {
         // Arrange
-        let body = vec![Value::Text("".to_owned())];
+        let body = vec![Value::String("".to_owned())];
 
         let mut payload = Payload::new();
         payload.insert("body".to_owned(), Value::Array(body));
@@ -312,7 +310,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_err());
@@ -322,16 +320,16 @@ mod test {
     fn render_should_fail_if_value_is_a_map() {
         // Arrange
         let mut body = Payload::new();
-        body.insert("".to_owned(), Value::Text("".to_owned()));
+        body.insert("".to_owned(), Value::String("".to_owned()));
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Map(body));
+        payload.insert("body".to_owned(), Value::Object(body));
 
         let template = "val: ${body}";
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Map(payload));
+        let result = interpolator.render(&Value::Object(payload));
 
         // Assert
         assert!(result.is_err());
@@ -341,17 +339,17 @@ mod test {
     fn interpolator_demo() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("payload content".to_owned()));
+        payload.insert("body".to_owned(), Value::String("payload content".to_owned()));
 
         let mut event = Payload::new();
-        event.insert("type".to_owned(), Value::Text("email".to_owned()));
-        event.insert("created_ms".to_owned(), Value::Number(Number::PosInt(1554130814854)));
-        event.insert("payload".to_owned(), Value::Map(payload));
+        event.insert("type".to_owned(), Value::String("email".to_owned()));
+        event.insert("created_ms".to_owned(), json!("1554130814854"));
+        event.insert("payload".to_owned(), Value::Object(payload));
 
         let mut event_data = Payload::new();
-        event_data.insert("event".to_owned(), Value::Map(event));
+        event_data.insert("event".to_owned(), Value::Object(event));
 
-        let event = Value::Map(event_data);
+        let event = Value::Object(event_data);
 
         let template = r#"
             Received event with type: ${event.type}

@@ -34,7 +34,7 @@ impl NatsExtractor {
                             subject
                         );
                         event
-                            .add_to_metadata(key.to_owned(), Value::Text(tenant_id.to_owned()))
+                            .add_to_metadata(key.to_owned(), Value::String(tenant_id.to_owned()))
                             .map_err(|err| TornadoCommonActorError::GenericError {
                                 message: format! {"{}", err},
                             })?;
@@ -54,7 +54,7 @@ impl NatsExtractor {
 mod test {
     use crate::enrich::nats::NatsExtractor;
     use regex::Regex;
-    use tornado_common_api::ValueExt;
+    use tornado_common_api::ValueGet;
     use tornado_engine_matcher::model::InternalEvent;
 
     #[test]

@@ -239,8 +239,8 @@ mod test {
                 do_continue: true,
                 constraint: Constraint {
                     where_operator: Some(Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("test-type-custom".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("test-type-custom".to_owned()),
                     }),
                     with: HashMap::new(),
                 },

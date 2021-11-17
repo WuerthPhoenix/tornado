@@ -346,17 +346,17 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
         action.payload.insert(
             "service".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
 
@@ -394,14 +394,14 @@ mod test {
         let mut action = Action::new("", "");
         action.payload.insert(
             "host".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
         action.payload.insert(
             "service".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
 
@@ -442,12 +442,12 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
-        action.payload.insert("host".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("host".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "service".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myservice".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
 
@@ -489,14 +489,14 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
-        action.payload.insert("service".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("service".to_owned(), Value::Object(hashmap!()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -543,11 +543,11 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Map(hashmap!(
-                "object_name".to_owned() => Value::Text("myhost".to_owned()),
+            Value::Object(hashmap!(
+                "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
 

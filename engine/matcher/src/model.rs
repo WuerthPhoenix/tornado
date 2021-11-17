@@ -1,7 +1,7 @@
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event, Number, Payload, Value, ValueExt};
+use tornado_common_api::{Action, Event, Number, Payload, Value, ValueGet};
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -18,10 +18,10 @@ impl From<Event> for InternalEvent {
     fn from(event: Event) -> Self {
         InternalEvent {
             trace_id: event.trace_id,
-            event_type: Value::Text(event.event_type),
+            event_type: Value::String(event.event_type),
             created_ms: Value::Number(Number::PosInt(event.created_ms)),
             metadata: Value::Null,
-            payload: Value::Map(event.payload),
+            payload: Value::Object(event.payload),
         }
     }
 }
@@ -29,12 +29,12 @@ impl From<Event> for InternalEvent {
 impl From<InternalEvent> for Value {
     fn from(event: InternalEvent) -> Self {
         let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::Text(event.trace_id));
+        payload.insert("trace_id".to_owned(), Value::String(event.trace_id));
         payload.insert("type".to_owned(), event.event_type);
         payload.insert("created_ms".to_owned(), event.created_ms);
         payload.insert("payload".to_owned(), event.payload);
         payload.insert("metadata".to_owned(), event.metadata);
-        Value::Map(payload)
+        Value::Object(payload)
     }
 }
 
@@ -46,7 +46,7 @@ fn add_to_metadata(event: &mut Value, (key, value): (String, Value)) -> Result<(
             if let Some(map) = event.get_map_mut() {
                 let mut payload = HashMap::new();
                 payload.insert(key, value);
-                map.insert("metadata".to_owned(), Value::Map(payload));
+                map.insert("metadata".to_owned(), Value::Object(payload));
                 Ok(())
             } else {
                 Err(MatcherError::InternalSystemError {
@@ -54,7 +54,7 @@ fn add_to_metadata(event: &mut Value, (key, value): (String, Value)) -> Result<(
                 })
             }
         }
-        Some(Value::Map(mut payload)) => {
+        Some(Value::Object(mut payload)) => {
             payload.insert(key, value);
             Ok(())
         }
@@ -75,10 +75,10 @@ impl InternalEvent {
             Value::Null => {
                 let mut payload = HashMap::new();
                 payload.insert(key, value);
-                self.metadata = Value::Map(payload);
+                self.metadata = Value::Object(payload);
                 Ok(())
             }
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 payload.insert(key, value);
                 Ok(())
             }
@@ -189,7 +189,7 @@ mod test {
     fn should_convert_between_event_and_internal_event() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
+        payload.insert("one-key".to_owned(), Value::String("one-value".to_owned()));
         payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
         payload.insert("bool".to_owned(), Value::Bool(false));
 
@@ -222,7 +222,7 @@ mod test {
 
         // Assert
         match event.metadata {
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 assert_eq!(2, payload.len());
                 assert_eq!(&value_1, payload.get(key_1).unwrap());
                 assert_eq!(&value_2, payload.get(key_2).unwrap());
@@ -250,7 +250,7 @@ mod test {
 
         // Assert
         match event.metadata {
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 assert_eq!(2, payload.len());
                 assert_eq!(&value_1, payload.get(key_1).unwrap());
                 assert_eq!(&value_2, payload.get(key_2).unwrap());
@@ -277,7 +277,7 @@ mod test {
 
         // Assert
         match event.metadata {
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 assert_eq!(1, payload.len());
                 assert_eq!(&value_2, payload.get(key_1).unwrap());
             }

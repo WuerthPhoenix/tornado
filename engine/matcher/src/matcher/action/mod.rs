@@ -76,7 +76,7 @@ impl ActionResolverBuilder {
         value: &Value,
     ) -> Result<ActionValueProcessor, MatcherError> {
         match value {
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 let mut processor_payload = HashMap::new();
                 for (key, value) in payload {
                     processor_payload.insert(
@@ -97,7 +97,7 @@ impl ActionResolverBuilder {
                 }
                 Ok(ActionValueProcessor::Array(processor_values))
             }
-            Value::Text(text) => {
+            Value::String(text) => {
                 Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
@@ -204,7 +204,7 @@ impl ActionValueProcessor {
                         value.process(rule_name, action_id, event, extracted_vars)?,
                     );
                 }
-                Ok(Value::Map(processor_payload))
+                Ok(Value::Object(processor_payload))
             }
             ActionValueProcessor::Array(values) => {
                 let mut processor_values = vec![];
@@ -289,7 +289,7 @@ impl ActionValueProcessor {
                     processor_payload_enriched.insert(key.to_owned(), enriched_value);
                 }
 
-                let value = Value::Map(processor_payload);
+                let value = Value::Object(processor_payload);
                 Ok((
                     value,
                     EnrichedValue {
@@ -338,7 +338,7 @@ mod test {
         // Arrange
         let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         let value = "constant value".to_owned();
-        action.payload.insert("key".to_owned(), Value::Text(value.clone()));
+        action.payload.insert("key".to_owned(), Value::String(value.clone()));
 
         let config = vec![action];
 
@@ -353,7 +353,7 @@ mod test {
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
         assert_eq!(
-            &ActionValueProcessor::Accessor(Accessor::Constant { value: Value::Text(value) }),
+            &ActionValueProcessor::Accessor(Accessor::Constant { value: Value::String(value) }),
             action_payload.get("key").unwrap()
         )
     }
@@ -363,26 +363,26 @@ mod test {
         // Arrange
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("type".to_owned(), Value::Text("${event.type}".to_owned()));
+        config_action.payload.insert("type".to_owned(), Value::String("${event.type}".to_owned()));
         config_action
             .payload
-            .insert("payload_body".to_owned(), Value::Text("${event.payload.body}".to_owned()));
+            .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
         config_action.payload.insert(
             "payload_subject".to_owned(),
-            Value::Text("${event.payload.subject}".to_owned()),
+            Value::String("${event.payload.subject}".to_owned()),
         );
         config_action
             .payload
-            .insert("constant".to_owned(), Value::Text("constant value".to_owned()));
+            .insert("constant".to_owned(), Value::String("constant value".to_owned()));
         config_action
             .payload
-            .insert("created_ms".to_owned(), Value::Text("${event.created_ms}".to_owned()));
+            .insert("created_ms".to_owned(), Value::String("${event.created_ms}".to_owned()));
         config_action
             .payload
-            .insert("var_test_1".to_owned(), Value::Text("${_variables.test1}".to_owned()));
+            .insert("var_test_1".to_owned(), Value::String("${_variables.test1}".to_owned()));
         config_action
             .payload
-            .insert("var_test_2".to_owned(), Value::Text("${_variables.test2}".to_owned()));
+            .insert("var_test_2".to_owned(), Value::String("${_variables.test2}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -390,21 +390,21 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         let mut extracted_vars_inner = HashMap::new();
-        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
-        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
+        extracted_vars_inner.insert("test1".to_owned(), Value::String("var_test_1_value".to_owned()));
+        extracted_vars_inner.insert("test2".to_owned(), Value::String("var_test_2_value".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Object(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.resolve(&event, Some(&Value::Map(extracted_vars))).unwrap();
+        let result = matcher_action.resolve(&event, Some(&Value::Object(extracted_vars))).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -425,7 +425,7 @@ mod test {
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action
             .payload
-            .insert("type".to_owned(), Value::Text("The event type is: ${event.type}".to_owned()));
+            .insert("type".to_owned(), Value::String("The event type is: ${event.type}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -433,7 +433,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload(
             "an_event_type_full_of_imagination".to_owned(),
@@ -446,7 +446,7 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Text("The event type is: an_event_type_full_of_imagination".to_owned()),
+            &Value::String("The event type is: an_event_type_full_of_imagination".to_owned()),
             result.payload.get("type").unwrap()
         );
     }
@@ -464,7 +464,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -490,7 +490,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -516,7 +516,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -538,8 +538,8 @@ mod test {
             "type".to_owned(),
             Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
-                Value::Text("${event.type}".to_owned()),
-                Value::Text("Event created on ${event.created_ms}".to_owned()),
+                Value::String("${event.type}".to_owned()),
+                Value::String("Event created on ${event.created_ms}".to_owned()),
             ]),
         );
 
@@ -549,7 +549,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event = Event::new_with_payload("event_type_value".to_owned(), payload);
         let created_ms = event.created_ms;
@@ -563,8 +563,8 @@ mod test {
         assert_eq!(
             &Value::Array(vec![
                 Value::Number(Number::Float(123456.0)),
-                Value::Text("event_type_value".to_owned()),
-                Value::Text(format!("Event created on {}", created_ms))
+                Value::String("event_type_value".to_owned()),
+                Value::String(format!("Event created on {}", created_ms))
             ]),
             result.payload.get("type").unwrap()
         );
@@ -576,8 +576,8 @@ mod test {
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action.payload.insert("type".to_owned(),
-                                     Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::Text("${event.type}".to_owned())]
+                                     Value::Object(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
+                                            "two".to_owned() => Value::String("${event.type}".to_owned())]
                                      ));
 
         let rule_name = "rule_for_test";
@@ -586,7 +586,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -597,8 +597,8 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::Text("event_type_value".to_owned())]),
+            &Value::Object(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
+                                            "two".to_owned() => Value::String("event_type_value".to_owned())]),
             result.payload.get("type").unwrap()
         );
     }
@@ -610,10 +610,10 @@ mod test {
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action
             .payload
-            .insert("payload_body".to_owned(), Value::Text("${event.payload.body}".to_owned()));
+            .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
         config_action.payload.insert(
             "payload_body_inner".to_owned(),
-            Value::Text("${event.payload.body.inner}".to_owned()),
+            Value::String("${event.payload.body.inner}".to_owned()),
         );
 
         let rule_name = "rule_for_test";
@@ -622,10 +622,10 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut body = HashMap::new();
-        body.insert("inner".to_owned(), Value::Text("inner_body_value".to_owned()));
+        body.insert("inner".to_owned(), Value::String("inner_body_value".to_owned()));
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Map(body.clone()));
+        payload.insert("body".to_owned(), Value::Object(body.clone()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -636,7 +636,7 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!("inner_body_value", result.payload.get("payload_body_inner").unwrap());
-        assert_eq!(&Value::Map(body.clone()), result.payload.get("payload_body").unwrap());
+        assert_eq!(&Value::Object(body.clone()), result.payload.get("payload_body").unwrap());
     }
 
     #[test]
@@ -644,7 +644,7 @@ mod test {
         // Arrange
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("event".to_owned(), Value::Text("${event}".to_owned()));
+        config_action.payload.insert("event".to_owned(), Value::String("${event}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -652,7 +652,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
         payload.insert("some_null".to_owned(), Value::Null);
 
         let event =
@@ -675,7 +675,7 @@ mod test {
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action
             .payload
-            .insert("event_payload".to_owned(), Value::Text("${event.payload}".to_owned()));
+            .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -683,7 +683,7 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload(
             "event_type_value".to_owned(),
@@ -695,7 +695,7 @@ mod test {
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&Value::Map(payload), result.payload.get("event_payload").unwrap());
+        assert_eq!(&Value::Object(payload), result.payload.get("event_payload").unwrap());
     }
 
     #[test]
@@ -705,17 +705,17 @@ mod test {
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
         config_action
             .payload
-            .insert("event_payload".to_owned(), Value::Text("${event.payload}".to_owned()));
+            .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
         config_action
             .payload
-            .insert("constant".to_owned(), Value::Text("Into The Great Wide Open".to_owned()));
+            .insert("constant".to_owned(), Value::String("Into The Great Wide Open".to_owned()));
 
         let rule_name = "rule_for_test";
         let action_resolver =
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload(
             "event_type_value".to_owned(),
@@ -727,7 +727,7 @@ mod test {
 
         // Assert
         assert_eq!("an_action_id", &action.id);
-        assert_eq!(&Value::Map(payload.clone()), action.payload.get("event_payload").unwrap());
+        assert_eq!(&Value::Object(payload.clone()), action.payload.get("event_payload").unwrap());
 
         assert_eq!("an_action_id", &action_meta_data.id);
 
@@ -736,8 +736,8 @@ mod test {
             payload: hashmap! {
                 "event_payload".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
-                        content: Value::Map(hashmap! {
-                            "body".to_owned() => Value::Text("from_payload".to_owned())
+                        content: Value::Object(hashmap! {
+                            "body".to_owned() => Value::String("from_payload".to_owned())
                         })
                     },
                     meta: ValueMetaData {
@@ -747,7 +747,7 @@ mod test {
                 },
                 "constant".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
-                        content: Value::Text("Into The Great Wide Open".to_owned())
+                        content: Value::String("Into The Great Wide Open".to_owned())
                     },
                     meta: ValueMetaData {
                         modified: false,
@@ -765,14 +765,14 @@ mod test {
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
             payload: hashmap! {
-                "inner_map_static".to_owned() => Value::Map(
+                "inner_map_static".to_owned() => Value::Object(
                     hashmap!{
                         "bool".to_owned() => Value::Bool(false)
                     }
                 ),
-                "inner_map_dynamic".to_owned() => Value::Map(
+                "inner_map_dynamic".to_owned() => Value::Object(
                     hashmap!{
-                        "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
+                        "value".to_owned() => Value::String("${event.payload.body}".to_owned())
                     }
                 ),
             },
@@ -783,7 +783,7 @@ mod test {
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -794,7 +794,7 @@ mod test {
         // Assert
         assert_eq!("an_action_id", &action.id);
         assert_eq!(
-            &Value::Text("from_payload".to_owned()),
+            &Value::String("from_payload".to_owned()),
             action
                 .payload
                 .get("inner_map_dynamic")
@@ -831,7 +831,7 @@ mod test {
                     content: EnrichedValueContent::Map {
                         content: hashmap! {
                             "value".to_owned()  => EnrichedValue {
-                                  content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                  content: EnrichedValueContent::Single { content: Value::String("from_payload".to_owned()) },
                                   meta: ValueMetaData {
                                         modified: true,
                                         is_leaf: true
@@ -858,8 +858,8 @@ mod test {
                 "inner_vec_static".to_owned() => Value::Array(vec![Value::Number(Number::PosInt(545))]),
                 "inner_vec_dynamic".to_owned() => Value::Array(
                     vec![
-                        Value::Map(hashmap!{
-                                "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
+                        Value::Object(hashmap!{
+                                "value".to_owned() => Value::String("${event.payload.body}".to_owned())
                         })
                     ]
                 ),
@@ -871,7 +871,7 @@ mod test {
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event =
             InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
@@ -908,7 +908,7 @@ mod test {
                                 content: EnrichedValueContent::Map {
                                     content: hashmap! {
                                         "value".to_owned()  => EnrichedValue {
-                                              content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                              content: EnrichedValueContent::Single { content: Value::String("from_payload".to_owned()) },
                                               meta: ValueMetaData {
                                                     modified: true,
                                                     is_leaf: true

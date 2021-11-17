@@ -11,10 +11,10 @@ pub fn map(
 ) -> Result<(), MatcherError> {
     if let Some(text) = value.get_text() {
         if let Some(mapped_value) = mapping.get(text) {
-            *value = Value::Text(mapped_value.to_owned());
+            *value = Value::String(mapped_value.to_owned());
             Ok(())
         } else if let Some(default_text) = default_value {
-            *value = Value::Text(default_text.to_owned());
+            *value = Value::String(default_text.to_owned());
             Ok(())
         } else {
             Err(MatcherError::ExtractedVariableError {
@@ -46,23 +46,23 @@ mod test {
 
         {
             let default_value = None;
-            let mut input = Value::Text("Ok".to_owned());
+            let mut input = Value::String("Ok".to_owned());
             map("", &mut input, &mapping, &default_value).unwrap();
-            assert_eq!(Value::Text("0".to_owned()), input);
+            assert_eq!(Value::String("0".to_owned()), input);
         }
 
         {
             let default_value = None;
-            let mut input = Value::Text("Warn".to_owned());
+            let mut input = Value::String("Warn".to_owned());
             map("", &mut input, &mapping, &default_value).unwrap();
-            assert_eq!(Value::Text("1".to_owned()), input);
+            assert_eq!(Value::String("1".to_owned()), input);
         }
 
         {
             let default_value = Some("default_value".to_owned());
-            let mut input = Value::Text("Critical".to_owned());
+            let mut input = Value::String("Critical".to_owned());
             map("", &mut input, &mapping, &default_value).unwrap();
-            assert_eq!(Value::Text("2".to_owned()), input);
+            assert_eq!(Value::String("2".to_owned()), input);
         }
     }
 
@@ -91,7 +91,7 @@ mod test {
         let default_value = None;
 
         {
-            let mut input = Value::Text("Unknown".to_owned());
+            let mut input = Value::String("Unknown".to_owned());
             assert!(map("", &mut input, &mapping, &default_value).is_err());
         }
     }
@@ -106,9 +106,9 @@ mod test {
         let default_value = Some("default_value".to_owned());
 
         {
-            let mut input = Value::Text("Unknown".to_owned());
+            let mut input = Value::String("Unknown".to_owned());
             map("", &mut input, &mapping, &default_value).unwrap();
-            assert_eq!(Value::Text("default_value".to_owned()), input);
+            assert_eq!(Value::String("default_value".to_owned()), input);
         }
     }
 }

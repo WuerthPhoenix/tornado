@@ -103,7 +103,7 @@ pub mod test {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(HashMap::new()),
                     },
                 },
             })
@@ -120,7 +120,7 @@ pub mod test {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(HashMap::new()),
                     },
                 },
             })

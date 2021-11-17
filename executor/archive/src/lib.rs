@@ -209,9 +209,9 @@ mod test {
         let event = Event::new("event-name");
         let mut action = Action::new("", "action");
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
-        action.payload.insert("key_one".to_owned(), Value::Text("first".to_owned()));
-        action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
+        action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
+        action.payload.insert("key_two".to_owned(), Value::String("second".to_owned()));
 
         // Act
         let result = archiver.execute(action.into()).await;
@@ -256,9 +256,9 @@ mod test {
             sent_events.push(event.clone());
             let mut action = Action::new("", format!("action-{}", i));
             action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-            action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
-            action.payload.insert("key_one".to_owned(), Value::Text("first".to_owned()));
-            action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
+            action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
+            action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
+            action.payload.insert("key_two".to_owned(), Value::String("second".to_owned()));
             archiver.execute(action.into()).await.unwrap()
         }
 
@@ -300,9 +300,9 @@ mod test {
         let event = Event::new("event-name");
         let mut action = Action::new("", "action");
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
-        action.payload.insert("key_one".to_owned(), Value::Text("../".to_owned()));
-        action.payload.insert("key_two".to_owned(), Value::Text("second".to_owned()));
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
+        action.payload.insert("key_one".to_owned(), Value::String("../".to_owned()));
+        action.payload.insert("key_two".to_owned(), Value::String("second".to_owned()));
 
         // Act
         let result = archiver.execute(action.into()).await;
@@ -331,7 +331,7 @@ mod test {
         let event = Event::new("event-name");
         let mut action = Action::new("", "action");
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("one".to_owned()));
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
 
         // Act
         let result = archiver.execute(action.into()).await;
@@ -360,7 +360,7 @@ mod test {
         let event = Event::new("event-name");
         let mut action = Action::new("", "action");
         action.payload.insert(EVENT_KEY.to_owned(), event.clone().into());
-        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::Text("two".to_owned()));
+        action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("two".to_owned()));
 
         // Act
         let result = archiver.execute(action.into()).await;

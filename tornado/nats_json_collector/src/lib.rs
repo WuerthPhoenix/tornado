@@ -120,7 +120,7 @@ fn build_jmespath_collector_config(
             let mut payload = HashMap::new();
             payload.insert(
                 DEFAULT_PAYLOAD_DATA_KEY.to_owned(),
-                Value::Text(DEFAULT_PAYLOAD_DATA_EXPRESSION.to_owned()),
+                Value::String(DEFAULT_PAYLOAD_DATA_EXPRESSION.to_owned()),
             );
             payload
         }),
@@ -145,7 +145,7 @@ mod test {
 
         assert_eq!(
             hashmap!(
-                "data".to_owned() => Value::Text("${@}".to_owned()),
+                "data".to_owned() => Value::String("${@}".to_owned()),
             ),
             jmespath_config_1.payload
         );
@@ -162,7 +162,7 @@ mod test {
 
         assert_eq!(
             hashmap!(
-                "data".to_owned() => Value::Text("${@}".to_owned()),
+                "data".to_owned() => Value::String("${@}".to_owned()),
             ),
             jmespath_config.payload
         );
@@ -171,7 +171,7 @@ mod test {
     #[test]
     fn should_return_default_event_type_in_jmespath_collector_config() {
         let payload = hashmap!(
-            "key".to_owned() => Value::Text("value".to_owned()),
+            "key".to_owned() => Value::String("value".to_owned()),
         );
         let jmespath_config = build_jmespath_collector_config(
             Some(EventConfig { event_type: None, payload: Some(payload.clone()) }),

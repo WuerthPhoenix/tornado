@@ -45,8 +45,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("first_arg=".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("first_arg=".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -59,8 +59,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("first_arg=".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("first_arg=".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -73,8 +73,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("${NOT_EXISTING}".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("${NOT_EXISTING}".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         );
@@ -86,8 +86,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("2".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("2".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -108,8 +108,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("2".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("2".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -125,8 +125,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -143,8 +143,8 @@ mod test {
             "",
             &config::rule::Operator::Not {
                 operator: Box::new(config::rule::Operator::Equals {
-                    first: Value::Text("4".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("4".to_owned()),
+                    second: Value::String("4".to_owned()),
                 }),
             },
             &OperatorBuilder::new(),
@@ -163,12 +163,12 @@ mod test {
             &config::rule::Operator::And {
                 operators: vec![
                     config::rule::Operator::Equals {
-                        first: Value::Text("4".to_owned()),
-                        second: Value::Text("4".to_owned()),
+                        first: Value::String("4".to_owned()),
+                        second: Value::String("4".to_owned()),
                     },
                     config::rule::Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("type".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("type".to_owned()),
                     },
                 ],
             },
@@ -188,12 +188,12 @@ mod test {
             &config::rule::Operator::And {
                 operators: vec![
                     config::rule::Operator::Equals {
-                        first: Value::Text("4".to_owned()),
-                        second: Value::Text("4".to_owned()),
+                        first: Value::String("4".to_owned()),
+                        second: Value::String("4".to_owned()),
                     },
                     config::rule::Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("type1".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("type1".to_owned()),
                     },
                 ],
             },

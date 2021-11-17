@@ -1,9 +1,10 @@
 use crate::interpolator::StringInterpolator;
 use lazy_static::*;
 use regex::Regex;
+use serde_json::Value;
 use std::{borrow::Cow};
 use thiserror::Error;
-use tornado_common_api::{Value, ValueExt};
+use tornado_common_api::{ValueGet};
 
 mod interpolator;
 
@@ -52,7 +53,7 @@ impl Parser {
                 ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
             Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
         } else {
-            Ok(Parser::Val(Value::Text(text.to_owned())))
+            Ok(Parser::Val(Value::String(text.to_owned())))
         }
     }
 
@@ -99,7 +100,7 @@ impl Parser {
             .collect()
     }
 
-    pub fn parse_value<'o, I: ValueExt>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
+    pub fn parse_value<'o, I: ValueGet>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
                 let mut key_iter = keys.iter();
@@ -114,7 +115,7 @@ impl Parser {
                 }
             }
             Parser::Interpolator { interpolator } => {
-                interpolator.render(value).map(|text| Cow::Owned(Value::Text(text))).ok()
+                interpolator.render(value).map(|text| Cow::Owned(Value::String(text))).ok()
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
@@ -129,7 +130,7 @@ pub enum ValueGetter {
 }
 
 impl ValueGetter {
-    pub fn get<'o, I: ValueExt>(&self, value: &'o I) -> Option<&'o Value> {
+    pub fn get<'o, I: ValueGet>(&self, value: &'o I) -> Option<&'o Value> {
         match self {
             ValueGetter::Map { key } => value.get_from_map(key),
             ValueGetter::Array { index } => value.get_from_array(*index),
@@ -152,9 +153,10 @@ impl From<usize> for ValueGetter {
 #[cfg(test)]
 mod test {
 
+    use serde_json::{Map, json};
+
     use super::*;
     use std::collections::HashMap;
-    use tornado_common_api::Number;
 
     #[test]
     fn parser_builder_should_return_value_type() {
@@ -164,7 +166,7 @@ mod test {
         // Assert
         match parser {
             Parser::Val(value) => {
-                assert_eq!(Value::Text("hello world".to_owned()), value);
+                assert_eq!(Value::String("hello world".to_owned()), value);
             }
             _ => assert!(false),
         }
@@ -187,7 +189,7 @@ mod test {
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
-        let parser = Parser::Val(Value::Text("hello world".to_owned()));
+        let parser = Parser::Val(Value::String("hello world".to_owned()));
         let json = r#"
         {
             "level_one": {
@@ -202,7 +204,7 @@ mod test {
 
         // Assert
         assert!(result.is_some());
-        assert_eq!(&Value::Text("hello world".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("hello world".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
@@ -223,7 +225,7 @@ mod test {
 
         // Assert
         assert!(result.is_some());
-        assert_eq!(&Value::Text("level_two_value".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("level_two_value".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
@@ -301,7 +303,7 @@ mod test {
 
         // Assert
         assert!(result.is_some());
-        assert_eq!(&Value::Number(Number::Float(99.66)), result.unwrap().as_ref());
+        assert_eq!(&json!(99.66), result.unwrap().as_ref());
     }
 
     #[test]
@@ -323,9 +325,9 @@ mod test {
         assert!(result.is_some());
         assert_eq!(
             &Value::Array(vec![
-                Value::Text("one".to_owned()),
+                Value::String("one".to_owned()),
                 Value::Bool(true),
-                Value::Number(Number::Float(13 as f64))
+                json!(13 as f64)
             ]),
             result.unwrap().as_ref()
         );
@@ -351,11 +353,11 @@ mod test {
         // Assert
         assert!(result.is_some());
 
-        let mut payload = HashMap::new();
+        let mut payload = Map::new();
         payload.insert("one".to_owned(), Value::Bool(true));
-        payload.insert("two".to_owned(), Value::Number(Number::PosInt(13)));
+        payload.insert("two".to_owned(), json!(13));
 
-        assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
+        assert_eq!(&Value::Object(payload), result.unwrap().as_ref());
     }
 
     #[test]
@@ -375,7 +377,7 @@ mod test {
 
         // Assert
         assert!(result.is_some());
-        assert_eq!(&Value::Text("one - true - 13".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("one - true - 13".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
@@ -463,7 +465,7 @@ mod test {
         // Arrange
         let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
 
-        let value = Value::Array(vec![Value::Text("one".to_owned()), Value::Bool(true), Value::Number(Number::Float(13.0))]);
+        let value = Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13.0)]);
         let map = HashMap::from([
             ("key", &value)
         ]);
@@ -473,6 +475,6 @@ mod test {
 
         // Assert
         assert!(result.is_some());
-        assert_eq!(&Value::Text("one - true - 13".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("one - true - 13".to_owned()), result.unwrap().as_ref());
     }
 }

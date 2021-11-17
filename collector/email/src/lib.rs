@@ -42,11 +42,11 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
 
         let mut event = Event::new("email");
         event.payload.insert("date".to_owned(), Value::Number(Number::PosInt(date as u64)));
-        event.payload.insert("subject".to_owned(), Value::Text(subject));
-        event.payload.insert("from".to_owned(), Value::Text(from));
-        event.payload.insert("to".to_owned(), Value::Text(to));
-        event.payload.insert("cc".to_owned(), Value::Text(cc));
-        event.payload.insert("body".to_owned(), body.unwrap_or_else(|| Value::Text("".to_owned())));
+        event.payload.insert("subject".to_owned(), Value::String(subject));
+        event.payload.insert("from".to_owned(), Value::String(from));
+        event.payload.insert("to".to_owned(), Value::String(to));
+        event.payload.insert("cc".to_owned(), Value::String(cc));
+        event.payload.insert("body".to_owned(), body.unwrap_or_else(|| Value::String("".to_owned())));
         event.payload.insert("attachments".to_owned(), Value::Array(attachments));
 
         Ok(event)
@@ -74,7 +74,7 @@ fn extract_body_and_attachments(
         DispositionType::Inline => {
             if email.ctype.mimetype.contains("text") {
                 *body = match body.take() {
-                    None => Some(Value::Text(email.get_body().map_err(into_err)?)),
+                    None => Some(Value::String(email.get_body().map_err(into_err)?)),
                     opt => {
                         warn!("Found more than one body. Only the first one will be used.");
                         opt
@@ -88,7 +88,7 @@ fn extract_body_and_attachments(
             let mut attachment = Payload::new();
             attachment.insert(
                 "filename".to_owned(),
-                Value::Text(
+                Value::String(
                     content_disposition
                         .params
                         .get("filename")
@@ -96,14 +96,14 @@ fn extract_body_and_attachments(
                         .unwrap_or_else(|| "".to_owned()),
                 ),
             );
-            attachment.insert("mime_type".to_owned(), Value::Text(email.ctype.mimetype.clone()));
+            attachment.insert("mime_type".to_owned(), Value::String(email.ctype.mimetype.clone()));
 
             if email.ctype.mimetype.contains("text") {
-                attachment.insert("encoding".to_owned(), Value::Text("plaintext".to_owned()));
+                attachment.insert("encoding".to_owned(), Value::String("plaintext".to_owned()));
                 attachment
-                    .insert("content".to_owned(), Value::Text(email.get_body().map_err(into_err)?));
+                    .insert("content".to_owned(), Value::String(email.get_body().map_err(into_err)?));
             } else {
-                attachment.insert("encoding".to_owned(), Value::Text("base64".to_owned()));
+                attachment.insert("encoding".to_owned(), Value::String("base64".to_owned()));
 
                 let base64_content = match &email.get_body_encoded() {
                     Body::Base64(body) | Body::QuotedPrintable(body) => String::from_utf8(
@@ -120,9 +120,9 @@ fn extract_body_and_attachments(
                     Body::Binary(body) => base64::encode(body.get_raw()),
                 };
 
-                attachment.insert("content".to_owned(), Value::Text(base64_content));
+                attachment.insert("content".to_owned(), Value::String(base64_content));
             }
-            attachments.push(Value::Map(attachment))
+            attachments.push(Value::Object(attachment))
         }
         _ => {
             warn!(

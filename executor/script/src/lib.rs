@@ -18,7 +18,7 @@ impl ScriptExecutor {
 
     fn append_args(cmd: &mut Command, value: &Value) {
         match value {
-            Value::Text(args) => {
+            Value::String(args) => {
                 cmd.arg(args);
             }
             Value::Bool(arg) => {
@@ -36,7 +36,7 @@ impl ScriptExecutor {
                     ScriptExecutor::append_args(cmd, value);
                 }
             }
-            Value::Map(args) => {
+            Value::Object(args) => {
                 for (key, value) in args {
                     cmd.arg(&format!("--{}", key));
                     ScriptExecutor::append_args(cmd, value);
@@ -139,7 +139,7 @@ mod test_unix {
         let script = "NOT_EXISTING_SCRIPT.sh";
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script.to_owned()));
 
         let executor = ScriptExecutor::new();
 
@@ -156,7 +156,7 @@ mod test_unix {
         let script = "./test_resources/fail.sh";
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script.to_owned()));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script.to_owned()));
 
         let executor = ScriptExecutor::new();
 
@@ -173,7 +173,7 @@ mod test_unix {
         let script = format!("{}", "./test_resources/echo.sh");
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
 
         let executor = ScriptExecutor::new();
 
@@ -187,8 +187,8 @@ mod test_unix {
         let script = format!("{}", "./test_resources/echo.sh");
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
-        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text("hello_world!".to_owned()));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::String("hello_world!".to_owned()));
 
         let executor = ScriptExecutor::new();
 
@@ -205,7 +205,7 @@ mod test_unix {
         let script = format!("{} {} {}", "./test_resources/write_file.sh", &filename, &content);
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
 
         let executor = ScriptExecutor::new();
 
@@ -226,8 +226,8 @@ mod test_unix {
         let script = format!("{} {}", "./test_resources/write_file.sh", &filename);
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
-        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::Text(content.to_owned()));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
+        action.payload.insert(SCRIPT_ARGS_KEY.to_owned(), Value::String(content.to_owned()));
 
         let executor = ScriptExecutor::new();
 
@@ -248,10 +248,10 @@ mod test_unix {
         let script = "./test_resources/write_file.sh".to_owned();
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
-            Value::Array(vec![Value::Text(filename.to_owned()), Value::Text(content.to_owned())]),
+            Value::Array(vec![Value::String(filename.to_owned()), Value::String(content.to_owned())]),
         );
 
         let executor = ScriptExecutor::new();
@@ -274,10 +274,10 @@ mod test_unix {
         let script = "./test_resources/write_file.sh".to_owned();
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
-            Value::Array(vec![Value::Text(filename.to_owned()), Value::Text(content.to_owned())]),
+            Value::Array(vec![Value::String(filename.to_owned()), Value::String(content.to_owned())]),
         );
 
         let executor = ScriptExecutor::new();
@@ -299,18 +299,18 @@ mod test_unix {
         let script = "./test_resources/write_all_args_to_file.sh".to_owned();
 
         let mut action = Action::new("", "script");
-        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::Text(script));
+        action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
 
         let first_content = "First_HelloRustyWorld!";
         let second_content = "Second Hello Rusty World!";
 
         let mut args = HashMap::new();
-        args.insert("first".to_owned(), Value::Text(first_content.to_owned()));
-        args.insert("second".to_owned(), Value::Text(second_content.to_owned()));
+        args.insert("first".to_owned(), Value::String(first_content.to_owned()));
+        args.insert("second".to_owned(), Value::String(second_content.to_owned()));
 
         action.payload.insert(
             SCRIPT_ARGS_KEY.to_owned(),
-            Value::Array(vec![Value::Text(filename.to_owned()), Value::Map(args)]),
+            Value::Array(vec![Value::String(filename.to_owned()), Value::Object(args)]),
         );
 
         let executor = ScriptExecutor::new();

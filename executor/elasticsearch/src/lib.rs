@@ -225,13 +225,13 @@ mod test {
     //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //        let mut es_document = HashMap::new();
     //        es_document
-    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+    //        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
+    //        action.payload.insert("data".to_owned(), Value::Object(es_document));
+    //        action.payload.insert("index".to_owned(), Value::String("tornado-example".to_owned()));
     //        action.payload.insert(
     //            "endpoint".to_owned(),
-    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+    //            Value::String("https://elasticsearch.neteyelocal:9200".to_owned()),
     //        );
     //
     //        // Act
@@ -250,30 +250,30 @@ mod test {
     //        let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //        let mut es_document = HashMap::new();
     //        es_document
-    //            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //        action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //        action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+    //        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
+    //        action.payload.insert("data".to_owned(), Value::Object(es_document));
+    //        action.payload.insert("index".to_owned(), Value::String("tornado-example".to_owned()));
     //        action.payload.insert(
     //            "endpoint".to_owned(),
-    //            Value::Text("https://elasticsearch.neteyelocal:9200".to_owned()),
+    //            Value::String("https://elasticsearch.neteyelocal:9200".to_owned()),
     //        );
     //
     //        let mut auth = HashMap::new();
-    //        auth.insert("type".to_owned(), Value::Text("PemCertificatePath".to_owned()));
+    //        auth.insert("type".to_owned(), Value::String("PemCertificatePath".to_owned()));
     //        auth.insert(
     //            "certificate_path".to_owned(),
-    //            Value::Text("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()),
+    //            Value::String("/neteye/shared/tornado/conf/certs/tornado.crt.pem".to_owned()),
     //        );
     //        auth.insert(
     //            "private_key_path".to_owned(),
-    //            Value::Text("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()),
+    //            Value::String("/neteye/shared/tornado/conf/certs/private/tornado.key.pem".to_owned()),
     //        );
     //        auth.insert(
     //            "ca_certificate_path".to_owned(),
-    //            Value::Text("/neteye/shared/tornado/conf/certs/root-ca.crt".to_owned()),
+    //            Value::String("/neteye/shared/tornado/conf/certs/root-ca.crt".to_owned()),
     //        );
-    //        action.payload.insert("auth".to_owned(), Value::Map(auth));
+    //        action.payload.insert("auth".to_owned(), Value::Object(auth));
     //
     //        // Act
     //        let result = executor.execute(action);
@@ -291,25 +291,25 @@ mod test {
     //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //     let mut es_document = HashMap::new();
     //     es_document
-    //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //     action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //         .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+    //     es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
+    //     action.payload.insert("data".to_owned(), Value::Object(es_document));
+    //     action.payload.insert("index".to_owned(), Value::String("tornado-example".to_owned()));
     //     action.payload.insert(
     //         "endpoint".to_owned(),
-    //         Value::Text("http://localhost:9200".to_owned()),
+    //         Value::String("http://localhost:9200".to_owned()),
     //     );
     //
     //     let mut action = Action { id: "elasticsearch".to_string(), payload: HashMap::new() };
     //     let mut es_document = HashMap::new();
     //     es_document
-    //         .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-    //     es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
-    //     action.payload.insert("data".to_owned(), Value::Map(es_document));
-    //     action.payload.insert("index".to_owned(), Value::Text("tornado-example".to_owned()));
+    //         .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+    //     es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
+    //     action.payload.insert("data".to_owned(), Value::Object(es_document));
+    //     action.payload.insert("index".to_owned(), Value::String("tornado-example".to_owned()));
     //     action.payload.insert(
     //         "endpoint".to_owned(),
-    //         Value::Text("http://localhost:9200".to_owned()),
+    //         Value::String("http://localhost:9200".to_owned()),
     //     );
     //
     //     // Act
@@ -330,13 +330,13 @@ mod test {
         };
         let mut es_document = HashMap::new();
         es_document
-            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
 
-        action.payload.insert("data".to_owned(), Value::Map(es_document));
+        action.payload.insert("data".to_owned(), Value::Object(es_document));
         action
             .payload
-            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
+            .insert("endpoint".to_owned(), Value::String("http://127.0.0.1:9200".to_owned()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -359,11 +359,11 @@ mod test {
         };
         let mut es_document = HashMap::new();
         es_document
-            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
 
-        action.payload.insert("data".to_owned(), Value::Map(es_document));
-        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+        action.payload.insert("data".to_owned(), Value::Object(es_document));
+        action.payload.insert("index".to_owned(), Value::String("tornàdo".to_owned()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -386,13 +386,13 @@ mod test {
         };
         let mut es_document = HashMap::new();
         es_document
-            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
 
         action
             .payload
-            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
-        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+            .insert("endpoint".to_owned(), Value::String("http://127.0.0.1:9200".to_owned()));
+        action.payload.insert("index".to_owned(), Value::String("tornàdo".to_owned()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -415,14 +415,14 @@ mod test {
         };
         let mut es_document = HashMap::new();
         es_document
-            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
 
-        action.payload.insert("data".to_owned(), Value::Map(es_document));
+        action.payload.insert("data".to_owned(), Value::Object(es_document));
         action.payload.insert("index".to_owned(), Value::Array(vec![]));
         action
             .payload
-            .insert("endpoint".to_owned(), Value::Text("http://127.0.0.1:9200".to_owned()));
+            .insert("endpoint".to_owned(), Value::String("http://127.0.0.1:9200".to_owned()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -445,11 +445,11 @@ mod test {
         };
         let mut es_document = HashMap::new();
         es_document
-            .insert("message".to_owned(), Value::Text("message to elasticsearch".to_owned()));
-        es_document.insert("user".to_owned(), Value::Text("myuser".to_owned()));
+            .insert("message".to_owned(), Value::String("message to elasticsearch".to_owned()));
+        es_document.insert("user".to_owned(), Value::String("myuser".to_owned()));
 
-        action.payload.insert("data".to_owned(), Value::Map(es_document));
-        action.payload.insert("index".to_owned(), Value::Text("tornàdo".to_owned()));
+        action.payload.insert("data".to_owned(), Value::Object(es_document));
+        action.payload.insert("index".to_owned(), Value::String("tornàdo".to_owned()));
         action.payload.insert("endpoint".to_owned(), Value::Bool(false));
 
         // Act

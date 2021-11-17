@@ -98,8 +98,8 @@ mod test {
         .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
-        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
+        payload.insert("name1".to_owned(), Value::String("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::String("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
@@ -115,8 +115,8 @@ mod test {
         .unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
-        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
+        payload.insert("name1".to_owned(), Value::String("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::String("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 

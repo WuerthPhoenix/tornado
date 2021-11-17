@@ -38,7 +38,7 @@ impl Parser {
                 })?;
             Ok(Parser::Exp(jmespath_exp))
         } else {
-            Ok(Parser::Val(Value::Text(text.to_owned())))
+            Ok(Parser::Val(Value::String(text.to_owned())))
         }
     }
 
@@ -70,7 +70,7 @@ fn search<T: ToJmespath>(
 
 fn variable_to_value(var: &Rcvar) -> Result<Value, ParserError> {
     match var.as_ref() {
-        jmespath::Variable::String(s) => Ok(Value::Text(s.to_owned())),
+        jmespath::Variable::String(s) => Ok(Value::String(s.to_owned())),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
         jmespath::Variable::Number(n) => {
             Ok(Value::Number(Number::from_serde_number(n).ok_or_else(|| {
@@ -84,7 +84,7 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, ParserError> {
             for (key, value) in values {
                 payload.insert(key.to_owned(), variable_to_value(value)?);
             }
-            Ok(Value::Map(payload))
+            Ok(Value::Object(payload))
         }
         jmespath::Variable::Array(ref values) => {
             let mut payload = vec![];
@@ -115,7 +115,7 @@ mod test {
         // Assert
         match parser {
             Parser::Val(value) => {
-                assert_eq!(Value::Text("hello world".to_owned()), value);
+                assert_eq!(Value::String("hello world".to_owned()), value);
             }
             _ => assert!(false),
         }
@@ -138,7 +138,7 @@ mod test {
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
-        let parser = Parser::Val(Value::Text("hello world".to_owned()));
+        let parser = Parser::Val(Value::String("hello world".to_owned()));
         let json = r#"
         {
             "level_one": {
@@ -152,7 +152,7 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(&Value::Text("hello world".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("hello world".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
@@ -173,7 +173,7 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(&Value::Text("level_two_value".to_owned()), result.unwrap().as_ref());
+        assert_eq!(&Value::String("level_two_value".to_owned()), result.unwrap().as_ref());
     }
 
     #[test]
@@ -276,7 +276,7 @@ mod test {
         assert!(result.is_ok());
         assert_eq!(
             &Value::Array(vec![
-                Value::Text("one".to_owned()),
+                Value::String("one".to_owned()),
                 Value::Bool(true),
                 Value::Number(Number::PosInt(13))
             ]),
@@ -308,7 +308,7 @@ mod test {
         payload.insert("one".to_owned(), Value::Bool(true));
         payload.insert("two".to_owned(), Value::Number(Number::Float(13 as f64)));
 
-        assert_eq!(&Value::Map(payload), result.unwrap().as_ref());
+        assert_eq!(&Value::Object(payload), result.unwrap().as_ref());
     }
 
     #[test]

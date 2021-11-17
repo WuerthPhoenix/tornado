@@ -305,7 +305,7 @@ mod test {
                 .unwrap();
 
         let mut event: InternalEvent = Event::new("test").into();
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
         let processed_event: ProcessedEvent = matcher_actor
@@ -356,12 +356,12 @@ mod test {
 
         let mut event_tenant_alpha: InternalEvent = Event::new("test").into();
         event_tenant_alpha
-            .add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned()))
+            .add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned()))
             .unwrap();
 
         let mut event_tenant_beta: InternalEvent = Event::new("test").into();
         event_tenant_beta
-            .add_to_metadata("tenant_id".to_owned(), Value::Text("beta".to_owned()))
+            .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
             .unwrap();
 
         let config_filter = HashMap::from([(
@@ -442,7 +442,7 @@ mod test {
                 .unwrap();
 
         let mut event: InternalEvent = Event::new("test").into();
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
         let processed_event = matcher_actor

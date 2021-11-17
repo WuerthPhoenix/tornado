@@ -4,7 +4,7 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use log::*;
 use std::{borrow::Cow, collections::HashMap};
-use tornado_common_api::{Value, ValueExt};
+use tornado_common_api::{Value, ValueGet};
 use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 
 pub struct AccessorBuilder {
@@ -41,7 +41,7 @@ impl AccessorBuilder {
         input: &Value,
     ) -> Result<Accessor, MatcherError> {
         match input {
-            Value::Text(text) => self.build(rule_name, text),
+            Value::String(text) => self.build(rule_name, text),
             _ => Ok(Accessor::Constant { value: input.clone() }),
         }
     }
@@ -99,12 +99,12 @@ impl AccessorBuilder {
                         .iter()
                         .any(|prefix| val.starts_with(prefix)) =>
                     {
-                        Ok(Accessor::Constant { value: Value::Text(input.to_owned()) })
+                        Ok(Accessor::Constant { value: Value::String(input.to_owned()) })
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            _value => Ok(Accessor::Constant { value: Value::Text(input.to_owned()) }),
+            _value => Ok(Accessor::Constant { value: Value::String(input.to_owned()) }),
         };
 
         trace!(
@@ -186,7 +186,7 @@ mod test {
 
     #[test]
     fn should_return_a_constant_value() {
-        let accessor = Accessor::Constant { value: Value::Text("constant_value".to_owned()) };
+        let accessor = Accessor::Constant { value: Value::String("constant_value".to_owned()) };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -198,7 +198,7 @@ mod test {
 
     #[test]
     fn should_not_trigger_a_constant_value() {
-        let accessor = Accessor::Constant { value: Value::Text("  constant_value  ".to_owned()) };
+        let accessor = Accessor::Constant { value: Value::String("  constant_value  ".to_owned()) };
 
         let event = InternalEvent::new(Event::new("event_type_string"));
 
@@ -239,8 +239,8 @@ mod test {
         let accessor = Accessor::Payload { parser: Parser::build_parser("${body}").unwrap() };
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -293,13 +293,13 @@ mod test {
         let accessor = Accessor::Payload { parser: Parser::build_parser("${body}").unwrap() };
 
         let mut body_payload = HashMap::new();
-        body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
-        body_payload.insert("second".to_owned(), Value::Text("body_second_value".to_owned()));
+        body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
+        body_payload.insert("second".to_owned(), Value::String("body_second_value".to_owned()));
 
         let body_clone = body_payload.clone();
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Map(body_payload));
+        payload.insert("body".to_owned(), Value::Object(body_payload));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -307,7 +307,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         // Assert
-        assert_eq!(&Value::Map(body_clone), result.as_ref());
+        assert_eq!(&Value::Object(body_clone), result.as_ref());
         assert!(accessor.dynamic_value());
     }
 
@@ -317,11 +317,11 @@ mod test {
         let accessor = Accessor::Payload { parser: Parser::build_parser("${body.first}").unwrap() };
 
         let mut body_payload = HashMap::new();
-        body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
-        body_payload.insert("second".to_owned(), Value::Text("body_second_value".to_owned()));
+        body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
+        body_payload.insert("second".to_owned(), Value::String("body_second_value".to_owned()));
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Map(body_payload));
+        payload.insert("body".to_owned(), Value::Object(body_payload));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -342,8 +342,8 @@ mod test {
         payload.insert(
             "body".to_owned(),
             Value::Array(vec![
-                Value::Text("body_first_value".to_owned()),
-                Value::Text("body_second_value".to_owned()),
+                Value::String("body_first_value".to_owned()),
+                Value::String("body_second_value".to_owned()),
             ]),
         );
 
@@ -365,12 +365,12 @@ mod test {
         };
 
         let mut body_payload = HashMap::new();
-        body_payload.insert("first".to_owned(), Value::Text("body_first_value".to_owned()));
+        body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
         body_payload
-            .insert("second.with.dot".to_owned(), Value::Text("body_second_value".to_owned()));
+            .insert("second.with.dot".to_owned(), Value::String("body_second_value".to_owned()));
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Map(body_payload));
+        payload.insert("body".to_owned(), Value::Object(body_payload));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -387,8 +387,8 @@ mod test {
         let accessor = Accessor::Payload { parser: Parser::build_parser("${date}").unwrap() };
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
         let result = accessor.get(&event, None);
@@ -401,12 +401,12 @@ mod test {
         let accessor = Accessor::Event {};
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let mut event =
             InternalEvent::new(Event::new_with_payload("event_type_string", payload.clone()));
-        event.metadata = Value::Map(payload);
+        event.metadata = Value::Object(payload);
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -425,8 +425,8 @@ mod test {
         let accessor = Accessor::Payload { parser: Parser::build_parser("${}").unwrap() };
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
         let result = accessor.get(&event, None).unwrap();
@@ -443,12 +443,12 @@ mod test {
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars_inner = HashMap::new();
-        extracted_vars_inner.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        extracted_vars_inner.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        extracted_vars_inner.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        extracted_vars_inner.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
-        let extracted_vars = Value::Map(extracted_vars);
+        extracted_vars.insert("rule1".to_owned(), Value::Object(extracted_vars_inner));
+        let extracted_vars = Value::Object(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -465,19 +465,19 @@ mod test {
 
         let event = InternalEvent::new(Event::new("event_type_string"));
         let mut extracted_vars_current = HashMap::new();
-        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current.insert("body".to_owned(), Value::String("current_body".to_owned()));
         extracted_vars_current
-            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+            .insert("subject".to_owned(), Value::String("current_subject".to_owned()));
 
         let mut extracted_vars_custom = HashMap::new();
-        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom.insert("body".to_owned(), Value::String("custom_body".to_owned()));
         extracted_vars_custom
-            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+            .insert("subject".to_owned(), Value::String("custom_subject".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
-        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
-        let extracted_vars = Value::Map(extracted_vars);
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Object(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Object(extracted_vars_custom));
+        let extracted_vars = Value::Object(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -494,19 +494,19 @@ mod test {
         let event = InternalEvent::new(Event::new("event_type_string"));
 
         let mut extracted_vars_current = HashMap::new();
-        extracted_vars_current.insert("body".to_owned(), Value::Text("current_body".to_owned()));
+        extracted_vars_current.insert("body".to_owned(), Value::String("current_body".to_owned()));
         extracted_vars_current
-            .insert("subject".to_owned(), Value::Text("current_subject".to_owned()));
+            .insert("subject".to_owned(), Value::String("current_subject".to_owned()));
 
         let mut extracted_vars_custom = HashMap::new();
-        extracted_vars_custom.insert("body".to_owned(), Value::Text("custom_body".to_owned()));
+        extracted_vars_custom.insert("body".to_owned(), Value::String("custom_body".to_owned()));
         extracted_vars_custom
-            .insert("subject".to_owned(), Value::Text("custom_subject".to_owned()));
+            .insert("subject".to_owned(), Value::String("custom_subject".to_owned()));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("current_rule_name".to_owned(), Value::Map(extracted_vars_current));
-        extracted_vars.insert("custom_rule_name".to_owned(), Value::Map(extracted_vars_custom));
-        let extracted_vars = Value::Map(extracted_vars);
+        extracted_vars.insert("current_rule_name".to_owned(), Value::Object(extracted_vars_current));
+        extracted_vars.insert("custom_rule_name".to_owned(), Value::Object(extracted_vars_custom));
+        let extracted_vars = Value::Object(extracted_vars);
 
         let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
 
@@ -534,7 +534,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        assert_eq!(Accessor::Constant { value: Value::Text(value) }, accessor);
+        assert_eq!(Accessor::Constant { value: Value::String(value) }, accessor);
     }
 
     #[test]
@@ -634,8 +634,8 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
         let result = accessor.get(&event, None).unwrap();
@@ -653,8 +653,8 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut payload = HashMap::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
 
@@ -728,21 +728,21 @@ mod test {
         let event = InternalEvent::new(Event::new("event_type_string"));
 
         let mut map = HashMap::new();
-        map.insert("key_1".to_owned(), Value::Text("first_from_map".to_owned()));
+        map.insert("key_1".to_owned(), Value::String("first_from_map".to_owned()));
 
         let mut body = HashMap::new();
-        body.insert("map".to_owned(), Value::Map(map));
+        body.insert("map".to_owned(), Value::Object(map));
         body.insert(
             "array".to_owned(),
-            Value::Array(vec![Value::Text("first_from_array".to_owned())]),
+            Value::Array(vec![Value::String("first_from_array".to_owned())]),
         );
 
         let mut extracted_vars_inner = HashMap::new();
-        extracted_vars_inner.insert("body".to_owned(), Value::Map(body));
+        extracted_vars_inner.insert("body".to_owned(), Value::Object(body));
 
         let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule1".to_owned(), Value::Map(extracted_vars_inner));
-        let extracted_vars = Value::Map(extracted_vars);
+        extracted_vars.insert("rule1".to_owned(), Value::Object(extracted_vars_inner));
+        let extracted_vars = Value::Object(extracted_vars);
 
         // Act
         let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();
@@ -763,7 +763,7 @@ mod test {
         let accessor = builder.build("rule_name", &value).unwrap();
 
         // Assert
-        let expected = Accessor::Constant { value: Value::Text(value) };
+        let expected = Accessor::Constant { value: Value::String(value) };
         assert_eq!(expected, accessor);
     }
 
@@ -779,7 +779,7 @@ mod test {
         event
             .add_to_metadata(
                 "tenant_id".to_owned(),
-                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+                Value::String("A_TENANT_ID_FROM_METADATA".to_owned()),
             )
             .unwrap();
 
@@ -802,7 +802,7 @@ mod test {
         event
             .add_to_metadata(
                 "tenant_id".to_owned(),
-                Value::Text("A_TENANT_ID_FROM_METADATA".to_owned()),
+                Value::String("A_TENANT_ID_FROM_METADATA".to_owned()),
             )
             .unwrap();
 
@@ -822,7 +822,7 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         let mut event = InternalEvent::new(Event::new("event_type_string"));
-        event.add_to_metadata("other".to_owned(), Value::Text("something".to_owned())).unwrap();
+        event.add_to_metadata("other".to_owned(), Value::String("something".to_owned())).unwrap();
 
         // Act
         let result = accessor.get(&event, None);

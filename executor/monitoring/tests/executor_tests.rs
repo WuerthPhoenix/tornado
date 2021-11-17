@@ -40,15 +40,15 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     let mut action = Action::new("", "");
     action.payload.insert(
         "action_name".to_owned(),
-        Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
+        Value::String("create_and_or_process_host_passive_check_result".to_owned()),
     );
     action.payload.insert(
         "process_check_result_payload".to_owned(),
-        Value::Map(hashmap!(
-            "host".to_owned() => Value::Text("myhost".to_owned()),
+        Value::Object(hashmap!(
+            "host".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
-    action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
+    action.payload.insert("host_creation_payload".to_owned(), Value::Object(HashMap::new()));
 
     // Act
     let result = executor.execute(action.into()).await;
@@ -98,15 +98,15 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     let mut action = Action::new("", "");
     action.payload.insert(
         "action_name".to_owned(),
-        Value::Text("create_and_or_process_host_passive_check_result".to_owned()),
+        Value::String("create_and_or_process_host_passive_check_result".to_owned()),
     );
     action.payload.insert(
         "process_check_result_payload".to_owned(),
-        Value::Map(hashmap!(
-            "host".to_owned() => Value::Text("myhost".to_owned()),
+        Value::Object(hashmap!(
+            "host".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
-    action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
+    action.payload.insert("host_creation_payload".to_owned(), Value::Object(HashMap::new()));
 
     // Act
     let result = executor.execute(action.into()).await;
@@ -155,16 +155,16 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     let mut action = Action::new("", "");
     action.payload.insert(
         "action_name".to_owned(),
-        Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
+        Value::String("create_and_or_process_service_passive_check_result".to_owned()),
     );
     action.payload.insert(
         "process_check_result_payload".to_owned(),
-        Value::Map(hashmap!(
-            "service".to_owned() => Value::Text("myhost:myservice".to_owned()),
+        Value::Object(hashmap!(
+            "service".to_owned() => Value::String("myhost:myservice".to_owned()),
         )),
     );
-    action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
-    action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
+    action.payload.insert("host_creation_payload".to_owned(), Value::Object(HashMap::new()));
+    action.payload.insert("service_creation_payload".to_owned(), Value::Object(HashMap::new()));
 
     // Act
     let result = executor.execute(action.clone().into()).await;
@@ -225,16 +225,16 @@ async fn should_return_return_error_on_object_creation_failure() {
     let mut action = Action::new("", "");
     action.payload.insert(
         "action_name".to_owned(),
-        Value::Text("create_and_or_process_service_passive_check_result".to_owned()),
+        Value::String("create_and_or_process_service_passive_check_result".to_owned()),
     );
     action.payload.insert(
         "process_check_result_payload".to_owned(),
-        Value::Map(hashmap!(
-            "service".to_owned() => Value::Text("myhost:myservice".to_owned()),
+        Value::Object(hashmap!(
+            "service".to_owned() => Value::String("myhost:myservice".to_owned()),
         )),
     );
-    action.payload.insert("host_creation_payload".to_owned(), Value::Map(HashMap::new()));
-    action.payload.insert("service_creation_payload".to_owned(), Value::Map(HashMap::new()));
+    action.payload.insert("host_creation_payload".to_owned(), Value::Object(HashMap::new()));
+    action.payload.insert("service_creation_payload".to_owned(), Value::Object(HashMap::new()));
 
     // Act
     let result = executor.execute(action.into()).await;

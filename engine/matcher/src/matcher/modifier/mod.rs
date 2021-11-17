@@ -263,21 +263,21 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("".to_owned());
+            let mut input = Value::String("".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("not to trim".to_owned());
+            let mut input = Value::String("not to trim".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("not to trim".to_owned()), input);
+            assert_eq!(Value::String("not to trim".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text(" to be trimmed  ".to_owned());
+            let mut input = Value::String(" to be trimmed  ".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("to be trimmed".to_owned()), input);
+            assert_eq!(Value::String("to be trimmed".to_owned()), input);
         }
     }
 
@@ -290,21 +290,21 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("".to_owned());
+            let mut input = Value::String("".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("ok".to_owned());
+            let mut input = Value::String("ok".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("ok".to_owned()), input);
+            assert_eq!(Value::String("ok".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("OK".to_owned());
+            let mut input = Value::String("OK".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("ok".to_owned()), input);
+            assert_eq!(Value::String("ok".to_owned()), input);
         }
     }
 
@@ -320,9 +320,9 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("Hello World".to_owned());
+            let mut input = Value::String("Hello World".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("World World".to_owned()), input);
+            assert_eq!(Value::String("World World".to_owned()), input);
         }
     }
 
@@ -335,25 +335,25 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("12".to_owned());
+            let mut input = Value::String("12".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
             assert_eq!(Value::Number(Number::PosInt(12)), input);
         }
 
         {
-            let mut input = Value::Text("-3412".to_owned());
+            let mut input = Value::String("-3412".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
             assert_eq!(Value::Number(Number::NegInt(-3412)), input);
         }
 
         {
-            let mut input = Value::Text("3.14".to_owned());
+            let mut input = Value::String("3.14".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
             assert_eq!(Value::Number(Number::Float(3.14)), input);
         }
 
         {
-            let mut input = Value::Text("something".to_owned());
+            let mut input = Value::String("something".to_owned());
             assert!(value_modifier.apply("", &mut input, &event, variables).is_err());
         }
     }
@@ -370,9 +370,9 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("Hello World 123 4!".to_owned());
+            let mut input = Value::String("Hello World 123 4!".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("Hello World number number!".to_owned()), input);
+            assert_eq!(Value::String("Hello World number number!".to_owned()), input);
         }
     }
 
@@ -390,9 +390,9 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("0".to_owned());
+            let mut input = Value::String("0".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("David Gilmour".to_owned()), input);
+            assert_eq!(Value::String("David Gilmour".to_owned()), input);
         }
     }
 }
