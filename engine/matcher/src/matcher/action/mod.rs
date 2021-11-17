@@ -331,13 +331,12 @@ mod test {
     use crate::accessor::Accessor;
     use maplit::*;
     use serde_json::json;
-    use std::collections::HashMap;
     use tornado_common_api::{Event, Payload, ValueExt};
 
     #[test]
     fn should_build_a_matcher_action() {
         // Arrange
-        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         let value = "constant value".to_owned();
         action.payload.insert("key".to_owned(), Value::String(value.clone()));
 
@@ -363,7 +362,7 @@ mod test {
     fn should_build_an_action() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), Value::String("${event.type}".to_owned()));
         config_action
             .payload
@@ -423,7 +422,7 @@ mod test {
     fn should_build_an_action_with_text_to_be_interpolated_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
             .insert("type".to_owned(), Value::String("The event type is: ${event.type}".to_owned()));
@@ -456,7 +455,7 @@ mod test {
     fn should_build_an_action_with_bool_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), Value::Bool(true));
 
         let rule_name = "rule_for_test";
@@ -482,7 +481,7 @@ mod test {
     fn should_build_an_action_with_null_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), Value::Null);
 
         let rule_name = "rule_for_test";
@@ -508,7 +507,7 @@ mod test {
     fn should_build_an_action_with_number_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), json!(123456));
 
         let rule_name = "rule_for_test";
@@ -534,7 +533,7 @@ mod test {
     fn should_build_an_action_with_array_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert(
             "type".to_owned(),
             Value::Array(vec![
@@ -575,7 +574,7 @@ mod test {
     fn should_build_an_action_with_map_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(),
                                      json!(hashmap![
                                          "one".to_owned() => json!(123456.0),
@@ -611,7 +610,7 @@ mod test {
     fn should_build_an_action_with_maps_in_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
             .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
@@ -647,7 +646,7 @@ mod test {
     fn should_put_the_whole_event_in_the_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("event".to_owned(), Value::String("${event}".to_owned()));
 
         let rule_name = "rule_for_test";
@@ -676,7 +675,7 @@ mod test {
     fn should_put_the_whole_event_payload_in_the_action_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
             .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
@@ -706,7 +705,7 @@ mod test {
     fn should_return_action_metadata_for_simple_action() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
             .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
@@ -766,20 +765,21 @@ mod test {
     #[test]
     fn should_return_action_metadata_with_deep_map_value_resolution() {
         // Arrange
+        let mut payload = Map::new();
+        payload.insert("inner_map_static".to_owned(), json!(
+            hashmap!{
+                "bool".to_owned() => Value::Bool(false)
+            }
+        ));
+        payload.insert("inner_map_dynamic".to_owned(), json!(
+            hashmap!{
+                "value".to_owned() => Value::String("${event.payload.body}".to_owned())
+            }
+        ));
+
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
-            payload: hashmap! {
-                "inner_map_static".to_owned() => json!(
-                    hashmap!{
-                        "bool".to_owned() => Value::Bool(false)
-                    }
-                ),
-                "inner_map_dynamic".to_owned() => json!(
-                    hashmap!{
-                        "value".to_owned() => Value::String("${event.payload.body}".to_owned())
-                    }
-                ),
-            },
+            payload
         };
 
         let rule_name = "rule_for_test";
@@ -856,18 +856,19 @@ mod test {
     #[test]
     fn should_return_action_metadata_with_deep_array_value_resolution() {
         // Arrange
+        let mut payload = Map::new();
+        payload.insert("inner_vec_static".to_owned(), Value::Array(vec![json!(545)]));
+        payload.insert("inner_vec_dynamic".to_owned(), Value::Array(
+            vec![
+                json!(hashmap!{
+                        "value".to_owned() => Value::String("${event.payload.body}".to_owned())
+                })
+            ]
+        ));
+
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
-            payload: hashmap! {
-                "inner_vec_static".to_owned() => Value::Array(vec![json!(545)]),
-                "inner_vec_dynamic".to_owned() => Value::Array(
-                    vec![
-                        json!(hashmap!{
-                                "value".to_owned() => Value::String("${event.payload.body}".to_owned())
-                        })
-                    ]
-                ),
-            },
+            payload,
         };
 
         let rule_name = "rule_for_test";
@@ -940,7 +941,7 @@ mod test {
     #[test]
     fn processed_action_should_have_same_trace_id_than_the_event() {
         // Arrange
-        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];

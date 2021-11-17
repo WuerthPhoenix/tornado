@@ -106,6 +106,7 @@ mod test {
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
     use crate::config::Defaultable;
     use std::collections::HashMap;
+    use serde_json::Map;
     use tornado_common_api::Value;
 
     #[test]
@@ -284,7 +285,7 @@ mod test {
 
         rule_1.actions.push(Action {
             id: "id.with.dot.and.question.mark?".to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
 
         // Act
