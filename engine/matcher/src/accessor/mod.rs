@@ -4,7 +4,7 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use log::*;
 use serde_json::Value;
-use std::{borrow::Cow, collections::HashMap};
+use std::borrow::Cow;
 use tornado_common_api::{ValueGet};
 use tornado_common_parser::{Parser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER};
 

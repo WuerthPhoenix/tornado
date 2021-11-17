@@ -398,7 +398,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "hello world".to_owned(),
-            payload: Map::new(),
+            payload: HashMap::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("value_one".to_owned()));
         config.payload.insert("two".to_owned(), Value::String("value_two".to_owned()));
@@ -423,7 +423,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "${first.second[0]}".to_owned(),
-            payload: Map::new(),
+            payload: HashMap::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("${first.third}".to_owned()));
         let expected_event_expression = jmespath::compile("first.second[0]").unwrap();
@@ -448,7 +448,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "type".to_owned(),
-            payload: Map::new(),
+            payload: HashMap::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("${first.third}".to_owned()));
 
@@ -484,7 +484,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "type".to_owned(),
-            payload: Map::new(),
+            payload: HashMap::new(),
         };
 
         let mut inner_array = vec![];

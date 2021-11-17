@@ -10,7 +10,8 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
-use tornado_common_api::{Map, Value};
+use tornado_common_api::Value;
+use std::collections::HashMap;
 
 pub mod config;
 
@@ -116,7 +117,7 @@ fn build_jmespath_collector_config(
     JMESPathEventCollectorConfig {
         event_type: collector_config.event_type.unwrap_or_else(|| topic.to_owned()),
         payload: collector_config.payload.unwrap_or_else(|| {
-            let mut payload = Map::new();
+            let mut payload = HashMap::new();
             payload.insert(
                 DEFAULT_PAYLOAD_DATA_KEY.to_owned(),
                 Value::String(DEFAULT_PAYLOAD_DATA_EXPRESSION.to_owned()),
