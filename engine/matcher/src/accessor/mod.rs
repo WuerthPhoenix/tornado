@@ -183,13 +183,13 @@ mod test {
 
     use super::*;
     use serde_json::json;
-    use tornado_common_api::{Event, ValueExt, Map};
+    use tornado_common_api::{Event, Map, ValueExt, WithEventData};
 
     #[test]
     fn should_return_a_constant_value() {
         let accessor = Accessor::Constant { value: Value::String("constant_value".to_owned()) };
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -201,7 +201,7 @@ mod test {
     fn should_not_trigger_a_constant_value() {
         let accessor = Accessor::Constant { value: Value::String("  constant_value  ".to_owned()) };
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -213,7 +213,7 @@ mod test {
     fn should_return_the_event_type() {
         let accessor = Accessor::Type {};
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -225,7 +225,7 @@ mod test {
     fn should_return_the_event_created_ms() {
         let accessor = Accessor::CreatedMs {};
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None);
 
@@ -243,7 +243,7 @@ mod test {
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -260,7 +260,7 @@ mod test {
         payload.insert("bool_true".to_owned(), Value::Bool(true));
         payload.insert("bool_false".to_owned(), Value::Bool(false));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -278,7 +278,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("num_555".to_owned(), json!(555.0));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -302,7 +302,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::Object(body_payload));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -324,7 +324,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::Object(body_payload));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -348,7 +348,7 @@ mod test {
             ]),
         );
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -373,7 +373,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::Object(body_payload));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
         let result = accessor.get(&event, None).unwrap();
@@ -391,7 +391,7 @@ mod test {
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
         let result = accessor.get(&event, None);
 
         assert!(result.is_none());
@@ -406,8 +406,9 @@ mod test {
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let mut event =
-            InternalEvent::new(Event::new_with_payload("event_type_string", payload.clone()));
-        event.metadata = Value::Object(payload);
+            json!(Event::new_with_payload("event_type_string", payload.clone()));
+        event.add_to_metadata("body".to_owned(), Value::String("body_value".to_owned())).unwrap();
+        event.add_to_metadata("subject".to_owned(), Value::String("subject_value".to_owned())).unwrap();
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -429,10 +430,10 @@ mod test {
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload.clone()));
         let result = accessor.get(&event, None).unwrap();
 
-        assert_eq!(&event.payload, result.as_ref());
+        assert_eq!(&json!(payload), result.as_ref());
     }
 
     #[test]
@@ -442,7 +443,7 @@ mod test {
             parser: Parser::build_parser("${body}").unwrap(),
         };
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
         let mut extracted_vars_inner = Map::new();
         extracted_vars_inner.insert("body".to_owned(), Value::String("body_value".to_owned()));
         extracted_vars_inner.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
@@ -464,7 +465,7 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
         let mut extracted_vars_current = Map::new();
         extracted_vars_current.insert("body".to_owned(), Value::String("current_body".to_owned()));
         extracted_vars_current
@@ -492,7 +493,7 @@ mod test {
 
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let mut extracted_vars_current = Map::new();
         extracted_vars_current.insert("body".to_owned(), Value::String("current_body".to_owned()));
@@ -521,7 +522,7 @@ mod test {
             parser: Parser::build_parser("${body}").unwrap(),
         };
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let result = accessor.get(&event, None);
 
@@ -637,7 +638,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -657,7 +658,7 @@ mod test {
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload("event_type_string", payload));
+        let event = json!(Event::new_with_payload("event_type_string", payload));
 
         let result = accessor.get(&event, None).unwrap();
 
@@ -726,7 +727,7 @@ mod test {
         let map_accessor = builder.build("", "${_variables.rule1.body.map.key_1}").unwrap();
         let array_accessor = builder.build("", "${_variables.rule1.body.array[0]}").unwrap();
 
-        let event = InternalEvent::new(Event::new("event_type_string"));
+        let event = json!(Event::new("event_type_string"));
 
         let mut map = Map::new();
         map.insert("key_1".to_owned(), Value::String("first_from_map".to_owned()));
@@ -776,7 +777,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        let mut event = json!(Event::new("event_type_string"));
         event
             .add_to_metadata(
                 "tenant_id".to_owned(),
@@ -799,7 +800,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        let mut event = json!(Event::new("event_type_string"));
         event
             .add_to_metadata(
                 "tenant_id".to_owned(),
@@ -811,7 +812,7 @@ mod test {
         let result = accessor.get(&event, None).unwrap();
 
         // Assert
-        assert_eq!(&event.metadata, result.as_ref());
+        assert_eq!(event.metadata().unwrap(), result.as_ref());
     }
 
     #[test]
@@ -822,7 +823,7 @@ mod test {
 
         let accessor = builder.build("", &value).unwrap();
 
-        let mut event = InternalEvent::new(Event::new("event_type_string"));
+        let mut event = json!(Event::new("event_type_string"));
         event.add_to_metadata("other".to_owned(), Value::String("something".to_owned())).unwrap();
 
         // Act

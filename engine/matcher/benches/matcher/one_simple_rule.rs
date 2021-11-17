@@ -1,5 +1,5 @@
 use criterion::Criterion;
-use tornado_common_api::Map;
+use serde_json::json;
 use std::collections::HashMap;
 use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::rule::*;
@@ -32,7 +32,7 @@ pub fn bench(c: &mut Criterion) {
         );
 
         // Add action
-        let mut action = Action { id: "log".to_owned(), payload: Map::new() };
+        let mut action = Action { id: "log".to_owned(), payload: HashMap::new() };
 
         action
             .payload
@@ -54,7 +54,7 @@ pub fn bench(c: &mut Criterion) {
     };
 
     // println!("result is : {:?}", matcher.process(event.clone()));
-
+    let event = json!(event);
     c.bench_function("One simple rule", move |b| b.iter(|| matcher.process(event.clone(), false)));
 }
 
