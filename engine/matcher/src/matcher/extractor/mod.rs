@@ -507,6 +507,7 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use crate::config::rule::{ExtractorRegex, Modifier};
+    use maplit::*;
     use serde_json::json;
     use std::collections::HashMap;
     use tornado_common_api::{Event, ValueGet};

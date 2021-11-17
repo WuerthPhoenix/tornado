@@ -62,7 +62,6 @@ mod test {
     use crate::accessor::AccessorBuilder;
     use maplit::*;
     use serde_json::json;
-    use std::collections::HashMap;
     use tornado_common_api::*;
 
     #[test]
@@ -205,7 +204,7 @@ mod test {
                     "",
                     &Value::Array(vec![
                         Value::String("two or one".to_owned()),
-                        Value::Number(Number::PosInt(999)),
+                        json!(999),
                     ]),
                 )
                 .unwrap(),
@@ -237,7 +236,7 @@ mod test {
             "array".to_owned(),
             Value::Array(vec![
                 Value::String("two or one".to_owned()),
-                Value::Number(Number::PosInt(999)),
+                json!(999),
             ]),
         );
         event.payload.insert("value".to_owned(), Value::String("two or one".to_owned()));

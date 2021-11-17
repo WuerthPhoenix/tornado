@@ -62,7 +62,6 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use crate::regex::RegexWrapper;
-    use maplit::*;
     use tornado_common_api::{Event, Map};
 
     #[test]
@@ -103,11 +102,12 @@ mod test {
         let replace_text = AccessorBuilder::new().build("", "${event.payload.key_1}").unwrap();
         println!("{:#?}", replace_text);
 
+        let mut payload = Map::new();
+        payload.insert("key_1".to_owned(), Value::String("value_1_from_payload".to_owned()));
+
         let event = InternalEvent::new(Event::new_with_payload(
             "my_type",
-            hashmap!(
-                "key_1".to_owned() => Value::String("value_1_from_payload".to_owned()),
-            ),
+            payload,
         ));
         let variables = None;
 
@@ -255,11 +255,12 @@ mod test {
         let replace_text = AccessorBuilder::new().build("", "${event.payload.role}").unwrap();
         println!("{:#?}", replace_text);
 
+        let mut payload = Map::new();
+        payload.insert("role".to_owned(), Value::String("$first $last: Great Bass Player".to_owned()),);
+
         let event = InternalEvent::new(Event::new_with_payload(
             "my_type",
-            hashmap!(
-                "role".to_owned() => Value::String("$first $last: Great Bass Player".to_owned()),
-            ),
+            payload
         ));
         let variables = None;
 

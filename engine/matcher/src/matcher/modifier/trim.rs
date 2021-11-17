@@ -22,7 +22,6 @@ pub fn trim(variable_name: &str, value: &mut Value) -> Result<(), MatcherError> 
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::HashMap;
     use serde_json::Map;
 
     #[test]

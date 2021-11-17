@@ -37,7 +37,6 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use serde_json::json;
-    use std::collections::HashMap;
     use tornado_common_api::*;
 
     #[test]
@@ -249,7 +248,7 @@ mod test {
         );
         event
             .payload
-            .insert("two".to_owned(), Value::Array(vec![Value::Number(Number::Float(1.1))]));
+            .insert("two".to_owned(), Value::Array(vec![json!(1.1)]));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }

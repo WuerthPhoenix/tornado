@@ -111,7 +111,8 @@ impl ValueModifier {
 mod test {
     use super::*;
     use maplit::*;
-    use tornado_common_api::{Event, Number};
+    use serde_json::json;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_build_empty_value_modifiers() {

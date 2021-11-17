@@ -184,6 +184,7 @@ pub struct ValueMetaData {
 #[cfg(test)]
 mod test {
     use crate::model::InternalEvent;
+    use serde_json::json;
     use tornado_common_api::{Event, Number, Payload, Value};
 
     #[test]
@@ -212,10 +213,10 @@ mod test {
         let mut event = InternalEvent::new(Event::default());
 
         let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
+        let value_1 = json!(123);
 
         let key_2 = "random_key_2";
-        let value_2 = Value::Number(Number::Float(3.4));
+        let value_2 = json!(3.4);
 
         // Act
         event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
@@ -268,9 +269,9 @@ mod test {
         let mut event = InternalEvent::new(Event::default());
 
         let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
+        let value_1 = json!(123);
 
-        let value_2 = Value::Number(Number::Float(3.4));
+        let value_2 = json!(3.4);
 
         // Act
         event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
@@ -294,7 +295,7 @@ mod test {
         event.metadata = Value::Array(vec![]);
 
         let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
+        let value_1 = json!(123);
 
         // Act
         let result = event.add_to_metadata(key_1.to_owned(), value_1.clone());

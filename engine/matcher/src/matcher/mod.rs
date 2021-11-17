@@ -618,7 +618,7 @@ mod test {
             },
         );
 
-        let mut action = Action { id: String::from("action_id"), payload: Map::new() };
+        let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
         action
             .payload
@@ -769,7 +769,7 @@ mod test {
             },
         );
 
-        let mut action = Action { id: String::from("action_id"), payload: Map::new() };
+        let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
 
         action
             .payload
@@ -2383,7 +2383,7 @@ mod test {
                 },
             );
 
-            let mut action = Action { id: String::from("action_id"), payload: Map::new() };
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
             action.payload.insert(
                 "value".to_owned(),
                 Value::String("${_variables.collision_name.VALUE}".to_owned()),
@@ -2398,7 +2398,7 @@ mod test {
         let rule_3 = {
             let mut rule = new_rule("rule3", None);
 
-            let mut action = Action { id: String::from("action_id"), payload: Map::new() };
+            let mut action = Action { id: String::from("action_id"), payload: HashMap::new() };
             action.payload.insert(
                 "value".to_owned(),
                 Value::String("${_variables.collision_name.VALUE}".to_owned()),
@@ -2468,9 +2468,9 @@ mod test {
     fn should_return_processed_rule_metadata() {
         // Arrange
         let mut rule = new_rule("rule_name", None);
-        rule.actions.push(Action { id: String::from("action_1"), payload: Map::new() });
-        rule.actions.push(Action { id: String::from("action_2"), payload: Map::new() });
-        rule.actions.push(Action { id: String::from("action_3"), payload: Map::new() });
+        rule.actions.push(Action { id: String::from("action_1"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_2"), payload: HashMap::new() });
+        rule.actions.push(Action { id: String::from("action_3"), payload: HashMap::new() });
 
         let matcher =
             new_matcher(&MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![rule] })
@@ -2520,7 +2520,7 @@ mod test {
             },
         );
 
-        let action = Action { id: String::from("action_id"), payload: Map::new() };
+        let action = Action { id: String::from("action_id"), payload: HashMap::new() };
         rule_1.actions.push(action);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
