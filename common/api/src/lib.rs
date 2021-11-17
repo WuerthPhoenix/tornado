@@ -427,7 +427,7 @@ pub trait RetriableError {
 }
 
 
-impl <'o >ValueExt for HashMap<&'o str, &'o Value> {
+impl <'o > ValueExt for HashMap<&'o str, &'o Value> {
 
     fn get_from_map(&self, key: &str) -> Option<&Value> {
         self.get(key).map(|s| *s)

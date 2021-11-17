@@ -1,7 +1,7 @@
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event, Number, Payload, Value};
+use tornado_common_api::{Action, Event, Number, Payload, Value, ValueExt};
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -37,6 +37,33 @@ impl From<InternalEvent> for Value {
         Value::Map(payload)
     }
 }
+
+/*
+fn add_to_metadata(event: &mut Value, (key, value): (String, Value)) -> Result<(), MatcherError> {
+    match &event.get_from_map("metadata") {
+        None => {
+
+            if let Some(map) = event.get_map_mut() {
+                let mut payload = HashMap::new();
+                payload.insert(key, value);
+                map.insert("metadata".to_owned(), Value::Map(payload));
+                Ok(())
+            } else {
+                Err(MatcherError::InternalSystemError {
+                    message: "Event should be a Map".to_owned(),
+                })
+            }
+        }
+        Some(Value::Map(mut payload)) => {
+            payload.insert(key, value);
+            Ok(())
+        }
+        _ => Err(MatcherError::InternalSystemError {
+            message: "InternalEvent metadata should be a Map".to_owned(),
+        }),
+    }
+}
+*/
 
 impl InternalEvent {
     pub fn new(event: Event) -> Self {
@@ -203,6 +230,35 @@ mod test {
             _ => assert!(false),
         }
     }
+
+    /*
+    #[test]
+    fn should_create_and_add_metadata() {
+        // Arrange
+
+        let mut event = serde_json::to_value(Event::default()).unwrap();
+
+        let key_1 = "random_key_1";
+        let value_1 = Value::Number(Number::PosInt(123));
+
+        let key_2 = "random_key_2";
+        let value_2 = Value::Number(Number::Float(3.4));
+
+        // Act
+        add_to_metadata(&mut event, (key_1.to_owned(), value_1.clone())).unwrap();
+        add_to_metadata(&mut event, (key_2.to_owned(), value_2.clone())).unwrap();
+
+        // Assert
+        match event.metadata {
+            Value::Map(payload) => {
+                assert_eq!(2, payload.len());
+                assert_eq!(&value_1, payload.get(key_1).unwrap());
+                assert_eq!(&value_2, payload.get(key_2).unwrap());
+            }
+            _ => assert!(false),
+        }
+    }
+    */
 
     #[test]
     fn should_create_and_override_metadata() {
