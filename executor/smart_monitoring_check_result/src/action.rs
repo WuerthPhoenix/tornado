@@ -138,18 +138,19 @@ mod test {
 
     use super::*;
     use maplit::*;
-    use tornado_common_api::{Action, Value};
+    use serde_json::json;
+    use tornado_common_api::{Action, Map, Value};
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
     ) {
         // Arrange
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
-        action.payload.insert("host".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
+        action.payload.insert("host".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "service".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
@@ -174,14 +175,14 @@ mod test {
     ) {
         // Arrange
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
-        action.payload.insert("service".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("service".to_owned(), Value::Object(Map::new()));
 
         let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
 

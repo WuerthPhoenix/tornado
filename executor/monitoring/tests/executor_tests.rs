@@ -2,7 +2,6 @@ use httpmock::Method::POST;
 use httpmock::{MockServer, Regex};
 use maplit::*;
 use serde_json::json;
-use std::collections::HashMap;
 use tornado_common_api::{Action, Map, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;

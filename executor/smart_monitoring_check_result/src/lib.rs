@@ -280,7 +280,8 @@ mod test {
     use super::*;
     use httpmock::Method::POST;
     use httpmock::MockServer;
-    use tornado_common_api::Value;
+    use serde_json::json;
+    use tornado_common_api::{Map, Value};
 
     #[tokio::test]
     async fn should_fail_if_action_data_is_missing() {
@@ -346,16 +347,16 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
         action.payload.insert(
             "service".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
@@ -394,13 +395,13 @@ mod test {
         let mut action = Action::new("", "");
         action.payload.insert(
             "host".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
         action.payload.insert(
             "service".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
@@ -442,11 +443,11 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
-        action.payload.insert("host".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
+        action.payload.insert("host".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "service".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myservice".to_owned()),
             )),
         );
@@ -489,14 +490,14 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );
-        action.payload.insert("service".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("service".to_owned(), Value::Object(Map::new()));
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -543,10 +544,10 @@ mod test {
         .unwrap();
 
         let mut action = Action::new("", "");
-        action.payload.insert("check_result".to_owned(), Value::Object(hashmap!()));
+        action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "object_name".to_owned() => Value::String("myhost".to_owned()),
             )),
         );

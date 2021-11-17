@@ -221,7 +221,6 @@ mod test {
     use httpmock::MockServer;
     use maplit::*;
     use serde_json::json;
-    use std::collections::HashMap;
     use tornado_common_api::{Map, Value};
 
     #[tokio::test]
