@@ -225,6 +225,7 @@ mod test {
 
         assert_eq!(" 1554130814854 ", &render);
     }
+
     #[test]
     fn should_render_booleans() {
         // Arrange
@@ -239,7 +240,7 @@ mod test {
         let result = interpolator.render(&Value::Map(payload));
 
         // Assert
-        assert!(result.is_ok());
+       // assert!(result.is_ok());
         let render = result.unwrap();
 
         assert_eq!("success: true - fail: false", &render);

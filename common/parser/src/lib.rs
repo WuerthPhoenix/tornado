@@ -102,16 +102,16 @@ impl Parser {
     pub fn parse_value<'o, I: ValueExt>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
-                let mut temp_value = value.as_value();
-
-                let mut count = 0;
-
-                while count < keys.len() && temp_value.is_some() {
-                    temp_value = temp_value.and_then(|val| keys[count].get(val));
-                    count += 1;
+                let mut key_iter = keys.iter();
+                if let Some(key) = key_iter.next() {
+                    let mut temp_value = key.get(value);
+                    while let (Some(key), Some(val)) = (key_iter.next(), temp_value) {
+                        temp_value = key.get(val);
+                    }
+                    temp_value.map(|value| Cow::Borrowed(value))
+                } else {
+                    None
                 }
-
-                temp_value.map(|value| Cow::Borrowed(value))
             }
             Parser::Interpolator { interpolator } => {
                 interpolator.render(value).map(|text| Cow::Owned(Value::Text(text))).ok()
@@ -456,5 +456,23 @@ mod test {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
         assert_eq!(expected, Parser::parse_keys("hello.world[11].inner[0]").unwrap())
+    }
+
+    #[test]
+    fn parser_expression_should_work_with_hashmaps() {
+        // Arrange
+        let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+
+        let value = Value::Array(vec![Value::Text("one".to_owned()), Value::Bool(true), Value::Number(Number::Float(13.0))]);
+        let map = HashMap::from([
+            ("key", &value)
+        ]);
+
+        // Act
+        let result = parser.parse_value(&map);
+
+        // Assert
+        assert!(result.is_some());
+        assert_eq!(&Value::Text("one - true - 13".to_owned()), result.unwrap().as_ref());
     }
 }

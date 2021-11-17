@@ -199,7 +199,6 @@ impl PartialOrd for Number {
 }
 
 pub trait ValueExt {
-    fn as_value(&self) -> Option<&Value>;
     fn get_from_map(&self, key: &str) -> Option<&Value>;
     fn get_from_array(&self, index: usize) -> Option<&Value>;
     fn get_map(&self) -> Option<&HashMap<String, Value>>;
@@ -211,10 +210,6 @@ pub trait ValueExt {
 }
 
 impl ValueExt for Value {
-
-    fn as_value(&self) -> Option<&Value> {
-        Some(self)
-    }
 
     fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
@@ -264,7 +259,6 @@ impl ValueExt for Value {
             _ => None,
         }
     }
-
 }
 
 // Allows str == Value
@@ -427,6 +421,42 @@ pub fn partial_cmp_option_cow_value<'o, F: FnOnce() -> Option<Cow<'o, Value>>>(
 
 pub trait RetriableError {
     fn can_retry(&self) -> bool;
+}
+
+
+impl <'o >ValueExt for HashMap<&'o str, &'o Value> {
+
+    fn get_from_map(&self, key: &str) -> Option<&Value> {
+        self.get(key).map(|s| *s)
+    }
+
+    fn get_from_array(&self, _index: usize) -> Option<&Value> {
+        None
+    }
+
+    fn get_map(&self) -> Option<&HashMap<String, Value>> {
+        None
+    }
+
+    fn get_map_mut(&mut self) -> Option<&mut HashMap<String, Value>> {
+        None
+    }
+
+    fn get_array(&self) -> Option<&Vec<Value>> {
+        None
+    }
+
+    fn get_text(&self) -> Option<&str> {
+        None
+    }
+
+    fn get_bool(&self) -> Option<&bool> {
+        None
+    }
+
+    fn get_number(&self) -> Option<&Number> {
+        None
+    }
 }
 
 #[cfg(test)]
