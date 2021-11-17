@@ -4,8 +4,9 @@
 
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
-use tornado_common_api::{Payload, Value};
+use tornado_common_api::{Payload};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -124,7 +125,7 @@ pub struct Action {
 
 impl From<Action> for Value {
     fn from(action: Action) -> Self {
-        let mut new_value = HashMap::new();
+        let mut new_value = Map::new();
         new_value.insert("id".to_owned(), Value::String(action.id));
         new_value.insert("payload".to_owned(), Value::Object(action.payload));
         Value::Object(new_value)

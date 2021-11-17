@@ -3,8 +3,9 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use log::*;
+use serde_json::Value;
+use tornado_common_api::ValueExt;
 use std::borrow::Borrow;
-use tornado_common_api::{Value};
 
 const OPERATOR_NAME: &str = "containsIgnoreCase";
 

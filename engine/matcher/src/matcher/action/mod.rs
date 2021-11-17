@@ -11,8 +11,8 @@ use crate::model::{
     ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
 };
 use std::collections::HashMap;
-use tornado_common_api::Value;
-use tornado_common_api::{Action, Number};
+use serde_json::{Map, Number, Value};
+use tornado_common_api::{Action};
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -126,7 +126,7 @@ impl ActionResolver {
         let mut action = Action {
             trace_id: event.trace_id.clone(),
             id: self.id.to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
 
         for (key, action_value_processor) in &self.payload {
@@ -147,7 +147,7 @@ impl ActionResolver {
         let mut action = Action {
             trace_id: event.trace_id.clone(),
             id: self.id.to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
         let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
 
@@ -197,7 +197,7 @@ impl ActionValueProcessor {
             ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ActionValueProcessor::Map(payload) => {
-                let mut processor_payload = HashMap::new();
+                let mut processor_payload = Map::new();
                 for (key, value) in payload {
                     processor_payload.insert(
                         key.to_owned(),
@@ -277,7 +277,7 @@ impl ActionValueProcessor {
                 ))
             }
             ActionValueProcessor::Map(payload) => {
-                let mut processor_payload = HashMap::new();
+                let mut processor_payload = Map::new();
                 let mut processor_payload_enriched = HashMap::new();
                 let mut modified = false;
 

@@ -1,8 +1,9 @@
+use serde_json::Value;
+
 use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "and";
 

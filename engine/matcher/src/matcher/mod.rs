@@ -12,8 +12,7 @@ use crate::model::{
 };
 use crate::validator::MatcherConfigValidator;
 use log::*;
-use std::collections::HashMap;
-use tornado_common_api::Value;
+use serde_json::{Map, Value};
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
 ///   from the config::rule::Rule.
@@ -182,7 +181,7 @@ impl Matcher {
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
-        let mut extracted_vars = Value::Object(HashMap::new());
+        let mut extracted_vars = Value::Object(Map::new());
         let mut processed_rules = vec![];
 
         for rule in rules {

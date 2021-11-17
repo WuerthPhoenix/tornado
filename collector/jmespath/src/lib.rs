@@ -1,10 +1,13 @@
 use jmespath::Rcvar;
 use log::trace;
+use serde_json::Map;
+use serde_json::json;
+use tornado_common_api::ValueExt;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_common_api::Payload;
 use tornado_common_api::Value;
-use tornado_common_api::{Event, Number};
+use tornado_common_api::Event;
 
 pub mod config;
 
@@ -81,7 +84,7 @@ impl EventProcessor {
             }
             Value::String(text) => EventProcessor::build_value_processor_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
-            Value::Number(number) => Ok(ValueProcessor::Number(number.as_f64())),
+            Value::Number(number) => Ok(ValueProcessor::Number(number.as_f64().unwrap_or_default())),
             Value::Null => Ok(ValueProcessor::Null),
         }
     }
@@ -150,10 +153,10 @@ impl ValueProcessor {
             }
             ValueProcessor::Null => Ok(Value::Null),
             ValueProcessor::Text(text) => Ok(Value::String(text.to_owned())),
-            ValueProcessor::Number(number) => Ok(Value::Number(Number::Float(*number))),
+            ValueProcessor::Number(number) => Ok(json!(*number)),
             ValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ValueProcessor::Map(payload) => {
-                let mut processor_payload = HashMap::new();
+                let mut processor_payload = Map::new();
                 for (key, value) in payload {
                     processor_payload.insert(key.to_owned(), value.process(var)?);
                 }
@@ -175,11 +178,7 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
         jmespath::Variable::String(s) => Ok(Value::String(s.to_owned())),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
         jmespath::Variable::Number(n) => {
-            Ok(Value::Number(Number::from_serde_number(n).ok_or_else(|| {
-                CollectorError::EventCreationError {
-                    message: "Cannot map jmespath::Variable::Number to a Value::Number".to_owned(),
-                }
-            })?))
+            Ok(json!(n))
         }
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
@@ -205,6 +204,8 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
 
 #[cfg(test)]
 mod test {
+
+    use serde_json::{Map, json};
 
     use super::*;
     use std::collections::HashMap;
@@ -334,7 +335,7 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(Value::Number(Number::Float(99.66)), result.unwrap());
+        assert_eq!(json!(99.66), result.unwrap());
     }
 
     #[test]
@@ -358,7 +359,7 @@ mod test {
             Value::Array(vec![
                 Value::String("one".to_owned()),
                 Value::Bool(true),
-                Value::Number(Number::PosInt(13))
+                json!(13)
             ]),
             result.unwrap()
         );
@@ -385,9 +386,9 @@ mod test {
         // Assert
         assert!(result.is_ok());
 
-        let mut payload = HashMap::new();
+        let mut payload = Map::new();
         payload.insert("one".to_owned(), Value::Bool(true));
-        payload.insert("two".to_owned(), Value::Number(Number::Float(13.0)));
+        payload.insert("two".to_owned(), json!(13.0));
 
         assert_eq!(Value::Object(payload), result.unwrap());
     }
@@ -397,7 +398,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "hello world".to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("value_one".to_owned()));
         config.payload.insert("two".to_owned(), Value::String("value_two".to_owned()));
@@ -422,7 +423,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "${first.second[0]}".to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("${first.third}".to_owned()));
         let expected_event_expression = jmespath::compile("first.second[0]").unwrap();
@@ -447,11 +448,11 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "type".to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
         config.payload.insert("one".to_owned(), Value::String("${first.third}".to_owned()));
 
-        let mut inner_map = HashMap::new();
+        let mut inner_map = Map::new();
         inner_map.insert("two".to_owned(), Value::String("${first.second[0]}".to_owned()));
         config.payload.insert("two".to_owned(), Value::Object(inner_map));
 
@@ -483,7 +484,7 @@ mod test {
         // Arrange
         let mut config = config::JMESPathEventCollectorConfig {
             event_type: "type".to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
 
         let mut inner_array = vec![];

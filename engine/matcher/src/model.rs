@@ -1,7 +1,8 @@
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event, Number, Payload, Value, ValueGet};
+use tornado_common_api::{Action, Event, Payload};
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -19,7 +20,7 @@ impl From<Event> for InternalEvent {
         InternalEvent {
             trace_id: event.trace_id,
             event_type: Value::String(event.event_type),
-            created_ms: Value::Number(Number::PosInt(event.created_ms)),
+            created_ms: json!(event.created_ms),
             metadata: Value::Null,
             payload: Value::Object(event.payload),
         }
@@ -73,7 +74,7 @@ impl InternalEvent {
     pub fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), MatcherError> {
         match &mut self.metadata {
             Value::Null => {
-                let mut payload = HashMap::new();
+                let mut payload = Map::new();
                 payload.insert(key, value);
                 self.metadata = Value::Object(payload);
                 Ok(())

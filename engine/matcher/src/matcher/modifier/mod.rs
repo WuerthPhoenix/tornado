@@ -4,8 +4,8 @@ use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
 use log::*;
+use serde_json::Value;
 use std::collections::HashMap;
-use tornado_common_api::Value;
 
 pub mod lowercase;
 pub mod map;

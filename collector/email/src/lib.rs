@@ -3,8 +3,9 @@ use mailparse::body::Body;
 use mailparse::{
     dateparse, parse_mail, DispositionType, MailHeaderMap, MailParseError, ParsedMail,
 };
+use serde_json::json;
 use tornado_collector_common::{Collector, CollectorError};
-use tornado_common_api::{Event, Number, Payload, Value};
+use tornado_common_api::{Event, Payload, Value};
 
 /// The Email Collector receives a MIME email message as input, parses it and produces a Tornado Event.
 #[derive(Default)]
@@ -41,7 +42,7 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
         }
 
         let mut event = Event::new("email");
-        event.payload.insert("date".to_owned(), Value::Number(Number::PosInt(date as u64)));
+        event.payload.insert("date".to_owned(), json!(date as u64));
         event.payload.insert("subject".to_owned(), Value::String(subject));
         event.payload.insert("from".to_owned(), Value::String(from));
         event.payload.insert("to".to_owned(), Value::String(to));
@@ -136,6 +137,8 @@ fn extract_body_and_attachments(
 
 #[cfg(test)]
 mod test {
+
+    use tornado_common_api::ValueExt;
 
     use super::*;
     use std::fs;

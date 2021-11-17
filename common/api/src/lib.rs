@@ -1,12 +1,15 @@
 use chrono::prelude::Local;
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{Map, Number, Value};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
 pub mod partial_ordering;
+
+pub type Value = serde_json::Value;
+pub type Map<K, V> = serde_json::Map<K, V>;
+pub type Number = serde_json::Number;
 
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.

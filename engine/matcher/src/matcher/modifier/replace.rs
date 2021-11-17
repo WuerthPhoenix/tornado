@@ -2,7 +2,8 @@ use crate::accessor::Accessor;
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use regex::Regex;
-use tornado_common_api::{Value};
+use serde_json::Value;
+use tornado_common_api::ValueExt;
 
 #[inline]
 pub fn replace_all(

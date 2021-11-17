@@ -12,8 +12,9 @@ use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
+use serde_json::{Map, Value};
+use tornado_common_api::ValueExt;
 use std::collections::HashMap;
-use tornado_common_api::{Value};
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -119,7 +120,7 @@ impl MatcherExtractor {
         extracted_vars: &mut Value,
     ) -> Result<(), MatcherError> {
         if !self.extractors.is_empty() {
-            let mut vars = HashMap::new();
+            let mut vars = Map::new();
             for (key, extractor) in &self.extractors {
                 let value = extractor.extract(key, event, Some(extracted_vars))?;
                 vars.insert(extractor.key.to_string(), value);
@@ -467,8 +468,8 @@ impl RegexValueExtractor {
     }
 }
 
-fn get_named_groups(captures: &Captures, regex: &RustRegex) -> Option<HashMap<String, Value>> {
-    let mut groups = HashMap::new();
+fn get_named_groups(captures: &Captures, regex: &RustRegex) -> Option<Map<String, Value>> {
+    let mut groups = Map::new();
     for name in regex.capture_names().flatten() {
         if let Some(matched) = captures.name(name) {
             groups.insert(name.to_owned(), Value::String(matched.as_str().to_owned()));

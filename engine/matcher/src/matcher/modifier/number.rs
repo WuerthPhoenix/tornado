@@ -1,18 +1,19 @@
+use serde_json::{Value, json};
+
 use crate::error::MatcherError;
-use tornado_common_api::{Number, Value};
 
 #[inline]
 pub fn to_number(variable_name: &str, value: &mut Value) -> Result<(), MatcherError> {
     match value {
         Value::String(text) => {
             if let Ok(u_value) = text.parse::<u64>() {
-                *value = Value::Number(Number::PosInt(u_value));
+                *value = json!(u_value);
                 Ok(())
             } else if let Ok(i_value) = text.parse::<i64>() {
-                *value = Value::Number(Number::NegInt(i_value));
+                *value = json!(i_value);
                 Ok(())
             } else if let Ok(f_value) = text.parse::<f64>() {
-                *value = Value::Number(Number::Float(f_value));
+                *value = json!(f_value);
                 Ok(())
             } else {
                 Err(MatcherError::ExtractedVariableError {
