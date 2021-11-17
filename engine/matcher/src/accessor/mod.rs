@@ -144,7 +144,7 @@ impl Accessor {
     ) -> Option<Cow<'o, Value>> {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(value)),
-            Accessor::CreatedMs => Some(Cow::Borrowed(&event.created_ms)),
+            Accessor::CreatedMs => event.get("created_ms").map(|data| Cow::Borrowed(data)),
             Accessor::ExtractedVar { rule_name, parser } => {
                 extracted_vars.and_then(|global_vars| {
                     global_vars
@@ -153,9 +153,9 @@ impl Accessor {
                         .or_else(|| parser.parse_value(global_vars))
                 })
             }
-            Accessor::Metadata { parser } => parser.parse_value(&event.metadata),
-            Accessor::Payload { parser } => parser.parse_value(&event.payload),
-            Accessor::Type => Some(Cow::Borrowed(&event.event_type)),
+            Accessor::Metadata { parser } => event.get("metadata").and_then(|data| parser.parse_value(data)),
+            Accessor::Payload { parser } => event.get("payload").and_then(|data| parser.parse_value(data)),
+            Accessor::Type => event.get("type").map(|data| Cow::Borrowed(data)),
             Accessor::Event => {
                 let event_value: Value = event.clone().into();
                 Some(Cow::Owned(event_value))

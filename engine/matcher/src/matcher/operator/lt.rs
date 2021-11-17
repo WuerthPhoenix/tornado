@@ -58,7 +58,7 @@ mod test {
         )
         .unwrap();
 
-        let event = InternalEvent::new(Event::new("test_type"));
+        let event = json!(Event::new("test_type"));
 
         assert_eq!("one", operator.first.get(&event, None).unwrap().as_ref());
         assert_eq!("two", operator.second.get(&event, None).unwrap().as_ref());
@@ -74,7 +74,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -87,7 +87,7 @@ mod test {
 
         let event = Event::new("one");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -100,7 +100,7 @@ mod test {
 
         let event = Event::new("zzz");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -116,7 +116,7 @@ mod test {
 
         let event = Event::new_with_payload("one", payload);
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -129,7 +129,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Bool(false));
         event.payload.insert("two".to_owned(), Value::Bool(false));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -159,7 +159,7 @@ mod test {
         event.payload.insert("one".to_owned(), json!(1.1));
         event.payload.insert("two".to_owned(), json!(1.1));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -174,7 +174,7 @@ mod test {
         event.payload.insert("one".to_owned(), json!(1));
         event.payload.insert("two".to_owned(), json!(1000000000.2));
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -198,7 +198,7 @@ mod test {
             Value::Array(vec![json!(1), json!(-2)]),
         );
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -218,7 +218,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Object(payload.clone()));
         event.payload.insert("two".to_owned(), Value::Object(payload.clone()));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -233,6 +233,6 @@ mod test {
         event.payload.insert("one".to_owned(), Value::String("1.2".to_owned()));
         event.payload.insert("two".to_owned(), json!(1.2));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 }

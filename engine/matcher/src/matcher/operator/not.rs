@@ -38,6 +38,7 @@ mod test {
 
     use super::*;
     use crate::matcher::operator::Operator;
+    use serde_json::json;
     use tornado_common_api::Event;
 
     #[test]
@@ -117,7 +118,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), true);
+        assert_eq!(operator.evaluate(&json!(event), None), true);
     }
 
     #[test]
@@ -134,7 +135,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), false);
+        assert_eq!(operator.evaluate(&json!(event), None), false);
     }
 
     #[test]
@@ -153,7 +154,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), true);
+        assert_eq!(operator.evaluate(&json!(event), None), true);
     }
 
     #[test]
@@ -178,7 +179,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -203,6 +204,6 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 }

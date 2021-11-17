@@ -1170,7 +1170,7 @@ mod test {
             ),
         );
 
-        let event = InternalEvent::new(Event::new_with_payload("", payload));
+        let event = json!(Event::new_with_payload("", payload));
 
         assert_eq!(
             extractor.extract("", &event, None).unwrap(),
@@ -1322,8 +1322,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1362,8 +1361,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1413,8 +1411,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1456,8 +1453,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1508,8 +1504,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result_1 = extractor_1.extract("var", &event, None).unwrap();
@@ -1545,8 +1540,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None);
@@ -1591,8 +1585,7 @@ mod test {
         )
         .unwrap();
 
-        let mut event = new_event("event");
-        event.payload = Value::Object(payload);
+        let event = json!(Event::new_with_payload("event", payload));
 
         // Act
         let result = extractor.extract("var", &event, None).unwrap();
@@ -1602,6 +1595,6 @@ mod test {
     }
 
     fn new_event(event_type: &str) -> InternalEvent {
-        InternalEvent::new(Event::new(event_type))
+        json!(Event::new(event_type))
     }
 }

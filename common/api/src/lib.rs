@@ -1,10 +1,12 @@
 use chrono::prelude::Local;
+use error::CommonError;
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
+pub mod error;
 pub mod partial_ordering;
 
 pub type Value = serde_json::Value;
@@ -23,6 +25,61 @@ pub struct Event {
     pub event_type: String,
     pub created_ms: u64,
     pub payload: Payload,
+}
+
+pub trait WithEventData {
+    fn trace_id(&self) -> Option<&str>;
+    fn event_type(&self) -> Option<&str>;
+    fn created_ms(&self) -> Option<u64>;
+    fn payload(&self) -> Option<&Payload>;
+    fn metadata(&self) -> Option<&Value>;
+    fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError>;
+}
+
+impl WithEventData for Value {
+    fn trace_id(&self) -> Option<&str> {
+        self.get("trace_id").and_then(|val| val.get_text())
+    }
+
+    fn event_type(&self) -> Option<&str> {
+        self.get("type").and_then(|val| val.get_text())
+    }
+
+    fn created_ms(&self) -> Option<u64> {
+        self.get("created_ms").and_then(|val| val.get_number()).and_then(|num| num.as_u64())
+    }
+
+    fn payload(&self) -> Option<&Payload> {
+        self.get("payload").and_then(|val| val.get_map())
+    }
+
+    fn metadata(&self) -> Option<&Value> {
+        self.get("metadata")
+    }
+
+    fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError> {
+        match self.get_mut("metadata") {
+            Some(Value::Null) | None => {
+                if let Some(map) = self.get_map_mut() {
+                    let mut payload = Map::new();
+                    payload.insert(key, value);
+                    map.insert("metadata".to_owned(), Value::Object(payload));
+                    Ok(())
+                } else {
+                    Err(CommonError::BadDataError {
+                        message: "Event should be a Map".to_owned(),
+                    })
+                }
+            }
+            Some(Value::Object(payload)) => {
+                payload.insert(key, value);
+                Ok(())
+            }
+            _ => Err(CommonError::BadDataError {
+                message: "Event metadata should be a Map".to_owned(),
+            }),
+        }
+    }
 }
 
 #[inline]
@@ -696,4 +753,81 @@ mod test {
         assert!(!event.trace_id.is_empty());
         assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
     }
+
+    #[test]
+    fn should_get_event_data_from_value() {
+        // Arrange
+        let mut payload = Payload::new();
+        payload.insert("one-key".to_owned(), Value::String("one-value".to_owned()));
+        payload.insert("two-key".to_owned(), Value::String("two-value".to_owned()));
+        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
+        payload.insert("bool".to_owned(), Value::Bool(false));
+
+        let event = Event::new_with_payload("my-event-type", payload.clone());
+        let created_ms = event.created_ms.to_owned();
+
+        // Act
+        let value: Value = json!(event.clone());
+
+        // Assert
+        assert_eq!(Some(created_ms), value.created_ms());
+        assert_eq!(Some(event.event_type.as_str()), value.event_type());
+        assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
+        assert_eq!(Some(&payload), value.payload());
+        assert!(value.metadata().is_none())
+        
+    }
+
+    #[test]
+    fn should_create_event_and_add_metadata() {
+        // Arrange
+
+        let mut event = json!(Event::default());
+
+        let key_1 = "random_key_1";
+        let value_1 = json!(123);
+
+        let key_2 = "random_key_2";
+        let value_2 = json!(3.4);
+
+        // Act
+        event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
+        event.add_to_metadata(key_2.to_owned(), value_2.clone()).unwrap();
+
+        // Assert
+        match event.metadata() {
+            Some(Value::Object(payload)) => {
+                assert_eq!(2, payload.len());
+                assert_eq!(&value_1, payload.get(key_1).unwrap());
+                assert_eq!(&value_2, payload.get(key_2).unwrap());
+            }
+            _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_create_event_and_override_metadata() {
+        // Arrange
+
+        let mut event = json!(Event::default());
+
+        let key_1 = "random_key_1";
+        let value_1 = json!(123);
+
+        let value_2 = json!(3.4);
+
+        // Act
+        event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
+        event.add_to_metadata(key_1.to_owned(), value_2.clone()).unwrap();
+
+        // Assert
+        match event.metadata() {
+            Some(Value::Object(payload)) => {
+                assert_eq!(1, payload.len());
+                assert_eq!(&value_2, payload.get(key_1).unwrap());
+            }
+            _ => assert!(false),
+        }
+    }
+
 }

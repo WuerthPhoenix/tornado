@@ -258,7 +258,7 @@ mod test {
     #[test]
     fn trim_modifier_should_trim_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::Trim;
 
@@ -285,7 +285,7 @@ mod test {
     #[test]
     fn lowercase_modifier_should_lowercase_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::Lowercase;
 
@@ -312,7 +312,7 @@ mod test {
     #[test]
     fn replace_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::ReplaceAll {
             find: "Hello".to_owned(),
@@ -330,7 +330,7 @@ mod test {
     #[test]
     fn to_number_modifier_should_return_a_number() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::ToNumber;
 
@@ -362,7 +362,7 @@ mod test {
     #[test]
     fn replace_with_regex_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::ReplaceAllRegex {
             find_regex: RegexWrapper::new("[0-9]+").unwrap(),
@@ -380,7 +380,7 @@ mod test {
     #[test]
     fn map_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
         let value_modifier = ValueModifier::Map {
             default_value: Some("Keith Richards".to_owned()),

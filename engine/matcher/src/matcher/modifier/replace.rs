@@ -62,13 +62,14 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use crate::regex::RegexWrapper;
+    use serde_json::json;
     use tornado_common_api::{Event, Map};
 
     #[test]
     fn replace_all_modifier_should_replace_a_string() {
         let find_text = "text";
         let replace_text = AccessorBuilder::new().build("", "new_text").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -105,7 +106,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("key_1".to_owned(), Value::String("value_1_from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload(
+        let event = json!(Event::new_with_payload(
             "my_type",
             payload,
         ));
@@ -126,7 +127,7 @@ mod test {
     //         AccessorBuilder::new().build("", "new_text and ${event.payload.key_1}").unwrap();
     //     println!("{:#?}", replace_text);
     //
-    //     let event = InternalEvent::new(Event::new_with_payload(
+    //     let event = json!(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
     //             "key_1".to_owned() => Value::String("value_1_from_payload".to_owned()),
@@ -145,7 +146,7 @@ mod test {
     fn replace_all_modifier_should_be_case_sensitive() {
         let find_text = "TexT";
         let replace_text = AccessorBuilder::new().build("", "new_TexT").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -165,7 +166,7 @@ mod test {
     fn replace_all_modifier_should_fail_if_value_not_a_string() {
         let find_text = "text";
         let replace_text = AccessorBuilder::new().build("", "new_text").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -194,7 +195,7 @@ mod test {
     fn replace_all_with_regex_modifier_should_replace_a_string() {
         let find_regex = RegexWrapper::new("[0-9]+").unwrap();
         let replace_text = AccessorBuilder::new().build("", "replaced").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -223,7 +224,7 @@ mod test {
     fn replace_all_with_regex_modifier_should_allow_named_groups() {
         let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)").unwrap();
         let replace_text = AccessorBuilder::new().build("", "$first $last").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -238,7 +239,7 @@ mod test {
     fn replace_all_with_regex_modifier_should_allow_positional_groups() {
         let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+)").unwrap();
         let replace_text = AccessorBuilder::new().build("", "$2 $1").unwrap();
-        let event = InternalEvent::new(Event::new(""));
+        let event = json!(Event::new(""));
         let variables = None;
 
         {
@@ -258,7 +259,7 @@ mod test {
         let mut payload = Map::new();
         payload.insert("role".to_owned(), Value::String("$first $last: Great Bass Player".to_owned()),);
 
-        let event = InternalEvent::new(Event::new_with_payload(
+        let event = json!(Event::new_with_payload(
             "my_type",
             payload
         ));
@@ -281,7 +282,7 @@ mod test {
     //         AccessorBuilder::new().build("", "$2 $1: ${event.payload.role}").unwrap();
     //     println!("{:#?}", replace_text);
     //
-    //     let event = InternalEvent::new(Event::new_with_payload(
+    //     let event = json!(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
     //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),
@@ -305,7 +306,7 @@ mod test {
     //         AccessorBuilder::new().build("", "$first $last: ${event.payload.role}").unwrap();
     //     println!("{:#?}", replace_text);
     //
-    //     let event = InternalEvent::new(Event::new_with_payload(
+    //     let event = json!(Event::new_with_payload(
     //         "my_type",
     //         hashmap!(
     //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),

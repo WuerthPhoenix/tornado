@@ -22,6 +22,7 @@ impl Operator for True {
 mod test {
 
     use super::*;
+    use serde_json::json;
     use tornado_common_api::*;
 
     #[test]
@@ -37,7 +38,7 @@ mod test {
         let event = Event::new("test_type");
 
         // Act
-        let result = operator.evaluate(&InternalEvent::new(event), None);
+        let result = operator.evaluate(&json!(event), None);
 
         // Assert
         assert!(result);

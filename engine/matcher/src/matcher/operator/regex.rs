@@ -64,7 +64,7 @@ mod test {
         let event = Event::new("test_type");
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!("two", operator.target.get(&InternalEvent::new(event), None).unwrap().as_ref());
+        assert_eq!("two", operator.target.get(&json!(event), None).unwrap().as_ref());
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -103,7 +103,7 @@ mod test {
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -120,7 +120,7 @@ mod test {
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -133,7 +133,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 
     #[test]
@@ -161,6 +161,6 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), json!(999));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&json!(event), None));
     }
 }
