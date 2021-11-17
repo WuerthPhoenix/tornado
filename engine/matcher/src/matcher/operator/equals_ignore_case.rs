@@ -75,10 +75,10 @@ mod test {
         )
         .unwrap();
 
-        let event = json!(Event::new("test_type"));
+        let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&event, None).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&event, None).unwrap().as_ref());
+        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod test {
         let mut event = Event::new("TEst_type");
         event.payload.insert("value".to_owned(), json!(9));
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -106,7 +106,7 @@ mod test {
         let mut event = Event::new("TEst_type");
         event.payload.insert("value".to_owned(), json!(9));
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -121,7 +121,7 @@ mod test {
         event.payload.insert("one".to_owned(), json!(9));
         event.payload.insert("two".to_owned(), json!(9));
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -134,7 +134,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -160,7 +160,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -173,7 +173,7 @@ mod test {
 
         let event = Event::new("tEST_type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod test {
 
         let event = Event::new_with_payload("Type", payload);
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -202,7 +202,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
     #[test]
     fn should_evaluate_to_false_if_array_contains_the_second_arg() {
@@ -216,7 +216,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -241,6 +241,6 @@ mod test {
         );
         event.payload.insert("value".to_owned(), Value::String("key_two".to_owned()));
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }

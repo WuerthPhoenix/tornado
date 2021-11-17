@@ -397,7 +397,7 @@ mod test {
         extracted_vars.insert("rule_for_test".to_owned(), Value::Object(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.resolve(&event, Some(&Value::Object(extracted_vars))).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Object(extracted_vars)).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -434,7 +434,7 @@ mod test {
         ));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -463,7 +463,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -489,7 +489,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -515,7 +515,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -549,7 +549,7 @@ mod test {
         let event = json!(event);
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -586,7 +586,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -627,7 +627,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -655,7 +655,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -687,7 +687,7 @@ mod test {
         ));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -719,7 +719,7 @@ mod test {
         ));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
@@ -786,7 +786,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
@@ -875,7 +875,7 @@ mod test {
             json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
@@ -944,7 +944,7 @@ mod test {
         let event = json!(Event::new("event_type_value".to_owned()));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&event.trace_id(), &result.trace_id.as_deref());

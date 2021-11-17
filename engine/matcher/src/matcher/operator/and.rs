@@ -41,7 +41,7 @@ mod test {
 
     use super::*;
     use serde_json::json;
-    use tornado_common_api::Event;
+    use tornado_common_api::{Event, Value};
 
     #[test]
     fn should_return_the_operator_name() {
@@ -121,7 +121,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -152,7 +152,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -183,7 +183,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -222,7 +222,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -261,7 +261,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -300,7 +300,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&json!(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -339,6 +339,6 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&json!(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }

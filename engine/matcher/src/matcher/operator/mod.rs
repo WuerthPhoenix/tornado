@@ -175,6 +175,8 @@ impl OperatorBuilder {
 #[cfg(test)]
 mod test {
 
+    use tornado_common_api::Value;
+
     use super::*;
 
     #[test]

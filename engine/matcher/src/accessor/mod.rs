@@ -178,7 +178,7 @@ mod test {
 
     use super::*;
     use serde_json::json;
-    use tornado_common_api::{Event, Map, ValueExt, WithEventData};
+    use tornado_common_api::{Event, Map, Value, ValueExt, WithEventData};
 
     #[test]
     fn should_return_a_constant_value() {
@@ -186,7 +186,9 @@ mod test {
 
         let event = json!(Event::new("event_type_string"));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("constant_value", result.as_ref());
         assert!(!accessor.dynamic_value());
@@ -198,7 +200,9 @@ mod test {
 
         let event = json!(Event::new("event_type_string"));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("  constant_value  ", result.as_ref());
         assert!(!accessor.dynamic_value());
@@ -210,7 +214,9 @@ mod test {
 
         let event = json!(Event::new("event_type_string"));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("event_type_string", result.as_ref());
         assert!(accessor.dynamic_value());
@@ -222,9 +228,11 @@ mod test {
 
         let event = json!(Event::new("event_type_string"));
 
-        let result = accessor.get(&event, None);
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
-        let created_ms = result.unwrap().get_number().unwrap().clone();
+        let created_ms = result.get_number().unwrap().clone();
         assert!(created_ms.is_u64());
         assert!(created_ms.as_u64().unwrap() > 0);
         assert!(accessor.dynamic_value());
@@ -240,7 +248,9 @@ mod test {
 
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("body_value", result.as_ref());
         assert!(accessor.dynamic_value());
@@ -258,7 +268,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!(&true, result.as_ref());
@@ -276,7 +288,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!(555.0, result.as_ref().get_number().unwrap().as_f64().unwrap());
@@ -300,7 +314,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!(&Value::Object(body_clone), result.as_ref());
@@ -322,7 +338,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!("body_first_value", result.as_ref());
@@ -346,7 +364,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
@@ -371,7 +391,9 @@ mod test {
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!("body_second_value", result.as_ref());
@@ -387,7 +409,10 @@ mod test {
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = json!(Event::new_with_payload("event_type_string", payload));
-        let result = accessor.get(&event, None);
+
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event);
 
         assert!(result.is_none());
     }
@@ -405,7 +430,9 @@ mod test {
         event.add_to_metadata("body".to_owned(), Value::String("body_value".to_owned())).unwrap();
         event.add_to_metadata("subject".to_owned(), Value::String("subject_value".to_owned())).unwrap();
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
@@ -426,7 +453,10 @@ mod test {
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event = json!(Event::new_with_payload("event_type_string", payload.clone()));
-        let result = accessor.get(&event, None).unwrap();
+
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!(&json!(payload), result.as_ref());
     }
@@ -445,9 +475,10 @@ mod test {
 
         let mut extracted_vars = Map::new();
         extracted_vars.insert("rule1".to_owned(), Value::Object(extracted_vars_inner));
-        let extracted_vars = Value::Object(extracted_vars);
+        let mut extracted_vars = Value::Object(extracted_vars);
 
-        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("body_value", result.as_ref());
         assert!(accessor.dynamic_value());
@@ -474,9 +505,10 @@ mod test {
         let mut extracted_vars = Map::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Object(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Object(extracted_vars_custom));
-        let extracted_vars = Value::Object(extracted_vars);
+        let mut extracted_vars = Value::Object(extracted_vars);
 
-        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("current_body", result.as_ref());
     }
@@ -503,9 +535,10 @@ mod test {
         let mut extracted_vars = Map::new();
         extracted_vars.insert("current_rule_name".to_owned(), Value::Object(extracted_vars_current));
         extracted_vars.insert("custom_rule_name".to_owned(), Value::Object(extracted_vars_custom));
-        let extracted_vars = Value::Object(extracted_vars);
+        let mut extracted_vars = Value::Object(extracted_vars);
 
-        let result = accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("custom_body", result.as_ref());
     }
@@ -519,7 +552,9 @@ mod test {
 
         let event = json!(Event::new("event_type_string"));
 
-        let result = accessor.get(&event, None);
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event);
 
         assert!(result.is_none());
     }
@@ -635,7 +670,9 @@ mod test {
         payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         let event_value: Value = event.clone().into();
         assert_eq!(&event_value, result.as_ref());
@@ -655,7 +692,9 @@ mod test {
 
         let event = json!(Event::new_with_payload("event_type_string", payload));
 
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         assert_eq!("body_value", result.as_ref());
     }
@@ -739,11 +778,13 @@ mod test {
 
         let mut extracted_vars = Map::new();
         extracted_vars.insert("rule1".to_owned(), Value::Object(extracted_vars_inner));
-        let extracted_vars = Value::Object(extracted_vars);
+        let mut extracted_vars = Value::Object(extracted_vars);
+
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
 
         // Act
-        let map_result = map_accessor.get(&event, Some(&extracted_vars)).unwrap();
-        let array_result = array_accessor.get(&event, Some(&extracted_vars)).unwrap();
+        let map_result = map_accessor.get(&internal_event).unwrap();
+        let array_result = array_accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!("first_from_map", map_result.as_ref());
@@ -781,7 +822,9 @@ mod test {
             .unwrap();
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!("A_TENANT_ID_FROM_METADATA", result.as_ref());
@@ -804,7 +847,9 @@ mod test {
             .unwrap();
 
         // Act
-        let result = accessor.get(&event, None).unwrap();
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event).unwrap();
 
         // Assert
         assert_eq!(event.metadata().unwrap(), result.as_ref());
@@ -822,7 +867,9 @@ mod test {
         event.add_to_metadata("other".to_owned(), Value::String("something".to_owned())).unwrap();
 
         // Act
-        let result = accessor.get(&event, None);
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        let result = accessor.get(&internal_event);
 
         // Assert
         assert!(result.is_none());
