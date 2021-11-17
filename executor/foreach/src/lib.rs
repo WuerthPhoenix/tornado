@@ -150,8 +150,9 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::sync::RwLock;
-    use serde_json::{json, map::Entry};
+    use std::{collections::{HashMap, hash_map::Entry}, sync::RwLock};
+    use serde_json::{json};
+    use tornado_common_api::ValueExt;
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -259,7 +260,7 @@ mod test {
     async fn should_execute_each_action_with_each_target_item() {
         // Arrange
 
-        let execution_results = Arc::new(RwLock::new(Map::new()));
+        let execution_results = Arc::new(RwLock::new(HashMap::new()));
 
         let mut bus = SimpleEventBus::new();
         {
@@ -402,7 +403,7 @@ mod test {
     async fn should_ignore_failing_actions_and_execute_all_others() {
         // Arrange
 
-        let execution_results = Arc::new(RwLock::new(Map::new()));
+        let execution_results = Arc::new(RwLock::new(HashMap::new()));
 
         let mut bus = SimpleEventBus::new();
         {
@@ -506,7 +507,7 @@ mod test {
     async fn should_resolve_complex_placeholders() {
         // Arrange
 
-        let execution_results = Arc::new(RwLock::new(Map::new()));
+        let execution_results = Arc::new(RwLock::new(HashMap::new()));
 
         let mut bus = SimpleEventBus::new();
         {

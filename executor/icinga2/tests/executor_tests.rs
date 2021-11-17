@@ -3,6 +3,7 @@ use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use maplit::*;
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tornado_common_api::{Action, Value};
@@ -63,7 +64,7 @@ async fn should_perform_a_post_request() {
                 );
                 action.payload.insert(
                     ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
-                    Value::Object(hashmap![
+                    json!(hashmap![
                         "filter".to_owned() => Value::String("my_service".to_owned()),
                     ]),
                 );
@@ -82,7 +83,7 @@ async fn should_perform_a_post_request() {
     });
 
     assert_eq!(
-        Some(Value::Object(hashmap![
+        Some(json!(hashmap![
             "filter".to_owned() => Value::String("my_service".to_owned())
         ])),
         receiver.recv().await
@@ -115,7 +116,7 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
         .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::String("icinga2-api-action".to_owned()));
     action.payload.insert(
         ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
-        Value::Object(hashmap![
+        json!(hashmap![
             "filter".to_owned() => Value::String("my_service".to_owned()),
         ]),
     );

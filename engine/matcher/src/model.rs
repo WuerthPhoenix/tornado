@@ -2,7 +2,7 @@ use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event, Payload};
+use tornado_common_api::{Action, Event};
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
@@ -24,18 +24,6 @@ impl From<Event> for InternalEvent {
             metadata: Value::Null,
             payload: Value::Object(event.payload),
         }
-    }
-}
-
-impl From<InternalEvent> for Value {
-    fn from(event: InternalEvent) -> Self {
-        let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::String(event.trace_id));
-        payload.insert("type".to_owned(), event.event_type);
-        payload.insert("created_ms".to_owned(), event.created_ms);
-        payload.insert("payload".to_owned(), event.payload);
-        payload.insert("metadata".to_owned(), event.metadata);
-        Value::Object(payload)
     }
 }
 
@@ -304,19 +292,4 @@ mod test {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn should_convert_to_value_and_back() {
-        // Arrange
-
-        let mut event = InternalEvent::new(Event::default());
-        event.metadata = Value::Array(vec![]);
-
-        // Act
-        let value: Value = event.clone().into();
-        let event_from_value: InternalEvent =
-            serde_json::from_value(serde_json::to_value(value).unwrap()).unwrap();
-
-        // Assert
-        assert_eq!(event, event_from_value);
-    }
 }
