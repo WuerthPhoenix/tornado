@@ -63,7 +63,6 @@ mod test {
     use crate::accessor::AccessorBuilder;
     use crate::regex::RegexWrapper;
     use maplit::*;
-    use std::collections::HashMap;
     use tornado_common_api::{Event, Map};
 
     #[test]

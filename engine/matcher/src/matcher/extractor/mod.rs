@@ -507,7 +507,7 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use crate::config::rule::{ExtractorRegex, Modifier};
-    use maplit::*;
+    use serde_json::json;
     use std::collections::HashMap;
     use tornado_common_api::{Event, ValueGet};
 
@@ -1335,7 +1335,7 @@ mod test {
     #[test]
     fn single_key_match_should_fail_if_no_match() {
         // Arrange
-        let mut oids = HashMap::new();
+        let mut oids = Map::new();
         oids.insert(
             "MWRM2-NMS-MIB::netmasterAlarm.201476692".to_owned(),
             Value::String("2".to_owned()),

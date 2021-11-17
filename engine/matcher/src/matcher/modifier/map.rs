@@ -38,7 +38,6 @@ mod test {
     use super::*;
     use serde_json::json;
     use std::collections::HashMap;
-    use tornado_common_api::Number;
 
     #[test]
     fn map_modifier_should_replace_a_string() {

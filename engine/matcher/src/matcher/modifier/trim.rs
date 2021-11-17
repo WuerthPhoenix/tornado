@@ -23,6 +23,7 @@ pub fn trim(variable_name: &str, value: &mut Value) -> Result<(), MatcherError> 
 mod test {
     use super::*;
     use std::collections::HashMap;
+    use serde_json::Map;
 
     #[test]
     fn trim_modifier_should_trim_a_string() {
@@ -53,7 +54,7 @@ mod test {
         }
 
         {
-            let mut input = Value::Object(HashMap::new());
+            let mut input = Value::Object(Map::new());
             assert!(trim("", &mut input).is_err());
         }
 

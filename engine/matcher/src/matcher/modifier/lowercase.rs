@@ -20,7 +20,6 @@ pub fn lowercase(variable_name: &str, value: &mut Value) -> Result<(), MatcherEr
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::collections::HashMap;
     use tornado_common_api::Map;
 
     #[test]

@@ -509,7 +509,7 @@ mod test {
         // Arrange
         let mut config_action =
             ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("type".to_owned(), Value::Number(Number::PosInt(123456)));
+        config_action.payload.insert("type".to_owned(), json!(123456));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -527,7 +527,7 @@ mod test {
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&Value::Number(Number::PosInt(123456)), result.payload.get("type").unwrap());
+        assert_eq!(&json!(123456), result.payload.get("type").unwrap());
     }
 
     #[test]
@@ -538,7 +538,7 @@ mod test {
         config_action.payload.insert(
             "type".to_owned(),
             Value::Array(vec![
-                Value::Number(Number::Float(123456.0)),
+                json!(123456.0),
                 Value::String("${event.type}".to_owned()),
                 Value::String("Event created on ${event.created_ms}".to_owned()),
             ]),
@@ -563,7 +563,7 @@ mod test {
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
             &Value::Array(vec![
-                Value::Number(Number::Float(123456.0)),
+                json!(123456.0),
                 Value::String("event_type_value".to_owned()),
                 Value::String(format!("Event created on {}", created_ms))
             ]),
@@ -740,7 +740,7 @@ mod test {
             payload: hashmap! {
                 "event_payload".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
-                        content: Value::Object(hashmap! {
+                        content: json!(hashmap! {
                             "body".to_owned() => Value::String("from_payload".to_owned())
                         })
                     },
@@ -769,12 +769,12 @@ mod test {
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
             payload: hashmap! {
-                "inner_map_static".to_owned() => Value::Object(
+                "inner_map_static".to_owned() => json!(
                     hashmap!{
                         "bool".to_owned() => Value::Bool(false)
                     }
                 ),
-                "inner_map_dynamic".to_owned() => Value::Object(
+                "inner_map_dynamic".to_owned() => json!(
                     hashmap!{
                         "value".to_owned() => Value::String("${event.payload.body}".to_owned())
                     }
@@ -859,10 +859,10 @@ mod test {
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
             payload: hashmap! {
-                "inner_vec_static".to_owned() => Value::Array(vec![Value::Number(Number::PosInt(545))]),
+                "inner_vec_static".to_owned() => Value::Array(vec![json!(545)]),
                 "inner_vec_dynamic".to_owned() => Value::Array(
                     vec![
-                        Value::Object(hashmap!{
+                        json!(hashmap!{
                                 "value".to_owned() => Value::String("${event.payload.body}".to_owned())
                         })
                     ]
@@ -893,7 +893,7 @@ mod test {
                 "inner_vec_static".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Array {
                         content: vec![EnrichedValue {
-                                  content: EnrichedValueContent::Single { content: Value::Number(Number::PosInt(545)) },
+                                  content: EnrichedValueContent::Single { content: json!(545) },
                                   meta: ValueMetaData {
                                         modified: false,
                                         is_leaf: true

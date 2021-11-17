@@ -337,19 +337,19 @@ mod test {
         {
             let mut input = Value::String("12".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::PosInt(12)), input);
+            assert_eq!(json!(12), input);
         }
 
         {
             let mut input = Value::String("-3412".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::NegInt(-3412)), input);
+            assert_eq!(json!(-3412), input);
         }
 
         {
             let mut input = Value::String("3.14".to_owned());
             value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::Float(3.14)), input);
+            assert_eq!(json!(3.14), input);
         }
 
         {

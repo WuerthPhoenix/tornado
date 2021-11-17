@@ -56,6 +56,7 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use maplit::*;
+    use serde_json::json;
     use std::collections::HashMap;
     use tornado_common_api::*;
 
@@ -119,8 +120,8 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert("one".to_owned(), Value::Number(Number::PosInt(9)));
-        event.payload.insert("two".to_owned(), Value::Number(Number::PosInt(9)));
+        event.payload.insert("one".to_owned(), json!(9));
+        event.payload.insert("two".to_owned(), json!(9));
 
         assert!(!operator.evaluate(&InternalEvent::new(event), None));
     }
@@ -185,7 +186,7 @@ mod test {
         )
         .unwrap();
 
-        let mut payload = HashMap::new();
+        let mut payload = Map::new();
         payload.insert("type".to_owned(), Value::String("tyPe".to_owned()));
 
         let event = Event::new_with_payload("Type", payload);
@@ -235,7 +236,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Object(hashmap!(
+            json!(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),
