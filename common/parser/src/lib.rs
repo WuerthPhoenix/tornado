@@ -2,6 +2,7 @@ use crate::interpolator::StringInterpolator;
 use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::{borrow::Cow};
 use std::fmt::Debug;
 use thiserror::Error;
@@ -11,6 +12,7 @@ mod interpolator;
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
+pub const EXPRESSION_NESTED_DELIMITER: &str = ".";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
 const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
 const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
@@ -31,12 +33,65 @@ pub enum ParserError {
     InterpolatorRenderError { template: String, cause: String },
 }
 
+pub trait ParserFactory<T: Debug> {
+    fn build(&self, expression: &str) -> Box<dyn CustomParser<T>>;
+}
 
-#[derive(PartialEq, Debug)]
+pub trait CustomParser<T: Debug> {
+    fn parse_value<'o>(&'o self, value: &'o Value, context: &T) -> Option<Cow<'o, Value>>;
+}
+
+#[derive(Default)]
+pub struct ParserBuilder<T: Debug> {
+    custom_parser_factories: HashMap<String, Box<dyn ParserFactory<T>>>,
+}
+
+impl <T: Debug> ParserBuilder<T> {
+    pub fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory<T>>) -> Self {
+        self.custom_parser_factories.insert(key, factory);
+        self
+    }
+
+    pub fn build_parser(&self, text: &str) -> Result<Parser<T>, ParserError> {
+        if let Some(interpolator) = StringInterpolator::build(text)? {
+            Ok(Parser::Interpolator { interpolator })
+        } else if Parser::<T>::is_expression(text) {
+            let trimmed = text.trim();
+            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
+                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+
+            for (key, factory) in self.custom_parser_factories {
+                let custom_key_start = format!{"{}{}", key, EXPRESSION_NESTED_DELIMITER};
+                if expression.starts_with(&custom_key_start) {
+                    let getters = Parser::<T>::parse_keys(expression)?;
+                    if getters.len() == 1 {
+                        let first_getter = getters[0];
+                        let trimmed_custom_key = &expression[custom_key_start.len()..];
+                        return Ok(Parser::Custom {
+                            key: first_getter,
+                            parser: factory.build(trimmed_custom_key)
+                        })
+                    } else {
+                        return Err(ParserError::ConfigurationError {
+                            message: format!("Error parsing expression [{}]. Custom Parser should not have nested keys", expression),
+                        });
+                    }
+                }
+            }
+
+            Ok(Parser::Exp { keys: Parser::<T>::parse_keys(expression)? })
+        } else {
+            Ok(Parser::Val(Value::String(text.to_owned())))
+        }
+    }
+}
+
+
 pub enum Parser<T: Debug> {
     Exp { keys: Vec<ValueGetter> },
     Interpolator { interpolator: StringInterpolator<T> },
     Val(Value),
+    Custom{ key: ValueGetter, parser: Box<dyn CustomParser<T>> }
 }
 
 impl <T: Debug> Parser<T> {
@@ -120,6 +175,9 @@ impl <T: Debug> Parser<T> {
                 interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text))).ok()
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
+            Parser::Custom{ key, parser} => {
+                key.get(value).and_then(|val| parser.parse_value(val, context))                
+            },
         }
     }
 }

@@ -18,13 +18,11 @@ lazy_static! {
         Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
 }
 
-#[derive(Debug, PartialEq)]
 pub struct StringInterpolator<T: Debug> {
     template: String,
     parsers: Vec<BoundedAccessor<T>>,
 }
 
-#[derive(Debug, PartialEq)]
 struct BoundedAccessor<T: Debug> {
     start: usize,
     end: usize,
