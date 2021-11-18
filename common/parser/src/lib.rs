@@ -3,6 +3,7 @@ use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
 use std::{borrow::Cow};
+use std::fmt::Debug;
 use thiserror::Error;
 use tornado_common_api::{ValueGet};
 
@@ -30,28 +31,29 @@ pub enum ParserError {
     InterpolatorRenderError { template: String, cause: String },
 }
 
+
 #[derive(PartialEq, Debug)]
-pub enum Parser {
+pub enum Parser<T: Debug> {
     Exp { keys: Vec<ValueGetter> },
-    Interpolator { interpolator: StringInterpolator },
+    Interpolator { interpolator: StringInterpolator<T> },
     Val(Value),
 }
 
-impl Parser {
+impl <T: Debug> Parser<T> {
     pub fn is_expression(text: &str) -> bool {
         let trimmed = text.trim();
         trimmed.starts_with(EXPRESSION_START_DELIMITER)
             && trimmed.ends_with(EXPRESSION_END_DELIMITER)
     }
 
-    pub fn build_parser(text: &str) -> Result<Parser, ParserError> {
+    pub fn build_parser(text: &str) -> Result<Parser<T>, ParserError> {
         if let Some(interpolator) = StringInterpolator::build(text)? {
             Ok(Parser::Interpolator { interpolator })
-        } else if Parser::is_expression(text) {
+        } else if Parser::<T>::is_expression(text) {
             let trimmed = text.trim();
             let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
                 ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-            Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
+            Ok(Parser::Exp { keys: Parser::<T>::parse_keys(expression)? })
         } else {
             Ok(Parser::Val(Value::String(text.to_owned())))
         }
@@ -100,7 +102,7 @@ impl Parser {
             .collect()
     }
 
-    pub fn parse_value<'o, I: ValueGet>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
+    pub fn parse_value<'o, I: ValueGet>(&'o self, value: &'o I, context: &T) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
                 let mut key_iter = keys.iter();
@@ -115,7 +117,7 @@ impl Parser {
                 }
             }
             Parser::Interpolator { interpolator } => {
-                interpolator.render(value).map(|text| Cow::Owned(Value::String(text))).ok()
+                interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text))).ok()
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
         }
@@ -161,7 +163,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_type() {
         // Act
-        let parser = Parser::build_parser("hello world").unwrap();
+        let parser = Parser::<()>::build_parser("hello world").unwrap();
 
         // Assert
         match parser {
@@ -175,7 +177,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_exp() {
         // Act
-        let parser = Parser::build_parser("${hello.world}").unwrap();
+        let parser = Parser::<()>::build_parser("${hello.world}").unwrap();
 
         // Assert
         match parser {
@@ -189,7 +191,7 @@ mod test {
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
-        let parser = Parser::Val(Value::String("hello world".to_owned()));
+        let parser = Parser::<()>::Val(Value::String("hello world".to_owned()));
         let json = r#"
         {
             "level_one": {
@@ -200,7 +202,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -221,7 +223,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -242,7 +244,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_none());
@@ -262,7 +264,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_none());
@@ -280,7 +282,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -299,7 +301,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -319,7 +321,7 @@ mod test {
         let value: Value = serde_json::from_str(json).unwrap();
 
         // Act
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -348,7 +350,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -373,7 +375,7 @@ mod test {
         let value: Value = serde_json::from_str(json).unwrap();
 
         // Act
-        let result = parser.parse_value(&value);
+        let result = parser.parse_value(&value, &());
 
         // Assert
         assert!(result.is_some());
@@ -383,29 +385,29 @@ mod test {
     #[test]
     fn builder_should_parse_a_payload_key() {
         let expected: Vec<ValueGetter> = vec!["one".into()];
-        assert_eq!(expected, Parser::parse_keys("one").unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys("one").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, Parser::parse_keys("one.two").unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys("one.two").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, Parser::parse_keys("one.two.").unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys("one.two.").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "".into()];
-        assert_eq!(expected, Parser::parse_keys(r#"one."""#).unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys(r#"one."""#).unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into(), "th ir.d".into()];
-        assert_eq!(expected, Parser::parse_keys(r#"one.two."th ir.d""#).unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys(r#"one.two."th ir.d""#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
-        assert_eq!(expected, Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
+        assert_eq!(expected, Parser::<()>::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
         assert_eq!(
             expected,
-            Parser::parse_keys(r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#)
+            Parser::<()>::parse_keys(r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#)
                 .unwrap()
         );
     }
@@ -413,7 +415,7 @@ mod test {
     #[test]
     fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
         // Act
-        let result = Parser::parse_keys(r#"o"ne"#);
+        let result = Parser::<()>::parse_keys(r#"o"ne"#);
 
         // Assert
         assert!(result.is_err());
@@ -422,7 +424,7 @@ mod test {
     #[test]
     fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
         // Act
-        let result = Parser::parse_keys(r#"one."two"#);
+        let result = Parser::<()>::parse_keys(r#"one."two"#);
 
         // Assert
         assert!(result.is_err());
@@ -431,33 +433,33 @@ mod test {
     #[test]
     fn builder_parser_should_return_empty_vector_if_no_matches() {
         let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, Parser::parse_keys("").unwrap())
+        assert_eq!(expected, Parser::<()>::parse_keys("").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_empty_vector_if_single_dot() {
         let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, Parser::parse_keys(".").unwrap())
+        assert_eq!(expected, Parser::<()>::parse_keys(".").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_ignore_trailing_dot() {
         let expected: Vec<ValueGetter> = vec!["hello".into(), "world".into()];
-        assert_eq!(expected, Parser::parse_keys(".hello.world").unwrap())
+        assert_eq!(expected, Parser::<()>::parse_keys(".hello.world").unwrap())
     }
 
     #[test]
     fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
-        assert_eq!(expected, Parser::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap())
+        assert_eq!(expected, Parser::<()>::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_array_reader() {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
-        assert_eq!(expected, Parser::parse_keys("hello.world[11].inner[0]").unwrap())
+        assert_eq!(expected, Parser::<()>::parse_keys("hello.world[11].inner[0]").unwrap())
     }
 
     #[test]
@@ -471,7 +473,7 @@ mod test {
         ]);
 
         // Act
-        let result = parser.parse_value(&map);
+        let result = parser.parse_value(&map, &());
 
         // Assert
         assert!(result.is_some());

@@ -5,6 +5,8 @@
 // - https://github.com/hoodie/concatenation_benchmarks-rs
 //
 
+use std::marker::PhantomData;
+use std::fmt::Debug;
 use crate::{Parser, ParserError};
 use lazy_static::*;
 use regex::{Match, Regex};
@@ -17,27 +19,28 @@ lazy_static! {
 }
 
 #[derive(Debug, PartialEq)]
-pub struct StringInterpolator {
+pub struct StringInterpolator<T: Debug> {
     template: String,
-    parsers: Vec<BoundedAccessor>,
+    parsers: Vec<BoundedAccessor<T>>,
 }
 
 #[derive(Debug, PartialEq)]
-struct BoundedAccessor {
+struct BoundedAccessor<T: Debug> {
     start: usize,
     end: usize,
-    parser: Parser,
+    parser: Parser<T>,
+    _phantom: PhantomData<T>,
 }
 
-impl StringInterpolator {
+impl <T: Debug> StringInterpolator<T> {
     /// Creates a new StringInterpolator
-    pub fn build<T: Into<String>>(template: T) -> Result<Option<Self>, ParserError> {
+    pub fn build<S: Into<String>>(template: S) -> Result<Option<Self>, ParserError> {
         let template_string = template.into();
 
         let regex: &Regex = &RE;
         let matchers = regex.find_iter(&template_string).collect::<Vec<Match<'_>>>();
 
-        if StringInterpolator::interpolation_required(&template_string, &matchers) {
+        if StringInterpolator::<T>::interpolation_required(&template_string, &matchers) {
             let parsers = matchers
                 .iter()
                 .map(|m| {
@@ -45,6 +48,7 @@ impl StringInterpolator {
                         start: m.start(),
                         end: m.end(),
                         parser,
+                        _phantom: PhantomData
                     })
                 })
                 .collect::<Result<Vec<_>, ParserError>>()?;
@@ -73,7 +77,7 @@ impl StringInterpolator {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render<I: ValueGet>(&self, event: &I) -> Result<String, ParserError> {
+    pub fn render<I: ValueGet>(&self, event: &I, context: &T) -> Result<String, ParserError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -87,7 +91,7 @@ impl StringInterpolator {
             let accessor = &bounded_accessor.parser;
 
             let value =
-                accessor.parse_value(event).ok_or(ParserError::InterpolatorRenderError {
+                accessor.parse_value(event, context).ok_or(ParserError::InterpolatorRenderError {
                     template: self.template.to_owned(),
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 })?;
@@ -134,7 +138,7 @@ mod test {
         let template = "<div><span>${event.payload.test}</sp${event.type}an><span>${_variables.test12}</span></${}div>";
 
         // Act
-        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let interpolator = StringInterpolator::<()>::build(template).unwrap().unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -167,7 +171,7 @@ mod test {
         let template = "constant string";
 
         // Act
-        let result = StringInterpolator::build(template).unwrap();
+        let result = StringInterpolator::<()>::build(template).unwrap();
 
         // Assert
         assert!(result.is_none());
@@ -178,7 +182,7 @@ mod test {
         let template = "${event.type}";
 
         // Act
-        let result = StringInterpolator::build(template).unwrap();
+        let result = StringInterpolator::<()>::build(template).unwrap();
 
         // Assert
         assert!(result.is_none());
@@ -190,7 +194,7 @@ mod test {
         let template = "${event.type}${event.created_ms}${event.type}";
 
         // Act
-        let interpolator = StringInterpolator::build(template).unwrap().unwrap();
+        let interpolator = StringInterpolator::<()>::build(template).unwrap().unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -215,7 +219,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_ok());
@@ -235,7 +239,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
        // assert!(result.is_ok());
@@ -254,7 +258,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_ok());
@@ -274,7 +278,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_ok());
@@ -292,7 +296,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_err());
@@ -310,7 +314,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_err());
@@ -329,7 +333,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload));
+        let result = interpolator.render(&Value::Object(payload), &());
 
         // Assert
         assert!(result.is_err());
@@ -359,7 +363,7 @@ mod test {
 
         // Act
         let interpolator = StringInterpolator::build(template).unwrap().unwrap();
-        let result = interpolator.render(&event);
+        let result = interpolator.render(&event, &());
 
         // Assert
         assert!(result.is_ok());
