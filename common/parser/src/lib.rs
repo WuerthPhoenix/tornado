@@ -37,7 +37,7 @@ pub trait ParserFactory<T: Debug> {
     fn build(&self, expression: &str) -> Box<dyn CustomParser<T>>;
 }
 
-pub trait CustomParser<T: Debug> {
+pub trait CustomParser<T: Debug>: Debug {
     fn parse_value<'o>(&'o self, value: &'o Value, context: &T) -> Option<Cow<'o, Value>>;
 }
 
@@ -53,19 +53,19 @@ impl <T: Debug> ParserBuilder<T> {
     }
 
     pub fn build_parser(&self, text: &str) -> Result<Parser<T>, ParserError> {
-        if let Some(interpolator) = StringInterpolator::build(text)? {
+        if let Some(interpolator) = StringInterpolator::build(text, self)? {
             Ok(Parser::Interpolator { interpolator })
         } else if Parser::<T>::is_expression(text) {
             let trimmed = text.trim();
             let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
                 ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
 
-            for (key, factory) in self.custom_parser_factories {
+            for (key, factory) in &self.custom_parser_factories {
                 let custom_key_start = format!{"{}{}", key, EXPRESSION_NESTED_DELIMITER};
                 if expression.starts_with(&custom_key_start) {
-                    let getters = Parser::<T>::parse_keys(expression)?;
+                    let mut getters = Parser::<T>::parse_keys(expression)?;
                     if getters.len() == 1 {
-                        let first_getter = getters[0];
+                        let first_getter = getters.remove(0);
                         let trimmed_custom_key = &expression[custom_key_start.len()..];
                         return Ok(Parser::Custom {
                             key: first_getter,
@@ -87,6 +87,7 @@ impl <T: Debug> ParserBuilder<T> {
 }
 
 
+#[derive(Debug)]
 pub enum Parser<T: Debug> {
     Exp { keys: Vec<ValueGetter> },
     Interpolator { interpolator: StringInterpolator<T> },
@@ -101,6 +102,7 @@ impl <T: Debug> Parser<T> {
             && trimmed.ends_with(EXPRESSION_END_DELIMITER)
     }
 
+    /*
     pub fn build_parser(text: &str) -> Result<Parser<T>, ParserError> {
         if let Some(interpolator) = StringInterpolator::build(text)? {
             Ok(Parser::Interpolator { interpolator })
@@ -113,6 +115,7 @@ impl <T: Debug> Parser<T> {
             Ok(Parser::Val(Value::String(text.to_owned())))
         }
     }
+    */
 
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
         let regex: &Regex = &RE;
@@ -221,7 +224,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_type() {
         // Act
-        let parser = Parser::<()>::build_parser("hello world").unwrap();
+        let parser = ParserBuilder::<()>::default().build_parser("hello world").unwrap();
 
         // Assert
         match parser {
@@ -235,7 +238,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_exp() {
         // Act
-        let parser = Parser::<()>::build_parser("${hello.world}").unwrap();
+        let parser = ParserBuilder::<()>::default().build_parser("${hello.world}").unwrap();
 
         // Assert
         match parser {
@@ -270,7 +273,7 @@ mod test {
     #[test]
     fn parser_expression_should_return_from_json() {
         // Arrange
-        let parser = Parser::build_parser("${level_one.level_two}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${level_one.level_two}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -291,7 +294,7 @@ mod test {
     #[test]
     fn parser_expression_should_return_none_if_not_present() {
         // Arrange
-        let parser = Parser::build_parser("${level_one.level_three}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${level_one.level_three}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -311,7 +314,7 @@ mod test {
     #[test]
     fn parser_expression_should_return_none_if_not_present_in_array() {
         // Arrange
-        let parser = Parser::build_parser("${level_one.level_two[2]}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${level_one.level_two[2]}").unwrap();
         let json = r#"
         {
             "level_one": {
@@ -331,7 +334,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_boolean_values() {
         // Arrange
-        let parser = Parser::build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": true
@@ -350,7 +353,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_numeric_values() {
         // Arrange
-        let parser = Parser::build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": 99.66
@@ -369,7 +372,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_arrays() {
         // Arrange
-        let parser = Parser::build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": ["one", true, 13.0]
@@ -396,7 +399,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_maps() {
         // Arrange
-        let parser = Parser::build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
         let json = r#"
         {
             "key": {
@@ -423,7 +426,7 @@ mod test {
     #[test]
     fn parser_expression_should_use_the_interpolators() {
         // Arrange
-        let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
         let json = r#"
         {
             "key": ["one", true, 13.0]
@@ -523,7 +526,7 @@ mod test {
     #[test]
     fn parser_expression_should_work_with_hashmaps() {
         // Arrange
-        let parser = Parser::build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
 
         let value = Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13.0)]);
         let map = HashMap::from([
