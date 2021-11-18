@@ -37,6 +37,12 @@ pub trait ParserFactory<T: Debug> {
     fn build(&self, expression: &str) -> Box<dyn CustomParser<T>>;
 }
 
+impl <T: Debug, F: Fn(&str) -> Box<dyn CustomParser<T>>> ParserFactory<T> for F {
+    fn build(&self, expression: &str) -> Box<dyn CustomParser<T>> {
+        self(expression)
+    }
+}
+
 pub trait CustomParser<T: Debug>: Debug {
     fn parse_value<'o>(&'o self, value: &'o Value, context: &T) -> Option<Cow<'o, Value>>;
 }
@@ -64,7 +70,7 @@ impl <T: Debug> ParserBuilder<T> {
                 let custom_key_start = format!{"{}{}", key, EXPRESSION_NESTED_DELIMITER};
                 if expression.starts_with(&custom_key_start) {
                     let mut getters = Parser::<T>::parse_keys(expression)?;
-                    if getters.len() == 1 {
+                    if !getters.is_empty() {
                         let first_getter = getters.remove(0);
                         let trimmed_custom_key = &expression[custom_key_start.len()..];
                         return Ok(Parser::Custom {
@@ -73,7 +79,7 @@ impl <T: Debug> ParserBuilder<T> {
                         })
                     } else {
                         return Err(ParserError::ConfigurationError {
-                            message: format!("Error parsing expression [{}]. Custom Parser should not have nested keys", expression),
+                            message: format!("Error parsing expression [{}]. Error building Custom Parser keys", expression),
                         });
                     }
                 }
@@ -101,21 +107,6 @@ impl <T: Debug> Parser<T> {
         trimmed.starts_with(EXPRESSION_START_DELIMITER)
             && trimmed.ends_with(EXPRESSION_END_DELIMITER)
     }
-
-    /*
-    pub fn build_parser(text: &str) -> Result<Parser<T>, ParserError> {
-        if let Some(interpolator) = StringInterpolator::build(text)? {
-            Ok(Parser::Interpolator { interpolator })
-        } else if Parser::<T>::is_expression(text) {
-            let trimmed = text.trim();
-            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
-                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
-            Ok(Parser::Exp { keys: Parser::<T>::parse_keys(expression)? })
-        } else {
-            Ok(Parser::Val(Value::String(text.to_owned())))
-        }
-    }
-    */
 
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
         let regex: &Regex = &RE;
@@ -179,6 +170,10 @@ impl <T: Debug> Parser<T> {
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
             Parser::Custom{ key, parser} => {
+
+                println!("use custom parser");
+                println!("key: {:?}", key);
+                println!("value: {:?}", key.get(value));
                 key.get(value).and_then(|val| parser.parse_value(val, context))                
             },
         }
@@ -539,5 +534,44 @@ mod test {
         // Assert
         assert!(result.is_some());
         assert_eq!(&Value::String("one - true - 13".to_owned()), result.unwrap().as_ref());
+    }
+
+    #[test]
+    fn builder_should_register_and_use_a_custom_parser() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_parser_factory("custom_key".to_owned(), Box::new(custom_parser))
+            .build_parser("${custom_key.something.else}").unwrap();
+
+        let map = json!({
+            "key": true,
+            "custom_key": {
+                "one": 1,
+                "two": 2
+            }
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(&json!({"one": 1, "two": 2 }), result.as_ref());
+    }
+
+    #[derive(Debug)]
+    pub struct MyParser {
+        pub expression: String
+    }
+
+    impl CustomParser<String> for MyParser {
+        fn parse_value<'o>(&'o self, value: &'o Value, context: &String) -> Option<Cow<'o, Value>> {
+            assert_eq!("custom_context", context.as_str());
+            Some(Cow::Borrowed(value))
+        }
+    }
+
+    fn custom_parser(expression: &str) -> Box<dyn CustomParser<String>> {
+        println!("build custom parser with expression: [{}]", expression);
+        Box::new(MyParser{expression: expression.to_owned()})
     }
 }
