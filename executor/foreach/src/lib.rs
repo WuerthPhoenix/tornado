@@ -1,7 +1,7 @@
 use log::*;
 use std::sync::Arc;
 use tornado_common_api::{Action, Map, Value};
-use tornado_common_parser::Parser;
+use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
 
@@ -120,14 +120,14 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
         Value::String(text) => {
-            if let Some(parse_result) = Parser::build_parser(text)
+            if let Some(parse_result) = ParserBuilder::default().build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
                     code: None,
                     data: Default::default(),
                 })?
-                .parse_value(item)
+                .parse_value(item, &())
             {
                 *value = parse_result.into_owned();
             }

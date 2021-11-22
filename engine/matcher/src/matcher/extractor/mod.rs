@@ -39,7 +39,7 @@ impl MatcherExtractorBuilder {
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
     ///    use tornado_engine_matcher::model::InternalEvent;
     ///    use std::collections::HashMap;
-    /// use serde_json::Map;
+    ///    use serde_json::{json, Map};
     ///
     ///    let mut extractor_config = HashMap::new();
     ///
@@ -61,10 +61,10 @@ impl MatcherExtractorBuilder {
     ///    // the event.type.
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
-    ///    let event: InternalEvent = Event::new("temp=44'C").into();
+    ///    let event = json!(Event::new("temp=44'C"));
     ///    let mut extracted_vars = Value::Object(Map::new());
-    ///
-    ///    let result = matcher_extractor.process_all(&event, &mut extracted_vars);
+    ///    let mut internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+    ///    let result = matcher_extractor.process_all(&mut internal_event);
     ///
     ///    assert!(result.is_ok());
     ///    assert_eq!(1, extracted_vars.get_map().unwrap().len());

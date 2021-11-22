@@ -58,17 +58,25 @@ impl PartialOrdering for Value {
 
 impl PartialOrdering for Vec<Value> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        if self.len() == other.len() {
-            for i in 0..self.len() {
-                let cmp = self[i].partial_cmp(&other[i]);
-                if cmp != Some(Ordering::Equal) {
-                    return cmp;
-                }
+
+        let left = self;
+        let right = other;
+        let l = std::cmp::min(left.len(), right.len());
+
+        // Slice to the loop iteration range to enable bound check
+        // elimination in the compiler
+        let lhs = &left[..l];
+        let rhs = &right[..l];
+
+        for i in 0..l {
+            match lhs[i].partial_cmp(&rhs[i]) {
+                Some(Ordering::Equal) => (),
+                non_eq => return non_eq,
             }
-            Some(Ordering::Equal)
-        } else {
-            None
         }
+
+        left.len().partial_cmp(&right.len())
+
     }
 }
 
