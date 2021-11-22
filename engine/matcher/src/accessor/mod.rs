@@ -70,22 +70,26 @@ impl AccessorBuilder {
                     val if (val.starts_with(&format!("{}.", EVENT_METADATA_PREFIX))
                         || val.eq(EVENT_METADATA_PREFIX)) =>
                     {
-                        let key = val[EVENT_METADATA_PREFIX.len()..].trim();
-                        let parser = ParserBuilder::default().build_parser(&format!(
+                        let key = val;
+                        let parser = ParserBuilder::default()
+                            .add_parser_factory("_variables".to_owned(), Box::new(ExtractedVarParser::new))
+                            .build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
                         ))?;
-                        Ok(Accessor::Metadata { rule_name: rule_name.to_owned(), parser })
+                        Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                     }
                     val if (val.starts_with(&format!("{}.", EVENT_PAYLOAD_PREFIX))
                         || val.eq(EVENT_PAYLOAD_PREFIX)) =>
                     {
-                        let key = val[EVENT_PAYLOAD_PREFIX.len()..].trim();
-                        let parser = ParserBuilder::default().build_parser(&format!(
+                        let key = val;
+                        let parser = ParserBuilder::default()
+                            .add_parser_factory("_variables".to_owned(), Box::new(ExtractedVarParser::new))
+                            .build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
                         ))?;
-                        Ok(Accessor::Payload { rule_name: rule_name.to_owned(), parser })
+                        Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_PREFIX) => {
                         let key = val;
@@ -95,7 +99,7 @@ impl AccessorBuilder {
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
                         ))?;
-                        Ok(Accessor::ExtractedVar { rule_name: rule_name.to_owned(), parser })
+                        Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                     }
                     val if IGNORED_EXPRESSION_PREFIXES
                         .iter()
@@ -154,9 +158,7 @@ impl CustomParser<String> for ExtractedVarParser {
 pub enum Accessor {
     Constant { value: Value },
     CreatedMs,
-    ExtractedVar { rule_name: String, parser: Parser<String> },
-    Metadata { rule_name: String, parser: Parser<String> },
-    Payload { rule_name: String, parser: Parser<String> },
+    Parser { rule_name: String, parser: Parser<String> },
     Type,
     Event,
 }
@@ -169,14 +171,12 @@ impl Accessor {
         match &self {
             Accessor::Constant { value } => Some(Cow::Borrowed(value)),
             Accessor::CreatedMs => data.event.get("created_ms").map(|data| Cow::Borrowed(data)),
-            Accessor::ExtractedVar { rule_name, parser } => {
-                parser.parse_value(data, rule_name)
-            }
-            Accessor::Metadata { rule_name, parser } => data.event.get("metadata").and_then(|data| parser.parse_value(data, rule_name)),
-            Accessor::Payload { rule_name, parser } => data.event.get("payload").and_then(|data| parser.parse_value(data, rule_name)),
             Accessor::Type => data.event.get("type").map(|data| Cow::Borrowed(data)),
             Accessor::Event => {
                 Some(Cow::Borrowed(&data.event))
+            }
+            Accessor::Parser { rule_name, parser } => {
+                parser.parse_value(data, rule_name)
             }
         }
     }
@@ -187,9 +187,7 @@ impl Accessor {
         match &self {
             Accessor::Constant { .. } => false,
             Accessor::CreatedMs
-            | Accessor::ExtractedVar { .. }
-            | Accessor::Metadata { .. }
-            | Accessor::Payload { .. }
+            | Accessor::Parser { .. }
             | Accessor::Type
             | Accessor::Event => true,
         }
@@ -264,7 +262,7 @@ mod test {
 
     #[test]
     fn should_return_value_from_payload_if_exists() {
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${body}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
@@ -283,7 +281,7 @@ mod test {
     #[test]
     fn should_return_bool_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${bool_true}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.bool_true}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert("bool_true".to_owned(), Value::Bool(true));
@@ -304,7 +302,7 @@ mod test {
     #[test]
     fn should_return_number_value_from_payload() {
         // Arrange
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${num_555}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.num_555}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert("num_555".to_owned(), json!(555.0));
@@ -324,7 +322,7 @@ mod test {
     #[test]
     fn should_return_non_text_nodes() {
         // Arrange
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${body}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut body_payload = Map::new();
         body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
@@ -350,7 +348,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_map_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${body.first}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.body.first}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut body_payload = Map::new();
         body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
@@ -374,7 +372,7 @@ mod test {
     #[test]
     fn should_return_value_from_nested_array_if_exists() {
         // Arrange
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${body[1]}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.body[1]}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert(
@@ -400,10 +398,7 @@ mod test {
     #[test]
     fn should_accept_double_quotas_delimited_keys() {
         // Arrange
-        let accessor = Accessor::Payload {
-            parser: ParserBuilder::default().build_parser(r#"${body."second.with.dot"}"#).unwrap(),
-            rule_name: "rule".to_owned(),
-        };
+        let accessor = AccessorBuilder::new().build("rule", r#"${event.payload.body."second.with.dot"}"#).unwrap();
 
         let mut body_payload = Map::new();
         body_payload.insert("first".to_owned(), Value::String("body_first_value".to_owned()));
@@ -427,7 +422,7 @@ mod test {
 
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${date}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload.date}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
@@ -471,7 +466,7 @@ mod test {
 
     #[test]
     fn should_return_the_entire_payload() {
-        let accessor = Accessor::Payload { parser: ParserBuilder::default().build_parser("${}").unwrap(), rule_name: "rule".to_owned() };
+        let accessor = Accessor::Parser { parser: ParserBuilder::default().build_parser("${event.payload}").unwrap(), rule_name: "rule".to_owned() };
 
         let mut payload = Map::new();
         payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
@@ -570,9 +565,9 @@ mod test {
 
     #[test]
     fn should_return_none_if_no_match() {
-        let accessor = Accessor::ExtractedVar {
+        let accessor = Accessor::Parser {
             rule_name: "rule1".to_owned(),
-            parser: ParserBuilder::default().build_parser("${body}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(),
         };
 
         let event = json!(Event::new("event_type_string"));
@@ -636,8 +631,11 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         match accessor {
-            Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
-                assert!(keys.is_empty());
+            Accessor::Parser { parser: Parser::Exp {keys}, rule_name } => {
+                assert_eq!(vec![
+                    ValueGetter::Map {key: "event".to_owned()},
+                    ValueGetter::Map {key: "payload".to_owned()},
+                ], keys);
                 assert_eq!(rule_name, "");
             },
             _ => assert!(false)
@@ -653,8 +651,12 @@ mod test {
         let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
-            Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
-                assert_eq!(vec![ValueGetter::Map {key: "key".to_owned()} ], keys);
+            Accessor::Parser { parser: Parser::Exp {keys}, rule_name } => {
+                assert_eq!(vec![
+                    ValueGetter::Map {key: "event".to_owned()},
+                    ValueGetter::Map {key: "payload".to_owned()},
+                    ValueGetter::Map {key: "key".to_owned()},
+                ], keys);
                 assert_eq!(rule_name, "rule");
             },
             _ => assert!(false)
@@ -669,8 +671,10 @@ mod test {
         let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
-            Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
+            Accessor::Parser { parser: Parser::Exp {keys}, rule_name } => {
                 assert_eq!(vec![
+                    ValueGetter::Map {key: "event".to_owned()},
+                    ValueGetter::Map {key: "payload".to_owned()},
                     ValueGetter::Map {key: "first".to_owned()},
                     ValueGetter::Map {key: "second".to_owned()},
                     ValueGetter::Map {key: "th. ird".to_owned()},
@@ -690,7 +694,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor::ExtractedVar { parser: Parser::Custom {..}, rule_name } => {
+            Accessor::Parser { parser: Parser::Custom {..}, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             },
             _ => assert!(false)
@@ -705,7 +709,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor::ExtractedVar { parser: Parser::Custom { .. }, rule_name } => {
+            Accessor::Parser { parser: Parser::Custom { .. }, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             },
             _ => assert!(false)
