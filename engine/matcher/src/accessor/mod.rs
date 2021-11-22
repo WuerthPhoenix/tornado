@@ -614,8 +614,8 @@ mod test {
 
         match accessor {
             Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
-                assert_eq!(vec![ValueGetter::Map {key: "".to_owned()} ], keys);
-                assert_eq!(rule_name, "rule");
+                assert!(keys.is_empty());
+                assert_eq!(rule_name, "");
             },
             _ => assert!(false)
         }
@@ -627,7 +627,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = "${event.payload.key}".to_owned();
 
-        let accessor = builder.build("", &value).unwrap();
+        let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
             Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
@@ -643,7 +643,7 @@ mod test {
         let builder = AccessorBuilder::new();
         let value = r#"${event.payload.first.second."th. ird"."four"}"#.to_owned();
 
-        let accessor = builder.build("", &value).unwrap();
+        let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
             Accessor::Payload { parser: Parser::Exp {keys}, rule_name } => {
