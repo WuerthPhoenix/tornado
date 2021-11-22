@@ -69,6 +69,10 @@ impl <T: Debug> ParserBuilder<T> {
             for (key, factory) in &self.custom_parser_factories {
                 let custom_key_start = format!{"{}{}", key, EXPRESSION_NESTED_DELIMITER};
                 if expression.starts_with(&custom_key_start) {
+
+                    let o = 0;
+                    println!("USING CUSTOM PARSER [{}]", key);
+
                     let mut getters = Parser::<T>::parse_keys(expression)?;
                     if !getters.is_empty() {
                         let first_getter = getters.remove(0);

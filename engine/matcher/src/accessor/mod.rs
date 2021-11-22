@@ -5,7 +5,7 @@ use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
 use tornado_common_api::{ValueGet};
-use tornado_common_parser::{EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, Parser, ParserBuilder};
+use tornado_common_parser::{CustomParser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, Parser, ParserBuilder};
 
 pub struct AccessorBuilder {
     start_delimiter: &'static str,
@@ -88,8 +88,10 @@ impl AccessorBuilder {
                         Ok(Accessor::Payload { rule_name: rule_name.to_owned(), parser })
                     }
                     val if val.starts_with(CURRENT_RULE_EXTRACTED_VAR_PREFIX) => {
-                        let key = val[CURRENT_RULE_EXTRACTED_VAR_PREFIX.len()..].trim();
-                        let parser = ParserBuilder::default().build_parser(&format!(
+                        let key = val;
+                        let parser = ParserBuilder::default()
+                            .add_parser_factory("_variables".to_owned(), Box::new(ExtractedVarParser::new))
+                            .build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, key, EXPRESSION_END_DELIMITER
                         ))?;
@@ -113,6 +115,35 @@ impl AccessorBuilder {
             input
         );
         result
+    }
+}
+
+#[derive(Debug)]
+pub struct ExtractedVarParser {
+    parser: Parser<String>
+}
+
+impl ExtractedVarParser {
+    pub fn new(expression: &str) -> Box<dyn CustomParser<String>> {
+        let TO_DO = "remove_unwrap";
+        let parser = ParserBuilder::default().build_parser(&format!(
+            "{}{}{}",
+            EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
+        )).unwrap();
+        Box::new(ExtractedVarParser{parser})
+    }
+}
+
+impl CustomParser<String> for ExtractedVarParser {
+    fn parse_value<'o>(&'o self, value: &'o Value, context: &String) -> Option<Cow<'o, Value>> {
+
+        let l = 0;
+        println!("called parser with value: \n {:?}", value);
+
+        value
+            .get_from_map(context.as_str())
+            .and_then(|rule_vars| self.parser.parse_value(rule_vars, context))
+            .or_else(|| self.parser.parse_value(value, context))
     }
 }
 
@@ -144,10 +175,7 @@ impl Accessor {
             Accessor::Constant { value } => Some(Cow::Borrowed(value)),
             Accessor::CreatedMs => data.event.get("created_ms").map(|data| Cow::Borrowed(data)),
             Accessor::ExtractedVar { rule_name, parser } => {
-                data.extracted_variables
-                        .get_from_map(rule_name.as_str())
-                        .and_then(|rule_vars| parser.parse_value(rule_vars, rule_name))
-                        .or_else(|| parser.parse_value(data.extracted_variables, rule_name))
+                parser.parse_value(data, rule_name)
             }
             Accessor::Metadata { rule_name, parser } => data.event.get("metadata").and_then(|data| parser.parse_value(data, rule_name)),
             Accessor::Payload { rule_name, parser } => data.event.get("payload").and_then(|data| parser.parse_value(data, rule_name)),
@@ -465,10 +493,10 @@ mod test {
 
     #[test]
     fn should_return_value_from_extracted_var() {
-        let accessor = Accessor::ExtractedVar {
-            rule_name: "rule1".to_owned(),
-            parser: ParserBuilder::default().build_parser("${body}").unwrap(),
-        };
+        let builder = AccessorBuilder::new();
+        let value = "${_variables.body}".to_owned();
+
+        let accessor = builder.build("rule1", &value).unwrap();
 
         let event = json!(Event::new("event_type_string"));
         let mut extracted_vars_inner = Map::new();
@@ -667,10 +695,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor::ExtractedVar { parser: Parser::Exp {keys}, rule_name } => {
-                assert_eq!(vec![
-                    ValueGetter::Map {key: "key".to_owned()},
-                ], keys);
+            Accessor::ExtractedVar { parser: Parser::Custom {..}, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             },
             _ => assert!(false)
@@ -685,11 +710,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor::ExtractedVar { parser: Parser::Exp {keys}, rule_name } => {
-                assert_eq!(vec![
-                    ValueGetter::Map {key: "custom_rule".to_owned()},
-                    ValueGetter::Map {key: "key".to_owned()},
-                ], keys);
+            Accessor::ExtractedVar { parser: Parser::Custom { .. }, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             },
             _ => assert!(false)
