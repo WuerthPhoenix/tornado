@@ -23,6 +23,8 @@ pub struct EventDto {
     pub event_type: String,
     pub trace_id: Option<String>,
     pub created_ms: u64,
+    #[serde(default)]
+    pub metadata: Value,
     pub payload: HashMap<String, Value>,
 }
 

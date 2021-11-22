@@ -4,7 +4,6 @@ use crate::actor::matcher::{
 use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use actix::Addr;
 use async_trait::async_trait;
-use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -39,7 +38,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageWithReply {
-                event: json!(event.event),
+                event: event.to_event_with_metadata(),
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
@@ -68,7 +67,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
-                event: json!(event.event),
+                event: event.to_event_with_metadata(),
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,
@@ -108,14 +107,17 @@ mod test {
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
+    use serde_json::json;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
-    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRuleStatus};
-    
+    use tornado_engine_matcher::model::{
+        ProcessedFilterStatus, ProcessedNode, ProcessedRuleStatus,
+    };
+
     #[actix_rt::test]
     async fn should_send_an_event_to_the_current_config_and_return_the_processed_event() {
         // Arrange
@@ -141,6 +143,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
+            metadata: Value::Object(Default::default()),
         };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
@@ -228,6 +231,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type-custom"),
+            metadata: Value::Object(Default::default()),
         };
 
         let config = MatcherConfig::Ruleset {
@@ -262,5 +266,65 @@ mod test {
             }
             _ => assert!(false),
         }
+    }
+
+    #[actix_rt::test]
+    async fn send_an_event_should_include_metadata() {
+        // Arrange
+        let path = "./config/rules.d";
+        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
+
+        let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
+
+        let dispatcher_addr =
+            DispatcherActor::start_new(1, Dispatcher::build(event_bus.clone()).unwrap());
+
+        let matcher_addr = MatcherActor::start(
+            dispatcher_addr.clone().recipient(),
+            config_manager,
+            47,
+            Default::default(),
+        )
+        .await
+        .unwrap();
+
+        let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
+
+        let metadata = HashMap::from([("tenant_id".to_owned(), Value::String("beta".to_owned()))]);
+
+        let send_event_request = SendEventRequest {
+            process_type: ProcessType::SkipActions,
+            event: Event::new("test-type"),
+            metadata: json!(metadata),
+        };
+
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+
+        // Act
+        let res =
+            api.send_event_to_current_config(config_filter, send_event_request).await.unwrap();
+
+        // Assert
+        match res.result {
+            ProcessedNode::Filter { nodes, .. } => {
+                let tenant_beta_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_beta") && filter.status == ProcessedFilterStatus::Matched
+                    }
+                    _ => false,
+                });
+                assert!(tenant_beta_node_matched);
+
+                let tenant_alpha_node_matched = nodes.iter().any(|n| match n {
+                    ProcessedNode::Filter { name, filter, .. } => {
+                        name.eq("tenant_id_alpha")
+                            && filter.status == ProcessedFilterStatus::Matched
+                    }
+                    _ => false,
+                });
+                assert!(!tenant_alpha_node_matched);
+            }
+            _ => assert!(false),
+        };
     }
 }

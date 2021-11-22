@@ -170,7 +170,7 @@ These endpoints allow to read the current configuration tree
 
 Endpoint: get the current configuration tree of the root node.
 -  HTTP Method: **GET**
--  path : **/api/v2/config/active/tree**
+-  path : **/api/v2_beta/config/active/tree**
 -  response type: **JSON**
 -  response example:
 
@@ -189,7 +189,7 @@ Endpoint: get the current configuration tree of the root node.
 Endpoint: get the current configuration tree of a specific node.
 Node names must be separated by a comma.
 -  HTTP Method: **GET**
--  path : **/api/v2/config/active/tree/root,foo**
+-  path : **/api/v2_beta/config/active/tree/root,foo**
 -  response type: **JSON**
 -  response example:
 
@@ -217,7 +217,7 @@ These endpoints allow to read the current configuration tree nodes details
 Endpoint: get the node details of the current configuration tree
 
 - HTTP Method: **GET**
-- path : **/api/v2/config/active/tree/root,foo/details**
+- path : **/api/v2_beta/config/active/tree/root,foo/details**
 - response type: **JSON**
 - response example:
 
@@ -232,6 +232,50 @@ Endpoint: get the node details of the current configuration tree
            "first":"${event.metadata.os}",
            "second":"linux"
        }
+   }
+   ```
+
+## Tornado 'Rule Details' Backend API Version 2
+
+The 'rule details' APIs require the caller to pass an authorization token in
+the headers as in the 'auth' API.
+
+### Reading a rule details
+
+Endpoint: get single rule details giving the rule name and the ruleset path 
+related to the current configuration tree
+
+- HTTP Method: **GET**
+- path : **/api/v2_beta/config/active/rule/details/admins/root,foo,rulesetA/foobar_rule**
+- response type: **JSON**
+- response example:
+
+   ```json
+   {
+       "name":"foobar_rule",
+       "description":"foobar_rule description",
+       "continue":true,
+       "active":true,
+       "constraint":{
+           "type": "AND",
+           "operators": [
+               {
+                 "type": "equal",
+                 "first": "${event.type}",
+                 "second": "email"
+               }
+           ],
+           "WITH":{}
+       },
+       "actions":[
+           {
+               "id": "Logger",
+               "payload": {
+                   "subject": "${event.payload.subject}",
+                   "type": "${event.type}"
+               }
+           }
+       ]
    }
    ```
 

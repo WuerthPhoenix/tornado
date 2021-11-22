@@ -1,11 +1,12 @@
 use crate::auth::auth_v2::AuthContextV2;
 use crate::auth::{AuthContext, Permission};
+use crate::config::convert::rule_into_dto;
 use crate::error::ApiError;
 use log::*;
 use std::sync::Arc;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
-    ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto, TreeInfoDto,
+    ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto, RuleDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{
@@ -61,7 +62,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: Vec<&str>,
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
 
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
@@ -77,8 +78,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let child_nodes = filtered_matcher
             .get_child_nodes_by_path(absolute_node_path.as_slice())
             .ok_or(ApiError::NodeNotFoundError {
-                message: format!("Node for relative path {:?} not found", relative_node_path),
-            })?;
+            message: format!("Node for relative path {:?} not found", relative_node_path),
+        })?;
         Ok(child_nodes.iter().map(ProcessingTreeNodeConfigDto::from).collect())
     }
 
@@ -88,7 +89,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<TreeInfoDto, ApiError> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
 
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
 
         let mut absolute_path: Vec<_> =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect();
@@ -141,7 +142,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref() , auth).await?;
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
 
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -149,12 +150,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
         if authorized_path.last() != relative_node_path.first() {
-            return Err(ApiError::ForbiddenError {
-                code: "403".to_string(),
-                message: "Cannot access node outside authorized path".to_string(),
-                params: Default::default(),
-            });
-        };
+            return Err(self.get_unauthorized_path_error());
+        }
         // We must remove the last element of the authorized path because node_path starts from
         // the entry point (included) of the authorized tree.
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
@@ -169,6 +166,66 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             },
         )?;
         Ok(ProcessingTreeNodeDetailsDto::from(node))
+    }
+
+    pub async fn get_rule_details(
+        &self,
+        auth: &AuthContextV2<'_>,
+        ruleset_path: &str,
+        rule_name: &str,
+    ) -> Result<RuleDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+
+        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+
+        let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+
+        let authorized_path =
+            auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
+
+        if authorized_path.last() != ruleset_path.first() {
+            return Err(self.get_unauthorized_path_error());
+        }
+        // We must remove the last element of the authorized path because node_path starts from
+        // the entry point (included) of the authorized tree.
+        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
+        let absolute_node_path =
+            pop_authorized_path_and_append_relative_path(authorized_path, ruleset_path.clone())?;
+
+        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
+            ApiError::NodeNotFoundError {
+                message: format!("Node for relative path {:?} not found", ruleset_path),
+            },
+        )?;
+
+        match node {
+            MatcherConfig::Filter { .. } => Err(ApiError::NodeNotFoundError {
+                message: format!("Found filter instead of ruleset. Path: {:?}", ruleset_path),
+            }),
+            MatcherConfig::Ruleset { name: _, rules } => {
+                let rule = rules.iter().find(|rule| rule.name == rule_name);
+                if let Some(rule) = rule.cloned() {
+                    rule_into_dto(rule).map_err(|err| ApiError::InternalServerError {
+                        cause: format!("Couldn't convert rule into dto. Error: {}", err),
+                    })
+                } else {
+                    Err(ApiError::NodeNotFoundError {
+                        message: format!(
+                            "Couldn't find the rule {} in the {:?} ruleset.",
+                            rule_name, ruleset_path
+                        ),
+                    })
+                }
+            }
+        }
+    }
+
+    fn get_unauthorized_path_error(&self) -> ApiError {
+        ApiError::ForbiddenError {
+            code: "403".to_string(),
+            message: "Cannot access node outside authorized path".to_string(),
+            params: Default::default(),
+        }
     }
 
     /// Returns the list of available drafts
@@ -249,7 +306,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 }
 
 pub async fn get_filtered_matcher(
-    config_manager: & dyn MatcherConfigReader,
+    config_manager: &dyn MatcherConfigReader,
     auth: &AuthContextV2<'_>,
 ) -> Result<MatcherConfig, ApiError> {
     let config = config_manager.get_config().await?;
@@ -295,7 +352,7 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
-    use tornado_engine_api_dto::config::RuleDetailsDto;
+    use tornado_engine_api_dto::config::{ConstraintDto, RuleDetailsDto};
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
@@ -988,6 +1045,70 @@ mod test {
         };
         assert_eq!(res, expected_res);
         assert_eq!(res_get_node_details, expected_res);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_rule_by_path_should_return_dto() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_get_rule_details =
+            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await.unwrap();
+
+        // Assert
+        let expected_res = RuleDto {
+            name: "root_1_2_1".to_string(),
+            description: "".to_string(),
+            do_continue: false,
+            active: true,
+            constraint: ConstraintDto { where_operator: None, with: Default::default() },
+            actions: vec![],
+        };
+        assert_eq!(res_get_rule_details, expected_res);
+    }
+
+    #[actix_rt::test]
+    async fn get_current_config_rule_by_path_should_return_forbidden_if_user_is_not_viewer() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned(), "root_1".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let res_get_rule_details_error =
+            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await;
+
+        // Assert
+        let expected_res = Err(ApiError::ForbiddenError {
+            code: "MISSING_REQUIRED_PERMISSIONS".to_string(),
+            message: "User [OWNER] does not have the required permissions [[ConfigView]]"
+                .to_string(),
+            params: Default::default(),
+        });
+        assert_eq!(expected_res, res_get_rule_details_error);
     }
 
     #[actix_rt::test]

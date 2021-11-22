@@ -22,8 +22,8 @@ impl Default for AccessorBuilder {
 }
 
 const IGNORED_EXPRESSION_PREFIXES: &[&str] = &["item"];
-const EVENT_KEY: &str = "event";
-const EXTRACTED_VARIABLES_KEY: &str = "_variables";
+pub const EVENT_KEY: &str = "event";
+pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {

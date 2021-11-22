@@ -3,6 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tornado_common_api::{Action, ValueGet};
 use typescript_definitions::TypeScriptify;
+use crate::accessor::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
 
 pub struct InternalEvent<'o> {
     pub event: &'o Value,
@@ -21,8 +22,8 @@ impl <'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
 impl <'o> ValueGet for InternalEvent<'o> {
     fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
         match key {
-            "event" => Some(self.event),
-            "_variables" => Some(self.extracted_variables),
+            EVENT_KEY => Some(self.event),
+            EXTRACTED_VARIABLES_KEY => Some(self.extracted_variables),
             _ => None
         }
     }

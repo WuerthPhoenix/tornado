@@ -36,34 +36,40 @@ pub trait WithEventData {
     fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError>;
 }
 
+pub const EVENT_TRACE_ID: &str = "trace_id";
+pub const EVENT_TYPE: &str = "type";
+pub const EVENT_CREATED_MS: &str = "created_ms";
+pub const EVENT_PAYLOAD: &str = "payload";
+pub const EVENT_METADATA: &str = "metadata";
+
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<&str> {
-        self.get("trace_id").and_then(|val| val.get_text())
+        self.get(EVENT_TRACE_ID).and_then(|val| val.get_text())
     }
 
     fn event_type(&self) -> Option<&str> {
-        self.get("type").and_then(|val| val.get_text())
+        self.get(EVENT_TYPE).and_then(|val| val.get_text())
     }
 
     fn created_ms(&self) -> Option<u64> {
-        self.get("created_ms").and_then(|val| val.get_number()).and_then(|num| num.as_u64())
+        self.get(EVENT_CREATED_MS).and_then(|val| val.get_number()).and_then(|num| num.as_u64())
     }
 
     fn payload(&self) -> Option<&Payload> {
-        self.get("payload").and_then(|val| val.get_map())
+        self.get(EVENT_PAYLOAD).and_then(|val| val.get_map())
     }
 
     fn metadata(&self) -> Option<&Value> {
-        self.get("metadata")
+        self.get(EVENT_METADATA)
     }
 
     fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError> {
-        match self.get_mut("metadata") {
+        match self.get_mut(EVENT_METADATA) {
             Some(Value::Null) | None => {
                 if let Some(map) = self.get_map_mut() {
                     let mut payload = Map::new();
                     payload.insert(key, value);
-                    map.insert("metadata".to_owned(), Value::Object(payload));
+                    map.insert(EVENT_METADATA.to_owned(), Value::Object(payload));
                     Ok(())
                 } else {
                     Err(CommonError::BadDataError {

@@ -1,8 +1,8 @@
-use std::borrow::Cow;
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 pub mod filter;
 pub mod fs;

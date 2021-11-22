@@ -1,9 +1,10 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tornado_common_api::Event;
+use tornado_common_api::{Event, EVENT_METADATA};
 use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
@@ -32,7 +33,18 @@ pub trait EventApiHandler: Send + Sync {
 #[derive(Clone)]
 pub struct SendEventRequest {
     pub event: Event,
+    pub metadata: Value,
     pub process_type: ProcessType,
+}
+
+impl SendEventRequest {
+    pub fn to_event_with_metadata(&self) -> Value {
+        let mut value = json!(&self.event);
+        json_patch::merge(&mut value, &json!({
+            EVENT_METADATA: &self.metadata
+        }));
+        value
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -81,9 +93,8 @@ pub mod test {
     use crate::auth::Permission;
     use crate::error::ApiError;
     use async_trait::async_trait;
-    use serde_json::json;
     use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::{Value, Map};
+    use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
     use tornado_engine_matcher::error::MatcherError;
@@ -99,7 +110,7 @@ pub mod test {
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: json!(event.event),
+                event: event.to_event_with_metadata(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
@@ -116,7 +127,7 @@ pub mod test {
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: json!(event.event),
+                event: event.to_event_with_metadata(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
@@ -218,8 +229,11 @@ pub mod test {
 
         let (user_view, user_edit) = create_users(&permissions_map);
 
-        let request =
-            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Object(Default::default()),
+            process_type: ProcessType::Full,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -237,6 +251,7 @@ pub mod test {
         let request = SendEventRequest {
             event: Event::new("event_for_draft"),
             process_type: ProcessType::SkipActions,
+            metadata: Value::Object(Default::default()),
         };
 
         // Act & Assert
@@ -248,5 +263,58 @@ pub mod test {
         user_view.auth.user = DRAFT_OWNER_ID.to_owned();
         assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_ok());
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn send_event_to_current_config_should_propagate_metadata() {
+        // Arrange
+        let api = EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (_user_view, user_edit) = create_users(&permissions_map);
+
+        let metadata = json!(HashMap::from([(
+            "something".to_owned(),
+            Value::String(format!("{}", rand::random::<usize>())),
+        )]));
+
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
+
+        // Act
+        let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
+
+        // Assert
+        assert_eq!(&metadata, result.event.metadata().unwrap());
+    }
+
+    #[actix_rt::test]
+    async fn send_event_to_draf_should_propagate_metadata() {
+        // Arrange
+        let api = EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (_user_view, mut user_edit) = create_users(&permissions_map);
+        user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
+
+        let metadata = json!(HashMap::from([(
+            "something".to_owned(),
+            Value::String(format!("{}", rand::random::<usize>())),
+        )]));
+
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
+
+        // Act
+        let result = api.send_event_to_draft(user_edit, "id", request.clone()).await.unwrap();
+        
+        // Assert
+        assert_eq!(&metadata, result.event.metadata().unwrap());
     }
 }

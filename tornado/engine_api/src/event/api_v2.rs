@@ -34,7 +34,6 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
 
         self.handler.send_event_to_current_config(config_filter, event).await
     }
-
 }
 
 #[cfg(test)]
@@ -42,8 +41,9 @@ pub mod test {
     use super::*;
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
-    use std::collections::BTreeMap;
-    use tornado_common_api::Event;
+    use std::collections::{BTreeMap, HashMap};
+    use serde_json::json;
+    use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
@@ -60,7 +60,6 @@ pub mod test {
     fn create_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
     ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
-
         let owner_view = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -112,17 +111,17 @@ pub mod test {
         let user_no_permission = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
-                authorization: Authorization {
-                    path: vec!["root".to_owned()],
-                    roles: vec![],
-                },
+                authorization: Authorization { path: vec!["root".to_owned()], roles: vec![] },
                 preferences: None,
             },
             &permissions_map,
         );
 
-        let request =
-            SendEventRequest { event: Event::new("event"), process_type: ProcessType::SkipActions };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Object(Default::default()),
+            process_type: ProcessType::SkipActions,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -154,7 +153,7 @@ pub mod test {
                 preferences: None,
             },
             &permissions,
-        ); 
+        );
         let user_edit_and_full_process = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -167,8 +166,11 @@ pub mod test {
             &permissions,
         );
 
-        let request =
-            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: Value::Object(Default::default()),
+            process_type: ProcessType::Full,
+        };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_err());
@@ -187,4 +189,29 @@ pub mod test {
             .is_ok());
     }
 
+    #[actix_rt::test]
+    async fn send_event_should_propagate_metadata() {
+        // Arrange
+        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (_user_view, user_edit, _user_full_process) = create_users(&permissions_map);
+
+        let metadata = json!(HashMap::from([(
+            "something".to_owned(),
+            Value::String(format!("{}", rand::random::<usize>())),
+        )]));
+
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
+
+        // Act
+        let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
+        
+        // Assert
+        assert_eq!(&metadata, result.event.metadata().unwrap());
+    }
 }
