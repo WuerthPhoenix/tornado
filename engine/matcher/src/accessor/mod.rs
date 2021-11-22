@@ -5,7 +5,7 @@ use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
 use tornado_common_api::{ValueGet};
-use tornado_common_parser::{CustomParser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, Parser, ParserBuilder};
+use tornado_common_parser::{CustomParser, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, Parser, ParserBuilder, ParserError};
 
 pub struct AccessorBuilder {
     start_delimiter: &'static str,
@@ -124,22 +124,17 @@ pub struct ExtractedVarParser {
 }
 
 impl ExtractedVarParser {
-    pub fn new(expression: &str) -> Box<dyn CustomParser<String>> {
-        let TO_DO = "remove_unwrap";
+    pub fn new(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
         let parser = ParserBuilder::default().build_parser(&format!(
             "{}{}{}",
             EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
-        )).unwrap();
-        Box::new(ExtractedVarParser{parser})
+        ))?;
+        Ok(Box::new(ExtractedVarParser{parser}))
     }
 }
 
 impl CustomParser<String> for ExtractedVarParser {
     fn parse_value<'o>(&'o self, value: &'o Value, context: &String) -> Option<Cow<'o, Value>> {
-
-        let l = 0;
-        println!("called parser with value: \n {:?}", value);
-
         value
             .get_from_map(context.as_str())
             .and_then(|rule_vars| self.parser.parse_value(rule_vars, context))

@@ -34,11 +34,11 @@ pub enum ParserError {
 }
 
 pub trait ParserFactory<T: Debug> {
-    fn build(&self, expression: &str) -> Box<dyn CustomParser<T>>;
+    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser<T>>, ParserError>;
 }
 
-impl <T: Debug, F: Fn(&str) -> Box<dyn CustomParser<T>>> ParserFactory<T> for F {
-    fn build(&self, expression: &str) -> Box<dyn CustomParser<T>> {
+impl <T: Debug, F: Fn(&str) -> Result<Box<dyn CustomParser<T>>, ParserError>> ParserFactory<T> for F {
+    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser<T>>, ParserError> {
         self(expression)
     }
 }
@@ -69,17 +69,13 @@ impl <T: Debug> ParserBuilder<T> {
             for (key, factory) in &self.custom_parser_factories {
                 let custom_key_start = format!{"{}{}", key, EXPRESSION_NESTED_DELIMITER};
                 if expression.starts_with(&custom_key_start) {
-
-                    let o = 0;
-                    println!("USING CUSTOM PARSER [{}]", key);
-
                     let mut getters = Parser::<T>::parse_keys(expression)?;
                     if !getters.is_empty() {
                         let first_getter = getters.remove(0);
                         let trimmed_custom_key = &expression[custom_key_start.len()..];
                         return Ok(Parser::Custom {
                             key: first_getter,
-                            parser: factory.build(trimmed_custom_key)
+                            parser: factory.build(trimmed_custom_key)?
                         })
                     } else {
                         return Err(ParserError::ConfigurationError {
@@ -574,8 +570,8 @@ mod test {
         }
     }
 
-    fn custom_parser(expression: &str) -> Box<dyn CustomParser<String>> {
+    fn custom_parser(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
         println!("build custom parser with expression: [{}]", expression);
-        Box::new(MyParser{expression: expression.to_owned()})
+        Ok(Box::new(MyParser{expression: expression.to_owned()}))
     }
 }
