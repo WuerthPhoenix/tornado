@@ -36,8 +36,8 @@ impl<S: Subscriber, L: Layer<S>, F: 'static + Fn(&Context<'_, S>) -> bool> Layer
         self.layer.enabled(metadata, ctx)
     }
 
-    fn new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, context: Context<'_, S>) {
-        self.layer.new_span(attrs, id, context)
+    fn on_new_span(&self, attrs: &span::Attributes<'_>, id: &span::Id, context: Context<'_, S>) {
+        self.layer.on_new_span(attrs, id, context)
     }
 
     fn max_level_hint(&self) -> Option<LevelFilter> {
