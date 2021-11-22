@@ -96,11 +96,6 @@ mod test {
         assert_eq!("not", operator.name());
         assert_eq!("equals", operator.operator.name());
 
-        println!("{:?}", operator.operator);
-
-        assert!(format!("{:?}", operator.operator).contains(
-            r#"Equals { first_arg: Constant { value: Text("1") }, second_arg: Constant { value: Text("2") } }"#
-        ))
     }
 
     #[test]
