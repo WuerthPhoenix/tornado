@@ -1,6 +1,6 @@
 use crate::event::api::SendEventRequest;
 use serde_json::Error;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, Value};
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
     EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
@@ -8,7 +8,7 @@ use tornado_engine_api_dto::event::{
     SendEventRequestDto,
 };
 use tornado_engine_matcher::model::{
-    Value, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
+    ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
 
@@ -32,8 +32,7 @@ pub fn processed_event_into_dto(
 }
 
 pub fn internal_event_into_dto(internal_event: Value) -> Result<EventDto, Error> {
-    let event_value: tornado_common_api::Value = internal_event.into();
-    let dto = serde_json::from_value(serde_json::to_value(event_value)?)?;
+    let dto = serde_json::from_value(internal_event)?;
     Ok(dto)
 }
 

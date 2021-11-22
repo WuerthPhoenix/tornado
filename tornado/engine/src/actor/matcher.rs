@@ -2,7 +2,7 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
-use tornado_common_api::ValueExt;
+use tornado_common_api::{Value, WithEventData};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -11,7 +11,7 @@ use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilte
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::{Value, ProcessedEvent};
+use tornado_engine_matcher::model::{ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
@@ -99,8 +99,7 @@ impl MatcherActor {
         let timer = SystemTime::now();
         let labels = [EVENT_TYPE_LABEL_KEY.string(
             event
-                .event_type
-                .get_text()
+                .event_type()
                 .map(|event_type| event_type.to_owned())
                 .unwrap_or_else(|| "".to_owned()),
         )];
@@ -133,7 +132,7 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
@@ -147,7 +146,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
@@ -174,7 +173,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         msg: EventMessageAndConfigWithReply,
         _: &mut Context<Self>,
     ) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
@@ -233,6 +232,7 @@ mod test {
     use crate::actor::dispatcher::ProcessedEventMessage;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
+    use serde_json::json;
     use tornado_common_api::{Event, Value};
     use tornado_engine_matcher::model::ProcessedNode;
     use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
@@ -305,7 +305,7 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: Value = Event::new("test").into();
+        let mut event: Value = json!(Event::new("test"));
         event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
@@ -355,12 +355,12 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event_tenant_alpha: Value = Event::new("test").into();
+        let mut event_tenant_alpha: Value = json!(Event::new("test"));
         event_tenant_alpha
             .add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned()))
             .unwrap();
 
-        let mut event_tenant_beta: Value = Event::new("test").into();
+        let mut event_tenant_beta: Value = json!(Event::new("test"));
         event_tenant_beta
             .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
             .unwrap();
@@ -442,7 +442,7 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: Value = Event::new("test").into();
+        let mut event: Value = json!(Event::new("test"));
         event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act

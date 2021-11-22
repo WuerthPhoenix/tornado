@@ -4,6 +4,7 @@ use crate::actor::matcher::{
 use crate::monitoring::metrics::{TornadoMeter, EVENT_SOURCE_LABEL_KEY, EVENT_TYPE_LABEL_KEY};
 use actix::Addr;
 use async_trait::async_trait;
+use serde_json::json;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -38,7 +39,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageWithReply {
-                event: event.event.into(),
+                event: json!(event.event),
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
@@ -67,7 +68,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
-                event: event.event.into(),
+                event: json!(event.event),
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,
@@ -107,7 +108,7 @@ mod test {
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tornado_common_api::{Event, Value, ValueExt};
+    use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
@@ -149,7 +150,7 @@ mod test {
 
         // Assert
         assert!(res.is_ok());
-        assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
+        assert_eq!(Some("test-type"), res.unwrap().event.event_type());
     }
 
     #[actix_rt::test]
@@ -251,7 +252,7 @@ mod test {
         let res = api.send_event_to_config(send_event_request, config).await.unwrap();
 
         // Assert
-        assert_eq!(Some("test-type-custom"), res.event.event_type.get_text());
+        assert_eq!(Some("test-type-custom"), res.event.event_type());
 
         match res.result {
             ProcessedNode::Ruleset { name, rules } => {

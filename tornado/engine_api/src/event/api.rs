@@ -81,6 +81,7 @@ pub mod test {
     use crate::auth::Permission;
     use crate::error::ApiError;
     use async_trait::async_trait;
+    use serde_json::json;
     use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Value, Map};
     use tornado_engine_api_dto::auth::Auth;
@@ -98,7 +99,7 @@ pub mod test {
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: event.event.into(),
+                event: json!(event.event),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
@@ -115,7 +116,7 @@ pub mod test {
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: event.event.into(),
+                event: json!(event.event),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {

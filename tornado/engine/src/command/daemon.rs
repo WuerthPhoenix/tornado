@@ -12,6 +12,7 @@ use crate::monitoring::metrics::{
 use actix_web::middleware::Logger;
 use actix_web::{web, App, HttpServer};
 use log::*;
+use serde_json::json;
 use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common::actors::command::CommandExecutorActor;
@@ -36,7 +37,6 @@ use tornado_engine_api::event::api_v2::EventApiV2;
 use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
-use tornado_engine_matcher::model::Value;
 use tracing_actix_web::TracingLogger;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
@@ -363,7 +363,7 @@ pub async fn daemon(
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                 ]);
 
-                let mut event: Value = event.into();
+                let mut event = json!(event);
                 for extractor in &nats_extractors {
                     event = extractor.process(&msg.msg.subject, event)?;
                 }
@@ -415,7 +415,7 @@ pub async fn daemon(
                         EVENT_SOURCE_LABEL_KEY.string("tcp"),
                         EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                     ]);
-                    json_matcher_addr_clone.try_send(EventMessage { event: event.into() }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                    json_matcher_addr_clone.try_send(EventMessage { event: json!(event) }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
                 .await
