@@ -1281,7 +1281,7 @@ mod test {
         // Assert
         assert_eq!("key", &extractor.key);
         match extractor.regex_extractor {
-            RegexValueExtractor::SingleKeyMatch { target: Accessor::Type, .. } => {}
+            RegexValueExtractor::SingleKeyMatch { .. } => {}
             _ => assert!(false),
         }
     }
