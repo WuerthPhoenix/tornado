@@ -43,7 +43,7 @@ impl <T: Debug, F: Fn(&str) -> Box<dyn CustomParser<T>>> ParserFactory<T> for F 
     }
 }
 
-pub trait CustomParser<T: Debug>: Debug {
+pub trait CustomParser<T: Debug>: Sync + Send + Debug {
     fn parse_value<'o>(&'o self, value: &'o Value, context: &T) -> Option<Cow<'o, Value>>;
 }
 

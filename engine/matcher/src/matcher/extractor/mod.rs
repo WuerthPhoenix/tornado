@@ -173,7 +173,7 @@ impl ValueExtractor {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum RegexValueExtractor {
     SingleMatchSingleGroup { regex: RegexWrapper, group_match_idx: usize, target: Accessor },
     AllMatchesSingleGroup { regex: RegexWrapper, group_match_idx: usize, target: Accessor },
@@ -547,7 +547,11 @@ mod test {
                 .unwrap();
 
         // Assert
-        assert_eq!(vec![ValueModifier::Trim], extractor.modifiers_post);
+        assert_eq!(1, extractor.modifiers_post.len());
+        match extractor.modifiers_post[0] {
+            ValueModifier::Trim => {},
+            _ => assert!(false)
+        }
     }
 
     #[test]

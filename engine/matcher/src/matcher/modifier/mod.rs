@@ -13,7 +13,7 @@ pub mod number;
 pub mod replace;
 pub mod trim;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ValueModifier {
     Lowercase,
     Map { mapping: HashMap<String, String>, default_value: Option<String> },
@@ -129,7 +129,6 @@ mod test {
     fn should_build_trim_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::Trim {}, Modifier::Trim {}];
-        let expected_value_modifiers = vec![ValueModifier::Trim, ValueModifier::Trim];
 
         // Act
         let value_modifiers =
@@ -137,14 +136,13 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+
     }
 
     #[test]
     fn should_build_lowercase_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::Lowercase {}, Modifier::Trim {}];
-        let expected_value_modifiers = vec![ValueModifier::Lowercase, ValueModifier::Trim];
 
         // Act
         let value_modifiers =
@@ -152,14 +150,13 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+
     }
 
     #[test]
     fn should_build_to_number_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::ToNumber {}];
-        let expected_value_modifiers = vec![ValueModifier::ToNumber];
 
         // Act
         let value_modifiers =
@@ -167,7 +164,10 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ToNumber => {},
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -178,10 +178,6 @@ mod test {
             find: "some".to_owned(),
             replace: "some other".to_owned(),
         }];
-        let expected_value_modifiers = vec![ValueModifier::ReplaceAll {
-            find: "some".to_owned(),
-            replace: AccessorBuilder::new().build("", "some other").unwrap(),
-        }];
 
         // Act
         let value_modifiers =
@@ -189,7 +185,13 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ReplaceAll {find, replace: _ } => {
+                assert_eq!("some", find);
+
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -202,20 +204,21 @@ mod test {
             ),
         }];
 
-        let expected_value_modifiers = vec![ValueModifier::Map {
-            default_value: Some("Keith Richards".to_owned()),
-            mapping: hashmap!(
-                "0".to_owned() => "David Gilmour".to_owned(),
-            ),
-        }];
-
         // Act
         let value_modifiers =
             ValueModifier::build("", &AccessorBuilder::new(), &modifiers).unwrap();
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::Map {mapping, default_value } => {
+                assert_eq!(mapping, &hashmap!(
+                    "0".to_owned() => "David Gilmour".to_owned(),
+                ));
+                assert_eq!(default_value, &Some("Keith Richards".to_owned()));
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -226,10 +229,6 @@ mod test {
             find: "./*".to_owned(),
             replace: "some other".to_owned(),
         }];
-        let expected_value_modifiers = vec![ValueModifier::ReplaceAllRegex {
-            find_regex: RegexWrapper::new("./*").unwrap(),
-            replace: AccessorBuilder::new().build("", "some other").unwrap(),
-        }];
 
         // Act
         let value_modifiers =
@@ -237,7 +236,13 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ReplaceAllRegex {find_regex, replace: _ } => {
+                assert_eq!(&RegexWrapper::new("./*").unwrap(), find_regex);
+
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]

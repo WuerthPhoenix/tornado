@@ -162,7 +162,7 @@ impl ActionResolver {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum ActionValueProcessor {
     Accessor(Accessor),
     Null,
@@ -345,10 +345,14 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-        assert_eq!(
-            &ActionValueProcessor::Accessor(Accessor::Constant { value: Value::String(value) }),
-            action_payload.get("key").unwrap()
-        )
+
+        match action_payload.get("key").unwrap() {
+            ActionValueProcessor::Accessor(Accessor::Constant { value: Value::String(inner_value) }) => {
+                assert_eq!("constant value", inner_value);
+            },
+            _ => assert!(false)
+        }
+
     }
 
     #[test]
