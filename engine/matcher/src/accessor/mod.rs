@@ -52,6 +52,10 @@ impl AccessorBuilder {
     /// - "event.type": returns an instance of Accessor::Constant that always returns the String "event.type"
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
         trace!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
+
+        let parser_builder = ParserBuilder::default()
+        .add_parser_factory(EXTRACTED_VARIABLES_KEY.to_owned(), Box::new(ExtractedVarParser::new));
+
         let result = match input.trim() {
             value
                 if value.starts_with(self.start_delimiter)
@@ -64,9 +68,7 @@ impl AccessorBuilder {
                         || val.eq(EVENT_KEY)
                         || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))) =>
                     {
-                        let parser = ParserBuilder::default()
-                            .add_parser_factory(EXTRACTED_VARIABLES_KEY.to_owned(), Box::new(ExtractedVarParser::new))
-                            .build_parser(&format!(
+                        let parser = parser_builder.build_parser(&format!(
                             "{}{}{}",
                             EXPRESSION_START_DELIMITER, val, EXPRESSION_END_DELIMITER
                         ))?;
@@ -81,7 +83,10 @@ impl AccessorBuilder {
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            _value => Ok(Accessor::Constant { value: Value::String(input.to_owned()) }),
+            value => {
+                let parser = parser_builder.build_parser(value)?;
+                Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
+            },
         };
 
         trace!(
@@ -547,7 +552,7 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         match accessor {
-            Accessor::Constant { value: Value::String(inner_value) } => {
+            Accessor::Parser { parser: Parser::Val(inner_value), rule_name: _ } => {
                 assert_eq!("constant_value", &inner_value);
             },
             _ => assert!(false)

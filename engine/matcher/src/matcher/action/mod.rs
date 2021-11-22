@@ -321,7 +321,6 @@ impl ActionValueProcessor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::accessor::Accessor;
     use maplit::*;
     use serde_json::json;
     use tornado_common_api::{Event, Payload, ValueExt};
@@ -345,13 +344,6 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-
-        match action_payload.get("key").unwrap() {
-            ActionValueProcessor::Accessor(Accessor::Constant { value: Value::String(inner_value) }) => {
-                assert_eq!("constant value", inner_value);
-            },
-            _ => assert!(false)
-        }
 
     }
 
@@ -750,12 +742,14 @@ mod test {
                         content: Value::String("Into The Great Wide Open".to_owned())
                     },
                     meta: ValueMetaData {
-                        modified: false,
+                        modified: true,
                         is_leaf: true
                     },
                 }
             },
         };
+        println!("\n expected_action_meta_data: \n {:#?}", expected_action_meta_data);
+        println!("\n action_meta_data: \n {:#?}", action_meta_data);
         assert_eq!(expected_action_meta_data, action_meta_data);
     }
 
