@@ -141,12 +141,21 @@ impl MatcherExtractor {
 #[derive(Debug)]
 enum ValueExtractor {
     Regex(ValueExtractorRegex),
+    Text(ValueExtractorText),
 }
 
 #[derive(Debug)]
 struct ValueExtractorRegex {
     pub key: String,
     pub regex_extractor: RegexValueExtractor,
+    pub modifiers_post: Vec<ValueModifier>,
+}
+
+#[derive(Debug)]
+struct ValueExtractorText {
+    pub key: String,
+    pub text: String,
+    pub accessor: Accessor,
     pub modifiers_post: Vec<ValueModifier>,
 }
 
@@ -166,8 +175,12 @@ impl ValueExtractor {
                 }))
             },
             Extractor::Text(extractor) => {
-                let IMPLEMENT_ME = 0;
-                todo!()
+                Ok(Self::Text(ValueExtractorText{
+                    key: key.to_owned(),
+                    text: extractor.text.to_owned(),
+                    accessor: accessor_builder.build(rule_name, &extractor.text)?,
+                    modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
+                }))
             }
         }
     }
@@ -180,6 +193,17 @@ impl ValueExtractor {
         match self {
             ValueExtractor::Regex(extractor) => {
                 let mut extracted_value = extractor.regex_extractor.extract(variable_name, event)?;
+                for modifier in &extractor.modifiers_post {
+                    modifier.apply(variable_name, &mut extracted_value, event)?;
+                }
+                Ok((&extractor.key, extracted_value))
+            }
+            ValueExtractor::Text(extractor) => {
+                let mut extracted_value = extractor.accessor.get(event).ok_or_else(|| {
+                    MatcherError::MissingExtractedVariableError {
+                        variable_name: variable_name.to_owned(),
+                    }
+                })?.into_owned();                
                 for modifier in &extractor.modifiers_post {
                     modifier.apply(variable_name, &mut extracted_value, event)?;
                 }
