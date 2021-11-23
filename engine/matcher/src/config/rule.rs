@@ -33,7 +33,8 @@ pub struct Constraint {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum Extractor {
-    Regex(ExtractorRegex)
+    Regex(ExtractorRegex),
+    Text(ExtractorText),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -41,6 +42,14 @@ pub enum Extractor {
 pub struct ExtractorRegex {
     pub from: String,
     pub regex: ExtractorRegexType,
+    #[serde(default)]
+    pub modifiers_post: Vec<Modifier>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractorText {
+    pub text: String,
     #[serde(default)]
     pub modifiers_post: Vec<Modifier>,
 }
@@ -176,7 +185,8 @@ mod test {
                     }
                     _ => assert!(false),
                 }
-            }
+            },
+            _ => assert!(false),
         }
 
         
@@ -191,7 +201,8 @@ mod test {
                     }
                     _ => assert!(false),
                 }
-            }
+            },
+            _ => assert!(false),
         }
 
         let extractor3 = &rule.constraint.with["all_temperatures_named"];
@@ -204,7 +215,16 @@ mod test {
                     }
                     _ => assert!(false),
                 }
-            }
+            },
+            _ => assert!(false),
+        }
+
+        let extractor4 = &rule.constraint.with["variable_text"];
+        match extractor4 {
+            Extractor::Text(extractor4) => {
+                assert_eq!("Here you can interpolate ${event.payload.something}", extractor4.text);
+            },
+            _ => assert!(false),
         }
 
     }
@@ -250,7 +270,8 @@ mod test {
                     }
                     _ => assert!(false),
                 }
-            }
+            },
+            _ => assert!(false),
         }
     }
 

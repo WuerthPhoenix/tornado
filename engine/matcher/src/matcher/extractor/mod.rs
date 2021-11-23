@@ -45,7 +45,7 @@ impl MatcherExtractorBuilder {
     ///
     ///    extractor_config.insert(
     ///        String::from("extracted_temp"),
-    ///        Extractor::Regex(ExtractorRegex {
+    ///        Extractor::Regex(Extractor::Regex(ExtractorRegex {
     ///            from: String::from("${event.type}"),
     ///            regex: ExtractorRegexType::Regex {
     ///                regex: String::from(r"[0-9]+"),
@@ -159,6 +159,10 @@ impl ValueExtractor {
                     regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor_builder)?,
                     modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
                 })
+            },
+            Extractor::Text(extractor) => {
+                let IMPLEMENT_ME = 0;
+                todo!()
             }
         }
     }

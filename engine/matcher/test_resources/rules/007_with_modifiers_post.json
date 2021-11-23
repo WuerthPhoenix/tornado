@@ -25,6 +25,22 @@
             "type": "Trim"
           }
         ]
+      },
+      "variable_text": {
+        "text": "Here you can interpolate ${event.payload.something}",
+        "modifiers_post": [
+          {
+            "type": "Lowercase"
+          },
+          {
+            "type": "ReplaceAll",
+            "find": "to be found",
+            "replace": "to be replaced with"
+          },
+          {
+            "type": "Trim"
+          }
+        ]
       }
     }
   },
