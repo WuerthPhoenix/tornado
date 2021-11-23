@@ -5,7 +5,7 @@
 //! of dynamically generated variables.
 
 use crate::accessor::{Accessor, AccessorBuilder};
-use crate::config::rule::{Extractor, ExtractorRegex};
+use crate::config::rule::{Extractor, ExtractorRegex, ExtractorRegexType};
 use crate::error::MatcherError;
 use crate::matcher::modifier::ValueModifier;
 use crate::model::{InternalEvent};
@@ -19,13 +19,13 @@ use std::collections::HashMap;
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
 pub struct MatcherExtractorBuilder {
-    accessor: AccessorBuilder,
+    accessor_builder: AccessorBuilder,
 }
 
 impl MatcherExtractorBuilder {
     /// Returns a new MatcherExtractorBuilder instance.
     pub fn new() -> MatcherExtractorBuilder {
-        MatcherExtractorBuilder { accessor: AccessorBuilder::new() }
+        MatcherExtractorBuilder { accessor_builder: AccessorBuilder::new() }
     }
 
     /// Returns a specific MatcherExtractor instance based on the matcher.extractor rule configuration.
@@ -36,7 +36,7 @@ impl MatcherExtractorBuilder {
     ///
     ///    use tornado_common_api::{Event, Value, ValueExt, ValueGet};
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
-    ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex};
+    ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex, ExtractorRegexType};
     ///    use tornado_engine_matcher::model::InternalEvent;
     ///    use std::collections::HashMap;
     ///    use serde_json::{json, Map};
@@ -45,15 +45,15 @@ impl MatcherExtractorBuilder {
     ///
     ///    extractor_config.insert(
     ///        String::from("extracted_temp"),
-    ///        Extractor {
+    ///        Extractor::Regex(ExtractorRegex {
     ///            from: String::from("${event.type}"),
-    ///            regex: ExtractorRegex::Regex {
+    ///            regex: ExtractorRegexType::Regex {
     ///                regex: String::from(r"[0-9]+"),
     ///                group_match_idx: Some(0),
     ///                all_matches: None,
     ///            },
     ///            modifiers_post: vec![],
-    ///        },
+    ///        }),
     ///    );
     ///
     ///    // The matcher_extractor contains the logic to create the "extracted_temp" variable from the ${event.type}.
@@ -83,7 +83,7 @@ impl MatcherExtractorBuilder {
         for (key, extractor) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
-                ValueExtractor::build(rule_name, key, extractor, &self.accessor)?,
+                ValueExtractor::build(rule_name, key, extractor, &self.accessor_builder)?,
             );
         }
 
@@ -150,13 +150,17 @@ impl ValueExtractor {
         rule_name: &str,
         key: &str,
         extractor: &Extractor,
-        accessor: &AccessorBuilder,
+        accessor_builder: &AccessorBuilder,
     ) -> Result<ValueExtractor, MatcherError> {
-        Ok(Self {
-            key: key.to_owned(),
-            regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor)?,
-            modifiers_post: ValueModifier::build(rule_name, accessor, &extractor.modifiers_post)?,
-        })
+        match extractor {
+            Extractor::Regex(extractor) => {
+                Ok(Self {
+                    key: key.to_owned(),
+                    regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor_builder)?,
+                    modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
+                })
+            }
+        }
     }
 
     pub fn extract(
@@ -187,13 +191,13 @@ enum RegexValueExtractor {
 impl RegexValueExtractor {
     pub fn build(
         rule_name: &str,
-        extractor: &Extractor,
+        extractor: &ExtractorRegex,
         accessor: &AccessorBuilder,
     ) -> Result<RegexValueExtractor, MatcherError> {
         let target = accessor.build(rule_name, &extractor.from)?;
 
         match &extractor.regex {
-            ExtractorRegex::Regex { regex, group_match_idx, all_matches } => {
+            ExtractorRegexType::Regex { regex, group_match_idx, all_matches } => {
                 let rust_regex = RegexWrapper::new(regex)?;
 
                 let all_matches = all_matches.unwrap_or(false);
@@ -236,7 +240,7 @@ impl RegexValueExtractor {
                     }
                 }
             }
-            ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
+            ExtractorRegexType::RegexNamedGroups { regex, all_matches } => {
                 let rust_regex = RegexWrapper::new(regex)?;
 
                 if !has_named_groups(&rust_regex) {
@@ -254,7 +258,7 @@ impl RegexValueExtractor {
                     Ok(RegexValueExtractor::SingleMatchNamedGroups { regex: rust_regex, target })
                 }
             }
-            ExtractorRegex::SingleKeyRegex { regex } => {
+            ExtractorRegexType::SingleKeyRegex { regex } => {
                 let rust_regex = RegexWrapper::new(regex)?;
                 Ok(RegexValueExtractor::SingleKeyMatch { regex: rust_regex, target })
             }
@@ -503,7 +507,7 @@ fn has_named_groups(regex: &RustRegex) -> bool {
 mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use crate::config::rule::{ExtractorRegex, Modifier};
+    use crate::config::rule::{ExtractorRegexType, Modifier};
     use maplit::*;
     use serde_json::json;
     use std::collections::HashMap;
@@ -514,15 +518,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: "".to_string(),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         );
         assert!(extractor.is_ok());
@@ -531,9 +535,9 @@ mod test {
     #[test]
     fn should_build_an_extractor_with_trim_modifier() {
         // Arrange
-        let rule_extractor = Extractor {
+        let rule_extractor = ExtractorRegex {
             from: "".to_string(),
-            regex: ExtractorRegex::Regex {
+            regex: ExtractorRegexType::Regex {
                 regex: "".to_string(),
                 group_match_idx: Some(0),
                 all_matches: None,
@@ -543,7 +547,7 @@ mod test {
 
         // Act
         let extractor =
-            ValueExtractor::build("rule_name", "key", &rule_extractor, &AccessorBuilder::new())
+            ValueExtractor::build("rule_name", "key", &Extractor::Regex(rule_extractor), &AccessorBuilder::new())
                 .unwrap();
 
         // Assert
@@ -559,15 +563,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: "[".to_string(),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         );
         assert!(extractor.is_err());
@@ -578,15 +582,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -604,15 +608,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -627,15 +631,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -653,15 +657,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(2),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -679,15 +683,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(10000),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -702,15 +706,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(10000),
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -725,15 +729,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.body}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -749,28 +753,28 @@ mod test {
 
         from_config.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         from_config.insert(
             String::from("extracted_text"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
@@ -798,28 +802,28 @@ mod test {
 
         from_config.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         from_config.insert(
             String::from("extracted_none"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.nothing}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
@@ -835,15 +839,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: None,
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -866,15 +870,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -905,15 +909,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).(/[^.\n]*)?".to_string(),
                     group_match_idx: None,
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -928,15 +932,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"ab(c)*d".to_string(),
                     group_match_idx: None,
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -951,15 +955,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).(/[^.\n]*)?".to_string(),
                     group_match_idx: None,
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -974,16 +978,16 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
                     group_match_idx: None,
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1006,15 +1010,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1036,15 +1040,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://([^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
                     all_matches: Some(false),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1065,14 +1069,14 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1087,15 +1091,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1124,14 +1128,14 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1146,15 +1150,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.table}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r#"(?P<PID>[0-9]+)\s+(?P<Time>[0-9:]+)\s+(?P<UserId>[0-9]+)\s+(?P<UserName>\w+)\s+(?P<ServerName>\w+)\s+(?P<Level>[0-9]+)"#
                     .to_string(),
                     all_matches: Some(true),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
             .unwrap();
@@ -1231,14 +1235,14 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "&{event.payload}".to_string(),
-                regex: ExtractorRegex::RegexNamedGroups {
+                regex: ExtractorRegexType::RegexNamedGroups {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         );
         assert!(extractor.is_err());
@@ -1250,11 +1254,11 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex { regex: "[".to_string() },
+                regex: ExtractorRegexType::SingleKeyRegex { regex: "[".to_string() },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         );
 
@@ -1269,11 +1273,11 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex { regex: regex.to_string() },
+                regex: ExtractorRegexType::SingleKeyRegex { regex: regex.to_string() },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1312,13 +1316,13 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex {
+                regex: ExtractorRegexType::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1351,13 +1355,13 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex {
+                regex: ExtractorRegexType::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1401,13 +1405,13 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex {
+                regex: ExtractorRegexType::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNe[a-z.A-Z0.9]*"#.to_string(),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1443,13 +1447,13 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex {
+                regex: ExtractorRegexType::SingleKeyRegex {
                     regex: r#"MWRM2-NMS-MIB::netmasterAlarmNeIpv6Address\."#.to_string(),
                 },
                 modifiers_post: vec![],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1480,11 +1484,11 @@ mod test {
         let extractor_1 = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids}".to_string(),
-                regex: ExtractorRegex::SingleKeyRegex { regex: r#"1"#.to_string() },
+                regex: ExtractorRegexType::SingleKeyRegex { regex: r#"1"#.to_string() },
                 modifiers_post: vec![Modifier::Trim {}, Modifier::Trim {}],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1492,15 +1496,15 @@ mod test {
         let extractor_2 = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids.2}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r#".*"#.to_string(),
                     all_matches: Some(false),
                     group_match_idx: Some(0),
                 },
                 modifiers_post: vec![Modifier::Trim {}],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1528,15 +1532,15 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids.2}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r#".*"#.to_string(),
                     all_matches: Some(true),
                     group_match_idx: None,
                 },
                 modifiers_post: vec![Modifier::Trim {}],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();
@@ -1565,9 +1569,9 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor {
+            &Extractor::Regex(ExtractorRegex {
                 from: "${event.payload.oids.1}".to_string(),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: r#".*"#.to_string(),
                     all_matches: Some(false),
                     group_match_idx: Some(0),
@@ -1581,7 +1585,7 @@ mod test {
                         is_regex: false,
                     },
                 ],
-            },
+            }),
             &AccessorBuilder::new(),
         )
         .unwrap();

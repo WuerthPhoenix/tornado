@@ -21,15 +21,15 @@ pub fn bench(c: &mut Criterion) {
         // Add constraint
         rule.constraint.with.insert(
             String::from("extracted_var"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.body}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         // Add action

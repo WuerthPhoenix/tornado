@@ -103,7 +103,7 @@ impl MatcherConfigValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, Operator};
     use crate::config::Defaultable;
     use std::collections::HashMap;
     use serde_json::Map;
@@ -256,15 +256,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             "var.with.dot".to_owned(),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         // Act

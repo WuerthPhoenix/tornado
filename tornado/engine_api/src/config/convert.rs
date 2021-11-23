@@ -5,9 +5,7 @@ use tornado_engine_api_dto::config::{
     RuleDto,
 };
 use tornado_engine_matcher::config::filter::Filter;
-use tornado_engine_matcher::config::rule::{
-    Action, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
-};
+use tornado_engine_matcher::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, Modifier, Operator, Rule};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
 
 pub fn matcher_config_draft_into_dto(
@@ -67,36 +65,40 @@ fn constraint_into_dto(constraint: Constraint) -> Result<ConstraintDto, Error> {
 }
 
 fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
-    ExtractorDto {
-        from: extractor.from,
-        regex: extractor_regex_into_dto(extractor.regex),
-        modifiers_post: extractor
-            .modifiers_post
-            .into_iter()
-            .map(|modifier| match modifier {
-                Modifier::Lowercase {} => ModifierDto::Lowercase {},
-                Modifier::Map { mapping, default_value } => {
-                    ModifierDto::Map { mapping, default_value }
-                }
-                Modifier::ReplaceAll { find, replace, is_regex } => {
-                    ModifierDto::ReplaceAll { find, replace, is_regex }
-                }
-                Modifier::ToNumber {} => ModifierDto::ToNumber {},
-                Modifier::Trim {} => ModifierDto::Trim {},
-            })
-            .collect(),
+    match extractor {
+        Extractor::Regex(extractor) => {
+            ExtractorDto {
+                from: extractor.from,
+                regex: extractor_regex_into_dto(extractor.regex),
+                modifiers_post: extractor
+                    .modifiers_post
+                    .into_iter()
+                    .map(|modifier| match modifier {
+                        Modifier::Lowercase {} => ModifierDto::Lowercase {},
+                        Modifier::Map { mapping, default_value } => {
+                            ModifierDto::Map { mapping, default_value }
+                        }
+                        Modifier::ReplaceAll { find, replace, is_regex } => {
+                            ModifierDto::ReplaceAll { find, replace, is_regex }
+                        }
+                        Modifier::ToNumber {} => ModifierDto::ToNumber {},
+                        Modifier::Trim {} => ModifierDto::Trim {},
+                    })
+                    .collect(),
+            }
+        }
     }
 }
 
-fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDto {
+fn extractor_regex_into_dto(extractor_regex: ExtractorRegexType) -> ExtractorRegexDto {
     match extractor_regex {
-        ExtractorRegex::Regex { regex, all_matches, group_match_idx } => {
+        ExtractorRegexType::Regex { regex, all_matches, group_match_idx } => {
             ExtractorRegexDto::Regex { regex, all_matches, group_match_idx }
         }
-        ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
+        ExtractorRegexType::RegexNamedGroups { regex, all_matches } => {
             ExtractorRegexDto::RegexNamedGroups { regex, all_matches }
         }
-        ExtractorRegex::SingleKeyRegex { regex } => ExtractorRegexDto::KeyRegex { regex },
+        ExtractorRegexType::SingleKeyRegex { regex } => ExtractorRegexDto::KeyRegex { regex },
     }
 }
 
@@ -222,7 +224,7 @@ fn dto_into_operator(operator: OperatorDto) -> Result<Operator, Error> {
 }
 
 fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
-    Extractor {
+    Extractor::Regex(ExtractorRegex {
         from: extractor.from,
         regex: dto_into_extractor_regex(extractor.regex),
         modifiers_post: extractor
@@ -240,17 +242,17 @@ fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
                 ModifierDto::Trim {} => Modifier::Trim {},
             })
             .collect(),
-    }
+    })
 }
 
-fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRegex {
+fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRegexType {
     match extractor_regex {
         ExtractorRegexDto::Regex { regex, all_matches, group_match_idx } => {
-            ExtractorRegex::Regex { regex, all_matches, group_match_idx }
+            ExtractorRegexType::Regex { regex, all_matches, group_match_idx }
         }
         ExtractorRegexDto::RegexNamedGroups { regex, all_matches } => {
-            ExtractorRegex::RegexNamedGroups { regex, all_matches }
+            ExtractorRegexType::RegexNamedGroups { regex, all_matches }
         }
-        ExtractorRegexDto::KeyRegex { regex } => ExtractorRegex::SingleKeyRegex { regex },
+        ExtractorRegexDto::KeyRegex { regex } => ExtractorRegexType::SingleKeyRegex { regex },
     }
 }

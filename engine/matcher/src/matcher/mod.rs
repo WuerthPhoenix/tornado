@@ -273,7 +273,7 @@ impl Matcher {
 mod test {
     use super::*;
     use crate::config::filter::Filter;
-    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator, Rule};
+    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, Operator, Rule};
     use crate::config::Defaultable;
     use serde_json::json;
     use std::collections::HashMap;
@@ -604,15 +604,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut action = Action { id: String::from("action_id"), payload: Map::new() };
@@ -705,15 +705,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -755,15 +755,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.temp}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut action = Action { id: String::from("action_id"), payload: Map::new() };
@@ -907,15 +907,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -962,15 +962,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut rule_2 = new_rule(
@@ -983,15 +983,15 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[em]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -1050,15 +1050,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut rule_2 = new_rule(
@@ -1071,15 +1071,15 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.type}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -1134,15 +1134,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.array[1]}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -1195,15 +1195,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.map.key1}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -1683,30 +1683,30 @@ mod test {
 
         rule_0.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut rule_1 = new_rule("rule", None);
 
         rule_1.constraint.with.insert(
             String::from("extracted_temp"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let filter = new_filter(None);
@@ -2261,15 +2261,15 @@ mod test {
 
         rule_1.constraint.with.insert(
             String::from("extracted"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let mut rule_2 = new_rule(
@@ -2282,15 +2282,15 @@ mod test {
 
         rule_2.constraint.with.insert(
             String::from("extracted"),
-            Extractor {
+            Extractor::Regex(ExtractorRegex {
                 from: String::from("${event.payload.value}"),
-                regex: ExtractorRegex::Regex {
+                regex: ExtractorRegexType::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
                     all_matches: None,
                 },
                 modifiers_post: vec![],
-            },
+            }),
         );
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -2347,15 +2347,15 @@ mod test {
             let mut rule = new_rule("collision_name", None);
             rule.constraint.with.insert(
                 String::from("VALUE"),
-                Extractor {
+                Extractor::Regex(ExtractorRegex {
                     from: String::from("${event.payload.value}"),
-                    regex: ExtractorRegex::Regex {
+                    regex: ExtractorRegexType::Regex {
                         regex: String::from(r"[a-z]+"),
                         group_match_idx: Some(0),
                         all_matches: None,
                     },
                     modifiers_post: vec![],
-                },
+                }),
             );
 
             let mut action = Action { id: String::from("action_id"), payload: Map::new() };
@@ -2370,14 +2370,14 @@ mod test {
             let mut rule = new_rule("rule2", None);
             rule.constraint.with.insert(
                 String::from("collision_name"),
-                Extractor {
+                Extractor::Regex(ExtractorRegex {
                     from: String::from("${event.payload.value}"),
-                    regex: ExtractorRegex::RegexNamedGroups {
+                    regex: ExtractorRegexType::RegexNamedGroups {
                         regex: String::from(r"(?P<VALUE>[0-9]+)"),
                         all_matches: None,
                     },
                     modifiers_post: vec![],
-                },
+                }),
             );
 
             let mut action = Action { id: String::from("action_id"), payload: Map::new() };
