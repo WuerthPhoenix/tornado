@@ -45,7 +45,7 @@ impl MatcherExtractorBuilder {
     ///
     ///    extractor_config.insert(
     ///        String::from("extracted_temp"),
-    ///        Extractor::Regex(Extractor::Regex(ExtractorRegex {
+    ///        Extractor::Regex(ExtractorRegex {
     ///            from: String::from("${event.type}"),
     ///            regex: ExtractorRegexType::Regex {
     ///                regex: String::from(r"[0-9]+"),

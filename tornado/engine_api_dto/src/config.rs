@@ -52,9 +52,23 @@ pub struct ConstraintDto {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct ExtractorDto {
+pub enum ExtractorDto {
+    Regex(ExtractorRegexDto),
+    Text(ExtractorTextDto),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct ExtractorTextDto {
+    pub text: String,
+    #[serde(default)]
+    pub modifiers_post: Vec<ModifierDto>,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct ExtractorRegexDto {
     pub from: String,
-    pub regex: ExtractorRegexDto,
+    pub regex: ExtractorRegexTypeDto,
     #[serde(default)]
     pub modifiers_post: Vec<ModifierDto>,
 }
@@ -79,7 +93,7 @@ pub enum ModifierDto {
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
-pub enum ExtractorRegexDto {
+pub enum ExtractorRegexTypeDto {
     Regex {
         #[serde(rename = "match")]
         regex: String,

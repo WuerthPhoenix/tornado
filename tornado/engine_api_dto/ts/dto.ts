@@ -43,9 +43,9 @@ export type ActionDto = { id: string; payload: Value };
 
 export type ConstraintDto = { WHERE: OperatorDto | null; WITH: { [key: string]: ExtractorDto } };
 
-export type ExtractorDto = {     from: string; regex: ExtractorRegexDto; modifiers_post: ModifierDto     [] };
+export type ExtractorRegexDto = {     from: string; regex: ExtractorRegexTypeDto; modifiers_post:     ModifierDto [] };
 
-export type ExtractorRegexDto = 
+export type ExtractorRegexTypeDto = 
  | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean | null } 
  | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null } 
  | { type: "KeyRegex"; single_key_match: string };
