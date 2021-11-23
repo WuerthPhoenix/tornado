@@ -122,8 +122,8 @@ impl MatcherExtractor {
         if !self.extractors.is_empty() {
             let mut vars = Map::new();
             for (key, extractor) in &self.extractors {
-                let value = extractor.extract(key, event)?;
-                vars.insert(extractor.key.to_string(), value);
+                let (key, value) = extractor.extract(key, event)?;
+                vars.insert(key.to_string(), value);
             }
 
             if let Some(map) = event.extracted_variables.get_map_mut() {
@@ -139,7 +139,12 @@ impl MatcherExtractor {
 }
 
 #[derive(Debug)]
-struct ValueExtractor {
+enum ValueExtractor {
+    Regex(ValueExtractorRegex),
+}
+
+#[derive(Debug)]
+struct ValueExtractorRegex {
     pub key: String,
     pub regex_extractor: RegexValueExtractor,
     pub modifiers_post: Vec<ValueModifier>,
@@ -154,11 +159,11 @@ impl ValueExtractor {
     ) -> Result<ValueExtractor, MatcherError> {
         match extractor {
             Extractor::Regex(extractor) => {
-                Ok(Self {
+                Ok(Self::Regex(ValueExtractorRegex{
                     key: key.to_owned(),
                     regex_extractor: RegexValueExtractor::build(rule_name, extractor, accessor_builder)?,
                     modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
-                })
+                }))
             },
             Extractor::Text(extractor) => {
                 let IMPLEMENT_ME = 0;
@@ -171,13 +176,16 @@ impl ValueExtractor {
         &self,
         variable_name: &str,
         event: &InternalEvent,
-    ) -> Result<Value, MatcherError> {
-        let mut extracted_value =
-            self.regex_extractor.extract(variable_name, event)?;
-        for modifier in &self.modifiers_post {
-            modifier.apply(variable_name, &mut extracted_value, event)?;
+    ) -> Result<(&str, Value), MatcherError> {
+        match self {
+            ValueExtractor::Regex(extractor) => {
+                let mut extracted_value = extractor.regex_extractor.extract(variable_name, event)?;
+                for modifier in &extractor.modifiers_post {
+                    modifier.apply(variable_name, &mut extracted_value, event)?;
+                }
+                Ok((&extractor.key, extracted_value))
+            }
         }
-        Ok(extracted_value)
     }
 }
 
@@ -555,9 +563,14 @@ mod test {
                 .unwrap();
 
         // Assert
-        assert_eq!(1, extractor.modifiers_post.len());
-        match extractor.modifiers_post[0] {
-            ValueModifier::Trim => {},
+        match extractor {
+            ValueExtractor::Regex(extractor) => {
+                assert_eq!(1, extractor.modifiers_post.len());
+                match extractor.modifiers_post[0] {
+                    ValueModifier::Trim => {},
+                    _ => assert!(false)
+                }
+            },
             _ => assert!(false)
         }
     }
@@ -601,10 +614,12 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
+
         assert_eq!(
-            Value::String("http://stackoverflow.com/".to_owned()),
+            ("key", Value::String("http://stackoverflow.com/".to_owned())),
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
         );
+
     }
 
     #[test]
@@ -627,7 +642,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!(Value::String("http".to_owned()), extractor.extract("", &(&event, &mut Value::Null).into()).unwrap());
+        assert_eq!(("key", Value::String("http".to_owned())), extractor.extract("", &(&event, &mut Value::Null).into()).unwrap());
     }
 
     #[test]
@@ -651,7 +666,7 @@ mod test {
         let event = new_event("http://stackoverflow.com/\nftp://test.com");
 
         assert_eq!(
-            Value::Array(vec![Value::String("http".to_owned()), Value::String("ftp".to_owned()),]),
+            ("key", Value::Array(vec![Value::String("http".to_owned()), Value::String("ftp".to_owned()),])),
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
         );
     }
@@ -677,7 +692,7 @@ mod test {
         let event = new_event("http://stackoverflow.com/");
 
         assert_eq!(
-            Value::String("stackoverflow.com".to_owned()),
+            ("key", Value::String("stackoverflow.com".to_owned())),
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
         );
     }
@@ -859,12 +874,12 @@ mod test {
         let event = new_event("http://stackoverflow.com/");
 
         assert_eq!(
-            Value::Array(vec![
+            ("key", Value::Array(vec![
                 Value::String("http://stackoverflow.com/".to_owned()),
                 Value::String("http".to_owned()),
                 Value::String("stackoverflow.com".to_owned()),
                 Value::String("/".to_owned()),
-            ]),
+            ])),
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
         );
     }
@@ -873,7 +888,7 @@ mod test {
     fn should_return_all_matching_groups_multi_if_no_idx() {
         let extractor = ValueExtractor::build(
             "rule_name",
-            "key",
+            "key1",
             &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegexType::Regex {
@@ -891,7 +906,7 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            Value::Array(vec![
+            ("key1", Value::Array(vec![
                 Value::Array(vec![
                     Value::String("http://stackoverflow.com".to_owned()),
                     Value::String("http".to_owned()),
@@ -904,7 +919,7 @@ mod test {
                     Value::String("test".to_owned()),
                     Value::String("org".to_owned()),
                 ])
-            ]),
+            ])),
         );
     }
 
@@ -999,12 +1014,12 @@ mod test {
         let event = new_event("http://stackoverflow.com");
 
         assert_eq!(
-            Value::Array(vec![
+            ("key", Value::Array(vec![
                 Value::String("http://stackoverflow.com".to_owned()),
                 Value::String("http".to_owned()),
                 Value::String("stackoverflow".to_owned()),
                 Value::String("com".to_owned()),
-            ]),
+            ])),
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
         );
     }
@@ -1031,11 +1046,11 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            json!(hashmap![
+            ("key", json!(hashmap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "NAME".to_string() => Value::String("stackoverflow".to_owned()),
                 "EXTENSION".to_string() => Value::String("com".to_owned()),
-            ]),
+            ])),
         );
     }
 
@@ -1043,7 +1058,7 @@ mod test {
     fn should_return_map_with_named_groups_ignoring_unnamed_groups() {
         let extractor = ValueExtractor::build(
             "rule_name",
-            "key",
+            "key3",
             &Extractor::Regex(ExtractorRegex {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegexType::RegexNamedGroups {
@@ -1061,10 +1076,10 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            json!(hashmap![
+            ("key3", json!(hashmap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "EXTENSION".to_string() => Value::String("com".to_owned()),
-            ]),
+            ])),
         );
     }
 
@@ -1112,7 +1127,7 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            Value::Array(vec![
+            ("key", Value::Array(vec![
                 json!(hashmap![
                     "PROTOCOL".to_string() => Value::String("http".to_owned()),
                     "NAME".to_string() => Value::String("stackoverflow".to_owned()),
@@ -1123,7 +1138,7 @@ mod test {
                     "NAME".to_string() => Value::String("test".to_owned()),
                     "EXTENSION".to_string() => Value::String("org".to_owned()),
                 ])
-            ]),
+            ])),
         );
     }
 
@@ -1183,7 +1198,7 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            Value::Array(vec![
+            ("key", Value::Array(vec![
                 json!(hashmap![
                     "PID".to_string() => Value::String("483".to_owned()),
                     "Time".to_string() => Value::String("00:00:00".to_owned()),
@@ -1216,7 +1231,7 @@ mod test {
                     "ServerName".to_string() => Value::String("1869AS0041".to_owned()),
                     "Level".to_string() => Value::String("3".to_owned()),
                 ]),
-            ]),
+            ])),
         );
     }
 
@@ -1287,10 +1302,15 @@ mod test {
         .unwrap();
 
         // Assert
-        assert_eq!("key", &extractor.key);
-        match extractor.regex_extractor {
-            RegexValueExtractor::SingleKeyMatch { .. } => {}
-            _ => assert!(false),
+        match extractor {
+            ValueExtractor::Regex(extractor) => {
+                assert_eq!("key", &extractor.key);
+                match extractor.regex_extractor {
+                    RegexValueExtractor::SingleKeyMatch { .. } => {}
+                    _ => assert!(false),
+                }
+            },
+            _ => assert!(false)
         }
     }
 
@@ -1338,7 +1358,7 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-        assert_eq!(Value::String("1".to_owned()), result.unwrap());
+        assert_eq!(("key", Value::String("1".to_owned())), result.unwrap());
     }
 
     #[test]
@@ -1520,8 +1540,8 @@ mod test {
         let result_2 = extractor_2.extract("var", &(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
-        assert_eq!(Value::String("Hello not to be trimmed".to_owned()), result_1);
-        assert_eq!(Value::String("Hello to be trimmed".to_owned()), result_2);
+        assert_eq!(("key", Value::String("Hello not to be trimmed".to_owned())), result_1);
+        assert_eq!(("key", Value::String("Hello to be trimmed".to_owned())), result_2);
     }
 
     #[test]
@@ -1600,7 +1620,7 @@ mod test {
         let result = extractor.extract("var", &(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
-        assert_eq!(Value::String("hello to be trimmed replaced_and lowercased".to_owned()), result);
+        assert_eq!(("key", Value::String("hello to be trimmed replaced_and lowercased".to_owned())), result);
     }
 
     fn new_event(event_type: &str) -> Value {
