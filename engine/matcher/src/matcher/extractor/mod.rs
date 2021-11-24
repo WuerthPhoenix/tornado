@@ -543,7 +543,7 @@ fn has_named_groups(regex: &RustRegex) -> bool {
 mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use crate::config::rule::{ExtractorRegexType, Modifier};
+    use crate::config::rule::{ExtractorRegexType, ExtractorText, Modifier};
     use maplit::*;
     use serde_json::json;
     use std::collections::HashMap;
@@ -1645,6 +1645,125 @@ mod test {
 
         // Assert
         assert_eq!(("key", Value::String("hello to be trimmed replaced_and lowercased".to_owned())), result);
+    }
+
+    #[test]
+    fn text_extractor_should_return_event_type() {
+        // Arrange
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor::Text(ExtractorText {
+                text: "${event.type}".to_owned(),
+                modifiers_post: vec![],
+            }),
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let event = new_event("EVENT__TYPE");
+
+        // Act
+        let (var, value) = extractor.extract("", &(&event, &mut Value::Null).into()).unwrap();
+
+        // Assert
+        assert_eq!("key", var);
+        assert_eq!("EVENT__TYPE", &value);
+    }
+
+    #[test]
+    fn text_extractor_should_allow_string_interpolation() {
+        // Arrange
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor::Text(ExtractorText {
+                text: "The type is: ${event.type} and a value is ${event.payload.some}".to_owned(),
+                modifiers_post: vec![],
+            }),
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let mut payload = Map::new();
+        payload.insert("some".to_owned(), Value::String("A VALUE".to_owned()));
+        let event = Event::new_with_payload("SOME_TYPE".to_owned(), payload);
+        
+        // Act
+        let (var, value) = extractor.extract("", &(&json!(event), &mut Value::Null).into()).unwrap();
+
+        // Assert
+        assert_eq!("key", var);
+        assert_eq!("The type is: SOME_TYPE and a value is A VALUE", &value);
+    }
+
+
+    #[test]
+    fn text_extractor_should_apply_post_modifiers() {
+        // Arrange
+        let extractor = ValueExtractor::build(
+            "rule_name",
+            "key",
+            &Extractor::Text(ExtractorText {
+                text: "${event.type}".to_owned(),
+                modifiers_post: vec![Modifier::Lowercase {}],
+            }),
+            &AccessorBuilder::new(),
+        )
+        .unwrap();
+
+        let event = new_event("EVENT__TYPE");
+
+        // Act
+        let (var, value) = extractor.extract("", &(&event, &mut Value::Null).into()).unwrap();
+
+        // Assert
+        assert_eq!("key", var);
+        assert_eq!("event__type", &value);
+    }
+
+    #[test]
+    fn text_extractor_should_use_previously_extracted_variables() {
+        // Arrange
+        let mut from_config = HashMap::new();
+
+        from_config.insert(
+            String::from("temperature"),
+            Extractor::Text(ExtractorText {
+                text: "${event.payload.temp}".to_owned(),
+                modifiers_post: vec![],
+            }),
+        );
+
+        from_config.insert(
+            String::from("decorated"),
+            Extractor::Text(ExtractorText {
+                text: "The temperature is: ${_variables.temperature}".to_owned(),
+                modifiers_post: vec![],
+            }),
+        );
+
+        let rule_name = "rule";
+        let extractor = MatcherExtractorBuilder::new().build(rule_name, &from_config).unwrap();
+
+        let mut payload = Map::new();
+        payload.insert("temperature".to_owned(), Value::String("41".to_owned()));
+        let event = json!(Event::new_with_payload("SOME_TYPE".to_owned(), payload));
+
+        let mut extracted_vars = Value::Object(Map::new());
+
+        // Act
+        extractor.process_all(&mut (&event, &mut extracted_vars).into()).unwrap();
+
+        // Assert
+        assert_eq!(
+            "41",
+            extracted_vars.get_from_map(rule_name).unwrap().get_from_map("temperature").unwrap()
+        );
+        assert_eq!(
+            "The temperature is: ${_variables.temperature}",
+            extracted_vars.get_from_map(rule_name).unwrap().get_from_map("decorated").unwrap()
+        );
     }
 
     fn new_event(event_type: &str) -> Value {

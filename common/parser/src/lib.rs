@@ -170,10 +170,6 @@ impl <T: Debug> Parser<T> {
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
             Parser::Custom{ key, parser} => {
-
-                println!("use custom parser");
-                println!("key: {:?}", key);
-                println!("value: {:?}", key.get(value));
                 key.get(value).and_then(|val| parser.parse_value(val, context))                
             },
         }
