@@ -56,7 +56,7 @@ impl AccessorBuilder {
         let parser_builder = ParserBuilder::default()
         .add_parser_factory(EXTRACTED_VARIABLES_KEY.to_owned(), Box::new(ExtractedVarParser::new));
 
-        let result = match input {
+        let result = match input.trim() {
             value
                 if value.starts_with(self.start_delimiter)
                     && value.ends_with(self.end_delimiter) =>
@@ -68,10 +68,7 @@ impl AccessorBuilder {
                         || val.eq(EVENT_KEY)
                         || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))) =>
                     {
-                        let parser = parser_builder.build_parser(&format!(
-                            "{}{}{}",
-                            EXPRESSION_START_DELIMITER, val, EXPRESSION_END_DELIMITER
-                        ))?;
+                        let parser = parser_builder.build_parser(input)?;
                         Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                     }
                     val if IGNORED_EXPRESSION_PREFIXES
