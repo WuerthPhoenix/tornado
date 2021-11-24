@@ -122,14 +122,21 @@ impl MatcherExtractor {
         if !self.extractors.is_empty() {
 
             
-            let mut vars = Map::new();
+
             for (key, extractor) in &self.extractors {
                 let (key, value) = extractor.extract(key, event)?;
-                vars.insert(key.to_string(), value);
-
 
                 if let Some(map) = event.extracted_variables.get_map_mut() {
-                    map.insert(self.rule_name.to_string(), Value::Object(vars.clone()));
+                    let rules_map = map.entry(&self.rule_name).or_insert_with(|| Value::Object(Default::default()));
+                    match rules_map {
+                        Value::Object(rules_map) => {
+                            rules_map.insert(key.to_string(), value);
+                        }
+                        _ => return Err(MatcherError::InternalSystemError {
+                            message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
+                        })
+                    } 
+
                 } else {
                     return Err(MatcherError::InternalSystemError {
                         message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
