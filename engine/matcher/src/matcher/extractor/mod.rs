@@ -119,31 +119,23 @@ impl MatcherExtractor {
         &self,
         event: &mut InternalEvent,
     ) -> Result<(), MatcherError> {
-        if !self.extractors.is_empty() {
-
-            
-
-            for (key, extractor) in &self.extractors {
-                let (key, value) = extractor.extract(key, event)?;
-
-                if let Some(map) = event.extracted_variables.get_map_mut() {
-                    let rules_map = map.entry(&self.rule_name).or_insert_with(|| Value::Object(Default::default()));
-                    match rules_map {
-                        Value::Object(rules_map) => {
-                            rules_map.insert(key.to_string(), value);
-                        }
-                        _ => return Err(MatcherError::InternalSystemError {
-                            message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
-                        })
-                    } 
-
-                } else {
-                    return Err(MatcherError::InternalSystemError {
+        for (key, extractor) in &self.extractors {
+            let (key, value) = extractor.extract(key, event)?;
+            if let Some(map) = event.extracted_variables.get_map_mut() {
+                let rules_map = map.entry(&self.rule_name).or_insert_with(|| Value::Object(Default::default()));
+                match rules_map {
+                    Value::Object(rules_map) => {
+                        rules_map.insert(key.to_string(), value);
+                    }
+                    _ => return Err(MatcherError::InternalSystemError {
                         message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
-                    });
-                }
+                    })
+                } 
+            } else {
+                return Err(MatcherError::InternalSystemError {
+                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
+                });
             }
-            
         }
         Ok(())
     }
