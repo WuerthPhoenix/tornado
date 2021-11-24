@@ -276,7 +276,7 @@ mod test {
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, Operator, Rule};
     use crate::config::Defaultable;
     use serde_json::json;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use tornado_common_api::{Event, ValueGet, ValueExt, Payload};
 
     #[test]
@@ -2551,7 +2551,7 @@ mod test {
     }
 
     fn new_rule<O: Into<Option<Operator>>>(name: &str, operator: O) -> Rule {
-        let constraint = Constraint { where_operator: operator.into(), with: HashMap::new() };
+        let constraint = Constraint { where_operator: operator.into(), with: BTreeMap::new() };
 
         Rule {
             name: name.to_owned(),

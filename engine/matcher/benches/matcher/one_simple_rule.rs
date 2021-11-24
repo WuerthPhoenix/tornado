@@ -1,7 +1,7 @@
 use criterion::Criterion;
 use serde_json::Map;
 use serde_json::json;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::rule::*;
 use tornado_engine_matcher::config::MatcherConfig;
@@ -60,7 +60,7 @@ pub fn bench(c: &mut Criterion) {
 }
 
 fn new_rule(name: &str, operator: Operator) -> Rule {
-    let constraint = Constraint { where_operator: Some(operator), with: HashMap::new() };
+    let constraint = Constraint { where_operator: Some(operator), with: BTreeMap::new() };
 
     Rule {
         name: name.to_owned(),

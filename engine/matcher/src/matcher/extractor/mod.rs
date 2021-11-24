@@ -14,7 +14,7 @@ use log::*;
 use regex::{Captures, Regex as RustRegex};
 use serde_json::{Map, Value};
 use tornado_common_api::ValueExt;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -38,10 +38,10 @@ impl MatcherExtractorBuilder {
     ///    use tornado_engine_matcher::matcher::extractor::MatcherExtractorBuilder;
     ///    use tornado_engine_matcher::config::rule::{Extractor, ExtractorRegex, ExtractorRegexType};
     ///    use tornado_engine_matcher::model::InternalEvent;
-    ///    use std::collections::HashMap;
+    ///    use std::collections::BTreeMap;
     ///    use serde_json::{json, Map};
     ///
-    ///    let mut extractor_config = HashMap::new();
+    ///    let mut extractor_config = BTreeMap::new();
     ///
     ///    extractor_config.insert(
     ///        String::from("extracted_temp"),
@@ -76,10 +76,10 @@ impl MatcherExtractorBuilder {
     pub fn build(
         &self,
         rule_name: &str,
-        config: &HashMap<String, Extractor>,
+        config: &BTreeMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
         let mut matcher_extractor =
-            MatcherExtractor { rule_name: rule_name.to_owned(), extractors: HashMap::new() };
+            MatcherExtractor { rule_name: rule_name.to_owned(), extractors: BTreeMap::new() };
         for (key, extractor) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
@@ -99,7 +99,7 @@ impl MatcherExtractorBuilder {
 #[derive(Debug)]
 pub struct MatcherExtractor {
     rule_name: String,
-    extractors: HashMap<String, ValueExtractor>,
+    extractors: BTreeMap<String, ValueExtractor>,
 }
 
 impl MatcherExtractor {
@@ -120,19 +120,23 @@ impl MatcherExtractor {
         event: &mut InternalEvent,
     ) -> Result<(), MatcherError> {
         if !self.extractors.is_empty() {
+
+            
             let mut vars = Map::new();
             for (key, extractor) in &self.extractors {
                 let (key, value) = extractor.extract(key, event)?;
                 vars.insert(key.to_string(), value);
-            }
 
-            if let Some(map) = event.extracted_variables.get_map_mut() {
-                map.insert(self.rule_name.to_string(), Value::Object(vars));
-            } else {
-                return Err(MatcherError::InternalSystemError {
-                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
-                });
+
+                if let Some(map) = event.extracted_variables.get_map_mut() {
+                    map.insert(self.rule_name.to_string(), Value::Object(vars.clone()));
+                } else {
+                    return Err(MatcherError::InternalSystemError {
+                        message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
+                    });
+                }
             }
+            
         }
         Ok(())
     }
@@ -546,7 +550,7 @@ mod test {
     use crate::config::rule::{ExtractorRegexType, ExtractorText, Modifier};
     use maplit::*;
     use serde_json::json;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use tornado_common_api::{Event, ValueGet};
 
     #[test]
@@ -792,7 +796,7 @@ mod test {
 
     #[test]
     fn should_extract_all_variables_and_return_true() {
-        let mut from_config = HashMap::new();
+        let mut from_config = BTreeMap::new();
 
         from_config.insert(
             String::from("extracted_temp"),
@@ -841,7 +845,7 @@ mod test {
 
     #[test]
     fn should_extract_all_variables_and_return_false_is_not_all_resolved() {
-        let mut from_config = HashMap::new();
+        let mut from_config = BTreeMap::new();
 
         from_config.insert(
             String::from("extracted_temp"),
@@ -1070,7 +1074,7 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            ("key", json!(hashmap![
+            ("key", json!(btreemap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "NAME".to_string() => Value::String("stackoverflow".to_owned()),
                 "EXTENSION".to_string() => Value::String("com".to_owned()),
@@ -1100,7 +1104,7 @@ mod test {
 
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
-            ("key3", json!(hashmap![
+            ("key3", json!(btreemap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "EXTENSION".to_string() => Value::String("com".to_owned()),
             ])),
@@ -1152,12 +1156,12 @@ mod test {
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
             ("key", Value::Array(vec![
-                json!(hashmap![
+                json!(btreemap![
                     "PROTOCOL".to_string() => Value::String("http".to_owned()),
                     "NAME".to_string() => Value::String("stackoverflow".to_owned()),
                     "EXTENSION".to_string() => Value::String("com".to_owned()),
                 ]),
-                json!(hashmap![
+                json!(btreemap![
                     "PROTOCOL".to_string() => Value::String("ftp".to_owned()),
                     "NAME".to_string() => Value::String("test".to_owned()),
                     "EXTENSION".to_string() => Value::String("org".to_owned()),
@@ -1223,7 +1227,7 @@ mod test {
         assert_eq!(
             extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
             ("key", Value::Array(vec![
-                json!(hashmap![
+                json!(btreemap![
                     "PID".to_string() => Value::String("483".to_owned()),
                     "Time".to_string() => Value::String("00:00:00".to_owned()),
                     "UserId".to_string() => Value::String("76".to_owned()),
@@ -1231,7 +1235,7 @@ mod test {
                     "ServerName".to_string() => Value::String("1869AS0071".to_owned()),
                     "Level".to_string() => Value::String("1".to_owned()),
                 ]),
-                json!(hashmap![
+                json!(btreemap![
                     "PID".to_string() => Value::String("440".to_owned()),
                     "Time".to_string() => Value::String("00:13:05".to_owned()),
                     "UserId".to_string() => Value::String("629".to_owned()),
@@ -1239,7 +1243,7 @@ mod test {
                     "ServerName".to_string() => Value::String("1869AS0031".to_owned()),
                     "Level".to_string() => Value::String("2".to_owned()),
                 ]),
-                json!(hashmap![
+                json!(btreemap![
                     "PID".to_string() => Value::String("615".to_owned()),
                     "Time".to_string() => Value::String("00:01:36".to_owned()),
                     "UserId".to_string() => Value::String("240".to_owned()),
@@ -1247,7 +1251,7 @@ mod test {
                     "ServerName".to_string() => Value::String("1869AS0071".to_owned()),
                     "Level".to_string() => Value::String("2".to_owned()),
                 ]),
-                json!(hashmap![
+                json!(btreemap![
                     "PID".to_string() => Value::String("379".to_owned()),
                     "Time".to_string() => Value::String("00:01:07".to_owned()),
                     "UserId".to_string() => Value::String("30".to_owned()),
@@ -1725,12 +1729,12 @@ mod test {
     #[test]
     fn text_extractor_should_use_previously_extracted_variables() {
         // Arrange
-        let mut from_config = HashMap::new();
+        let mut from_config = BTreeMap::new();
 
         from_config.insert(
-            String::from("temperature"),
+            String::from("a_temperature"),
             Extractor::Text(ExtractorText {
-                text: "${event.payload.temp}".to_owned(),
+                text: "${event.payload.temperature}".to_owned(),
                 modifiers_post: vec![],
             }),
         );
@@ -1738,7 +1742,7 @@ mod test {
         from_config.insert(
             String::from("decorated"),
             Extractor::Text(ExtractorText {
-                text: "The temperature is: ${_variables.temperature}".to_owned(),
+                text: "The temperature is: ${_variables.rule.a_temperature}".to_owned(),
                 modifiers_post: vec![],
             }),
         );
@@ -1758,10 +1762,10 @@ mod test {
         // Assert
         assert_eq!(
             "41",
-            extracted_vars.get_from_map(rule_name).unwrap().get_from_map("temperature").unwrap()
+            extracted_vars.get_from_map(rule_name).unwrap().get_from_map("a_temperature").unwrap()
         );
         assert_eq!(
-            "The temperature is: ${_variables.temperature}",
+            "The temperature is: 41",
             extracted_vars.get_from_map(rule_name).unwrap().get_from_map("decorated").unwrap()
         );
     }

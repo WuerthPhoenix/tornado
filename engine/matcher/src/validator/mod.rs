@@ -105,7 +105,7 @@ mod test {
     use super::*;
     use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, Operator};
     use crate::config::Defaultable;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use serde_json::Map;
     use tornado_common_api::Value;
 
@@ -419,7 +419,7 @@ mod test {
     }
 
     fn new_rule<O: Into<Option<Operator>>>(name: &str, operator: O) -> Rule {
-        let constraint = Constraint { where_operator: operator.into(), with: HashMap::new() };
+        let constraint = Constraint { where_operator: operator.into(), with: BTreeMap::new() };
 
         Rule {
             name: name.to_owned(),

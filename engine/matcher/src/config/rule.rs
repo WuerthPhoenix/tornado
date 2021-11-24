@@ -6,7 +6,7 @@ use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tornado_common_api::Payload;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -27,7 +27,7 @@ pub struct Constraint {
     #[serde(rename = "WHERE")]
     pub where_operator: Option<Operator>,
     #[serde(rename = "WITH")]
-    pub with: HashMap<String, Extractor>,
+    pub with: BTreeMap<String, Extractor>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
