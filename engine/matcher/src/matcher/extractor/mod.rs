@@ -121,6 +121,10 @@ impl MatcherExtractor {
     ) -> Result<(), MatcherError> {
         for (key, extractor) in &self.extractors {
             let (key, value) = extractor.extract(key, event)?;
+
+            // This convoluted logic is here to fight the borrow checker.
+            // Check here for a discussion about it: 
+            // https://users.rust-lang.org/t/will-the-borrow-checker-be-ever-able-to-handle-this-simple-loop-with-a-mutable-hashmap-logic/67832
             if let Some(map) = event.extracted_variables.get_map_mut() {
                 let rules_map = map.entry(&self.rule_name).or_insert_with(|| Value::Object(Default::default()));
                 match rules_map {
