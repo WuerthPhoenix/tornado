@@ -219,12 +219,12 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_type() {
         // Act
-        let parser = ParserBuilder::<()>::default().build_parser("hello world").unwrap();
+        let parser = ParserBuilder::<()>::default().build_parser("  hello world  ").unwrap();
 
         // Assert
         match parser {
             Parser::Val(value) => {
-                assert_eq!(Value::String("hello world".to_owned()), value);
+                assert_eq!(Value::String("  hello world  ".to_owned()), value);
             }
             _ => assert!(false),
         }

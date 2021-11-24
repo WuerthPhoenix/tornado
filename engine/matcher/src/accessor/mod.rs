@@ -56,7 +56,7 @@ impl AccessorBuilder {
         let parser_builder = ParserBuilder::default()
         .add_parser_factory(EXTRACTED_VARIABLES_KEY.to_owned(), Box::new(ExtractedVarParser::new));
 
-        let result = match input.trim() {
+        let result = match input {
             value
                 if value.starts_with(self.start_delimiter)
                     && value.ends_with(self.end_delimiter) =>
@@ -83,8 +83,8 @@ impl AccessorBuilder {
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
             }
-            value => {
-                let parser = parser_builder.build_parser(value)?;
+            _value => {
+                let parser = parser_builder.build_parser(input)?;
                 Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
             },
         };
@@ -866,5 +866,23 @@ mod test {
 
         // Assert
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn accessor_should_not_trim_the_values() {
+        let accessor_1 = AccessorBuilder::new().build("", "  ${event.type}  ").unwrap();
+        let accessor_2 = AccessorBuilder::new().build("", "  CONSTANT  ").unwrap();
+
+        let event = json!(Event::new(" event_type_string "));
+        
+        let mut extracted_vars = Value::Null;
+        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
+        
+        let result_1 = accessor_1.get(&internal_event).unwrap();
+        let result_2 = accessor_2.get(&internal_event).unwrap();
+
+        assert_eq!("   event_type_string   ", result_1.as_ref());
+        assert_eq!("  CONSTANT  ", result_2.as_ref());
+
     }
 }
