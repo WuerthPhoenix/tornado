@@ -119,8 +119,10 @@ impl AuthServiceV2 {
 
 #[cfg(test)]
 pub mod test {
+
     use super::*;
-    use actix_web::{http::header, test};
+    use actix_web::test::TestRequest;
+    use actix_web::{http::header};
     use tornado_engine_api_dto::auth::UserPreferences;
     use tornado_engine_api_dto::auth_v2::Authorization;
 
@@ -402,7 +404,7 @@ pub mod test {
         // Arrange
         let permission_map = permission_map();
         let auth_service = AuthServiceV2::new(Arc::new(permission_map.clone()));
-        let request = test::TestRequest::get()
+        let request = TestRequest::get()
             .insert_header((
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {

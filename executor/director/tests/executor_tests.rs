@@ -3,6 +3,7 @@ use actix_web::{web, App, HttpServer};
 use httpmock::Method::POST;
 use httpmock::MockServer;
 use maplit::*;
+use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tornado_common_api::{Action, Value};
@@ -56,15 +57,15 @@ async fn should_perform_a_post_request() {
                 let mut action = Action::new("", "");
                 action.payload.insert(
                     DIRECTOR_ACTION_NAME_KEY.to_owned(),
-                    Value::Text("create_host".to_owned()),
+                    Value::String("create_host".to_owned()),
                 );
                 action.payload.insert(
                         DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
-                        Value::Map(hashmap![
-                            "object_type".to_owned() => Value::Text("host".to_owned()),
-                            "object_name".to_owned() => Value::Text("my_host".to_owned()),
-                            "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
-                            "check_command".to_owned() => Value::Text("hostalive".to_owned())
+                        json!(hashmap![
+                            "object_type".to_owned() => Value::String("host".to_owned()),
+                            "object_name".to_owned() => Value::String("my_host".to_owned()),
+                            "address".to_owned() => Value::String("127.0.0.1".to_owned()),
+                            "check_command".to_owned() => Value::String("hostalive".to_owned())
             ]),
                     );
 
@@ -84,11 +85,11 @@ async fn should_perform_a_post_request() {
     println!("actix System stopped");
 
     assert_eq!(
-        Some(Value::Map(hashmap![
-            "object_type".to_owned() => Value::Text("host".to_owned()),
-            "object_name".to_owned() => Value::Text("my_host".to_owned()),
-            "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
-            "check_command".to_owned() => Value::Text("hostalive".to_owned())
+        Some(json!(hashmap![
+            "object_type".to_owned() => Value::String("host".to_owned()),
+            "object_name".to_owned() => Value::String("my_host".to_owned()),
+            "address".to_owned() => Value::String("127.0.0.1".to_owned()),
+            "check_command".to_owned() => Value::String("hostalive".to_owned())
         ])),
         receiver.recv().await
     );
@@ -117,14 +118,14 @@ async fn should_return_object_already_existing_error_in_case_of_422_status_code(
     let mut action = Action::new("", "");
     action
         .payload
-        .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::Text("create_host".to_owned()));
+        .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_host".to_owned()));
     action.payload.insert(
         DIRECTOR_ACTION_PAYLOAD_KEY.to_owned(),
-        Value::Map(hashmap![
-                        "object_type".to_owned() => Value::Text("host".to_owned()),
-                        "object_name".to_owned() => Value::Text("my_host".to_owned()),
-                        "address".to_owned() => Value::Text("127.0.0.1".to_owned()),
-                        "check_command".to_owned() => Value::Text("hostalive".to_owned())
+        json!(hashmap![
+                        "object_type".to_owned() => Value::String("host".to_owned()),
+                        "object_name".to_owned() => Value::String("my_host".to_owned()),
+                        "address".to_owned() => Value::String("127.0.0.1".to_owned()),
+                        "check_command".to_owned() => Value::String("hostalive".to_owned())
         ]),
     );
 

@@ -2,6 +2,7 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
+use tornado_common_api::{Value, WithEventData};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -10,13 +11,13 @@ use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilte
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
+use tornado_engine_matcher::model::{ProcessedEvent};
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageWithReply {
-    pub event: InternalEvent,
+    pub event: Value,
     pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -25,7 +26,7 @@ pub struct EventMessageWithReply {
 #[derive(Debug, Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageAndConfigWithReply {
-    pub event: InternalEvent,
+    pub event: Value,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -34,7 +35,7 @@ pub struct EventMessageAndConfigWithReply {
 #[derive(Message)]
 #[rtype(result = "Result<(), error::MatcherError>")]
 pub struct EventMessage {
-    pub event: InternalEvent,
+    pub event: Value,
 }
 
 #[derive(Message)]
@@ -72,7 +73,7 @@ impl MatcherActor {
     fn process_event_with_reply(
         &self,
         matcher: &Matcher,
-        event: InternalEvent,
+        event: Value,
         process_type: ProcessType,
         include_metadata: bool,
     ) -> ProcessedEvent {
@@ -92,14 +93,13 @@ impl MatcherActor {
     fn process(
         &self,
         matcher: &Matcher,
-        event: InternalEvent,
+        event: Value,
         include_metadata: bool,
     ) -> ProcessedEvent {
         let timer = SystemTime::now();
         let labels = [EVENT_TYPE_LABEL_KEY.string(
             event
-                .event_type
-                .get_text()
+                .event_type()
                 .map(|event_type| event_type.to_owned())
                 .unwrap_or_else(|| "".to_owned()),
         )];
@@ -132,7 +132,7 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
@@ -146,7 +146,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
@@ -173,7 +173,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         msg: EventMessageAndConfigWithReply,
         _: &mut Context<Self>,
     ) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
         let matcher = Matcher::build(&msg.matcher_config)?;
@@ -232,6 +232,7 @@ mod test {
     use crate::actor::dispatcher::ProcessedEventMessage;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
+    use serde_json::json;
     use tornado_common_api::{Event, Value};
     use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
     use tornado_engine_matcher::model::ProcessedNode;
@@ -304,8 +305,8 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: InternalEvent = Event::new("test").into();
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+        let mut event: Value = json!(Event::new("test"));
+        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
         let processed_event: ProcessedEvent = matcher_actor
@@ -354,14 +355,14 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event_tenant_alpha: InternalEvent = Event::new("test").into();
+        let mut event_tenant_alpha: Value = json!(Event::new("test"));
         event_tenant_alpha
-            .add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned()))
+            .add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned()))
             .unwrap();
 
-        let mut event_tenant_beta: InternalEvent = Event::new("test").into();
+        let mut event_tenant_beta: Value = json!(Event::new("test"));
         event_tenant_beta
-            .add_to_metadata("tenant_id".to_owned(), Value::Text("beta".to_owned()))
+            .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
             .unwrap();
 
         let config_filter = HashMap::from([(
@@ -441,8 +442,8 @@ mod test {
                 .await
                 .unwrap();
 
-        let mut event: InternalEvent = Event::new("test").into();
-        event.add_to_metadata("tenant_id".to_owned(), Value::Text("alpha".to_owned())).unwrap();
+        let mut event: Value = json!(Event::new("test"));
+        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
         let processed_event = matcher_actor

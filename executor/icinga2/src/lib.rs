@@ -38,14 +38,14 @@ impl Icinga2Executor {
     }
 
     fn get_payload<'a>(&self, payload: &'a Payload) -> Option<&'a Payload> {
-        payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::Value::get_map)
+        payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::ValueExt::get_map)
     }
 
     fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
             .get(ICINGA2_ACTION_NAME_KEY)
-            .and_then(tornado_common_api::Value::get_text)
+            .and_then(tornado_common_api::ValueExt::get_text)
         {
             Some(icinga2_action) => {
                 trace!("Icinga2Executor - perform Icinga2Action: \n[{:?}]", icinga2_action);
@@ -143,8 +143,8 @@ pub struct Icinga2Action<'a> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use maplit::*;
-    use tornado_common_api::Value;
+    use serde_json::json;
+    use tornado_common_api::{Map, Value};
 
     #[test]
     fn should_fail_if_action_missing() {
@@ -188,7 +188,7 @@ mod test {
         let mut action = Action::new("", "");
         action
             .payload
-            .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::Text("action-test".to_owned()));
+            .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::String("action-test".to_owned()));
 
         // Act
         let result = executor.parse_action(&action);
@@ -212,27 +212,28 @@ mod test {
         let mut action = Action::new("", "");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
-            Value::Text("process-check-result".to_owned()),
+            Value::String("process-check-result".to_owned()),
         );
         action.payload.insert(
             ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
-            Value::Map(hashmap![
-                "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                "type".to_owned() => Value::Text("Host".to_owned())
-            ]),
+            json!(HashMap::from([
+                ("filter".to_owned(), Value::String("filter_value".to_owned())),
+                ("type".to_owned(), Value::String("Host".to_owned()))
+            ])),
         );
 
         // Act
         let result = executor.parse_action(&action);
 
         // Assert
+        let mut expected_payload = Map::new();
+        expected_payload.insert("filter".to_owned(), Value::String("filter_value".to_owned()));
+        expected_payload.insert("type".to_owned(), Value::String("Host".to_owned()));
+
         assert_eq!(
             Ok(Icinga2Action {
                 name: "process-check-result",
-                payload: Some(&hashmap![
-                    "filter".to_owned() => Value::Text("filter_value".to_owned()),
-                    "type".to_owned() => Value::Text("Host".to_owned())
-                ])
+                payload: Some(&expected_payload)
             }),
             result
         );

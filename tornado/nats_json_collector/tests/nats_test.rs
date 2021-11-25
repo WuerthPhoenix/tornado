@@ -3,8 +3,8 @@
 //
 
 use actix::Addr;
-use maplit::*;
 use rand::Rng;
+use serde_json::json;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
 use tornado_common::actors::message::EventMessage;
@@ -12,7 +12,7 @@ use tornado_common::actors::nats_publisher::{
     NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
-use tornado_common_api::{Event, Value};
+use tornado_common_api::{Event, Value, Map};
 use tornado_nats_json_collector::config::{NatsJsonCollectorConfig, TornadoConnectionChannel};
 use tornado_nats_json_collector::*;
 
@@ -78,10 +78,9 @@ async fn should_subscribe_to_nats_topics() {
         assert_eq!("vmd", received.event_type);
         assert!(received.created_ms > 0);
 
-        let source: Value = source.into();
-        let payload = hashmap!(
-            "metrics".to_owned() => source,
-        );
+        let source: Value = json!(source);
+        let mut payload = Map::new();
+        payload.insert("metrics".to_owned(), source);
         assert_eq!(payload, received.payload);
     }
 
@@ -97,10 +96,9 @@ async fn should_subscribe_to_nats_topics() {
         assert_eq!("vmd", received.event_type);
         assert!(received.created_ms > 0);
 
-        let source: Value = source.into();
-        let payload = hashmap!(
-            "metrics".to_owned() => source,
-        );
+        let source: Value = json!(source);
+        let mut payload = Map::new();
+        payload.insert("metrics".to_owned(), source);
         assert_eq!(payload, received.payload);
     }
 
@@ -116,10 +114,9 @@ async fn should_subscribe_to_nats_topics() {
         assert_eq!("vsphere_simple", &received.event_type);
         assert!(received.created_ms > 0);
 
-        let source: Value = source.into();
-        let payload = hashmap!(
-            "data".to_owned() => source,
-        );
+        let source: Value = json!(source);
+        let mut payload = Map::new();
+        payload.insert("data".to_owned(), source);
         assert_eq!(payload, received.payload);
     }
 }

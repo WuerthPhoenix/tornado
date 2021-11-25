@@ -301,7 +301,7 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
-    use tornado_engine_api_dto::config::FilterDto;
+    use tornado_engine_api_dto::config::{FilterDto, ConstraintDto};
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
@@ -511,11 +511,27 @@ mod test {
             MatcherConfigDto::Filter {
                 name: "root".to_owned(),
                 filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                nodes: vec![MatcherConfigDto::Filter {
-                    name: "child_1".to_owned(),
-                    filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                    nodes: vec![]
-                },]
+                nodes: vec![
+                    MatcherConfigDto::Filter {
+                        name: "child_1".to_owned(),
+                        filter: FilterDto { description: "".to_string(), active: false, filter: None },
+                        nodes: vec![]
+                    },
+                    MatcherConfigDto::Ruleset {
+                        name: "child_2".to_owned(),
+                        rules: vec![RuleDto {
+                            name: "rule_1".to_string(),
+                            description: "Rule 1 description".to_string(),
+                            do_continue: false,
+                            active: true,
+                            constraint: ConstraintDto {
+                                where_operator: None,
+                                with: Default::default(),
+                            },
+                            actions: vec![],
+                        }],
+                    },
+                ]
             },
             dto
         );

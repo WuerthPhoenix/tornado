@@ -8,7 +8,6 @@ use criterion::*;
 criterion_group!(
     benches,
     full_match::bench,
-    interpolator::bench,
     no_match::bench,
     one_simple_rule::bench,
     spike::start_with::bench,

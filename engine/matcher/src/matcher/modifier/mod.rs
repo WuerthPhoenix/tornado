@@ -1,11 +1,11 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Modifier;
 use crate::error::MatcherError;
-use crate::model::InternalEvent;
+use crate::model::{InternalEvent};
 use crate::regex::RegexWrapper;
 use log::*;
+use serde_json::Value;
 use std::collections::HashMap;
-use tornado_common_api::Value;
 
 pub mod lowercase;
 pub mod map;
@@ -13,7 +13,7 @@ pub mod number;
 pub mod replace;
 pub mod trim;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 pub enum ValueModifier {
     Lowercase,
     Map { mapping: HashMap<String, String>, default_value: Option<String> },
@@ -81,7 +81,6 @@ impl ValueModifier {
         variable_name: &str,
         value: &mut Value,
         event: &InternalEvent,
-        extracted_vars: Option<&Value>,
     ) -> Result<(), MatcherError> {
         match self {
             ValueModifier::Lowercase => lowercase::lowercase(variable_name, value),
@@ -89,7 +88,7 @@ impl ValueModifier {
                 map::map(variable_name, value, mapping, default_value)
             }
             ValueModifier::ReplaceAll { find, replace } => {
-                replace::replace_all(variable_name, value, find, replace, event, extracted_vars)
+                replace::replace_all(variable_name, value, find, replace, event)
             }
             ValueModifier::ReplaceAllRegex { find_regex, replace } => {
                 replace::replace_all_with_regex(
@@ -98,7 +97,6 @@ impl ValueModifier {
                     find_regex,
                     replace,
                     event,
-                    extracted_vars,
                 )
             }
             ValueModifier::ToNumber => number::to_number(variable_name, value),
@@ -111,7 +109,8 @@ impl ValueModifier {
 mod test {
     use super::*;
     use maplit::*;
-    use tornado_common_api::{Event, Number};
+    use serde_json::json;
+    use tornado_common_api::Event;
 
     #[test]
     fn should_build_empty_value_modifiers() {
@@ -130,7 +129,6 @@ mod test {
     fn should_build_trim_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::Trim {}, Modifier::Trim {}];
-        let expected_value_modifiers = vec![ValueModifier::Trim, ValueModifier::Trim];
 
         // Act
         let value_modifiers =
@@ -138,14 +136,13 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+
     }
 
     #[test]
     fn should_build_lowercase_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::Lowercase {}, Modifier::Trim {}];
-        let expected_value_modifiers = vec![ValueModifier::Lowercase, ValueModifier::Trim];
 
         // Act
         let value_modifiers =
@@ -153,14 +150,13 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+
     }
 
     #[test]
     fn should_build_to_number_value_modifiers() {
         // Arrange
         let modifiers = vec![Modifier::ToNumber {}];
-        let expected_value_modifiers = vec![ValueModifier::ToNumber];
 
         // Act
         let value_modifiers =
@@ -168,7 +164,10 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ToNumber => {},
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -179,10 +178,6 @@ mod test {
             find: "some".to_owned(),
             replace: "some other".to_owned(),
         }];
-        let expected_value_modifiers = vec![ValueModifier::ReplaceAll {
-            find: "some".to_owned(),
-            replace: AccessorBuilder::new().build("", "some other").unwrap(),
-        }];
 
         // Act
         let value_modifiers =
@@ -190,7 +185,13 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ReplaceAll {find, replace: _ } => {
+                assert_eq!("some", find);
+
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -203,20 +204,21 @@ mod test {
             ),
         }];
 
-        let expected_value_modifiers = vec![ValueModifier::Map {
-            default_value: Some("Keith Richards".to_owned()),
-            mapping: hashmap!(
-                "0".to_owned() => "David Gilmour".to_owned(),
-            ),
-        }];
-
         // Act
         let value_modifiers =
             ValueModifier::build("", &AccessorBuilder::new(), &modifiers).unwrap();
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::Map {mapping, default_value } => {
+                assert_eq!(mapping, &hashmap!(
+                    "0".to_owned() => "David Gilmour".to_owned(),
+                ));
+                assert_eq!(default_value, &Some("Keith Richards".to_owned()));
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -227,10 +229,6 @@ mod test {
             find: "./*".to_owned(),
             replace: "some other".to_owned(),
         }];
-        let expected_value_modifiers = vec![ValueModifier::ReplaceAllRegex {
-            find_regex: RegexWrapper::new("./*").unwrap(),
-            replace: AccessorBuilder::new().build("", "some other").unwrap(),
-        }];
 
         // Act
         let value_modifiers =
@@ -238,7 +236,13 @@ mod test {
 
         // Assert
         assert_eq!(1, value_modifiers.len());
-        assert_eq!(expected_value_modifiers, value_modifiers);
+        match &value_modifiers[0] {
+            ValueModifier::ReplaceAllRegex {find_regex, replace: _ } => {
+                assert_eq!(&RegexWrapper::new("./*").unwrap(), find_regex);
+
+            },
+            _ => assert!(false)
+        }
     }
 
     #[test]
@@ -257,62 +261,59 @@ mod test {
     #[test]
     fn trim_modifier_should_trim_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::Trim;
 
         // Act & Assert
         {
-            let mut input = Value::Text("".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            let mut input = Value::String("".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("not to trim".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("not to trim".to_owned()), input);
+            let mut input = Value::String("not to trim".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("not to trim".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text(" to be trimmed  ".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("to be trimmed".to_owned()), input);
+            let mut input = Value::String(" to be trimmed  ".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("to be trimmed".to_owned()), input);
         }
     }
 
     #[test]
     fn lowercase_modifier_should_lowercase_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::Lowercase;
 
         // Act & Assert
         {
-            let mut input = Value::Text("".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("".to_owned()), input);
+            let mut input = Value::String("".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("ok".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("ok".to_owned()), input);
+            let mut input = Value::String("ok".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("ok".to_owned()), input);
         }
 
         {
-            let mut input = Value::Text("OK".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("ok".to_owned()), input);
+            let mut input = Value::String("OK".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("ok".to_owned()), input);
         }
     }
 
     #[test]
     fn replace_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::ReplaceAll {
             find: "Hello".to_owned(),
             replace: AccessorBuilder::new().build("", "World").unwrap(),
@@ -320,49 +321,47 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("Hello World".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("World World".to_owned()), input);
+            let mut input = Value::String("Hello World".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("World World".to_owned()), input);
         }
     }
 
     #[test]
     fn to_number_modifier_should_return_a_number() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::ToNumber;
 
         // Act & Assert
         {
-            let mut input = Value::Text("12".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::PosInt(12)), input);
+            let mut input = Value::String("12".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(json!(12), input);
         }
 
         {
-            let mut input = Value::Text("-3412".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::NegInt(-3412)), input);
+            let mut input = Value::String("-3412".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(json!(-3412), input);
         }
 
         {
-            let mut input = Value::Text("3.14".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Number(Number::Float(3.14)), input);
+            let mut input = Value::String("3.14".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(json!(3.14), input);
         }
 
         {
-            let mut input = Value::Text("something".to_owned());
-            assert!(value_modifier.apply("", &mut input, &event, variables).is_err());
+            let mut input = Value::String("something".to_owned());
+            assert!(value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).is_err());
         }
     }
 
     #[test]
     fn replace_with_regex_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::ReplaceAllRegex {
             find_regex: RegexWrapper::new("[0-9]+").unwrap(),
             replace: AccessorBuilder::new().build("", "number").unwrap(),
@@ -370,17 +369,16 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("Hello World 123 4!".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("Hello World number number!".to_owned()), input);
+            let mut input = Value::String("Hello World 123 4!".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("Hello World number number!".to_owned()), input);
         }
     }
 
     #[test]
     fn map_modifier_should_replace_a_string() {
         // Arrange
-        let event = InternalEvent::new(Event::new(""));
-        let variables = None;
+        let event = json!(Event::new(""));
         let value_modifier = ValueModifier::Map {
             default_value: Some("Keith Richards".to_owned()),
             mapping: hashmap!(
@@ -390,9 +388,9 @@ mod test {
 
         // Act & Assert
         {
-            let mut input = Value::Text("0".to_owned());
-            value_modifier.apply("", &mut input, &event, variables).unwrap();
-            assert_eq!(Value::Text("David Gilmour".to_owned()), input);
+            let mut input = Value::String("0".to_owned());
+            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            assert_eq!(Value::String("David Gilmour".to_owned()), input);
         }
     }
 }

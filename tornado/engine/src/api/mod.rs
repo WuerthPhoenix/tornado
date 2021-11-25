@@ -12,7 +12,7 @@ use tornado_engine_api::error::ApiError;
 use tornado_engine_api::event::api::{EventApiHandler, SendEventRequest};
 use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::MatcherConfig;
-use tornado_engine_matcher::model::{InternalEvent, ProcessedEvent};
+use tornado_engine_matcher::model::ProcessedEvent;
 
 pub mod runtime_config;
 
@@ -38,7 +38,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageWithReply {
-                event: InternalEvent::new_with_metadata(event.event, event.metadata),
+                event: event.to_event_with_metadata(),
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
@@ -67,7 +67,7 @@ impl EventApiHandler for MatcherApiHandler {
         let request = self
             .matcher
             .send(EventMessageAndConfigWithReply {
-                event: InternalEvent::new_with_metadata(event.event, event.metadata),
+                event: event.to_event_with_metadata(),
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,
@@ -107,7 +107,8 @@ mod test {
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tornado_common_api::{Event, Value};
+    use serde_json::json;
+    use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
@@ -142,7 +143,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
         };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
@@ -152,7 +153,7 @@ mod test {
 
         // Assert
         assert!(res.is_ok());
-        assert_eq!(Some("test-type"), res.unwrap().event.event_type.get_text());
+        assert_eq!(Some("test-type"), res.unwrap().event.event_type());
     }
 
     #[actix_rt::test]
@@ -230,7 +231,7 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type-custom"),
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
         };
 
         let config = MatcherConfig::Ruleset {
@@ -243,8 +244,8 @@ mod test {
                 do_continue: true,
                 constraint: Constraint {
                     where_operator: Some(Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("test-type-custom".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("test-type-custom".to_owned()),
                     }),
                     with: HashMap::new(),
                 },
@@ -255,7 +256,7 @@ mod test {
         let res = api.send_event_to_config(send_event_request, config).await.unwrap();
 
         // Assert
-        assert_eq!(Some("test-type-custom"), res.event.event_type.get_text());
+        assert_eq!(Some("test-type-custom"), res.event.event_type());
 
         match res.result {
             ProcessedNode::Ruleset { name, rules } => {
@@ -289,12 +290,12 @@ mod test {
 
         let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
-        let metadata = HashMap::from([("tenant_id".to_owned(), Value::Text("beta".to_owned()))]);
+        let metadata = HashMap::from([("tenant_id".to_owned(), Value::String("beta".to_owned()))]);
 
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
-            metadata: Value::Map(metadata),
+            metadata: json!(metadata),
         };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);

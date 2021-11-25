@@ -2,17 +2,14 @@ use std::mem::take;
 
 use crate::event::api::SendEventRequest;
 use serde_json::Error;
-use tornado_common_api::Action;
+use tornado_common_api::{Action};
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
-    EventDto, ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
+    ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
     ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto,
     SendEventRequestDto,
 };
-use tornado_engine_matcher::model::{
-    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
-    ProcessedRule, ProcessedRuleStatus, ProcessedRules,
-};
+use tornado_engine_matcher::model::{ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode, ProcessedRule, ProcessedRuleStatus, ProcessedRules};
 
 pub fn dto_into_send_event_request(
     mut dto: SendEventRequestDto,
@@ -32,14 +29,9 @@ pub fn processed_event_into_dto(
     processed_event: ProcessedEvent,
 ) -> Result<ProcessedEventDto, Error> {
     Ok(ProcessedEventDto {
-        event: internal_event_into_dto(processed_event.event)?,
+        event: serde_json::from_value(processed_event.event)?,
         result: processed_node_into_dto(processed_event.result)?,
     })
-}
-
-pub fn internal_event_into_dto(internal_event: InternalEvent) -> Result<EventDto, Error> {
-    let dto = serde_json::from_value(serde_json::to_value(internal_event)?)?;
-    Ok(dto)
 }
 
 pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, Error> {

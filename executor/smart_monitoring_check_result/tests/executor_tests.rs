@@ -2,6 +2,7 @@ use httpmock::Method::POST;
 use httpmock::{MockServer, Regex};
 use maplit::*;
 use rand::Rng;
+use serde_json::json;
 use tornado_common_api::{Action, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
@@ -47,14 +48,14 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
     let mut action = Action::new("", "");
     action.payload.insert(
         "check_result".to_owned(),
-        Value::Map(hashmap!(
-            "host".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "host".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
     action.payload.insert(
         "host".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
 
@@ -112,14 +113,14 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     let mut action = Action::new("", "");
     action.payload.insert(
         "check_result".to_owned(),
-        Value::Map(hashmap!(
-            "host".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "host".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
     action.payload.insert(
         "host".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
 
@@ -174,17 +175,17 @@ async fn should_return_call_process_check_result_twice_on_non_existing_object() 
     .unwrap();
 
     let mut action = Action::new("", "");
-    action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+    action.payload.insert("check_result".to_owned(), Value::Object(Default::default()));
     action.payload.insert(
         "host".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
     action.payload.insert(
         "service".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myservice".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myservice".to_owned()),
         )),
     );
 
@@ -246,17 +247,17 @@ async fn should_return_return_error_on_object_creation_failure() {
     .unwrap();
 
     let mut action = Action::new("", "");
-    action.payload.insert("check_result".to_owned(), Value::Map(hashmap!()));
+    action.payload.insert("check_result".to_owned(), Value::Object(Default::default()));
     action.payload.insert(
         "host".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myhost".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myhost".to_owned()),
         )),
     );
     action.payload.insert(
         "service".to_owned(),
-        Value::Map(hashmap!(
-            "object_name".to_owned() => Value::Text("myservice".to_owned()),
+        json!(hashmap!(
+            "object_name".to_owned() => Value::String("myservice".to_owned()),
         )),
     );
 

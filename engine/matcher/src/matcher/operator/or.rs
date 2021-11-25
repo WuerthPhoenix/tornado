@@ -2,7 +2,6 @@ use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "or";
 
@@ -32,8 +31,8 @@ impl Operator for Or {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        self.operators.iter().any(|op| op.evaluate(event, extracted_vars))
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        self.operators.iter().any(|op| op.evaluate(event))
     }
 }
 
@@ -41,7 +40,8 @@ impl Operator for Or {
 mod test {
 
     use super::*;
-    use tornado_common_api::Event;
+    use serde_json::json;
+    use tornado_common_api::{Event, Value};
 
     #[test]
     fn should_return_the_operator_name() {
@@ -54,8 +54,8 @@ mod test {
         let operator = Or::build(
             "",
             &vec![config::rule::Operator::Equals {
-                first: Value::Text("first_arg=".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("first_arg=".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             }],
             &OperatorBuilder::new(),
         )
@@ -76,8 +76,8 @@ mod test {
         let operator = Or::build(
             "",
             &vec![config::rule::Operator::Equals {
-                first: Value::Text("${NOT_EXISTING}".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("${NOT_EXISTING}".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             }],
             &OperatorBuilder::new(),
         );
@@ -89,13 +89,13 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("2".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("2".to_owned()),
                 },
                 config::rule::Operator::And {
                     operators: vec![config::rule::Operator::Equals {
-                        first: Value::Text("3".to_owned()),
-                        second: Value::Text("4".to_owned()),
+                        first: Value::String("3".to_owned()),
+                        second: Value::String("4".to_owned()),
                     }],
                 },
             ],
@@ -108,11 +108,6 @@ mod test {
         assert_eq!("equals", operator.operators[0].name());
         assert_eq!("and", operator.operators[1].name());
 
-        println!("{:?}", operator.operators[1]);
-
-        assert!(format!("{:?}", operator.operators[1]).contains(
-            r#"Equals { first_arg: Constant { value: Text("3") }, second_arg: Constant { value: Text("4") } }"#
-        ))
     }
 
     #[test]
@@ -121,7 +116,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -130,20 +125,20 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("1".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("1".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("2".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("2".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("3".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("3".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("4".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("4".to_owned()),
+                    second: Value::String("4".to_owned()),
                 },
             ],
             &OperatorBuilder::new(),
@@ -152,7 +147,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -161,20 +156,20 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("4".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("4".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("4".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("4".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("4".to_owned()),
+                    second: Value::String("4".to_owned()),
                 },
             ],
             &OperatorBuilder::new(),
@@ -183,7 +178,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -192,20 +187,20 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("4".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("4".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
             ],
             &OperatorBuilder::new(),
@@ -214,7 +209,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -223,26 +218,26 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equals {
-                            first: Value::Text("4".to_owned()),
-                            second: Value::Text("5".to_owned()),
+                            first: Value::String("4".to_owned()),
+                            second: Value::String("5".to_owned()),
                         },
                         config::rule::Operator::Equals {
-                            first: Value::Text("5".to_owned()),
-                            second: Value::Text("5".to_owned()),
+                            first: Value::String("5".to_owned()),
+                            second: Value::String("5".to_owned()),
                         },
                     ],
                 },
@@ -253,7 +248,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -262,26 +257,26 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("6".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("6".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("6".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("6".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("6".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("6".to_owned()),
                 },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equals {
-                            first: Value::Text("4".to_owned()),
-                            second: Value::Text("6".to_owned()),
+                            first: Value::String("4".to_owned()),
+                            second: Value::String("6".to_owned()),
                         },
                         config::rule::Operator::Equals {
-                            first: Value::Text("5".to_owned()),
-                            second: Value::Text("6".to_owned()),
+                            first: Value::String("5".to_owned()),
+                            second: Value::String("6".to_owned()),
                         },
                     ],
                 },
@@ -292,7 +287,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -301,26 +296,26 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equals {
-                            first: Value::Text("4".to_owned()),
-                            second: Value::Text("5".to_owned()),
+                            first: Value::String("4".to_owned()),
+                            second: Value::String("5".to_owned()),
                         },
                         config::rule::Operator::Equals {
-                            first: Value::Text("type".to_owned()),
-                            second: Value::Text("${event.type}".to_owned()),
+                            first: Value::String("type".to_owned()),
+                            second: Value::String("${event.type}".to_owned()),
                         },
                     ],
                 },
@@ -331,7 +326,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -340,26 +335,26 @@ mod test {
             "",
             &vec![
                 config::rule::Operator::Equals {
-                    first: Value::Text("1".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("1".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("2".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("2".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Equals {
-                    first: Value::Text("3".to_owned()),
-                    second: Value::Text("5".to_owned()),
+                    first: Value::String("3".to_owned()),
+                    second: Value::String("5".to_owned()),
                 },
                 config::rule::Operator::Or {
                     operators: vec![
                         config::rule::Operator::Equals {
-                            first: Value::Text("4".to_owned()),
-                            second: Value::Text("5".to_owned()),
+                            first: Value::String("4".to_owned()),
+                            second: Value::String("5".to_owned()),
                         },
                         config::rule::Operator::Equals {
-                            first: Value::Text("type1".to_owned()),
-                            second: Value::Text("${event.type}".to_owned()),
+                            first: Value::String("type1".to_owned()),
+                            second: Value::String("${event.type}".to_owned()),
                         },
                     ],
                 },
@@ -370,6 +365,6 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }

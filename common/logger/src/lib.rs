@@ -10,7 +10,8 @@ use tracing::subscriber::set_global_default;
 use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
-use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, EnvFilter, Registry};
+use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, Registry};
+use tracing_subscriber::filter::Targets;
 
 pub mod elastic_apm;
 
@@ -68,7 +69,7 @@ pub struct LogWorkerGuard {
     stdout_enabled: Arc<AtomicBool>,
     apm_enabled: Arc<AtomicBool>,
 
-    reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
+    reload_handle: tracing_subscriber::reload::Handle<Targets, Registry>,
 }
 
 impl LogWorkerGuard {
@@ -78,7 +79,7 @@ impl LogWorkerGuard {
         config: Arc<LoggerConfig>,
         stdout_enabled: Arc<AtomicBool>,
         apm_enabled: Arc<AtomicBool>,
-        reload_handle: tracing_subscriber::reload::Handle<EnvFilter, Registry>,
+        reload_handle: tracing_subscriber::reload::Handle<Targets, Registry>,
     ) -> Self {
         let logger_level = ArcSwap::from(Arc::new(config.level.clone()));
         Self {
@@ -100,7 +101,7 @@ impl LogWorkerGuard {
     pub fn set_level<S: Into<String>>(&self, env_filter_str: S) -> Result<(), LoggerError> {
         let filter = env_filter_str.into();
         let env_filter =
-            EnvFilter::from_str(&filter).map_err(|err| LoggerError::LoggerConfigurationError {
+            Targets::from_str(&filter).map_err(|err| LoggerError::LoggerConfigurationError {
                 message: format!("Cannot parse the logger level: [{}]. err: {:?}", filter, err),
             })?;
         self.reload_handle.reload(env_filter).map_err(|err| {
@@ -140,7 +141,7 @@ impl LogWorkerGuard {
 pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
     let config_logger_level = Arc::new(logger_config.level.to_owned());
     let logger_level = ArcSwap::new(config_logger_level);
-    let env_filter = EnvFilter::from_str(&logger_config.level).map_err(|err| {
+    let env_filter = Targets::from_str(&logger_config.level).map_err(|err| {
         LoggerError::LoggerConfigurationError {
             message: format!(
                 "Cannot parse the logger level: [{}]. err: {:?}",
@@ -158,7 +159,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-        (Some(Layer::new().with_ansi(false).with_writer(non_blocking)), Some(guard))
+        (Some(Layer::new().with_writer(non_blocking)), Some(guard))
     } else {
         (None, None)
     };
@@ -172,7 +173,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
 
         (
             FilteredLayer::new(
-                Layer::new().with_ansi(false).with_writer(non_blocking),
+                Layer::new().with_writer(non_blocking),
                 move |_ctx| stdout_enabled.load(Ordering::Relaxed),
             ),
             Some(stdout_guard),
@@ -300,7 +301,7 @@ mod test {
             file_output_path: None,
             tracing_elastic_apm: ApmTracingConfig::default(),
         };
-        let env_filter = EnvFilter::from_str(&config.level).unwrap();
+        let env_filter = Targets::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let guard = LogWorkerGuard {
@@ -330,7 +331,7 @@ mod test {
             file_output_path: None,
             tracing_elastic_apm: ApmTracingConfig::default(),
         };
-        let env_filter = EnvFilter::from_str(&config.level).unwrap();
+        let env_filter = Targets::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let guard = LogWorkerGuard {
@@ -360,7 +361,7 @@ mod test {
             file_output_path: None,
             tracing_elastic_apm: ApmTracingConfig::default(),
         };
-        let env_filter = EnvFilter::from_str(&config.level).unwrap();
+        let env_filter = Targets::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let (reloadable_env_filter, reloadable_env_filter_handle) =
@@ -397,7 +398,7 @@ mod test {
             file_output_path: None,
             tracing_elastic_apm: ApmTracingConfig::default(),
         };
-        let env_filter = EnvFilter::from_str(&config.level).unwrap();
+        let env_filter = Targets::from_str(&config.level).unwrap();
         let logger_level = ArcSwap::new(Arc::new(config.level.clone()));
 
         let (reloadable_env_filter, reloadable_env_filter_handle) =

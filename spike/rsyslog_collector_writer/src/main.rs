@@ -34,7 +34,7 @@ fn main() {
     for i in 0..conf.io.repeat_send {
         for event in &events {
             let mut event_clone = event.clone();
-            event_clone.insert("count".to_owned(), Value::Text(i.to_string()));
+            event_clone.insert("count".to_owned(), Value::String(i.to_string()));
             write(&mut handle, &event_clone);
             thread::sleep(sleep_millis);
         }

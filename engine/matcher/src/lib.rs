@@ -4,7 +4,6 @@ pub mod accessor;
 pub mod config;
 pub mod dispatcher;
 pub mod error;
-pub mod interpolator;
 pub mod matcher;
 pub mod model;
 pub mod regex;

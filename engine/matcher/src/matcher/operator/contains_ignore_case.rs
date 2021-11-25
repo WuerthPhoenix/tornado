@@ -3,8 +3,9 @@ use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use log::*;
+use serde_json::Value;
+use tornado_common_api::ValueExt;
 use std::borrow::Borrow;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "containsIgnoreCase";
 
@@ -27,15 +28,15 @@ impl Operator for ContainsIgnoreCase {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        match self.second.get(event, extracted_vars) {
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        match self.second.get(event) {
             Some(second_arg_value) => {
                 match second_arg_value.get_text().map(|val| val.to_lowercase()) {
                     Some(second_arg_lowercased) => {
-                        let option_first = self.first.get(event, extracted_vars);
+                        let option_first = self.first.get(event);
                         match option_first {
                             Some(first_arg_value) => match first_arg_value.borrow() {
-                                Value::Text(first_arg_string) => (first_arg_string.to_lowercase())
+                                Value::String(first_arg_string) => (first_arg_string.to_lowercase())
                                     .contains(&second_arg_lowercased),
                                 Value::Array(first_arg_array) => {
                                     first_arg_array.iter().any(|arr_el| {
@@ -47,7 +48,7 @@ impl Operator for ContainsIgnoreCase {
                                             .unwrap_or(false)
                                     })
                                 }
-                                Value::Map(map) => map
+                                Value::Object(map) => map
                                     .iter()
                                     .any(|entry| entry.0.to_lowercase().eq(&second_arg_lowercased)),
                                 Value::Null | Value::Bool(_) | Value::Number(_) => false,
@@ -72,8 +73,8 @@ mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
     use maplit::*;
-    use std::collections::HashMap;
-    use tornado_common_api::*;
+    use serde_json::json;
+    use tornado_common_api::{Event, Map};
 
     #[test]
     fn should_return_the_operator_name() {
@@ -92,10 +93,10 @@ mod test {
         )
         .unwrap();
 
-        let event = InternalEvent::new(Event::new("test_type"));
+        let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&event, None).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&event, None).unwrap().as_ref());
+        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
     }
 
     #[test]
@@ -108,7 +109,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -121,7 +122,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -134,7 +135,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -147,7 +148,7 @@ mod test {
 
         let event = Event::new("tEST_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -160,7 +161,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -171,12 +172,12 @@ mod test {
         )
         .unwrap();
 
-        let mut payload = HashMap::new();
-        payload.insert("type".to_owned(), Value::Text("tyPe".to_owned()));
+        let mut payload = Map::new();
+        payload.insert("type".to_owned(), Value::String("tyPe".to_owned()));
 
         let event = Event::new_with_payload("TEst_Type", payload);
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -189,7 +190,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -203,7 +204,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -217,7 +218,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -229,9 +230,9 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("TEst_type");
-        event.payload.insert("value".to_owned(), Value::Number(Number::Float(999.99)));
+        event.payload.insert("value".to_owned(), json!(999.99));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -243,9 +244,9 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("TEst_type");
-        event.payload.insert("value".to_owned(), Value::Number(Number::Float(999.99)));
+        event.payload.insert("value".to_owned(), json!(999.99));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -255,20 +256,20 @@ mod test {
                 .build_from_value(
                     "",
                     &Value::Array(vec![
-                        Value::Text("two or one".to_owned()),
-                        Value::Number(Number::PosInt(999)),
+                        Value::String("two or one".to_owned()),
+                        json!(999),
                     ]),
                 )
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Number(Number::PosInt(999)))
+                .build_from_value("", &json!(999))
                 .unwrap(),
         )
         .unwrap();
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -277,7 +278,7 @@ mod test {
             AccessorBuilder::new()
                 .build_from_value(
                     "",
-                    &Value::Array(vec![Value::Text("two or one".to_owned()), Value::Bool(true)]),
+                    &Value::Array(vec![Value::String("two or one".to_owned()), Value::Bool(true)]),
                 )
                 .unwrap(),
             AccessorBuilder::new().build_from_value("", &Value::Bool(true)).unwrap(),
@@ -286,7 +287,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -296,30 +297,30 @@ mod test {
                 .build_from_value(
                     "",
                     &Value::Array(vec![
-                        Value::Text("two or ONE".to_owned()),
-                        Value::Number(Number::PosInt(999)),
+                        Value::String("two or ONE".to_owned()),
+                        json!(999),
                     ]),
                 )
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("tWO or one".to_owned()))
+                .build_from_value("", &Value::String("tWO or one".to_owned()))
                 .unwrap(),
         )
         .unwrap();
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_true_if_array_from_payload_contains_a_value() {
         let operator = ContainsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.array}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.array}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -328,23 +329,23 @@ mod test {
         event.payload.insert(
             "array".to_owned(),
             Value::Array(vec![
-                Value::Text("tWo or oNE".to_owned()),
-                Value::Number(Number::PosInt(999)),
+                Value::String("tWo or oNE".to_owned()),
+                json!(999),
             ]),
         );
-        event.payload.insert("value".to_owned(), Value::Text("TWo or one".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("TWo or one".to_owned()));
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_false_if_array_does_not_contain_a_value() {
         let operator = ContainsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.array}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.array}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -353,23 +354,23 @@ mod test {
         event.payload.insert(
             "array".to_owned(),
             Value::Array(vec![
-                Value::Text("two or one".to_owned()),
-                Value::Number(Number::PosInt(999)),
+                Value::String("two or one".to_owned()),
+                json!(999),
             ]),
         );
-        event.payload.insert("value".to_owned(), Value::Text("two or one or three".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("two or one or three".to_owned()));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_true_if_map_contains_a_key_with_different_case() {
         let operator = ContainsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.map}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.map}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -377,24 +378,24 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Map(hashmap!(
+            json!(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_TWO".to_owned() => Value::Null,
             )),
         );
-        event.payload.insert("value".to_owned(), Value::Text("KEY_two".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("KEY_two".to_owned()));
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_false_if_map_does_not_contain_a_key() {
         let operator = ContainsIgnoreCase::build(
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.map}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.map}".to_owned()))
                 .unwrap(),
             AccessorBuilder::new()
-                .build_from_value("", &Value::Text("${event.payload.value}".to_owned()))
+                .build_from_value("", &Value::String("${event.payload.value}".to_owned()))
                 .unwrap(),
         )
         .unwrap();
@@ -402,13 +403,13 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "map".to_owned(),
-            Value::Map(hashmap!(
+            json!(hashmap!(
                 "key_one".to_owned() => Value::Null,
                 "key_two".to_owned() => Value::Null,
             )),
         );
-        event.payload.insert("value".to_owned(), Value::Text("key_three".to_owned()));
+        event.payload.insert("value".to_owned(), Value::String("key_three".to_owned()));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }

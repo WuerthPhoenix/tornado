@@ -1,4 +1,6 @@
 use criterion::Criterion;
+use serde_json::Map;
+use serde_json::json;
 use std::collections::HashMap;
 use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::rule::*;
@@ -11,8 +13,8 @@ pub fn bench(c: &mut Criterion) {
         let mut rule = new_rule(
             "rule_name",
             Operator::Equals {
-                first: Value::Text("${event.type}".to_owned()),
-                second: Value::Text("email".to_owned()),
+                first: Value::String("${event.type}".to_owned()),
+                second: Value::String("email".to_owned()),
             },
         );
 
@@ -31,11 +33,11 @@ pub fn bench(c: &mut Criterion) {
         );
 
         // Add action
-        let mut action = Action { id: "log".to_owned(), payload: HashMap::new() };
+        let mut action = Action { id: "log".to_owned(), payload: Map::new() };
 
         action
             .payload
-            .insert("var".to_owned(), Value::Text("${_variables.extracted_var}".to_owned()));
+            .insert("var".to_owned(), Value::String("${_variables.extracted_var}".to_owned()));
         rule.actions.push(action);
         rule
     };
@@ -48,12 +50,12 @@ pub fn bench(c: &mut Criterion) {
     // Create event
     let event = {
         let mut event = Event::new("email".to_owned());
-        event.payload.insert("body".to_owned(), Value::Text("45 degrees".to_owned()));
+        event.payload.insert("body".to_owned(), Value::String("45 degrees".to_owned()));
         event
     };
 
     // println!("result is : {:?}", matcher.process(event.clone()));
-
+    let event = json!(event);
     c.bench_function("One simple rule", move |b| b.iter(|| matcher.process(event.clone(), false)));
 }
 
