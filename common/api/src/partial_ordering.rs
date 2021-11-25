@@ -14,7 +14,7 @@ pub trait PartialOrdering<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
     #[inline]
     fn le(&self, other: &Rhs) -> bool {
-        !matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
+        matches!(self.partial_cmp(other), Some(Ordering::Less | Ordering::Equal))
     }
 
     #[inline]
