@@ -57,7 +57,7 @@ pub enum ExtractorDto {
     Value(ExtractorValueDto),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TypeScriptify)]
 #[serde(deny_unknown_fields)]
 pub struct ExtractorValueDto {
     pub value: String,
