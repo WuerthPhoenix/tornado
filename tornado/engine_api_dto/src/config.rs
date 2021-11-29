@@ -54,13 +54,13 @@ pub struct ConstraintDto {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub enum ExtractorDto {
     Regex(ExtractorRegexDto),
-    Text(ExtractorTextDto),
+    Value(ExtractorValueDto),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct ExtractorTextDto {
-    pub text: String,
+pub struct ExtractorValueDto {
+    pub value: String,
     #[serde(default)]
     pub modifiers_post: Vec<ModifierDto>,
 }

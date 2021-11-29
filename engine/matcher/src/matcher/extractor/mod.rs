@@ -181,11 +181,11 @@ impl ValueExtractor {
                     modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
                 }))
             },
-            Extractor::Text(extractor) => {
+            Extractor::Value(extractor) => {
                 Ok(Self::Text(ValueExtractorText{
                     key: key.to_owned(),
-                    text: extractor.text.to_owned(),
-                    accessor: accessor_builder.build(rule_name, &extractor.text)?,
+                    text: extractor.value.to_owned(),
+                    accessor: accessor_builder.build(rule_name, &extractor.value)?,
                     modifiers_post: ValueModifier::build(rule_name, accessor_builder, &extractor.modifiers_post)?,
                 }))
             }
@@ -550,7 +550,7 @@ fn has_named_groups(regex: &RustRegex) -> bool {
 mod test {
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use crate::config::rule::{ExtractorRegexType, ExtractorText, Modifier};
+    use crate::config::rule::{ExtractorRegexType, ExtractorValue, Modifier};
     use maplit::*;
     use serde_json::json;
     use std::collections::BTreeMap;
@@ -1660,8 +1660,8 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor::Text(ExtractorText {
-                text: "${event.type}".to_owned(),
+            &Extractor::Value(ExtractorValue {
+                value: "${event.type}".to_owned(),
                 modifiers_post: vec![],
             }),
             &AccessorBuilder::new(),
@@ -1684,8 +1684,8 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor::Text(ExtractorText {
-                text: "The type is: ${event.type} and a value is ${event.payload.some}".to_owned(),
+            &Extractor::Value(ExtractorValue {
+                value: "The type is: ${event.type} and a value is ${event.payload.some}".to_owned(),
                 modifiers_post: vec![],
             }),
             &AccessorBuilder::new(),
@@ -1711,8 +1711,8 @@ mod test {
         let extractor = ValueExtractor::build(
             "rule_name",
             "key",
-            &Extractor::Text(ExtractorText {
-                text: "${event.type}".to_owned(),
+            &Extractor::Value(ExtractorValue {
+                value: "${event.type}".to_owned(),
                 modifiers_post: vec![Modifier::Lowercase {}],
             }),
             &AccessorBuilder::new(),
@@ -1736,16 +1736,16 @@ mod test {
 
         from_config.insert(
             String::from("a_temperature"),
-            Extractor::Text(ExtractorText {
-                text: "${event.payload.temperature}".to_owned(),
+            Extractor::Value(ExtractorValue {
+                value: "${event.payload.temperature}".to_owned(),
                 modifiers_post: vec![],
             }),
         );
 
         from_config.insert(
             String::from("decorated"),
-            Extractor::Text(ExtractorText {
-                text: "The temperature is: ${_variables.rule.a_temperature}".to_owned(),
+            Extractor::Value(ExtractorValue {
+                value: "The temperature is: ${_variables.rule.a_temperature}".to_owned(),
                 modifiers_post: vec![],
             }),
         );

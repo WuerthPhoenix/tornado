@@ -34,7 +34,7 @@ pub struct Constraint {
 #[serde(untagged)]
 pub enum Extractor {
     Regex(ExtractorRegex),
-    Text(ExtractorText),
+    Value(ExtractorValue),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -48,8 +48,8 @@ pub struct ExtractorRegex {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct ExtractorText {
-    pub text: String,
+pub struct ExtractorValue {
+    pub value: String,
     #[serde(default)]
     pub modifiers_post: Vec<Modifier>,
 }
@@ -221,8 +221,8 @@ mod test {
 
         let extractor4 = &rule.constraint.with["variable_text"];
         match extractor4 {
-            Extractor::Text(extractor4) => {
-                assert_eq!("Here you can interpolate ${event.payload.something}", extractor4.text);
+            Extractor::Value(extractor4) => {
+                assert_eq!("Here you can interpolate ${event.payload.something}", extractor4.value);
             },
             _ => assert!(false),
         }

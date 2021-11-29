@@ -1,7 +1,7 @@
 use serde_json::Error;
-use tornado_engine_api_dto::config::{ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, ExtractorRegexTypeDto, ExtractorTextDto, FilterDto, MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto, RuleDto};
+use tornado_engine_api_dto::config::{ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, ExtractorRegexTypeDto, ExtractorValueDto, FilterDto, MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto, RuleDto};
 use tornado_engine_matcher::config::filter::Filter;
-use tornado_engine_matcher::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, ExtractorText, Modifier, Operator, Rule};
+use tornado_engine_matcher::config::rule::{Action, Constraint, Extractor, ExtractorRegex, ExtractorRegexType, ExtractorValue, Modifier, Operator, Rule};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
 
 pub fn matcher_config_draft_into_dto(
@@ -69,9 +69,9 @@ fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
                 modifiers_post: modifiers_post_into_dto(extractor.modifiers_post),
             })
         },
-        Extractor::Text(extractor) => {
-            ExtractorDto::Text(ExtractorTextDto { 
-                text: extractor.text,
+        Extractor::Value(extractor) => {
+            ExtractorDto::Value(ExtractorValueDto { 
+                value: extractor.value,
                 modifiers_post: modifiers_post_into_dto(extractor.modifiers_post),
             })
         }
@@ -237,9 +237,9 @@ fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
                 modifiers_post: dto_into_modifiers_post(extractor.modifiers_post),
             })
         },
-        ExtractorDto::Text(extractor) => {
-            Extractor::Text(ExtractorText  {
-                text: extractor.text,
+        ExtractorDto::Value(extractor) => {
+            Extractor::Value(ExtractorValue  {
+                value: extractor.value,
                 modifiers_post: dto_into_modifiers_post(extractor.modifiers_post),
             })
         }

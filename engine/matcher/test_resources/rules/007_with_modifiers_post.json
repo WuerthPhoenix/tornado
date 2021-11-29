@@ -27,7 +27,7 @@
         ]
       },
       "variable_text": {
-        "text": "Here you can interpolate ${event.payload.something}",
+        "value": "Here you can interpolate ${event.payload.something}",
         "modifiers_post": [
           {
             "type": "Lowercase"
