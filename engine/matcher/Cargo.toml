@@ -25,6 +25,8 @@ tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
 tracing = "0.1"
 
+etcd-client = "0.8.1"
+
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 criterion = "0.3"
