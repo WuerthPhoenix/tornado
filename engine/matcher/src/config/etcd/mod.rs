@@ -7,8 +7,8 @@ use log::*;
 pub mod editor;
 
 pub const ROOT_NODE_NAME: &str = "root";
-pub const ECTD_CONFIG_KEY: &str = "/tornado/config";
-pub const ECTD_DRAF_KEY: &str = "/tornado/draft";
+pub const ETCD_CONFIG_KEY: &str = "/tornado/config";
+pub const ETCD_DRAF_KEY: &str = "/tornado/draft";
 
 pub struct EtcdMatcherConfigManager {
     client: Client,
@@ -31,7 +31,7 @@ impl MatcherConfigReader for EtcdMatcherConfigManager {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         debug!("Fetch configuration from Etcd");
         let mut client = self.client.kv_client();
-        let result = client.get(ECTD_CONFIG_KEY, None).await
+        let result = client.get(ETCD_CONFIG_KEY, None).await
         .map_err(|err| MatcherError::ConfigurationError {
             message: format!("Cannot GET value from ETCD. Err: {:?}", err)
         })?;
