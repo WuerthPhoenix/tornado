@@ -15,7 +15,7 @@ pub struct ConsulMatcherConfigManager {
 
 impl ConsulMatcherConfigManager {
     pub async fn new(base_path: String) -> Result<ConsulMatcherConfigManager, MatcherError> {
-        let config = Config { address: "172.17.0.3:8500".to_string(), token: None };
+        let config = Config { address: "http://localhost:8500".to_string(), token: None };
         let client = Consul::new(config);
         Ok(Self { base_path, client })
     }

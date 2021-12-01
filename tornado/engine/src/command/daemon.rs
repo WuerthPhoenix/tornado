@@ -38,6 +38,7 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
+use tornado_engine_matcher::config::consul::ConsulMatcherConfigManager;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -322,10 +323,11 @@ pub async fn daemon(
         Dispatcher::build(event_bus.clone()).expect("Cannot build the dispatcher"),
     );
 
+    let matcher_config_manager = Arc::new(ConsulMatcherConfigManager::new("".to_owned()).await?);
     // Start matcher actor
     let matcher_addr = MatcherActor::start(
         dispatcher_addr.clone().recipient(),
-        configs.matcher_config.clone(),
+        matcher_config_manager.clone(),
         message_queue_size,
         tornado_meter.clone(),
     )
@@ -443,7 +445,7 @@ pub async fn daemon(
     )));
     let api_handler = MatcherApiHandler::new(matcher_addr, tornado_meter.clone());
     let daemon_config = daemon_config.clone();
-    let matcher_config = configs.matcher_config.clone();
+    let matcher_config = matcher_config_manager.clone();
 
     // Start API and monitoring endpoint
     let service_logger_guard = logger_guard.clone();
