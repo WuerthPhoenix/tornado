@@ -4,6 +4,7 @@ use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+pub mod consul;
 pub mod filter;
 pub mod fs;
 pub mod operation;
