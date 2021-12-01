@@ -31,6 +31,7 @@ etcd-client = "0.8.1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 criterion = "0.3"
 maplit = "1.0"
+rand = "0.8"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }

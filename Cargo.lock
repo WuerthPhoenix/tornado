@@ -3860,6 +3860,7 @@ dependencies = [
  "lazy_static",
  "log",
  "maplit",
+ "rand 0.8.4",
  "regex",
  "serde",
  "serde_json",
