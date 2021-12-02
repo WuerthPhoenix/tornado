@@ -41,7 +41,7 @@ pub struct Data {
 async fn should_keep_span_levels_with_spawn() -> Result<(), std::io::Error> {
     let config = LoggerConfig {
         stdout_output: true,
-        level: "debug,logger_env_filter_setup_it::inner=info".to_owned(),
+        level: "debug,logger_span_with_spawn_it::inner=info".to_owned(),
         file_output_path: None,
         tracing_elastic_apm: ApmTracingConfig::default(),
     };
