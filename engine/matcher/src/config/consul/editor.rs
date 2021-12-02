@@ -30,7 +30,6 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
         Ok(response_keys.into_iter().map(|response| response.key).collect())
     }
 
-    // TODO: maybe draft_id should only be the consul key suffix instead of full key
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &format!("{}/{}", self.draft_path(), draft_id),
