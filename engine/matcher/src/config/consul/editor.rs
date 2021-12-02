@@ -38,7 +38,7 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
     // TODO: maybe draft_id should only be the consul key suffix instead of full key
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         let read_key_request = ReadKeyRequest {
-            key: &self.draft_path(),
+            key: &format!("{}/{}", self.draft_path(), draft_id),
             namespace: "",
             datacenter: "",
             recurse: false,
@@ -64,11 +64,7 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
                     message: format!("No draft found for id {}.", draft_id),
                 }),
                 Some(value) => {
-                    let value =
-                        base64::decode(value).map_err(|err| MatcherError::InternalSystemError {
-                            message: format!("Could not base64 decode draft. Err: {}", err),
-                        })?;
-                    serde_json::from_slice(&value).map_err(|err| {
+                    serde_json::from_str(&value).map_err(|err| {
                         MatcherError::InternalSystemError {
                             message: format!("Could not deserialize draft. Err: {}", err),
                         }
@@ -80,7 +76,7 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
 
     async fn create_draft(&self, user: String) -> Result<String, MatcherError> {
         let current_ts_ms = current_ts_ms();
-        let draft_id = format!("{}/{}", &self.draft_path(), DRAFT_ID);
+        let draft_id = DRAFT_ID;
 
         let current_config = self.get_config().await?;
         let current_config = match &current_config {
@@ -108,12 +104,12 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
                 user,
                 updated_ts_ms: current_ts_ms,
                 created_ts_ms: current_ts_ms,
-                draft_id: draft_id.clone(),
+                draft_id: draft_id.to_owned(),
             },
         };
 
-        self.put_kv_pair(&draft_id, &draft).await?;
-        Ok(draft_id)
+        self.put_kv_pair(&format!("{}/{}", &self.draft_path(), DRAFT_ID), &draft).await?;
+        Ok(draft_id.to_owned())
     }
 
     async fn update_draft(
@@ -126,17 +122,16 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
 
         MatcherConfigValidator::new().validate(config)?;
 
-        let mut current_draft = self.get_draft(DRAFT_ID).await?;
+        let mut current_draft = self.get_draft(draft_id).await?;
         current_draft.data.user = user;
         current_draft.data.updated_ts_ms = current_ts_ms();
         current_draft.config = config.clone();
 
-        self.put_kv_pair(draft_id, &current_draft).await
+        self.put_kv_pair(&format!("{}/{}", self.draft_path(), draft_id), &current_draft).await
     }
 
     async fn deploy_draft(&self, draft_id: &str) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy draft with id {}", draft_id);
-        let draft_id = DRAFT_ID;
         let draft = self.get_draft(draft_id).await?;
         self.deploy_config(&draft.config).await
     }
@@ -144,7 +139,7 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
     async fn delete_draft(&self, draft_id: &str) -> Result<(), MatcherError> {
         info!("Delete draft with id {}", draft_id);
         let delete_draft_request = DeleteKeyRequest {
-            key: draft_id,
+            key: &format!("{}/{}", self.draft_path(), draft_id),
             datacenter: "",
             recurse: false,
             check_and_set: 0,
@@ -168,10 +163,10 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
     async fn draft_take_over(&self, draft_id: &str, user: String) -> Result<(), MatcherError> {
         info!("User [{}] asks to take over draft with id {}", user, draft_id);
 
-        let mut current_draft = self.get_draft(DRAFT_ID).await?;
+        let mut current_draft = self.get_draft(draft_id).await?;
         current_draft.data.user = user;
 
-        self.put_kv_pair(draft_id, &current_draft).await
+        self.put_kv_pair(&format!("{}/{}", self.draft_path(), draft_id), &current_draft).await
     }
 
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {

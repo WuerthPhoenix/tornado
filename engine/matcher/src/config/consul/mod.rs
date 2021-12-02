@@ -1,12 +1,12 @@
 use crate::config::{MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use rs_consul::{Config, ConsistencyMode, Consul, ReadKeyRequest};
-
+use log::*;
 pub mod editor;
 
 pub const ROOT_NODE_NAME: &str = "root";
-const CONSUL_CONFIG_KEY: &str = "/tornado/config";
-const CONSUL_DRAFT_KEY: &str = "/tornado/draft";
+const CONSUL_CONFIG_KEY: &str = "tornado/config";
+const CONSUL_DRAFT_KEY: &str = "tornado/draft";
 
 pub struct ConsulMatcherConfigManager {
     client: Consul,
@@ -44,7 +44,7 @@ impl MatcherConfigReader for ConsulMatcherConfigManager {
         };
         let response_keys = self.client.read_key(read_key_request).await.map_err(|err| {
             MatcherError::InternalSystemError {
-                message: format!("Error while fetching the config. Err: {}", err),
+                message: format!("Error while fetching the config. Consul key: {}. Err: {}", &self.config_path(), err),
             }
         })?;
         match response_keys.into_iter().next() {
@@ -56,11 +56,7 @@ impl MatcherConfigReader for ConsulMatcherConfigManager {
                     message: format!("No value found for key {}.", &self.config_path()),
                 }),
                 Some(value) => {
-                    let value =
-                        base64::decode(value).map_err(|err| MatcherError::InternalSystemError {
-                            message: format!("Could not base64 decode config. Err: {}", err),
-                        })?;
-                    serde_json::from_slice(&value).map_err(|err| {
+                    serde_json::from_str(&value).map_err(|err| {
                         MatcherError::InternalSystemError {
                             message: format!("Could not deserialize config. Err: {}", err),
                         }
