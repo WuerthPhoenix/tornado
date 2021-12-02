@@ -31,6 +31,7 @@ impl ConsulMatcherConfigManager {
 
 #[async_trait::async_trait(?Send)]
 impl MatcherConfigReader for ConsulMatcherConfigManager {
+    // TODO: when there is no config in consul, it replies with a 404 error, so this returns Err
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &self.config_path(),

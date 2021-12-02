@@ -1,4 +1,4 @@
-use crate::config::consul::ConsulMatcherConfigManager;
+use crate::config::consul::{ConsulMatcherConfigManager, CONSUL_DRAFT_KEY};
 use crate::config::filter::Filter;
 use crate::config::fs::ROOT_NODE_NAME;
 use crate::config::{
@@ -16,6 +16,7 @@ const DRAFT_ID: &str = "draft_001";
 
 #[async_trait::async_trait(?Send)]
 impl MatcherConfigEditor for ConsulMatcherConfigManager {
+    // TODO: when there are no drafts consul replies with a 404 error, so this returns Err instead of an empty Vec
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &self.draft_path(),
@@ -27,7 +28,13 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
                 message: format!("Error while fetching the drafts. Err: {}", err),
             }
         })?;
-        Ok(response_keys.into_iter().map(|response| response.key).collect())
+        response_keys.into_iter().map(|response| {
+            let suffix = response.key.strip_prefix(CONSUL_DRAFT_KEY);
+            match suffix {
+                None => Err(MatcherError::InternalSystemError { message: format!("Could not strip prefix {} from key {}", CONSUL_DRAFT_KEY, response.key)}),
+                Some(suffix) => Ok(suffix.to_owned())
+            }
+        }).collect()
     }
 
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
