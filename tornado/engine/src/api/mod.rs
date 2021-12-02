@@ -105,7 +105,7 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::{HashMap, BTreeMap};
     use std::sync::Arc;
     use serde_json::json;
     use tornado_common_api::{Event, Value, WithEventData};

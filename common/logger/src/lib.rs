@@ -1,21 +1,17 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
-use crate::filter::FilteredLayer;
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
+use tracing_subscriber::util::SubscriberInitExt;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
-use tracing::subscriber::set_global_default;
-use tracing::Subscriber;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
-use tracing_subscriber::{fmt::Layer, layer::SubscriberExt, Registry};
-use tracing_subscriber::filter::Targets;
+use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
+use tracing_subscriber::filter::{filter_fn, Targets};
 
 pub mod elastic_apm;
-
-mod filter;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -159,7 +155,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
 
         let (non_blocking, guard) = tracing_appender::non_blocking(file_appender);
 
-        (Some(Layer::new().with_writer(non_blocking)), Some(guard))
+        (Some(fmt::Layer::new().with_writer(non_blocking)), Some(guard))
     } else {
         (None, None)
     };
@@ -172,10 +168,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         let stdout_enabled = stdout_enabled.clone();
 
         (
-            FilteredLayer::new(
-                Layer::new().with_writer(non_blocking),
-                move |_ctx| stdout_enabled.load(Ordering::Relaxed),
-            ),
+            fmt::Layer::new().with_writer(non_blocking).with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
             Some(stdout_guard),
         )
     };
@@ -202,16 +195,17 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         let enabled = Arc::new(AtomicBool::new(apm_tracing_config.apm_output));
         let enabled_clone = enabled.clone();
 
-        (FilteredLayer::new(apm_layer, move |_ctx| enabled.load(Ordering::Relaxed)), enabled_clone)
-    };
+        (apm_layer.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))), enabled_clone)
+    } ;
 
-    let subscriber = tracing_subscriber::registry()
+    tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber)
-        .with(apm_layer);
-
-    set_global_logger(subscriber)?;
+        .with(apm_layer)
+        .try_init().map_err(|err| LoggerError::LoggerConfigurationError {
+            message: format!("Cannot start the logger. err: {:?}", err),
+        })?;
 
     Ok(LogWorkerGuard {
         file_guard,
@@ -236,18 +230,6 @@ fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerE
             message: format!("Output file format [{}] is wrong", full_path),
         })
     }
-}
-
-fn set_global_logger<S>(subscriber: S) -> Result<(), LoggerError>
-where
-    S: Subscriber + Send + Sync + 'static,
-{
-    tracing_log::LogTracer::init().map_err(|err| LoggerError::LoggerConfigurationError {
-        message: format!("Cannot start the logger LogTracer. err: {:?}", err),
-    })?;
-    set_global_default(subscriber).map_err(|err| LoggerError::LoggerConfigurationError {
-        message: format!("Cannot start the logger. err: {:?}", err),
-    })
 }
 
 #[cfg(test)]
