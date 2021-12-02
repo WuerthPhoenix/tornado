@@ -9,7 +9,7 @@ use crate::error::MatcherError;
 use crate::validator::MatcherConfigValidator;
 use chrono::Local;
 use log::*;
-use rs_consul::{ConsistencyMode, CreateOrUpdateKeyRequest, DeleteKeyRequest, ReadKeyRequest};
+use rs_consul::{CreateOrUpdateKeyRequest, DeleteKeyRequest, ReadKeyRequest};
 use serde::Serialize;
 
 const DRAFT_ID: &str = "draft_001";
@@ -19,13 +19,8 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &self.draft_path(),
-            namespace: "",
-            datacenter: "",
             recurse: true,
-            separator: "",
-            consistency: ConsistencyMode::Default,
-            index: None,
-            wait: Default::default(),
+            .. Default::default()
         };
         let response_keys = self.client.read_key(read_key_request).await.map_err(|err| {
             MatcherError::InternalSystemError {
@@ -39,13 +34,8 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &format!("{}/{}", self.draft_path(), draft_id),
-            namespace: "",
-            datacenter: "",
             recurse: false,
-            separator: "",
-            consistency: ConsistencyMode::Default,
-            index: None,
-            wait: Default::default(),
+            .. Default::default()
         };
         let response_keys = self.client.read_key(read_key_request).await.map_err(|err| {
             MatcherError::InternalSystemError {
@@ -140,10 +130,7 @@ impl MatcherConfigEditor for ConsulMatcherConfigManager {
         info!("Delete draft with id {}", draft_id);
         let delete_draft_request = DeleteKeyRequest {
             key: &format!("{}/{}", self.draft_path(), draft_id),
-            datacenter: "",
-            recurse: false,
-            check_and_set: 0,
-            namespace: "",
+            .. Default::default()
         };
 
         let deleted = self.client.delete_key(delete_draft_request).await.map_err(|err| {
@@ -191,12 +178,7 @@ impl ConsulMatcherConfigManager {
             })?;
         let update_config_request = CreateOrUpdateKeyRequest {
             key,
-            namespace: "",
-            datacenter: "",
-            flags: 0,
-            check_and_set: 0,
-            acquire: "",
-            release: "",
+            .. Default::default()
         };
         let (updated, _index) = self
             .client

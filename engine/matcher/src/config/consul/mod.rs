@@ -1,7 +1,7 @@
 use crate::config::{MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
-use rs_consul::{Config, ConsistencyMode, Consul, ReadKeyRequest};
-use log::*;
+use rs_consul::{Config, Consul, ReadKeyRequest};
+
 pub mod editor;
 
 pub const ROOT_NODE_NAME: &str = "root";
@@ -34,13 +34,7 @@ impl MatcherConfigReader for ConsulMatcherConfigManager {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
         let read_key_request = ReadKeyRequest {
             key: &self.config_path(),
-            namespace: "",
-            datacenter: "",
-            recurse: false,
-            separator: "",
-            consistency: ConsistencyMode::Default,
-            index: None,
-            wait: Default::default(),
+            .. Default::default()
         };
         let response_keys = self.client.read_key(read_key_request).await.map_err(|err| {
             MatcherError::InternalSystemError {
