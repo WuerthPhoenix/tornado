@@ -49,29 +49,41 @@ pub fn build_config_v2_endpoints<
 >(
     data: ApiDataV2<ConfigApi<A, CM>>,
 ) -> Scope {
-    web::scope("/config").app_data(Data::new(data)).service(
+    web::scope("/config").app_data(Data::new(data))
+        .service(
         web::scope("/active")
             .service(
                 web::resource("/tree/children/{param_auth}")
-                    .route(web::get().to(get_tree_node::<A, CM>)),
+                    .route(web::get().to(get_current_tree_node::<A, CM>)),
             )
             .service(
                 web::resource("/tree/children/{param_auth}/{node_path}")
-                    .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+                    .route(web::get().to(get_current_tree_node_with_node_path::<A, CM>)),
             )
             .service(
                 web::resource("/tree/details/{param_auth}/{node_path}")
-                    .route(web::get().to(get_tree_node_details::<A, CM>)),
+                    .route(web::get().to(get_current_tree_node_details::<A, CM>)),
             )
             .service(
                 web::resource("/tree/info/{param_auth}")
-                    .route(web::get().to(get_tree_info::<A, CM>)),
+                    .route(web::get().to(get_current_tree_info::<A, CM>)),
             )
             .service(
                 web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
-                    .route(web::get().to(get_rule_details::<A, CM>)),
-            ),
-    )
+                    .route(web::get().to(get_current_rule_details::<A, CM>)),
+            )
+        )
+        .service(
+            web::scope("/draft")
+            .service(
+                web::resource("/tree/children/{param_auth}/{draft_id}")
+                    .route(web::get().to(get_draft_tree_node::<A, CM>)),
+            )
+            .service(
+                web::resource("/tree/children/{param_auth}/{draft_id}/{node_path}")
+                    .route(web::get().to(get_draft_tree_node_with_node_path::<A, CM>)),
+            )
+        )
 }
 
 #[derive(Deserialize)]
@@ -87,7 +99,7 @@ struct RuleDetailsParams {
     rule_name: String,
 }
 
-async fn get_tree_node<
+async fn get_current_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -102,7 +114,7 @@ async fn get_tree_node<
     Ok(Json(result))
 }
 
-async fn get_tree_node_with_node_path<
+async fn get_current_tree_node_with_node_path<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -122,7 +134,7 @@ async fn get_tree_node_with_node_path<
     Ok(Json(result))
 }
 
-async fn get_tree_node_details<
+async fn get_current_tree_node_details<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -139,7 +151,7 @@ async fn get_tree_node_details<
     Ok(Json(result))
 }
 
-async fn get_tree_info<
+async fn get_current_tree_info<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -153,7 +165,7 @@ async fn get_tree_info<
     Ok(Json(result))
 }
 
-async fn get_rule_details<
+async fn get_current_rule_details<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -166,6 +178,42 @@ async fn get_rule_details<
     let result = data
         .api
         .get_rule_details(&auth_ctx, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .await?;
+    Ok(Json(result))
+}
+
+async fn get_draft_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    param_auth: Path<String>,
+    draft_id: Path<String>
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
+
+    let result = data.api.get_draft_config_processing_tree_nodes_by_path(auth_ctx, &draft_id.into_inner(), None).await?;
+    Ok(Json(result))
+}
+
+async fn get_draft_tree_node_with_node_path<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<AuthAndNodePath>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .get_current_config_processing_tree_nodes_by_path(
+            auth_ctx,
+            Some(&endpoint_params.node_path),
+        )
         .await?;
     Ok(Json(result))
 }

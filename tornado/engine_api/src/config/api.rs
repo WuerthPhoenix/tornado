@@ -54,16 +54,16 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
             .unwrap_or_default();
 
-        self.get_authorized_child_nodes(&auth, relative_node_path).await
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, &auth).await?;
+        self.get_authorized_child_nodes(&auth, relative_node_path, filtered_matcher).await
     }
 
     async fn get_authorized_child_nodes(
         &self,
         auth: &AuthContextV2<'_>,
         relative_node_path: Vec<&str>,
+        filtered_matcher: MatcherConfig
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
-
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -89,7 +89,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<TreeInfoDto, ApiError> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
 
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let mut absolute_path: Vec<_> =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect();
@@ -142,7 +142,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -176,7 +176,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<RuleDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
 
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -226,6 +226,24 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             message: "Cannot access node outside authorized path".to_string(),
             params: Default::default(),
         }
+    }
+
+    /// Returns child processing tree nodes of a node found by a path
+    /// of the draft configuration of tornado
+    pub async fn get_draft_config_processing_tree_nodes_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: Option<&str>
+    ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let relative_node_path: Vec<_> = node_path
+            .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
+            .unwrap_or_default();
+
+        let draft_config = self.config_manager.get_draft(draft_id).await?;
+        let filtered_matcher = get_filtered_matcher(&draft_config.config, &auth).await?;
+        self.get_authorized_child_nodes(&auth, relative_node_path, filtered_matcher).await
     }
 
     /// Returns the list of available drafts
@@ -306,10 +324,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 }
 
 pub async fn get_filtered_matcher(
-    config_manager: &dyn MatcherConfigReader,
+    config: &MatcherConfig,
     auth: &AuthContextV2<'_>,
 ) -> Result<MatcherConfig, ApiError> {
-    let config = config_manager.get_config().await?;
     let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
     matcher_config_filter(&config, &node_filter).ok_or({
         let message = "The authorized node path does not exist.";
