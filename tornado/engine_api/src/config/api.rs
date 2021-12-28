@@ -234,6 +234,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.get_drafts().await?)
     }
 
+    /// Returns the list of available drafts
+    pub async fn get_drafts_by_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Vec<String>, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+        Ok(self.config_manager.get_drafts().await?)
+    }
+
     /// Returns a draft by id
     pub async fn get_draft(
         &self,
@@ -248,6 +254,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
+    }
+
+    /// Creates a new draft and returns the id
+    pub async fn create_draft_in_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Id<String>, ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        Ok(self.config_manager.create_draft(auth.clone().auth.user).await.map(|id| Id { id })?)
     }
 
     /// Update a draft
@@ -274,6 +286,18 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.handler.reload_configuration().await
     }
 
+    pub async fn deploy_draft_for_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<MatcherConfig, ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft)?;
+        self.config_manager.deploy_draft(draft_id).await?;
+        self.handler.reload_configuration().await
+    }
+
     /// Deletes a draft by id
     pub async fn delete_draft(
         &self,
@@ -285,6 +309,17 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.delete_draft(draft_id).await?)
     }
 
+    pub async fn delete_draft_in_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft)?;
+        Ok(self.config_manager.delete_draft(draft_id).await?)
+    }
+
     pub async fn draft_take_over(
         &self,
         auth: AuthContext<'_>,
@@ -292,6 +327,15 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user).await?)
+    }
+
+    pub async fn draft_take_over_for_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
     async fn get_draft_and_check_owner(
