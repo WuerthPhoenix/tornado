@@ -236,12 +236,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         draft_id: &str,
         node_path: Option<&str>
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        auth.has_permission(&Permission::ConfigEdit)?;
+        auth.has_permission(&Permission::ConfigView)?;
         let relative_node_path: Vec<_> = node_path
             .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
             .unwrap_or_default();
 
         let draft_config = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft_config)?;
         let filtered_matcher = get_filtered_matcher(&draft_config.config, &auth).await?;
         self.get_authorized_child_nodes(&auth, relative_node_path, filtered_matcher).await
     }
