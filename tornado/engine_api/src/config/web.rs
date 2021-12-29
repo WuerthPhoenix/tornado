@@ -49,29 +49,47 @@ pub fn build_config_v2_endpoints<
 >(
     data: ApiDataV2<ConfigApi<A, CM>>,
 ) -> Scope {
-    web::scope("/config").app_data(Data::new(data)).service(
-        web::scope("/active")
-            .service(
-                web::resource("/tree/children/{param_auth}")
-                    .route(web::get().to(get_tree_node::<A, CM>)),
-            )
-            .service(
-                web::resource("/tree/children/{param_auth}/{node_path}")
-                    .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
-            )
-            .service(
-                web::resource("/tree/details/{param_auth}/{node_path}")
-                    .route(web::get().to(get_tree_node_details::<A, CM>)),
-            )
-            .service(
-                web::resource("/tree/info/{param_auth}")
-                    .route(web::get().to(get_tree_info::<A, CM>)),
-            )
-            .service(
-                web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
-                    .route(web::get().to(get_rule_details::<A, CM>)),
-            ),
-    )
+    web::scope("/config").app_data(Data::new(data))
+        .service(
+            web::scope("/active")
+                .service(
+                    web::resource("/tree/children/{param_auth}")
+                        .route(web::get().to(get_tree_node::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/children/{param_auth}/{node_path}")
+                        .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/details/{param_auth}/{node_path}")
+                        .route(web::get().to(get_tree_node_details::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/info/{param_auth}")
+                        .route(web::get().to(get_tree_info::<A, CM>)),
+                )
+                .service(
+                    web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
+                        .route(web::get().to(get_rule_details::<A, CM>)),
+                )
+        )
+        .service(
+            web::resource("/drafts/{param_auth}")
+                .route(web::get().to(get_drafts_by_tenant::<A, CM>))
+                .route(web::post().to(create_draft_in_tenant::<A, CM>))
+        )
+        .service(
+            web::resource("/drafts/{param_auth}/{draft_id}")
+                .route(web::delete().to(delete_draft_in_tenant::<A, CM>)),
+        )
+        .service(
+            web::resource("/drafts/{param_auth}/{draft_id}/deploy")
+                .route(web::post().to(deploy_draft_for_tenant::<A, CM>)),
+        )
+        .service(
+            web::resource("/drafts/{param_auth}/{draft_id}/takeover")
+                .route(web::post().to(draft_take_over_for_tenant::<A, CM>)),
+        )
 }
 
 #[derive(Deserialize)]
@@ -85,6 +103,12 @@ struct RuleDetailsParams {
     param_auth: String,
     ruleset_path: String,
     rule_name: String,
+}
+
+#[derive(Deserialize)]
+struct DraftPath {
+    param_auth: String,
+    draft_id: String,
 }
 
 async fn get_tree_node<
@@ -197,6 +221,20 @@ async fn get_drafts<
     Ok(Json(result))
 }
 
+async fn get_drafts_by_tenant<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    param_auth: Path<String>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Vec<String>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
+    let result = data.api.get_drafts_by_tenant(&auth_ctx).await?;
+    Ok(Json(result))
+}
+
 async fn get_draft<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -222,6 +260,20 @@ async fn create_draft<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     let result = data.api.create_draft(auth_ctx).await?;
+    Ok(Json(result))
+}
+
+async fn create_draft_in_tenant<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    param_auth: Path<String>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Id<String>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
+    let result = data.api.create_draft_in_tenant(&auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -255,6 +307,20 @@ async fn delete_draft<
     Ok(Json(()))
 }
 
+async fn delete_draft_in_tenant<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    path: Path<DraftPath>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+    data.api.delete_draft_in_tenant(&auth_ctx, &path.draft_id).await?;
+    Ok(Json(()))
+}
+
 async fn deploy_draft<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -270,6 +336,21 @@ async fn deploy_draft<
     Ok(Json(matcher_config_dto))
 }
 
+async fn deploy_draft_for_tenant<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    path: Path<DraftPath>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<MatcherConfigDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+    let result = data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
+    let matcher_config_dto = matcher_config_into_dto(result)?;
+    Ok(Json(matcher_config_dto))
+}
+
 async fn draft_take_over<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -281,6 +362,21 @@ async fn draft_take_over<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     data.api.draft_take_over(auth_ctx, &draft_id.into_inner()).await?;
+    Ok(Json(()))
+}
+
+
+async fn draft_take_over_for_tenant<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    path: Path<DraftPath>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+    data.api.draft_take_over_for_tenant(&auth_ctx, &path.draft_id).await?;
     Ok(Json(()))
 }
 
@@ -353,7 +449,7 @@ mod test {
     #[async_trait::async_trait(?Send)]
     impl MatcherConfigEditor for ConfigManager {
         async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
-            unimplemented!()
+            Ok(vec![])
         }
 
         async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
@@ -369,7 +465,7 @@ mod test {
         }
 
         async fn create_draft(&self, _user: String) -> Result<String, MatcherError> {
-            unimplemented!()
+            Ok("".to_string())
         }
 
         async fn update_draft(
@@ -386,7 +482,7 @@ mod test {
         }
 
         async fn delete_draft(&self, _draft_id: &str) -> Result<(), MatcherError> {
-            unimplemented!()
+            Ok(())
         }
 
         async fn draft_take_over(
@@ -588,6 +684,186 @@ mod test {
                 AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
             ))
             .uri("/v1_beta/config/drafts/draft123/take_over")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/drafts/auth1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_create_draft_in_tenant_post_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/drafts/auth1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_delete_draft_for_tenant_delete_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::delete()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/drafts/auth1/draft123")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_deploy_draft_for_tenant_post_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/drafts/auth1/draft123/deploy")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_draft_take_over_for_tenant_post_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "admin".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/drafts/auth1/draft123/takeover")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
