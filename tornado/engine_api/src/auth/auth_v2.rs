@@ -478,4 +478,59 @@ pub mod test {
 
         assert_eq!(result, expected)
     }
+
+    #[test]
+    fn should_be_the_owner() {
+        let auth = AuthV2 {
+            user: "USER_123".to_owned(),
+            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            preferences: None,
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContextV2::new(auth, &role_permissions);
+
+        assert!(auth_context
+            .is_owner(&Ownable { owner_id: "USER_123".to_owned(), id: "abc".to_owned() })
+            .is_ok());
+    }
+
+    #[test]
+    fn should_not_be_the_owner() {
+        let auth = AuthV2 {
+            user: "USER_123".to_owned(),
+            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            preferences: None,
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContextV2::new(auth, &role_permissions);
+
+        let result = auth_context
+            .is_owner(&Ownable { owner_id: "USER_567".to_owned(), id: "abc".to_owned() });
+        assert!(result.is_err());
+
+        match &result {
+            Err(ApiError::ForbiddenError { code, params, .. }) => {
+                assert_eq!(FORBIDDEN_NOT_OWNER, code);
+                assert_eq!(2, params.len());
+                assert_eq!("USER_567", params["OWNER"]);
+                assert_eq!("abc", params["ID"]);
+            }
+            _ => assert!(false),
+        }
+    }
+
+    struct Ownable {
+        id: String,
+        owner_id: String,
+    }
+
+    impl WithOwner for Ownable {
+        fn get_id(&self) -> &str {
+            &self.id
+        }
+
+        fn get_owner_id(&self) -> &str {
+            &self.owner_id
+        }
+    }
 }
