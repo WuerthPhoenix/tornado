@@ -253,7 +253,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.get_drafts().await?)
     }
 
-    /// Returns the list of available drafts
+    /// Returns the list of available drafts for a specific tenant
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
     pub async fn get_drafts_by_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Vec<String>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_drafts().await?)
@@ -275,7 +276,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
     }
 
-    /// Creates a new draft and returns the id
+    /// Creates a new draft for a specific tenant and returns the id
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
     pub async fn create_draft_in_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.clone().auth.user).await.map(|id| Id { id })?)
@@ -305,6 +307,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.handler.reload_configuration().await
     }
 
+    /// Deploy a draft by id and reload the tornado configuration
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
     pub async fn deploy_draft_for_tenant(
         &self,
         auth: &AuthContextV2<'_>,
@@ -328,6 +332,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.delete_draft(draft_id).await?)
     }
 
+    /// Deletes a draft by id for a specific tenant
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
     pub async fn delete_draft_in_tenant(
         &self,
         auth: &AuthContextV2<'_>,
@@ -348,6 +354,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user).await?)
     }
 
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
     pub async fn draft_take_over_for_tenant(
         &self,
         auth: &AuthContextV2<'_>,
