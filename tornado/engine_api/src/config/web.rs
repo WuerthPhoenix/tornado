@@ -437,7 +437,7 @@ async fn draft_take_over_for_tenant<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::auth_v2::test::test_auth_service_v2;
+    use crate::{auth::auth_v2::test::test_auth_service_v2, test_root::start_context};
     use crate::auth::auth_v2::AuthServiceV2;
     use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
@@ -853,6 +853,9 @@ mod test {
 
     #[actix_rt::test]
     async fn v2_endpoint_should_have_a_get_draft_single_node_with_path_get_endpoint() -> Result<(), ApiError> {
+
+        start_context();
+
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
