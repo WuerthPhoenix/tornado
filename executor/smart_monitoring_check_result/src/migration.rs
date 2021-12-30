@@ -20,11 +20,11 @@ pub fn migrate_from_monitoring(input: &Payload) -> Result<Payload, ExecutorError
             remove_entries(&mut process_check_result_payload);
             output.insert(
                 PAYLOAD_CHECK_RESULT_KEY.to_owned(),
-                Value::Map(process_check_result_payload),
+                Value::Object(process_check_result_payload),
             );
 
             remove_entries(&mut host_creation_payload);
-            output.insert(PAYLOAD_HOST_KEY.to_owned(), Value::Map(host_creation_payload));
+            output.insert(PAYLOAD_HOST_KEY.to_owned(), Value::Object(host_creation_payload));
         }
         MonitoringAction::Service {
             mut process_check_result_payload,
@@ -34,14 +34,14 @@ pub fn migrate_from_monitoring(input: &Payload) -> Result<Payload, ExecutorError
             remove_entries(&mut process_check_result_payload);
             output.insert(
                 PAYLOAD_CHECK_RESULT_KEY.to_owned(),
-                Value::Map(process_check_result_payload),
+                Value::Object(process_check_result_payload),
             );
 
             remove_entries(&mut host_creation_payload);
-            output.insert(PAYLOAD_HOST_KEY.to_owned(), Value::Map(host_creation_payload));
+            output.insert(PAYLOAD_HOST_KEY.to_owned(), Value::Object(host_creation_payload));
 
             remove_entries(&mut service_creation_payload);
-            output.insert(PAYLOAD_SERVICE_KEY.to_owned(), Value::Map(service_creation_payload));
+            output.insert(PAYLOAD_SERVICE_KEY.to_owned(), Value::Object(service_creation_payload));
         }
     }
 

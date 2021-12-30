@@ -22,8 +22,6 @@ members = [
    "executor/smart_monitoring_check_result",
    "network/common",
    "network/simple",
-   "spike/jmespath",
-   "spike/parser_jmespath",
    "spike/rsyslog_collector_writer",
    "spike/tornado_events_generator",
    "tornado/common",

@@ -1,6 +1,4 @@
-use crate::matcher::operator::Operator;
-use crate::model::InternalEvent;
-use tornado_common_api::Value;
+use crate::{matcher::operator::Operator, model::InternalEvent};
 
 const OPERATOR_NAME: &str = "true";
 
@@ -13,7 +11,7 @@ impl Operator for True {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, _event: &InternalEvent, _extracted_vars: Option<&Value>) -> bool {
+    fn evaluate(&self, _event: &InternalEvent) -> bool {
         true
     }
 }
@@ -22,6 +20,7 @@ impl Operator for True {
 mod test {
 
     use super::*;
+    use serde_json::json;
     use tornado_common_api::*;
 
     #[test]
@@ -37,7 +36,7 @@ mod test {
         let event = Event::new("test_type");
 
         // Act
-        let result = operator.evaluate(&InternalEvent::new(event), None);
+        let result = operator.evaluate(&(&json!(event), &mut Value::Null).into());
 
         // Assert
         assert!(result);

@@ -1,9 +1,8 @@
-use crate::accessor::Accessor;
+use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
-use crate::model::InternalEvent;
 use regex::Regex as RustRegex;
-use tornado_common_api::{cow_to_str, Value};
+use tornado_common_api::{cow_to_str};
 
 const OPERATOR_NAME: &str = "regex";
 
@@ -30,8 +29,8 @@ impl Operator for Regex {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        let cow_value = self.target.get(event, extracted_vars);
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        let cow_value = self.target.get(event);
         cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
     }
 }
@@ -41,7 +40,7 @@ mod test {
 
     use super::*;
     use crate::accessor::AccessorBuilder;
-    use std::collections::HashMap;
+    use serde_json::json;
     use tornado_common_api::*;
 
     #[test]
@@ -64,7 +63,7 @@ mod test {
         let event = Event::new("test_type");
 
         assert_eq!("one", operator.regex.to_string());
-        assert_eq!("two", operator.target.get(&InternalEvent::new(event), None).unwrap().as_ref());
+        assert_eq!("two", operator.target.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
     }
 
     #[test]
@@ -86,7 +85,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -97,13 +96,13 @@ mod test {
         )
         .unwrap();
 
-        let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
-        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
+        let mut payload = Map::new();
+        payload.insert("name1".to_owned(), Value::String("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::String("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -114,13 +113,13 @@ mod test {
         )
         .unwrap();
 
-        let mut payload = HashMap::new();
-        payload.insert("name1".to_owned(), Value::Text("F".to_owned()));
-        payload.insert("name2".to_owned(), Value::Text("G".to_owned()));
+        let mut payload = Map::new();
+        payload.insert("name1".to_owned(), Value::String("F".to_owned()));
+        payload.insert("name2".to_owned(), Value::String("G".to_owned()));
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -133,7 +132,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -147,7 +146,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -159,8 +158,8 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert("value".to_owned(), Value::Number(Number::PosInt(999)));
+        event.payload.insert("value".to_owned(), json!(999));
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }

@@ -1,70 +1,35 @@
-use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::collections::HashMap;
-use tornado_common_api::{Action, Event, Number, Payload, Value};
+use tornado_common_api::{Action, ValueGet};
 use typescript_definitions::TypeScriptify;
+use crate::accessor::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
-pub struct InternalEvent {
-    pub trace_id: String,
-    #[serde(rename = "type")]
-    pub event_type: Value,
-    pub created_ms: Value,
-    pub metadata: Value,
-    pub payload: Value,
+pub struct InternalEvent<'o> {
+    pub event: &'o Value,
+    pub extracted_variables: &'o mut Value
 }
 
-impl From<Event> for InternalEvent {
-    fn from(event: Event) -> Self {
-        InternalEvent {
-            trace_id: event.trace_id,
-            event_type: Value::Text(event.event_type),
-            created_ms: Value::Number(Number::PosInt(event.created_ms)),
-            metadata: Value::Null,
-            payload: Value::Map(event.payload),
+impl <'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
+    fn from((event, extracted_variables): (&'o Value, &'o mut Value)) -> Self {
+        Self {
+            event,
+            extracted_variables
         }
     }
 }
 
-impl From<InternalEvent> for Value {
-    fn from(event: InternalEvent) -> Self {
-        let mut payload = Payload::new();
-        payload.insert("trace_id".to_owned(), Value::Text(event.trace_id));
-        payload.insert("type".to_owned(), event.event_type);
-        payload.insert("created_ms".to_owned(), event.created_ms);
-        payload.insert("payload".to_owned(), event.payload);
-        payload.insert("metadata".to_owned(), event.metadata);
-        Value::Map(payload)
-    }
-}
-
-impl InternalEvent {
-    pub fn new(event: Event) -> Self {
-        event.into()
-    }
-
-    pub fn new_with_metadata(event: Event, metadata: Value) -> Self {
-        let mut internal_event: InternalEvent = event.into();
-        internal_event.metadata = metadata;
-        internal_event
-    }
-
-    pub fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), MatcherError> {
-        match &mut self.metadata {
-            Value::Null => {
-                let mut payload = HashMap::new();
-                payload.insert(key, value);
-                self.metadata = Value::Map(payload);
-                Ok(())
-            }
-            Value::Map(payload) => {
-                payload.insert(key, value);
-                Ok(())
-            }
-            _ => Err(MatcherError::InternalSystemError {
-                message: "InternalEvent metadata should be a Map".to_owned(),
-            }),
+impl <'o> ValueGet for InternalEvent<'o> {
+    fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
+        match key {
+            EVENT_KEY => Some(self.event),
+            EXTRACTED_VARIABLES_KEY => Some(self.extracted_variables),
+            _ => None
         }
+    }
+
+    fn get_from_array(&self, _index: usize) -> Option<&tornado_common_api::Value> {
+        None
     }
 }
 
@@ -72,7 +37,7 @@ impl InternalEvent {
 /// It contains the original Event along with the result of the matching operation.
 #[derive(Debug, Clone)]
 pub struct ProcessedEvent {
-    pub event: InternalEvent,
+    pub event: Value,
     pub result: ProcessedNode,
 }
 
@@ -157,114 +122,4 @@ pub enum EnrichedValueContent {
 pub struct ValueMetaData {
     pub modified: bool,
     pub is_leaf: bool,
-}
-
-#[cfg(test)]
-mod test {
-    use crate::model::InternalEvent;
-    use tornado_common_api::{Event, Number, Payload, Value};
-
-    #[test]
-    fn should_convert_between_event_and_internal_event() {
-        // Arrange
-        let mut payload = Payload::new();
-        payload.insert("one-key".to_owned(), Value::Text("one-value".to_owned()));
-        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
-        payload.insert("bool".to_owned(), Value::Bool(false));
-
-        let event = Event::new_with_payload("my-event-type", payload.clone());
-
-        // Act
-        let internal_from_event: InternalEvent = event.clone().into();
-        let json_from_internal = serde_json::to_string(&internal_from_event).unwrap();
-        let event_from_internal: Event = serde_json::from_str(&json_from_internal).unwrap();
-
-        // Assert
-        assert_eq!(event, event_from_internal);
-    }
-
-    #[test]
-    fn should_create_and_add_metadata() {
-        // Arrange
-
-        let mut event = InternalEvent::new(Event::default());
-
-        let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
-
-        let key_2 = "random_key_2";
-        let value_2 = Value::Number(Number::Float(3.4));
-
-        // Act
-        event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
-        event.add_to_metadata(key_2.to_owned(), value_2.clone()).unwrap();
-
-        // Assert
-        match event.metadata {
-            Value::Map(payload) => {
-                assert_eq!(2, payload.len());
-                assert_eq!(&value_1, payload.get(key_1).unwrap());
-                assert_eq!(&value_2, payload.get(key_2).unwrap());
-            }
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
-    fn should_create_and_override_metadata() {
-        // Arrange
-
-        let mut event = InternalEvent::new(Event::default());
-
-        let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
-
-        let value_2 = Value::Number(Number::Float(3.4));
-
-        // Act
-        event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
-        event.add_to_metadata(key_1.to_owned(), value_2.clone()).unwrap();
-
-        // Assert
-        match event.metadata {
-            Value::Map(payload) => {
-                assert_eq!(1, payload.len());
-                assert_eq!(&value_2, payload.get(key_1).unwrap());
-            }
-            _ => assert!(false),
-        }
-    }
-
-    #[test]
-    fn should_fail_if_metadata_is_not_map() {
-        // Arrange
-
-        let mut event = InternalEvent::new(Event::default());
-        event.metadata = Value::Array(vec![]);
-
-        let key_1 = "random_key_1";
-        let value_1 = Value::Number(Number::PosInt(123));
-
-        // Act
-        let result = event.add_to_metadata(key_1.to_owned(), value_1.clone());
-
-        // Assert
-        assert!(result.is_err());
-    }
-
-    #[test]
-    fn should_convert_to_value_and_back() {
-        // Arrange
-
-        let mut event = InternalEvent::new(Event::default());
-        event.metadata = Value::Array(vec![]);
-
-        // Act
-        let value: Value = event.clone().into();
-        let event_from_value: InternalEvent =
-            serde_json::from_value(serde_json::to_value(value).unwrap()).unwrap();
-
-        // Assert
-        assert_eq!(event, event_from_value);
-    }
 }

@@ -4,7 +4,6 @@ pub mod accessor;
 pub mod config;
 pub mod dispatcher;
 pub mod error;
-pub mod interpolator;
 pub mod matcher;
 pub mod model;
 pub mod regex;
@@ -16,22 +15,22 @@ pub mod test_root {
     use lazy_static::lazy_static;
     use std::sync::Mutex;
     use tornado_common_logger::elastic_apm::ApmTracingConfig;
-    use tornado_common_logger::{setup_logger, LoggerConfig};
+    use tornado_common_logger::{setup_logger, LoggerConfig, LogWorkerGuard};
 
     lazy_static! {
-        static ref INITIALIZED: Mutex<bool> = Mutex::new(false);
+        static ref INITIALIZED: Mutex<Option<LogWorkerGuard>> = Mutex::new(None);
     }
 
     pub fn start_context() {
         let mut init = INITIALIZED.lock().unwrap();
-        if !*init {
+        if init.is_none() {
             println!("Initialize context");
-            start_logger();
-            *init = true;
+            let guard = start_logger();
+            *init = Some(guard);
         }
     }
 
-    fn start_logger() {
+    fn start_logger() -> LogWorkerGuard {
         println!("Init logger");
 
         let conf = LoggerConfig {
@@ -40,6 +39,6 @@ pub mod test_root {
             file_output_path: None,
             tracing_elastic_apm: ApmTracingConfig::default(),
         };
-        let _guard = setup_logger(conf).unwrap();
+        setup_logger(conf).unwrap()
     }
 }

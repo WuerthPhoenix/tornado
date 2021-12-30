@@ -54,16 +54,16 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
             .unwrap_or_default();
 
-        self.get_authorized_child_nodes(&auth, relative_node_path).await
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, &auth).await?;
+        self.get_authorized_child_nodes(&auth, relative_node_path, filtered_matcher).await
     }
 
     async fn get_authorized_child_nodes(
         &self,
         auth: &AuthContextV2<'_>,
         relative_node_path: Vec<&str>,
+        filtered_matcher: MatcherConfig
     ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
-
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -89,7 +89,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<TreeInfoDto, ApiError> {
         auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
 
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let mut absolute_path: Vec<_> =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect();
@@ -142,7 +142,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         auth: &AuthContextV2<'_>,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -176,7 +176,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<RuleDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
 
-        let filtered_matcher = get_filtered_matcher(self.config_manager.as_ref(), auth).await?;
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
 
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -228,8 +228,34 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         }
     }
 
+    /// Returns child processing tree nodes of a node found by a path
+    /// of the draft configuration of tornado
+    pub async fn get_draft_config_processing_tree_nodes_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: Option<&str>
+    ) -> Result<Vec<ProcessingTreeNodeConfigDto>, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+        let relative_node_path: Vec<_> = node_path
+            .map(|node_path| node_path.split(NODE_PATH_SEPARATOR).collect())
+            .unwrap_or_default();
+
+        let draft_config = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft_config)?;
+        let filtered_matcher = get_filtered_matcher(&draft_config.config, &auth).await?;
+        self.get_authorized_child_nodes(&auth, relative_node_path, filtered_matcher).await
+    }
+
     /// Returns the list of available drafts
     pub async fn get_drafts(&self, auth: AuthContext<'_>) -> Result<Vec<String>, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+        Ok(self.config_manager.get_drafts().await?)
+    }
+
+    /// Returns the list of available drafts for a specific tenant
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
+    pub async fn get_drafts_by_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Vec<String>, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
         Ok(self.config_manager.get_drafts().await?)
     }
@@ -248,6 +274,13 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     pub async fn create_draft(&self, auth: AuthContext<'_>) -> Result<Id<String>, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.create_draft(auth.auth.user).await.map(|id| Id { id })?)
+    }
+
+    /// Creates a new draft for a specific tenant and returns the id
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
+    pub async fn create_draft_in_tenant(&self, auth: &AuthContextV2<'_>) -> Result<Id<String>, ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        Ok(self.config_manager.create_draft(auth.clone().auth.user).await.map(|id| Id { id })?)
     }
 
     /// Update a draft
@@ -274,6 +307,20 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.handler.reload_configuration().await
     }
 
+    /// Deploy a draft by id and reload the tornado configuration
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
+    pub async fn deploy_draft_for_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<MatcherConfig, ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft)?;
+        self.config_manager.deploy_draft(draft_id).await?;
+        self.handler.reload_configuration().await
+    }
+
     /// Deletes a draft by id
     pub async fn delete_draft(
         &self,
@@ -285,6 +332,19 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.delete_draft(draft_id).await?)
     }
 
+    /// Deletes a draft by id for a specific tenant
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
+    pub async fn delete_draft_in_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let draft = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft)?;
+        Ok(self.config_manager.delete_draft(draft_id).await?)
+    }
+
     pub async fn draft_take_over(
         &self,
         auth: AuthContext<'_>,
@@ -292,6 +352,16 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         Ok(self.config_manager.draft_take_over(draft_id, auth.auth.user).await?)
+    }
+
+    /// TODO: implement the multitenancy https://siwuerthphoenix.atlassian.net/browse/NEPROD-1232
+    pub async fn draft_take_over_for_tenant(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
     async fn get_draft_and_check_owner(
@@ -306,12 +376,11 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 }
 
 pub async fn get_filtered_matcher(
-    config_manager: &dyn MatcherConfigReader,
+    config: &MatcherConfig,
     auth: &AuthContextV2<'_>,
 ) -> Result<MatcherConfig, ApiError> {
-    let config = config_manager.get_config().await?;
     let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
-    matcher_config_filter(&config, &node_filter).ok_or({
+    matcher_config_filter(config, &node_filter).ok_or({
         let message = "The authorized node path does not exist.";
         warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
         ApiError::InvalidAuthorizedPath { message: message.to_owned() }
@@ -807,10 +876,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_1).await.unwrap();
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, vec![]).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec![], filtered_matcher).await.unwrap();
         let res =
             api.get_current_config_processing_tree_nodes_by_path(user_root_1, None).await.unwrap();
 
@@ -842,9 +913,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user_root_3, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user_root_3, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user_root_3, None).await;
 
         // Assert
@@ -866,9 +939,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -893,9 +968,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -919,10 +996,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_1).await.unwrap();
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, vec!["root_1"]).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec!["root_1"], filtered_matcher).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(
                 user_root_1,
@@ -962,9 +1041,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act & Assert
-        assert!(api.get_authorized_child_nodes(&user_root_3, vec!["root"]).await.is_err());
+        assert!(api.get_authorized_child_nodes(&user_root_3, vec!["root"], filtered_matcher).await.is_err());
         assert!(api
             .get_current_config_processing_tree_nodes_by_path(
                 user_root_3,

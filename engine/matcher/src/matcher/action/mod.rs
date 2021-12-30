@@ -7,13 +7,10 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Action as ConfigAction;
 use crate::error::MatcherError;
-use crate::interpolator::StringInterpolator;
-use crate::model::{
-    ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
-};
+use crate::model::{ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData};
 use std::collections::HashMap;
-use tornado_common_api::Value;
-use tornado_common_api::{Action, Number};
+use serde_json::{Map, Number, Value};
+use tornado_common_api::{Action, WithEventData};
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -77,7 +74,7 @@ impl ActionResolverBuilder {
         value: &Value,
     ) -> Result<ActionValueProcessor, MatcherError> {
         match value {
-            Value::Map(payload) => {
+            Value::Object(payload) => {
                 let mut processor_payload = HashMap::new();
                 for (key, value) in payload {
                     processor_payload.insert(
@@ -98,20 +95,16 @@ impl ActionResolverBuilder {
                 }
                 Ok(ActionValueProcessor::Array(processor_values))
             }
-            Value::Text(text) => {
-                let interpolator = StringInterpolator::build(text.as_str(), rule_name, accessor)?;
-                if interpolator.is_interpolation_required() {
-                    Ok(ActionValueProcessor::Interpolator(interpolator))
-                } else {
-                    Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
-                }
+            Value::String(text) => {
+                Ok(ActionValueProcessor::Accessor(accessor.build(rule_name, text)?))
             }
             Value::Bool(boolean) => Ok(ActionValueProcessor::Bool(*boolean)),
-            Value::Number(number) => Ok(ActionValueProcessor::Number(*number)),
+            Value::Number(number) => Ok(ActionValueProcessor::Number(number.clone())),
             Value::Null => Ok(ActionValueProcessor::Null),
         }
     }
 }
+
 
 /// An Action resolver creates Actions from a InternalEvent.
 pub struct ActionResolver {
@@ -125,19 +118,18 @@ impl ActionResolver {
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn resolve(
         &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<Action, MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id.clone(),
+            trace_id: data.event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
 
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
                 key.to_owned(),
-                action_value_processor.process(&self.rule_name, &self.id, event, extracted_vars)?,
+                action_value_processor.process(&self.rule_name, &self.id, data)?,
             );
         }
 
@@ -146,13 +138,13 @@ impl ActionResolver {
 
     pub fn resolve_with_meta(
         &self,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
+
     ) -> Result<(Action, ActionMetaData), MatcherError> {
         let mut action = Action {
-            trace_id: event.trace_id.clone(),
+            trace_id: data.event.trace_id().map(|s| s.to_string()),
             id: self.id.to_owned(),
-            payload: HashMap::new(),
+            payload: Map::new(),
         };
         let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
 
@@ -160,8 +152,7 @@ impl ActionResolver {
             let (value, value_enriched) = action_value_processor.process_enriched(
                 &self.rule_name,
                 &self.id,
-                event,
-                extracted_vars,
+                data,
             )?;
             action.payload.insert(key.to_owned(), value);
             action_meta.payload.insert(key.to_owned(), value_enriched);
@@ -171,13 +162,12 @@ impl ActionResolver {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug)]
 enum ActionValueProcessor {
     Accessor(Accessor),
     Null,
     Bool(bool),
     Number(Number),
-    Interpolator(StringInterpolator),
     Array(Vec<ActionValueProcessor>),
     Map(HashMap<String, ActionValueProcessor>),
 }
@@ -187,33 +177,29 @@ impl ActionValueProcessor {
         &self,
         rule_name: &str,
         action_id: &str,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<Value, MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => Ok(accessor
-                .get(event, extracted_vars)
+                .get(data)
                 .ok_or(MatcherError::CreateActionError {
                     action_id: action_id.to_owned(),
                     rule_name: rule_name.to_owned(),
                     cause: format!("Accessor [{:?}] returned empty value.", accessor),
                 })?
                 .into_owned()),
-            ActionValueProcessor::Interpolator(interpolator) => {
-                interpolator.render(event, extracted_vars).map(Value::Text)
-            }
             ActionValueProcessor::Null => Ok(Value::Null),
-            ActionValueProcessor::Number(number) => Ok(Value::Number(*number)),
+            ActionValueProcessor::Number(number) => Ok(Value::Number(number.clone())),
             ActionValueProcessor::Bool(boolean) => Ok(Value::Bool(*boolean)),
             ActionValueProcessor::Map(payload) => {
-                let mut processor_payload = HashMap::new();
+                let mut processor_payload = Map::new();
                 for (key, value) in payload {
                     processor_payload.insert(
                         key.to_owned(),
-                        value.process(rule_name, action_id, event, extracted_vars)?,
+                        value.process(rule_name, action_id, data)?,
                     );
                 }
-                Ok(Value::Map(processor_payload))
+                Ok(Value::Object(processor_payload))
             }
             ActionValueProcessor::Array(values) => {
                 let mut processor_values = vec![];
@@ -221,8 +207,7 @@ impl ActionValueProcessor {
                     processor_values.push(value.process(
                         rule_name,
                         action_id,
-                        event,
-                        extracted_vars,
+                        data,
                     )?)
                 }
                 Ok(Value::Array(processor_values))
@@ -234,13 +219,12 @@ impl ActionValueProcessor {
         &self,
         rule_name: &str,
         action_id: &str,
-        event: &InternalEvent,
-        extracted_vars: Option<&Value>,
+        data: &InternalEvent,
     ) -> Result<(Value, EnrichedValue), MatcherError> {
         match self {
             ActionValueProcessor::Accessor(accessor) => {
                 let value = accessor
-                    .get(event, extracted_vars)
+                    .get(data)
                     .ok_or(MatcherError::CreateActionError {
                         action_id: action_id.to_owned(),
                         rule_name: rule_name.to_owned(),
@@ -255,16 +239,6 @@ impl ActionValueProcessor {
                     },
                 ))
             }
-            ActionValueProcessor::Interpolator(interpolator) => {
-                let value = interpolator.render(event, extracted_vars).map(Value::Text)?;
-                Ok((
-                    value.clone(),
-                    EnrichedValue {
-                        content: EnrichedValueContent::Single { content: value },
-                        meta: ValueMetaData { is_leaf: true, modified: true },
-                    },
-                ))
-            }
             ActionValueProcessor::Null => {
                 let value = Value::Null;
                 Ok((
@@ -276,7 +250,7 @@ impl ActionValueProcessor {
                 ))
             }
             ActionValueProcessor::Number(number) => {
-                let value = Value::Number(*number);
+                let value = Value::Number(number.clone());
                 Ok((
                     value.clone(),
                     EnrichedValue {
@@ -296,19 +270,19 @@ impl ActionValueProcessor {
                 ))
             }
             ActionValueProcessor::Map(payload) => {
-                let mut processor_payload = HashMap::new();
+                let mut processor_payload = Map::new();
                 let mut processor_payload_enriched = HashMap::new();
                 let mut modified = false;
 
                 for (key, value) in payload {
                     let (value, enriched_value) =
-                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                        value.process_enriched(rule_name, action_id, data)?;
                     modified = modified || enriched_value.meta.modified;
                     processor_payload.insert(key.to_owned(), value);
                     processor_payload_enriched.insert(key.to_owned(), enriched_value);
                 }
 
-                let value = Value::Map(processor_payload);
+                let value = Value::Object(processor_payload);
                 Ok((
                     value,
                     EnrichedValue {
@@ -324,7 +298,7 @@ impl ActionValueProcessor {
 
                 for value in values {
                     let (value, enriched_value) =
-                        value.process_enriched(rule_name, action_id, event, extracted_vars)?;
+                        value.process_enriched(rule_name, action_id, data)?;
                     modified = modified || enriched_value.meta.modified;
                     processor_values.push(value);
                     processor_payload_enriched.push(enriched_value);
@@ -347,17 +321,16 @@ impl ActionValueProcessor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::accessor::Accessor;
     use maplit::*;
-    use std::collections::HashMap;
-    use tornado_common_api::{Event, Payload};
+    use serde_json::json;
+    use tornado_common_api::{Event, Payload, ValueExt};
 
     #[test]
     fn should_build_a_matcher_action() {
         // Arrange
-        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         let value = "constant value".to_owned();
-        action.payload.insert("key".to_owned(), Value::Text(value.clone()));
+        action.payload.insert("key".to_owned(), Value::String(value.clone()));
 
         let config = vec![action];
 
@@ -371,76 +344,34 @@ mod test {
         let action_payload = &actions.get(0).unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
-        assert_eq!(
-            &ActionValueProcessor::Accessor(Accessor::Constant { value: Value::Text(value) }),
-            action_payload.get("key").unwrap()
-        )
-    }
 
-    #[test]
-    fn action_resolver_builder_should_identify_whether_interpolation_is_required() {
-        // Arrange
-        let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-
-        action.payload.insert("constant".to_owned(), Value::Text("constant value".to_owned()));
-        action.payload.insert("expression".to_owned(), Value::Text("${event.type}".to_owned()));
-        action.payload.insert(
-            "interpolation".to_owned(),
-            Value::Text("event type: ${event.type}".to_owned()),
-        );
-
-        let config = vec![action];
-
-        // Act
-        let actions = ActionResolverBuilder::new().build_all("", &config).unwrap();
-
-        // Assert
-        assert_eq!(1, actions.len());
-        assert_eq!("an_action_id", &actions.get(0).unwrap().id);
-
-        let action_payload = &actions.get(0).unwrap().payload;
-        assert_eq!(3, action_payload.len());
-
-        assert_eq!(
-            &ActionValueProcessor::Accessor(Accessor::Constant {
-                value: Value::Text("constant value".to_owned())
-            }),
-            &action_payload["constant"]
-        );
-
-        assert_eq!(&ActionValueProcessor::Accessor(Accessor::Type), &action_payload["expression"]);
-
-        match &action_payload["interpolation"] {
-            ActionValueProcessor::Interpolator(..) => assert!(true),
-            _ => assert!(false),
-        }
     }
 
     #[test]
     fn should_build_an_action() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("type".to_owned(), Value::Text("${event.type}".to_owned()));
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
+        config_action.payload.insert("type".to_owned(), Value::String("${event.type}".to_owned()));
         config_action
             .payload
-            .insert("payload_body".to_owned(), Value::Text("${event.payload.body}".to_owned()));
+            .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
         config_action.payload.insert(
             "payload_subject".to_owned(),
-            Value::Text("${event.payload.subject}".to_owned()),
+            Value::String("${event.payload.subject}".to_owned()),
         );
         config_action
             .payload
-            .insert("constant".to_owned(), Value::Text("constant value".to_owned()));
+            .insert("constant".to_owned(), Value::String("constant value".to_owned()));
         config_action
             .payload
-            .insert("created_ms".to_owned(), Value::Text("${event.created_ms}".to_owned()));
+            .insert("created_ms".to_owned(), Value::String("${event.created_ms}".to_owned()));
         config_action
             .payload
-            .insert("var_test_1".to_owned(), Value::Text("${_variables.test1}".to_owned()));
+            .insert("var_test_1".to_owned(), Value::String("${_variables.test1}".to_owned()));
         config_action
             .payload
-            .insert("var_test_2".to_owned(), Value::Text("${_variables.test2}".to_owned()));
+            .insert("var_test_2".to_owned(), Value::String("${_variables.test2}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -448,21 +379,21 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
-        payload.insert("subject".to_owned(), Value::Text("subject_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
+        payload.insert("subject".to_owned(), Value::String("subject_value".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
-        let mut extracted_vars_inner = HashMap::new();
-        extracted_vars_inner.insert("test1".to_owned(), Value::Text("var_test_1_value".to_owned()));
-        extracted_vars_inner.insert("test2".to_owned(), Value::Text("var_test_2_value".to_owned()));
+        let mut extracted_vars_inner = Map::new();
+        extracted_vars_inner.insert("test1".to_owned(), Value::String("var_test_1_value".to_owned()));
+        extracted_vars_inner.insert("test2".to_owned(), Value::String("var_test_2_value".to_owned()));
 
-        let mut extracted_vars = HashMap::new();
-        extracted_vars.insert("rule_for_test".to_owned(), Value::Map(extracted_vars_inner));
+        let mut extracted_vars = Map::new();
+        extracted_vars.insert("rule_for_test".to_owned(), Value::Object(extracted_vars_inner));
 
         // Act
-        let result = matcher_action.resolve(&event, Some(&Value::Map(extracted_vars))).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Object(extracted_vars)).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -470,20 +401,20 @@ mod test {
         assert_eq!(&"body_value", &result.payload.get("payload_body").unwrap());
         assert_eq!(&"subject_value", &result.payload.get("payload_subject").unwrap());
         assert_eq!(&"constant value", &result.payload.get("constant").unwrap());
-        assert_eq!(&event.created_ms, result.payload.get("created_ms").unwrap());
+        assert_eq!(&event.created_ms().unwrap(), result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
-        assert_eq!(&event.trace_id, &result.trace_id);
+        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 
     #[test]
     fn should_build_an_action_with_text_to_be_interpolated_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
-            .insert("type".to_owned(), Value::Text("The event type is: ${event.type}".to_owned()));
+            .insert("type".to_owned(), Value::String("The event type is: ${event.type}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -491,20 +422,20 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload(
+        let event = json!(Event::new_with_payload(
             "an_event_type_full_of_imagination".to_owned(),
             payload,
         ));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Text("The event type is: an_event_type_full_of_imagination".to_owned()),
+            &Value::String("The event type is: an_event_type_full_of_imagination".to_owned()),
             result.payload.get("type").unwrap()
         );
     }
@@ -513,7 +444,7 @@ mod test {
     fn should_build_an_action_with_bool_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), Value::Bool(true));
 
         let rule_name = "rule_for_test";
@@ -522,13 +453,13 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -539,7 +470,7 @@ mod test {
     fn should_build_an_action_with_null_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(), Value::Null);
 
         let rule_name = "rule_for_test";
@@ -548,13 +479,13 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -565,8 +496,8 @@ mod test {
     fn should_build_an_action_with_number_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("type".to_owned(), Value::Number(Number::PosInt(123456)));
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
+        config_action.payload.insert("type".to_owned(), json!(123456));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -574,30 +505,30 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&Value::Number(Number::PosInt(123456)), result.payload.get("type").unwrap());
+        assert_eq!(&json!(123456), result.payload.get("type").unwrap());
     }
 
     #[test]
     fn should_build_an_action_with_array_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert(
             "type".to_owned(),
             Value::Array(vec![
-                Value::Number(Number::Float(123456.0)),
-                Value::Text("${event.type}".to_owned()),
-                Value::Text("Event created on ${event.created_ms}".to_owned()),
+                json!(123456.0),
+                Value::String("${event.type}".to_owned()),
+                Value::String("Event created on ${event.created_ms}".to_owned()),
             ]),
         );
 
@@ -607,22 +538,22 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event = Event::new_with_payload("event_type_value".to_owned(), payload);
         let created_ms = event.created_ms;
-        let event = InternalEvent::new(event);
+        let event = json!(event);
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
             &Value::Array(vec![
-                Value::Number(Number::Float(123456.0)),
-                Value::Text("event_type_value".to_owned()),
-                Value::Text(format!("Event created on {}", created_ms))
+                json!(123456.0),
+                Value::String("event_type_value".to_owned()),
+                Value::String(format!("Event created on {}", created_ms))
             ]),
             result.payload.get("type").unwrap()
         );
@@ -632,10 +563,11 @@ mod test {
     fn should_build_an_action_with_map_type_in_config() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action.payload.insert("type".to_owned(),
-                                     Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::Text("${event.type}".to_owned())]
+                                     json!(hashmap![
+                                         "one".to_owned() => json!(123456.0),
+                                         "two".to_owned() => Value::String("${event.type}".to_owned())]
                                      ));
 
         let rule_name = "rule_for_test";
@@ -644,19 +576,21 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("body_value".to_owned()));
+        payload.insert("body".to_owned(), Value::String("body_value".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!(
-            &Value::Map(hashmap!["one".to_owned() => Value::Number(Number::Float(123456.0)),
-                                            "two".to_owned() => Value::Text("event_type_value".to_owned())]),
+            &json!(hashmap![
+                "one".to_owned() => json!(123456.0),
+                "two".to_owned() => Value::String("event_type_value".to_owned())
+            ]),
             result.payload.get("type").unwrap()
         );
     }
@@ -665,13 +599,13 @@ mod test {
     fn should_build_an_action_with_maps_in_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
-            .insert("payload_body".to_owned(), Value::Text("${event.payload.body}".to_owned()));
+            .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
         config_action.payload.insert(
             "payload_body_inner".to_owned(),
-            Value::Text("${event.payload.body.inner}".to_owned()),
+            Value::String("${event.payload.body.inner}".to_owned()),
         );
 
         let rule_name = "rule_for_test";
@@ -679,30 +613,30 @@ mod test {
         let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
-        let mut body = HashMap::new();
-        body.insert("inner".to_owned(), Value::Text("inner_body_value".to_owned()));
+        let mut body = Map::new();
+        body.insert("inner".to_owned(), Value::String("inner_body_value".to_owned()));
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Map(body.clone()));
+        payload.insert("body".to_owned(), Value::Object(body.clone()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
         assert_eq!("inner_body_value", result.payload.get("payload_body_inner").unwrap());
-        assert_eq!(&Value::Map(body.clone()), result.payload.get("payload_body").unwrap());
+        assert_eq!(&Value::Object(body.clone()), result.payload.get("payload_body").unwrap());
     }
 
     #[test]
     fn should_put_the_whole_event_in_the_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
-        config_action.payload.insert("event".to_owned(), Value::Text("${event}".to_owned()));
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
+        config_action.payload.insert("event".to_owned(), Value::String("${event}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -710,14 +644,14 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
         payload.insert("some_null".to_owned(), Value::Null);
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
@@ -730,10 +664,10 @@ mod test {
     fn should_put_the_whole_event_payload_in_the_action_payload() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
-            .insert("event_payload".to_owned(), Value::Text("${event.payload}".to_owned()));
+            .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -741,51 +675,51 @@ mod test {
         let matcher_action = &matcher_actions[0];
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload(
+        let event = json!(Event::new_with_payload(
             "event_type_value".to_owned(),
             payload.clone(),
         ));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(&"an_action_id", &result.id);
-        assert_eq!(&Value::Map(payload), result.payload.get("event_payload").unwrap());
+        assert_eq!(&Value::Object(payload), result.payload.get("event_payload").unwrap());
     }
 
     #[test]
     fn should_return_action_metadata_for_simple_action() {
         // Arrange
         let mut config_action =
-            ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+            ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         config_action
             .payload
-            .insert("event_payload".to_owned(), Value::Text("${event.payload}".to_owned()));
+            .insert("event_payload".to_owned(), Value::String("${event.payload}".to_owned()));
         config_action
             .payload
-            .insert("constant".to_owned(), Value::Text("Into The Great Wide Open".to_owned()));
+            .insert("constant".to_owned(), Value::String("Into The Great Wide Open".to_owned()));
 
         let rule_name = "rule_for_test";
         let action_resolver =
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
-        let event = InternalEvent::new(Event::new_with_payload(
+        let event = json!(Event::new_with_payload(
             "event_type_value".to_owned(),
             payload.clone(),
         ));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
-        assert_eq!(&Value::Map(payload.clone()), action.payload.get("event_payload").unwrap());
+        assert_eq!(&Value::Object(payload.clone()), action.payload.get("event_payload").unwrap());
 
         assert_eq!("an_action_id", &action_meta_data.id);
 
@@ -794,8 +728,8 @@ mod test {
             payload: hashmap! {
                 "event_payload".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
-                        content: Value::Map(hashmap! {
-                            "body".to_owned() => Value::Text("from_payload".to_owned())
+                        content: json!(hashmap! {
+                            "body".to_owned() => Value::String("from_payload".to_owned())
                         })
                     },
                     meta: ValueMetaData {
@@ -805,35 +739,38 @@ mod test {
                 },
                 "constant".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
-                        content: Value::Text("Into The Great Wide Open".to_owned())
+                        content: Value::String("Into The Great Wide Open".to_owned())
                     },
                     meta: ValueMetaData {
-                        modified: false,
+                        modified: true,
                         is_leaf: true
                     },
                 }
             },
         };
+        println!("\n expected_action_meta_data: \n {:#?}", expected_action_meta_data);
+        println!("\n action_meta_data: \n {:#?}", action_meta_data);
         assert_eq!(expected_action_meta_data, action_meta_data);
     }
 
     #[test]
     fn should_return_action_metadata_with_deep_map_value_resolution() {
         // Arrange
+        let mut payload = Map::new();
+        payload.insert("inner_map_static".to_owned(), json!(
+            hashmap!{
+                "bool".to_owned() => Value::Bool(false)
+            }
+        ));
+        payload.insert("inner_map_dynamic".to_owned(), json!(
+            hashmap!{
+                "value".to_owned() => Value::String("${event.payload.body}".to_owned())
+            }
+        ));
+
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
-            payload: hashmap! {
-                "inner_map_static".to_owned() => Value::Map(
-                    hashmap!{
-                        "bool".to_owned() => Value::Bool(false)
-                    }
-                ),
-                "inner_map_dynamic".to_owned() => Value::Map(
-                    hashmap!{
-                        "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
-                    }
-                ),
-            },
+            payload
         };
 
         let rule_name = "rule_for_test";
@@ -841,18 +778,18 @@ mod test {
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
         assert_eq!(
-            &Value::Text("from_payload".to_owned()),
+            &Value::String("from_payload".to_owned()),
             action
                 .payload
                 .get("inner_map_dynamic")
@@ -889,7 +826,7 @@ mod test {
                     content: EnrichedValueContent::Map {
                         content: hashmap! {
                             "value".to_owned()  => EnrichedValue {
-                                  content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                  content: EnrichedValueContent::Single { content: Value::String("from_payload".to_owned()) },
                                   meta: ValueMetaData {
                                         modified: true,
                                         is_leaf: true
@@ -910,18 +847,19 @@ mod test {
     #[test]
     fn should_return_action_metadata_with_deep_array_value_resolution() {
         // Arrange
+        let mut payload = Map::new();
+        payload.insert("inner_vec_static".to_owned(), Value::Array(vec![json!(545)]));
+        payload.insert("inner_vec_dynamic".to_owned(), Value::Array(
+            vec![
+                json!(hashmap!{
+                        "value".to_owned() => Value::String("${event.payload.body}".to_owned())
+                })
+            ]
+        ));
+
         let config_action = ConfigAction {
             id: "an_action_id".to_owned(),
-            payload: hashmap! {
-                "inner_vec_static".to_owned() => Value::Array(vec![Value::Number(Number::PosInt(545))]),
-                "inner_vec_dynamic".to_owned() => Value::Array(
-                    vec![
-                        Value::Map(hashmap!{
-                                "value".to_owned() => Value::Text("${event.payload.body}".to_owned())
-                        })
-                    ]
-                ),
-            },
+            payload,
         };
 
         let rule_name = "rule_for_test";
@@ -929,13 +867,13 @@ mod test {
             ActionResolverBuilder::new().build(rule_name, &config_action).unwrap();
 
         let mut payload = Payload::new();
-        payload.insert("body".to_owned(), Value::Text("from_payload".to_owned()));
+        payload.insert("body".to_owned(), Value::String("from_payload".to_owned()));
 
         let event =
-            InternalEvent::new(Event::new_with_payload("event_type_value".to_owned(), payload));
+            json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
         // Act
-        let (action, action_meta_data) = action_resolver.resolve_with_meta(&event, None).unwrap();
+        let (action, action_meta_data) = action_resolver.resolve_with_meta(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!("an_action_id", &action.id);
@@ -947,7 +885,7 @@ mod test {
                 "inner_vec_static".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Array {
                         content: vec![EnrichedValue {
-                                  content: EnrichedValueContent::Single { content: Value::Number(Number::PosInt(545)) },
+                                  content: EnrichedValueContent::Single { content: json!(545) },
                                   meta: ValueMetaData {
                                         modified: false,
                                         is_leaf: true
@@ -966,7 +904,7 @@ mod test {
                                 content: EnrichedValueContent::Map {
                                     content: hashmap! {
                                         "value".to_owned()  => EnrichedValue {
-                                              content: EnrichedValueContent::Single { content: Value::Text("from_payload".to_owned()) },
+                                              content: EnrichedValueContent::Single { content: Value::String("from_payload".to_owned()) },
                                               meta: ValueMetaData {
                                                     modified: true,
                                                     is_leaf: true
@@ -994,19 +932,19 @@ mod test {
     #[test]
     fn processed_action_should_have_same_trace_id_than_the_event() {
         // Arrange
-        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: HashMap::new() };
+        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
         let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
         let matcher_action = &matcher_actions[0];
 
-        let event = InternalEvent::new(Event::new("event_type_value".to_owned()));
+        let event = json!(Event::new("event_type_value".to_owned()));
 
         // Act
-        let result = matcher_action.resolve(&event, None).unwrap();
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
-        assert_eq!(&event.trace_id, &result.trace_id);
+        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 }

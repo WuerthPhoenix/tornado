@@ -5,8 +5,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use tornado_common::actors::nats_publisher::NatsClientConfig;
 use tornado_common::TornadoError;
-use tornado_common_api::Payload;
+use tornado_common_api::Value;
 use tornado_common_logger::LoggerConfig;
+use std::collections::HashMap;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT");
@@ -98,7 +99,7 @@ pub struct TopicConfig {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct EventConfig {
     pub event_type: Option<String>,
-    pub payload: Option<Payload>,
+    pub payload: Option<HashMap<String, Value>>,
 }
 
 #[cfg(test)]

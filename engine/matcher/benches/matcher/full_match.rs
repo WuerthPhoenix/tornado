@@ -1,5 +1,5 @@
 use criterion::Criterion;
-use tornado_common_api::Event;
+use serde_json::{Value, json};
 use tornado_engine_matcher::matcher::Matcher;
 
 use crate::utils;
@@ -20,9 +20,10 @@ pub fn bench(c: &mut Criterion) {
             .unwrap();
 
     // println!("result is : {:?}", matcher.process(event.clone()));
+    let event = json!(event);
     c.bench_function("Full match", move |b| b.iter(|| execute_test(&matcher, event.clone())));
 }
 
-fn execute_test(matcher: &Matcher, event: Event) {
+fn execute_test(matcher: &Matcher, event: Value) {
     matcher.process(event, false);
 }

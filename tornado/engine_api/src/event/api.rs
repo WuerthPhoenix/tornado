@@ -1,9 +1,10 @@
 use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tornado_common_api::{Event, Value};
+use tornado_common_api::{Event, EVENT_METADATA};
 use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
@@ -34,6 +35,16 @@ pub struct SendEventRequest {
     pub event: Event,
     pub metadata: Value,
     pub process_type: ProcessType,
+}
+
+impl SendEventRequest {
+    pub fn to_event_with_metadata(&self) -> Value {
+        let mut value = json!(&self.event);
+        json_patch::merge(&mut value, &json!({
+            EVENT_METADATA: &self.metadata
+        }));
+        value
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -83,11 +94,11 @@ pub mod test {
     use crate::error::ApiError;
     use async_trait::async_trait;
     use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::Value;
+    use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
     use tornado_engine_matcher::error::MatcherError;
-    use tornado_engine_matcher::model::{InternalEvent, ProcessedNode, ProcessedRules};
+    use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
 
     pub struct TestApiHandler {}
 
@@ -99,12 +110,12 @@ pub mod test {
             event: SendEventRequest,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: InternalEvent::new_with_metadata(event.event, event.metadata),
+                event: event.to_event_with_metadata(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
             })
@@ -116,12 +127,12 @@ pub mod test {
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
             Ok(ProcessedEvent {
-                event: InternalEvent::new_with_metadata(event.event, event.metadata),
+                event: event.to_event_with_metadata(),
                 result: ProcessedNode::Ruleset {
                     name: "ruleset".to_owned(),
                     rules: ProcessedRules {
                         rules: vec![],
-                        extracted_vars: Value::Map(HashMap::new()),
+                        extracted_vars: Value::Object(Map::new()),
                     },
                 },
             })
@@ -220,7 +231,7 @@ pub mod test {
 
         let request = SendEventRequest {
             event: Event::new("event"),
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
             process_type: ProcessType::Full,
         };
 
@@ -240,7 +251,7 @@ pub mod test {
         let request = SendEventRequest {
             event: Event::new("event_for_draft"),
             process_type: ProcessType::SkipActions,
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
         };
 
         // Act & Assert
@@ -262,9 +273,9 @@ pub mod test {
 
         let (_user_view, user_edit) = create_users(&permissions_map);
 
-        let metadata = Value::Map(HashMap::from([(
+        let metadata = json!(HashMap::from([(
             "something".to_owned(),
-            Value::Text(format!("{}", rand::random::<usize>())),
+            Value::String(format!("{}", rand::random::<usize>())),
         )]));
 
         let request = SendEventRequest {
@@ -277,7 +288,7 @@ pub mod test {
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
 
         // Assert
-        assert_eq!(metadata, result.event.metadata);
+        assert_eq!(&metadata, result.event.metadata().unwrap());
     }
 
     #[actix_rt::test]
@@ -289,9 +300,9 @@ pub mod test {
         let (_user_view, mut user_edit) = create_users(&permissions_map);
         user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
 
-        let metadata = Value::Map(HashMap::from([(
+        let metadata = json!(HashMap::from([(
             "something".to_owned(),
-            Value::Text(format!("{}", rand::random::<usize>())),
+            Value::String(format!("{}", rand::random::<usize>())),
         )]));
 
         let request = SendEventRequest {
@@ -302,8 +313,8 @@ pub mod test {
 
         // Act
         let result = api.send_event_to_draft(user_edit, "id", request.clone()).await.unwrap();
-
+        
         // Assert
-        assert_eq!(metadata, result.event.metadata);
+        assert_eq!(&metadata, result.event.metadata().unwrap());
     }
 }

@@ -33,6 +33,8 @@ impl EventBus for SimpleEventBus {
 
 #[cfg(test)]
 mod test {
+    use tornado_common_api::Map;
+
     use super::*;
     use std::sync::{Arc, Mutex};
 
@@ -55,9 +57,9 @@ mod test {
 
         // Act
         bus.publish_action(Action {
-            trace_id: "".to_owned(),
+            trace_id: None,
             id: String::from(action_id),
-            payload: HashMap::new(),
+            payload: Map::new(),
         });
 
         // Assert

@@ -42,7 +42,8 @@ pub mod test {
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
     use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::{Event, Value};
+    use serde_json::json;
+    use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
     fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
@@ -118,7 +119,7 @@ pub mod test {
 
         let request = SendEventRequest {
             event: Event::new("event"),
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
             process_type: ProcessType::SkipActions,
         };
 
@@ -167,7 +168,7 @@ pub mod test {
 
         let request = SendEventRequest {
             event: Event::new("event"),
-            metadata: Value::Map(Default::default()),
+            metadata: Value::Object(Default::default()),
             process_type: ProcessType::Full,
         };
 
@@ -196,9 +197,9 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_users(&permissions_map);
 
-        let metadata = Value::Map(HashMap::from([(
+        let metadata = json!(HashMap::from([(
             "something".to_owned(),
-            Value::Text(format!("{}", rand::random::<usize>())),
+            Value::String(format!("{}", rand::random::<usize>())),
         )]));
 
         let request = SendEventRequest {
@@ -209,8 +210,8 @@ pub mod test {
 
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
-
+        
         // Assert
-        assert_eq!(metadata, result.event.metadata);
+        assert_eq!(&metadata, result.event.metadata().unwrap());
     }
 }

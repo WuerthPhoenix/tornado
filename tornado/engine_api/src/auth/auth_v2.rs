@@ -8,12 +8,29 @@ use log::*;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, AuthV2};
+use tornado_engine_matcher::config::MatcherConfigDraft;
+
+pub const FORBIDDEN_NOT_OWNER: &str = "NOT_OWNER";
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct AuthContextV2<'a> {
     pub auth: AuthV2,
     pub valid: bool,
     permission_roles_map: &'a BTreeMap<Permission, Vec<String>>,
+}
+
+pub trait WithOwner {
+    fn get_id(&self) -> &str;
+    fn get_owner_id(&self) -> &str;
+}
+
+impl WithOwner for MatcherConfigDraft {
+    fn get_id(&self) -> &str {
+        &self.data.draft_id
+    }
+    fn get_owner_id(&self) -> &str {
+        &self.data.user
+    }
 }
 
 impl<'a> AuthContextV2<'a> {
@@ -69,6 +86,26 @@ impl<'a> AuthContextV2<'a> {
             })
         }
     }
+
+    pub fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&AuthContextV2, ApiError> {
+        self.is_authenticated()?;
+        let owner = obj.get_owner_id();
+        if self.auth.user == owner {
+            Ok(self)
+        } else {
+            let mut params = HashMap::new();
+            params.insert("OWNER".to_owned(), owner.to_owned());
+            params.insert("ID".to_owned(), obj.get_id().to_owned());
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_NOT_OWNER.to_owned(),
+                params,
+                message: format!(
+                    "User [{}] is not the owner of the object. The owner is [{}]",
+                    self.auth.user, owner
+                ),
+            })
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -119,8 +156,10 @@ impl AuthServiceV2 {
 
 #[cfg(test)]
 pub mod test {
+
     use super::*;
-    use actix_web::{http::header, test};
+    use actix_web::test::TestRequest;
+    use actix_web::{http::header};
     use tornado_engine_api_dto::auth::UserPreferences;
     use tornado_engine_api_dto::auth_v2::Authorization;
 
@@ -402,7 +441,7 @@ pub mod test {
         // Arrange
         let permission_map = permission_map();
         let auth_service = AuthServiceV2::new(Arc::new(permission_map.clone()));
-        let request = test::TestRequest::get()
+        let request = TestRequest::get()
             .insert_header((
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
@@ -438,5 +477,60 @@ pub mod test {
         );
 
         assert_eq!(result, expected)
+    }
+
+    #[test]
+    fn should_be_the_owner() {
+        let auth = AuthV2 {
+            user: "USER_123".to_owned(),
+            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            preferences: None,
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContextV2::new(auth, &role_permissions);
+
+        assert!(auth_context
+            .is_owner(&Ownable { owner_id: "USER_123".to_owned(), id: "abc".to_owned() })
+            .is_ok());
+    }
+
+    #[test]
+    fn should_not_be_the_owner() {
+        let auth = AuthV2 {
+            user: "USER_123".to_owned(),
+            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            preferences: None,
+        };
+        let role_permissions = BTreeMap::new();
+        let auth_context = AuthContextV2::new(auth, &role_permissions);
+
+        let result = auth_context
+            .is_owner(&Ownable { owner_id: "USER_567".to_owned(), id: "abc".to_owned() });
+        assert!(result.is_err());
+
+        match &result {
+            Err(ApiError::ForbiddenError { code, params, .. }) => {
+                assert_eq!(FORBIDDEN_NOT_OWNER, code);
+                assert_eq!(2, params.len());
+                assert_eq!("USER_567", params["OWNER"]);
+                assert_eq!("abc", params["ID"]);
+            }
+            _ => assert!(false),
+        }
+    }
+
+    struct Ownable {
+        id: String,
+        owner_id: String,
+    }
+
+    impl WithOwner for Ownable {
+        fn get_id(&self) -> &str {
+            &self.id
+        }
+
+        fn get_owner_id(&self) -> &str {
+            &self.owner_id
+        }
     }
 }

@@ -94,7 +94,7 @@ mod test {
     use std::sync::Arc;
     use tornado_common_logger::elastic_apm::ApmTracingConfig;
     use tornado_common_logger::LoggerConfig;
-    use tracing_subscriber::EnvFilter;
+    use tracing_subscriber::filter::Targets;
 
     #[actix_rt::test]
     async fn should_set_the_logger_level() {
@@ -106,7 +106,7 @@ mod test {
             tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone(),
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -144,7 +144,7 @@ mod test {
             tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone(),
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -179,7 +179,7 @@ mod test {
             tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone(),
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);
@@ -214,7 +214,7 @@ mod test {
             tracing_elastic_apm: ApmTracingConfig::default(),
             level: logger_level.clone(),
         };
-        let env_filter = EnvFilter::from_str(&logger_level).unwrap();
+        let env_filter = Targets::from_str(&logger_level).unwrap();
 
         let (_reloadable_env_filter, reloadable_env_filter_handle) =
             tracing_subscriber::reload::Layer::new(env_filter);

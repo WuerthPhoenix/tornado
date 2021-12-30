@@ -56,7 +56,7 @@ impl PathMatcher {
         for param in self.parameters.iter() {
             let var_value = payload
                 .get(&param.simple)
-                .and_then(tornado_common_api::Value::get_text)
+                .and_then(tornado_common_api::ValueExt::get_text)
                 .ok_or_else(|| {
                     let message = format!(
                         "Cannot resolve path parameter [{}] for path [{}]",
@@ -110,8 +110,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload).unwrap();
@@ -142,8 +142,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}/${three}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload);
@@ -159,8 +159,8 @@ mod test {
         let path_matcher = builder.build("/dir/${one}/${two}/${one}");
 
         let mut payload = Payload::new();
-        payload.insert("one".to_owned(), Value::Text("one_value".to_owned()));
-        payload.insert("two".to_owned(), Value::Text("two_value".to_owned()));
+        payload.insert("one".to_owned(), Value::String("one_value".to_owned()));
+        payload.insert("two".to_owned(), Value::String("two_value".to_owned()));
 
         // Act
         let result = path_matcher.build_path(&payload).unwrap();

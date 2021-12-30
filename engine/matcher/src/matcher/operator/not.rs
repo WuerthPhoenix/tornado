@@ -2,7 +2,6 @@ use crate::config;
 use crate::error::MatcherError;
 use crate::matcher::operator::{Operator, OperatorBuilder};
 use crate::model::InternalEvent;
-use tornado_common_api::Value;
 
 const OPERATOR_NAME: &str = "not";
 
@@ -28,8 +27,8 @@ impl Operator for Not {
         OPERATOR_NAME
     }
 
-    fn evaluate(&self, event: &InternalEvent, extracted_vars: Option<&Value>) -> bool {
-        !self.operator.evaluate(event, extracted_vars)
+    fn evaluate(&self, event: &InternalEvent) -> bool {
+        !self.operator.evaluate(event)
     }
 }
 
@@ -38,15 +37,16 @@ mod test {
 
     use super::*;
     use crate::matcher::operator::Operator;
-    use tornado_common_api::Event;
+    use serde_json::json;
+    use tornado_common_api::{Event, Value};
 
     #[test]
     fn should_return_the_operator_name() {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("first_arg=".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("first_arg=".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -59,8 +59,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("first_arg=".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("first_arg=".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -73,8 +73,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("${NOT_EXISTING}".to_owned()),
-                second: Value::Text("second_arg".to_owned()),
+                first: Value::String("${NOT_EXISTING}".to_owned()),
+                second: Value::String("second_arg".to_owned()),
             },
             &OperatorBuilder::new(),
         );
@@ -86,8 +86,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("2".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("2".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -96,11 +96,6 @@ mod test {
         assert_eq!("not", operator.name());
         assert_eq!("equals", operator.operator.name());
 
-        println!("{:?}", operator.operator);
-
-        assert!(format!("{:?}", operator.operator).contains(
-            r#"Equals { first_arg: Constant { value: Text("1") }, second_arg: Constant { value: Text("2") } }"#
-        ))
     }
 
     #[test]
@@ -108,8 +103,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("2".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("2".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -117,7 +112,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), true);
+        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), true);
     }
 
     #[test]
@@ -125,8 +120,8 @@ mod test {
         let operator = Not::build(
             "",
             &config::rule::Operator::Equals {
-                first: Value::Text("1".to_owned()),
-                second: Value::Text("1".to_owned()),
+                first: Value::String("1".to_owned()),
+                second: Value::String("1".to_owned()),
             },
             &OperatorBuilder::new(),
         )
@@ -134,7 +129,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), false);
+        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), false);
     }
 
     #[test]
@@ -143,8 +138,8 @@ mod test {
             "",
             &config::rule::Operator::Not {
                 operator: Box::new(config::rule::Operator::Equals {
-                    first: Value::Text("4".to_owned()),
-                    second: Value::Text("4".to_owned()),
+                    first: Value::String("4".to_owned()),
+                    second: Value::String("4".to_owned()),
                 }),
             },
             &OperatorBuilder::new(),
@@ -153,7 +148,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&InternalEvent::new(event), None), true);
+        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), true);
     }
 
     #[test]
@@ -163,12 +158,12 @@ mod test {
             &config::rule::Operator::And {
                 operators: vec![
                     config::rule::Operator::Equals {
-                        first: Value::Text("4".to_owned()),
-                        second: Value::Text("4".to_owned()),
+                        first: Value::String("4".to_owned()),
+                        second: Value::String("4".to_owned()),
                     },
                     config::rule::Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("type".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("type".to_owned()),
                     },
                 ],
             },
@@ -178,7 +173,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&InternalEvent::new(event), None));
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -188,12 +183,12 @@ mod test {
             &config::rule::Operator::And {
                 operators: vec![
                     config::rule::Operator::Equals {
-                        first: Value::Text("4".to_owned()),
-                        second: Value::Text("4".to_owned()),
+                        first: Value::String("4".to_owned()),
+                        second: Value::String("4".to_owned()),
                     },
                     config::rule::Operator::Equals {
-                        first: Value::Text("${event.type}".to_owned()),
-                        second: Value::Text("type1".to_owned()),
+                        first: Value::String("${event.type}".to_owned()),
+                        second: Value::String("type1".to_owned()),
                     },
                 ],
             },
@@ -203,6 +198,6 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&InternalEvent::new(event), None));
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 }
