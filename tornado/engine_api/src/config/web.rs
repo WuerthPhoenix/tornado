@@ -873,14 +873,14 @@ mod test {
                     auths: HashMap::from([(
                         "auth1".to_owned(),
                         Authorization {
-                            path: vec!["root".to_owned(), "child_2".to_owned()],
+                            path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
                     )]),
                     preferences: None,
                 })?,
             ))
-            .uri("/config/draft/tree/children/auth1/draft123/child_2")
+            .uri("/config/draft/tree/children/auth1/draft123/child_1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
