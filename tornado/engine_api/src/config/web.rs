@@ -49,34 +49,46 @@ pub fn build_config_v2_endpoints<
 >(
     data: ApiDataV2<ConfigApi<A, CM>>,
 ) -> Scope {
-    web::scope("/config").app_data(Data::new(data))
+    web::scope("/config")
+        .app_data(Data::new(data))
         .service(
             web::scope("/active")
                 .service(
                     web::resource("/tree/children/{param_auth}")
-                        .route(web::get().to(get_tree_node::<A, CM>)),
+                        .route(web::get().to(get_current_tree_node::<A, CM>)),
                 )
                 .service(
                     web::resource("/tree/children/{param_auth}/{node_path}")
-                        .route(web::get().to(get_tree_node_with_node_path::<A, CM>)),
+                        .route(web::get().to(get_current_tree_node_with_node_path::<A, CM>)),
                 )
                 .service(
                     web::resource("/tree/details/{param_auth}/{node_path}")
-                        .route(web::get().to(get_tree_node_details::<A, CM>)),
+                        .route(web::get().to(get_current_tree_node_details::<A, CM>)),
                 )
                 .service(
                     web::resource("/tree/info/{param_auth}")
-                        .route(web::get().to(get_tree_info::<A, CM>)),
+                        .route(web::get().to(get_current_tree_info::<A, CM>)),
                 )
                 .service(
                     web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
-                        .route(web::get().to(get_rule_details::<A, CM>)),
+                        .route(web::get().to(get_current_rule_details::<A, CM>)),
+                ),
+        )
+        .service(
+            web::scope("/draft")
+                .service(
+                    web::resource("/tree/children/{param_auth}/{draft_id}")
+                        .route(web::get().to(get_draft_tree_node::<A, CM>)),
                 )
+                .service(
+                    web::resource("/tree/children/{param_auth}/{draft_id}/{node_path}")
+                        .route(web::get().to(get_draft_tree_node_with_node_path::<A, CM>)),
+                ),
         )
         .service(
             web::resource("/drafts/{param_auth}")
                 .route(web::get().to(get_drafts_by_tenant::<A, CM>))
-                .route(web::post().to(create_draft_in_tenant::<A, CM>))
+                .route(web::post().to(create_draft_in_tenant::<A, CM>)),
         )
         .service(
             web::resource("/drafts/{param_auth}/{draft_id}")
@@ -111,7 +123,14 @@ struct DraftPath {
     draft_id: String,
 }
 
-async fn get_tree_node<
+#[derive(Deserialize)]
+struct DraftPathWithNode {
+    param_auth: String,
+    draft_id: String,
+    node_path: String,
+}
+
+async fn get_current_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -126,7 +145,7 @@ async fn get_tree_node<
     Ok(Json(result))
 }
 
-async fn get_tree_node_with_node_path<
+async fn get_current_tree_node_with_node_path<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -146,7 +165,7 @@ async fn get_tree_node_with_node_path<
     Ok(Json(result))
 }
 
-async fn get_tree_node_details<
+async fn get_current_tree_node_details<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -163,7 +182,7 @@ async fn get_tree_node_details<
     Ok(Json(result))
 }
 
-async fn get_tree_info<
+async fn get_current_tree_info<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -177,7 +196,7 @@ async fn get_tree_info<
     Ok(Json(result))
 }
 
-async fn get_rule_details<
+async fn get_current_rule_details<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -190,6 +209,45 @@ async fn get_rule_details<
     let result = data
         .api
         .get_rule_details(&auth_ctx, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .await?;
+    Ok(Json(result))
+}
+
+async fn get_draft_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    path: Path<DraftPath>,
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+
+    let result = data
+        .api
+        .get_draft_config_processing_tree_nodes_by_path(auth_ctx, &path.draft_id, None)
+        .await?;
+    Ok(Json(result))
+}
+
+async fn get_draft_tree_node_with_node_path<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .get_draft_config_processing_tree_nodes_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            Some(&endpoint_params.node_path),
+        )
         .await?;
     Ok(Json(result))
 }
@@ -365,7 +423,6 @@ async fn draft_take_over<
     Ok(Json(()))
 }
 
-
 async fn draft_take_over_for_tenant<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -383,11 +440,11 @@ async fn draft_take_over_for_tenant<
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::auth::auth_v2::test::test_auth_service_v2;
     use crate::auth::auth_v2::AuthServiceV2;
     use crate::auth::test::test_auth_service;
     use crate::auth::AuthService;
     use crate::error::ApiError;
+    use crate::{auth::auth_v2::test::test_auth_service_v2, test_root::start_context};
     use actix_web::{
         http::{header, StatusCode},
         test, App,
@@ -397,7 +454,7 @@ mod test {
     use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
-    use tornado_engine_api_dto::config::{FilterDto, ConstraintDto};
+    use tornado_engine_api_dto::config::{ConstraintDto, FilterDto};
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
@@ -460,7 +517,47 @@ mod test {
                     created_ts_ms: 0,
                     updated_ts_ms: 0,
                 },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+                config: MatcherConfig::Filter {
+                    name: "root".to_owned(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        filter: Defaultable::Default {},
+                        active: false,
+                    },
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            name: "child_1".to_owned(),
+                            filter: Filter {
+                                description: "".to_string(),
+                                filter: Defaultable::Default {},
+                                active: false,
+                            },
+                            nodes: vec![MatcherConfig::Filter {
+                                name: "child_1_1".to_owned(),
+                                filter: Filter {
+                                    description: "".to_string(),
+                                    filter: Defaultable::Default {},
+                                    active: false,
+                                },
+                                nodes: vec![],
+                            }],
+                        },
+                        MatcherConfig::Ruleset {
+                            name: "child_2".to_owned(),
+                            rules: vec![Rule {
+                                name: "rule_1".to_string(),
+                                description: "Rule 1 description".to_string(),
+                                do_continue: false,
+                                active: true,
+                                constraint: Constraint {
+                                    where_operator: None,
+                                    with: Default::default(),
+                                },
+                                actions: vec![],
+                            }],
+                        },
+                    ],
+                },
             })
         }
 
@@ -518,7 +615,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get().uri("/v1_beta/config/current").to_request();
@@ -538,7 +635,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -563,7 +660,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -588,7 +685,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -610,7 +707,11 @@ mod test {
                 nodes: vec![
                     MatcherConfigDto::Filter {
                         name: "child_1".to_owned(),
-                        filter: FilterDto { description: "".to_string(), active: false, filter: None },
+                        filter: FilterDto {
+                            description: "".to_string(),
+                            active: false,
+                            filter: None
+                        },
                         nodes: vec![]
                     },
                     MatcherConfigDto::Ruleset {
@@ -642,7 +743,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -675,7 +776,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-        .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -694,7 +795,8 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError> {
+    async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError>
+    {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -730,7 +832,96 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_should_have_a_create_draft_in_tenant_post_endpoint() -> Result<(), ApiError> {
+    async fn v2_endpoint_should_have_a_get_draft_single_node_get_endpoint() -> Result<(), ApiError>
+    {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/children/auth1/draft123")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_get_draft_single_node_with_path_get_endpoint(
+    ) -> Result<(), ApiError> {
+        start_context();
+
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned(), "child_1".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/children/auth1/draft123/child_1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+
+        let dto: Vec<ProcessingTreeNodeConfigDto> = test::read_body_json(response).await;
+
+        assert_eq!(
+            vec![ProcessingTreeNodeConfigDto::Filter {
+                name: "child_1_1".to_owned(),
+                rules_count: 0,
+                children_count: 0,
+                description: "".to_string()
+            },],
+            dto
+        );
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_create_draft_in_tenant_post_endpoint() -> Result<(), ApiError>
+    {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -766,7 +957,8 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_should_have_a_delete_draft_for_tenant_delete_endpoint() -> Result<(), ApiError> {
+    async fn v2_endpoint_should_have_a_delete_draft_for_tenant_delete_endpoint(
+    ) -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -802,7 +994,8 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_should_have_a_deploy_draft_for_tenant_post_endpoint() -> Result<(), ApiError> {
+    async fn v2_endpoint_should_have_a_deploy_draft_for_tenant_post_endpoint(
+    ) -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -838,7 +1031,8 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_should_have_a_draft_take_over_for_tenant_post_endpoint() -> Result<(), ApiError> {
+    async fn v2_endpoint_should_have_a_draft_take_over_for_tenant_post_endpoint(
+    ) -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
@@ -881,7 +1075,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-            .await;
+                .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -918,7 +1112,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-            .await;
+                .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -955,7 +1149,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-            .await;
+                .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -992,7 +1186,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-            .await;
+                .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1028,7 +1222,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-            .await;
+                .await;
 
         // Act
         let request = test::TestRequest::get()

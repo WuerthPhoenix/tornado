@@ -1,5 +1,6 @@
 use crate::config::MatcherConfig;
 use std::collections::HashMap;
+use log::*;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum NodeFilter {
@@ -47,7 +48,14 @@ pub fn matcher_config_filter(
     matcher_config: &MatcherConfig,
     filter: &HashMap<String, NodeFilter>,
 ) -> Option<MatcherConfig> {
+
+    trace!("matcher_config_filter called with matcher_config: {:?}", matcher_config);
+    trace!("matcher_config_filter called with filter: {:?}", filter);
+
     let node_name = matcher_config.get_name();
+
+    
+
     if let Some(node_filter) = filter.get(node_name) {
         match matcher_config {
             MatcherConfig::Ruleset { .. } => Some(matcher_config.clone()),
