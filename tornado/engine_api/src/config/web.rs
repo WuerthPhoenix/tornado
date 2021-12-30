@@ -122,6 +122,13 @@ struct DraftPath {
     draft_id: String,
 }
 
+#[derive(Deserialize)]
+struct DraftPathWithNode {
+    param_auth: String,
+    draft_id: String,
+    node_path: String,
+}
+
 async fn get_current_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -211,13 +218,12 @@ async fn get_draft_tree_node<
 >(
     req: HttpRequest,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-    param_auth: Path<String>,
-    draft_id: Path<String>
+    path: Path<DraftPath>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
 
-    let result = data.api.get_draft_config_processing_tree_nodes_by_path(auth_ctx, &draft_id.into_inner(), None).await?;
+    let result = data.api.get_draft_config_processing_tree_nodes_by_path(auth_ctx, &path.draft_id, None).await?;
     Ok(Json(result))
 }
 
@@ -226,15 +232,16 @@ async fn get_draft_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<AuthAndNodePath>,
+    endpoint_params: Path<DraftPathWithNode>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_current_config_processing_tree_nodes_by_path(
+        .get_draft_config_processing_tree_nodes_by_path(
             auth_ctx,
+            &endpoint_params.draft_id,
             Some(&endpoint_params.node_path),
         )
         .await?;
@@ -507,7 +514,39 @@ mod test {
                     created_ts_ms: 0,
                     updated_ts_ms: 0,
                 },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+                config: MatcherConfig::Filter {
+                    name: "root".to_owned(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        filter: Defaultable::Default {},
+                        active: false,
+                    },
+                    nodes: vec![
+                        MatcherConfig::Filter {
+                            name: "child_1".to_owned(),
+                            filter: Filter {
+                                description: "".to_string(),
+                                filter: Defaultable::Default {},
+                                active: false,
+                            },
+                            nodes: vec![],
+                        },
+                        MatcherConfig::Ruleset {
+                            name: "child_2".to_owned(),
+                            rules: vec![Rule {
+                                name: "rule_1".to_string(),
+                                description: "Rule 1 description".to_string(),
+                                do_continue: false,
+                                active: true,
+                                constraint: Constraint {
+                                    where_operator: None,
+                                    with: Default::default(),
+                                },
+                                actions: vec![],
+                            }],
+                        },
+                    ],
+                },
             })
         }
 
@@ -767,6 +806,78 @@ mod test {
                 })?,
             ))
             .uri("/config/drafts/auth1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_get_draft_single_node_get_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/children/auth1/draft123")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_should_have_a_get_draft_single_node_with_path_get_endpoint() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned(), "child_2".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/children/auth1/draft123/child_2")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;

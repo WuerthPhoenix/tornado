@@ -380,7 +380,7 @@ pub async fn get_filtered_matcher(
     auth: &AuthContextV2<'_>,
 ) -> Result<MatcherConfig, ApiError> {
     let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
-    matcher_config_filter(&config, &node_filter).ok_or({
+    matcher_config_filter(config, &node_filter).ok_or({
         let message = "The authorized node path does not exist.";
         warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
         ApiError::InvalidAuthorizedPath { message: message.to_owned() }
@@ -876,10 +876,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_1).await.unwrap();
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, vec![]).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec![], filtered_matcher).await.unwrap();
         let res =
             api.get_current_config_processing_tree_nodes_by_path(user_root_1, None).await.unwrap();
 
@@ -911,9 +913,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user_root_3, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user_root_3, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user_root_3, None).await;
 
         // Assert
@@ -935,9 +939,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -962,9 +968,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![]).await;
+        let res_authorized_child_nodes = api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
@@ -988,10 +996,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_1).await.unwrap();
 
         // Act
         let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_1, vec!["root_1"]).await.unwrap();
+            api.get_authorized_child_nodes(&user_root_1, vec!["root_1"], filtered_matcher).await.unwrap();
         let res = api
             .get_current_config_processing_tree_nodes_by_path(
                 user_root_1,
@@ -1031,9 +1041,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act & Assert
-        assert!(api.get_authorized_child_nodes(&user_root_3, vec!["root"]).await.is_err());
+        assert!(api.get_authorized_child_nodes(&user_root_3, vec!["root"], filtered_matcher).await.is_err());
         assert!(api
             .get_current_config_processing_tree_nodes_by_path(
                 user_root_3,
