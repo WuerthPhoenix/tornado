@@ -89,8 +89,10 @@ pub fn build_config_v2_endpoints<
                         .route(web::get().to(get_draft_tree_node_details::<A, CM>)),
                 )
                 .service(
-                    web::resource("/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}")
-                        .route(web::get().to(get_draft_rule_details::<A, CM>)),
+                    web::resource(
+                        "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
+                    )
+                    .route(web::get().to(get_draft_rule_details::<A, CM>)),
                 ),
         )
         .service(
@@ -210,7 +212,11 @@ async fn get_draft_tree_node_details<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_draft_config_node_details_by_path(auth_ctx, &endpoint_params.draft_id, &endpoint_params.node_path)
+        .get_draft_config_node_details_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+        )
         .await?;
     Ok(Json(result))
 }
@@ -241,7 +247,11 @@ async fn get_current_rule_details<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_current_rule_details_by_path(&auth_ctx, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .get_current_rule_details_by_path(
+            &auth_ctx,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+        )
         .await?;
     Ok(Json(result))
 }
@@ -258,7 +268,12 @@ async fn get_draft_rule_details<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_draft_rule_details_by_path(&auth_ctx, &endpoint_params.draft_id, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .get_draft_rule_details_by_path(
+            &auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+        )
         .await?;
     Ok(Json(result))
 }
@@ -665,7 +680,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/v1_beta/config/current").to_request();
@@ -685,7 +700,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -710,7 +725,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -735,7 +750,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -793,7 +808,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -826,7 +841,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -853,7 +868,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -890,7 +905,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -929,7 +944,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -978,7 +993,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -1015,7 +1030,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::delete()
@@ -1052,7 +1067,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -1089,7 +1104,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -1125,7 +1140,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1162,7 +1177,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1199,7 +1214,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1236,7 +1251,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1273,7 +1288,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1310,7 +1325,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1346,7 +1361,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
