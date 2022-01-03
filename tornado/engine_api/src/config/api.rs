@@ -134,16 +134,31 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        self.get_node_details(&auth, node_path).await
+        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, &auth).await?;
+        self.get_node_details(&auth, &filtered_matcher, node_path).await
+    }
+
+    /// Returns processing tree node details by path
+    /// in the current configuration of tornado
+    pub async fn get_draft_config_node_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+    ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+        let draft_config = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft_config)?;
+        let filtered_matcher = get_filtered_matcher(&draft_config.config, &auth).await?;
+        self.get_node_details(&auth, &filtered_matcher, node_path).await
     }
 
     async fn get_node_details(
         &self,
         auth: &AuthContextV2<'_>,
+        filtered_matcher: &MatcherConfig,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
-
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
         let authorized_path =
@@ -168,15 +183,41 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
-    pub async fn get_rule_details(
+    /// Returns processing tree node details by path
+    /// in the current configuration of tornado
+    pub async fn get_current_rule_details_by_path(
         &self,
         auth: &AuthContextV2<'_>,
         ruleset_path: &str,
         rule_name: &str,
     ) -> Result<RuleDto, ApiError> {
-        auth.has_permission(&Permission::ConfigView)?;
-
         let filtered_matcher = get_filtered_matcher(&self.config_manager.get_config().await?, auth).await?;
+        self.get_rule_details(auth, &filtered_matcher, ruleset_path, rule_name).await
+    }
+
+    /// Returns processing tree node details by path
+    /// in the current configuration of tornado
+    pub async fn get_draft_rule_details_by_path(
+        &self,
+        auth: &AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+    ) -> Result<RuleDto, ApiError> {
+        let draft_config = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft_config)?;
+        let filtered_matcher = get_filtered_matcher(&draft_config.config, auth).await?;
+        self.get_rule_details(auth, &filtered_matcher, ruleset_path, rule_name).await
+    }
+
+    pub async fn get_rule_details(
+        &self,
+        auth: &AuthContextV2<'_>,
+        filtered_matcher: &MatcherConfig,
+        ruleset_path: &str,
+        rule_name: &str,
+    ) -> Result<RuleDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
 
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
@@ -1104,10 +1145,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
         let res_get_node_details =
-            api.get_node_details(&user, &"root_1,root_1_2".to_string()).await.unwrap();
+            api.get_node_details(&user, &filtered_matcher, &"root_1,root_1_2".to_string()).await.unwrap();
         let res = api
             .get_current_config_node_details_by_path(user, &"root_1,root_1_2".to_string())
             .await
@@ -1144,10 +1187,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
         let res_get_rule_details =
-            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await.unwrap();
+            api.get_rule_details(&user, &filtered_matcher, "root_1,root_1_2", "root_1_2_1").await.unwrap();
 
         // Assert
         let expected_res = RuleDto {
@@ -1177,10 +1222,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
         let res_get_rule_details_error =
-            api.get_rule_details(&user, "root_1,root_1_2", "root_1_2_1").await;
+            api.get_rule_details(&user, &filtered_matcher, "root_1,root_1_2", "root_1_2_1").await;
 
         // Assert
         let expected_res = Err(ApiError::ForbiddenError {
@@ -1209,9 +1256,11 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act & Assert
-        assert!(api.get_node_details(&user_root_3, &"root".to_string()).await.is_err());
+        assert!(api.get_node_details(&user_root_3, &filtered_matcher, &"root".to_string()).await.is_err());
         assert!(api
             .get_current_config_node_details_by_path(user_root_3, &"root".to_string())
             .await
@@ -1235,10 +1284,12 @@ mod test {
             },
             &permissions_map,
         );
+        let config = &api.config_manager.get_config().await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act & Assert
         assert!(matches!(
-            api.get_node_details(&user, &"root,root_2".to_string()).await,
+            api.get_node_details(&user, &filtered_matcher, &"root,root_2".to_string()).await,
             Err(ApiError::ForbiddenError { .. })
         ))
     }
