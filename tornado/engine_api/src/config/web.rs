@@ -83,6 +83,16 @@ pub fn build_config_v2_endpoints<
                 .service(
                     web::resource("/tree/children/{param_auth}/{draft_id}/{node_path}")
                         .route(web::get().to(get_draft_tree_node_with_node_path::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
+                        .route(web::get().to(get_draft_tree_node_details::<A, CM>)),
+                )
+                .service(
+                    web::resource(
+                        "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
+                    )
+                    .route(web::get().to(get_draft_rule_details::<A, CM>)),
                 ),
         )
         .service(
@@ -113,6 +123,14 @@ struct AuthAndNodePath {
 #[derive(Deserialize)]
 struct RuleDetailsParams {
     param_auth: String,
+    ruleset_path: String,
+    rule_name: String,
+}
+
+#[derive(Deserialize)]
+struct DraftRuleDetailsParams {
+    param_auth: String,
+    draft_id: String,
     ruleset_path: String,
     rule_name: String,
 }
@@ -182,6 +200,27 @@ async fn get_current_tree_node_details<
     Ok(Json(result))
 }
 
+async fn get_draft_tree_node_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .get_draft_config_node_details_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+        )
+        .await?;
+    Ok(Json(result))
+}
+
 async fn get_current_tree_info<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -208,7 +247,33 @@ async fn get_current_rule_details<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = data
         .api
-        .get_rule_details(&auth_ctx, &endpoint_params.ruleset_path, &endpoint_params.rule_name)
+        .get_current_rule_details_by_path(
+            &auth_ctx,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+        )
+        .await?;
+    Ok(Json(result))
+}
+
+async fn get_draft_rule_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftRuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<RuleDto>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .get_draft_rule_details_by_path(
+            &auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+        )
         .await?;
     Ok(Json(result))
 }
@@ -615,7 +680,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get().uri("/v1_beta/config/current").to_request();
@@ -635,7 +700,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -660,7 +725,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -685,7 +750,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -743,7 +808,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -776,7 +841,7 @@ mod test {
             auth: test_auth_service(),
             api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
         })))
-            .await;
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -803,7 +868,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -840,7 +905,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -879,7 +944,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -928,7 +993,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -965,7 +1030,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::delete()
@@ -1002,7 +1067,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -1039,7 +1104,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -1075,7 +1140,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1112,7 +1177,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1149,7 +1214,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1186,7 +1251,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -1215,6 +1280,80 @@ mod test {
     }
 
     #[actix_rt::test]
+    async fn v2_endpoint_get_draft_details_by_node_path_should_return_status_code_ok(
+    ) -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned(), "child_1".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/details/auth1/draft123/child_1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_get_draft_rule_details_by_ruleset_path_should_return_status_code_ok(
+    ) -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::get()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned(), "child_2".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/active/rule/details/auth1/child_2/rule_1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
     async fn v2_endpoint_get_tree_info_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
         let mut srv =
@@ -1222,7 +1361,7 @@ mod test {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::get()
