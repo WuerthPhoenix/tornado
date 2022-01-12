@@ -86,7 +86,10 @@ pub fn build_config_v2_endpoints<
                 )
                 .service(
                     web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
-                        .route(web::get().to(get_draft_tree_node_details::<A, CM>)),
+                        .route(web::get().to(get_draft_tree_node_details::<A, CM>))
+                        .route(web::put().to(create_draft_tree_node::<A, CM>))
+                        // .route(web::post().to(edit_draft_tree_node::<A, CM>))
+                        // .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
                 )
                 .service(
                     web::resource(
@@ -207,6 +210,7 @@ async fn get_draft_tree_node_details<
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    body: Json<MatcherConfigDto>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
@@ -219,6 +223,29 @@ async fn get_draft_tree_node_details<
         )
         .await?;
     Ok(Json(result))
+}
+
+async fn create_draft_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let config = dto_into_matcher_config(body.into_inner())?;
+    data
+        .api
+        .create_draft_config_node(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+            config
+        )
+        .await?;
+    Ok(Json(()))
 }
 
 async fn get_current_tree_info<

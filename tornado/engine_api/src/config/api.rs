@@ -163,7 +163,17 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, &relative_node_path)?;
 
+        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
+            ApiError::NodeNotFoundError {
+                message: format!("Node for relative path {:?} not found", relative_node_path),
+            },
+        )?;
+        Ok(ProcessingTreeNodeDetailsDto::from(node))
+    }
+
+    fn get_absolute_path_from_relative(&self, auth: &AuthContextV2, relative_node_path: &Vec<&str>) -> Result<Vec<&str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -177,13 +187,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             authorized_path,
             relative_node_path.clone(),
         )?;
-
-        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
-            ApiError::NodeNotFoundError {
-                message: format!("Node for relative path {:?} not found", relative_node_path),
-            },
-        )?;
-        Ok(ProcessingTreeNodeDetailsDto::from(node))
+        Ok(absolute_node_path)
     }
 
     /// Returns processing tree node details by path
@@ -417,12 +421,28 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
 
     async fn get_draft_and_check_owner(
         &self,
-        auth: &AuthContext<'_>,
+        auth: &AuthContextV2<'_>,
         draft_id: &str,
     ) -> Result<MatcherConfigDraft, ApiError> {
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
         Ok(draft)
+    }
+
+    pub async fn create_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+        config: MatcherConfig,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.create_node_in_path(&absolute_node_path, &config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config).await?)
     }
 }
 

@@ -99,6 +99,45 @@ impl MatcherConfig {
             MatcherConfig::Ruleset { rules, .. } => rules.len(),
         }
     }
+
+    // Create a node at a specific path
+    pub fn create_node_in_path(&self, path: &[&str], node: &MatcherConfig) -> Result<(), MatcherError> {
+        // empty path returns None
+        if path.is_empty() {
+            return Err(MatcherError::ConfigurationError {
+                message: format!("Error path empty: [{:?}]", path),
+            });
+        }
+        // first element must be current node
+        if path[0] != self.get_name() {
+            return Err(MatcherError::ConfigurationError {
+                message: format!("First element of path must be the first element in the tree"),
+            });
+        }
+        let mut root = self;
+        // drill down from root
+        for &node_name in path[1..(path.len() - 1)].iter() {
+            if let Some(new_root) = root.get_child_node_by_name(node_name) {
+                root = new_root
+            } else {
+                return Err(MatcherError::ConfigurationError {
+                    message: format!("Element not found in tree"),
+                });
+            }
+        }
+
+        match root {
+            MatcherConfig::Ruleset { rules: _, .. } => {
+                Err(MatcherError::ConfigurationError {
+                    message: format!("A ruleset cannot have children nodes"),
+                })
+            },
+            MatcherConfig::Filter { name: _, filter: _, ref mut nodes} => {
+                nodes.push(node.clone());
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
