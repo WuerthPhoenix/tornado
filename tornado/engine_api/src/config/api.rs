@@ -1,5 +1,5 @@
 use crate::auth::auth_v2::AuthContextV2;
-use crate::auth::{AuthContext, Permission};
+use crate::auth::{AuthContext, AuthContextTrait, Permission};
 use crate::config::convert::rule_into_dto;
 use crate::error::ApiError;
 use log::*;
@@ -173,7 +173,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
-    fn get_absolute_path_from_relative(&self, auth: &AuthContextV2, relative_node_path: &Vec<&str>) -> Result<Vec<&str>, ApiError> {
+    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &Vec<&'a str>) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -419,9 +419,11 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
-    async fn get_draft_and_check_owner(
+    async fn get_draft_and_check_owner<
+        T: AuthContextTrait,
+    >(
         &self,
-        auth: &AuthContextV2<'_>,
+        auth: &T,
         draft_id: &str,
     ) -> Result<MatcherConfigDraft, ApiError> {
         let draft = self.config_manager.get_draft(draft_id).await?;
@@ -437,7 +439,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         config: MatcherConfig,
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        let draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
         let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
 

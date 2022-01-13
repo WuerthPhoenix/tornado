@@ -1,14 +1,10 @@
-use crate::auth::{
-    roles_contain_any_permission, AuthService, Permission, FORBIDDEN_MISSING_REQUIRED_PERMISSIONS,
-    JWT_TOKEN_HEADER_SUFFIX,
-};
+use crate::auth::{roles_contain_any_permission, AuthService, Permission, FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, JWT_TOKEN_HEADER_SUFFIX, AuthContextTrait, WithOwner};
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, AuthV2};
-use tornado_engine_matcher::config::MatcherConfigDraft;
 
 pub const FORBIDDEN_NOT_OWNER: &str = "NOT_OWNER";
 
@@ -19,17 +15,26 @@ pub struct AuthContextV2<'a> {
     permission_roles_map: &'a BTreeMap<Permission, Vec<String>>,
 }
 
-pub trait WithOwner {
-    fn get_id(&self) -> &str;
-    fn get_owner_id(&self) -> &str;
-}
-
-impl WithOwner for MatcherConfigDraft {
-    fn get_id(&self) -> &str {
-        &self.data.draft_id
-    }
-    fn get_owner_id(&self) -> &str {
-        &self.data.user
+impl AuthContextTrait for AuthContextV2<'_> {
+    // Returns an error if the user is not the owner of the object
+    fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&Self, ApiError> {
+        self.is_authenticated()?;
+        let owner = obj.get_owner_id();
+        if self.auth.user == owner {
+            Ok(self)
+        } else {
+            let mut params = HashMap::new();
+            params.insert("OWNER".to_owned(), owner.to_owned());
+            params.insert("ID".to_owned(), obj.get_id().to_owned());
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_NOT_OWNER.to_owned(),
+                params,
+                message: format!(
+                    "User [{}] is not the owner of the object. The owner is [{}]",
+                    self.auth.user, owner
+                ),
+            })
+        }
     }
 }
 
@@ -82,26 +87,6 @@ impl<'a> AuthContextV2<'a> {
                 message: format!(
                     "User [{}] does not have the required permissions [{:?}]",
                     self.auth.user, permissions
-                ),
-            })
-        }
-    }
-
-    pub fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&AuthContextV2, ApiError> {
-        self.is_authenticated()?;
-        let owner = obj.get_owner_id();
-        if self.auth.user == owner {
-            Ok(self)
-        } else {
-            let mut params = HashMap::new();
-            params.insert("OWNER".to_owned(), owner.to_owned());
-            params.insert("ID".to_owned(), obj.get_id().to_owned());
-            Err(ApiError::ForbiddenError {
-                code: FORBIDDEN_NOT_OWNER.to_owned(),
-                params,
-                message: format!(
-                    "User [{}] is not the owner of the object. The owner is [{}]",
-                    self.auth.user, owner
                 ),
             })
         }

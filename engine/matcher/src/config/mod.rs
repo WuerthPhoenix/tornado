@@ -49,6 +49,15 @@ impl MatcherConfig {
         }
     }
 
+    fn retrieve_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter_mut().find(|child| child.get_name() == child_name)
+            }
+            MatcherConfig::Ruleset { .. } => None,
+        }
+    }
+
     pub fn get_node_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
         // empty path returns None
         if path.is_empty() {
@@ -101,7 +110,7 @@ impl MatcherConfig {
     }
 
     // Create a node at a specific path
-    pub fn create_node_in_path(&self, path: &[&str], node: &MatcherConfig) -> Result<(), MatcherError> {
+    pub fn create_node_in_path(&mut self, path: &[&str], node: &MatcherConfig) -> Result<(), MatcherError> {
         // empty path returns None
         if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
@@ -117,7 +126,7 @@ impl MatcherConfig {
         let mut root = self;
         // drill down from root
         for &node_name in path[1..(path.len() - 1)].iter() {
-            if let Some(new_root) = root.get_child_node_by_name(node_name) {
+            if let Some(new_root) = root.retrieve_mut_child_node_by_name(node_name) {
                 root = new_root
             } else {
                 return Err(MatcherError::ConfigurationError {

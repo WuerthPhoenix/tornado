@@ -31,11 +31,41 @@ pub enum Permission {
     TestEventExecuteActions,
 }
 
+/// A MatcherConfigEditor permits to edit Tornado Configuration drafts
+#[async_trait::async_trait(?Send)]
+pub trait AuthContextTrait: Sync + Send {
+    /// Returns an error if the user is not the owner of the object
+    fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&Self, ApiError>;
+}
+
 #[derive(Debug, Clone)]
 pub struct AuthContext<'a> {
     pub auth: Auth,
     pub valid: bool,
     permission_roles_map: &'a BTreeMap<Permission, Vec<String>>,
+}
+
+impl AuthContextTrait for AuthContext<'_> {
+    // Returns an error if the user is not the owner of the object
+    fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&Self, ApiError> {
+        self.is_authenticated()?;
+        let owner = obj.get_owner_id();
+        if self.auth.user == owner {
+            Ok(self)
+        } else {
+            let mut params = HashMap::new();
+            params.insert("OWNER".to_owned(), owner.to_owned());
+            params.insert("ID".to_owned(), obj.get_id().to_owned());
+            Err(ApiError::ForbiddenError {
+                code: FORBIDDEN_NOT_OWNER.to_owned(),
+                params,
+                message: format!(
+                    "User [{}] is not the owner of the object. The owner is [{}]",
+                    self.auth.user, owner
+                ),
+            })
+        }
+    }
 }
 
 impl<'a> AuthContext<'a> {
@@ -90,27 +120,6 @@ impl<'a> AuthContext<'a> {
         }
 
         permissions
-    }
-
-    // Returns an error if the user is not the owner of the object
-    pub fn is_owner<T: WithOwner>(&self, obj: &T) -> Result<&AuthContext, ApiError> {
-        self.is_authenticated()?;
-        let owner = obj.get_owner_id();
-        if self.auth.user == owner {
-            Ok(self)
-        } else {
-            let mut params = HashMap::new();
-            params.insert("OWNER".to_owned(), owner.to_owned());
-            params.insert("ID".to_owned(), obj.get_id().to_owned());
-            Err(ApiError::ForbiddenError {
-                code: FORBIDDEN_NOT_OWNER.to_owned(),
-                params,
-                message: format!(
-                    "User [{}] is not the owner of the object. The owner is [{}]",
-                    self.auth.user, owner
-                ),
-            })
-        }
     }
 }
 
