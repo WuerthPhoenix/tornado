@@ -85,9 +85,7 @@ pub fn build_config_v2_endpoints<
                 .service(
                     web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
                         .route(web::get().to(get_draft_tree_node_details::<A, CM>))
-                        .route(web::put().to(create_draft_tree_node::<A, CM>))
-                        // .route(web::post().to(edit_draft_tree_node::<A, CM>))
-                        // .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
+                        .route(web::put().to(create_draft_tree_node::<A, CM>)),
                 )
                 .service(
                     web::resource(
@@ -661,7 +659,7 @@ mod test {
             _user: String,
             _config: &MatcherConfig,
         ) -> Result<(), MatcherError> {
-            unimplemented!()
+            Ok(())
         }
 
         async fn deploy_draft(&self, _draft_id: &str) -> Result<MatcherConfig, MatcherError> {
@@ -1406,6 +1404,49 @@ mod test {
                 })?,
             ))
             .uri("/config/active/tree/info/auth1")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_create_node_in_draft_by_path_should_create_a_new_node() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+                .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
+            .set_json(&ProcessingTreeNodeDetailsDto::Filter {
+                name: "test_filter".to_string(),
+                description: "".to_string(),
+                active: false,
+                filter: None
+            })
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
