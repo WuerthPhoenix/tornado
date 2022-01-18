@@ -1,14 +1,11 @@
+use std::ptr::null;
 use serde_json::Error;
-use tornado_engine_api_dto::config::{
-    ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
-    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
-    RuleDto,
-};
+use tornado_engine_api_dto::config::{ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto, MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto, ProcessingTreeNodeDetailsDto, RuleDto};
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
     Action, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
 };
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
+use tornado_engine_matcher::config::{Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
 
 pub fn matcher_config_draft_into_dto(
     draft: MatcherConfigDraft,
@@ -124,6 +121,26 @@ pub fn dto_into_matcher_config(config: MatcherConfigDto) -> Result<MatcherConfig
             name,
             filter: dto_into_filter(filter)?,
             nodes: nodes.into_iter().map(dto_into_matcher_config).collect::<Result<Vec<_>, _>>()?,
+        },
+    })
+}
+
+pub fn processing_tree_node_details_dto_into_matcher_config(config: ProcessingTreeNodeDetailsDto) -> Result<MatcherConfig, Error> {
+    Ok(match config {
+        ProcessingTreeNodeDetailsDto::Ruleset { name, rules: _ } => MatcherConfig::Ruleset {
+            name,
+            rules: vec![], //rules.into_iter().map(dto_into_rule).collect::<Result<Vec<_>, _>>()?,
+        },
+        ProcessingTreeNodeDetailsDto::Filter { name, description, active, filter } => {
+            MatcherConfig::Filter {
+                name,
+                filter: Filter {
+                    description,
+                    filter: Defaultable::from(Option::Some(dto_into_operator(filter.unwrap()).unwrap())),
+                    active,
+                },
+                nodes: vec![],
+            }
         },
     })
 }

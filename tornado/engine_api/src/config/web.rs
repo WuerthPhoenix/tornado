@@ -1,7 +1,5 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{
-    dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
-};
+use crate::config::convert::{dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto, processing_tree_node_details_dto_into_matcher_config};
 use crate::model::{ApiData, ApiDataV2};
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
@@ -231,11 +229,11 @@ async fn create_draft_tree_node<
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-    body: Json<MatcherConfigDto>,
+    body: Json<ProcessingTreeNodeDetailsDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let config = dto_into_matcher_config(body.into_inner())?;
+    let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
     data
         .api
         .create_draft_config_node(
