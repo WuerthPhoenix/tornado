@@ -444,7 +444,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
 
         draft.config.create_node_in_path(&absolute_node_path, &config)?;
-        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &config).await?)
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 }
 
