@@ -120,7 +120,7 @@ impl MatcherConfig {
         // first element must be current node
         if path[0] != self.get_name() {
             return Err(MatcherError::ConfigurationError {
-                message: format!("First element of path must be the first element in the tree"),
+                message: "First element of path must be the first element in the tree".to_string(),
             });
         }
         let mut root = self;
@@ -130,7 +130,7 @@ impl MatcherConfig {
                 root = new_root
             } else {
                 return Err(MatcherError::ConfigurationError {
-                    message: format!("Element not found in tree"),
+                    message: "Element not found in tree".to_string(),
                 });
             }
         }
@@ -138,7 +138,7 @@ impl MatcherConfig {
         match root {
             MatcherConfig::Ruleset { rules: _, .. } => {
                 Err(MatcherError::ConfigurationError {
-                    message: format!("A ruleset cannot have children nodes"),
+                    message: "A ruleset cannot have children nodes".to_string(),
                 })
             },
             MatcherConfig::Filter { name: _, filter: _, ref mut nodes} => {

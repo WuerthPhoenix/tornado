@@ -173,7 +173,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
-    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &Vec<&'a str>) -> Result<Vec<&'a str>, ApiError> {
+    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &[&'a str]) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -185,7 +185,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
         let absolute_node_path = pop_authorized_path_and_append_relative_path(
             authorized_path,
-            relative_node_path.clone(),
+            relative_node_path.to_owned(),
         )?;
         Ok(absolute_node_path)
     }
