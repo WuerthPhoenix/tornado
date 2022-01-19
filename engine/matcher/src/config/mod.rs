@@ -49,7 +49,7 @@ impl MatcherConfig {
         }
     }
 
-    fn retrieve_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
+    fn get_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
         match self {
             MatcherConfig::Filter { nodes, .. } => {
                 nodes.iter_mut().find(|child| child.get_name() == child_name)
@@ -67,16 +67,37 @@ impl MatcherConfig {
         if path[0] != self.get_name() {
             return None;
         }
-        let mut root = self;
+        let mut current_node = self;
         // drill down from root
         for &node_name in path[1..].iter() {
-            if let Some(new_root) = root.get_child_node_by_name(node_name) {
-                root = new_root
+            if let Some(new_current_node) = current_node.get_child_node_by_name(node_name) {
+                current_node = new_current_node
             } else {
                 return None;
             }
         }
-        Some(root)
+        Some(current_node)
+    }
+
+    pub fn get_mut_node_by_path(&mut self, path: &[&str]) -> Option<&mut MatcherConfig> {
+        // empty path returns None
+        if path.is_empty() {
+            return None;
+        }
+        // first element must be current node
+        if path[0] != self.get_name() {
+            return None;
+        }
+        let mut current_node = self;
+        // drill down from root
+        for &node_name in path[1..].iter() {
+            if let Some(new_current_node) = current_node.get_mut_child_node_by_name(node_name) {
+                current_node = new_current_node
+            } else {
+                return None;
+            }
+        }
+        Some(current_node)
     }
 
     // Returns child nodes of a node found by a path
@@ -110,38 +131,29 @@ impl MatcherConfig {
     }
 
     // Create a node at a specific path
-    pub fn create_node_in_path(&mut self, path: &[&str], node: &MatcherConfig) -> Result<(), MatcherError> {
-        // empty path returns None
-        if path.is_empty() {
+    pub fn create_node_in_path(
+        &mut self,
+        path: &[&str],
+        node: &MatcherConfig,
+    ) -> Result<(), MatcherError> {
+        if path.len() < 2 {
             return Err(MatcherError::ConfigurationError {
-                message: format!("Error path empty: [{:?}]", path),
+                message: "The node path must specify a parent node".to_string(),
             });
         }
-        // first element must be current node
-        if path[0] != self.get_name() {
-            return Err(MatcherError::ConfigurationError {
-                message: "First element of path must be the first element in the tree".to_string(),
-            });
-        }
-        let mut root = self;
-        // drill down from root
-        for &node_name in path[1..(path.len() - 1)].iter() {
-            if let Some(new_root) = root.retrieve_mut_child_node_by_name(node_name) {
-                root = new_root
-            } else {
-                return Err(MatcherError::ConfigurationError {
-                    message: "Element not found in tree".to_string(),
-                });
+        let mut path_to_parent = path;
+        path_to_parent = &path_to_parent[0..path_to_parent.len() - 1];
+        let current_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Path to parent node does not exist: {:?}", path),
             }
-        }
+        })?;
 
-        match root {
-            MatcherConfig::Ruleset { rules: _, .. } => {
-                Err(MatcherError::ConfigurationError {
-                    message: "A ruleset cannot have children nodes".to_string(),
-                })
-            },
-            MatcherConfig::Filter { name: _, filter: _, ref mut nodes} => {
+        match current_node {
+            MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
+                message: "A ruleset cannot have children nodes".to_string(),
+            }),
+            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
                 nodes.push(node.clone());
                 Ok(())
             }
@@ -620,23 +632,32 @@ mod tests {
                 active: false,
                 filter: Defaultable::Default {},
             },
-            nodes: vec![]
+            nodes: vec![],
         };
 
         // Act
-        let result_not_existing = config.create_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
-        let result_ruleset = config.create_node_in_path(&["root", "filter2", "filter3", "ruleset1", "new_filter"], &new_filter);
+        let result_not_existing =
+            config.create_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
+        let result_ruleset = config.create_node_in_path(
+            &["root", "filter2", "filter3", "ruleset1", "new_filter"],
+            &new_filter,
+        );
 
         // Assert
         assert_eq!(result_not_existing.is_err(), true);
-        assert_eq!(result_not_existing.err(), Some(MatcherError::ConfigurationError {
-            message: format!("Element not found in tree"),
-        }));
+        assert_eq!(
+            result_not_existing.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!("Element not found in tree"),
+            })
+        );
         assert_eq!(result_ruleset.is_err(), true);
-        assert_eq!(result_ruleset.err(), Some(MatcherError::ConfigurationError {
-            message: format!("A ruleset cannot have children nodes"),
-        }));
-
+        assert_eq!(
+            result_ruleset.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!("A ruleset cannot have children nodes"),
+            })
+        );
     }
 
     #[test]
@@ -712,19 +733,18 @@ mod tests {
                             active: false,
                             filter: Defaultable::Default {},
                         },
-                        nodes: vec![MatcherConfig::Ruleset {
-                            name: "ruleset1".to_string(),
-                            rules: vec![],
-                        },
-                        MatcherConfig::Filter {
-                            name: "new_filter".to_string(),
-                            filter: Filter {
-                                description: "".to_string(),
-                                active: false,
-                                filter: Defaultable::Default {},
+                        nodes: vec![
+                            MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] },
+                            MatcherConfig::Filter {
+                                name: "new_filter".to_string(),
+                                filter: Filter {
+                                    description: "".to_string(),
+                                    active: false,
+                                    filter: Defaultable::Default {},
+                                },
+                                nodes: vec![],
                             },
-                            nodes: vec![],
-                        }],
+                        ],
                     }],
                 },
             ],
@@ -736,15 +756,15 @@ mod tests {
                 active: false,
                 filter: Defaultable::Default {},
             },
-            nodes: vec![]
+            nodes: vec![],
         };
 
         // Act
-        let result = config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
+        let result =
+            config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
 
         // Assert
         assert_eq!(result.is_ok(), true);
         assert_eq!(config, expected_config);
-
     }
 }
