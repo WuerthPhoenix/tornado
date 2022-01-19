@@ -149,6 +149,16 @@ impl MatcherConfig {
             }
         })?;
 
+        if current_node.get_child_node_by_name(node.get_name()).is_some() {
+            return Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "A node with name {:?} already exists in path {:?}",
+                    node.get_name(),
+                    path
+                ),
+            });
+        }
+
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
                 message: "A ruleset cannot have children nodes".to_string(),
@@ -601,7 +611,15 @@ mod tests {
                         active: false,
                         filter: Defaultable::Default {},
                     },
-                    nodes: vec![],
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "new_filter".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![],
+                    }],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
@@ -642,13 +660,17 @@ mod tests {
             &["root", "filter2", "filter3", "ruleset1", "new_filter"],
             &new_filter,
         );
+        let result_already_existing_node =
+            config.create_node_in_path(&["root", "filter1", "new_filter"], &new_filter);
 
         // Assert
         assert_eq!(result_not_existing.is_err(), true);
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("Element not found in tree"),
+                message: format!(
+                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
+                ),
             })
         );
         assert_eq!(result_ruleset.is_err(), true);
@@ -656,6 +678,13 @@ mod tests {
             result_ruleset.err(),
             Some(MatcherError::ConfigurationError {
                 message: format!("A ruleset cannot have children nodes"),
+            })
+        );
+        assert_eq!(result_already_existing_node.is_err(), true);
+        assert_eq!(
+            result_already_existing_node.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!("A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]"),
             })
         );
     }
