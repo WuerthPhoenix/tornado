@@ -1,5 +1,5 @@
 use crate::auth::auth_v2::AuthContextV2;
-use crate::auth::Permission;
+use crate::auth::{AuthContextTrait, Permission};
 use crate::error::ApiError;
 use crate::event::api::{EventApiHandler, ProcessType, SendEventRequest};
 use std::sync::Arc;
@@ -33,6 +33,27 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         let config_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
 
         self.handler.send_event_to_current_config(config_filter, event).await
+    }
+
+    /// Executes an event on the current Tornado configuration
+    pub async fn send_event_to_draft(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        event: SendEventRequest,
+    ) -> Result<ProcessedEvent, ApiError> {
+        auth.has_any_permission(&[&Permission::ConfigView, &Permission::ConfigEdit])?;
+        match event.process_type {
+            ProcessType::Full => {
+                auth.has_permission(&Permission::TestEventExecuteActions)?;
+            }
+            ProcessType::SkipActions => {}
+        };
+        let config_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
+
+        let draft = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft)?;
+        self.handler.send_event_to_config(config_filter, event, draft.config).await
     }
 }
 

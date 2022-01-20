@@ -55,6 +55,7 @@ impl EventApiHandler for MatcherApiHandler {
 
     async fn send_event_to_config(
         &self,
+        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
         matcher_config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError> {
@@ -68,6 +69,7 @@ impl EventApiHandler for MatcherApiHandler {
             .matcher
             .send(EventMessageAndConfigWithReply {
                 event: event.to_event_with_metadata(),
+                config_filter,
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,

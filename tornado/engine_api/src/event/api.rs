@@ -25,6 +25,7 @@ pub trait EventApiHandler: Send + Sync {
     /// Executes an Event on a custom Tornado Configuration
     async fn send_event_to_config(
         &self,
+        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
         config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError>;
@@ -83,7 +84,8 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
-        self.handler.send_event_to_config(event, draft.config).await
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        self.handler.send_event_to_config(config_filter, event, draft.config).await
     }
 }
 

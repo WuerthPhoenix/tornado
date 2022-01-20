@@ -27,6 +27,7 @@ pub struct EventMessageWithReply {
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageAndConfigWithReply {
     pub event: Value,
+    pub config_filter: HashMap<String, NodeFilter>,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -176,7 +177,12 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
-        let matcher = Matcher::build(&msg.matcher_config)?;
+
+        let filtered_config = matcher_config_filter(&msg.matcher_config, &msg.config_filter)
+            .ok_or_else(|| MatcherError::ConfigurationError {
+                message: "The config filter does not match any existing node".to_owned(),
+            })?;
+        let matcher = Matcher::build(&filtered_config)?;
         Ok(self.process_event_with_reply(
             &matcher,
             msg.event,
