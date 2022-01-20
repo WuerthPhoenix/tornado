@@ -49,6 +49,15 @@ impl MatcherConfig {
         }
     }
 
+    fn get_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter_mut().find(|child| child.get_name() == child_name)
+            }
+            MatcherConfig::Ruleset { .. } => None,
+        }
+    }
+
     pub fn get_node_by_path(&self, path: &[&str]) -> Option<&MatcherConfig> {
         // empty path returns None
         if path.is_empty() {
@@ -58,16 +67,37 @@ impl MatcherConfig {
         if path[0] != self.get_name() {
             return None;
         }
-        let mut root = self;
+        let mut current_node = self;
         // drill down from root
         for &node_name in path[1..].iter() {
-            if let Some(new_root) = root.get_child_node_by_name(node_name) {
-                root = new_root
+            if let Some(new_current_node) = current_node.get_child_node_by_name(node_name) {
+                current_node = new_current_node
             } else {
                 return None;
             }
         }
-        Some(root)
+        Some(current_node)
+    }
+
+    pub fn get_mut_node_by_path(&mut self, path: &[&str]) -> Option<&mut MatcherConfig> {
+        // empty path returns None
+        if path.is_empty() {
+            return None;
+        }
+        // first element must be current node
+        if path[0] != self.get_name() {
+            return None;
+        }
+        let mut current_node = self;
+        // drill down from root
+        for &node_name in path[1..].iter() {
+            if let Some(new_current_node) = current_node.get_mut_child_node_by_name(node_name) {
+                current_node = new_current_node
+            } else {
+                return None;
+            }
+        }
+        Some(current_node)
     }
 
     // Returns child nodes of a node found by a path
@@ -97,6 +127,46 @@ impl MatcherConfig {
                 nodes.iter().map(MatcherConfig::get_all_rules_count).sum()
             }
             MatcherConfig::Ruleset { rules, .. } => rules.len(),
+        }
+    }
+
+    // Create a node at a specific path
+    pub fn create_node_in_path(
+        &mut self,
+        path: &[&str],
+        node: &MatcherConfig,
+    ) -> Result<(), MatcherError> {
+        if path.len() < 2 {
+            return Err(MatcherError::ConfigurationError {
+                message: "The node path must specify a parent node".to_string(),
+            });
+        }
+        let mut path_to_parent = path;
+        path_to_parent = &path_to_parent[0..path_to_parent.len() - 1];
+        let current_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Path to parent node does not exist: {:?}", path),
+            }
+        })?;
+
+        if current_node.get_child_node_by_name(node.get_name()).is_some() {
+            return Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "A node with name {:?} already exists in path {:?}",
+                    node.get_name(),
+                    path
+                ),
+            });
+        }
+
+        match current_node {
+            MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
+                message: "A ruleset cannot have children nodes".to_string(),
+            }),
+            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
+                nodes.push(node.clone());
+                Ok(())
+            }
         }
     }
 }
@@ -521,5 +591,209 @@ mod tests {
         assert!(
             matches!(result_with_ruleset.unwrap(), MatcherConfig::Ruleset {name, ..} if name == "ruleset2")
         );
+    }
+
+    #[test]
+    fn test_create_node_in_not_valid_path() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "new_filter".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![],
+                    }],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![MatcherConfig::Ruleset {
+                            name: "ruleset1".to_string(),
+                            rules: vec![],
+                        }],
+                    }],
+                },
+            ],
+        };
+        let new_filter = MatcherConfig::Filter {
+            name: "new_filter".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        let result_not_existing =
+            config.create_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
+        let result_ruleset = config.create_node_in_path(
+            &["root", "filter2", "filter3", "ruleset1", "new_filter"],
+            &new_filter,
+        );
+        let result_already_existing_node =
+            config.create_node_in_path(&["root", "filter1", "new_filter"], &new_filter);
+
+        // Assert
+        assert_eq!(result_not_existing.is_err(), true);
+        assert_eq!(
+            result_not_existing.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!(
+                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
+                ),
+            })
+        );
+        assert_eq!(result_ruleset.is_err(), true);
+        assert_eq!(
+            result_ruleset.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!("A ruleset cannot have children nodes"),
+            })
+        );
+        assert_eq!(result_already_existing_node.is_err(), true);
+        assert_eq!(
+            result_already_existing_node.err(),
+            Some(MatcherError::ConfigurationError {
+                message: format!("A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_create_node() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![MatcherConfig::Ruleset {
+                            name: "ruleset1".to_string(),
+                            rules: vec![],
+                        }],
+                    }],
+                },
+            ],
+        };
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![
+                            MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] },
+                            MatcherConfig::Filter {
+                                name: "new_filter".to_string(),
+                                filter: Filter {
+                                    description: "".to_string(),
+                                    active: false,
+                                    filter: Defaultable::Default {},
+                                },
+                                nodes: vec![],
+                            },
+                        ],
+                    }],
+                },
+            ],
+        };
+        let new_filter = MatcherConfig::Filter {
+            name: "new_filter".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        let result =
+            config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
+
+        // Assert
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(config, expected_config);
     }
 }

@@ -1,4 +1,4 @@
-use crate::auth::{AuthContext, Permission};
+use crate::auth::{AuthContext, AuthContextTrait, Permission};
 use crate::error::ApiError;
 use async_trait::async_trait;
 use serde_json::{Value, json};

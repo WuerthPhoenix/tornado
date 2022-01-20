@@ -1,5 +1,5 @@
 use crate::auth::auth_v2::AuthContextV2;
-use crate::auth::{AuthContext, Permission};
+use crate::auth::{AuthContext, AuthContextTrait, Permission};
 use crate::config::convert::rule_into_dto;
 use crate::error::ApiError;
 use log::*;
@@ -163,7 +163,17 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
         let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, &relative_node_path)?;
 
+        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
+            ApiError::NodeNotFoundError {
+                message: format!("Node for relative path {:?} not found", relative_node_path),
+            },
+        )?;
+        Ok(ProcessingTreeNodeDetailsDto::from(node))
+    }
+
+    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &[&'a str]) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -175,15 +185,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
         let absolute_node_path = pop_authorized_path_and_append_relative_path(
             authorized_path,
-            relative_node_path.clone(),
+            relative_node_path.to_owned(),
         )?;
-
-        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
-            ApiError::NodeNotFoundError {
-                message: format!("Node for relative path {:?} not found", relative_node_path),
-            },
-        )?;
-        Ok(ProcessingTreeNodeDetailsDto::from(node))
+        Ok(absolute_node_path)
     }
 
     /// Returns processing tree node details by path
@@ -415,14 +419,32 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
-    async fn get_draft_and_check_owner(
+    async fn get_draft_and_check_owner<
+        T: AuthContextTrait,
+    >(
         &self,
-        auth: &AuthContext<'_>,
+        auth: &T,
         draft_id: &str,
     ) -> Result<MatcherConfigDraft, ApiError> {
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
         Ok(draft)
+    }
+
+    pub async fn create_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+        config: MatcherConfig,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.create_node_in_path(&absolute_node_path, &config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 }
 
