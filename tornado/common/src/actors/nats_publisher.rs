@@ -161,7 +161,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id;
         let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);

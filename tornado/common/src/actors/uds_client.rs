@@ -74,7 +74,7 @@ impl Handler<EventMessage> for UdsClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.event.trace_id;
         let _span = tracing::error_span!("UdsClientActor", trace_id).entered();
         trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.event);
 

@@ -5,6 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use rand::{thread_rng, Rng};
 
 pub mod error;
 pub mod partial_ordering;
@@ -20,7 +21,7 @@ pub type Number = serde_json::Number;
 pub struct Event {
     #[serde(default = "default_trace_id")]
     #[serde(deserialize_with = "deserialize_null_trace_id")]
-    pub trace_id: String,
+    pub trace_id: u64,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
@@ -28,7 +29,7 @@ pub struct Event {
 }
 
 pub trait WithEventData {
-    fn trace_id(&self) -> Option<&str>;
+    fn trace_id(&self) -> Option<u64>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
     fn payload(&self) -> Option<&Payload>;
@@ -43,8 +44,8 @@ pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
 
 impl WithEventData for Value {
-    fn trace_id(&self) -> Option<&str> {
-        self.get(EVENT_TRACE_ID).and_then(|val| val.get_text())
+    fn trace_id(&self) -> Option<u64> {
+        self.get(EVENT_TRACE_ID).and_then(|val| val.get_number()).and_then(|num| num.as_u64())
     }
 
     fn event_type(&self) -> Option<&str> {
@@ -89,11 +90,11 @@ impl WithEventData for Value {
 }
 
 #[inline]
-fn default_trace_id() -> String {
-    uuid::Uuid::new_v4().to_string()
+fn default_trace_id() -> u64 {
+    thread_rng().gen()
 }
 
-fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<String, D::Error>
+fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<u64, D::Error>
 where
     D: Deserializer<'de>,
 {

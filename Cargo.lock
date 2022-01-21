@@ -3513,10 +3513,10 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "num-cmp",
+ "rand 0.8.4",
  "serde",
  "serde_json",
  "thiserror",
- "uuid",
 ]
 
 [[package]]
