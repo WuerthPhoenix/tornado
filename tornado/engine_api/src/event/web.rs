@@ -93,13 +93,6 @@ fn prepare_data_for_send_event_v2<'a>(
     param_auth: &str,
     body: Json<SendEventRequestDto>,
 ) -> Result<(AuthContextV2<'a>, SendEventRequest), ApiError> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-
-    if log_enabled!(Level::Debug) {
-        let json_string = serde_json::to_string(body.deref()).unwrap();
-        debug!("API - received send_event_to_current_config request: {}", json_string);
-    }
-
     let auth_ctx = auth.auth_from_request(req, param_auth)?;
     let send_event_request = dto_into_send_event_request(body.into_inner())?;
     Ok((auth_ctx, send_event_request))
@@ -115,6 +108,13 @@ async fn send_event_to_current_config_v2<
     body: Json<SendEventRequestDto>,
     _param_auth: Path<String>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
+
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    if log_enabled!(Level::Debug) {
+        let json_string = serde_json::to_string(body.deref()).unwrap();
+        debug!("API - received send_event_to_current_config_v2 request: {}", json_string);
+    }
+
     let (auth_ctx, send_event_request) = prepare_data_for_send_event_v2(
         &req,
         &data.auth,
@@ -133,6 +133,13 @@ async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigE
     params: Path<AuthAndDraftId>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
+
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    if log_enabled!(Level::Debug) {
+        let json_string = serde_json::to_string(body.deref()).unwrap();
+        debug!("API - received send_event_to_draft_v2 request: {}", json_string);
+    }
+
     let (auth_ctx, send_event_request) = prepare_data_for_send_event_v2(
         &req,
         &data.auth,
