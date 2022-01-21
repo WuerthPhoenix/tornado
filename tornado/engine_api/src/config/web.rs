@@ -1,5 +1,8 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto, processing_tree_node_details_dto_into_matcher_config};
+use crate::config::convert::{
+    dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
+    processing_tree_node_details_dto_into_matcher_config,
+};
 use crate::model::{ApiData, ApiDataV2};
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
@@ -85,7 +88,8 @@ pub fn build_config_v2_endpoints<
                 .service(
                     web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
                         .route(web::get().to(get_draft_tree_node_details::<A, CM>))
-                        .route(web::put().to(create_draft_tree_node::<A, CM>)),
+                        .route(web::put().to(create_draft_tree_node::<A, CM>))
+                        .route(web::post().to(edit_draft_tree_node::<A, CM>)),
                 )
                 .service(
                     web::resource(
@@ -232,13 +236,35 @@ async fn create_draft_tree_node<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    data
-        .api
+    data.api
         .create_draft_config_node(
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.node_path,
-            config
+            config,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
+async fn edit_draft_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    body: Json<ProcessingTreeNodeDetailsDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
+    data.api
+        .edit_draft_config_node(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+            config,
         )
         .await?;
     Ok(Json(()))
@@ -1414,14 +1440,14 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn v2_endpoint_create_node_in_draft_by_path_should_create_a_new_node() -> Result<(), ApiError> {
+    async fn v2_endpoint_create_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
                 auth: test_auth_service_v2(),
                 api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
             })))
-                .await;
+            .await;
 
         // Act
         let request = test::TestRequest::put()
@@ -1445,7 +1471,50 @@ mod test {
                 name: "test_filter".to_string(),
                 description: "".to_string(),
                 active: false,
-                filter: None
+                filter: None,
+            })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_edit_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
+            .set_json(&ProcessingTreeNodeDetailsDto::Filter {
+                name: "test_filter".to_string(),
+                description: "".to_string(),
+                active: false,
+                filter: None,
             })
             .to_request();
 
