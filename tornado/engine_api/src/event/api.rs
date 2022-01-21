@@ -295,7 +295,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_draf_should_propagate_metadata() {
+    async fn send_event_to_draft_should_propagate_metadata() {
         // Arrange
         let api = EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();

@@ -78,7 +78,7 @@ pub mod test {
         permission_roles_map
     }
 
-    fn create_users(
+    fn create_owner_users(
         permissions_map: &BTreeMap<Permission, Vec<String>>,
     ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
         let owner_view = AuthContextV2::new(
@@ -120,7 +120,50 @@ pub mod test {
         (owner_view, owner_edit, owner_full_process)
     }
 
+    fn create_not_owner_users(
+        permissions_map: &BTreeMap<Permission, Vec<String>>,
+    ) -> (AuthContextV2, AuthContextV2, AuthContextV2) {
+        let not_owner_view = AuthContextV2::new(
+            AuthV2 {
+                user: NOT_OWNER_USER.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let not_owner_edit = AuthContextV2::new(
+            AuthV2 {
+                user: NOT_OWNER_USER.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["edit".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        let not_owner_full_process = AuthContextV2::new(
+            AuthV2 {
+                user: NOT_OWNER_USER.to_owned(),
+                authorization: Authorization {
+                    path: vec!["root".to_owned()],
+                    roles: vec!["test_event_execute_actions".to_owned()],
+                },
+                preferences: None,
+            },
+            permissions_map,
+        );
+
+        (not_owner_view, not_owner_edit, not_owner_full_process)
+    }
+
     pub const DRAFT_OWNER_ID: &str = "OWNER";
+    pub const NOT_OWNER_USER: &str = "NOT_OWNER";
 
     #[actix_rt::test]
     async fn send_event_to_configuration_with_skip_action_should_require_edit_or_view_permission() {
@@ -128,7 +171,7 @@ pub mod test {
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
 
-        let (user_view, user_edit, user_full_process) = create_users(&permissions_map);
+        let (user_view, user_edit, user_full_process) = create_owner_users(&permissions_map);
         let user_no_permission = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -163,7 +206,7 @@ pub mod test {
         // Arrange
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions = auth_permissions();
-        let (user_view, user_edit, user_full_process) = create_users(&permissions);
+        let (user_view, user_edit, user_full_process) = create_owner_users(&permissions);
         let user_view_and_full_process = AuthContextV2::new(
             AuthV2 {
                 user: DRAFT_OWNER_ID.to_owned(),
@@ -216,7 +259,7 @@ pub mod test {
         let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
 
-        let (_user_view, user_edit, _user_full_process) = create_users(&permissions_map);
+        let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
 
         let metadata = json!(HashMap::from([(
             "something".to_owned(),
@@ -232,6 +275,58 @@ pub mod test {
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
         
+        // Assert
+        assert_eq!(&metadata, result.event.metadata().unwrap());
+    }
+
+    #[actix_rt::test]
+    async fn send_event_to_draft_should_require_owner_and_edit_permission() {
+        // Arrange
+        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (user_view, user_edit, user_full_process) = create_owner_users(&permissions_map);
+        let (not_owner_user_view, not_owner_user_edit, not_owner_user_full_process) = create_not_owner_users(&permissions_map);
+
+        let request = SendEventRequest {
+            event: Event::new("event_for_draft"),
+            process_type: ProcessType::SkipActions,
+            metadata: Value::Object(Default::default()),
+        };
+
+        // Act & Assert
+        assert!(api.send_event_to_draft(not_owner_user_view, "id", request.clone()).await.is_err());
+        assert!(api.send_event_to_draft(not_owner_user_edit, "id", request.clone()).await.is_err());
+        assert!(api.send_event_to_draft(not_owner_user_full_process, "id", request.clone()).await.is_err());
+
+        // Set the users as owners of the draft
+        assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_ok());
+        assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_ok());
+        assert!(api.send_event_to_draft(user_full_process.clone(), "id", request.clone()).await.is_err());
+    }
+
+    #[actix_rt::test]
+    async fn send_event_to_draft_should_propagate_metadata() {
+        // Arrange
+        let api = EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+
+        let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
+
+        let metadata = json!(HashMap::from([(
+            "something".to_owned(),
+            Value::String(format!("{}", rand::random::<usize>())),
+        )]));
+
+        let request = SendEventRequest {
+            event: Event::new("event"),
+            metadata: metadata.clone(),
+            process_type: ProcessType::SkipActions,
+        };
+
+        // Act
+        let result = api.send_event_to_draft(user_edit, "id", request.clone()).await.unwrap();
+
         // Assert
         assert_eq!(&metadata, result.event.metadata().unwrap());
     }
