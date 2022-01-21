@@ -253,7 +253,7 @@ mod test {
                 },
             }],
         };
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let config_filter = HashMap::from([(config.get_name().to_owned(), NodeFilter::AllChildren)]);
 
         // Act
         let res = api.send_event_to_config(config_filter, send_event_request, config).await.unwrap();
