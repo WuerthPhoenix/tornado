@@ -125,6 +125,7 @@ pub mod test {
 
         async fn send_event_to_config(
             &self,
+            _config_filter: HashMap<String, NodeFilter>,
             event: SendEventRequest,
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {

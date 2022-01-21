@@ -107,7 +107,7 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
-    use std::collections::{HashMap, BTreeMap};
+    use std::collections::{HashMap};
     use std::sync::Arc;
     use serde_json::json;
     use tornado_common_api::{Event, Value, WithEventData};
@@ -253,9 +253,10 @@ mod test {
                 },
             }],
         };
+        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
         // Act
-        let res = api.send_event_to_config(send_event_request, config).await.unwrap();
+        let res = api.send_event_to_config(config_filter, send_event_request, config).await.unwrap();
 
         // Assert
         assert_eq!(Some("test-type-custom"), res.event.event_type());

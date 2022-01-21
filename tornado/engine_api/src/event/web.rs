@@ -31,7 +31,8 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
     data: ApiDataV2<EventApiV2<T, CM>>,
 ) -> Scope {
-    web::scope("/event").app_data(Data::new(data))
+    web::scope("/event")
+        .app_data(Data::new(data))
         .service(
         web::resource("/active/{param_auth}")
             .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
@@ -80,6 +81,12 @@ struct EndpointParamAuthPath {
     param_auth: String,
 }
 
+#[derive(Deserialize)]
+struct AuthAndDraftId {
+    param_auth: String,
+    draft_id: String,
+}
+
 fn prepare_data_for_send_event_v2<'a>(
     req: &HttpRequest,
     auth: &'a AuthServiceV2,
@@ -123,19 +130,17 @@ async fn send_event_to_current_config_v2<
 async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
     req: HttpRequest,
     data: Data<ApiDataV2<EventApiV2<T, CM>>>,
-    draft_id: Path<String>,
+    params: Path<AuthAndDraftId>,
     body: Json<SendEventRequestDto>,
-    param_auth: Path<String>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
     let (auth_ctx, send_event_request) = prepare_data_for_send_event_v2(
         &req,
         &data.auth,
-        &param_auth,
+        &params.param_auth,
         body,
     )?;
-    let draft_id = draft_id.into_inner();
     let processed_event =
-        data.api.send_event_to_draft(auth_ctx, &draft_id, send_event_request).await?;
+        data.api.send_event_to_draft(auth_ctx, &params.draft_id, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
