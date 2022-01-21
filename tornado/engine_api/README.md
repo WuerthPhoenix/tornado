@@ -365,6 +365,94 @@ Endpoint: match an event on a specific Tornado draft
 - request type: __JSON__
 - request/response example: same request and response of the __/api/v1_beta/event/current/send__ endpoint
 
+## Tornado 'Event' Backend API Version 2
+
+### Send Test Event Endpoint
+
+Endpoint: match an event on the current Tornado Engine configuration
+- HTTP Method: __POST__
+- path : __/api/v2_beta/event/active/{param_auth}__
+- request type: __JSON__
+- request example:
+  ```json
+  {
+      "event": {
+        "type": "the_event_type",
+        "created_ms": 123456,
+        "payload": {
+          "value_one": "something",
+          "value_two": "something_else"
+        }
+      },
+      "process_type": "SkipActions"
+  }
+  ```
+
+  Where the event has the following structure:
+  - __type__:  The Event type identifier
+  - __trace_id__: The trace ID or null,
+  - __created_ms__:  The Event creation timestamp in milliseconds since January 1, 1970 UTC
+  - __payload__:  A Map<String, Value> with event-specific data
+  - __process_type__:  Can be _Full_ or _SkipActions_:
+    - _Full_:  The event is processed and linked actions are executed
+    - _SkipActions_:  The event is processed but actions are not executed
+  - __metadata__: An extra Value useful for the event
+- response type: __JSON__
+- response example:
+   ```json
+  {
+    "event": {
+      "type": "the_event_type",
+      "created_ms": 123456,
+      "payload": {
+        "value_one": "something",
+        "value_two": "something_else"
+      }
+    },
+    "result": {
+      "type": "Rules",
+      "rules": {
+        "rules": {
+          "emails_with_temperature": {
+            "rule_name": "emails",
+            "status": "NotMatched",
+            "actions": [],
+            "message": null
+          },
+          "archive_all": {
+            "rule_name": "archive_all",
+            "status": "Matched",
+            "actions": [
+              {
+                "id": "archive",
+                "payload": {
+                  "archive_type": "one",
+                  "event": {
+                    "created_ms": 123456,
+                    "payload": {
+                      "value_one": "something",
+                      "value_two": "something_else"
+                    },
+                    "type": "the_event_type"
+                  }
+                }
+              }
+            ],
+            "message": null
+          }
+        },
+        "extracted_vars": {}
+      }
+    }
+  }
+   ```
+
+Endpoint: match an event on a specific Tornado draft
+- HTTP Method: __POST__
+- path : __/api/v2_beta/event/drafts/{param_auth}/{draft_id}__
+- request type: __JSON__
+- request/response example: same request and response of the __/api/v2_beta/event/active/{param_auth}__ endpoint
+
 
 ## Tornado 'RuntimeConfig' Backend API
 
