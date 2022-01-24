@@ -208,6 +208,57 @@ impl MatcherConfig {
         }
         Ok(())
     }
+
+    // Create a node at a specific path
+    pub fn delete_node_in_path(&mut self, path: &[&str]) -> Result<(), MatcherError> {
+        if path.is_empty() {
+            return Err(MatcherError::ConfigurationError {
+                message: "Empty path is not allowed".to_string(),
+            });
+        }
+
+        let mut path_to_parent = path;
+        let node_to_delete = path.last().unwrap_or(&"");
+        path_to_parent = &path_to_parent[0..path_to_parent.len() - 1];
+        let parent_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Path to parent node does not exist: {:?}", path),
+            }
+        })?;
+
+        if parent_node.get_child_node_by_name(path.last().unwrap_or(&"")).is_none() {
+            return Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "A node with name {:?} not found in {:?}",
+                    node_to_delete, path_to_parent,
+                ),
+            });
+        }
+
+        match parent_node {
+            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
+                let mut index_to_remove: Option<usize> = None;
+                for (index, child) in nodes.iter().enumerate() {
+                    if &child.get_name() == node_to_delete {
+                        index_to_remove = Some(index);
+                    }
+                }
+                if index_to_remove.is_some() {
+                    nodes.remove(index_to_remove.unwrap());
+                } else {
+                    return Err(MatcherError::ConfigurationError {
+                        message: format!(
+                            "Index not found for node with name {:?} in {:?}",
+                            node_to_delete, path_to_parent,
+                        ),
+                    });
+                }
+            }
+            _ => {}
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -1097,5 +1148,159 @@ mod tests {
         assert_eq!(config_ruleset, expected_config_ruleset);
         assert_eq!(result_filter.is_ok(), true);
         assert_eq!(config_filter, expected_config_filter);
+    }
+
+    #[test]
+    fn test_delete_node_not_valid_path() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "new_filter".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![],
+                    }],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![MatcherConfig::Ruleset {
+                            name: "ruleset1".to_string(),
+                            rules: vec![],
+                        }],
+                    }],
+                },
+            ],
+        };
+
+        // Act
+        let result_parent_not_existing =
+            config.delete_node_in_path(&["root", "filter3", "new_filter"]);
+        let result_child_not_existing = config.delete_node_in_path(&["root", "filter2", "filter4"]);
+
+        // Assert
+        assert_eq!(result_parent_not_existing.is_err(), true);
+        assert_eq!(
+            result_parent_not_existing.err(),
+            Some(MatcherError::ConfigurationError {
+                message:
+                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
+                        .to_string(),
+            })
+        );
+        assert_eq!(result_child_not_existing.is_err(), true);
+        assert_eq!(
+            result_child_not_existing.err(),
+            Some(MatcherError::ConfigurationError {
+                message: "A node with name \"filter4\" not found in [\"root\", \"filter2\"]"
+                    .to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn test_delete_node() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Filter {
+                        description: "".to_string(),
+                        active: false,
+                        filter: Defaultable::Default {},
+                    },
+                    nodes: vec![MatcherConfig::Filter {
+                        name: "filter3".to_string(),
+                        filter: Filter {
+                            description: "".to_string(),
+                            active: false,
+                            filter: Defaultable::Default {},
+                        },
+                        nodes: vec![MatcherConfig::Ruleset {
+                            name: "ruleset1".to_string(),
+                            rules: vec![Rule {
+                                name: "rule1".to_string(),
+                                description: "".to_string(),
+                                do_continue: false,
+                                active: true,
+                                constraint: Constraint {
+                                    where_operator: None,
+                                    with: Default::default(),
+                                },
+                                actions: vec![],
+                            }],
+                        }],
+                    }],
+                },
+            ],
+        };
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Filter {
+                name: "filter1".to_string(),
+                filter: Filter {
+                    description: "".to_string(),
+                    active: false,
+                    filter: Defaultable::Default {},
+                },
+                nodes: vec![],
+            }],
+        };
+
+        // Act
+        let result = config.delete_node_in_path(&["root", "filter2"]);
+
+        // Assert
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(config, expected_config);
     }
 }

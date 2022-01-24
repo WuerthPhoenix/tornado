@@ -464,6 +464,21 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         draft.config.edit_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
+
+    pub async fn delete_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.delete_node_in_path(&absolute_node_path)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
+    }
 }
 
 pub async fn get_filtered_matcher(
