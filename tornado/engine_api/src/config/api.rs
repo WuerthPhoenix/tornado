@@ -173,7 +173,11 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
-    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &[&'a str]) -> Result<Vec<&'a str>, ApiError> {
+    fn get_absolute_path_from_relative<'a>(
+        &self,
+        auth: &'a AuthContextV2,
+        relative_node_path: &[&'a str],
+    ) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -419,9 +423,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
-    async fn get_draft_and_check_owner<
-        T: AuthContextTrait,
-    >(
+    async fn get_draft_and_check_owner<T: AuthContextTrait>(
         &self,
         auth: &T,
         draft_id: &str,
@@ -444,6 +446,22 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
 
         draft.config.create_node_in_path(&absolute_node_path, &config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
+    }
+
+    pub async fn edit_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+        config: MatcherConfig,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.edit_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 }
