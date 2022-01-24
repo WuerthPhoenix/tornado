@@ -6,10 +6,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Event, EVENT_METADATA};
 use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
-use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
+use tornado_engine_matcher::config::operation::NodeFilter;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::model::ProcessedEvent;
-use tornado_engine_matcher::error::MatcherError;
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -84,14 +83,7 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
-
-        let filtered_config = matcher_config_filter(&draft.config, &config_filter)
-            .ok_or_else(|| MatcherError::ConfigurationError {
-                message: "The config filter does not match any existing node".to_owned(),
-            })?;
-
-        self.handler.send_event_to_config(event, filtered_config).await
+        self.handler.send_event_to_config(event, draft.config).await
     }
 }
 
