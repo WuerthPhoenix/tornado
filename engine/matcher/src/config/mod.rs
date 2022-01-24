@@ -141,8 +141,7 @@ impl MatcherConfig {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let mut path_to_parent = path;
-        path_to_parent = &path_to_parent[0..path_to_parent.len() - 1];
+        let path_to_parent = &path[0..path.len() - 1];
         let current_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
             MatcherError::ConfigurationError {
                 message: format!("Path to parent node does not exist: {:?}", path),
@@ -217,16 +216,15 @@ impl MatcherConfig {
             });
         }
 
-        let mut path_to_parent = path;
+        let path_to_parent = &path[0..path.len() - 1];
         let node_to_delete = path.last().unwrap_or(&"");
-        path_to_parent = &path_to_parent[0..path_to_parent.len() - 1];
         let parent_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
             MatcherError::ConfigurationError {
                 message: format!("Path to parent node does not exist: {:?}", path),
             }
         })?;
 
-        if parent_node.get_child_node_by_name(path.last().unwrap_or(&"")).is_none() {
+        if parent_node.get_child_node_by_name(node_to_delete).is_none() {
             return Err(MatcherError::ConfigurationError {
                 message: format!(
                     "A node with name {:?} not found in {:?}",
@@ -237,23 +235,10 @@ impl MatcherConfig {
 
         match parent_node {
             MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
-                let mut index_to_remove: Option<usize> = None;
-                for (index, child) in nodes.iter().enumerate() {
-                    if &child.get_name() == node_to_delete {
-                        index_to_remove = Some(index);
-                    }
-                }
-                if index_to_remove.is_some() {
-                    nodes.remove(index_to_remove.unwrap());
-                } else {
-                    return Err(MatcherError::ConfigurationError {
-                        message: format!(
-                            "Index not found for node with name {:?} in {:?}",
-                            node_to_delete, path_to_parent,
-                        ),
-                    });
-                }
+                nodes.retain(|node| &node.get_name() != node_to_delete);
             }
+            // Parent node is guaranteed to be of type filter because get_child_node_by_name return
+            // Option<None> if the parent node is of type ruleset and this match arm is never reached.
             _ => {}
         }
 
