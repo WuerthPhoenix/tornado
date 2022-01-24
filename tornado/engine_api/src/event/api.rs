@@ -96,7 +96,8 @@ pub mod test {
     use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::config::{Defaultable, MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::error::MatcherError;
     use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
 
@@ -180,7 +181,19 @@ pub mod test {
                     created_ts_ms: 0,
                     updated_ts_ms: 0,
                 },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+                config: MatcherConfig::Filter {
+                    name: "root".to_owned(),
+                    filter: Filter{
+                        description: "".to_string(),
+                        active: true,
+                        filter: Defaultable::Default {},
+                    }, nodes: vec![
+                        MatcherConfig::Ruleset {
+                            name: "ruleset".to_owned(),
+                            rules: vec![]
+                        }
+                    ]
+                },
             })
         }
 
@@ -292,7 +305,7 @@ pub mod test {
     }
 
     #[actix_rt::test]
-    async fn send_event_to_draf_should_propagate_metadata() {
+    async fn send_event_to_draft_should_propagate_metadata() {
         // Arrange
         let api = EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
         let permissions_map = auth_permissions();
