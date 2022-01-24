@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
+use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError, TornadoNatsMessage};
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
@@ -25,7 +25,6 @@ use tornado_common::command::retry::RetryCommand;
 use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand};
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
-use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_common_metrics::Metrics;
@@ -349,15 +348,18 @@ pub async fn daemon(
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
-                let event: Event = serde_json::from_slice(&msg.msg.data)
+                let tornado_nats_message: TornadoNatsMessage = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| {
                         tornado_meter_nats.invalid_events_received_counter.add(1, &[
                             meter_event_souce_label.clone(),
                         ]);
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
-                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                debug!("NatsSubscriberActor - event from message received: {:#?}", tornado_nats_message);
 
+                let event = tornado_nats_message.event;
+
+                let _span = tracing::error_span!("NatsSubscriberActor", command="daemon", trace_id=event.trace_id).entered();
                 tornado_meter_nats.events_received_counter.add(1, &[
                     meter_event_souce_label,
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),

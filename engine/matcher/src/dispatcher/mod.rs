@@ -20,11 +20,12 @@ impl Dispatcher {
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
             ProcessedNode::Ruleset { rules, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_ruleset", name = name.as_str()).entered();
+                let span =
+                    tracing::error_span!("dispatch_ruleset", ruleset_name = name.as_str()).entered();
+                debug!("{:?}", span);
                 for rule in rules.rules {
                     let _span =
-                        tracing::error_span!("dispatch_rule", name = rule.name.as_str()).entered();
+                        tracing::error_span!("dispatch_rule", rule_name = rule.name.as_str()).entered();
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);

@@ -1,4 +1,4 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError};
+use crate::actors::message::{EventMessage, TornadoCommonActorError, TornadoNatsMessage};
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
@@ -169,7 +169,11 @@ impl Handler<EventMessage> for NatsPublisherActor {
         let address = ctx.address();
 
         if let Some(connection) = self.nats_connection.deref() {
-            let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            let nats_message = TornadoNatsMessage {
+                event: msg.event.clone(),
+                parent_span_id: span.id().map(|val| val.into_u64())
+            };
+            let event = serde_json::to_vec(&nats_message).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 

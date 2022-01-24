@@ -10,6 +10,8 @@ use tracing_appender::non_blocking::WorkerGuard;
 use tracing_elastic_apm::config::Authorization;
 use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 use tracing_subscriber::filter::{filter_fn, Targets};
+use opentelemetry_otlp::{WithExportConfig, ExportConfig, Protocol};
+// use opentelemetry::sdk::export::trace::stdout;
 
 pub mod elastic_apm;
 
@@ -149,6 +151,18 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
     let (reloadable_env_filter, reloadable_env_filter_handle) =
         tracing_subscriber::reload::Layer::new(env_filter);
 
+    let client = reqwest::Client::new();
+    let export_config = ExportConfig {
+        endpoint: "http://apm-server.neteyelocal:8200/".to_string(),
+        protocol: Protocol::Grpc,
+        timeout: Default::default()
+    };
+    let tracer = opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(opentelemetry_otlp::new_exporter().tonic().with_export_config(export_config))
+        .install_simple().unwrap();
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
     let (file_subscriber, file_guard) = if let Some(file_output) = &logger_config.file_output_path {
         let (dir, filename) = path_to_dir_and_filename(file_output)?;
         let file_appender = tracing_appender::rolling::never(dir, filename);
@@ -203,6 +217,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         .with(file_subscriber)
         .with(stdout_subscriber)
         .with(apm_layer)
+        .with(telemetry)
         .try_init().map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot start the logger. err: {:?}", err),
         })?;
