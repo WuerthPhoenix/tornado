@@ -27,7 +27,6 @@ pub struct EventMessageWithReply {
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
 pub struct EventMessageAndConfigWithReply {
     pub event: Value,
-    pub config_filter: HashMap<String, NodeFilter>,
     pub matcher_config: MatcherConfig,
     pub process_type: ProcessType,
     pub include_metadata: bool,
@@ -178,11 +177,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
 
-        let filtered_config = matcher_config_filter(&msg.matcher_config, &msg.config_filter)
-            .ok_or_else(|| MatcherError::ConfigurationError {
-                message: "The config filter does not match any existing node".to_owned(),
-            })?;
-        let matcher = Matcher::build(&filtered_config)?;
+        let matcher = Matcher::build(&msg.matcher_config)?;
         Ok(self.process_event_with_reply(
             &matcher,
             msg.event,
@@ -462,186 +457,6 @@ mod test {
                         NodeFilter::AllChildren,
                     )])),
                 )]),
-                include_metadata: false,
-                process_type: ProcessType::Full,
-            })
-            .await
-            .unwrap();
-
-        // Assert
-        assert!(processed_event.is_err());
-    }
-
-    #[actix::test]
-    async fn should_execute_event_to_filtered_config_from_root_with_specific_config() {
-        // Arrange
-        let tempdir = tempfile::tempdir().unwrap();
-        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
-
-        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
-
-        let config_manager = configs.matcher_config.clone();
-        let dispatcher_addr = FakeDispatcher {}.start().recipient();
-        let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
-                .await
-                .unwrap();
-
-        let mut event: Value = json!(Event::new("test"));
-        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
-
-        // Act
-        let processed_event: ProcessedEvent = matcher_actor
-            .send(EventMessageAndConfigWithReply {
-                event,
-                config_filter: HashMap::from([(
-                    ROOT_NODE_NAME.to_owned(),
-                    NodeFilter::AllChildren,
-                )]),
-                matcher_config: config_manager.get_config().await.unwrap(),
-                include_metadata: false,
-                process_type: ProcessType::Full,
-            })
-            .await
-            .unwrap()
-            .unwrap();
-
-        // Assert
-        match processed_event.result {
-            ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| match n {
-                    ProcessedNode::Filter { name, filter, .. } => {
-                        name.eq("tenant_id_alpha")
-                            && filter.status == ProcessedFilterStatus::Matched
-                    }
-                    _ => false,
-                });
-
-                assert!(tenant_node_matched);
-            }
-            _ => assert!(false),
-        };
-    }
-
-    #[actix::test]
-    async fn should_execute_event_to_filtered_config_for_tenant_and_specific_config() {
-        // Arrange
-        let tempdir = tempfile::tempdir().unwrap();
-        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
-
-        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
-
-        let config_manager = configs.matcher_config.clone();
-        let dispatcher_addr = FakeDispatcher {}.start().recipient();
-        let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
-                .await
-                .unwrap();
-
-        let mut event_tenant_alpha: Value = json!(Event::new("test"));
-        event_tenant_alpha
-            .add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned()))
-            .unwrap();
-
-        let mut event_tenant_beta: Value = json!(Event::new("test"));
-        event_tenant_beta
-            .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
-            .unwrap();
-
-        let config_filter = HashMap::from([(
-            ROOT_NODE_NAME.to_owned(),
-            NodeFilter::SelectedChildren(HashMap::from([(
-                "tenant_id_beta".to_owned(),
-                NodeFilter::AllChildren,
-            )])),
-        )]);
-
-        // Act
-        let processed_event_alpha: ProcessedEvent = matcher_actor
-            .send(EventMessageAndConfigWithReply {
-                event: event_tenant_alpha,
-                config_filter: config_filter.clone(),
-                matcher_config: config_manager.get_config().await.unwrap(),
-                include_metadata: false,
-                process_type: ProcessType::Full,
-            })
-            .await
-            .unwrap()
-            .unwrap();
-
-        let processed_event_beta: ProcessedEvent = matcher_actor
-            .send(EventMessageAndConfigWithReply {
-                event: event_tenant_beta,
-                config_filter: config_filter.clone(),
-                matcher_config: config_manager.get_config().await.unwrap(),
-                include_metadata: false,
-                process_type: ProcessType::Full,
-            })
-            .await
-            .unwrap()
-            .unwrap();
-
-        // Assert
-        match processed_event_alpha.result {
-            ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| match n {
-                    ProcessedNode::Filter { name, filter, .. } => {
-                        name.eq("tenant_id_alpha")
-                            && filter.status == ProcessedFilterStatus::Matched
-                    }
-                    _ => false,
-                });
-
-                assert!(!tenant_node_matched);
-            }
-            _ => assert!(false),
-        };
-
-        match processed_event_beta.result {
-            ProcessedNode::Filter { nodes, .. } => {
-                let tenant_node_matched = nodes.iter().any(|n| match n {
-                    ProcessedNode::Filter { name, filter, .. } => {
-                        name.eq("tenant_id_beta") && filter.status == ProcessedFilterStatus::Matched
-                    }
-                    _ => false,
-                });
-
-                assert!(tenant_node_matched);
-            }
-            _ => assert!(false),
-        };
-    }
-
-    #[actix::test]
-    async fn should_return_error_if_the_filter_matches_no_nodes_on_specific_config() {
-        // Arrange
-        let tempdir = tempfile::tempdir().unwrap();
-        let (config_dir, rules_dir, drafts_dir) = prepare_temp_dirs(&tempdir);
-
-        let configs = parse_config_files(&config_dir, &rules_dir, &drafts_dir).unwrap();
-
-        let config_manager = configs.matcher_config.clone();
-        let dispatcher_addr = FakeDispatcher {}.start().recipient();
-        let matcher_actor =
-            MatcherActor::start(dispatcher_addr, config_manager.clone(), 10, Default::default())
-                .await
-                .unwrap();
-
-        let mut event: Value = json!(Event::new("test"));
-        event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
-
-        // Act
-        let processed_event = matcher_actor
-            .send(EventMessageAndConfigWithReply {
-                event,
-                config_filter: HashMap::from([(
-                    ROOT_NODE_NAME.to_owned(),
-                    NodeFilter::SelectedChildren(HashMap::from([(
-                        "NOT_EXISTING_NODE_NAME".to_owned(),
-                        NodeFilter::AllChildren,
-                    )])),
-                )]),
-                matcher_config: config_manager.get_config().await.unwrap(),
                 include_metadata: false,
                 process_type: ProcessType::Full,
             })

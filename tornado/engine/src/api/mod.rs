@@ -55,7 +55,6 @@ impl EventApiHandler for MatcherApiHandler {
 
     async fn send_event_to_config(
         &self,
-        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
         matcher_config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError> {
@@ -69,7 +68,6 @@ impl EventApiHandler for MatcherApiHandler {
             .matcher
             .send(EventMessageAndConfigWithReply {
                 event: event.to_event_with_metadata(),
-                config_filter,
                 process_type: event.process_type,
                 matcher_config,
                 include_metadata: true,
@@ -253,10 +251,9 @@ mod test {
                 },
             }],
         };
-        let config_filter = HashMap::from([(config.get_name().to_owned(), NodeFilter::AllChildren)]);
 
         // Act
-        let res = api.send_event_to_config(config_filter, send_event_request, config).await.unwrap();
+        let res = api.send_event_to_config(send_event_request, config).await.unwrap();
 
         // Assert
         assert_eq!(Some("test-type-custom"), res.event.event_type());

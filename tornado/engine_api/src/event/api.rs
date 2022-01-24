@@ -6,9 +6,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::{Event, EVENT_METADATA};
 use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
-use tornado_engine_matcher::config::operation::NodeFilter;
+use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::model::ProcessedEvent;
+use tornado_engine_matcher::error::MatcherError;
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
@@ -25,7 +26,6 @@ pub trait EventApiHandler: Send + Sync {
     /// Executes an Event on a custom Tornado Configuration
     async fn send_event_to_config(
         &self,
-        config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
         config: MatcherConfig,
     ) -> Result<ProcessedEvent, ApiError>;
@@ -85,7 +85,13 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
-        self.handler.send_event_to_config(config_filter, event, draft.config).await
+
+        let filtered_config = matcher_config_filter(&draft.config, &config_filter)
+            .ok_or_else(|| MatcherError::ConfigurationError {
+                message: "The config filter does not match any existing node".to_owned(),
+            })?;
+
+        self.handler.send_event_to_config(event, filtered_config).await
     }
 }
 
@@ -98,7 +104,8 @@ pub mod test {
     use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::{MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::config::{Defaultable, MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::error::MatcherError;
     use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
 
@@ -125,7 +132,6 @@ pub mod test {
 
         async fn send_event_to_config(
             &self,
-            _config_filter: HashMap<String, NodeFilter>,
             event: SendEventRequest,
             _config: MatcherConfig,
         ) -> Result<ProcessedEvent, ApiError> {
@@ -183,7 +189,19 @@ pub mod test {
                     created_ts_ms: 0,
                     updated_ts_ms: 0,
                 },
-                config: MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] },
+                config: MatcherConfig::Filter {
+                    name: "root".to_owned(),
+                    filter: Filter{
+                        description: "".to_string(),
+                        active: true,
+                        filter: Defaultable::Default {},
+                    }, nodes: vec![
+                        MatcherConfig::Ruleset {
+                            name: "ruleset".to_owned(),
+                            rules: vec![]
+                        }
+                    ]
+                },
             })
         }
 
