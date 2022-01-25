@@ -6,6 +6,7 @@ use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
@@ -36,11 +37,13 @@ pub struct EventMessage {
     pub event: tornado_common_api::Event,
 }
 
+type TornadoTraceContext = HashMap<String, String>;
+
 #[derive(Message, Debug, Serialize, Deserialize)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
 pub struct TornadoNatsMessage {
     pub event: tornado_common_api::Event,
-    pub parent_span_id: Option<u64>,
+    pub trace_context: Option<TornadoTraceContext>,
 }
 
 #[derive(Message)]

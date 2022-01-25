@@ -37,6 +37,8 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
+use tornado_common_metrics::opentelemetry::global;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -356,10 +358,19 @@ pub async fn daemon(
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
                 debug!("NatsSubscriberActor - event from message received: {:#?}", tornado_nats_message);
-
                 let event = tornado_nats_message.event;
+                let parent_context_carrier = tornado_nats_message.trace_context;
+                let parent_context = parent_context_carrier.map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)));
 
-                let _span = tracing::error_span!("NatsSubscriberActor", command="daemon", trace_id=event.trace_id).entered();
+                let span = tracing::error_span!("NatsSubscriberActor", command="daemon", trace_id=event.trace_id);
+                if let Some(parent_context) = parent_context {
+                    debug!("NatsSubscriberActor - span parent set to: {:?}", parent_context);
+                    span.set_parent(parent_context)
+                } else {
+                    debug!("NatsSubscriberActor - no parent span received");
+                }
+                let _g = span.entered();
+
                 tornado_meter_nats.events_received_counter.add(1, &[
                     meter_event_souce_label,
                     EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),

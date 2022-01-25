@@ -9,6 +9,9 @@ use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
 use tracing_futures::Instrument;
+use std::collections::HashMap;
+use tornado_common_metrics::opentelemetry::global;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
 
@@ -162,18 +165,26 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id;
-        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
-
-        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
-
         let address = ctx.address();
 
+        let _root_span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
+
+        debug!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
+
+        let span_child = tracing::error_span!("NatsPublisherActor children", trace_id);
+        debug!("NatsPublisherActor - I am a child");
+
+        let mut outgoing_req_carrier = HashMap::new();
+
+        global::get_text_map_propagator(|propagator| propagator.inject_context(&span_child.context(), &mut outgoing_req_carrier));
+        let guard_span = span_child.entered();
+
+        debug!("The outgoing span carrier is: {:?}", outgoing_req_carrier);
+
         if let Some(connection) = self.nats_connection.deref() {
-            let nats_message = TornadoNatsMessage {
-                event: msg.event.clone(),
-                parent_span_id: span.id().map(|val| val.into_u64())
-            };
-            let event = serde_json::to_vec(&nats_message).map_err(|err| {
+            let tornado_nats_message = TornadoNatsMessage { event: msg.event.clone(), trace_context: Some(outgoing_req_carrier) };
+
+            let event = serde_json::to_vec(&tornado_nats_message).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 
@@ -193,7 +204,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(span.exit()));
+            }.instrument(guard_span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();
