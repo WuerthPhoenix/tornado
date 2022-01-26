@@ -1043,7 +1043,8 @@ mod test {
                 name: "child_1_1".to_owned(),
                 rules_count: 0,
                 children_count: 0,
-                description: "".to_string()
+                description: "".to_string(),
+                active: false,
             },],
             dto
         );

@@ -943,6 +943,7 @@ mod test {
             rules_count: 2,
             children_count: 2,
             description: "".to_string(),
+            active: false,
         }];
         assert_eq!(
             api.get_current_config_processing_tree_nodes_by_path(not_owner_edit_and_view, None)
@@ -998,6 +999,7 @@ mod test {
             rules_count: 1,
             children_count: 2,
             description: "".to_string(),
+            active: false,
         }];
         assert_eq!(res, expected_result);
         assert_eq!(res_authorized_child_nodes, expected_result);
@@ -1121,6 +1123,7 @@ mod test {
                 rules_count: 0,
                 children_count: 0,
                 description: "".to_string(),
+                active: false,
             },
             ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
         ];
