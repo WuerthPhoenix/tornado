@@ -66,6 +66,7 @@ pub struct CommunicationChannelConfig {
 
 #[cfg(test)]
 mod test {
+    use std::{time};
     use super::*;
     use crate::config::AuthConfig;
     use actix_web::http::StatusCode;
@@ -221,18 +222,29 @@ mod test {
             }
         }
 
-        let request =
-            test::TestRequest::get().uri("/monitoring/v1/metrics/prometheus").to_request();
+        let mut found = false;
+        let one_second_duration = time::Duration::from_secs(1);
+        // The retry loop with a sleep of 1 sec is needed because in the CI this test could fail.
+        // The problem is that the metric sent earlier could not be processed yet when the monitoring
+        // API is called. In this way we wait for it to be there for 30 seconds max.
+        for _ in [1 .. 30] {
+            let request =
+                test::TestRequest::get().uri("/monitoring/v1/metrics/prometheus").to_request();
 
-        // Act
-        let response = test::call_service(&mut srv, request).await;
+            // Act
+            let response = test::call_service(&mut srv, request).await;
 
-        // Assert
-        assert_eq!(StatusCode::OK, response.status());
+            // Assert
+            assert_eq!(StatusCode::OK, response.status());
 
-        let metrics = test::read_body(response).await;
-        let content = std::str::from_utf8(&metrics).unwrap();
-        //println!("metric endpoint content: \n{}", content);
-        assert!(content.contains(r#"test="something""#))
+            let metrics = test::read_body(response).await;
+            let content = std::str::from_utf8(&metrics).unwrap();
+            if content.contains(r#"test="something""#) {
+                found = true;
+                break;
+            }
+            tokio::time::sleep(one_second_duration).await;
+        }
+        assert!(found)
     }
 }
