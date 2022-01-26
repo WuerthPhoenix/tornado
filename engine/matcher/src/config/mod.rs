@@ -233,13 +233,10 @@ impl MatcherConfig {
             });
         }
 
-        match parent_node {
-            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
-                nodes.retain(|node| &node.get_name() != node_to_delete);
-            }
-            // Parent node is guaranteed to be of type filter because get_child_node_by_name return
-            // Option<None> if the parent node is of type ruleset and this match arm is never reached.
-            _ => {}
+        // Parent node is guaranteed to be of type filter because get_child_node_by_name return
+        // Option<None> if the parent node is of type ruleset and this match arm is never reached.
+        if let MatcherConfig::Filter { name: _, filter: _, ref mut nodes } = parent_node {
+            nodes.retain(|node| &node.get_name() != node_to_delete);
         }
 
         Ok(())
