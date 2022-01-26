@@ -2,7 +2,6 @@ use crate::LoggerError;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
-use tracing_elastic_apm::config::ApiKey;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
 
@@ -49,12 +48,6 @@ pub struct ApmServerApiCredentials {
     pub key: String,
 }
 
-impl From<ApmServerApiCredentials> for ApiKey {
-    fn from(api_credentials: ApmServerApiCredentials) -> Self {
-        ApiKey::new(api_credentials.id, api_credentials.key)
-    }
-}
-
 impl ApmServerApiCredentials {
     pub fn from_file(apm_server_credentials_filepath: &str) -> Result<Self, LoggerError> {
         let apm_server_credentials_file = File::open(&apm_server_credentials_filepath)?;
@@ -68,6 +61,10 @@ impl ApmServerApiCredentials {
                 ),
             }
         })
+    }
+
+    pub fn to_authorization_header_value(&self) -> String {
+        format!("ApiKey {}", base64::encode(format!("{}:{}", self.id, self.key)))
     }
 }
 
@@ -115,5 +112,17 @@ mod test {
             "./test_resources/apm_server_api_credentials_wrong.json",
         );
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn should_construct_authorization_header_from_api_credentials() {
+        let creds = ApmServerApiCredentials {
+            id: "GnrUT3QB7yZbSNxKET6d".to_string(),
+            key: "RhHKisTmQ1aPCHC_TPwOvw".to_string(),
+        };
+        assert_eq!(
+            creds.to_authorization_header_value(),
+            "ApiKey R25yVVQzUUI3eVpiU054S0VUNmQ6UmhIS2lzVG1RMWFQQ0hDX1RQd092dw=="
+        );
     }
 }
