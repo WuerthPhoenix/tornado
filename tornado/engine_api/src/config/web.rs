@@ -89,7 +89,8 @@ pub fn build_config_v2_endpoints<
                     web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
                         .route(web::get().to(get_draft_tree_node_details::<A, CM>))
                         .route(web::put().to(create_draft_tree_node::<A, CM>))
-                        .route(web::post().to(edit_draft_tree_node::<A, CM>)),
+                        .route(web::post().to(edit_draft_tree_node::<A, CM>))
+                        .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
                 )
                 .service(
                     web::resource(
@@ -266,6 +267,22 @@ async fn edit_draft_tree_node<
             &endpoint_params.node_path,
             config,
         )
+        .await?;
+    Ok(Json(()))
+}
+
+async fn delete_draft_tree_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    data.api
+        .delete_draft_config_node(auth_ctx, &endpoint_params.draft_id, &endpoint_params.node_path)
         .await?;
     Ok(Json(()))
 }
@@ -1516,6 +1533,43 @@ mod test {
                 active: false,
                 filter: None,
             })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_delete_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::delete()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+
+                    auths: HashMap::from([(
+                        "auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    )]),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
