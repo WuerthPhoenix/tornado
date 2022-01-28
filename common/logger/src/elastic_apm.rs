@@ -63,6 +63,10 @@ impl ApmServerApiCredentials {
         })
     }
 
+    /// Returns the ApiKey "authorization" header value constructed as of Elastic specifications:
+    /// https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es
+    /// This can be used in the "authorization" HTTP header to authenticate to APM Server, and
+    /// other Elastic services.
     pub fn to_authorization_header_value(&self) -> String {
         format!("ApiKey {}", base64::encode(format!("{}:{}", self.id, self.key)))
     }
