@@ -26,8 +26,8 @@ use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand}
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
+use tornado_common_logger::opentelemetry_logger::attach_context_to_span;
 use tornado_common_logger::setup_logger;
-use tornado_common_metrics::opentelemetry::global;
 use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
@@ -38,7 +38,6 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -359,15 +358,9 @@ pub async fn daemon(
                     })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", tornado_nats_message);
                 let event = tornado_nats_message.event;
-                let parent_context_carrier = tornado_nats_message.trace_context;
-                let parent_context = parent_context_carrier.map(|context|
-                    global::get_text_map_propagator(|prop| prop.extract(&context))
-                );
                 let trace_id = event.trace_id.as_str();
                 let subscriber_span = tracing::info_span!("Enrich event with tenant", trace_id);
-                if let Some(parent_context) = parent_context {
-                    subscriber_span.set_parent(parent_context)
-                }
+                attach_context_to_span(&subscriber_span, tornado_nats_message.trace_context);
                 let _subscriber_span_guard = subscriber_span.enter();
 
                 tornado_meter_nats.events_received_counter.add(1, &[

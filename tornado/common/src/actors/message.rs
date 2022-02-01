@@ -1,12 +1,12 @@
 use actix::prelude::Message;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::io::AsyncRead;
 use tornado_common_api::Action;
+use tornado_common_logger::opentelemetry_logger::TornadoTraceContext;
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
@@ -36,8 +36,6 @@ pub struct StringMessage {
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
 }
-
-type TornadoTraceContext = HashMap<String, String>;
 
 #[derive(Message, Debug, Serialize, Deserialize)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]

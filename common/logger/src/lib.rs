@@ -1,24 +1,20 @@
-use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
+use crate::elastic_apm::ApmTracingConfig;
+use crate::opentelemetry_logger::get_opentelemetry_tracer;
 use arc_swap::ArcSwap;
+use opentelemetry::global;
 use opentelemetry::sdk::propagation::TraceContextPropagator;
-use opentelemetry::sdk::trace;
-use opentelemetry::sdk::trace::{Sampler, Tracer};
-use opentelemetry::sdk::Resource;
-use opentelemetry::{global, KeyValue};
-use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::time::Duration;
 use thiserror::Error;
-use tonic::metadata::MetadataMap;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::filter::{filter_fn, Targets};
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 
 pub mod elastic_apm;
+pub mod opentelemetry_logger;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -217,43 +213,6 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
     })
 }
 
-fn get_opentelemetry_tracer(apm_tracing_config: &ApmTracingConfig) -> Result<Tracer, LoggerError> {
-    let mut tonic_metadata = MetadataMap::new();
-    if let Some(apm_server_api_credentials) = &apm_tracing_config.apm_server_api_credentials {
-        tonic_metadata.insert(
-            "authorization",
-            apm_server_api_credentials.to_authorization_header_value().parse()
-                .map_err(|err| LoggerError::LoggerRuntimeError {
-                    message: format!("Logger - Error while constructing the authorization header for tonic client. Error: {}", err)
-                })?,
-        );
-    };
-
-    let export_config = ExportConfig {
-        endpoint: apm_tracing_config.apm_server_url.clone(),
-        protocol: Protocol::Grpc,
-        timeout: Duration::from_secs(10),
-    };
-    opentelemetry_otlp::new_pipeline()
-        .tracing()
-        .with_exporter(
-            opentelemetry_otlp::new_exporter()
-                .tonic()
-                .with_export_config(export_config)
-                .with_metadata(tonic_metadata),
-        )
-        .with_trace_config(trace::config().with_sampler(Sampler::AlwaysOn).with_resource(
-            Resource::new(vec![KeyValue::new("service.name", get_current_service_name()?)]),
-        ))
-        .install_batch(opentelemetry::runtime::Tokio)
-        .map_err(|err| LoggerError::LoggerRuntimeError {
-            message: format!(
-                "Logger - Error while installing the OpenTelemetry Tracer. Error: {:?}",
-                err
-            ),
-        })
-}
-
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
     let full_path = full_path.replace(r#"\"#, "/");
     if let Some(last_separator_index) = full_path.rfind('/') {
@@ -271,7 +230,6 @@ fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerE
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::elastic_apm::ApmServerApiCredentials;
 
     #[test]
     fn should_split_the_file_path() {
@@ -446,19 +404,5 @@ mod test {
     #[test]
     fn split_the_file_path_should_file_if_directory_is_not_present() {
         assert!(path_to_dir_and_filename("filename").is_err());
-    }
-
-    #[tokio::test]
-    async fn should_get_opentelemetry_tracer() {
-        let tracing_config = ApmTracingConfig {
-            apm_output: true,
-            apm_server_url: "apm.example.com".to_string(),
-            apm_server_api_credentials: Some(ApmServerApiCredentials {
-                id: "myid".to_string(),
-                key: "mykey".to_string(),
-            }),
-        };
-        let tracer = get_opentelemetry_tracer(&tracing_config);
-        assert!(tracer.is_ok());
     }
 }

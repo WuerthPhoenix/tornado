@@ -19,6 +19,7 @@ tokio-util = { version = "0.6", features = ["codec"] }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_common_metrics = { path = "../../common/metrics", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 tracing = "0.1"
