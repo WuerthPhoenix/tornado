@@ -586,7 +586,7 @@ fn start_logger() {
         file_output_path: None,
         tracing_elastic_apm: ApmTracingConfig {
             apm_output: false,
-            apm_server_url: "".to_owned(),
+            apm_server_url: "http://localhost:8200".to_owned(),
             apm_server_api_credentials: None,
         },
     };
