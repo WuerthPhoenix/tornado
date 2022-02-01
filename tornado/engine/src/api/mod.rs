@@ -107,6 +107,8 @@ mod test {
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
     use serde_json::json;
     use std::collections::HashMap;
+    use std::collections::HashMap;
+    use std::sync::Arc;
     use std::sync::Arc;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;

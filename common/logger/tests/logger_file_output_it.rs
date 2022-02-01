@@ -1,5 +1,6 @@
 use log::{debug, warn};
 use std::path::Path;
+use std::{thread, time};
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
@@ -29,9 +30,20 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
     let path = Path::new(&log_filename);
     assert!(path.exists());
 
-    let log_content = std::fs::read_to_string(path).unwrap();
-    assert!(log_content.contains("main - this is info"));
-    assert!(!log_content.contains("main - this is debug"));
+    let mut found = false;
+    let half_second_duration = time::Duration::from_millis(500);
+    // The retry loop with a sleep of 0,5 sec is needed because in the CI this test could fail.
+    // The problem is that the logs buffer could not be flushed yet when we search for them in the
+    // log file.
+    for _ in 1 .. 30 {
+        let log_content = std::fs::read_to_string(path).unwrap();
+        if log_content.contains("main - this is info") && !log_content.contains("main - this is debug") {
+            found = true;
+            break;
+        }
+        thread::sleep(half_second_duration);
+    }
+    assert!(found);
 
     Ok(())
 }

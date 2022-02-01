@@ -17,6 +17,7 @@ async fn text_metrics(metrics: Data<Metrics>) -> HttpResponse {
     let mut buf = Vec::new();
     if let Err(err) = encoder.encode(&metric_families, &mut buf) {
         opentelemetry::global::handle_error(MetricsError::Other(err.to_string()));
+        return HttpResponse::InternalServerError().body(err.to_string());
     }
 
     HttpResponse::Ok()
@@ -28,7 +29,6 @@ async fn text_metrics(metrics: Data<Metrics>) -> HttpResponse {
 mod test {
 
     use super::*;
-    use actix_web::http::StatusCode;
     use actix_web::{test, App};
     use opentelemetry::Key;
 
@@ -55,7 +55,6 @@ mod test {
         let response = test::call_service(&mut srv, request).await;
 
         // Assert
-        assert_eq!(StatusCode::OK, response.status());
 
         let metrics = test::read_body(response).await;
         let content = std::str::from_utf8(&metrics).unwrap();
