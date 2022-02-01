@@ -1,14 +1,17 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError};
+use crate::actors::message::{EventMessage, TornadoCommonActorError, TornadoNatsMessage};
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
+use tornado_common_metrics::opentelemetry::global;
 use tracing_futures::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
 
@@ -168,8 +171,19 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
         let address = ctx.address();
 
+        let mut outgoing_req_carrier = HashMap::new();
+
+        global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&span.context(), &mut outgoing_req_carrier)
+        });
+
         if let Some(connection) = self.nats_connection.deref() {
-            let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            // TODO: This TornadoNatsMessage needs to be removed in task TOR-469
+            let tornado_nats_message = TornadoNatsMessage {
+                event: msg.event.clone(),
+                trace_context: Some(outgoing_req_carrier),
+            };
+            let event = serde_json::to_vec(&tornado_nats_message).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 

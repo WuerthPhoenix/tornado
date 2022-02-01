@@ -72,9 +72,7 @@ impl WithEventData for Value {
                     map.insert(EVENT_METADATA.to_owned(), Value::Object(payload));
                     Ok(())
                 } else {
-                    Err(CommonError::BadDataError {
-                        message: "Event should be a Map".to_owned(),
-                    })
+                    Err(CommonError::BadDataError { message: "Event should be a Map".to_owned() })
                 }
             }
             Some(Value::Object(payload)) => {
@@ -144,7 +142,7 @@ pub trait ValueGet {
 
 pub trait ValueExt {
     fn get_map(&self) -> Option<&Map<String, Value>>;
-    
+
     fn get_map_mut(&mut self) -> Option<&mut Map<String, Value>>;
 
     fn get_array(&self) -> Option<&Vec<Value>>;
@@ -157,7 +155,6 @@ pub trait ValueExt {
 }
 
 impl ValueGet for Value {
-
     fn get_from_map(&self, key: &str) -> Option<&Value> {
         match self {
             Value::Object(payload) => payload.get(key),
@@ -173,7 +170,6 @@ impl ValueGet for Value {
 }
 
 impl ValueExt for Value {
-
     fn get_map(&self) -> Option<&Map<String, Value>> {
         match self {
             Value::Object(payload) => Some(payload),
@@ -243,8 +239,7 @@ pub trait RetriableError {
     fn can_retry(&self) -> bool;
 }
 
-
-impl <'o > ValueGet for HashMap<&'o str, &'o Value> {
+impl<'o> ValueGet for HashMap<&'o str, &'o Value> {
     fn get_from_map(&self, key: &str) -> Option<&Value> {
         self.get(key).map(|s| *s)
     }
@@ -429,7 +424,8 @@ mod test {
     #[test]
     fn should_compare_array_values() {
         // Arrange
-        let value_1 = Value::Array(vec![Value::String("text_value".to_owned()), Value::Bool(false)]);
+        let value_1 =
+            Value::Array(vec![Value::String("text_value".to_owned()), Value::Bool(false)]);
 
         // Assert
         assert_ne!(Value::Array(vec![]), value_1);
@@ -635,56 +631,20 @@ mod test {
         assert_eq!(None, Value::Bool(true).partial_cmp(&Value::Array(vec![])));
 
         // Num
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(64).partial_cmp(&json!(64))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(64).partial_cmp(&json!(64))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(64).partial_cmp(&json!(64))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(64).partial_cmp(&json!(64))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(64.0).partial_cmp(&json!(64.0))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(0.0).partial_cmp(&json!(0))
-        );
-        assert_eq!(
-            Some(Ordering::Equal),
-            json!(0.0).partial_cmp(&json!(0))
-        );
+        assert_eq!(Some(Ordering::Equal), json!(64).partial_cmp(&json!(64)));
+        assert_eq!(Some(Ordering::Equal), json!(64).partial_cmp(&json!(64)));
+        assert_eq!(Some(Ordering::Equal), json!(64).partial_cmp(&json!(64)));
+        assert_eq!(Some(Ordering::Equal), json!(64).partial_cmp(&json!(64)));
+        assert_eq!(Some(Ordering::Equal), json!(64.0).partial_cmp(&json!(64.0)));
+        assert_eq!(Some(Ordering::Equal), json!(0.0).partial_cmp(&json!(0)));
+        assert_eq!(Some(Ordering::Equal), json!(0.0).partial_cmp(&json!(0)));
 
-        assert_eq!(
-            Some(Ordering::Greater),
-            json!(0.0).partial_cmp(&json!(-1000))
-        );
-        assert_eq!(
-            Some(Ordering::Greater),
-            json!(0).partial_cmp(&json!(-1000))
-        );
-        assert_eq!(
-            Some(Ordering::Greater),
-            json!(0.0).partial_cmp(&json!(-100000.0))
-        );
+        assert_eq!(Some(Ordering::Greater), json!(0.0).partial_cmp(&json!(-1000)));
+        assert_eq!(Some(Ordering::Greater), json!(0).partial_cmp(&json!(-1000)));
+        assert_eq!(Some(Ordering::Greater), json!(0.0).partial_cmp(&json!(-100000.0)));
 
-        assert_eq!(
-            Some(Ordering::Less),
-            json!(10).partial_cmp(&json!(1000))
-        );
-        assert_eq!(
-            Some(Ordering::Less),
-            json!(0.0).partial_cmp(&json!(1000))
-        );
+        assert_eq!(Some(Ordering::Less), json!(10).partial_cmp(&json!(1000)));
+        assert_eq!(Some(Ordering::Less), json!(0.0).partial_cmp(&json!(1000)));
 
         assert_eq!(None, json!(0).partial_cmp(&Value::Bool(false)));
 
@@ -796,7 +756,6 @@ mod test {
         assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
         assert!(value.metadata().is_none())
-        
     }
 
     #[test]
@@ -850,5 +809,4 @@ mod test {
             _ => assert!(false),
         }
     }
-
 }

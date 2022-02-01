@@ -5,8 +5,8 @@ use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
 use tracing::info;
 
-#[test]
-fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
+#[tokio::test]
+async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
     let tempdir = tempfile::tempdir().unwrap();
     let log_filename = format!(
         "{}/filename_{}.log",

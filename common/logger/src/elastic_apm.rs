@@ -2,7 +2,6 @@ use crate::LoggerError;
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
-use tracing_elastic_apm::config::ApiKey;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
 
@@ -40,19 +39,17 @@ impl ApmTracingConfig {
 
 impl Default for ApmTracingConfig {
     fn default() -> Self {
-        Self { apm_output: false, apm_server_url: "".to_string(), apm_server_api_credentials: None }
+        Self {
+            apm_output: false,
+            apm_server_url: "http://localhost:8200".to_string(),
+            apm_server_api_credentials: None,
+        }
     }
 }
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
 pub struct ApmServerApiCredentials {
     pub id: String,
     pub key: String,
-}
-
-impl From<ApmServerApiCredentials> for ApiKey {
-    fn from(api_credentials: ApmServerApiCredentials) -> Self {
-        ApiKey::new(api_credentials.id, api_credentials.key)
-    }
 }
 
 impl ApmServerApiCredentials {
@@ -68,6 +65,14 @@ impl ApmServerApiCredentials {
                 ),
             }
         })
+    }
+
+    /// Returns the ApiKey "authorization" header value constructed as of Elastic specifications:
+    /// https://www.elastic.co/guide/en/apm/server/current/api-key.html#create-api-key-workflow-es
+    /// This can be used in the "authorization" HTTP header to authenticate to APM Server, and
+    /// other Elastic services.
+    pub fn to_authorization_header_value(&self) -> String {
+        format!("ApiKey {}", base64::encode(format!("{}:{}", self.id, self.key)))
     }
 }
 
@@ -115,5 +120,17 @@ mod test {
             "./test_resources/apm_server_api_credentials_wrong.json",
         );
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn should_construct_authorization_header_from_api_credentials() {
+        let creds = ApmServerApiCredentials {
+            id: "GnrUT3QB7yZbSNxKET6d".to_string(),
+            key: "RhHKisTmQ1aPCHC_TPwOvw".to_string(),
+        };
+        assert_eq!(
+            creds.to_authorization_header_value(),
+            "ApiKey R25yVVQzUUI3eVpiU054S0VUNmQ6UmhIS2lzVG1RMWFQQ0hDX1RQd092dw=="
+        );
     }
 }

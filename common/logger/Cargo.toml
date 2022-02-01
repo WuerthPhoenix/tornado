@@ -8,19 +8,23 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "1"
+base64 = "0.13"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
+opentelemetry = { version = "0.16", features = ["rt-tokio"] }
+opentelemetry-otlp = { version = "0.9", features = ["tonic"] }
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
 serde = { version = "1.0", features = ['derive'] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"
+tonic = "0.5"
 tracing = "0.1"
 tracing-appender = "0.2"
-tracing-elastic-apm = { version = "3.0", default-features = false, features = ["rustls-tls"] }
 tracing-futures = "0.2"
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "tracing-log"] }
+tracing-opentelemetry = "0.16"
 
 [dev-dependencies]
 rand = "0.8"

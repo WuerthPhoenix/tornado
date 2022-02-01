@@ -1,15 +1,22 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use arc_swap::ArcSwap;
+use opentelemetry::sdk::propagation::TraceContextPropagator;
+use opentelemetry::sdk::trace;
+use opentelemetry::sdk::trace::{Sampler, Tracer};
+use opentelemetry::sdk::Resource;
+use opentelemetry::{global, KeyValue};
+use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::util::SubscriberInitExt;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use thiserror::Error;
+use tonic::metadata::MetadataMap;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_elastic_apm::config::Authorization;
-use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 use tracing_subscriber::filter::{filter_fn, Targets};
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 
 pub mod elastic_apm;
 
@@ -135,6 +142,7 @@ impl LogWorkerGuard {
 
 /// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
+    global::set_text_map_propagator(TraceContextPropagator::new());
     let config_logger_level = Arc::new(logger_config.level.to_owned());
     let logger_level = ArcSwap::new(config_logger_level);
     let env_filter = Targets::from_str(&logger_config.level).map_err(|err| {
@@ -168,42 +176,33 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         let stdout_enabled = stdout_enabled.clone();
 
         (
-            fmt::Layer::new().with_writer(non_blocking).with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
+            fmt::Layer::new()
+                .with_writer(non_blocking)
+                .with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
             Some(stdout_guard),
         )
     };
 
     let (apm_layer, apm_enabled) = {
-        let apm_tracing_config = logger_config.tracing_elastic_apm.clone();
-        let mut apm_config = tracing_elastic_apm::config::Config::new(
-            logger_config.tracing_elastic_apm.apm_server_url.clone(),
-        );
-        apm_config = if let Some(apm_server_api_credentials) =
-            logger_config.tracing_elastic_apm.apm_server_api_credentials.clone()
-        {
-            apm_config.with_authorization(Authorization::ApiKey(apm_server_api_credentials.into()))
-        } else {
-            apm_config
-        };
-        let apm_layer = tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config)
-            .map_err(|err| LoggerError::LoggerConfigurationError {
-                message: format!(
-                    "Could not create APM tracing layer for the logger. Err: {:?}",
-                    err
-                ),
-            })?;
-        let enabled = Arc::new(AtomicBool::new(apm_tracing_config.apm_output));
+        let tracer = get_opentelemetry_tracer(&logger_config.tracing_elastic_apm)?;
+        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+
+        let enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
         let enabled_clone = enabled.clone();
 
-        (apm_layer.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))), enabled_clone)
-    } ;
+        (
+            telemetry.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))),
+            enabled_clone,
+        )
+    };
 
     tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber)
         .with(apm_layer)
-        .try_init().map_err(|err| LoggerError::LoggerConfigurationError {
+        .try_init()
+        .map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot start the logger. err: {:?}", err),
         })?;
 
@@ -216,6 +215,43 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         stdout_enabled,
         apm_enabled,
     })
+}
+
+fn get_opentelemetry_tracer(apm_tracing_config: &ApmTracingConfig) -> Result<Tracer, LoggerError> {
+    let mut tonic_metadata = MetadataMap::new();
+    if let Some(apm_server_api_credentials) = &apm_tracing_config.apm_server_api_credentials {
+        tonic_metadata.insert(
+            "authorization",
+            apm_server_api_credentials.to_authorization_header_value().parse()
+                .map_err(|err| LoggerError::LoggerRuntimeError {
+                    message: format!("Logger - Error while constructing the authorization header for tonic client. Error: {}", err)
+                })?,
+        );
+    };
+
+    let export_config = ExportConfig {
+        endpoint: apm_tracing_config.apm_server_url.clone(),
+        protocol: Protocol::Grpc,
+        timeout: Duration::from_secs(10),
+    };
+    opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_export_config(export_config)
+                .with_metadata(tonic_metadata),
+        )
+        .with_trace_config(trace::config().with_sampler(Sampler::AlwaysOn).with_resource(
+            Resource::new(vec![KeyValue::new("service.name", get_current_service_name()?)]),
+        ))
+        .install_batch(opentelemetry::runtime::Tokio)
+        .map_err(|err| LoggerError::LoggerRuntimeError {
+            message: format!(
+                "Logger - Error while installing the OpenTelemetry Tracer. Error: {:?}",
+                err
+            ),
+        })
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
@@ -235,6 +271,7 @@ fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerE
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::elastic_apm::ApmServerApiCredentials;
 
     #[test]
     fn should_split_the_file_path() {
@@ -409,5 +446,19 @@ mod test {
     #[test]
     fn split_the_file_path_should_file_if_directory_is_not_present() {
         assert!(path_to_dir_and_filename("filename").is_err());
+    }
+
+    #[tokio::test]
+    async fn should_get_opentelemetry_tracer() {
+        let tracing_config = ApmTracingConfig {
+            apm_output: true,
+            apm_server_url: "apm.example.com".to_string(),
+            apm_server_api_credentials: Some(ApmServerApiCredentials {
+                id: "myid".to_string(),
+                key: "mykey".to_string(),
+            }),
+        };
+        let tracer = get_opentelemetry_tracer(&tracing_config);
+        assert!(tracer.is_ok());
     }
 }
