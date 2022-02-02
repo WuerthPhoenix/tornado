@@ -1,12 +1,15 @@
 use chrono::prelude::Local;
 use error::CommonError;
+use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{global, Context};
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use tornado_common_logger::opentelemetry_logger::TelemetryContext;
+use tornado_common_logger::opentelemetry_logger::{
+    TelemetryContextExtractor, TelemetryContextInjector,
+};
 use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 

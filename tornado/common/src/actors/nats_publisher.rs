@@ -1,18 +1,15 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError, TornadoNatsMessage};
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
 use tornado_common_api::add_metadata_to_span;
-use tornado_common_metrics::opentelemetry::global;
 use tracing_futures::Instrument;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
 
@@ -195,7 +192,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(span.exit()));
+            }.instrument(_span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();

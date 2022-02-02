@@ -3635,6 +3635,7 @@ dependencies = [
  "futures-util",
  "log",
  "once_cell",
+ "opentelemetry",
  "opentelemetry-prometheus",
  "port_check",
  "rand 0.8.4",
@@ -3656,6 +3657,7 @@ dependencies = [
  "tracing",
  "tracing-futures",
  "tracing-opentelemetry",
+ "tracing-serde",
 ]
 
 [[package]]
@@ -3665,6 +3667,7 @@ dependencies = [
  "chrono",
  "num-cmp",
  "opentelemetry",
+ "rand 0.8.4",
  "serde",
  "serde_json",
  "thiserror",
@@ -4245,6 +4248,16 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-subscriber",
+]
+
+[[package]]
+name = "tracing-serde"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fb65ea441fbb84f9f6748fd496cf7f63ec9af5bca94dd86456978d055e8eb28b"
+dependencies = [
+ "serde",
+ "tracing-core",
 ]
 
 [[package]]
