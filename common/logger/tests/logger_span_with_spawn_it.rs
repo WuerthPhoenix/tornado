@@ -2,9 +2,8 @@ use log::{debug, warn};
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
-use tracing::{info, span, Level, Span, Id};
+use tracing::{info, span, Id, Level};
 use tracing_futures::Instrument;
-use tracing::field::ValueSet;
 
 mod inner1 {
     use super::*;
@@ -49,26 +48,24 @@ async fn should_set_parent_span() -> Result<(), std::io::Error> {
 
     let _guard = setup_logger(config).unwrap();
 
-
-
-    let explicit_parent= Id::from_u64(3666);
+    let explicit_parent = Id::from_u64(3666);
     let foo = span!(Level::INFO, "foo");
+
+    // todo: unused variable
     let foo_id = foo.id();
     debug!("{:?}", foo);
     // let foo_id = foo.id();
 
     let span_1 = tracing::error_span!("span 1", "first");
     debug!("{:?}", span_1);
-    let g1 = span_1.entered();
+    let _g1 = span_1.entered();
     info!("I am in span 1");
-
 
     let span_2 = tracing::error_span!("span 2");
     span_2.follows_from(explicit_parent);
     debug!("{:?}", span_2);
-    let g2 = s.entered();
+    let _g2 = span_2.entered();
     info!("I am in span 2");
-
 
     Ok(())
 }

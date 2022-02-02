@@ -1,7 +1,6 @@
 use opentelemetry::trace::TraceContextExt;
 use std::collections::HashMap;
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
-use tornado_common_logger::opentelemetry_logger::attach_context_to_span;
 use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -29,7 +28,7 @@ async fn should_attach_context_to_span() {
     let span_1 = tracing::debug_span!("level", "first");
 
     // Act
-    attach_context_to_span(&span_1, Some(carrier));
+    (&span_1, Some(carrier));
 
     // Assert
     let trace_id = span_1.context().span().span_context().trace_id();

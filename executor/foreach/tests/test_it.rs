@@ -3,7 +3,6 @@ use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use tornado_common_api::Action;
 use tornado_executor_common::StatelessExecutor;
-use tornado_executor_foreach;
 use tornado_executor_foreach::ForEachExecutor;
 use tornado_network_simple::SimpleEventBus;
 

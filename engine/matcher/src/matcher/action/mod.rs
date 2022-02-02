@@ -386,7 +386,7 @@ mod test {
         assert_eq!(&event.created_ms().unwrap(), result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
-        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
+        assert_eq!(&event.trace_id(), &result.trace_id);
     }
 
     #[test]
@@ -902,6 +902,6 @@ mod test {
         let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
 
         // Assert
-        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
+        assert_eq!(&event.trace_id(), &result.trace_id);
     }
 }

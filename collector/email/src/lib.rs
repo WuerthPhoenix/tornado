@@ -159,7 +159,7 @@ mod test {
         let event = collector.to_event(email.as_bytes()).unwrap();
 
         // Assert
-        expected_event.created_ms = event.created_ms.clone();
+        expected_event.created_ms = event.created_ms;
         assert_eq!(expected_event, event);
     }
 
@@ -252,12 +252,12 @@ mod test {
     }
 
     fn get_email(path: &str) -> String {
-        fs::read_to_string(path).expect(&format!("Unable to open the file [{}]", path))
+        fs::read_to_string(path).unwrap_or_else(|_| panic!("Unable to open the file [{}]", path))
     }
 
     fn get_event(path: &str) -> Event {
-        let event_string =
-            fs::read_to_string(path).expect(&format!("Unable to open the file [{}]", path));
+        let event_string = fs::read_to_string(path)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", path));
         serde_json::from_str(&event_string)
             .expect(&format!("Cannot parse event from file [{}]", path))
     }

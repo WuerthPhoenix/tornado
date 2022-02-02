@@ -421,6 +421,7 @@ mod test {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn should_compare_value_with_f64() {
         // Arrange
         let value = json!(69.0);
