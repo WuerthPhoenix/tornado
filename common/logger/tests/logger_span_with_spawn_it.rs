@@ -2,8 +2,9 @@ use log::{debug, warn};
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::setup_logger;
 use tornado_common_logger::LoggerConfig;
-use tracing::{info, span, Level};
+use tracing::{info, span, Level, Span, Id};
 use tracing_futures::Instrument;
+use tracing::field::ValueSet;
 
 mod inner1 {
     use super::*;
@@ -35,6 +36,41 @@ mod inner2 {
 
 pub struct Data {
     id: u32,
+}
+
+#[tokio::test]
+async fn should_set_parent_span() -> Result<(), std::io::Error> {
+    let config = LoggerConfig {
+        stdout_output: true,
+        level: "debug,logger_span_with_spawn_it::inner=info".to_owned(),
+        file_output_path: None,
+        tracing_elastic_apm: ApmTracingConfig::default(),
+    };
+
+    let _guard = setup_logger(config).unwrap();
+
+
+
+    let explicit_parent= Id::from_u64(3666);
+    let foo = span!(Level::INFO, "foo");
+    let foo_id = foo.id();
+    debug!("{:?}", foo);
+    // let foo_id = foo.id();
+
+    let span_1 = tracing::error_span!("span 1", "first");
+    debug!("{:?}", span_1);
+    let g1 = span_1.entered();
+    info!("I am in span 1");
+
+
+    let span_2 = tracing::error_span!("span 2");
+    span_2.follows_from(explicit_parent);
+    debug!("{:?}", span_2);
+    let g2 = s.entered();
+    info!("I am in span 2");
+
+
+    Ok(())
 }
 
 #[tokio::test]

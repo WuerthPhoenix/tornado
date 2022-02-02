@@ -51,7 +51,11 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
-        let _span = msg.span.entered();
+        let span = msg.span.entered();
+        debug!("Span in DispatcherActor: {:?}", span);
+        let _span2 =
+            tracing::error_span!("inside_dispatcheractor", rule_name="ippip").entered();
+
         trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }

@@ -130,6 +130,8 @@ impl Handler<EventMessage> for MatcherActor {
         let trace_id = msg.event.trace_id().unwrap_or_default();
         let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
+        let _span2 =
+            tracing::error_span!("inside_matcheractor", rule_name="ippip").entered();
 
         let processed_event = self.process(&self.matcher, msg.event, false);
         self.dispatcher_addr.try_send(ProcessedEventMessage { span: span.exit(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));

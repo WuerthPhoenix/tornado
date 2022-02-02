@@ -30,6 +30,7 @@ pub struct Event {
 }
 
 pub trait WithEventData {
+    // todo: remove this aswell
     fn trace_id(&self) -> Option<&str>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
