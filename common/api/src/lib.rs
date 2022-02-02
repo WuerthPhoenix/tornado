@@ -110,7 +110,7 @@ impl Event {
     }
 }
 
-pub fn add_metadata_to_span(span: &mut Span, event: &mut Event) {
+pub fn add_metadata_to_span(span: &Span, event: &mut Event) {
     if let Some(parent_context) = event.get_context() {
         span.set_parent(parent_context);
     }
