@@ -10,7 +10,6 @@ use std::collections::HashMap;
 use std::time::Duration;
 use tonic::metadata::MetadataMap;
 use tracing::span::EnteredSpan;
-use tracing::Span;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub type TornadoTraceContext = HashMap<String, String>;
@@ -34,6 +33,7 @@ pub fn get_opentelemetry_tracer(
         protocol: Protocol::Grpc,
         timeout: Duration::from_secs(10),
     };
+
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
@@ -52,14 +52,6 @@ pub fn get_opentelemetry_tracer(
                 err
             ),
         })
-}
-
-pub fn attach_context_to_span(span: &Span, tornado_parent_context: Option<TornadoTraceContext>) {
-    let parent_context = tornado_parent_context
-        .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)));
-    if let Some(parent_context) = parent_context {
-        span.set_parent(parent_context)
-    }
 }
 
 pub fn get_span_context_carrier(span: &EnteredSpan) -> TornadoTraceContext {
