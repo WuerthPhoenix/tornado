@@ -173,7 +173,11 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(ProcessingTreeNodeDetailsDto::from(node))
     }
 
-    fn get_absolute_path_from_relative<'a>(&self, auth: &'a AuthContextV2, relative_node_path: &[&'a str]) -> Result<Vec<&'a str>, ApiError> {
+    fn get_absolute_path_from_relative<'a>(
+        &self,
+        auth: &'a AuthContextV2,
+        relative_node_path: &[&'a str],
+    ) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
 
@@ -227,6 +231,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         ruleset_path: &str,
         rule_name: &str,
     ) -> Result<RuleDto, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
         let authorized_path =
@@ -419,9 +424,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         Ok(self.config_manager.draft_take_over(draft_id, auth.clone().auth.user).await?)
     }
 
-    async fn get_draft_and_check_owner<
-        T: AuthContextTrait,
-    >(
+    async fn get_draft_and_check_owner<T: AuthContextTrait>(
         &self,
         auth: &T,
         draft_id: &str,
@@ -444,6 +447,37 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
 
         draft.config.create_node_in_path(&absolute_node_path, &config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
+    }
+
+    pub async fn edit_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+        config: MatcherConfig,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.edit_node_in_path(&absolute_node_path, &config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
+    }
+
+    pub async fn delete_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+
+        draft.config.delete_node_in_path(&absolute_node_path)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 }
@@ -909,6 +943,7 @@ mod test {
             rules_count: 2,
             children_count: 2,
             description: "".to_string(),
+            active: false,
         }];
         assert_eq!(
             api.get_current_config_processing_tree_nodes_by_path(not_owner_edit_and_view, None)
@@ -964,6 +999,7 @@ mod test {
             rules_count: 1,
             children_count: 2,
             description: "".to_string(),
+            active: false,
         }];
         assert_eq!(res, expected_result);
         assert_eq!(res_authorized_child_nodes, expected_result);
@@ -987,16 +1023,14 @@ mod test {
             &permissions_map,
         );
         let config = &api.config_manager.get_config().await.unwrap();
-        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user_root_3, vec![], filtered_matcher).await;
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user_root_3, None).await;
 
         // Assert
+        assert!(filtered_matcher.is_err());
         assert!(res.is_err());
-        assert!(res_authorized_child_nodes.is_err());
     }
 
     #[actix_rt::test]
@@ -1014,16 +1048,14 @@ mod test {
             &permissions_map,
         );
         let config = &api.config_manager.get_config().await.unwrap();
-        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
+        let filtered_matcher = get_filtered_matcher(config, &user).await;
         let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
 
         // Assert
+        assert!(filtered_matcher.is_err());
         assert!(res.is_err());
-        assert!(res_authorized_child_nodes.is_err());
     }
 
     #[actix_rt::test]
@@ -1044,16 +1076,12 @@ mod test {
             &permissions_map,
         );
         let config = &api.config_manager.get_config().await.unwrap();
-        let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_authorized_child_nodes =
-            api.get_authorized_child_nodes(&user, vec![], filtered_matcher).await;
-        let res = api.get_current_config_processing_tree_nodes_by_path(user, None).await;
+        let filtered_matcher = get_filtered_matcher(config, &user).await;
 
         // Assert
-        assert!(res.is_err());
-        assert!(res_authorized_child_nodes.is_err());
+        assert!(filtered_matcher.is_err());
     }
 
     #[actix_rt::test]
@@ -1095,6 +1123,7 @@ mod test {
                 rules_count: 0,
                 children_count: 0,
                 description: "".to_string(),
+                active: false,
             },
             ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
         ];
@@ -1120,20 +1149,12 @@ mod test {
             &permissions_map,
         );
         let config = &api.config_manager.get_config().await.unwrap();
-        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
 
-        // Act & Assert
-        assert!(api
-            .get_authorized_child_nodes(&user_root_3, vec!["root"], filtered_matcher)
-            .await
-            .is_err());
-        assert!(api
-            .get_current_config_processing_tree_nodes_by_path(
-                user_root_3,
-                Some(&"root".to_string())
-            )
-            .await
-            .is_err());
+        // Act
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await;
+
+        // Assert
+        assert!(filtered_matcher.is_err());
     }
 
     #[actix_rt::test]
@@ -1301,17 +1322,10 @@ mod test {
             &permissions_map,
         );
         let config = &api.config_manager.get_config().await.unwrap();
-        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await.unwrap();
+        let filtered_matcher = get_filtered_matcher(config, &user_root_3).await;
 
         // Act & Assert
-        assert!(api
-            .get_node_details(&user_root_3, &filtered_matcher, &"root".to_string())
-            .await
-            .is_err());
-        assert!(api
-            .get_current_config_node_details_by_path(user_root_3, &"root".to_string())
-            .await
-            .is_err());
+        assert!(filtered_matcher.is_err());
     }
 
     #[actix_rt::test]

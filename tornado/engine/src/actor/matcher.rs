@@ -178,6 +178,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         let trace_id = msg.event.trace_id().unwrap_or_default();
         let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
+
         let matcher = Matcher::build(&msg.matcher_config)?;
         Ok(self.process_event_with_reply(
             &matcher,

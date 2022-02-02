@@ -68,9 +68,9 @@ pub struct CommunicationChannelConfig {
 mod test {
     use super::*;
     use crate::config::AuthConfig;
-    use actix_web::http::StatusCode;
     use actix_web::{test, App};
     use chrono::DateTime;
+    use std::time;
     use tornado_common_metrics::opentelemetry::Key;
 
     #[actix_rt::test]
@@ -186,53 +186,57 @@ mod test {
     #[actix_rt::test]
     async fn should_expose_a_metrics_endpoint() {
         // Arrange
-        let daemon_config = DaemonCommandConfig {
-            event_tcp_socket_enabled: Some(true),
-            event_socket_ip: None,
-            event_socket_port: None,
-            nats_enabled: None,
-            nats: None,
-            nats_extractors: vec![],
-            web_server_ip: "".to_string(),
-            web_server_port: 0,
-            web_max_json_payload_size: None,
-            message_queue_size: 0,
-            thread_pool_config: None,
-            retry_strategy: Default::default(),
-            auth: AuthConfig::default(),
-        };
-        let metrics = Arc::new(Metrics::new("aa"));
-        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
-            web::scope("/monitoring"),
-            daemon_config,
-            metrics.clone(),
-        )))
-        .await;
 
-        // Record a metric
-        {
-            {
-                let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
+        let mut found = false;
 
-                let http_requests_counter = meter.u64_counter("http_requests.counter").init();
+        // Fixme: The retry loop with a sleep of 1 sec is needed because in the CI this test could fail.
+        //        The problem is that the test API fails randomly to start (probably actix bug).
+        for _ in 1..30 {
+            let daemon_config = DaemonCommandConfig {
+                event_tcp_socket_enabled: Some(true),
+                event_socket_ip: None,
+                event_socket_port: None,
+                nats_enabled: None,
+                nats: None,
+                nats_extractors: vec![],
+                web_server_ip: "".to_string(),
+                web_server_port: 0,
+                web_max_json_payload_size: None,
+                message_queue_size: 0,
+                thread_pool_config: None,
+                retry_strategy: Default::default(),
+                auth: AuthConfig::default(),
+            };
+            let metrics = Arc::new(Metrics::new("aa"));
+            let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+                web::scope("/monitoring-test"),
+                daemon_config,
+                metrics.clone(),
+            )))
+            .await;
 
-                let labels = vec![Key::from_static_str("test").string("something")];
-                http_requests_counter.add(1, &labels);
+            // Record a metric
+            let meter = tornado_common_metrics::opentelemetry::global::meter("tornado");
+            let http_requests_counter = meter.u64_counter("http_requests.counter").init();
+            let labels = vec![Key::from("test").string("something")];
+            http_requests_counter.add(1, &labels);
+
+            let one_second_duration = time::Duration::from_secs(1);
+            let request =
+                test::TestRequest::get().uri("/monitoring-test/v1/metrics/prometheus").to_request();
+
+            // Act
+            let response = test::call_service(&mut srv, request).await;
+            let metrics = test::read_body(response).await;
+            let content = std::str::from_utf8(&metrics).unwrap();
+
+            // Assert
+            if content.contains(r#"test="something""#) {
+                found = true;
+                break;
             }
+            tokio::time::sleep(one_second_duration).await;
         }
-
-        let request =
-            test::TestRequest::get().uri("/monitoring/v1/metrics/prometheus").to_request();
-
-        // Act
-        let response = test::call_service(&mut srv, request).await;
-
-        // Assert
-        assert_eq!(StatusCode::OK, response.status());
-
-        let metrics = test::read_body(response).await;
-        let content = std::str::from_utf8(&metrics).unwrap();
-        //println!("metric endpoint content: \n{}", content);
-        assert!(content.contains(r#"test="something""#))
+        assert!(found)
     }
 }
