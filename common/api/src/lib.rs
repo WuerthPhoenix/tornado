@@ -1,10 +1,14 @@
 use chrono::prelude::Local;
 use error::CommonError;
+use opentelemetry::{global, Context};
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use tornado_common_logger::opentelemetry_logger::TelemetryContext;
+use tracing::Span;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod error;
 pub mod partial_ordering;
@@ -25,6 +29,7 @@ pub struct Event {
     pub event_type: String,
     pub created_ms: u64,
     pub payload: Payload,
+    pub metadata: Option<Map<String, Value>>,
 }
 
 pub trait WithEventData {
@@ -99,6 +104,7 @@ where
     Ok(opt.unwrap_or_else(default_trace_id))
 }
 
+const METADATA_TRACE_CONTEXT: &str = "trace_context";
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
         Event::new_with_payload(event_type, Map::new())
@@ -107,7 +113,45 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { trace_id: default_trace_id(), event_type: event_type.into(), created_ms, payload }
+        Event {
+            trace_id: default_trace_id(),
+            event_type: event_type.into(),
+            created_ms,
+            payload,
+            metadata: None,
+        }
+    }
+
+    pub fn get_context(&mut self) -> Option<Context> {
+        self.metadata
+            .as_mut()
+            .and_then(|val| val.get_mut(METADATA_TRACE_CONTEXT))
+            .and_then(|val| val.as_object_mut())
+            .map(TelemetryContext)
+            .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)))
+    }
+}
+
+pub fn add_metadata_to_span(span: &mut Span, event: &mut Event) {
+    if let Some(parent_context) = event.get_context() {
+        span.set_parent(parent_context);
+    }
+
+    let mut map = Map::new();
+    let mut context_carrier = TelemetryContext(&mut map);
+    global::get_text_map_propagator(|propagator| {
+        propagator.inject_context(&span.context(), &mut context_carrier)
+    });
+
+    match event.metadata.as_mut() {
+        None => {
+            let mut metadata = Map::new();
+            metadata.insert("trace_context".to_owned(), Value::Object(map));
+            event.metadata = Some(metadata)
+        }
+        Some(metadata) => {
+            metadata.insert("trace_context".to_owned(), Value::Object(map));
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::actors::message::{EventMessage, TornadoCommonActorError, TornadoNatsMessage};
+use crate::actors::message::{EventMessage, TornadoCommonActorError};
 use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
@@ -8,7 +8,7 @@ use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
-use tornado_common_logger::opentelemetry_logger::get_span_context_carrier;
+use tornado_common_api::add_metadata_to_span;
 use tracing_futures::Instrument;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
@@ -161,20 +161,18 @@ impl actix::Supervised for NatsPublisherActor {
 impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let span = tracing::error_span!("NatsPublisherActor").entered();
+    fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+        let mut span = tracing::error_span!("NatsPublisherActor");
+        add_metadata_to_span(&mut span, &mut msg.event);
+
+        let _span = span.entered();
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
 
         let address = ctx.address();
 
-        let trace_context = get_span_context_carrier(&span);
-
         if let Some(connection) = self.nats_connection.deref() {
-            // TODO: This TornadoNatsMessage needs to be removed in task TOR-469
-            let tornado_nats_message =
-                TornadoNatsMessage { event: msg.event.clone(), trace_context: Some(trace_context) };
-            let event = serde_json::to_vec(&tornado_nats_message).map_err(|err| {
+            let event = serde_json::to_vec(&msg.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 
@@ -194,7 +192,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(span.exit()));
+            }.instrument(_span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();

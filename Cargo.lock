@@ -3666,9 +3666,13 @@ version = "0.0.1"
 dependencies = [
  "chrono",
  "num-cmp",
+ "opentelemetry",
  "serde",
  "serde_json",
  "thiserror",
+ "tornado_common_logger",
+ "tracing",
+ "tracing-opentelemetry",
  "uuid",
 ]
 
