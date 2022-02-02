@@ -30,7 +30,7 @@ pub struct Event {
 }
 
 pub trait WithEventData {
-    fn trace_id(&self) -> Option<&str>;
+    fn trace_id(&self) -> Option<String>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
     fn payload(&self) -> Option<&Payload>;
@@ -45,8 +45,14 @@ pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
 
 impl WithEventData for Value {
-    fn trace_id(&self) -> Option<&str> {
-        self.get(EVENT_TRACE_ID).and_then(|val| val.get_text())
+    fn trace_id(&self) -> Option<String> {
+        self.get(EVENT_METADATA)
+            .and_then(|val| val.as_object())
+            .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
+            .and_then(|val| val.as_object())
+            .map(TelemetryContextExtractor)
+            .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)))
+            .map(|ctx| ctx.span().span_context().trace_id().to_hex())
     }
 
     fn event_type(&self) -> Option<&str> {
@@ -102,10 +108,10 @@ impl Event {
 
     pub fn get_context(&mut self) -> Option<Context> {
         self.metadata
-            .as_mut()
-            .and_then(|val| val.get_mut(METADATA_TRACE_CONTEXT))
-            .and_then(|val| val.as_object_mut())
-            .map(TelemetryContext)
+            .as_ref()
+            .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
+            .and_then(|val| val.as_object())
+            .map(TelemetryContextExtractor)
             .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)))
     }
 }
@@ -116,7 +122,7 @@ pub fn add_metadata_to_span(span: &Span, event: &mut Event) {
     }
 
     let mut map = Map::new();
-    let mut context_carrier = TelemetryContext(&mut map);
+    let mut context_carrier = TelemetryContextInjector(&mut map);
     global::get_text_map_propagator(|propagator| {
         propagator.inject_context(&span.context(), &mut context_carrier)
     });
