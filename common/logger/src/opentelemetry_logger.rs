@@ -64,15 +64,16 @@ pub fn get_span_context_carrier(span: &EnteredSpan) -> TornadoTraceContext {
     context_carrier
 }
 
-pub struct TelemetryContext<'a>(pub &'a mut Map<String, Value>);
+pub struct TelemetryContextInjector<'a>(pub &'a mut Map<String, Value>);
+pub struct TelemetryContextExtractor<'a>(pub &'a Map<String, Value>);
 
-impl Injector for TelemetryContext<'_> {
+impl Injector for TelemetryContextInjector<'_> {
     fn set(&mut self, key: &str, value: String) {
         self.0.insert(key.to_owned(), Value::String(value));
     }
 }
 
-impl Extractor for TelemetryContext<'_> {
+impl Extractor for TelemetryContextExtractor<'_> {
     fn get(&self, key: &str) -> Option<&str> {
         self.0.get(key).and_then(|val| val.as_str())
     }
