@@ -47,7 +47,9 @@ impl<'a> Collector<&'a [u8]> for EmailEventCollector {
         event.payload.insert("from".to_owned(), Value::String(from));
         event.payload.insert("to".to_owned(), Value::String(to));
         event.payload.insert("cc".to_owned(), Value::String(cc));
-        event.payload.insert("body".to_owned(), body.unwrap_or_else(|| Value::String("".to_owned())));
+        event
+            .payload
+            .insert("body".to_owned(), body.unwrap_or_else(|| Value::String("".to_owned())));
         event.payload.insert("attachments".to_owned(), Value::Array(attachments));
 
         Ok(event)
@@ -101,8 +103,10 @@ fn extract_body_and_attachments(
 
             if email.ctype.mimetype.contains("text") {
                 attachment.insert("encoding".to_owned(), Value::String("plaintext".to_owned()));
-                attachment
-                    .insert("content".to_owned(), Value::String(email.get_body().map_err(into_err)?));
+                attachment.insert(
+                    "content".to_owned(),
+                    Value::String(email.get_body().map_err(into_err)?),
+                );
             } else {
                 attachment.insert("encoding".to_owned(), Value::String("base64".to_owned()));
 
@@ -155,7 +159,6 @@ mod test {
         let event = collector.to_event(email.as_bytes()).unwrap();
 
         // Assert
-        expected_event.trace_id = event.trace_id.clone();
         expected_event.created_ms = event.created_ms.clone();
         assert_eq!(expected_event, event);
     }

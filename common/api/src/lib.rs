@@ -685,79 +685,6 @@ mod test {
     }
 
     #[test]
-    fn should_return_a_valid_uuid_as_trace_id() {
-        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
-    }
-
-    #[test]
-    fn deserializing_an_event_should_generate_trace_if_missing() {
-        // Arrange
-        let json = r#"
-{
-  "type": "email",
-  "created_ms": 1554130814854,
-  "payload":{}
-}
-        "#;
-
-        // Act
-        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
-
-        // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
-    }
-
-    #[test]
-    fn deserializing_an_event_should_generate_trace_if_null() {
-        // Arrange
-        let json = r#"
-{
-  "trace_id": null,
-  "type": "email",
-  "created_ms": 1554130814854,
-  "payload":{}
-}
-        "#;
-
-        // Act
-        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
-
-        // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
-    }
-
-    #[test]
-    fn deserializing_an_event_should_use_trace_if_present() {
-        // Arrange
-        let json = r#"
-{
-  "trace_id": "abcdefghilmon",
-  "type": "email",
-  "created_ms": 1554130814854,
-  "payload":{}
-}
-        "#;
-
-        // Act
-        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
-
-        // Assert
-        assert_eq!("abcdefghilmon", event.trace_id);
-    }
-
-    #[test]
-    fn generating_an_event_should_include_trace_id() {
-        // Act
-        let event = Event::new("hello");
-
-        // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
-    }
-
-    #[test]
     fn should_get_event_data_from_value() {
         // Arrange
         let mut payload = Payload::new();
@@ -775,7 +702,6 @@ mod test {
         // Assert
         assert_eq!(Some(created_ms), value.created_ms());
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
-        assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
         assert!(value.metadata().is_none())
     }
