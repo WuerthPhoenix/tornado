@@ -1,9 +1,11 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use crate::LoggerError;
+use opentelemetry::propagation::{Extractor, Injector};
 use opentelemetry::sdk::trace::{config, Sampler, Tracer};
 use opentelemetry::sdk::Resource;
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::time::Duration;
 use tonic::metadata::MetadataMap;
@@ -68,6 +70,24 @@ pub fn get_span_context_carrier(span: &EnteredSpan) -> TornadoTraceContext {
     });
 
     context_carrier
+}
+
+pub struct TelemetryContext<'a>(pub &'a mut Map<String, Value>);
+
+impl Injector for TelemetryContext<'_> {
+    fn set(&mut self, key: &str, value: String) {
+        self.0.insert(key.to_owned(), Value::String(value));
+    }
+}
+
+impl Extractor for TelemetryContext<'_> {
+    fn get(&self, key: &str) -> Option<&str> {
+        self.0.get(key).and_then(|val| val.as_str())
+    }
+
+    fn keys(&self) -> Vec<&str> {
+        self.0.keys().map(String::as_str).collect()
+    }
 }
 
 #[cfg(test)]
