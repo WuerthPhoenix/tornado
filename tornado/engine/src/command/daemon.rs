@@ -358,8 +358,7 @@ pub async fn daemon(
                     })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", tornado_nats_message);
                 let event = tornado_nats_message.event;
-                let trace_id = event.trace_id.as_str();
-                let subscriber_span = tracing::info_span!("Enrich event with tenant", trace_id);
+                let subscriber_span = tracing::info_span!("Enrich event with tenant");
                 attach_context_to_span(&subscriber_span, tornado_nats_message.trace_context);
                 let _subscriber_span_guard = subscriber_span.enter();
 
