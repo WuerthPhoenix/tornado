@@ -2,7 +2,7 @@ use chrono::prelude::Local;
 use error::CommonError;
 use opentelemetry::{global, Context};
 use partial_ordering::PartialOrdering;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -22,9 +22,6 @@ pub type Number = serde_json::Number;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
-    #[serde(default = "default_trace_id")]
-    #[serde(deserialize_with = "deserialize_null_trace_id")]
-    pub trace_id: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
@@ -91,19 +88,6 @@ impl WithEventData for Value {
     }
 }
 
-#[inline]
-fn default_trace_id() -> String {
-    uuid::Uuid::new_v4().to_string()
-}
-
-fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::deserialize(deserializer)?;
-    Ok(opt.unwrap_or_else(default_trace_id))
-}
-
 const METADATA_TRACE_CONTEXT: &str = "trace_context";
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
@@ -113,13 +97,7 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event {
-            trace_id: default_trace_id(),
-            event_type: event_type.into(),
-            created_ms,
-            payload,
-            metadata: None,
-        }
+        Event { event_type: event_type.into(), created_ms, payload, metadata: None }
     }
 
     pub fn get_context(&mut self) -> Option<Context> {
