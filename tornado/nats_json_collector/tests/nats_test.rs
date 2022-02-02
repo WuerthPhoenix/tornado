@@ -7,12 +7,12 @@ use rand::Rng;
 use serde_json::json;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
-use tornado_common::actors::message::EventMessage;
+use tornado_common::actors::message::{EventMessage, TornadoNatsMessage};
 use tornado_common::actors::nats_publisher::{
     NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
-use tornado_common_api::{Event, Value, Map};
+use tornado_common_api::{Event, Map, Value};
 use tornado_nats_json_collector::config::{NatsJsonCollectorConfig, TornadoConnectionChannel};
 use tornado_nats_json_collector::*;
 
@@ -56,7 +56,7 @@ async fn should_subscribe_to_nats_topics() {
         },
         10000,
         move |msg| {
-            let event: Event = serde_json::from_slice(&msg.msg.data).unwrap();
+            let event: TornadoNatsMessage = serde_json::from_slice(&msg.msg.data).unwrap();
             sender.send(event).unwrap();
             Ok(())
         },
@@ -76,13 +76,13 @@ async fn should_subscribe_to_nats_topics() {
         vsphere_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vmd", received.event_type);
-        assert!(received.created_ms > 0);
+        assert_eq!("vmd", received.event.event_type);
+        assert!(received.event.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("metrics".to_owned(), source);
-        assert_eq!(payload, received.payload);
+        assert_eq!(payload, received.event.payload);
     }
 
     {
@@ -94,13 +94,13 @@ async fn should_subscribe_to_nats_topics() {
         another_topic_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vmd", received.event_type);
-        assert!(received.created_ms > 0);
+        assert_eq!("vmd", received.event.event_type);
+        assert!(received.event.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("metrics".to_owned(), source);
-        assert_eq!(payload, received.payload);
+        assert_eq!(payload, received.event.payload);
     }
 
     {
@@ -112,13 +112,13 @@ async fn should_subscribe_to_nats_topics() {
         vsphere_simple_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vsphere_simple", &received.event_type);
-        assert!(received.created_ms > 0);
+        assert_eq!("vsphere_simple", &received.event.event_type);
+        assert!(received.event.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("data".to_owned(), source);
-        assert_eq!(payload, received.payload);
+        assert_eq!(payload, received.event.payload);
     }
 }
 

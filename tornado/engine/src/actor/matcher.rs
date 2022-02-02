@@ -2,16 +2,16 @@ use crate::actor::dispatcher::ProcessedEventMessage;
 use crate::monitoring::metrics::{TornadoMeter, EVENT_TYPE_LABEL_KEY};
 use actix::prelude::*;
 use log::*;
-use tornado_common_api::{Value, WithEventData};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::SystemTime;
+use tornado_common_api::{Value, WithEventData};
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
-use tornado_engine_matcher::model::{ProcessedEvent};
+use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
 
 #[derive(Message)]
@@ -90,12 +90,7 @@ impl MatcherActor {
     }
 
     #[inline]
-    fn process(
-        &self,
-        matcher: &Matcher,
-        event: Value,
-        include_metadata: bool,
-    ) -> ProcessedEvent {
+    fn process(&self, matcher: &Matcher, event: Value, include_metadata: bool) -> ProcessedEvent {
         let timer = SystemTime::now();
         let labels = [EVENT_TYPE_LABEL_KEY.string(
             event
