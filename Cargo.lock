@@ -3694,6 +3694,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tonic",
+ "tornado_common_api",
  "tracing",
  "tracing-appender",
  "tracing-futures",
