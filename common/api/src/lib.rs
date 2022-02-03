@@ -46,6 +46,7 @@ pub const EVENT_TYPE: &str = "type";
 pub const EVENT_CREATED_MS: &str = "created_ms";
 pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
+const METADATA_TRACE_CONTEXT: &str = "trace_context";
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<String> {
@@ -97,7 +98,6 @@ impl WithEventData for Value {
     }
 }
 
-const METADATA_TRACE_CONTEXT: &str = "trace_context";
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
         Event::new_with_payload(event_type, Map::new())
@@ -109,7 +109,7 @@ impl Event {
         Event { event_type: event_type.into(), created_ms, payload, metadata: None }
     }
 
-    pub fn get_context(&mut self) -> Option<Context> {
+    pub fn get_context(&self) -> Option<Context> {
         self.metadata
             .as_ref()
             .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
@@ -117,27 +117,32 @@ impl Event {
             .map(TelemetryContextExtractor)
             .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)))
     }
-}
 
-pub fn add_metadata_to_span(span: &Span, event: &mut Event) {
-    if let Some(parent_context) = event.get_context() {
-        span.set_parent(parent_context);
+    /// Sets the field metadata.trace_context of this event
+    /// to the context of the passed span
+    pub fn set_trace_context_from_span(&mut self, span: &Span) {
+        let mut map = Map::new();
+        let mut context_carrier = TelemetryContextInjector(&mut map);
+        global::get_text_map_propagator(|propagator| {
+            propagator.inject_context(&span.context(), &mut context_carrier)
+        });
+
+        match self.metadata.as_mut() {
+            None => {
+                let mut metadata = Map::new();
+                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
+                self.metadata = Some(metadata)
+            }
+            Some(metadata) => {
+                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
+            }
+        }
     }
 
-    let mut map = Map::new();
-    let mut context_carrier = TelemetryContextInjector(&mut map);
-    global::get_text_map_propagator(|propagator| {
-        propagator.inject_context(&span.context(), &mut context_carrier)
-    });
-
-    match event.metadata.as_mut() {
-        None => {
-            let mut metadata = Map::new();
-            metadata.insert("trace_context".to_owned(), Value::Object(map));
-            event.metadata = Some(metadata)
-        }
-        Some(metadata) => {
-            metadata.insert("trace_context".to_owned(), Value::Object(map));
+    /// Sets the context of the passed span to the metadata.trace_context of this Event
+    pub fn attach_trace_context_to_span(&self, span: &Span) {
+        if let Some(parent_context) = self.get_context() {
+            span.set_parent(parent_context);
         }
     }
 }

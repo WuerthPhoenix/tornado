@@ -1,7 +1,6 @@
 use opentelemetry::trace::TraceContextExt;
 use serde_json::Value;
-use std::collections::HashMap;
-use tornado_common_api::{add_metadata_to_span, Event};
+use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -37,7 +36,7 @@ async fn should_attach_context_to_span() {
     let span_1 = tracing::debug_span!("level", "first");
 
     // Act
-    add_metadata_to_span(&span_1, &mut event);
+    event.attach_trace_context_to_span(&span_1);
 
     // Assert
     let trace_id = span_1.context().span().span_context().trace_id();

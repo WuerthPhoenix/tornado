@@ -8,7 +8,6 @@ use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
-use tornado_common_api::add_metadata_to_span;
 use tracing_futures::Instrument;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
@@ -162,8 +161,9 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let mut span = tracing::error_span!("NatsPublisherActor");
-        add_metadata_to_span(&mut span, &mut msg.event);
+        let span = tracing::error_span!("NatsPublisherActor");
+        msg.event.attach_trace_context_to_span(&span);
+        msg.event.set_trace_context_from_span(&span);
 
         let _span = span.entered();
 

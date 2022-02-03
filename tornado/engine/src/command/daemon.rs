@@ -25,7 +25,7 @@ use tornado_common::command::retry::RetryCommand;
 use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand};
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
-use tornado_common_api::{add_metadata_to_span, Event};
+use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tornado_common_metrics::Metrics;
@@ -357,8 +357,9 @@ pub async fn daemon(
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-                let mut subscriber_span = tracing::info_span!("Enrich event with tenant");
-                add_metadata_to_span(&mut subscriber_span, &mut event);
+                let subscriber_span = tracing::info_span!("Enrich event with tenant");
+                event.attach_trace_context_to_span(&subscriber_span);
+                event.set_trace_context_from_span(&subscriber_span);
                 let _subscriber_span_guard = subscriber_span.enter();
 
                 tornado_meter_nats.events_received_counter.add(1, &[

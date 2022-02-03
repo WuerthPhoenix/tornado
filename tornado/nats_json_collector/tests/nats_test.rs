@@ -56,7 +56,7 @@ async fn should_subscribe_to_nats_topics() {
         },
         10000,
         move |msg| {
-            let event: TornadoNatsMessage = serde_json::from_slice(&msg.msg.data).unwrap();
+            let event: Event = serde_json::from_slice(&msg.msg.data).unwrap();
             sender.send(event).unwrap();
             Ok(())
         },
@@ -76,13 +76,13 @@ async fn should_subscribe_to_nats_topics() {
         vsphere_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vmd", received.event.event_type);
-        assert!(received.event.created_ms > 0);
+        assert_eq!("vmd", received.event_type);
+        assert!(received.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("metrics".to_owned(), source);
-        assert_eq!(payload, received.event.payload);
+        assert_eq!(payload, received.payload);
     }
 
     {
@@ -94,13 +94,13 @@ async fn should_subscribe_to_nats_topics() {
         another_topic_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vmd", received.event.event_type);
-        assert!(received.event.created_ms > 0);
+        assert_eq!("vmd", received.event_type);
+        assert!(received.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("metrics".to_owned(), source);
-        assert_eq!(payload, received.event.payload);
+        assert_eq!(payload, received.payload);
     }
 
     {
@@ -112,13 +112,13 @@ async fn should_subscribe_to_nats_topics() {
         vsphere_simple_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
-        assert_eq!("vsphere_simple", &received.event.event_type);
-        assert!(received.event.created_ms > 0);
+        assert_eq!("vsphere_simple", &received.event_type);
+        assert!(received.created_ms > 0);
 
         let source: Value = json!(source);
         let mut payload = Map::new();
         payload.insert("data".to_owned(), source);
-        assert_eq!(payload, received.event.payload);
+        assert_eq!(payload, received.payload);
     }
 }
 

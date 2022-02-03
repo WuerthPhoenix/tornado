@@ -3,16 +3,11 @@ use crate::LoggerError;
 use opentelemetry::propagation::{Extractor, Injector};
 use opentelemetry::sdk::trace::{config, Sampler, Tracer};
 use opentelemetry::sdk::Resource;
-use opentelemetry::{global, KeyValue};
+use opentelemetry::KeyValue;
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde_json::{Map, Value};
-use std::collections::HashMap;
 use std::time::Duration;
 use tonic::metadata::MetadataMap;
-use tracing::span::EnteredSpan;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
-
-pub type TornadoTraceContext = HashMap<String, String>;
 
 pub fn get_opentelemetry_tracer(
     apm_tracing_config: &ApmTracingConfig,
@@ -52,16 +47,6 @@ pub fn get_opentelemetry_tracer(
                 err
             ),
         })
-}
-
-pub fn get_span_context_carrier(span: &EnteredSpan) -> TornadoTraceContext {
-    let mut context_carrier = HashMap::new();
-
-    global::get_text_map_propagator(|propagator| {
-        propagator.inject_context(&span.context(), &mut context_carrier)
-    });
-
-    context_carrier
 }
 
 pub struct TelemetryContextInjector<'a>(pub &'a mut Map<String, Value>);
