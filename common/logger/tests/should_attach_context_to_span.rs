@@ -33,10 +33,10 @@ async fn should_attach_context_to_span() {
     let mut metadata = serde_json::Map::new();
     metadata.insert("trace_context".to_string(), Value::Object(trace_context));
     event.metadata = Some(metadata);
-    let span_1 = tracing::debug_span!("level", "first");
 
     // Act
-    event.attach_trace_context_to_span(&span_1);
+    let _g = event.attach_trace_context();
+    let span_1 = tracing::debug_span!("level", "first");
 
     // Assert
     let trace_id = span_1.context().span().span_context().trace_id();

@@ -357,8 +357,8 @@ pub async fn daemon(
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                let _ctx_guard = event.attach_trace_context();
                 let subscriber_span = tracing::info_span!("Enrich event with tenant");
-                event.attach_trace_context_to_span(&subscriber_span);
                 event.set_trace_context_from_span(&subscriber_span);
                 let _subscriber_span_guard = subscriber_span.enter();
 

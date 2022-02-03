@@ -1,7 +1,7 @@
 use chrono::prelude::Local;
 use error::CommonError;
 use opentelemetry::trace::TraceContextExt;
-use opentelemetry::{global, Context};
+use opentelemetry::{global, Context, ContextGuard};
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
@@ -127,23 +127,23 @@ impl Event {
             propagator.inject_context(&span.context(), &mut context_carrier)
         });
 
-        match self.metadata.as_mut() {
-            None => {
-                let mut metadata = Map::new();
-                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
-                self.metadata = Some(metadata)
-            }
-            Some(metadata) => {
-                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
+        if !context_carrier.0.is_empty() {
+            match self.metadata.as_mut() {
+                None => {
+                    let mut metadata = Map::new();
+                    metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
+                    self.metadata = Some(metadata)
+                }
+                Some(metadata) => {
+                    metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
+                }
             }
         }
     }
 
-    /// Sets the context of the passed span to the metadata.trace_context of this Event
-    pub fn attach_trace_context_to_span(&self, span: &Span) {
-        if let Some(parent_context) = self.get_context() {
-            span.set_parent(parent_context);
-        }
+    /// Attaches the trace context contained in the event if present, and returns its guard
+    pub fn attach_trace_context(&self) -> Option<ContextGuard> {
+        self.get_context().map(|context| context.attach())
     }
 }
 
