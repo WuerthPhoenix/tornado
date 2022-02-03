@@ -712,7 +712,7 @@ mod test {
         assert_eq!(Some(created_ms), value.created_ms());
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
         assert_eq!(Some(&payload), value.payload());
-        assert!(value.metadata().is_none())
+        assert_eq!(value.metadata().unwrap(), &Value::Null);
     }
 
     #[test]

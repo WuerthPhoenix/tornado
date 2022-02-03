@@ -7,7 +7,7 @@ use rand::Rng;
 use serde_json::json;
 use testcontainers::images::generic::GenericImage;
 use testcontainers::*;
-use tornado_common::actors::message::{EventMessage, TornadoNatsMessage};
+use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::nats_publisher::{
     NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
