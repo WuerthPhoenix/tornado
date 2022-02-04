@@ -47,6 +47,7 @@ pub const EVENT_CREATED_MS: &str = "created_ms";
 pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
 const METADATA_TRACE_CONTEXT: &str = "trace_context";
+const METADATA_TENANT_ID: &str = "tenant_id";
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<String> {
@@ -144,6 +145,17 @@ impl Event {
     /// Attaches the trace context contained in the event if present, and returns its guard
     pub fn attach_trace_context(&self) -> Option<ContextGuard> {
         self.get_context().map(|context| context.attach())
+    }
+
+    /// Remove the tenant_id key from the metadata
+    pub fn remove_tenant_id_from_metadata(&mut self) {
+        match self.metadata.clone() {
+            None => {}
+            Some(mut metadata) => {
+                metadata.retain(|k, _| *k != METADATA_TENANT_ID);
+                self.metadata = Some(metadata);
+            }
+        }
     }
 }
 
@@ -769,6 +781,56 @@ mod test {
                 assert_eq!(&value_2, payload.get(key_1).unwrap());
             }
             _ => assert!(false),
+        }
+    }
+
+    #[test]
+    fn should_remove_tenant_id_from_metadata() {
+        // Arrange
+        let mut event_with_only_tenant_id = Event::new("mytype");
+        let mut metadata_teantn_id = serde_json::Map::new();
+        metadata_teantn_id.insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        event_with_only_tenant_id.metadata = Some(metadata_teantn_id);
+
+        let mut event_with_tenant_id_and_other = Event::new("mytype");
+        let mut metadata_tenant_id_and_other = serde_json::Map::new();
+        metadata_tenant_id_and_other.insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        metadata_tenant_id_and_other.insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        event_with_tenant_id_and_other.metadata = Some(metadata_tenant_id_and_other);
+
+        let mut event_with_no_tenant_id = Event::new("mytype");
+        let mut metadata_with_no_tenant_id = serde_json::Map::new();
+        metadata_with_no_tenant_id.insert("key1".to_owned(), Value::String("value1".parse().unwrap()));
+        metadata_with_no_tenant_id.insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        event_with_no_tenant_id.metadata = Some(metadata_with_no_tenant_id);
+
+        // Act
+        event_with_only_tenant_id.remove_tenant_id_from_metadata();
+        event_with_tenant_id_and_other.remove_tenant_id_from_metadata();
+
+        // Assert
+        match event_with_only_tenant_id.metadata {
+            None => {assert!(false)}
+            Some(metadata) => {
+                assert_eq!(0, metadata.len());
+            }
+        }
+
+        match event_with_tenant_id_and_other.metadata {
+            None => {assert!(false)}
+            Some(metadata) => {
+                assert_eq!(1, metadata.len());
+                assert_eq!("value2", metadata.get("key2").unwrap());
+            }
+        }
+
+        match event_with_no_tenant_id.metadata {
+            None => {assert!(false)}
+            Some(metadata) => {
+                assert_eq!(2, metadata.len());
+                assert_eq!("value1", metadata.get("key1").unwrap());
+                assert_eq!("value2", metadata.get("key2").unwrap());
+            }
         }
     }
 }

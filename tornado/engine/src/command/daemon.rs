@@ -356,6 +356,8 @@ pub async fn daemon(
                         ]);
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
+                event.remove_tenant_id_from_metadata();
+
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
                 let _ctx_guard = event.attach_trace_context();
                 let subscriber_span = tracing::info_span!("Enrich event with tenant");
@@ -414,11 +416,12 @@ pub async fn daemon(
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
                 let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
-                JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
+                JsonEventReaderActor::start_new(msg, message_queue_size, move |mut event| {
                     tornado_meter.events_received_counter.add(1, &[
                         EVENT_SOURCE_LABEL_KEY.string("tcp"),
                         EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                     ]);
+                    event.remove_tenant_id_from_metadata();
                     json_matcher_addr_clone.try_send(EventMessage { event: json!(event) }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
