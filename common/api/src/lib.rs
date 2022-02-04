@@ -50,7 +50,7 @@ const METADATA_TRACE_CONTEXT: &str = "trace_context";
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<String> {
-        self.get(EVENT_METADATA)
+        self.metadata()
             .and_then(|val| val.as_object())
             .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
             .and_then(|val| val.as_object())

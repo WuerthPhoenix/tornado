@@ -310,6 +310,8 @@ impl ActionValueProcessor {
 mod test {
     use super::*;
     use maplit::*;
+    use opentelemetry::global;
+    use opentelemetry::sdk::propagation::TraceContextPropagator;
     use serde_json::json;
     use tornado_common_api::{Event, Payload, ValueExt};
 
@@ -893,8 +895,9 @@ mod test {
     }
 
     #[test]
-    fn processed_action_should_have_same_trace_id_than_the_event() {
+    fn processed_action_should_have_same_trace_id_than_the_event_when_none() {
         // Arrange
+        global::set_text_map_propagator(TraceContextPropagator::new());
         let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
 
         let rule_name = "rule_for_test";
@@ -909,5 +912,30 @@ mod test {
 
         // Assert
         assert_eq!(&event.trace_id(), &result.trace_id);
+    }
+
+    #[test]
+    fn processed_action_should_have_same_trace_id_than_the_event_when_some() {
+        // Arrange
+        global::set_text_map_propagator(TraceContextPropagator::new());
+        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
+
+        let rule_name = "rule_for_test";
+        let config = vec![config_action];
+        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
+        let matcher_action = &matcher_actions[0];
+
+        let mut event = json!(Event::new("event_type_value".to_owned()));
+        let trace_context = json!({
+        "tracestate": "",
+        "traceparent": "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01"
+        });
+        event.add_to_metadata("trace_context".to_string(), trace_context).unwrap();
+
+        // Act
+        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
+
+        // Assert
+        assert_eq!(&result.trace_id.unwrap(), "0af7651916cd43dd8448eb211c80319c");
     }
 }

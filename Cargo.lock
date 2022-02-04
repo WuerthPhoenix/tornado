@@ -3848,6 +3848,7 @@ dependencies = [
  "lazy_static",
  "log",
  "maplit",
+ "opentelemetry",
  "regex",
  "serde",
  "serde_json",
