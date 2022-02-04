@@ -179,24 +179,19 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         )
     };
 
-    let (apm_layer, apm_enabled) = {
-        let tracer = get_opentelemetry_tracer(&logger_config.tracing_elastic_apm)?;
-        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let apm_enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
 
-        let enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
-        let enabled_clone = enabled.clone();
-
-        (
-            telemetry.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))),
-            enabled_clone,
-        )
+    let apm_opentelemetry_layer = {
+        let tracer =
+            get_opentelemetry_tracer(&logger_config.tracing_elastic_apm, apm_enabled.clone())?;
+        tracing_opentelemetry::layer().with_tracer(tracer)
     };
 
     tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber)
-        .with(apm_layer)
+        .with(apm_opentelemetry_layer)
         .try_init()
         .map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot start the logger. err: {:?}", err),
