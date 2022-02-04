@@ -149,13 +149,8 @@ impl Event {
 
     /// Remove the tenant_id key from the metadata
     pub fn remove_tenant_id_from_metadata(&mut self) {
-        match self.metadata.clone() {
-            None => {}
-            Some(mut metadata) => {
-                metadata.retain(|k, _| *k != METADATA_TENANT_ID);
-                self.metadata = Some(metadata);
-            }
-        }
+        self.metadata.as_mut()
+            .and_then(|metadata| metadata.remove(METADATA_TENANT_ID));
     }
 }
 
