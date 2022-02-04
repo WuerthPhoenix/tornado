@@ -783,7 +783,7 @@ mod test {
     }
 
     #[test]
-    fn should_remove_tenant_id_from_metadata() {
+    fn should_remove_undesired_metadata() {
         // Arrange
         let mut event_with_only_tenant_id = Event::new("mytype");
         let mut metadata_teantn_id = serde_json::Map::new();
