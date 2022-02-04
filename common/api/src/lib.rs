@@ -48,6 +48,7 @@ pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
 const METADATA_TRACE_CONTEXT: &str = "trace_context";
 const METADATA_TENANT_ID: &str = "tenant_id";
+const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [ METADATA_TENANT_ID ];
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<String> {
@@ -147,10 +148,12 @@ impl Event {
         self.get_context().map(|context| context.attach())
     }
 
-    /// Remove the tenant_id key from the metadata
-    pub fn remove_tenant_id_from_metadata(&mut self) {
-        self.metadata.as_mut()
-            .and_then(|metadata| metadata.remove(METADATA_TENANT_ID));
+    /// Remove undesired metadata fields from the metadata
+    pub fn remove_undesired_metadata(&mut self) {
+        for metadata_field in METADATA_FIELDS_TO_DISCARD {
+            self.metadata.as_mut()
+                .and_then(|metadata| metadata.remove(metadata_field));
+        }
     }
 }
 
@@ -800,8 +803,9 @@ mod test {
         event_with_no_tenant_id.metadata = Some(metadata_with_no_tenant_id);
 
         // Act
-        event_with_only_tenant_id.remove_tenant_id_from_metadata();
-        event_with_tenant_id_and_other.remove_tenant_id_from_metadata();
+        event_with_only_tenant_id.remove_undesired_metadata();
+        event_with_tenant_id_and_other.remove_undesired_metadata();
+        event_with_no_tenant_id.remove_undesired_metadata();
 
         // Assert
         match event_with_only_tenant_id.metadata {
