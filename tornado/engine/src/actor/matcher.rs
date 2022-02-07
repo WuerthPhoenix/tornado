@@ -128,7 +128,7 @@ impl Handler<EventMessage> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
+        let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.process(&self.matcher, msg.event, false);
