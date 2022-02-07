@@ -132,7 +132,7 @@ mod test {
                 key: "mykey".to_string(),
             }),
         };
-        let tracer = get_opentelemetry_tracer(&tracing_config);
+        let tracer = get_opentelemetry_tracer(&tracing_config, Arc::new(AtomicBool::new(true)));
         assert!(tracer.is_ok());
     }
 }

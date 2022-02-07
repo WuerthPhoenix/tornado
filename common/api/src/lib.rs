@@ -1,9 +1,8 @@
 use chrono::prelude::Local;
 use error::CommonError;
-use opentelemetry::trace::TraceContextExt;
 use opentelemetry::{global, Context, ContextGuard};
 use partial_ordering::PartialOrdering;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -25,6 +24,9 @@ pub type Number = serde_json::Number;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
+    #[serde(default = "default_trace_id")]
+    #[serde(deserialize_with = "deserialize_null_trace_id")]
+    pub trace_id: String,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
@@ -33,7 +35,7 @@ pub struct Event {
 }
 
 pub trait WithEventData {
-    fn trace_id(&self) -> Option<String>;
+    fn trace_id(&self) -> Option<&str>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
     fn payload(&self) -> Option<&Payload>;
@@ -49,14 +51,8 @@ pub const EVENT_METADATA: &str = "metadata";
 const METADATA_TRACE_CONTEXT: &str = "trace_context";
 
 impl WithEventData for Value {
-    fn trace_id(&self) -> Option<String> {
-        self.metadata()
-            .and_then(|val| val.as_object())
-            .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
-            .and_then(|val| val.as_object())
-            .map(TelemetryContextExtractor)
-            .map(|context| global::get_text_map_propagator(|prop| prop.extract(&context)))
-            .map(|ctx| ctx.span().span_context().trace_id().to_hex())
+    fn trace_id(&self) -> Option<&str> {
+        self.get(EVENT_TRACE_ID).and_then(|val| val.get_text())
     }
 
     fn event_type(&self) -> Option<&str> {
@@ -98,6 +94,19 @@ impl WithEventData for Value {
     }
 }
 
+#[inline]
+fn default_trace_id() -> String {
+    uuid::Uuid::new_v4().to_string()
+}
+
+fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_else(default_trace_id))
+}
+
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
         Event::new_with_payload(event_type, Map::new())
@@ -106,7 +115,13 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { event_type: event_type.into(), created_ms, payload, metadata: None }
+        Event {
+            trace_id: default_trace_id(),
+            event_type: event_type.into(),
+            created_ms,
+            payload,
+            metadata: None,
+        }
     }
 
     pub fn get_context(&self) -> Option<Context> {
@@ -696,6 +711,79 @@ mod test {
             Value::Array(vec![Value::Bool(true), Value::Bool(false)])
                 .partial_cmp(&Value::Array(vec![Value::Bool(true), Value::Bool(true)]))
         );
+    }
+
+    #[test]
+    fn should_return_a_valid_uuid_as_trace_id() {
+        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_generate_trace_if_missing() {
+        // Arrange
+        let json = r#"
+{
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_generate_trace_if_null() {
+        // Arrange
+        let json = r#"
+{
+  "trace_id": null,
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+    }
+
+    #[test]
+    fn deserializing_an_event_should_use_trace_if_present() {
+        // Arrange
+        let json = r#"
+{
+  "trace_id": "abcdefghilmon",
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert_eq!("abcdefghilmon", event.trace_id);
+    }
+
+    #[test]
+    fn generating_an_event_should_include_trace_id() {
+        // Act
+        let event = Event::new("hello");
+
+        // Assert
+        assert!(!event.trace_id.is_empty());
+        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
     }
 
     #[test]
