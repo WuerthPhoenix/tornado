@@ -1,8 +1,6 @@
 use crate::elastic_apm::ApmTracingConfig;
 use crate::opentelemetry_logger::get_opentelemetry_tracer;
 use arc_swap::ArcSwap;
-use opentelemetry::global;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -138,7 +136,6 @@ impl LogWorkerGuard {
 
 /// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
-    global::set_text_map_propagator(TraceContextPropagator::new());
     let config_logger_level = Arc::new(logger_config.level.to_owned());
     let logger_level = ArcSwap::new(config_logger_level);
     let env_filter = Targets::from_str(&logger_config.level).map_err(|err| {
