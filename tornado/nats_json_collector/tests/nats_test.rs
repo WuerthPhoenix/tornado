@@ -76,7 +76,7 @@ async fn should_subscribe_to_nats_topics() {
         let mut metadata = Map::new();
         metadata.insert("some_metadata11".to_owned(), Value::Number(serde_json::Number::from(1)));
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
-        source.metadata = Some(metadata);
+        source.metadata = metadata;
 
         vsphere_publisher.do_send(EventMessage { event: source.clone() });
 
@@ -99,7 +99,7 @@ async fn should_subscribe_to_nats_topics() {
         let mut metadata = Map::new();
         metadata.insert("some_metadata".to_owned(), Value::Number(serde_json::Number::from(1)));
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
-        source.metadata = Some(metadata);
+        source.metadata = metadata;
         another_topic_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
@@ -121,7 +121,7 @@ async fn should_subscribe_to_nats_topics() {
         let mut metadata = Map::new();
         metadata.insert("some_metadata1".to_owned(), Value::Number(serde_json::Number::from(1)));
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
-        source.metadata = Some(metadata);
+        source.metadata = metadata;
         vsphere_simple_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();

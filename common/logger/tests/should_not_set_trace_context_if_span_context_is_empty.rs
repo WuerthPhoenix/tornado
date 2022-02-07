@@ -1,7 +1,5 @@
 use opentelemetry::sdk::propagation::TraceContextPropagator;
-use tornado_common_logger::elastic_apm::ApmTracingConfig;
 use tornado_common_logger::opentelemetry_logger::TelemetryContextInjector;
-use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 #[tokio::test]
@@ -17,6 +15,5 @@ async fn get_trace_context_map_should_return_empty_map_for_empty_context() {
     );
 
     // Assert
-    println!("{:?}", res);
     assert!(res.is_empty());
 }

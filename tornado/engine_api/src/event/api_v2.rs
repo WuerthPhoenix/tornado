@@ -55,9 +55,11 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
         let draft = self.config_manager.get_draft(draft_id).await?;
         auth.is_owner(&draft)?;
 
-        let filtered_config = matcher_config_filter(&draft.config, &config_filter)
-            .ok_or_else(|| MatcherError::ConfigurationError {
-                message: "The config filter does not match any existing node".to_owned(),
+        let filtered_config =
+            matcher_config_filter(&draft.config, &config_filter).ok_or_else(|| {
+                MatcherError::ConfigurationError {
+                    message: "The config filter does not match any existing node".to_owned(),
+                }
             })?;
 
         self.handler.send_event_to_config(event, filtered_config).await
@@ -69,8 +71,8 @@ pub mod test {
     use super::*;
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
-    use std::collections::{BTreeMap, HashMap};
     use serde_json::json;
+    use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
@@ -323,7 +325,7 @@ pub mod test {
 
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
-        
+
         // Assert
         assert_eq!(&metadata, result.event.metadata().unwrap());
     }
@@ -335,8 +337,10 @@ pub mod test {
         let permissions_map = auth_permissions();
 
         let (user_view, user_edit, user_full_process) = create_owner_users(&permissions_map);
-        let (not_owner_user_view, not_owner_user_edit, not_owner_user_full_process) = create_not_owner_users(&permissions_map);
-        let (owner_view_with_auth_path, owner_edit_with_auth_path, owner_full_with_auth_path) = create_owner_users_with_auth_path(&permissions_map);
+        let (not_owner_user_view, not_owner_user_edit, not_owner_user_full_process) =
+            create_not_owner_users(&permissions_map);
+        let (owner_view_with_auth_path, owner_edit_with_auth_path, owner_full_with_auth_path) =
+            create_owner_users_with_auth_path(&permissions_map);
 
         let request = SendEventRequest {
             event: Event::new("event_for_draft"),
@@ -347,17 +351,32 @@ pub mod test {
         // Act & Assert
         assert!(api.send_event_to_draft(not_owner_user_view, "id", request.clone()).await.is_err());
         assert!(api.send_event_to_draft(not_owner_user_edit, "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(not_owner_user_full_process, "id", request.clone()).await.is_err());
+        assert!(api
+            .send_event_to_draft(not_owner_user_full_process, "id", request.clone())
+            .await
+            .is_err());
 
         // Set the users as owners of the draft
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_ok());
         assert!(api.send_event_to_draft(user_edit.clone(), "id", request.clone()).await.is_ok());
-        assert!(api.send_event_to_draft(user_full_process.clone(), "id", request.clone()).await.is_err());
+        assert!(api
+            .send_event_to_draft(user_full_process.clone(), "id", request.clone())
+            .await
+            .is_err());
 
         // Act & Assert
-        assert!(api.send_event_to_draft(owner_view_with_auth_path, "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(owner_edit_with_auth_path, "id", request.clone()).await.is_err());
-        assert!(api.send_event_to_draft(owner_full_with_auth_path, "id", request.clone()).await.is_err());
+        assert!(api
+            .send_event_to_draft(owner_view_with_auth_path, "id", request.clone())
+            .await
+            .is_err());
+        assert!(api
+            .send_event_to_draft(owner_edit_with_auth_path, "id", request.clone())
+            .await
+            .is_err());
+        assert!(api
+            .send_event_to_draft(owner_full_with_auth_path, "id", request.clone())
+            .await
+            .is_err());
     }
 
     #[actix_rt::test]

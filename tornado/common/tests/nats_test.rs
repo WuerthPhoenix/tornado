@@ -177,7 +177,7 @@ async fn nats_publisher_should_publish_to_nats() {
         "some_metadata".to_owned(),
         Value::Array(vec![Value::String("val1".to_owned()), Value::String("val2".to_owned())]),
     );
-    event.metadata = Some(metadata);
+    event.metadata = metadata;
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -205,7 +205,7 @@ async fn nats_publisher_should_publish_to_nats() {
 
     let mut received_event: Event =
         serde_json::from_slice(receiver.recv().await.unwrap().as_slice()).unwrap();
-    received_event.metadata.as_mut().unwrap().remove("trace_context");
+    received_event.metadata.remove("trace_context");
     assert_eq!(event, received_event);
 }
 
@@ -221,7 +221,7 @@ async fn should_publish_to_nats() {
     let mut event = Event::new(format!("event_type_{}", random));
     let mut metadata = Map::new();
     metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
-    event.metadata = Some(metadata);
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -254,7 +254,7 @@ async fn should_publish_to_nats() {
     let mut received: Event =
         serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
     // We don't want to test the trace_context since it is added by the NatsPublisherActor
-    received.metadata.as_mut().unwrap().remove("trace_context");
+    received.metadata.remove("trace_context");
     assert_eq!(event, received);
 }
 
@@ -270,7 +270,7 @@ async fn should_publish_to_nats_with_tls() {
     let mut event = Event::new(format!("event_type_{}", random));
     let mut metadata = Map::new();
     metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
-    event.metadata = Some(metadata);
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -311,7 +311,7 @@ async fn should_publish_to_nats_with_tls() {
     let mut received: Event =
         serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
     // We don't want to test the trace_context since it is added by the NatsPublisherActor
-    received.metadata.as_mut().unwrap().remove("trace_context");
+    received.metadata.remove("trace_context");
     assert_eq!(event, received);
 }
 
