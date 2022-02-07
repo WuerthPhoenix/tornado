@@ -804,6 +804,7 @@ mod test {
         // Assert
         assert_eq!(Some(created_ms), value.created_ms());
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
+        assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
         assert_eq!(value.metadata().unwrap(), &Value::Null);
     }
