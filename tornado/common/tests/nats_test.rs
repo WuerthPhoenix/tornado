@@ -9,7 +9,7 @@ use std::time::Duration;
 use actix::clock::sleep;
 use log::*;
 use reqwest::Client;
-use serde_json::{Map, Value};
+use serde_json::{Map, Number, Value};
 use serial_test::serial;
 use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
@@ -218,7 +218,10 @@ async fn should_publish_to_nats() {
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = Some(metadata);
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -248,7 +251,11 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.as_mut().unwrap().remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]
@@ -260,7 +267,10 @@ async fn should_publish_to_nats_with_tls() {
     let nats_address = format!("localhost:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = Some(metadata);
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -298,7 +308,11 @@ async fn should_publish_to_nats_with_tls() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.as_mut().unwrap().remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]

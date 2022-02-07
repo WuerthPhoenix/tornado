@@ -1,10 +1,11 @@
 use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
 use crate::LoggerError;
-use opentelemetry::propagation::{Extractor, Injector};
+use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::sdk::trace::{config, SamplingDecision, SamplingResult, ShouldSample, Tracer};
 use opentelemetry::sdk::Resource;
 use opentelemetry::trace::{Link, SpanKind, TraceContextExt, TraceId, TraceState};
-use opentelemetry::{Context, KeyValue};
+use opentelemetry::{Context, ContextGuard, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde_json::{Map, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -98,12 +99,24 @@ pub fn get_opentelemetry_tracer(
         })
 }
 
-pub struct TelemetryContextInjector<'a>(pub &'a mut Map<String, Value>);
+pub struct TelemetryContextInjector(pub Map<String, Value>);
 pub struct TelemetryContextExtractor<'a>(pub &'a Map<String, Value>);
 
-impl Injector for TelemetryContextInjector<'_> {
+impl Injector for TelemetryContextInjector {
     fn set(&mut self, key: &str, value: String) {
         self.0.insert(key.to_owned(), Value::String(value));
+    }
+}
+
+impl TelemetryContextInjector {
+    pub fn get_trace_context_map(
+        trace_context: &Context,
+        trace_context_propagator: &TraceContextPropagator,
+    ) -> Map<String, Value> {
+        let map = serde_json::Map::new();
+        let mut injector = TelemetryContextInjector(map);
+        trace_context_propagator.inject_context(trace_context, &mut injector);
+        injector.0
     }
 }
 
@@ -114,6 +127,15 @@ impl Extractor for TelemetryContextExtractor<'_> {
 
     fn keys(&self) -> Vec<&str> {
         self.0.keys().map(String::as_str).collect()
+    }
+}
+
+impl TelemetryContextExtractor<'_> {
+    pub fn attach_trace_context(
+        trace_context: &Map<String, Value>,
+        trace_context_propagator: &TraceContextPropagator,
+    ) -> ContextGuard {
+        trace_context_propagator.extract(&TelemetryContextExtractor(trace_context)).attach()
     }
 }
 

@@ -1,7 +1,8 @@
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::trace::TraceContextExt;
 use serde_json::Value;
-use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
+use tornado_common_logger::opentelemetry_logger::TelemetryContextExtractor;
 use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -29,13 +30,10 @@ async fn should_attach_context_to_span() {
     );
     trace_context.insert("tracestate".to_owned(), Value::String("".to_owned()));
 
-    let mut event = Event::new("mytype");
-    let mut metadata = serde_json::Map::new();
-    metadata.insert("trace_context".to_string(), Value::Object(trace_context));
-    event.metadata = Some(metadata);
+    let propagator = TraceContextPropagator::new();
 
     // Act
-    let _g = event.attach_trace_context();
+    let _g = TelemetryContextExtractor::attach_trace_context(&trace_context, &propagator);
     let span_1 = tracing::debug_span!("level", "first");
 
     // Assert

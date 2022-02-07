@@ -1,18 +1,10 @@
 use chrono::prelude::Local;
 use error::CommonError;
-use opentelemetry::propagation::TextMapPropagator;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
-use opentelemetry::{Context, ContextGuard};
 use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-use tornado_common_logger::opentelemetry_logger::{
-    TelemetryContextExtractor, TelemetryContextInjector,
-};
-use tracing::Span;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod error;
 pub mod partial_ordering;
@@ -52,7 +44,7 @@ pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
 const METADATA_TRACE_CONTEXT: &str = "trace_context";
 const METADATA_TENANT_ID: &str = "tenant_id";
-const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [ METADATA_TENANT_ID ];
+const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [METADATA_TENANT_ID];
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<&str> {
@@ -128,46 +120,32 @@ impl Event {
         }
     }
 
-    pub fn get_trace_context(&self) -> Option<Context> {
+    pub fn get_trace_context(&self) -> Option<&Map<String, Value>> {
         self.metadata
             .as_ref()
             .and_then(|val| val.get(METADATA_TRACE_CONTEXT))
             .and_then(|val| val.as_object())
-            .map(TelemetryContextExtractor)
-            .map(|context| TraceContextPropagator::new().extract(&context))
     }
 
     /// Sets the field metadata.trace_context of this event
     /// to the context of the passed span
-    pub fn set_trace_context_from_span(&mut self, span: &Span) {
-        let mut map = Map::new();
-        let mut context_carrier = TelemetryContextInjector(&mut map);
-        TraceContextPropagator::new().inject_context(&span.context(), &mut context_carrier);
-
-        if !context_carrier.0.is_empty() {
-            match self.metadata.as_mut() {
-                None => {
-                    let mut metadata = Map::new();
-                    metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
-                    self.metadata = Some(metadata)
-                }
-                Some(metadata) => {
-                    metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(map));
-                }
+    pub fn set_trace_context(&mut self, trace_context: Map<String, Value>) {
+        match self.metadata.as_mut() {
+            None => {
+                let mut metadata = Map::new();
+                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(trace_context));
+                self.metadata = Some(metadata)
+            }
+            Some(metadata) => {
+                metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(trace_context));
             }
         }
-    }
-
-    /// Attaches the trace context contained in the event if present, and returns its guard
-    pub fn attach_trace_context(&self) -> Option<ContextGuard> {
-        self.get_trace_context().map(|context| context.attach())
     }
 
     /// Remove undesired metadata fields from the metadata
     pub fn remove_undesired_metadata(&mut self) {
         for metadata_field in METADATA_FIELDS_TO_DISCARD {
-            self.metadata.as_mut()
-                .and_then(|metadata| metadata.remove(metadata_field));
+            self.metadata.as_mut().and_then(|metadata| metadata.remove(metadata_field));
         }
     }
 }
@@ -330,7 +308,6 @@ impl ValueGet for HashMap<String, Value> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use opentelemetry::trace::TraceContextExt;
     use serde_json::{self, json};
     use std::fs;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -877,19 +854,24 @@ mod test {
         // Arrange
         let mut event_with_only_tenant_id = Event::new("mytype");
         let mut metadata_teantn_id = serde_json::Map::new();
-        metadata_teantn_id.insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        metadata_teantn_id
+            .insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
         event_with_only_tenant_id.metadata = Some(metadata_teantn_id);
 
         let mut event_with_tenant_id_and_other = Event::new("mytype");
         let mut metadata_tenant_id_and_other = serde_json::Map::new();
-        metadata_tenant_id_and_other.insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
-        metadata_tenant_id_and_other.insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        metadata_tenant_id_and_other
+            .insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        metadata_tenant_id_and_other
+            .insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
         event_with_tenant_id_and_other.metadata = Some(metadata_tenant_id_and_other);
 
         let mut event_with_no_tenant_id = Event::new("mytype");
         let mut metadata_with_no_tenant_id = serde_json::Map::new();
-        metadata_with_no_tenant_id.insert("key1".to_owned(), Value::String("value1".parse().unwrap()));
-        metadata_with_no_tenant_id.insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        metadata_with_no_tenant_id
+            .insert("key1".to_owned(), Value::String("value1".parse().unwrap()));
+        metadata_with_no_tenant_id
+            .insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
         event_with_no_tenant_id.metadata = Some(metadata_with_no_tenant_id);
 
         // Act
@@ -899,14 +881,18 @@ mod test {
 
         // Assert
         match event_with_only_tenant_id.metadata {
-            None => { assert!(false) }
+            None => {
+                assert!(false)
+            }
             Some(metadata) => {
                 assert_eq!(0, metadata.len());
             }
         }
 
         match event_with_tenant_id_and_other.metadata {
-            None => { assert!(false) }
+            None => {
+                assert!(false)
+            }
             Some(metadata) => {
                 assert_eq!(1, metadata.len());
                 assert_eq!("value2", metadata.get("key2").unwrap());
@@ -914,7 +900,9 @@ mod test {
         }
 
         match event_with_no_tenant_id.metadata {
-            None => { assert!(false) }
+            None => {
+                assert!(false)
+            }
             Some(metadata) => {
                 assert_eq!(2, metadata.len());
                 assert_eq!("value1", metadata.get("key1").unwrap());
@@ -951,27 +939,18 @@ mod test {
     }
 
     #[test]
-    fn get_trace_context_should_return_empty_context_if_trace_context_is_not_in_correct_format() {
+    fn get_trace_context_should_return_none_if_trace_context_is_not_a_map() {
         // Arrange
         let mut event = Event::default();
-        let mut trace_context = Map::new();
-        trace_context.insert(
-            "some_field1".to_owned(),
-            Value::String(format!("00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")),
-        );
-        trace_context.insert("some_field2".to_owned(), Value::String("".to_owned()));
-
         let mut metadata = Map::new();
-
-        metadata.insert("trace_context".to_owned(), Value::Object(trace_context));
+        metadata.insert("trace_context".to_owned(), Value::Number(Number::from(1)));
         event.metadata = Some(metadata);
 
         // Act
         let res = event.get_trace_context();
-        let trace_id = res.unwrap().span().span_context().trace_id().to_hex();
 
         // Assert
-        assert_eq!(trace_id, "00000000000000000000000000000000".to_owned())
+        assert!(res.is_none())
     }
 
     #[test]
@@ -988,14 +967,14 @@ mod test {
 
         let mut metadata = Map::new();
 
-        metadata.insert("trace_context".to_owned(), Value::Object(trace_context));
+        metadata.insert("trace_context".to_owned(), Value::Object(trace_context.clone()));
         event.metadata = Some(metadata);
 
+        let expected = trace_context;
         // Act
-        let res = event.get_trace_context();
-        let trace_id = res.unwrap().span().span_context().trace_id().to_hex();
+        let res = event.get_trace_context().unwrap();
 
         // Assert
-        assert_eq!(trace_id, expected_trace_id.to_owned())
+        assert_eq!(res, &expected)
     }
 }
