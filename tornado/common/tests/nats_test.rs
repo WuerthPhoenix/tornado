@@ -9,7 +9,7 @@ use std::time::Duration;
 use actix::clock::sleep;
 use log::*;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use serial_test::serial;
 use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
@@ -171,7 +171,13 @@ async fn nats_publisher_should_publish_to_nats() {
 
     let random: u8 = rand::random();
     let subject = format!("test_subject_{}", random);
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert(
+        "some_metadata".to_owned(),
+        Value::Array(vec![Value::String("val1".to_owned()), Value::String("val2".to_owned())]),
+    );
+    event.metadata = Some(metadata);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -197,7 +203,10 @@ async fn nats_publisher_should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap());
+    let mut received_event: Event =
+        serde_json::from_slice(receiver.recv().await.unwrap().as_slice()).unwrap();
+    received_event.metadata.as_mut().unwrap().remove("trace_context");
+    assert_eq!(event, received_event);
 }
 
 #[actix_rt::test]

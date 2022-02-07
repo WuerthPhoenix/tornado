@@ -128,7 +128,7 @@ impl Handler<EventMessage> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let span = tracing::error_span!("MatcherActor", "{}", trace_id).entered();
+        let span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.process(&self.matcher, msg.event, false);
@@ -142,7 +142,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let _span = tracing::error_span!("MatcherActor", "{}", trace_id).entered();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
         let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
@@ -169,7 +169,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         _: &mut Context<Self>,
     ) -> Self::Result {
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let _span = tracing::error_span!("MatcherActor", "{}", trace_id).entered();
+        let _span = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
 
         let matcher = Matcher::build(&msg.matcher_config)?;

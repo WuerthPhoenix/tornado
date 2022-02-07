@@ -164,8 +164,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
         let _ctx_guard = msg.event.attach_trace_context();
         let span = tracing::error_span!("NatsPublisherActor");
         msg.event.set_trace_context_from_span(&span);
-
-        let _span = span.entered();
+        let entered_span = span.entered();
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
 
@@ -192,7 +191,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(_span.exit()));
+            }.instrument(entered_span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();

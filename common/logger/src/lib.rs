@@ -1,8 +1,6 @@
 use crate::elastic_apm::ApmTracingConfig;
 use crate::opentelemetry_logger::get_opentelemetry_tracer;
 use arc_swap::ArcSwap;
-use opentelemetry::global;
-use opentelemetry::sdk::propagation::TraceContextPropagator;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -138,7 +136,6 @@ impl LogWorkerGuard {
 
 /// Configures the underlying logger implementation and activates it.
 pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, LoggerError> {
-    global::set_text_map_propagator(TraceContextPropagator::new());
     let config_logger_level = Arc::new(logger_config.level.to_owned());
     let logger_level = ArcSwap::new(config_logger_level);
     let env_filter = Targets::from_str(&logger_config.level).map_err(|err| {
@@ -179,24 +176,19 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         )
     };
 
-    let (apm_layer, apm_enabled) = {
-        let tracer = get_opentelemetry_tracer(&logger_config.tracing_elastic_apm)?;
-        let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
+    let apm_enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
 
-        let enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
-        let enabled_clone = enabled.clone();
-
-        (
-            telemetry.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))),
-            enabled_clone,
-        )
+    let apm_opentelemetry_layer = {
+        let tracer =
+            get_opentelemetry_tracer(&logger_config.tracing_elastic_apm, apm_enabled.clone())?;
+        tracing_opentelemetry::layer().with_tracer(tracer)
     };
 
     tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber)
-        .with(apm_layer)
+        .with(apm_opentelemetry_layer)
         .try_init()
         .map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot start the logger. err: {:?}", err),
