@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
+use tornado_common::actors::message::TornadoCommonActorError;
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
@@ -241,11 +241,7 @@ pub async fn daemon(
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
         let event_bus = ActixEventBus {
-            callback: move |action| {
-                let action = Arc::new(action);
-                let span = tracing::Span::current();
-                let message = ActionMessage { action, span };
-
+            callback: move |message| {
                 action_meter
                     .actions_received_counter
                     .add(1, &[ACTION_ID_LABEL_KEY.string(message.action.id.to_owned())]);

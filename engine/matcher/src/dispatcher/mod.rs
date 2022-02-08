@@ -2,7 +2,7 @@ use crate::error::MatcherError;
 use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
-use tornado_common_api::Action;
+use tornado_common::actors::message::ActionMessage;
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
@@ -28,7 +28,15 @@ impl Dispatcher {
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
-                            self.dispatch(rule.actions)?
+                            let actions = rule
+                                .actions
+                                .into_iter()
+                                .map(|action| ActionMessage {
+                                    span: tracing::Span::current(),
+                                    action: Arc::new(action),
+                                })
+                                .collect();
+                            self.dispatch(actions)?
                         }
                         _ => {
                             trace!("Rule [{}] not matched, ignoring actions", rule.name);
@@ -46,12 +54,12 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
+    fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
-                action_id = action.id.as_str()
+                action_id = action.action.id.as_str()
             )
             .entered();
             self.event_bus.publish_action(action)

@@ -1,5 +1,5 @@
-use tornado_common_api::Action;
+use tornado_common::actors::message::ActionMessage;
 
 pub trait EventBus {
-    fn publish_action(&self, message: Action);
+    fn publish_action(&self, message: ActionMessage);
 }

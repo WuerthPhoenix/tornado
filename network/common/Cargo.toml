@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 

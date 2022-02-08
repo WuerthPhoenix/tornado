@@ -1,5 +1,6 @@
 use log::*;
 use std::sync::Arc;
+use tornado_common::actors::message::ActionMessage;
 use tornado_common_api::{Action, Map, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
@@ -59,8 +60,14 @@ impl StatelessExecutor for ForEachExecutor {
 
                         let mut item = Map::new();
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(action)) {
+
+                        let result = resolve_action(&Value::Object(item), action.clone())
+                            .map(|action| self.bus.publish_action(ActionMessage {
+                                action: Arc::new(action),
+                                span: tracing::Span::current()
+                            }));
+
+                        if let Err(err) = result {
                             warn!(
                                 "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
                                 action.id, err
@@ -120,7 +127,8 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
         Value::String(text) => {
-            if let Some(parse_result) = ParserBuilder::default().build_parser(text)
+            if let Some(parse_result) = ParserBuilder::default()
+                .build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
@@ -150,8 +158,11 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{collections::{HashMap, hash_map::Entry}, sync::RwLock};
-    use serde_json::{json};
+    use serde_json::json;
+    use std::{
+        collections::{hash_map::Entry, HashMap},
+        sync::RwLock,
+    };
     use tornado_common_api::ValueExt;
     use tornado_network_simple::SimpleEventBus;
 
