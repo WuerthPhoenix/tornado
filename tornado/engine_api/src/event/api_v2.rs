@@ -71,8 +71,7 @@ pub mod test {
     use super::*;
     use crate::auth::Permission;
     use crate::event::api::test::{TestApiHandler, TestConfigManager};
-    use serde_json::json;
-    use std::collections::{BTreeMap, HashMap};
+    use std::collections::BTreeMap;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
 
@@ -232,11 +231,8 @@ pub mod test {
             &permissions_map,
         );
 
-        let request = SendEventRequest {
-            event: Event::new("event"),
-            metadata: Value::Object(Default::default()),
-            process_type: ProcessType::SkipActions,
-        };
+        let request =
+            SendEventRequest { event: Event::new("event"), process_type: ProcessType::SkipActions };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_ok());
@@ -281,11 +277,8 @@ pub mod test {
             &permissions,
         );
 
-        let request = SendEventRequest {
-            event: Event::new("event"),
-            metadata: Value::Object(Default::default()),
-            process_type: ProcessType::Full,
-        };
+        let request =
+            SendEventRequest { event: Event::new("event"), process_type: ProcessType::Full };
 
         // Act & Assert
         assert!(api.send_event_to_current_config(user_edit, request.clone()).await.is_err());
@@ -312,22 +305,19 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let mut event = Event::new("event");
+        let mut metadata = serde_json::Map::new();
+        metadata
+            .insert("something".to_owned(), Value::String(format!("{}", rand::random::<usize>())));
+        event.metadata = metadata.clone();
 
-        let request = SendEventRequest {
-            event: Event::new("event"),
-            metadata: metadata.clone(),
-            process_type: ProcessType::SkipActions,
-        };
+        let request = SendEventRequest { event, process_type: ProcessType::SkipActions };
 
         // Act
         let result = api.send_event_to_current_config(user_edit, request.clone()).await.unwrap();
 
         // Assert
-        assert_eq!(&metadata, result.event.metadata().unwrap());
+        assert_eq!(&serde_json::to_value(&metadata).unwrap(), result.event.metadata().unwrap());
     }
 
     #[actix_rt::test]
@@ -345,7 +335,6 @@ pub mod test {
         let request = SendEventRequest {
             event: Event::new("event_for_draft"),
             process_type: ProcessType::SkipActions,
-            metadata: Value::Object(Default::default()),
         };
 
         // Act & Assert
@@ -387,21 +376,18 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let mut event = Event::new("event");
+        let mut metadata = serde_json::Map::new();
+        metadata
+            .insert("something".to_owned(), Value::String(format!("{}", rand::random::<usize>())));
+        event.metadata = metadata.clone();
 
-        let request = SendEventRequest {
-            event: Event::new("event"),
-            metadata: metadata.clone(),
-            process_type: ProcessType::SkipActions,
-        };
+        let request = SendEventRequest { event, process_type: ProcessType::SkipActions };
 
         // Act
         let result = api.send_event_to_draft(user_edit, "id", request.clone()).await.unwrap();
 
         // Assert
-        assert_eq!(&metadata, result.event.metadata().unwrap());
+        assert_eq!(&serde_json::to_value(&metadata).unwrap(), result.event.metadata().unwrap());
     }
 }

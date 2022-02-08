@@ -368,7 +368,7 @@ pub async fn daemon(
                 let trace_context = event.get_trace_context();
                 let _context_guard = trace_context.map(
                     |trace_context|
-                        TelemetryContextExtractor::attach_trace_context(&trace_context,&trace_context_propagator)
+                        TelemetryContextExtractor::attach_trace_context(trace_context, &trace_context_propagator)
                 );
                 let subscriber_span = tracing::info_span!("Enrich event with tenant");
                 let subscriber_span_trace_context = TelemetryContextInjector::get_trace_context_map(

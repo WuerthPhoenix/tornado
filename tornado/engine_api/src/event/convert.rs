@@ -1,6 +1,5 @@
 use crate::event::api::SendEventRequest;
 use serde_json::Error;
-use std::mem::take;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
@@ -12,23 +11,12 @@ use tornado_engine_matcher::model::{
     ProcessedRuleStatus, ProcessedRules,
 };
 
-pub fn dto_into_send_event_request(
-    mut dto: SendEventRequestDto,
-) -> Result<SendEventRequest, Error> {
-    let metadata = serde_json::from_value(take(&mut dto.event.metadata))?;
-    // TODO: We should remove the metadata field from the SendEventRequest to avoid having it
-    // separated from the Event.
-    // Currently we keep it split because the metadata is a generic Value in the Dto,
-    // so we cannot always convert it to a Map. So we manually set here an empty map as metadata
-    // in the event. The metadata field will have precedence when transforming the SendEventRequest
-    // to Value in the to_event_with_metadata() function
-    dto.event.metadata = serde_json::Value::Object(serde_json::Map::new());
+pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {
         process_type: match dto.process_type {
             ProcessType::Full => crate::event::api::ProcessType::Full,
             ProcessType::SkipActions => crate::event::api::ProcessType::SkipActions,
         },
-        metadata,
         event: serde_json::from_value(serde_json::to_value(dto.event)?)?,
     })
 }

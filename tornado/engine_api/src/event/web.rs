@@ -206,7 +206,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
             },
             process_type: ProcessType::SkipActions,
@@ -227,7 +227,7 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -248,7 +248,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
             },
             process_type: ProcessType::SkipActions,
@@ -269,7 +269,7 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -290,7 +290,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
             },
             process_type: ProcessType::SkipActions,
@@ -329,64 +329,7 @@ mod test {
             test::read_body_json(resp).await;
 
         assert_eq!("my_test_event", dto.event.event_type);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
-    }
-
-    #[actix_rt::test]
-    async fn send_event_to_current_config_v2_should_accept_string_as_metadata() {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
-        })))
-        .await;
-
-        let metadata = "something".to_owned();
-
-        let send_event_request = SendEventRequestDto {
-            event: EventDto {
-                event_type: "my_test_event".to_owned(),
-                payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
-                created_ms: 0,
-            },
-            process_type: ProcessType::SkipActions,
-        };
-
-        // Act
-        let request = test::TestRequest::post()
-            .uri("/event/active/auth1")
-            .insert_header((header::CONTENT_TYPE, "application/json"))
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        },
-                    )]),
-                    preferences: None,
-                })
-                .unwrap(),
-            ))
-            .set_payload(serde_json::to_string(&send_event_request).unwrap())
-            .to_request();
-
-        // Assert
-
-        let resp = test::call_service(&srv, request).await;
-        //println!("resp: [{:?}]", resp);
-
-        assert_eq!(200, resp.status());
-
-        let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_body_json(resp).await;
-
-        assert_eq!("my_test_event", dto.event.event_type);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -455,7 +398,7 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
             },
             process_type: ProcessType::SkipActions,
@@ -491,6 +434,6 @@ mod test {
             test::read_body_json(resp).await;
 
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 }
