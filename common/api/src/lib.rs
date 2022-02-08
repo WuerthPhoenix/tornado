@@ -25,6 +25,8 @@ pub struct Event {
     pub event_type: String,
     pub created_ms: u64,
     pub payload: Payload,
+    #[serde(default)]
+    pub metadata: Map<String, Value>,
 }
 
 pub trait WithEventData {
@@ -41,6 +43,9 @@ pub const EVENT_TYPE: &str = "type";
 pub const EVENT_CREATED_MS: &str = "created_ms";
 pub const EVENT_PAYLOAD: &str = "payload";
 pub const EVENT_METADATA: &str = "metadata";
+const METADATA_TRACE_CONTEXT: &str = "trace_context";
+const METADATA_TENANT_ID: &str = "tenant_id";
+const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [METADATA_TENANT_ID];
 
 impl WithEventData for Value {
     fn trace_id(&self) -> Option<&str> {
@@ -107,7 +112,30 @@ impl Event {
     pub fn new_with_payload<S: Into<String>>(event_type: S, payload: Payload) -> Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
-        Event { trace_id: default_trace_id(), event_type: event_type.into(), created_ms, payload }
+        Event {
+            trace_id: default_trace_id(),
+            event_type: event_type.into(),
+            created_ms,
+            payload,
+            metadata: Map::default(),
+        }
+    }
+
+    pub fn get_trace_context(&self) -> Option<&Map<String, Value>> {
+        self.metadata.get(METADATA_TRACE_CONTEXT).and_then(|val| val.as_object())
+    }
+
+    /// Sets the field metadata.trace_context of this event
+    /// to the context of the passed span
+    pub fn set_trace_context(&mut self, trace_context: Map<String, Value>) {
+        self.metadata.insert(METADATA_TRACE_CONTEXT.to_owned(), Value::Object(trace_context));
+    }
+
+    /// Remove undesired metadata fields from the metadata
+    pub fn remove_undesired_metadata(&mut self) {
+        for metadata_field in METADATA_FIELDS_TO_DISCARD {
+            self.metadata.remove(metadata_field);
+        }
     }
 }
 
@@ -687,6 +715,24 @@ mod test {
     }
 
     #[test]
+    fn deserializing_an_event_should_generate_metadata_if_missing() {
+        // Arrange
+        let json = r#"
+{
+  "type": "email",
+  "created_ms": 1554130814854,
+  "payload":{}
+}
+        "#;
+
+        // Act
+        let event: Event = serde_json::from_str(json).expect("should add a trace_id");
+
+        // Assert
+        assert_eq!(event.metadata, Map::new());
+    }
+
+    #[test]
     fn deserializing_an_event_should_generate_trace_if_null() {
         // Arrange
         let json = r#"
@@ -755,7 +801,7 @@ mod test {
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
         assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
-        assert!(value.metadata().is_none())
+        assert_eq!(value.metadata().unwrap(), &Value::Object(Map::new()));
     }
 
     #[test]
@@ -808,5 +854,113 @@ mod test {
             }
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn should_remove_undesired_metadata() {
+        // Arrange
+        let mut event_with_only_tenant_id = Event::new("mytype");
+        let mut metadata_tenant_id = serde_json::Map::new();
+        metadata_tenant_id
+            .insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        event_with_only_tenant_id.metadata = metadata_tenant_id;
+
+        let mut event_with_tenant_id_and_other = Event::new("mytype");
+        let mut metadata_tenant_id_and_other = serde_json::Map::new();
+        metadata_tenant_id_and_other
+            .insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
+        metadata_tenant_id_and_other
+            .insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        event_with_tenant_id_and_other.metadata = metadata_tenant_id_and_other;
+
+        let mut event_with_no_tenant_id = Event::new("mytype");
+        let mut metadata_with_no_tenant_id = serde_json::Map::new();
+        metadata_with_no_tenant_id
+            .insert("key1".to_owned(), Value::String("value1".parse().unwrap()));
+        metadata_with_no_tenant_id
+            .insert("key2".to_owned(), Value::String("value2".parse().unwrap()));
+        event_with_no_tenant_id.metadata = metadata_with_no_tenant_id;
+
+        // Act
+        event_with_only_tenant_id.remove_undesired_metadata();
+        event_with_tenant_id_and_other.remove_undesired_metadata();
+        event_with_no_tenant_id.remove_undesired_metadata();
+
+        // Assert
+        assert_eq!(0, event_with_only_tenant_id.metadata.len());
+
+        assert_eq!(1, event_with_tenant_id_and_other.metadata.len());
+        assert_eq!("value2", event_with_tenant_id_and_other.metadata.get("key2").unwrap());
+
+        assert_eq!(2, event_with_no_tenant_id.metadata.len());
+        assert_eq!("value1", event_with_no_tenant_id.metadata.get("key1").unwrap());
+        assert_eq!("value2", event_with_no_tenant_id.metadata.get("key2").unwrap());
+    }
+
+    #[test]
+    fn get_trace_context_should_return_none_if_metadata_is_empty() {
+        // Arrange
+        let event = Event::default();
+
+        // Act
+        let res = event.get_trace_context();
+
+        // Assert
+        assert!(res.is_none())
+    }
+
+    #[test]
+    fn get_trace_context_should_return_none_if_metadata_does_not_contain_trace_context() {
+        // Arrange
+        let mut event = Event::default();
+        let mut metadata = Map::new();
+        metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+        event.metadata = metadata;
+
+        // Act
+        let res = event.get_trace_context();
+
+        // Assert
+        assert!(res.is_none())
+    }
+
+    #[test]
+    fn get_trace_context_should_return_none_if_trace_context_is_not_a_map() {
+        // Arrange
+        let mut event = Event::default();
+        let mut metadata = Map::new();
+        metadata.insert("trace_context".to_owned(), Value::Number(Number::from(1)));
+        event.metadata = metadata;
+
+        // Act
+        let res = event.get_trace_context();
+
+        // Assert
+        assert!(res.is_none())
+    }
+
+    #[test]
+    fn get_trace_context_should_return_trace_context() {
+        // Arrange
+        let mut event = Event::default();
+        let mut trace_context = Map::new();
+        let expected_trace_id = "0af7651916cd43dd8448eb211c80319c";
+        trace_context.insert(
+            "traceparent".to_owned(),
+            Value::String(format!("00-{}-b7ad6b7169203331-01", expected_trace_id)),
+        );
+        trace_context.insert("tracestate".to_owned(), Value::String("".to_owned()));
+
+        let mut metadata = Map::new();
+
+        metadata.insert("trace_context".to_owned(), Value::Object(trace_context.clone()));
+        event.metadata = metadata;
+
+        let expected = trace_context;
+        // Act
+        let res = event.get_trace_context().unwrap();
+
+        // Assert
+        assert_eq!(res, &expected)
     }
 }

@@ -1,13 +1,13 @@
 use jmespath::Rcvar;
 use log::trace;
-use serde_json::Map;
 use serde_json::json;
-use tornado_common_api::ValueExt;
+use serde_json::Map;
 use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
+use tornado_common_api::Event;
 use tornado_common_api::Payload;
 use tornado_common_api::Value;
-use tornado_common_api::Event;
+use tornado_common_api::ValueExt;
 
 pub mod config;
 
@@ -84,7 +84,9 @@ impl EventProcessor {
             }
             Value::String(text) => EventProcessor::build_value_processor_from_str(&text),
             Value::Bool(boolean) => Ok(ValueProcessor::Bool(boolean)),
-            Value::Number(number) => Ok(ValueProcessor::Number(number.as_f64().unwrap_or_default())),
+            Value::Number(number) => {
+                Ok(ValueProcessor::Number(number.as_f64().unwrap_or_default()))
+            }
             Value::Null => Ok(ValueProcessor::Null),
         }
     }
@@ -177,9 +179,7 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
     match var.as_ref() {
         jmespath::Variable::String(s) => Ok(Value::String(s.to_owned())),
         jmespath::Variable::Bool(b) => Ok(Value::Bool(*b)),
-        jmespath::Variable::Number(n) => {
-            Ok(json!(n))
-        }
+        jmespath::Variable::Number(n) => Ok(json!(n)),
         jmespath::Variable::Object(values) => {
             let mut payload = Payload::new();
             for (key, value) in values {
@@ -205,7 +205,7 @@ fn variable_to_value(var: &Rcvar) -> Result<Value, CollectorError> {
 #[cfg(test)]
 mod test {
 
-    use serde_json::{Map, json};
+    use serde_json::{json, Map};
 
     use super::*;
     use std::collections::HashMap;
@@ -356,11 +356,7 @@ mod test {
         // Assert
         assert!(result.is_ok());
         assert_eq!(
-            Value::Array(vec![
-                Value::String("one".to_owned()),
-                Value::Bool(true),
-                json!(13)
-            ]),
+            Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13)]),
             result.unwrap()
         );
     }

@@ -1,7 +1,8 @@
+use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::trace::TraceContextExt;
-use std::collections::HashMap;
+use serde_json::Value;
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
-use tornado_common_logger::opentelemetry_logger::attach_context_to_span;
+use tornado_common_logger::opentelemetry_logger::TelemetryContextExtractor;
 use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
@@ -22,14 +23,18 @@ async fn should_attach_context_to_span() {
     let _g = setup_logger(config).unwrap();
 
     let expected_trace_id = "0af7651916cd43dd8448eb211c80319c";
-    let mut carrier = HashMap::new();
-    carrier
-        .insert("traceparent".to_owned(), format!("00-{}-b7ad6b7169203331-01", expected_trace_id));
-    carrier.insert("tracestate".to_owned(), "".to_owned());
-    let span_1 = tracing::debug_span!("level", "first");
+    let mut trace_context = serde_json::Map::new();
+    trace_context.insert(
+        "traceparent".to_owned(),
+        Value::String(format!("00-{}-b7ad6b7169203331-01", expected_trace_id)),
+    );
+    trace_context.insert("tracestate".to_owned(), Value::String("".to_owned()));
+
+    let propagator = TraceContextPropagator::new();
 
     // Act
-    attach_context_to_span(&span_1, Some(carrier));
+    let _g = TelemetryContextExtractor::attach_trace_context(&trace_context, &propagator);
+    let span_1 = tracing::debug_span!("level", "first");
 
     // Assert
     let trace_id = span_1.context().span().span_context().trace_id();

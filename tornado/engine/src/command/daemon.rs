@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError, TornadoNatsMessage};
+use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
@@ -25,9 +25,13 @@ use tornado_common::command::retry::RetryCommand;
 use tornado_common::command::{StatefulExecutorCommand, StatelessExecutorCommand};
 use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
+use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
-use tornado_common_logger::opentelemetry_logger::attach_context_to_span;
+use tornado_common_logger::opentelemetry_logger::{
+    TelemetryContextExtractor, TelemetryContextInjector,
+};
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
@@ -38,6 +42,7 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -345,21 +350,32 @@ pub async fn daemon(
         let nats_extractors = daemon_config.nats_extractors.clone();
 
         let tornado_meter_nats = tornado_meter.clone();
+        let trace_context_propagator = TraceContextPropagator::new();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
-                let tornado_nats_message: TornadoNatsMessage = serde_json::from_slice(&msg.msg.data)
+                let mut event: Event = serde_json::from_slice(&msg.msg.data)
                     .map_err(|err| {
                         tornado_meter_nats.invalid_events_received_counter.add(1, &[
                             meter_event_souce_label.clone(),
                         ]);
                         TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                     })?;
-                trace!("NatsSubscriberActor - event from message received: {:#?}", tornado_nats_message);
-                let event = tornado_nats_message.event;
+                event.remove_undesired_metadata();
+
+                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                let trace_context = event.get_trace_context();
+                let _context_guard = trace_context.map(
+                    |trace_context|
+                        TelemetryContextExtractor::attach_trace_context(trace_context, &trace_context_propagator)
+                );
                 let subscriber_span = tracing::info_span!("Enrich event with tenant");
-                attach_context_to_span(&subscriber_span, tornado_nats_message.trace_context);
+                let subscriber_span_trace_context = TelemetryContextInjector::get_trace_context_map(
+                    &subscriber_span.context(),
+                    &trace_context_propagator
+                );
+                event.set_trace_context(subscriber_span_trace_context);
                 let _subscriber_span_guard = subscriber_span.enter();
 
                 tornado_meter_nats.events_received_counter.add(1, &[
@@ -414,11 +430,12 @@ pub async fn daemon(
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
                 let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
-                JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
+                JsonEventReaderActor::start_new(msg, message_queue_size, move |mut event| {
                     tornado_meter.events_received_counter.add(1, &[
                         EVENT_SOURCE_LABEL_KEY.string("tcp"),
                         EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                     ]);
+                    event.remove_undesired_metadata();
                     json_matcher_addr_clone.try_send(EventMessage { event: json!(event) }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
