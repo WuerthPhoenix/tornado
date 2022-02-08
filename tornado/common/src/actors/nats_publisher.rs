@@ -179,13 +179,13 @@ impl Handler<EventMessage> for NatsPublisherActor {
                 &self.trace_context_propagator,
             )
         });
-        let span = tracing::error_span!("NatsPublisherActor");
+        let trace_id = msg.event.trace_id.as_str();
+        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,
         );
         msg.event.set_trace_context(trace_context);
-        let entered_span = span.entered();
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
 
@@ -212,7 +212,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
                         address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
                     }
                 }
-            }.instrument(entered_span.exit()));
+            }.instrument(span.exit()));
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();
