@@ -199,6 +199,15 @@ mod test {
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use tornado_engine_api_dto::event::{EventDto, ProcessType, SendEventRequestDto};
 
+    fn get_something() -> HashMap<String, serde_json::Value> {
+        let mut something = HashMap::new();
+        something.insert(
+            "something".to_owned(),
+            serde_json::Value::String(format!("{}", rand::random::<usize>())),
+        );
+        something
+    }
+
     #[actix_rt::test]
     async fn should_send_event_to_current_config() {
         // Arrange
@@ -208,10 +217,7 @@ mod test {
         })))
         .await;
 
-        let metadata = HashMap::from([(
-            "something".to_owned(),
-            serde_json::Value::String(format!("{}", rand::random::<usize>())),
-        )]);
+        let metadata = get_something();
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -252,10 +258,7 @@ mod test {
         })))
         .await;
 
-        let metadata = HashMap::from([(
-            "something".to_owned(),
-            serde_json::Value::String(format!("{}", rand::random::<usize>())),
-        )]);
+        let metadata = get_something();
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -296,10 +299,7 @@ mod test {
         })))
         .await;
 
-        let metadata = HashMap::from([(
-            "something".to_owned(),
-            serde_json::Value::String(format!("{}", rand::random::<usize>())),
-        )]);
+        let metadata = get_something();
 
         let send_event_request = SendEventRequestDto {
             event: EventDto {
@@ -313,6 +313,11 @@ mod test {
         };
 
         // Act
+        let mut auths = HashMap::new();
+        auths.insert(
+            "auth1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
         let request = test::TestRequest::post()
             .uri("/event/active/auth1")
             .insert_header((header::CONTENT_TYPE, "application/json"))
@@ -320,13 +325,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        },
-                    )]),
+                    auths,
                     preferences: None,
                 })
                 .unwrap(),
@@ -370,6 +369,11 @@ mod test {
         };
 
         // Act
+        let mut auths = HashMap::new();
+        auths.insert(
+            "auth1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
         let request = test::TestRequest::post()
             .uri("/event/active/auth2")
             .insert_header((header::CONTENT_TYPE, "application/json"))
@@ -377,13 +381,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        },
-                    )]),
+                    auths,
                     preferences: None,
                 })
                 .unwrap(),
@@ -407,11 +405,7 @@ mod test {
         })))
             .await;
 
-        let metadata = HashMap::from([(
-            "something".to_owned(),
-            serde_json::Value::String(format!("{}", rand::random::<usize>())),
-        )]);
-
+        let metadata = get_something();
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
@@ -424,6 +418,11 @@ mod test {
         };
 
         // Act
+        let mut auths = HashMap::new();
+        auths.insert(
+            "auth1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
         let request = test::TestRequest::post()
             .uri("/event/drafts/auth1/a123")
             .insert_header((header::CONTENT_TYPE, "application/json"))
@@ -431,13 +430,7 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "OWNER".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        },
-                    )]),
+                    auths,
                     preferences: None,
                 })
                     .unwrap(),

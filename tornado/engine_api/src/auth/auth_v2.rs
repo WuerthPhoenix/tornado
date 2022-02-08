@@ -167,20 +167,17 @@ pub mod test {
     #[test]
     fn from_header_should_return_auth_v2_for_an_existing_auth_key() {
         // Arrange
-        let auth_header = AuthHeaderV2 {
-            user: "user".to_string(),
-            auths: HashMap::from([
-                (
-                    "auth_key_0".to_owned(),
-                    Authorization { path: vec!["node".to_owned()], roles: vec!["edit".to_owned()] },
-                ),
-                (
-                    "auth_key_1".to_owned(),
-                    Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
-                ),
-            ]),
-            preferences: None,
-        };
+        let mut auths = HashMap::new();
+        auths.insert(
+            "auth_key_0".to_owned(),
+            Authorization { path: vec!["node".to_owned()], roles: vec!["edit".to_owned()] },
+        );
+        auths.insert(
+            "auth_key_1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
+
+        let auth_header = AuthHeaderV2 { user: "user".to_string(), auths, preferences: None };
         let auth_key = "auth_key_1";
         let permission_roles_map = BTreeMap::new();
 
@@ -207,20 +204,16 @@ pub mod test {
     #[test]
     fn from_header_should_return_non_valid_auth_for_empty_user() {
         // Arrange
-        let auth_header = AuthHeaderV2 {
-            user: "".to_string(),
-            auths: HashMap::from([
-                (
-                    "auth_key_0".to_owned(),
-                    Authorization { path: vec!["node".to_owned()], roles: vec!["edit".to_owned()] },
-                ),
-                (
-                    "auth_key_1".to_owned(),
-                    Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
-                ),
-            ]),
-            preferences: None,
-        };
+        let mut auths = HashMap::new();
+        auths.insert(
+            "auth_key_0".to_owned(),
+            Authorization { path: vec!["node".to_owned()], roles: vec!["edit".to_owned()] },
+        );
+        auths.insert(
+            "auth_key_1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
+        let auth_header = AuthHeaderV2 { user: "".to_string(), auths, preferences: None };
         let auth_key = "auth_key_1";
         let permission_roles_map = BTreeMap::new();
 
@@ -368,28 +361,24 @@ pub mod test {
         let result = AuthServiceV2::auth_header_from_token_string(&token).unwrap();
 
         // Assert
+        let mut auths = HashMap::new();
+        auths.insert("tenantA1".to_owned(),
+                     Authorization {
+                         path: vec!["root".to_owned()],
+                         roles: vec![
+                             "view".to_owned(),
+                             "edit".to_owned(),
+                             "test_event_execute_actions".to_owned(),
+                         ],
+                     });
+        auths.insert("tenantA2".to_owned(),
+                     Authorization {
+                         path: vec!["root".to_owned(), "filter2".to_owned(), "tenantA".to_owned()],
+                         roles: vec!["view".to_owned(), "test_event_execute_actions".to_owned()],
+                     });
         let expected = AuthHeaderV2 {
             user: "mario".to_string(),
-            auths: HashMap::from([
-                (
-                    "tenantA1".to_owned(),
-                    Authorization {
-                        path: vec!["root".to_owned()],
-                        roles: vec![
-                            "view".to_owned(),
-                            "edit".to_owned(),
-                            "test_event_execute_actions".to_owned(),
-                        ],
-                    },
-                ),
-                (
-                    "tenantA2".to_owned(),
-                    Authorization {
-                        path: vec!["root".to_owned(), "filter2".to_owned(), "tenantA".to_owned()],
-                        roles: vec!["view".to_owned(), "test_event_execute_actions".to_owned()],
-                    },
-                ),
-            ]),
+            auths,
             preferences: Some(UserPreferences { language: Some("en_US".to_owned()) }),
         };
         assert_eq!(result, expected);
@@ -423,6 +412,12 @@ pub mod test {
 
     #[test]
     fn auth_from_request_should_build_auth_from_http_request() {
+        let mut auths = HashMap::new();
+        auths.insert("auth1".to_owned(),
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["view".to_owned()],
+                        });
         // Arrange
         let permission_map = permission_map();
         let auth_service = AuthServiceV2::new(Arc::new(permission_map.clone()));
@@ -432,13 +427,7 @@ pub mod test {
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
 
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        },
-                    )]),
+                    auths,
                     preferences: None,
                 })
                 .unwrap(),
@@ -468,7 +457,10 @@ pub mod test {
     fn should_be_the_owner() {
         let auth = AuthV2 {
             user: "USER_123".to_owned(),
-            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            authorization: Authorization {
+                path: vec![],
+                roles: vec!["role1".to_owned(), "role2".to_owned()],
+            },
             preferences: None,
         };
         let role_permissions = BTreeMap::new();
@@ -483,7 +475,10 @@ pub mod test {
     fn should_not_be_the_owner() {
         let auth = AuthV2 {
             user: "USER_123".to_owned(),
-            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            authorization: Authorization {
+                path: vec![],
+                roles: vec!["role1".to_owned(), "role2".to_owned()],
+            },
             preferences: None,
         };
         let role_permissions = BTreeMap::new();

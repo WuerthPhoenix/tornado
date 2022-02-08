@@ -146,7 +146,8 @@ mod test {
             metadata: Value::Object(Default::default()),
         };
 
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
 
         // Act
         let res = api.send_event_to_current_config(config_filter, send_event_request).await;
@@ -290,7 +291,8 @@ mod test {
 
         let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
-        let metadata = HashMap::from([("tenant_id".to_owned(), Value::String("beta".to_owned()))]);
+        let mut metadata = HashMap::new();
+        metadata.insert("tenant_id".to_owned(), Value::String("beta".to_owned()));
 
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
@@ -298,7 +300,8 @@ mod test {
             metadata: json!(metadata),
         };
 
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
 
         // Act
         let res =

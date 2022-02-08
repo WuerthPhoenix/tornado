@@ -70,7 +70,8 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
         self.handler.send_event_to_current_config(config_filter, event).await
     }
 
@@ -278,6 +279,13 @@ pub mod test {
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
     }
 
+    fn get_something() -> HashMap<String, Value> {
+        let mut something = HashMap::new();
+        something
+            .insert("something".to_owned(), Value::String(format!("{}", rand::random::<usize>())));
+        something
+    }
+
     #[actix_rt::test]
     async fn send_event_to_current_config_should_propagate_metadata() {
         // Arrange
@@ -286,10 +294,7 @@ pub mod test {
 
         let (_user_view, user_edit) = create_users(&permissions_map);
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let metadata = json!(get_something());
 
         let request = SendEventRequest {
             event: Event::new("event"),
@@ -313,10 +318,7 @@ pub mod test {
         let (_user_view, mut user_edit) = create_users(&permissions_map);
         user_edit.auth.user = DRAFT_OWNER_ID.to_owned();
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let metadata = json!(get_something());
 
         let request = SendEventRequest {
             event: Event::new("event"),

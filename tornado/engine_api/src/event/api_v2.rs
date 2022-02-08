@@ -214,6 +214,13 @@ pub mod test {
     pub const DRAFT_OWNER_ID: &str = "OWNER";
     pub const NOT_OWNER_USER: &str = "NOT_OWNER";
 
+    fn get_something() -> HashMap<String, Value> {
+        let mut something = HashMap::new();
+        something
+            .insert("something".to_owned(), Value::String(format!("{}", rand::random::<usize>())));
+        something
+    }
+
     #[actix_rt::test]
     async fn send_event_to_configuration_with_skip_action_should_require_edit_or_view_permission() {
         // Arrange
@@ -310,10 +317,7 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let metadata = json!(get_something());
 
         let request = SendEventRequest {
             event: Event::new("event"),
@@ -368,10 +372,7 @@ pub mod test {
 
         let (_user_view, user_edit, _user_full_process) = create_owner_users(&permissions_map);
 
-        let metadata = json!(HashMap::from([(
-            "something".to_owned(),
-            Value::String(format!("{}", rand::random::<usize>())),
-        )]));
+        let metadata = json!(get_something());
 
         let request = SendEventRequest {
             event: Event::new("event"),
