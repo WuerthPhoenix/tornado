@@ -27,9 +27,7 @@ use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
-use tornado_common_logger::opentelemetry_logger::{
-    TelemetryContextExtractor, TelemetryContextInjector,
-};
+use tornado_common_logger::opentelemetry_logger::TelemetryContextExtractor;
 use tornado_common_logger::setup_logger;
 use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tornado_common_metrics::Metrics;
@@ -42,7 +40,6 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -365,18 +362,12 @@ pub async fn daemon(
                 event.remove_undesired_metadata();
 
                 trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-                let trace_context = event.get_trace_context();
-                let _context_guard = trace_context.map(
-                    |trace_context|
-                        TelemetryContextExtractor::attach_trace_context(trace_context, &trace_context_propagator)
+                let event_trace_context = event.get_trace_context().map(|event_trace_context|
+                    TelemetryContextExtractor::get_trace_context(event_trace_context, &trace_context_propagator)
                 );
-                let subscriber_span = tracing::info_span!("Enrich event with tenant");
-                let subscriber_span_trace_context = TelemetryContextInjector::get_trace_context_map(
-                    &subscriber_span.context(),
-                    &trace_context_propagator
-                );
-                event.set_trace_context(subscriber_span_trace_context);
-                let _subscriber_span_guard = subscriber_span.enter();
+                let trace_id = event.get_trace_id_or_extract_from_context(event_trace_context.as_ref());
+                let _context_guard = event_trace_context.map(|context| context.attach());
+                let _subscriber_span = tracing::info_span!("Enrich event with tenant id", trace_id = trace_id.as_ref()).entered();
 
                 tornado_meter_nats.events_received_counter.add(1, &[
                     meter_event_souce_label,

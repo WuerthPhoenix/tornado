@@ -7,6 +7,7 @@ use tokio::io::WriteHalf;
 use tokio::net::UnixStream;
 use tokio::time;
 use tokio_util::codec::{LinesCodec, LinesCodecError};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct UdsClientActor {
     restarted: bool,
@@ -74,8 +75,14 @@ impl Handler<EventMessage> for UdsClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
-        let _span = tracing::error_span!("UdsClientActor", trace_id).entered();
+        let _span =
+            tracing::error_span!("UdsClientActor", trace_id = tracing::field::Empty).entered();
+        let span =
+            tracing::error_span!("NatsPublisherActor", trace_id = tracing::field::Empty).entered();
+        let trace_id =
+            msg.event.get_trace_id_or_extract_from_context(Some(span.context()).as_ref());
+        span.record("trace_id", &trace_id.as_ref());
+
         trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.event);
 
         match &mut self.tx {

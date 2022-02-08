@@ -119,7 +119,7 @@ impl ActionResolver {
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn resolve(&self, data: &InternalEvent) -> Result<Action, MatcherError> {
         let mut action = Action {
-            trace_id: data.event.trace_id().map(|s| s.to_string()),
+            trace_id: data.event.trace_id().to_string(),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
@@ -139,7 +139,7 @@ impl ActionResolver {
         data: &InternalEvent,
     ) -> Result<(Action, ActionMetaData), MatcherError> {
         let mut action = Action {
-            trace_id: data.event.trace_id().map(|s| s.to_string()),
+            trace_id: data.event.trace_id().to_string(),
             id: self.id.to_owned(),
             payload: Map::new(),
         };
