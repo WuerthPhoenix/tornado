@@ -22,6 +22,7 @@ pub struct EventMessageWithReply {
     pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Message)]
