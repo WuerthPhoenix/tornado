@@ -56,6 +56,7 @@ impl Dispatcher {
 
     fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
+            let _parent_span = action.span.clone().entered();
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,

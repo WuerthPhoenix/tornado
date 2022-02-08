@@ -13,6 +13,7 @@ use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
+use tracing::Span;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
@@ -36,6 +37,7 @@ pub struct EventMessageAndConfigWithReply {
 #[rtype(result = "Result<(), error::MatcherError>")]
 pub struct EventMessage {
     pub event: Value,
+    pub span: Span,
 }
 
 #[derive(Message)]
@@ -127,12 +129,13 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
+        let _g = msg.span.clone().entered();
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let span = tracing::error_span!("MatcherActor", trace_id).entered();
+        let _g = tracing::error_span!("MatcherActor", trace_id).entered();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.process(&self.matcher, msg.event, false);
-        self.dispatcher_addr.try_send(ProcessedEventMessage { span: span.exit(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
+        self.dispatcher_addr.try_send(ProcessedEventMessage { span: msg.span, event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }

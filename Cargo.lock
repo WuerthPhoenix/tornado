@@ -3747,6 +3747,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4047,6 +4048,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4071,6 +4073,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4108,6 +4111,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]

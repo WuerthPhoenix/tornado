@@ -33,6 +33,7 @@ pub struct StringMessage {
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
 pub struct EventMessage {
     pub event: tornado_common_api::Event,
+    pub span: Span,
 }
 
 #[derive(Message)]

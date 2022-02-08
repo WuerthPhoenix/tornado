@@ -173,6 +173,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+        let _parent_span = msg.span.clone().entered();
         let _context_guard = msg.event.get_trace_context().map(|trace_context| {
             TelemetryContextExtractor::attach_trace_context(
                 trace_context,
