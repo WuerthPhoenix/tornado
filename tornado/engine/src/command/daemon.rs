@@ -351,44 +351,45 @@ pub async fn daemon(
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let master_span = tracing::info_span!("Engine", otel.kind = "Server");
-                let _master_guard = master_span.enter();
+                let (event, span) = master_span.in_scope(|| {
+                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();
 
-                let _subscriber_span_guard = tracing::info_span!("Receive NATS event").entered();
+                    let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
-                let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
+                    let mut event: Event = serde_json::from_slice(&msg.msg.data)
+                        .map_err(|err| {
+                            tornado_meter_nats.invalid_events_received_counter.add(1, &[
+                                meter_event_souce_label.clone(),
+                            ]);
+                            TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
+                        })?;
+                    event.remove_undesired_metadata();
 
-                let mut event: Event = serde_json::from_slice(&msg.msg.data)
-                    .map_err(|err| {
-                        tornado_meter_nats.invalid_events_received_counter.add(1, &[
-                            meter_event_souce_label.clone(),
-                        ]);
-                        TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
-                    })?;
-                event.remove_undesired_metadata();
+                    trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                    let trace_context = event.get_trace_context();
+                    let _context_guard = trace_context.map(
+                        |trace_context|
+                            TelemetryContextExtractor::attach_trace_context(trace_context, &trace_context_propagator)
+                    );
+                    let subscriber_span_trace_context = TelemetryContextInjector::get_trace_context_map(
+                        &master_span.context(),
+                        &trace_context_propagator
+                    );
+                    event.set_trace_context(subscriber_span_trace_context);
 
-                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-                let trace_context = event.get_trace_context();
-                let _context_guard = trace_context.map(
-                    |trace_context|
-                        TelemetryContextExtractor::attach_trace_context(trace_context, &trace_context_propagator)
-                );
-                let subscriber_span_trace_context = TelemetryContextInjector::get_trace_context_map(
-                    &master_span.context(),
-                    &trace_context_propagator
-                );
-                event.set_trace_context(subscriber_span_trace_context);
+                    tornado_meter_nats.events_received_counter.add(1, &[
+                        meter_event_souce_label,
+                        EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                    ]);
 
-                tornado_meter_nats.events_received_counter.add(1, &[
-                    meter_event_souce_label,
-                    EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
-                ]);
+                    let mut event = json!(event);
+                    for extractor in &nats_extractors {
+                        event = extractor.process(&msg.msg.subject, event)?;
+                    }
 
-                let mut event = json!(event);
-                for extractor in &nats_extractors {
-                    event = extractor.process(&msg.msg.subject, event)?;
-                }
-
-                matcher_addr_clone.try_send(EventMessage { event, span: master_span.clone() }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                    Ok((event, subscriber_span.exit()))
+                })?;
+                matcher_addr_clone.try_send(EventMessage { event, span }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
                 .await

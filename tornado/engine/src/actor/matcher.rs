@@ -130,13 +130,14 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
-        let _g = msg.span.clone().entered();
+        let _g = msg.span.entered();
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let _g = tracing::error_span!("MatcherActor", trace_id).entered();
+        let actor_span = tracing::error_span!("MatcherActor", trace_id);
+        let _actor_span_guard = actor_span.enter();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.process(&self.matcher, msg.event, false);
-        self.dispatcher_addr.try_send(ProcessedEventMessage { span: msg.span, event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
+        self.dispatcher_addr.try_send(ProcessedEventMessage { span: actor_span.clone(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }
