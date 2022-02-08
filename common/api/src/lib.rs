@@ -30,7 +30,6 @@ pub struct Event {
 }
 
 pub trait WithEventData {
-    fn trace_id(&self) -> Cow<str>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
     fn payload(&self) -> Option<&Payload>;
@@ -38,7 +37,6 @@ pub trait WithEventData {
     fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError>;
 }
 
-pub const EVENT_TRACE_ID: &str = "trace_id";
 pub const EVENT_TYPE: &str = "type";
 pub const EVENT_CREATED_MS: &str = "created_ms";
 pub const EVENT_PAYLOAD: &str = "payload";
@@ -48,14 +46,6 @@ const METADATA_TENANT_ID: &str = "tenant_id";
 const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [METADATA_TENANT_ID];
 
 impl WithEventData for Value {
-    fn trace_id(&self) -> Cow<str> {
-        if let Some(event_trace_id) = self.get(EVENT_TRACE_ID).and_then(|val| val.get_text()) {
-            Cow::Borrowed(event_trace_id)
-        } else {
-            Cow::Owned(opentelemetry::Context::current().span().span_context().trace_id().to_hex())
-        }
-    }
-
     fn event_type(&self) -> Option<&str> {
         self.get(EVENT_TYPE).and_then(|val| val.get_text())
     }
@@ -142,21 +132,16 @@ impl Event {
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
-    pub trace_id: String,
     pub id: String,
     pub payload: Payload,
 }
 
 impl Action {
-    pub fn new<T: Into<String>, S: Into<String>>(trace_id: T, id: S) -> Action {
-        Action::new_with_payload(trace_id, id, Map::new())
+    pub fn new<S: Into<String>>(id: S) -> Action {
+        Action::new_with_payload(id, Map::new())
     }
-    pub fn new_with_payload<T: Into<String>, S: Into<String>>(
-        trace_id: T,
-        id: S,
-        payload: Payload,
-    ) -> Action {
-        Action { trace_id: trace_id.into(), id: id.into(), payload }
+    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
+        Action { id: id.into(), payload }
     }
 }
 
@@ -690,12 +675,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_a_valid_uuid_as_trace_id() {
-        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
-    }
-
-    #[test]
-    fn deserializing_an_event_should_generate_trace_if_missing() {
+    fn deserializing_an_event_should_not_generate_trace_if_missing() {
         // Arrange
         let json = r#"
 {
@@ -709,8 +689,7 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -732,7 +711,7 @@ mod test {
     }
 
     #[test]
-    fn deserializing_an_event_should_generate_trace_if_null() {
+    fn deserializing_an_event_should_not_generate_trace_if_null() {
         // Arrange
         let json = r#"
 {
@@ -747,8 +726,7 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -767,17 +745,16 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert_eq!("abcdefghilmon", event.trace_id);
+        assert_eq!(Some("abcdefghilmon".to_string()), event.trace_id);
     }
 
     #[test]
-    fn generating_an_event_should_include_trace_id() {
+    fn generating_an_event_should_set_trace_id_to_none() {
         // Act
         let event = Event::new("hello");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -798,7 +775,6 @@ mod test {
         // Assert
         assert_eq!(Some(created_ms), value.created_ms());
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
-        assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
         assert_eq!(value.metadata().unwrap(), &Value::Object(Map::new()));
     }

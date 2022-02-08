@@ -12,7 +12,7 @@ use crate::model::{
 };
 use serde_json::{Map, Number, Value};
 use std::collections::HashMap;
-use tornado_common_api::{Action, WithEventData};
+use tornado_common_api::Action;
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -118,11 +118,7 @@ impl ActionResolver {
     /// Builds an Action by extracting the required data from the InternalEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn resolve(&self, data: &InternalEvent) -> Result<Action, MatcherError> {
-        let mut action = Action {
-            trace_id: data.event.trace_id().to_string(),
-            id: self.id.to_owned(),
-            payload: Map::new(),
-        };
+        let mut action = Action { id: self.id.to_owned(), payload: Map::new() };
 
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
@@ -138,11 +134,7 @@ impl ActionResolver {
         &self,
         data: &InternalEvent,
     ) -> Result<(Action, ActionMetaData), MatcherError> {
-        let mut action = Action {
-            trace_id: data.event.trace_id().to_string(),
-            id: self.id.to_owned(),
-            payload: Map::new(),
-        };
+        let mut action = Action { id: self.id.to_owned(), payload: Map::new() };
         let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {
@@ -311,7 +303,7 @@ mod test {
     use super::*;
     use maplit::*;
     use serde_json::json;
-    use tornado_common_api::{Event, Payload, ValueExt};
+    use tornado_common_api::{Event, Payload, ValueExt, WithEventData};
 
     #[test]
     fn should_build_a_matcher_action() {
@@ -392,7 +384,6 @@ mod test {
         assert_eq!(&event.created_ms().unwrap(), result.payload.get("created_ms").unwrap());
         assert_eq!(&"var_test_1_value", &result.payload.get("var_test_1").unwrap());
         assert_eq!(&"var_test_2_value", &result.payload.get("var_test_2").unwrap());
-        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 
     #[test]
@@ -890,24 +881,5 @@ mod test {
             },
         };
         assert_eq!(expected_action_meta_data, action_meta_data);
-    }
-
-    #[test]
-    fn processed_action_should_have_same_trace_id_than_the_event() {
-        // Arrange
-        let config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
-
-        let rule_name = "rule_for_test";
-        let config = vec![config_action];
-        let matcher_actions = ActionResolverBuilder::new().build_all(rule_name, &config).unwrap();
-        let matcher_action = &matcher_actions[0];
-
-        let event = json!(Event::new("event_type_value".to_owned()));
-
-        // Act
-        let result = matcher_action.resolve(&(&event, &mut Value::Null).into()).unwrap();
-
-        // Assert
-        assert_eq!(&event.trace_id(), &result.trace_id.as_deref());
     }
 }

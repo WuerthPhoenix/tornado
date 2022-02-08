@@ -56,11 +56,7 @@ mod test {
         );
 
         // Act
-        bus.publish_action(Action {
-            trace_id: None,
-            id: String::from(action_id),
-            payload: Map::new(),
-        });
+        bus.publish_action(Action { id: String::from(action_id), payload: Map::new() });
 
         // Assert
         let value = &*received.lock().unwrap();

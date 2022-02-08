@@ -208,7 +208,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
         action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
@@ -255,7 +255,7 @@ mod test {
         for i in 0..attempts {
             let event = Event::new(format!("event-name-{}", i));
             sent_events.push(event.clone());
-            let mut action = Action::new("", format!("action-{}", i));
+            let mut action = Action::new(format!("action-{}", i));
             action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
             action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
             action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
@@ -299,7 +299,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
         action.payload.insert("key_one".to_owned(), Value::String("../".to_owned()));
@@ -330,7 +330,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
 
@@ -359,7 +359,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("two".to_owned()));
 
@@ -389,7 +389,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
 
         // Act
