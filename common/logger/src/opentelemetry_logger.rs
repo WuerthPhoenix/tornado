@@ -5,7 +5,7 @@ use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::sdk::trace::{config, SamplingDecision, SamplingResult, ShouldSample, Tracer};
 use opentelemetry::sdk::Resource;
 use opentelemetry::trace::{Link, SpanKind, TraceContextExt, TraceId, TraceState};
-use opentelemetry::{Context, ContextGuard, KeyValue};
+use opentelemetry::{Context, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde_json::{Map, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -131,13 +131,6 @@ impl Extractor for TelemetryContextExtractor<'_> {
 }
 
 impl TelemetryContextExtractor<'_> {
-    pub fn attach_trace_context(
-        trace_context: &Map<String, Value>,
-        trace_context_propagator: &TraceContextPropagator,
-    ) -> ContextGuard {
-        trace_context_propagator.extract(&TelemetryContextExtractor(trace_context)).attach()
-    }
-
     pub fn get_trace_context(
         trace_context: &Map<String, Value>,
         trace_context_propagator: &TraceContextPropagator,

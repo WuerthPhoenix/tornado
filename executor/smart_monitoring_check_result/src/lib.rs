@@ -305,7 +305,7 @@ mod test {
         )
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -346,7 +346,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
@@ -392,7 +392,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "host".to_owned(),
             json!(hashmap!(
@@ -442,7 +442,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert("host".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
@@ -489,7 +489,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
@@ -543,7 +543,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),

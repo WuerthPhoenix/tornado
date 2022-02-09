@@ -1,7 +1,9 @@
 use chrono::prelude::Local;
 use error::CommonError;
+use opentelemetry::trace::TraceContextExt;
+use opentelemetry::Context;
 use partial_ordering::PartialOrdering;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -20,9 +22,9 @@ pub type Number = serde_json::Number;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
-    #[serde(default = "default_trace_id")]
-    #[serde(deserialize_with = "deserialize_null_trace_id")]
-    pub trace_id: String,
+    // This trace_id is needed for retro-compatibility with collectors sending
+    // trace_id as a field instead of sending in the trace_context
+    pub trace_id: Option<String>,
     #[serde(rename = "type")]
     pub event_type: String,
     pub created_ms: u64,
@@ -38,7 +40,6 @@ pub struct TracedEvent {
 }
 
 pub trait WithEventData {
-    fn trace_id(&self) -> Option<&str>;
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
     fn payload(&self) -> Option<&Payload>;
@@ -46,7 +47,6 @@ pub trait WithEventData {
     fn add_to_metadata(&mut self, key: String, value: Value) -> Result<(), CommonError>;
 }
 
-pub const EVENT_TRACE_ID: &str = "trace_id";
 pub const EVENT_TYPE: &str = "type";
 pub const EVENT_CREATED_MS: &str = "created_ms";
 pub const EVENT_PAYLOAD: &str = "payload";
@@ -56,10 +56,6 @@ const METADATA_TENANT_ID: &str = "tenant_id";
 const METADATA_FIELDS_TO_DISCARD: [&str; 1] = [METADATA_TENANT_ID];
 
 impl WithEventData for Value {
-    fn trace_id(&self) -> Option<&str> {
-        self.get(EVENT_TRACE_ID).and_then(|val| val.get_text())
-    }
-
     fn event_type(&self) -> Option<&str> {
         self.get(EVENT_TYPE).and_then(|val| val.get_text())
     }
@@ -99,19 +95,6 @@ impl WithEventData for Value {
     }
 }
 
-#[inline]
-fn default_trace_id() -> String {
-    uuid::Uuid::new_v4().to_string()
-}
-
-fn deserialize_null_trace_id<'de, D>(deserializer: D) -> Result<String, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let opt = Option::deserialize(deserializer)?;
-    Ok(opt.unwrap_or_else(default_trace_id))
-}
-
 impl Event {
     pub fn new<S: Into<String>>(event_type: S) -> Event {
         Event::new_with_payload(event_type, Map::new())
@@ -121,11 +104,22 @@ impl Event {
         let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
         let created_ms = dt.timestamp_millis() as u64;
         Event {
-            trace_id: default_trace_id(),
+            trace_id: None,
             event_type: event_type.into(),
             created_ms,
             payload,
             metadata: Map::default(),
+        }
+    }
+
+    // Returns the event.trace_id if it is defined.
+    // If event.trace_id is not defined returns the trace id of the passed context.
+    // If the passed context is None, returns an empty string.
+    pub fn get_trace_id_for_logging(&self, context: Option<&Context>) -> Cow<str> {
+        match (&self.trace_id, context) {
+            (Some(event_trace_id), _) => Cow::Borrowed(event_trace_id),
+            (None, Some(context)) => Cow::Owned(context.span().span_context().trace_id().to_hex()),
+            (None, None) => Cow::Owned("".to_owned()),
         }
     }
 
@@ -151,7 +145,6 @@ impl Event {
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Action {
-    pub trace_id: Option<String>,
     pub id: String,
     pub payload: Payload,
 }
@@ -163,15 +156,11 @@ pub struct TracedAction {
 }
 
 impl Action {
-    pub fn new<T: Into<String>, S: Into<String>>(trace_id: T, id: S) -> Action {
-        Action::new_with_payload(trace_id, id, Map::new())
+    pub fn new<S: Into<String>>(id: S) -> Action {
+        Action::new_with_payload(id, Map::new())
     }
-    pub fn new_with_payload<T: Into<String>, S: Into<String>>(
-        trace_id: T,
-        id: S,
-        payload: Payload,
-    ) -> Action {
-        Action { trace_id: Some(trace_id.into()), id: id.into(), payload }
+    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
+        Action { id: id.into(), payload }
     }
 }
 
@@ -705,12 +694,7 @@ mod test {
     }
 
     #[test]
-    fn should_return_a_valid_uuid_as_trace_id() {
-        assert!(uuid::Uuid::parse_str(&default_trace_id()).is_ok());
-    }
-
-    #[test]
-    fn deserializing_an_event_should_generate_trace_if_missing() {
+    fn deserializing_an_event_should_not_generate_trace_if_missing() {
         // Arrange
         let json = r#"
 {
@@ -724,8 +708,7 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -747,7 +730,7 @@ mod test {
     }
 
     #[test]
-    fn deserializing_an_event_should_generate_trace_if_null() {
+    fn deserializing_an_event_should_not_generate_trace_if_null() {
         // Arrange
         let json = r#"
 {
@@ -762,8 +745,7 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -782,17 +764,16 @@ mod test {
         let event: Event = serde_json::from_str(json).expect("should add a trace_id");
 
         // Assert
-        assert_eq!("abcdefghilmon", event.trace_id);
+        assert_eq!(Some("abcdefghilmon".to_string()), event.trace_id);
     }
 
     #[test]
-    fn generating_an_event_should_include_trace_id() {
+    fn generating_an_event_should_set_trace_id_to_none() {
         // Act
         let event = Event::new("hello");
 
         // Assert
-        assert!(!event.trace_id.is_empty());
-        assert!(uuid::Uuid::parse_str(&event.trace_id).is_ok());
+        assert!(event.trace_id.is_none());
     }
 
     #[test]
@@ -813,7 +794,6 @@ mod test {
         // Assert
         assert_eq!(Some(created_ms), value.created_ms());
         assert_eq!(Some(event.event_type.as_str()), value.event_type());
-        assert_eq!(Some(event.trace_id.as_str()), value.trace_id());
         assert_eq!(Some(&payload), value.payload());
         assert_eq!(value.metadata().unwrap(), &Value::Object(Map::new()));
     }
@@ -976,5 +956,49 @@ mod test {
 
         // Assert
         assert_eq!(res, &expected)
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_event_traceid_if_some() {
+        // Arrange
+        let mut event = Event::new("some_type");
+        let trace_id = "some_trace";
+        event.trace_id = Some(trace_id.to_owned());
+        let context = Context::new();
+
+        // Act
+        let res = event.get_trace_id_for_logging(Some(&context));
+
+        // Assert
+        assert_eq!(res.as_ref(), trace_id);
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_context_traceid_if_event_traceid_is_none()
+    {
+        // Arrange
+        let mut event = Event::new("some_type");
+        event.trace_id = None;
+        let context = Context::new();
+
+        // Act
+        let res = event.get_trace_id_for_logging(Some(&context));
+
+        // Assert
+        assert_eq!(res.as_ref(), "00000000000000000000000000000000");
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_empty_traceid_if_event_and_contect_traceid_are_none(
+    ) {
+        // Arrange
+        let mut event = Event::new("some_type");
+        event.trace_id = None;
+
+        // Act
+        let res = event.get_trace_id_for_logging(None);
+
+        // Assert
+        assert_eq!(res.as_ref(), "");
     }
 }
