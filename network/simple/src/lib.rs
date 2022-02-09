@@ -33,7 +33,7 @@ impl EventBus for SimpleEventBus {
 
 #[cfg(test)]
 mod test {
-    use tornado_common_api::{Action, Map};
+    use tornado_common_api::{Action, Map, TracedAction};
 
     use super::*;
     use std::sync::{Arc, Mutex};
@@ -50,20 +50,16 @@ mod test {
         bus.subscribe_to_action(
             action_id,
             Box::new(move |message: ActionMessage| {
-                println!("received action of id: {}", message.action.id);
+                println!("received action of id: {}", message.0.action.id);
                 let mut value = clone.lock().unwrap();
-                *value = message.action.id.clone();
+                *value = message.0.action.id.clone();
             }),
         );
 
-        let action = ActionMessage {
+        let action = ActionMessage(TracedAction {
             span: Span::current(),
-            action: Arc::new(Action {
-                trace_id: None,
-                id: String::from(action_id),
-                payload: Map::new(),
-            }),
-        };
+            action: Arc::new(Action { id: String::from(action_id), payload: Map::new() }),
+        });
 
         // Act
         bus.publish_action(action);

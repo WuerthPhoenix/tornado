@@ -347,7 +347,7 @@ mod test {
         let result = executor.execute(action.into()).await;
 
         // Assert
-        let executor = ForEachExecutor::assert!(result.is_ok());
+        assert!(result.is_ok());
 
         let lock = execution_results.read().unwrap();
         assert_eq!(2, lock.len());
@@ -362,14 +362,20 @@ mod test {
             let mut payload = Map::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_one.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_one", payload),
+                action_one.get(0).unwrap().0.action.deref()
+            );
         }
 
         {
             let mut payload = Map::new();
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_one.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_one", payload),
+                action_one.get(1).unwrap().0.action.deref()
+            );
         }
 
         let action_two = lock.get("id_two").unwrap();
@@ -381,7 +387,10 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::String("a first_item bb <first_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(0).unwrap().0.action.deref()
+            );
         }
 
         {
@@ -390,7 +399,10 @@ mod test {
                 "item_with_interpolation".to_owned(),
                 Value::String("a second_item bb <second_item>".to_owned()),
             );
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(1).unwrap().0.action.deref()
+            );
         }
     }
 
@@ -482,13 +494,19 @@ mod test {
         {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(0).unwrap().0.action.deref()
+            );
         }
 
         {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_two", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(1).unwrap().0.action.deref()
+            );
         }
     }
 
@@ -565,13 +583,19 @@ mod test {
         {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(0).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_one", payload),
+                action_two.get(0).unwrap().0.action.deref()
+            );
         }
 
         {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
-            assert_eq!(&Action::new_with_payload("id_one", payload), action_two.get(1).unwrap());
+            assert_eq!(
+                &Action::new_with_payload("id_one", payload),
+                action_two.get(1).unwrap().0.action.deref()
+            );
         }
     }
 
@@ -631,7 +655,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_map().unwrap();
+        let value = lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = Map::new();
         expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
@@ -694,7 +718,8 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_array().unwrap();
+        let value =
+            lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_array().unwrap();
         let mut expected_array = vec![];
         expected_array.push(Value::String("first".to_owned()));
         expected_array.push(Value::String("second".to_owned()));

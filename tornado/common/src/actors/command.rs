@@ -91,6 +91,7 @@ mod test {
     use crate::root_test::prometheus_exporter;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::time::Duration;
+    use tornado_common_api::TracedAction;
     use tornado_common_metrics::prometheus::{Encoder, TextEncoder};
 
     #[actix_rt::test]
@@ -102,7 +103,7 @@ mod test {
         let action_id = format!("{}", rand::random::<usize>());
         let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
-        let message = ActionMessage { action, span };
+        let message = ActionMessage(TracedAction { action, span });
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
 
         let stateless_executor_command = StatelessExecutorCommand::new(
@@ -145,7 +146,7 @@ mod test {
         let action_id = format!("{}", rand::random::<usize>());
         let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
-        let message = ActionMessage { action, span };
+        let message = ActionMessage(TracedAction { action, span });
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
         let stateless_executor_command = StatelessExecutorCommand::new(
             action_meter.clone(),

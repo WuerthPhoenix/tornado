@@ -94,9 +94,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -133,9 +133,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -170,9 +170,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
