@@ -1,5 +1,6 @@
 use log::*;
 use std::sync::Arc;
+use tornado_common::actors::message::ActionMessage;
 use tornado_common_api::{Action, Map, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
@@ -58,8 +59,14 @@ impl StatelessExecutor for ForEachExecutor {
 
                         let mut item = Map::new();
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(action)) {
+
+                        let result = resolve_action(&Value::Object(item), action.clone())
+                            .map(|action| self.bus.publish_action(ActionMessage {
+                                action: Arc::new(action),
+                                span: tracing::Span::current()
+                            }));
+
+                        if let Err(err) = result {
                             warn!(
                                 "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
                                 action.id, err

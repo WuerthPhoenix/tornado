@@ -835,10 +835,10 @@ mod test {
     fn should_remove_undesired_metadata() {
         // Arrange
         let mut event_with_only_tenant_id = Event::new("mytype");
-        let mut metadata_teantn_id = serde_json::Map::new();
-        metadata_teantn_id
+        let mut metadata_tenant_id = serde_json::Map::new();
+        metadata_tenant_id
             .insert(METADATA_TENANT_ID.to_owned(), Value::String("tenantA".parse().unwrap()));
-        event_with_only_tenant_id.metadata = metadata_teantn_id;
+        event_with_only_tenant_id.metadata = metadata_tenant_id;
 
         let mut event_with_tenant_id_and_other = Event::new("mytype");
         let mut metadata_tenant_id_and_other = serde_json::Map::new();

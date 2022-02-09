@@ -17,6 +17,7 @@ use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tracing_actix_web::root_span_macro::private::tracing;
 use tracing_actix_web::TracingLogger;
 
 mod config;
@@ -158,7 +159,7 @@ where
             .service(
             create_app(webhooks_config.clone(), || {
                 let clone = actor_address.clone();
-                move |event| clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
+                move |event| clone.try_send(EventMessage { event, span: tracing::Span::current() }).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
             })
             // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
             .unwrap_or_else(|err| {

@@ -3747,6 +3747,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -3855,6 +3856,7 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
  "tornado_common_parser",
@@ -3935,11 +3937,13 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_common_parser",
  "tornado_executor_common",
  "tornado_network_common",
  "tornado_network_simple",
+ "tracing",
 ]
 
 [[package]]
@@ -4044,6 +4048,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4068,12 +4073,14 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
 name = "tornado_network_common"
 version = "0.0.1"
 dependencies = [
+ "tornado_common",
  "tornado_common_api",
 ]
 
@@ -4081,6 +4088,7 @@ dependencies = [
 name = "tornado_network_simple"
 version = "0.0.1"
 dependencies = [
+ "tornado_common",
  "tornado_common_api",
  "tornado_network_common",
 ]
@@ -4103,6 +4111,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]

@@ -58,7 +58,7 @@ where
             }
             match collector.to_event(&buf) {
                 Ok(event) => {
-                    tcp.try_send(EventMessage { event }).unwrap_or_else(|err| error!("EmailReaderActor -  Error while sending ProcessedEventMessage to TornadoConnectionChannel actor. Error: {}", err));
+                    tcp.try_send(EventMessage { event, span: tracing::Span::current() }).unwrap_or_else(|err| error!("EmailReaderActor -  Error while sending ProcessedEventMessage to TornadoConnectionChannel actor. Error: {}", err));
                 }
                 Err(e) => error!("Error processing incoming email. Err: {:?}", e),
             };
