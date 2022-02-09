@@ -366,7 +366,7 @@ pub async fn daemon(
                     let event_trace_context = event.get_trace_context().map(|event_trace_context|
                         TelemetryContextExtractor::get_trace_context(event_trace_context, &trace_context_propagator)
                     );
-                    let trace_id = event.get_trace_id_or_extract_from_context(event_trace_context.as_ref());
+                    let trace_id = event.get_trace_id_for_logging(event_trace_context.as_ref());
                     master_span.record("trace_id", &trace_id.as_ref());
 
                     tornado_meter_nats.events_received_counter.add(1, &[
