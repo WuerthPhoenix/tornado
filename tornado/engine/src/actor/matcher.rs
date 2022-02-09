@@ -130,10 +130,8 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
-        let span = tracing::error_span!("MatcherActor").entered();
         let _g = msg.span.entered();
-        let trace_id = msg.event.trace_id().unwrap_or_default();
-        let actor_span = tracing::error_span!("MatcherActor", trace_id);
+        let actor_span = tracing::error_span!("MatcherActor");
         let _actor_span_guard = actor_span.enter();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 

@@ -77,14 +77,10 @@ impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let _parent_span = msg.span.clone().entered();
-        let trace_id = msg.event.trace_id.as_str();
-        let _span = tracing::error_span!("TcpClientActor", trace_id).entered();
-        let span =
-            tracing::error_span!("TcpClientActor", trace_id = tracing::field::Empty).entered();
+        let parent_span = msg.span.clone().entered();
         let trace_id =
-            msg.event.get_trace_id_or_extract_from_context(Some(span.context()).as_ref());
-        span.record("trace_id", &trace_id.as_ref());
+            msg.event.get_trace_id_or_extract_from_context(Some(parent_span.context()).as_ref());
+        let _span = tracing::error_span!("TcpClientActor", trace_id = trace_id.as_ref()).entered();
 
         trace!("TcpClientActor - Handling Event to be sent through TCP - {:?}", &msg.event);
 
