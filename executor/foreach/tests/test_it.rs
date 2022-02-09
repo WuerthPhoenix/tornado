@@ -40,6 +40,7 @@ async fn should_convert_value_to_action() {
 
     // Assert
     let lock = execution_results.read().unwrap();
+    let result: Vec<_> = lock.deref().iter().map(|msg| msg.action.deref().clone()).collect();
     assert_eq!(7, lock.len());
-    assert_eq!(&expected, lock.deref());
+    assert_eq!(&expected, &result);
 }

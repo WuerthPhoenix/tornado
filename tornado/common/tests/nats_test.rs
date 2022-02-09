@@ -22,6 +22,7 @@ use tornado_common::actors::nats_publisher::{
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
+use tracing::Span;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -201,7 +202,7 @@ async fn nats_publisher_should_publish_to_nats() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
 
     let mut received_event: Event =
         serde_json::from_slice(receiver.recv().await.unwrap().as_slice()).unwrap();
@@ -249,7 +250,7 @@ async fn should_publish_to_nats() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
 
     let mut received: Event =
         serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
@@ -306,7 +307,7 @@ async fn should_publish_to_nats_with_tls() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
 
     let mut received: Event =
         serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
@@ -338,7 +339,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
 
     info!("Publisher started");
 
@@ -425,7 +426,7 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
 
     while !received && max_attempts > 0 {
         max_attempts -= 1;
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
         time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
         received = receiver.recv().await.is_some();
         if received {
@@ -500,7 +501,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         // is subscribed. The message would then be not received.
         loop {
             if *(subscriber_connected.read().unwrap()) {
-                publisher.do_send(EventMessage { event: event.clone() });
+                publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
                 break;
             }
             info!("Subscriber not yet connected, delaying publishing");
@@ -522,7 +523,7 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
             nats_is_up = false;
         };
 
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
         in_flight_messages += 1;
 
         if nats_is_up {
@@ -574,7 +575,7 @@ async fn publisher_should_reschedule_all_events_after_a_disconnection() {
 
     for i in 0..n_events {
         info!("Sending event to publisher: {}", i);
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher.do_send(EventMessage { event: event.clone(), span: Span::current() });
         time::sleep(time::Duration::from_millis(100)).await;
     }
 

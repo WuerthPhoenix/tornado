@@ -33,10 +33,11 @@ impl EventBus for SimpleEventBus {
 
 #[cfg(test)]
 mod test {
-    use tornado_common_api::Map;
+    use tornado_common_api::{Action, Map};
 
     use super::*;
     use std::sync::{Arc, Mutex};
+    use tracing::Span;
 
     #[test]
     fn should_subscribe_and_be_called() {
@@ -48,19 +49,24 @@ mod test {
         let clone = received.clone();
         bus.subscribe_to_action(
             action_id,
-            Box::new(move |message: Action| {
-                println!("received action of id: {}", message.id);
+            Box::new(move |message: ActionMessage| {
+                println!("received action of id: {}", message.action.id);
                 let mut value = clone.lock().unwrap();
-                *value = message.id.clone();
+                *value = message.action.id.clone();
             }),
         );
 
+        let action = ActionMessage {
+            span: Span::current(),
+            action: Arc::new(Action {
+                trace_id: None,
+                id: String::from(action_id),
+                payload: Map::new(),
+            }),
+        };
+
         // Act
-        bus.publish_action(Action {
-            trace_id: None,
-            id: String::from(action_id),
-            payload: Map::new(),
-        });
+        bus.publish_action(action);
 
         // Assert
         let value = &*received.lock().unwrap();
