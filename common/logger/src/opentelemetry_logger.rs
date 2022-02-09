@@ -137,6 +137,13 @@ impl TelemetryContextExtractor<'_> {
     ) -> ContextGuard {
         trace_context_propagator.extract(&TelemetryContextExtractor(trace_context)).attach()
     }
+
+    pub fn get_trace_context(
+        trace_context: &Map<String, Value>,
+        trace_context_propagator: &TraceContextPropagator,
+    ) -> Context {
+        trace_context_propagator.extract(&TelemetryContextExtractor(trace_context))
+    }
 }
 
 #[cfg(test)]
