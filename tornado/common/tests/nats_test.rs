@@ -9,7 +9,7 @@ use std::time::Duration;
 use actix::clock::sleep;
 use log::*;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Map, Number, Value};
 use serial_test::serial;
 use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
@@ -171,7 +171,13 @@ async fn nats_publisher_should_publish_to_nats() {
 
     let random: u8 = rand::random();
     let subject = format!("test_subject_{}", random);
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert(
+        "some_metadata".to_owned(),
+        Value::Array(vec![Value::String("val1".to_owned()), Value::String("val2".to_owned())]),
+    );
+    event.metadata = metadata;
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -197,7 +203,10 @@ async fn nats_publisher_should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap());
+    let mut received_event: Event =
+        serde_json::from_slice(receiver.recv().await.unwrap().as_slice()).unwrap();
+    received_event.metadata.remove("trace_context");
+    assert_eq!(event, received_event);
 }
 
 #[actix_rt::test]
@@ -209,7 +218,10 @@ async fn should_publish_to_nats() {
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -239,7 +251,11 @@ async fn should_publish_to_nats() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]
@@ -251,7 +267,10 @@ async fn should_publish_to_nats_with_tls() {
     let nats_address = format!("localhost:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -289,7 +308,11 @@ async fn should_publish_to_nats_with_tls() {
     .unwrap();
     publisher.do_send(EventMessage { event: event.clone() });
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]
@@ -586,7 +609,7 @@ fn start_logger() {
         file_output_path: None,
         tracing_elastic_apm: ApmTracingConfig {
             apm_output: false,
-            apm_server_url: "".to_owned(),
+            apm_server_url: "http://localhost:8200".to_owned(),
             apm_server_api_credentials: None,
         },
     };

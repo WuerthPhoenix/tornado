@@ -65,7 +65,7 @@ mod test {
     use super::*;
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use std::sync::{Arc, Mutex};
-    use tornado_common_api::{Value, Map};
+    use tornado_common_api::{Map, Value};
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -92,16 +92,8 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { trace_id: None, id: action_id.clone(), payload: Map::new() });
+        rule.actions.push(Action { trace_id: None, id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -138,11 +130,7 @@ mod test {
         let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { trace_id: None, id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -180,11 +168,7 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { trace_id: None, id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Filter {
             name: "".to_owned(),

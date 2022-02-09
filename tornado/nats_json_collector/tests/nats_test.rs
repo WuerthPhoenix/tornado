@@ -12,7 +12,7 @@ use tornado_common::actors::nats_publisher::{
     NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
-use tornado_common_api::{Event, Value, Map};
+use tornado_common_api::{Event, Map, Value};
 use tornado_nats_json_collector::config::{NatsJsonCollectorConfig, TornadoConnectionChannel};
 use tornado_nats_json_collector::*;
 
@@ -72,7 +72,12 @@ async fn should_subscribe_to_nats_topics() {
         let vsphere_publisher = new_publisher(nats_address.to_owned(), "vsphere".to_owned()).await;
 
         let event_type = format!("event_type_{}", random);
-        let source = Event::new(event_type.clone());
+        let mut source = Event::new(event_type.clone());
+        let mut metadata = Map::new();
+        metadata.insert("some_metadata11".to_owned(), Value::Number(serde_json::Number::from(1)));
+        metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
+        source.metadata = metadata;
+
         vsphere_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
@@ -90,7 +95,11 @@ async fn should_subscribe_to_nats_topics() {
             new_publisher(nats_address.to_owned(), "another_topic".to_owned()).await;
 
         let event_type = format!("another_event_type_{}", random);
-        let source = Event::new(event_type.clone());
+        let mut source = Event::new(event_type.clone());
+        let mut metadata = Map::new();
+        metadata.insert("some_metadata".to_owned(), Value::Number(serde_json::Number::from(1)));
+        metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
+        source.metadata = metadata;
         another_topic_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();
@@ -108,7 +117,11 @@ async fn should_subscribe_to_nats_topics() {
             new_publisher(nats_address.to_owned(), "vsphere_simple".to_owned()).await;
 
         let event_type = format!("another_event_type_{}", random);
-        let source = Event::new(event_type.clone());
+        let mut source = Event::new(event_type.clone());
+        let mut metadata = Map::new();
+        metadata.insert("some_metadata1".to_owned(), Value::Number(serde_json::Number::from(1)));
+        metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
+        source.metadata = metadata;
         vsphere_simple_publisher.do_send(EventMessage { event: source.clone() });
 
         let received = receiver.recv().await.unwrap();

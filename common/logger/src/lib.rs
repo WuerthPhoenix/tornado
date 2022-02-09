@@ -1,17 +1,18 @@
-use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
+use crate::elastic_apm::ApmTracingConfig;
+use crate::opentelemetry_logger::get_opentelemetry_tracer;
 use arc_swap::ArcSwap;
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::util::SubscriberInitExt;
 use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_elastic_apm::config::Authorization;
-use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 use tracing_subscriber::filter::{filter_fn, Targets};
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::{fmt, layer::SubscriberExt, Layer, Registry};
 
 pub mod elastic_apm;
+pub mod opentelemetry_logger;
 
 /// Defines the Logger configuration.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -168,42 +169,28 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
         let stdout_enabled = stdout_enabled.clone();
 
         (
-            fmt::Layer::new().with_writer(non_blocking).with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
+            fmt::Layer::new()
+                .with_writer(non_blocking)
+                .with_filter(filter_fn(move |_meta| stdout_enabled.load(Ordering::Relaxed))),
             Some(stdout_guard),
         )
     };
 
-    let (apm_layer, apm_enabled) = {
-        let apm_tracing_config = logger_config.tracing_elastic_apm.clone();
-        let mut apm_config = tracing_elastic_apm::config::Config::new(
-            logger_config.tracing_elastic_apm.apm_server_url.clone(),
-        );
-        apm_config = if let Some(apm_server_api_credentials) =
-            logger_config.tracing_elastic_apm.apm_server_api_credentials.clone()
-        {
-            apm_config.with_authorization(Authorization::ApiKey(apm_server_api_credentials.into()))
-        } else {
-            apm_config
-        };
-        let apm_layer = tracing_elastic_apm::new_layer(get_current_service_name()?, apm_config)
-            .map_err(|err| LoggerError::LoggerConfigurationError {
-                message: format!(
-                    "Could not create APM tracing layer for the logger. Err: {:?}",
-                    err
-                ),
-            })?;
-        let enabled = Arc::new(AtomicBool::new(apm_tracing_config.apm_output));
-        let enabled_clone = enabled.clone();
+    let apm_enabled = Arc::new(AtomicBool::new(logger_config.tracing_elastic_apm.apm_output));
 
-        (apm_layer.with_filter(filter_fn(move |_meta| enabled.load(Ordering::Relaxed))), enabled_clone)
-    } ;
+    let apm_opentelemetry_layer = {
+        let tracer =
+            get_opentelemetry_tracer(&logger_config.tracing_elastic_apm, apm_enabled.clone())?;
+        tracing_opentelemetry::layer().with_tracer(tracer)
+    };
 
     tracing_subscriber::registry()
         .with(reloadable_env_filter)
         .with(file_subscriber)
         .with(stdout_subscriber)
-        .with(apm_layer)
-        .try_init().map_err(|err| LoggerError::LoggerConfigurationError {
+        .with(apm_opentelemetry_layer)
+        .try_init()
+        .map_err(|err| LoggerError::LoggerConfigurationError {
             message: format!("Cannot start the logger. err: {:?}", err),
         })?;
 
