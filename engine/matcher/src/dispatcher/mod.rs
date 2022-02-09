@@ -3,6 +3,7 @@ use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
+use tornado_common_api::TracedAction;
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
@@ -31,9 +32,11 @@ impl Dispatcher {
                             let actions = rule
                                 .actions
                                 .into_iter()
-                                .map(|action| ActionMessage {
-                                    span: tracing::Span::current(),
-                                    action: Arc::new(action),
+                                .map(|action| {
+                                    ActionMessage(TracedAction {
+                                        span: tracing::Span::current(),
+                                        action: Arc::new(action),
+                                    })
                                 })
                                 .collect();
                             self.dispatch(actions)?
@@ -57,11 +60,11 @@ impl Dispatcher {
 
     fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
-            let _parent_span = action.span.clone().entered();
+            let _parent_span = action.0.span.clone().entered();
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
-                action_id = action.action.id.as_str(),
+                action_id = action.0.action.id.as_str(),
             )
             .entered();
             self.event_bus.publish_action(action)

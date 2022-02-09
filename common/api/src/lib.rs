@@ -5,6 +5,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tracing::Span;
 
 pub mod error;
 pub mod partial_ordering;
@@ -27,6 +29,12 @@ pub struct Event {
     pub payload: Payload,
     #[serde(default)]
     pub metadata: Map<String, Value>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TracedEvent {
+    pub event: Event,
+    pub span: Span,
 }
 
 pub trait WithEventData {
@@ -146,6 +154,12 @@ pub struct Action {
     pub trace_id: Option<String>,
     pub id: String,
     pub payload: Payload,
+}
+
+#[derive(Debug, Clone)]
+pub struct TracedAction {
+    pub span: Span,
+    pub action: Arc<Action>,
 }
 
 impl Action {

@@ -47,7 +47,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
         let command = self.command.clone();
         let action_meter = self.action_meter.clone();
 
-        let action = msg.action;
+        let action = msg.0.action;
         actix::spawn(
             async move {
                 let action_id = action.id.clone();
@@ -77,7 +77,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                     }
                 }
             }
-            .instrument(msg.span),
+            .instrument(msg.0.span),
         );
         Ok(())
     }

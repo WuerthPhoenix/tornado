@@ -11,7 +11,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
-use tornado_common_api::Value;
+use tornado_common_api::{TracedEvent, Value};
 
 pub mod config;
 
@@ -97,7 +97,7 @@ async fn subscribe_to_topics(
                     })?;
 
                 recipient_clone
-                    .try_send(EventMessage { event, span: tracing::Span::current() })
+                    .try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() }))
                     .map_err(|err| TornadoCommonActorError::GenericError {
                         message: format!("{}", err),
                     })

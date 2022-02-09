@@ -1,7 +1,7 @@
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
-use tornado_common_api::{Action, Map, Value};
+use tornado_common_api::{Action, Map, TracedAction, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
@@ -62,10 +62,10 @@ impl StatelessExecutor for ForEachExecutor {
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
 
                         let result = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(ActionMessage {
+                            .map(|action| self.bus.publish_action(ActionMessage (TracedAction {
                                 action: Arc::new(action),
                                 span: tracing::Span::current()
-                            }));
+                            })));
 
                         if let Err(err) = result {
                             warn!(

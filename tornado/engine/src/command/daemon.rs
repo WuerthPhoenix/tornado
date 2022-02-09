@@ -242,12 +242,12 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |message| {
-                let _span = message.span.clone().entered();
+                let _span = message.0.span.clone().entered();
                 action_meter
                     .actions_received_counter
-                    .add(1, &[ACTION_ID_LABEL_KEY.string(message.action.id.to_owned())]);
+                    .add(1, &[ACTION_ID_LABEL_KEY.string(message.0.action.id.to_owned())]);
 
-                let send_result = match message.action.id.as_ref() {
+                let send_result = match message.0.action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'archive' executor. Err: {:?}", err)
@@ -303,7 +303,7 @@ pub async fn daemon(
                             )
                         }),
 
-                    _ => Err(format!("There are not executors for action id [{}]", &message.action.id)),
+                    _ => Err(format!("There are not executors for action id [{}]", &message.0.action.id)),
                 };
                 if let Err(error_message) = send_result {
                     error!("{}", error_message)

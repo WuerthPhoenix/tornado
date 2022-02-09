@@ -25,7 +25,7 @@ impl SimpleEventBus {
 
 impl EventBus for SimpleEventBus {
     fn publish_action(&self, message: ActionMessage) {
-        if let Some(handler) = self.subscribers.get(&message.action.id) {
+        if let Some(handler) = self.subscribers.get(&message.0.action.id) {
             handler(message)
         };
     }

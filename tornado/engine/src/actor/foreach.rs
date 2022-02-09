@@ -38,10 +38,10 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
-        trace!("ForEachExecutorActor - received new action [{:?}]", &msg.action);
+        trace!("ForEachExecutorActor - received new action [{:?}]", &msg.0.action);
 
         if let Some(executor) = &self.executor {
-            let action = msg.action;
+            let action = msg.0.action;
             let executor = executor.clone();
             actix::spawn(async move {
                 match executor.execute(action).await {

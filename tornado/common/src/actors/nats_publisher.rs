@@ -173,27 +173,27 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let _parent_span = msg.span.clone().entered();
-        let _context_guard = msg.event.get_trace_context().map(|trace_context| {
+        let _parent_span = msg.0.span.clone().entered();
+        let _context_guard = msg.0.event.get_trace_context().map(|trace_context| {
             TelemetryContextExtractor::attach_trace_context(
                 trace_context,
                 &self.trace_context_propagator,
             )
         });
-        let trace_id = msg.event.trace_id.as_str();
+        let trace_id = msg.0.event.trace_id.as_str();
         let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,
         );
-        msg.event.set_trace_context(trace_context);
+        msg.0.event.set_trace_context(trace_context);
 
-        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
+        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.0.event);
 
         let address = ctx.address();
 
         if let Some(connection) = self.nats_connection.deref() {
-            let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            let event = serde_json::to_vec(&msg.0.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 

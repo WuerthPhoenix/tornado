@@ -6,6 +6,7 @@ use tokio::io::{AsyncRead, AsyncReadExt};
 use tornado_collector_common::Collector;
 use tornado_collector_email::EmailEventCollector;
 use tornado_common::actors::message::{AsyncReadMessage, EventMessage};
+use tornado_common_api::TracedEvent;
 
 pub struct EmailReaderActor<A: Actor + actix::Handler<EventMessage>>
 where
@@ -58,7 +59,7 @@ where
             }
             match collector.to_event(&buf) {
                 Ok(event) => {
-                    tcp.try_send(EventMessage { event, span: tracing::Span::current() }).unwrap_or_else(|err| error!("EmailReaderActor -  Error while sending ProcessedEventMessage to TornadoConnectionChannel actor. Error: {}", err));
+                    tcp.try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() })).unwrap_or_else(|err| error!("EmailReaderActor -  Error while sending ProcessedEventMessage to TornadoConnectionChannel actor. Error: {}", err));
                 }
                 Err(e) => error!("Error processing incoming email. Err: {:?}", e),
             };
