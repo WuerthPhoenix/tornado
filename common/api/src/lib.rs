@@ -20,6 +20,8 @@ pub type Number = serde_json::Number;
 /// Events are produced by Collectors and are sent to the Tornado Engine to be processed.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Event {
+    // This trace_id is needed for retro-compatibility with collectors sending
+    // trace_id as a field instead of sending in the trace_context
     pub trace_id: Option<String>,
     #[serde(rename = "type")]
     pub event_type: String,
@@ -102,7 +104,10 @@ impl Event {
         }
     }
 
-    pub fn get_trace_id_or_extract_from_context(&self, context: Option<&Context>) -> Cow<str> {
+    // Returns the event.trace_id if it is defined.
+    // If event.trace_id is not defined returns the trace id of the passed context.
+    // If the passed context is None, returns an empty string.
+    pub fn get_trace_id_for_logging(&self, context: Option<&Context>) -> Cow<str> {
         match (&self.trace_id, context) {
             (Some(event_trace_id), _) => Cow::Borrowed(event_trace_id),
             (None, Some(context)) => Cow::Owned(context.span().span_context().trace_id().to_hex()),
@@ -937,5 +942,49 @@ mod test {
 
         // Assert
         assert_eq!(res, &expected)
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_event_traceid_if_some() {
+        // Arrange
+        let mut event = Event::new("some_type");
+        let trace_id = "some_trace";
+        event.trace_id = Some(trace_id.to_owned());
+        let context = Context::new();
+
+        // Act
+        let res = event.get_trace_id_for_logging(Some(&context));
+
+        // Assert
+        assert_eq!(res.as_ref(), trace_id);
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_context_traceid_if_event_traceid_is_none()
+    {
+        // Arrange
+        let mut event = Event::new("some_type");
+        event.trace_id = None;
+        let context = Context::new();
+
+        // Act
+        let res = event.get_trace_id_for_logging(Some(&context));
+
+        // Assert
+        assert_eq!(res.as_ref(), "00000000000000000000000000000000");
+    }
+
+    #[test]
+    fn get_trace_id_or_extract_from_context_should_return_empty_traceid_if_event_and_contect_traceid_are_none(
+    ) {
+        // Arrange
+        let mut event = Event::new("some_type");
+        event.trace_id = None;
+
+        // Act
+        let res = event.get_trace_id_for_logging(None);
+
+        // Assert
+        assert_eq!(res.as_ref(), "");
     }
 }
