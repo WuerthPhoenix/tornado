@@ -77,15 +77,15 @@ impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let parent_span = msg.span.clone().entered();
-        let trace_id = msg.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let parent_span = msg.0.span.clone().entered();
+        let trace_id = msg.0.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
         let _span = tracing::error_span!("TcpClientActor", trace_id = trace_id.as_ref()).entered();
 
-        trace!("TcpClientActor - Handling Event to be sent through TCP - {:?}", &msg.event);
+        trace!("TcpClientActor - Handling Event to be sent through TCP - {:?}", &msg.0.event);
 
         match &mut self.tx {
             Some(stream) => {
-                let event = serde_json::to_string(&msg.event).map_err(|err| {
+                let event = serde_json::to_string(&msg.0.event).map_err(|err| {
                     TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 debug!("TcpClientActor - Publishing event");
