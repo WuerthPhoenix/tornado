@@ -4091,6 +4091,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_network_common",
+ "tracing",
 ]
 
 [[package]]

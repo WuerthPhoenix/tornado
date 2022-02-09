@@ -78,7 +78,7 @@ mod test {
     use super::*;
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use std::sync::{Arc, Mutex};
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -93,10 +93,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.action.clone())
                 }),
             );
         }
@@ -132,10 +132,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.action.clone())
                 }),
             );
         }
@@ -169,10 +169,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.action.clone())
                 }),
             );
         }

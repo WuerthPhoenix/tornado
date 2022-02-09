@@ -159,6 +159,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
 mod test {
     use super::*;
     use serde_json::json;
+    use std::ops::Deref;
     use std::{
         collections::{hash_map::Entry, HashMap},
         sync::RwLock,
@@ -368,7 +369,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_one.get(0).unwrap()
+                action_one.get(0).unwrap().action.deref()
             );
         }
 
@@ -378,7 +379,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_one.get(1).unwrap()
+                action_one.get(1).unwrap().action.deref()
             );
         }
 
@@ -393,7 +394,7 @@ mod test {
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -405,7 +406,7 @@ mod test {
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -500,7 +501,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -509,7 +510,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -589,7 +590,7 @@ mod test {
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -598,7 +599,7 @@ mod test {
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -659,7 +660,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_map().unwrap();
+        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = Map::new();
         expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
@@ -722,7 +723,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_array().unwrap();
+        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_array().unwrap();
         let mut expected_array = vec![];
         expected_array.push(Value::String("first".to_owned()));
         expected_array.push(Value::String("second".to_owned()));
