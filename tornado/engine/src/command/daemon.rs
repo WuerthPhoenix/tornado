@@ -40,6 +40,7 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -348,7 +349,7 @@ pub async fn daemon(
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let master_span = tracing::info_span!("Engine", trace_id = tracing::field::Empty, otel.kind = "Server");
-                let (event, span) = master_span.in_scope(|| {
+                let event = master_span.in_scope(|| {
                     let subscriber_span = tracing::info_span!("Receive NATS event").entered();
 
                     let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
@@ -368,6 +369,10 @@ pub async fn daemon(
                     );
                     let trace_id = event.get_trace_id_for_logging(event_trace_context.as_ref());
                     master_span.record("trace_id", &trace_id.as_ref());
+                    if let Some(event_trace_context) = event_trace_context {
+                        master_span.set_parent(event_trace_context);
+                        subscriber_span.set_parent(master_span.context());
+                    }
 
                     tornado_meter_nats.events_received_counter.add(1, &[
                         meter_event_souce_label,
@@ -379,9 +384,9 @@ pub async fn daemon(
                         event = extractor.process(&msg.msg.subject, event)?;
                     }
 
-                    Ok((event, subscriber_span.exit()))
+                    Ok(event)
                 })?;
-                matcher_addr_clone.try_send(EventMessage { event, span }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                matcher_addr_clone.try_send(EventMessage { event, span: master_span }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
                 .await
