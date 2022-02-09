@@ -8,7 +8,12 @@ use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
+use tornado_common_logger::opentelemetry_logger::{
+    TelemetryContextExtractor, TelemetryContextInjector,
+};
+use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_futures::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
 
@@ -16,6 +21,7 @@ pub struct NatsPublisherActor {
     config: NatsPublisherConfig,
     nats_connection: Rc<Option<Connection>>,
     restarted: bool,
+    trace_context_propagator: TraceContextPropagator,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -90,9 +96,15 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+        let trace_context_propagator = TraceContextPropagator::new();
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config, nats_connection: Rc::new(None), restarted: false }
+            NatsPublisherActor {
+                config,
+                nats_connection: Rc::new(None),
+                restarted: false,
+                trace_context_propagator,
+            }
         }))
     }
 }
@@ -160,9 +172,20 @@ impl actix::Supervised for NatsPublisherActor {
 impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+    fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+        let _context_guard = msg.event.get_trace_context().map(|trace_context| {
+            TelemetryContextExtractor::attach_trace_context(
+                trace_context,
+                &self.trace_context_propagator,
+            )
+        });
         let trace_id = msg.event.trace_id.as_str();
         let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
+        let trace_context = TelemetryContextInjector::get_trace_context_map(
+            &span.context(),
+            &self.trace_context_propagator,
+        );
+        msg.event.set_trace_context(trace_context);
 
         trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
 

@@ -105,9 +105,9 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
-    use std::collections::{HashMap};
+    use serde_json::Map;
+    use std::collections::HashMap;
     use std::sync::Arc;
-    use serde_json::json;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
@@ -143,7 +143,6 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
-            metadata: Value::Object(Default::default()),
         };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
@@ -231,7 +230,6 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type-custom"),
-            metadata: Value::Object(Default::default()),
         };
 
         let config = MatcherConfig::Ruleset {
@@ -290,13 +288,12 @@ mod test {
 
         let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
-        let metadata = HashMap::from([("tenant_id".to_owned(), Value::String("beta".to_owned()))]);
+        let mut event = Event::new("test-type");
 
-        let send_event_request = SendEventRequest {
-            process_type: ProcessType::SkipActions,
-            event: Event::new("test-type"),
-            metadata: json!(metadata),
-        };
+        event.metadata = Map::new();
+        event.metadata.insert("tenant_id".to_owned(), Value::String("beta".to_owned()));
+
+        let send_event_request = SendEventRequest { process_type: ProcessType::SkipActions, event };
 
         let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
 
