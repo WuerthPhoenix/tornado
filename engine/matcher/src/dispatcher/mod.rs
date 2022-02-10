@@ -19,13 +19,22 @@ impl Dispatcher {
     /// Receives a fully processed ProcessedNode and dispatches the actions linked to Rules whose status is Matched.
     /// The action's resolution (i.e. resolving the extracted variables, filling the action payload, etc.) should be completed before this method is executed.
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
+        // todo: trace action timing
         match processed_node {
             ProcessedNode::Ruleset { rules, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_ruleset", name = name.as_str(),).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_ruleset",
+                    name = name.as_str(),
+                    otel.name = format!("Process Ruleset: {}", name).as_str() // todo: naming
+                )
+                .entered();
                 for rule in rules.rules {
-                    let _span =
-                        tracing::error_span!("dispatch_rule", name = rule.name.as_str(),).entered();
+                    let _span = tracing::error_span!(
+                        "dispatch_rule",
+                        name = rule.name.as_str(),
+                        otel.name = format!("Process Rule: {}", rule.name).as_str() // todo: naming
+                    )
+                    .entered();
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
@@ -48,8 +57,12 @@ impl Dispatcher {
                 }
             }
             ProcessedNode::Filter { nodes, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_filter", name = name.as_str(),).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_filter",
+                    name = name.as_str(),
+                    otel.name = format!("Process Filter: {}", name).as_str() // todo: naming
+                )
+                .entered();
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }

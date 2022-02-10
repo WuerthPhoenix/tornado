@@ -348,9 +348,9 @@ pub async fn daemon(
         let trace_context_propagator = TraceContextPropagator::new();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let master_span = tracing::info_span!("Engine", trace_id = tracing::field::Empty, otel.kind = "Server");
+                let master_span = tracing::info_span!("Process event", otel.kind = "Server");  // todo: naming
                 let event = master_span.in_scope(|| {
-                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();
+                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();  // todo: naming
 
                     let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
@@ -364,13 +364,11 @@ pub async fn daemon(
                     event.remove_undesired_metadata();
 
                     trace!("NatsSubscriberActor - event from message received: {:#?}", event);
-                    let event_trace_context = event.get_trace_context().map(|event_trace_context|
-                        TelemetryContextExtractor::get_trace_context(event_trace_context, &trace_context_propagator)
-                    );
-                    let trace_id = event.get_trace_id_for_logging(event_trace_context.as_ref());
-                    master_span.record("trace_id", &trace_id.as_ref());
-                    if let Some(event_trace_context) = event_trace_context {
-                        master_span.set_parent(event_trace_context);
+                    let trace_context = event.get_trace_context();
+
+                    if let Some(trace_context) = trace_context {
+                        let context = TelemetryContextExtractor::get_trace_context(trace_context, &trace_context_propagator);
+                        master_span.set_parent(context);
                         subscriber_span.set_parent(master_span.context());
                     }
 

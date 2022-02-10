@@ -16,6 +16,7 @@ serde_json = "1.0"
 tokio = { version = "1", features = ["fs"] }
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
+tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
 [dev-dependencies]
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }

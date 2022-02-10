@@ -3925,6 +3925,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_executor_common",
 ]
