@@ -178,12 +178,18 @@ impl StatefulExecutor for ArchiveExecutor {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
         let _parent_span_guard = action.span.entered();
 
-        let extraction_span = tracing::error_span!("");
+        let extraction_span = tracing::error_span!(
+            "ArchiveExecutor",
+            otel.name = format!("Extract parameters for Executor").as_str()
+        );
         let action = &action.action;
         let (path, event_bytes) =
             extraction_span.in_scope(|| self.extract_params_from_payload(action))?;
 
-        let execution_span = tracing::error_span!("");
+        let execution_span = tracing::error_span!(
+            "ArchiveExecutor",
+            otel.name = format!("Archive Event to {}", path.as_deref().unwrap_or("")).as_str()
+        );
         self.write(path, &event_bytes).instrument(execution_span).await?;
 
         Ok(())
