@@ -11,6 +11,7 @@ use tokio::io::BufWriter;
 use tornado_common_api::{Action, TracedAction};
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
 use tracing::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod config;
 mod paths;
@@ -176,15 +177,20 @@ impl ArchiveExecutor {
 impl StatefulExecutor for ArchiveExecutor {
     async fn execute(&mut self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
-        let _parent_span_guard = action.span.entered();
 
-        let extraction_span = tracing::error_span!(
-            "ArchiveExecutor",
-            otel.name = format!("Extract parameters for Executor").as_str()
-        );
-        let action = &action.action;
-        let (path, event_bytes) =
-            extraction_span.in_scope(|| self.extract_params_from_payload(action))?;
+        let executor_span = tracing::error_span!("Run ArchiveExecutor");
+        executor_span.set_parent(action.span.context());
+        let _executor_span_guard = executor_span.entered();
+
+        let (path, event_bytes) = {
+            let _guard = tracing::error_span!(
+                "ArchiveExecutor",
+                otel.name = format!("Extract parameters for Executor").as_str()
+            )
+            .entered();
+
+            self.extract_params_from_payload(action.action.as_ref())?
+        };
 
         let execution_span = tracing::error_span!(
             "ArchiveExecutor",

@@ -3881,6 +3881,7 @@ dependencies = [
  "tornado_common_api",
  "tornado_executor_common",
  "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
