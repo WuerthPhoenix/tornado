@@ -126,7 +126,7 @@ impl StatelessExecutor for ScriptExecutor {
 mod test_unix {
 
     use super::*;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     #[tokio::test]
     async fn should_return_error_if_script_not_found() {

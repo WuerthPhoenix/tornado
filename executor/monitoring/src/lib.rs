@@ -221,7 +221,7 @@ mod test {
     use httpmock::MockServer;
     use maplit::*;
     use serde_json::json;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     #[tokio::test]
     async fn should_fail_if_action_missing() {

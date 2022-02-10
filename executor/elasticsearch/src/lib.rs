@@ -208,7 +208,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
 #[cfg(test)]
 mod test {
     use super::*;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     // This can be used for local testing. It requires Elasticsearch running on localhost
     // #[tokio::test]

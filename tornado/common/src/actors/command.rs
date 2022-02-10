@@ -94,7 +94,7 @@ mod test {
     use crate::root_test::prometheus_exporter;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::time::Duration;
-    use tornado_common_api::TracedAction;
+    use tornado_common_api::{Action, TracedAction};
     use tornado_common_metrics::prometheus::{Encoder, TextEncoder};
 
     #[actix_rt::test]

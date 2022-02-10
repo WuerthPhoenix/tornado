@@ -281,7 +281,7 @@ mod test {
     use httpmock::Method::POST;
     use httpmock::MockServer;
     use serde_json::json;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     #[tokio::test]
     async fn should_fail_if_action_data_is_missing() {

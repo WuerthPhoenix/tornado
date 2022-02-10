@@ -39,6 +39,12 @@ pub struct TracedEvent {
     pub span: Span,
 }
 
+impl From<Event> for TracedEvent {
+    fn from(event: Event) -> Self {
+        Self { event, span: Span::current() }
+    }
+}
+
 pub trait WithEventData {
     fn event_type(&self) -> Option<&str>;
     fn created_ms(&self) -> Option<u64>;
@@ -153,6 +159,12 @@ pub struct Action {
 pub struct TracedAction {
     pub span: Span,
     pub action: Arc<Action>,
+}
+
+impl From<Action> for TracedAction {
+    fn from(action: Action) -> Self {
+        Self { span: Span::current(), action: Arc::new(action) }
+    }
 }
 
 impl Action {

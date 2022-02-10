@@ -200,7 +200,7 @@ pub mod test {
     use rand::Rng;
     use std::sync::Arc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-    use tornado_common_api::Action;
+    use tornado_common_api::{Action, TracedAction};
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
     #[test]
@@ -370,7 +370,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("hello"));
+        let action = Action::new("hello");
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -381,7 +381,7 @@ pub mod test {
         );
 
         actix::spawn(async move {
-            let _res = command.execute(action).await;
+            let _res = command.execute(action.into()).await;
         });
 
         for _i in 0..=attempts {
@@ -399,7 +399,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("hello"));
+        let action = Action::new("hello");
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -410,7 +410,7 @@ pub mod test {
         );
 
         actix::spawn(async move {
-            let _res = command.execute(action).await;
+            let _res = command.execute(action.into()).await;
         });
 
         let received = receiver.recv().await.unwrap();
@@ -426,7 +426,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("hello"));
+        let action = Action::new("hello");
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -437,7 +437,7 @@ pub mod test {
         );
 
         actix::spawn(async move {
-            let _res = command.execute(action).await;
+            let _res = command.execute(action.into()).await;
         });
 
         let received = receiver.recv().await.unwrap();
@@ -454,7 +454,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
-        let action = Arc::new(Action::new("hello_world"));
+        let action = Action::new("hello_world");
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -465,7 +465,7 @@ pub mod test {
         );
 
         actix::spawn(async move {
-            let _res = command.execute(action).await;
+            let _res = command.execute(action.into()).await;
         });
 
         for i in 0..=(attempts as usize) {
@@ -490,8 +490,8 @@ pub mod test {
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysFailExecutor {
-        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-            self.sender.send(action.clone()).unwrap();
+        async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+            self.sender.send(action.action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
@@ -513,8 +513,8 @@ pub mod test {
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysOkExecutor {
-        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-            self.sender.send(action.clone()).unwrap();
+        async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+            self.sender.send(action.action.clone()).unwrap();
             Ok(())
         }
     }
