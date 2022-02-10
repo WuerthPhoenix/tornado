@@ -2,10 +2,9 @@ use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use maplit::*;
 use serde::*;
-use std::sync::Arc;
-use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_common_api::ValueExt;
+use tornado_common_api::{Action, TracedAction};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
@@ -199,10 +198,10 @@ impl DirectorExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for DirectorExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let action = self.parse_action(&action)?;
+        let action = self.parse_action(&action.action)?;
 
         self.perform_request(action).await
     }

@@ -1,8 +1,7 @@
 use log::*;
 use std::fmt;
-use std::sync::Arc;
 use tokio::process::Command;
-use tornado_common_api::{Action, Value};
+use tornado_common_api::{TracedAction, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
@@ -51,10 +50,11 @@ impl fmt::Display for ScriptExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ScriptExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 
         let script = action
+            .action
             .payload
             .get(SCRIPT_TYPE_KEY)
             .and_then(tornado_common_api::ValueExt::get_text)
@@ -82,7 +82,7 @@ impl StatelessExecutor for ScriptExecutor {
                 cmd.arg(arg);
             }
 
-            if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
+            if let Some(value) = action.action.payload.get(SCRIPT_ARGS_KEY) {
                 ScriptExecutor::append_args(&mut cmd, value);
             } else {
                 trace!("No args found in payload")

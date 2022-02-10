@@ -3,13 +3,12 @@ use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 use tokio::fs::create_dir_all;
 use tokio::fs::File;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufWriter;
-use tornado_common_api::Action;
+use tornado_common_api::TracedAction;
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
 
 pub mod config;
@@ -127,16 +126,17 @@ impl ArchiveExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatefulExecutor for ArchiveExecutor {
-    async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
         let path = match action
+            .action
             .payload
             .get(ARCHIVE_TYPE_KEY)
             .and_then(tornado_common_api::ValueExt::get_text)
         {
             Some(archive_type) => match self.paths.get(archive_type) {
-                Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
+                Some(path_matcher) => path_matcher.build_path(&action.action.payload).map(Some),
                 None => Err(ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!(
@@ -151,6 +151,7 @@ impl StatefulExecutor for ArchiveExecutor {
         }?;
 
         let mut event_bytes = action
+            .action
             .payload
             .get(EVENT_KEY)
             .ok_or_else(|| ExecutorError::ActionExecutionError {

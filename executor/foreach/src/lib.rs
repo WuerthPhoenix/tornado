@@ -31,12 +31,12 @@ impl ForEachExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ForEachExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        match action.payload.get(FOREACH_TARGET_KEY) {
+        match action.action.payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
-                let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
+                let actions: Vec<Action> = match action.action.payload.get(FOREACH_ACTIONS_KEY) {
                     Some(Value::Array(actions)) => actions
                         .iter()
                         .map(|value| to_action(value))

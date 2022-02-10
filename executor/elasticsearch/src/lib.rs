@@ -3,9 +3,8 @@ use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
-use std::sync::Arc;
 use tokio::io::AsyncReadExt;
-use tornado_common_api::{Action, ValueExt};
+use tornado_common_api::{TracedAction, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod config;
@@ -132,31 +131,32 @@ impl std::fmt::Display for ElasticsearchExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ElasticsearchExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+        // todo: split workflow
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
-        let data = action.payload.get(DATA_KEY).ok_or_else(|| {
+        let data = action.action.payload.get(DATA_KEY).ok_or_else(|| {
             ExecutorError::MissingArgumentError { message: "data field is missing".to_string() }
         })?;
 
         let index_name =
-            action.payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
-                ExecutorError::MissingArgumentError {
+            action.action.payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(
+                || ExecutorError::MissingArgumentError {
                     message: "index field is missing".to_string(),
-                }
-            })?;
+                },
+            )?;
 
         let endpoint =
-            action.payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
-                ExecutorError::MissingArgumentError {
+            action.action.payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(
+                || ExecutorError::MissingArgumentError {
                     message: "endpoint field is missing".to_string(),
-                }
-            })?;
+                },
+            )?;
 
         let endpoint =
             format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
 
-        let client = if let Some(auth) = action.payload.get(AUTH_KEY) {
+        let client = if let Some(auth) = action.action.payload.get(AUTH_KEY) {
             debug!("ElasticsearchExecutor - Found client data in payload. Create action specific client");
             let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
                 .and_then(serde_json::from_value)

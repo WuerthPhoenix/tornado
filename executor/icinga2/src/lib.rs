@@ -4,9 +4,8 @@ use log::*;
 use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
-use std::sync::Arc;
-use tornado_common_api::Action;
 use tornado_common_api::Payload;
+use tornado_common_api::{Action, TracedAction};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 pub mod client;
@@ -126,9 +125,9 @@ fn to_err_data(
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for Icinga2Executor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
-        let action = self.parse_action(&action)?;
+        let action = self.parse_action(&action.action)?;
 
         self.perform_request(&action).await
     }

@@ -6,7 +6,7 @@ use std::cell::RefCell;
 use std::marker::PhantomData;
 use std::rc::Rc;
 use std::sync::Arc;
-use tornado_common_api::Action;
+use tornado_common_api::TracedAction;
 use tornado_executor_common::{ExecutorError, StatefulExecutor, StatelessExecutor};
 
 pub mod callback;
@@ -33,11 +33,11 @@ impl<T: StatelessExecutor> StatelessExecutorCommand<T> {
 
 /// Implement the Command pattern for StatelessExecutorCommand
 #[async_trait::async_trait(?Send)]
-impl<T: StatelessExecutor> Command<Arc<Action>, Result<(), ExecutorError>>
+impl<T: StatelessExecutor> Command<TracedAction, Result<(), ExecutorError>>
     for StatelessExecutorCommand<T>
 {
-    async fn execute(&self, message: Arc<Action>) -> Result<(), ExecutorError> {
-        let action_id = message.id.to_owned();
+    async fn execute(&self, message: TracedAction) -> Result<(), ExecutorError> {
+        let action_id = message.action.id.to_owned();
         let result = self.executor.execute(message).await;
         increment_processing_attempt_counter(&result, action_id, self.action_meter.as_ref());
         result
@@ -81,11 +81,11 @@ impl<T: StatefulExecutor> StatefulExecutorCommand<T> {
 
 /// Implement the Command pattern for StatefulExecutorCommand
 #[async_trait::async_trait(?Send)]
-impl<T: StatefulExecutor> CommandMut<Arc<Action>, Result<(), ExecutorError>>
+impl<T: StatefulExecutor> CommandMut<TracedAction, Result<(), ExecutorError>>
     for StatefulExecutorCommand<T>
 {
-    async fn execute(&mut self, message: Arc<Action>) -> Result<(), ExecutorError> {
-        let action_id = message.id.to_owned();
+    async fn execute(&mut self, message: TracedAction) -> Result<(), ExecutorError> {
+        let action_id = message.action.id.to_owned();
         let result = self.executor.execute(message).await;
         increment_processing_attempt_counter(&result, action_id, self.action_meter.as_ref());
         result

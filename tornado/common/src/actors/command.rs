@@ -7,16 +7,16 @@ use actix::{Actor, Addr, Context, Handler};
 use log::*;
 use std::rc::Rc;
 use std::sync::Arc;
-use tornado_common_api::Action;
+use tornado_common_api::TracedAction;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
 
-pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
+pub struct CommandExecutorActor<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
     action_meter: Arc<ActionMeter>,
 }
 
-impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> CommandExecutorActor<T> {
+impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> CommandExecutorActor<T> {
     pub fn start_new(
         message_mailbox_capacity: usize,
         command: Rc<T>,
@@ -29,7 +29,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> CommandExecut
     }
 }
 
-impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Actor
+impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Actor
     for CommandExecutorActor<T>
 {
     type Context = Context<Self>;
@@ -38,7 +38,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Actor
     }
 }
 
-impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<ActionMessage>
+impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Handler<ActionMessage>
     for CommandExecutorActor<T>
 {
     type Result = Result<(), ExecutorError>;
@@ -47,16 +47,19 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
         let command = self.command.clone();
         let action_meter = self.action_meter.clone();
 
-        let action = msg.0.action;
+        let msg_to_executor = msg.0.to_owned();
+        let action_id = msg.0.action.id.to_owned();
         actix::spawn(
             async move {
-                let action_id = action.id.clone();
-                trace!("CommandExecutorActor - received new action [{:?}]", &action);
+                trace!(
+                    "CommandExecutorActor - received new action [{:?}]",
+                    &msg_to_executor.action
+                );
                 debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
 
-                let action_id_label = ACTION_ID_LABEL_KEY.string(action.id.to_owned());
+                let action_id_label = ACTION_ID_LABEL_KEY.string(action_id.to_owned());
 
-                match command.execute(action).await {
+                match command.execute(msg_to_executor).await {
                     Ok(_) => {
                         action_meter
                             .actions_processed_counter
@@ -77,7 +80,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                     }
                 }
             }
-            .instrument(msg.0.span),
+            .instrument(msg.0.span.clone()),
         );
         Ok(())
     }

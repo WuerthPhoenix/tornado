@@ -5,8 +5,8 @@ use maplit::hashmap;
 use serde_json::Value;
 use std::time::Duration;
 use std::{future::Future, pin::Pin, sync::Arc};
-use tornado_common_api::RetriableError;
-use tornado_common_api::{Action, Payload};
+use tornado_common_api::Payload;
+use tornado_common_api::{RetriableError, TracedAction};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
@@ -208,10 +208,10 @@ impl SmartMonitoringExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for SmartMonitoringExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action.action.payload)?;
 
         let host_name = monitoring_action.get_host_name().map(|val| val.to_owned());
         let service_name = monitoring_action.get_service_name().map(|val| val.to_owned());

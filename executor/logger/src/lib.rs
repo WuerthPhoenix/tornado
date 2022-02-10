@@ -1,6 +1,5 @@
 use log::*;
-use std::sync::Arc;
-use tornado_common_api::Action;
+use tornado_common_api::TracedAction;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
 /// An executor that logs received actions at the 'info' level
@@ -22,7 +21,7 @@ impl std::fmt::Display for LoggerExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for LoggerExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:?}]", action);
         Ok(())
     }
