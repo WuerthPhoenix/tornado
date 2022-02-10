@@ -164,7 +164,6 @@ mod test {
     use super::*;
     use crate::elastic_apm::{ApmServerApiCredentials, ApmTracingConfig};
     use opentelemetry::sdk::trace::BatchConfig;
-    use std::thread;
 
     #[tokio::test]
     async fn should_get_opentelemetry_tracer() {
@@ -183,45 +182,53 @@ mod test {
 
     #[tokio::test]
     async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_undefined() {
-        // Execute test in thread to avoid environment variable setting interfere with other tests
-        thread::spawn(|| {
-            // Arrange
-            let tracing_config: ApmTracingConfig = serde_json::from_str(
-                r#"
-        {
-          "apm_output": true,
-          "apm_server_url": ""
-        }"#,
-            )
-            .unwrap();
+        // Arrange
+        let tracing_config: ApmTracingConfig = serde_json::from_str(
+            r#"
+    {
+      "apm_output": true,
+      "apm_server_url": ""
+    }"#,
+        )
+        .unwrap();
 
-            // Act
-            set_opentelemetry_batch_exporter_config(&tracing_config.exporter);
+        // Act
+        set_opentelemetry_batch_exporter_config(&tracing_config.exporter);
 
-            // Assert
-            let batch_config = format!("{:?}", BatchConfig::default());
-            assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 100000, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
-        }).join().unwrap();
+        // Assert
+        let batch_config = format!("{:?}", BatchConfig::default());
+        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 100000, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
+        remove_otel_env_vars()
     }
 
     #[tokio::test]
     async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_defined() {
-        // Execute test in thread to avoid environment variable setting interfere with other tests
-        thread::spawn(|| {
-            // Arrange
-            let tracing_config = ExporterConfig {
-                max_queue_size: 9999,
-                scheduled_delay_ms: Some(2000),
-                max_export_batch_size: Some(3333),
-                max_export_timeout_ms: Some(1000),
-            };
+        // Arrange
+        let tracing_config = ExporterConfig {
+            max_queue_size: 9999,
+            scheduled_delay_ms: Some(2000),
+            max_export_batch_size: Some(3333),
+            max_export_timeout_ms: Some(1000),
+        };
 
-            // Act
-            set_opentelemetry_batch_exporter_config(&tracing_config);
+        // Act
+        set_opentelemetry_batch_exporter_config(&tracing_config);
 
-            // Assert
-            let batch_config = format!("{:?}", BatchConfig::default());
-            assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 9999, scheduled_delay: 2s, max_export_batch_size: 3333, max_export_timeout: 1s }");
-        }).join().unwrap();
+        // Assert
+        let batch_config = format!("{:?}", BatchConfig::default());
+        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 9999, scheduled_delay: 2s, max_export_batch_size: 3333, max_export_timeout: 1s }");
+        remove_otel_env_vars()
+    }
+
+    fn remove_otel_env_vars() {
+        let vars = [
+            OTEL_BSP_MAX_QUEUE_SIZE,
+            OTEL_BSP_MAX_EXPORT_BATCH_SIZE,
+            OTEL_BSP_SCHEDULE_DELAY,
+            OTEL_BSP_EXPORT_TIMEOUT,
+        ];
+        for var in vars {
+            env::remove_var(var)
+        }
     }
 }
