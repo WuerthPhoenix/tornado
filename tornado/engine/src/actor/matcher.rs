@@ -316,6 +316,7 @@ mod test {
                 )]),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -378,6 +379,7 @@ mod test {
                 config_filter: config_filter.clone(),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -389,6 +391,7 @@ mod test {
                 config_filter: config_filter.clone(),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -456,6 +459,7 @@ mod test {
                 )]),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap();
