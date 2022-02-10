@@ -8,8 +8,9 @@ use tokio::fs::File;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufWriter;
-use tornado_common_api::TracedAction;
+use tornado_common_api::{Action, TracedAction};
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
+use tracing::Instrument;
 
 pub mod config;
 mod paths;
@@ -52,6 +53,53 @@ impl ArchiveExecutor {
             paths,
             file_cache,
         }
+    }
+
+    fn extract_params_from_payload(
+        &self,
+        action: &Action,
+    ) -> Result<(Option<String>, Vec<u8>), ExecutorError> {
+        let path = match action
+            .payload
+            .get(ARCHIVE_TYPE_KEY)
+            .and_then(tornado_common_api::ValueExt::get_text)
+        {
+            Some(archive_type) => match self.paths.get(archive_type) {
+                Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
+                None => Err(ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: format!(
+                        "Cannot find mapping for {} value: [{}]",
+                        ARCHIVE_TYPE_KEY, archive_type
+                    ),
+                    code: None,
+                    data: Default::default(),
+                }),
+            },
+            None => Ok(None),
+        }?;
+
+        let mut event_bytes = action
+            .payload
+            .get(EVENT_KEY)
+            .ok_or_else(|| ExecutorError::ActionExecutionError {
+                can_retry: false,
+                message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
+                code: None,
+                data: Default::default(),
+            })
+            .and_then(|value| {
+                serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: format!("Cannot deserialize event:{}", err),
+                    code: None,
+                    data: Default::default(),
+                })
+            })?;
+
+        event_bytes.push(b'\n');
+
+        Ok((path, event_bytes))
     }
 
     async fn write(
@@ -128,50 +176,15 @@ impl ArchiveExecutor {
 impl StatefulExecutor for ArchiveExecutor {
     async fn execute(&mut self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
+        let _parent_span_guard = action.span.entered();
 
-        let path = match action
-            .action
-            .payload
-            .get(ARCHIVE_TYPE_KEY)
-            .and_then(tornado_common_api::ValueExt::get_text)
-        {
-            Some(archive_type) => match self.paths.get(archive_type) {
-                Some(path_matcher) => path_matcher.build_path(&action.action.payload).map(Some),
-                None => Err(ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: format!(
-                        "Cannot find mapping for {} value: [{}]",
-                        ARCHIVE_TYPE_KEY, archive_type
-                    ),
-                    code: None,
-                    data: Default::default(),
-                }),
-            },
-            None => Ok(None),
-        }?;
+        let extraction_span = tracing::error_span!("");
+        let action = &action.action;
+        let (path, event_bytes) =
+            extraction_span.in_scope(|| self.extract_params_from_payload(action))?;
 
-        let mut event_bytes = action
-            .action
-            .payload
-            .get(EVENT_KEY)
-            .ok_or_else(|| ExecutorError::ActionExecutionError {
-                can_retry: false,
-                message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
-                code: None,
-                data: Default::default(),
-            })
-            .and_then(|value| {
-                serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: format!("Cannot deserialize event:{}", err),
-                    code: None,
-                    data: Default::default(),
-                })
-            })?;
-
-        event_bytes.push(b'\n');
-
-        self.write(path, &event_bytes).await?;
+        let execution_span = tracing::error_span!("");
+        self.write(path, &event_bytes).instrument(execution_span).await?;
 
         Ok(())
     }
