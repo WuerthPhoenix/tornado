@@ -2,10 +2,13 @@ use log::*;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::borrow::Cow;
 use tokio::io::AsyncReadExt;
-use tornado_common_api::{TracedAction, ValueExt};
+use tornado_common_api::{Action, Payload, TracedAction, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod config;
 
@@ -98,6 +101,11 @@ pub struct ElasticsearchExecutor {
     default_client: Option<Client>,
 }
 
+pub struct Params<'a> {
+    data: &'a Value,
+    endpoint: String,
+}
+
 impl ElasticsearchExecutor {
     pub async fn new(
         es_authentication: Option<ElasticsearchAuthentication>,
@@ -109,6 +117,87 @@ impl ElasticsearchExecutor {
         };
 
         Ok(ElasticsearchExecutor { default_client })
+    }
+
+    fn extract_params_from_payload<'a>(
+        &self,
+        payload: &'a Payload,
+    ) -> Result<Params<'a>, ExecutorError> {
+        let data = payload.get(DATA_KEY).ok_or_else(|| ExecutorError::MissingArgumentError {
+            message: "data field is missing".to_string(),
+        })?;
+
+        let index_name =
+            payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+                ExecutorError::MissingArgumentError {
+                    message: "index field is missing".to_string(),
+                }
+            })?;
+
+        let endpoint =
+            payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+                ExecutorError::MissingArgumentError {
+                    message: "endpoint field is missing".to_string(),
+                }
+            })?;
+
+        let endpoint =
+            format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
+
+        Ok(Params { data, endpoint })
+    }
+
+    async fn send_to_endpoint(
+        &self,
+        action: &Action,
+        params: Params<'_>,
+    ) -> Result<(), ExecutorError> {
+        let client = if let Some(auth) = action.payload.get(AUTH_KEY) {
+            debug!("ElasticsearchExecutor - Found client data in payload. Create action specific client");
+            let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
+                .and_then(serde_json::from_value)
+                .map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: format!("Error while deserializing {}. Err: {:?}", AUTH_KEY, err),
+                    code: None,
+                    data: Default::default(),
+                })?;
+            Cow::Owned(es_authentication.new_client().await?)
+        } else {
+            debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
+            Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
+                ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: "Missing both default client and auth data from payload".to_string(),
+                    code: None,
+                    data: Default::default(),
+                }
+            })?)
+        };
+
+        let res = client.post(&params.endpoint).json(params.data).send().await.map_err(|err| {
+            ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!("Error while sending document to Elasticsearch. Err: {:?}", err),
+                code: None,
+                data: Default::default(),
+            }
+        })?;
+
+        if !res.status().is_success() {
+            Err(ExecutorError::ActionExecutionError {
+                can_retry: true,
+                message: format!(
+                    "Error while sending document to Elasticsearch. Response: {:?}",
+                    res
+                ),
+                code: None,
+                data: Default::default(),
+            })
+        } else {
+            debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");
+            Ok(())
+        }
     }
 }
 
@@ -132,76 +221,28 @@ impl std::fmt::Display for ElasticsearchExecutor {
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ElasticsearchExecutor {
     async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
-        // todo: split workflow
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
-        let data = action.action.payload.get(DATA_KEY).ok_or_else(|| {
-            ExecutorError::MissingArgumentError { message: "data field is missing".to_string() }
-        })?;
+        let executor_span = tracing::error_span!("Run ElasticsearchExecutor");
+        executor_span.set_parent(action.span.context());
+        let _executor_span_guard = executor_span.entered();
 
-        let index_name =
-            action.action.payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(
-                || ExecutorError::MissingArgumentError {
-                    message: "index field is missing".to_string(),
-                },
-            )?;
+        let params = {
+            let _guard = tracing::error_span!(
+                "ElasticsearchExecutor",
+                otel.name = format!("Extract parameters for Executor").as_str()
+            )
+            .entered();
 
-        let endpoint =
-            action.action.payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(
-                || ExecutorError::MissingArgumentError {
-                    message: "endpoint field is missing".to_string(),
-                },
-            )?;
-
-        let endpoint =
-            format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
-
-        let client = if let Some(auth) = action.action.payload.get(AUTH_KEY) {
-            debug!("ElasticsearchExecutor - Found client data in payload. Create action specific client");
-            let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
-                .and_then(serde_json::from_value)
-                .map_err(|err| ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: format!("Error while deserializing {}. Err: {:?}", AUTH_KEY, err),
-                    code: None,
-                    data: Default::default(),
-                })?;
-            Cow::Owned(es_authentication.new_client().await?)
-        } else {
-            debug!("ElasticsearchExecutor - Client data in payload not found. Use default client");
-            Cow::Borrowed(self.default_client.as_ref().ok_or_else(|| {
-                ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: "Missing both default client and auth data from payload".to_string(),
-                    code: None,
-                    data: Default::default(),
-                }
-            })?)
+            self.extract_params_from_payload(&action.action.payload)?
         };
 
-        let res = client.post(&endpoint).json(&data).send().await.map_err(|err| {
-            ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!("Error while sending document to Elasticsearch. Err: {:?}", err),
-                code: None,
-                data: Default::default(),
-            }
-        })?;
+        let execution_span = tracing::error_span!(
+            "ElasticsearchExecutor",
+            otel.name = format!("Send Event to {}", params.endpoint).as_str()
+        );
 
-        if !res.status().is_success() {
-            Err(ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!(
-                    "Error while sending document to Elasticsearch. Response: {:?}",
-                    res
-                ),
-                code: None,
-                data: Default::default(),
-            })
-        } else {
-            debug!("ElasticsearchExecutor - Data correctly sent to Elasticsearch");
-            Ok(())
-        }
+        self.send_to_endpoint(action.action.as_ref(), params).instrument(execution_span).await
     }
 }
 
