@@ -1,5 +1,5 @@
 use crate::error::MatcherError;
-use crate::model::{ProcessedNode, ProcessedRuleStatus};
+use crate::model::{ProcessedFilterStatus, ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
@@ -25,14 +25,14 @@ impl Dispatcher {
                 let _span = tracing::error_span!(
                     "dispatch_ruleset",
                     name = name.as_str(),
-                    otel.name = format!("Process Ruleset: {}", name).as_str() // todo: naming
+                    otel.name = format!("Process Ruleset: {}", name).as_str() // todo: move to matcher
                 )
                 .entered();
                 for rule in rules.rules {
                     let _span = tracing::error_span!(
                         "dispatch_rule",
                         name = rule.name.as_str(),
-                        otel.name = format!("Process Rule: {}", rule.name).as_str() // todo: naming
+                        otel.name = format!("Process Rule: {}", rule.name).as_str() // todo: move to matcher
                     )
                     .entered();
                     match rule.status {
@@ -56,17 +56,21 @@ impl Dispatcher {
                     }
                 }
             }
-            ProcessedNode::Filter { nodes, name, .. } => {
+            ProcessedNode::Filter { filter, nodes, name }
+                if filter.status == ProcessedFilterStatus::Matched =>
+            // todo: is this necessary
+            {
                 let _span = tracing::error_span!(
                     "dispatch_filter",
                     name = name.as_str(),
-                    otel.name = format!("Process Filter: {}", name).as_str() // todo: naming
+                    otel.name = format!("Process Filter: {}", name).as_str()
                 )
-                .entered();
+                .entered(); // todo: move to matcher
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }
             }
+            _ => {}
         };
         Ok(())
     }

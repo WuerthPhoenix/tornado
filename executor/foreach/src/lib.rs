@@ -1,10 +1,11 @@
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
-use tornado_common_api::{Action, Map, TracedAction, Value};
+use tornado_common_api::{Action, Map, Payload, TracedAction, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
@@ -14,6 +15,11 @@ const FOREACH_ACTION_PAYLOAD_KEY: &str = "payload";
 
 pub struct ForEachExecutor {
     bus: Arc<dyn EventBus>,
+}
+
+pub struct Params<'a> {
+    values: &'a Vec<Value>,
+    actions: Vec<Action>,
 }
 
 impl std::fmt::Display for ForEachExecutor {
@@ -27,6 +33,47 @@ impl ForEachExecutor {
     pub fn new(bus: Arc<dyn EventBus>) -> Self {
         Self { bus }
     }
+
+    fn extract_params_from_payload<'a>(
+        &self,
+        payload: &'a Payload,
+    ) -> Result<Params<'a>, ExecutorError> {
+        let values = match payload.get(FOREACH_TARGET_KEY) {
+            Some(Value::Array(values)) => values,
+            Some(_) => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - Key [{}] is not an array",
+                        FOREACH_TARGET_KEY
+                    ),
+                })
+            }
+            _ => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - No [{}] key found in payload.",
+                        FOREACH_TARGET_KEY
+                    ),
+                })
+            }
+        };
+
+        let actions: Vec<_> = match payload.get(FOREACH_ACTIONS_KEY) {
+            Some(Value::Array(actions)) => {
+                actions.iter().filter_map(|value| to_action(value).ok()).collect()
+            }
+            _ => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - No [{}] key found in payload",
+                        FOREACH_ACTIONS_KEY
+                    ),
+                })
+            }
+        };
+
+        Ok(Params { values, actions })
+    }
 }
 
 #[async_trait::async_trait(?Send)]
@@ -34,55 +81,50 @@ impl StatelessExecutor for ForEachExecutor {
     async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        match action.action.payload.get(FOREACH_TARGET_KEY) {
-            Some(Value::Array(values)) => {
-                let actions: Vec<Action> = match action.action.payload.get(FOREACH_ACTIONS_KEY) {
-                    Some(Value::Array(actions)) => actions
-                        .iter()
-                        .map(|value| to_action(value))
-                        .filter_map(Result::ok)
-                        .collect(),
-                    _ => {
-                        return Err(ExecutorError::MissingArgumentError {
-                            message: format!(
-                                "ForEachExecutor - No [{}] key found in payload",
-                                FOREACH_ACTIONS_KEY
-                            ),
-                        })
-                    }
-                };
+        let executor_span = tracing::error_span!("Run ElasticsearchExecutor");
+        executor_span.set_parent(action.span.context());
+        let _executor_span_guard = executor_span.entered();
 
-                actions.into_iter().for_each(|action| {
-                    for value in values.iter() {
-                        //let mut cloned_action = action.clone();
-                        //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+        let Params { values, actions } = {
+            let _guard = tracing::error_span!(
+                "ForEachExecutor",
+                otel.name = format!("Extract parameters for Executor").as_str()
+            )
+            .entered();
 
-                        let mut item = Map::new();
-                        item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+            self.extract_params_from_payload(&action.action.payload)?
+        };
 
-                        let result = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(ActionMessage (TracedAction {
-                                action: Arc::new(action),
-                                span: tracing::Span::current()
-                            })));
+        let execution_span = tracing::error_span!(
+            "ForEachExecutor",
+            otel.name =
+                format!("Execute {} Actions for {} Values", actions.len(), values.len()).as_str()
+        );
 
-                        if let Err(err) = result {
-                            warn!(
-                                "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
-                                action.id, err
-                            )
-                        }
-                    }
+        actions.into_iter().for_each(|action| {
+            for value in values.iter() {
+                //let mut cloned_action = action.clone();
+                //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+
+                let mut item = Map::new();
+                item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+
+                let result = resolve_action(&Value::Object(item), action.clone()).map(|action| {
+                    self.bus.publish_action(ActionMessage(TracedAction {
+                        action: Arc::new(action),
+                        span: execution_span.clone(),
+                    }))
                 });
-                Ok(())
+
+                if let Err(err) = result {
+                    warn!(
+                        "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
+                        action.id, err
+                    )
+                }
             }
-            _ => Err(ExecutorError::MissingArgumentError {
-                message: format!(
-                    "ForEachExecutor - No [{}] key found in payload, or it's value is not an array",
-                    FOREACH_TARGET_KEY
-                ),
-            }),
-        }
+        });
+        Ok(())
     }
 }
 
