@@ -17,6 +17,7 @@ async fn should_attach_context_to_span() {
             apm_output: true,
             apm_server_url: "http://localhost:8200".to_string(),
             apm_server_api_credentials: None,
+            exporter: Default::default(),
         },
     };
 

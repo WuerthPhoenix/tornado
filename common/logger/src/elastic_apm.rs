@@ -4,8 +4,9 @@ use std::fs::File;
 use std::io::BufReader;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
+pub const DEFAULT_EXPORTER_BATCH_SIZE: u64 = 100000;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApmTracingConfig {
     // Whether the Logger data should be sent to the Elastic APM Server.
     pub apm_output: bool,
@@ -15,6 +16,36 @@ pub struct ApmTracingConfig {
 
     // The credentials for calling the APM server APIs;
     pub apm_server_api_credentials: Option<ApmServerApiCredentials>,
+
+    #[serde(default)]
+    pub exporter: ExporterConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ExporterConfig {
+    // Span exporter queue size
+    pub max_queue_size: u64,
+
+    // The delay interval in milliseconds between two consecutive processing
+    // of batches. The default value is 5 seconds.
+    pub scheduled_delay_ms: Option<u64>,
+
+    // Span exporter batch size
+    pub max_export_batch_size: Option<u64>,
+
+    // The maximum duration to export a batch of data.
+    pub max_export_timeout_ms: Option<u64>,
+}
+
+impl Default for ExporterConfig {
+    fn default() -> Self {
+        Self {
+            max_queue_size: DEFAULT_EXPORTER_BATCH_SIZE,
+            scheduled_delay_ms: None,
+            max_export_batch_size: None,
+            max_export_timeout_ms: None,
+        }
+    }
 }
 
 impl ApmTracingConfig {
@@ -43,6 +74,7 @@ impl Default for ApmTracingConfig {
             apm_output: false,
             apm_server_url: "http://localhost:8200".to_string(),
             apm_server_api_credentials: None,
+            exporter: ExporterConfig::default(),
         }
     }
 }
@@ -132,5 +164,34 @@ mod test {
             creds.to_authorization_header_value(),
             "ApiKey R25yVVQzUUI3eVpiU054S0VUNmQ6UmhIS2lzVG1RMWFQQ0hDX1RQd092dw=="
         );
+    }
+
+    #[test]
+    fn should_deserialize_apm_tracing_config() {
+        // Arrange
+        let expected_config = ApmTracingConfig {
+            apm_output: true,
+            apm_server_url: "".to_string(),
+            apm_server_api_credentials: None,
+            exporter: ExporterConfig {
+                max_queue_size: 100_000,
+                scheduled_delay_ms: None,
+                max_export_batch_size: None,
+                max_export_timeout_ms: None,
+            },
+        };
+
+        // Act
+        let tracing_config: ApmTracingConfig = serde_json::from_str(
+            r#"
+        {
+          "apm_output": true,
+          "apm_server_url": ""
+        }"#,
+        )
+        .unwrap();
+
+        // Assert
+        assert_eq!(tracing_config, expected_config);
     }
 }

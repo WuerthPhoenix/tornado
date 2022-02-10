@@ -1,4 +1,4 @@
-use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
+use crate::elastic_apm::{get_current_service_name, ApmTracingConfig, ExporterConfig};
 use crate::LoggerError;
 use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
 use opentelemetry::sdk::propagation::TraceContextPropagator;
@@ -8,10 +8,16 @@ use opentelemetry::trace::{Link, SpanKind, TraceContextExt, TraceId, TraceState}
 use opentelemetry::{Context, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
 use serde_json::{Map, Value};
+use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tonic::metadata::MetadataMap;
+
+const OTEL_BSP_MAX_QUEUE_SIZE: &str = "OTEL_BSP_MAX_QUEUE_SIZE";
+const OTEL_BSP_MAX_EXPORT_BATCH_SIZE: &str = "OTEL_BSP_MAX_EXPORT_BATCH_SIZE";
+const OTEL_BSP_SCHEDULE_DELAY: &str = "OTEL_BSP_SCHEDULE_DELAY";
+const OTEL_BSP_EXPORT_TIMEOUT: &str = "OTEL_BSP_EXPORT_TIMEOUT";
 
 // This sampler is needed to allow to always construct the OpenTelemetry context
 // even in the case that we do not want to export the traces to APM.
@@ -78,6 +84,7 @@ pub fn get_opentelemetry_tracer(
         timeout: Duration::from_secs(10),
     };
 
+    set_opentelemetry_batch_exporter_config(&apm_tracing_config.exporter);
     let tornado_sampler = TornadoSampler::new(apm_output_enabled);
     opentelemetry_otlp::new_pipeline()
         .tracing()
@@ -97,6 +104,19 @@ pub fn get_opentelemetry_tracer(
                 err
             ),
         })
+}
+
+fn set_opentelemetry_batch_exporter_config(exporter_config: &ExporterConfig) {
+    env::set_var(OTEL_BSP_MAX_QUEUE_SIZE, exporter_config.max_queue_size.to_string());
+    if let Some(scheduled_delay_ms) = exporter_config.scheduled_delay_ms {
+        env::set_var(OTEL_BSP_SCHEDULE_DELAY, scheduled_delay_ms.to_string());
+    }
+    if let Some(max_export_timeout_ms) = exporter_config.max_export_timeout_ms {
+        env::set_var(OTEL_BSP_EXPORT_TIMEOUT, max_export_timeout_ms.to_string());
+    }
+    if let Some(max_export_batch_size) = exporter_config.max_export_batch_size {
+        env::set_var(OTEL_BSP_MAX_EXPORT_BATCH_SIZE, max_export_batch_size.to_string());
+    }
 }
 
 pub struct TelemetryContextInjector(pub Map<String, Value>);
@@ -143,6 +163,8 @@ impl TelemetryContextExtractor<'_> {
 mod test {
     use super::*;
     use crate::elastic_apm::{ApmServerApiCredentials, ApmTracingConfig};
+    use opentelemetry::sdk::trace::BatchConfig;
+    use std::thread;
 
     #[tokio::test]
     async fn should_get_opentelemetry_tracer() {
@@ -153,8 +175,53 @@ mod test {
                 id: "myid".to_string(),
                 key: "mykey".to_string(),
             }),
+            exporter: ExporterConfig::default(),
         };
         let tracer = get_opentelemetry_tracer(&tracing_config, Arc::new(AtomicBool::new(true)));
         assert!(tracer.is_ok());
+    }
+
+    #[tokio::test]
+    async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_undefined() {
+        // Execute test in thread to avoid environment variable setting interfere with other tests
+        thread::spawn(|| {
+            // Arrange
+            let tracing_config: ApmTracingConfig = serde_json::from_str(
+                r#"
+        {
+          "apm_output": true,
+          "apm_server_url": ""
+        }"#,
+            )
+            .unwrap();
+
+            // Act
+            set_opentelemetry_batch_exporter_config(&tracing_config.exporter);
+
+            // Assert
+            let batch_config = format!("{:?}", BatchConfig::default());
+            assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 100000, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
+        }).join().unwrap();
+    }
+
+    #[tokio::test]
+    async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_defined() {
+        // Execute test in thread to avoid environment variable setting interfere with other tests
+        thread::spawn(|| {
+            // Arrange
+            let tracing_config = ExporterConfig {
+                max_queue_size: 9999,
+                scheduled_delay_ms: Some(2000),
+                max_export_batch_size: Some(3333),
+                max_export_timeout_ms: Some(1000),
+            };
+
+            // Act
+            set_opentelemetry_batch_exporter_config(&tracing_config);
+
+            // Assert
+            let batch_config = format!("{:?}", BatchConfig::default());
+            assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 9999, scheduled_delay: 2s, max_export_batch_size: 3333, max_export_timeout: 1s }");
+        }).join().unwrap();
     }
 }
