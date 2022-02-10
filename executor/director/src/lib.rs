@@ -6,6 +6,8 @@ use tornado_common_api::Payload;
 use tornado_common_api::ValueExt;
 use tornado_common_api::{Action, TracedAction};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod config;
 
@@ -201,9 +203,31 @@ impl StatelessExecutor for DirectorExecutor {
     async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let action = self.parse_action(&action.action)?;
+        let executor_span = tracing::error_span!("Run DirectorExecutor");
+        executor_span.set_parent(action.span.context());
+        let _executor_span_guard = executor_span.entered();
 
-        self.perform_request(action).await
+        let action = {
+            let _guard = tracing::error_span!(
+                "DirectorExecutor",
+                otel.name = format!("Extract parameters for Executor").as_str()
+            )
+            .entered();
+
+            self.parse_action(&action.action)?
+        };
+
+        let execution_span = tracing::error_span!(
+            "DirectorExecutor",
+            otel.name = format!(
+                "Sending event to {}. Live creation: {}",
+                action.name.to_director_api_subpath(),
+                action.live_creation
+            )
+            .as_str()
+        );
+
+        self.perform_request(action).instrument(execution_span).await
     }
 }
 
