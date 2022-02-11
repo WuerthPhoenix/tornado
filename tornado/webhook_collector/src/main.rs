@@ -17,7 +17,6 @@ use tornado_common::TornadoError;
 use tornado_common_api::{Event, TracedEvent};
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
-use tracing_actix_web::root_span_macro::private::tracing;
 use tracing_actix_web::TracingLogger;
 
 mod config;

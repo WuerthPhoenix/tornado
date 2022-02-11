@@ -59,7 +59,7 @@ mod test {
         let action = ActionMessage(TracedAction {
             span: Span::current(),
             action: Arc::new(Action { id: String::from(action_id), payload: Map::new() }),
-        });
+        };
 
         // Act
         bus.publish_action(action);
