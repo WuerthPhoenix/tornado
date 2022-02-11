@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 pub const DEFAULT_APM_SERVER_CREDENTIALS_FILENAME: &str = "apm_server_api_credentials.json";
-pub const DEFAULT_EXPORTER_BATCH_SIZE: u64 = 100000;
+pub const DEFAULT_EXPORTER_BATCH_SIZE: u64 = 65536;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ApmTracingConfig {
