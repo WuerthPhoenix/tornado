@@ -174,7 +174,7 @@ mod test {
             apm_server_url: "".to_string(),
             apm_server_api_credentials: None,
             exporter: ExporterConfig {
-                max_queue_size: 100_000,
+                max_queue_size: 65536,
                 scheduled_delay_ms: None,
                 max_export_batch_size: None,
                 max_export_timeout_ms: None,

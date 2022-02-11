@@ -164,6 +164,7 @@ mod test {
     use super::*;
     use crate::elastic_apm::{ApmServerApiCredentials, ApmTracingConfig};
     use opentelemetry::sdk::trace::BatchConfig;
+    use serial_test::serial;
 
     #[tokio::test]
     async fn should_get_opentelemetry_tracer() {
@@ -181,6 +182,7 @@ mod test {
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_undefined() {
         // Arrange
         let tracing_config: ApmTracingConfig = serde_json::from_str(
@@ -197,11 +199,12 @@ mod test {
 
         // Assert
         let batch_config = format!("{:?}", BatchConfig::default());
-        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 100000, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
+        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 65536, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
         remove_otel_env_vars()
     }
 
     #[tokio::test]
+    #[serial]
     async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_defined() {
         // Arrange
         let tracing_config = ExporterConfig {
