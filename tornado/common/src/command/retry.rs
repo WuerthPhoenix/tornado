@@ -370,7 +370,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("", "hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -399,7 +399,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("", "hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -426,7 +426,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::None,
         };
 
-        let action = Arc::new(Action::new("", "hello"));
+        let action = Arc::new(Action::new("hello"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),
@@ -454,7 +454,7 @@ pub mod test {
             backoff_policy: BackoffPolicy::Variable { ms: wait_times.clone() },
         };
 
-        let action = Arc::new(Action::new("", "hello_world"));
+        let action = Arc::new(Action::new("hello_world"));
 
         let command = RetryCommand::new(
             retry_strategy.clone(),

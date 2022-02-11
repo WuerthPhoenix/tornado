@@ -8,9 +8,7 @@ use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
-use tornado_common_logger::opentelemetry_logger::{
-    TelemetryContextExtractor, TelemetryContextInjector,
-};
+use tornado_common_logger::opentelemetry_logger::TelemetryContextInjector;
 use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_futures::Instrument;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
@@ -173,15 +171,10 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let _parent_span = msg.span.clone().entered();
-        let _context_guard = msg.event.get_trace_context().map(|trace_context| {
-            TelemetryContextExtractor::attach_trace_context(
-                trace_context,
-                &self.trace_context_propagator,
-            )
-        });
-        let trace_id = msg.event.trace_id.as_str();
-        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
+        let parent_span = msg.span.clone().entered();
+        let trace_id = msg.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let span =
+            tracing::error_span!("NatsPublisherActor", trace_id = &trace_id.as_ref()).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,

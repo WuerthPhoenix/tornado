@@ -2523,45 +2523,6 @@ mod test {
         };
     }
 
-    #[test]
-    fn actions_should_have_same_trace_id_than_event() {
-        // Arrange
-        let mut rule_1 = new_rule(
-            "rule1_email",
-            Operator::Equals {
-                first: Value::String("${event.type}".to_owned()),
-                second: Value::String("email".to_owned()),
-            },
-        );
-
-        let action = Action { id: String::from("action_id"), payload: Map::new() };
-        rule_1.actions.push(action);
-
-        let matcher = new_matcher(&MatcherConfig::Ruleset {
-            name: "ruleset".to_owned(),
-            rules: vec![rule_1],
-        })
-        .unwrap();
-
-        let event = Event::new("email");
-
-        // Act
-        let result = matcher.process(json!(event.clone()), false);
-
-        // Assert
-        match result.result {
-            ProcessedNode::Ruleset { name: _, rules } => {
-                assert_eq!(1, rules.rules.len());
-                assert!(!rules.rules[0].actions.is_empty());
-
-                for action in &rules.rules[0].actions {
-                    assert_eq!(Some(&event.trace_id), action.trace_id.as_ref())
-                }
-            }
-            _ => assert!(false),
-        };
-    }
-
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
         //crate::test_root::start_context();
         Matcher::build(config)

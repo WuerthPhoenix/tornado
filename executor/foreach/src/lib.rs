@@ -34,13 +34,12 @@ impl StatelessExecutor for ForEachExecutor {
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        let trace_id = &action.trace_id;
         match action.payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => {
                 let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
                     Some(Value::Array(actions)) => actions
                         .iter()
-                        .map(|value| to_action(trace_id.as_ref(), value))
+                        .map(|value| to_action(value))
                         .filter_map(Result::ok)
                         .collect(),
                     _ => {
@@ -87,15 +86,13 @@ impl StatelessExecutor for ForEachExecutor {
     }
 }
 
-fn to_action(trace_id: Option<&String>, value: &Value) -> Result<Action, ExecutorError> {
+fn to_action(value: &Value) -> Result<Action, ExecutorError> {
     match value {
         Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Object(payload)) => Ok(Action {
-                    trace_id: trace_id.map(|s| s.to_owned()),
-                    id: id.to_owned(),
-                    payload: payload.clone(),
-                }),
+                Some(Value::Object(payload)) => {
+                    Ok(Action { id: id.to_owned(), payload: payload.clone() })
+                }
                 _ => {
                     let message =
                         "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
@@ -178,21 +175,19 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
-        let trace_id = Some("asfse3t23tegre".to_owned());
 
         // Act
-        let action = to_action(trace_id.as_ref(), &action_value).unwrap();
+        let action = to_action(&action_value).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
         assert_eq!(payload_map, action.payload);
-        assert_eq!(trace_id, action.trace_id);
     }
 
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action(None, &Value::Array(vec![]));
+        let result = to_action(&Value::Array(vec![]));
 
         // Assert
         assert!(result.is_err());
@@ -210,7 +205,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -229,7 +224,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -244,7 +239,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -262,7 +257,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -309,7 +304,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -368,7 +363,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
+                &Action::new_with_payload("id_one", payload),
                 action_one.get(0).unwrap().action.deref()
             );
         }
@@ -378,7 +373,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
+                &Action::new_with_payload("id_one", payload),
                 action_one.get(1).unwrap().action.deref()
             );
         }
@@ -393,7 +388,7 @@ mod test {
                 Value::String("a first_item bb <first_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
+                &Action::new_with_payload("id_two", payload),
                 action_two.get(0).unwrap().action.deref()
             );
         }
@@ -405,7 +400,7 @@ mod test {
                 Value::String("a second_item bb <second_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
+                &Action::new_with_payload("id_two", payload),
                 action_two.get(1).unwrap().action.deref()
             );
         }
@@ -452,7 +447,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -500,7 +495,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
+                &Action::new_with_payload("id_two", payload),
                 action_two.get(0).unwrap().action.deref()
             );
         }
@@ -509,7 +504,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
+                &Action::new_with_payload("id_two", payload),
                 action_two.get(1).unwrap().action.deref()
             );
         }
@@ -540,7 +535,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -589,7 +584,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
+                &Action::new_with_payload("id_one", payload),
                 action_two.get(0).unwrap().action.deref()
             );
         }
@@ -598,7 +593,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
+                &Action::new_with_payload("id_one", payload),
                 action_two.get(1).unwrap().action.deref()
             );
         }
@@ -624,7 +619,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
@@ -686,7 +681,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![

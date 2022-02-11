@@ -33,7 +33,7 @@ async fn should_attach_context_to_span() {
     let propagator = TraceContextPropagator::new();
 
     // Act
-    let _g = TelemetryContextExtractor::attach_trace_context(&trace_context, &propagator);
+    let _g = TelemetryContextExtractor::get_trace_context(&trace_context, &propagator).attach();
     let span_1 = tracing::debug_span!("level", "first");
 
     // Assert

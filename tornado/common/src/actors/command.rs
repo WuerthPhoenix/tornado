@@ -100,7 +100,7 @@ mod test {
         let (sender, mut receiver) = unbounded_channel();
 
         let action_id = format!("{}", rand::random::<usize>());
-        let action = Arc::new(Action::new("trace_id", action_id.clone()));
+        let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
         let message = ActionMessage { action, span };
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
@@ -143,7 +143,7 @@ mod test {
         let (sender, mut receiver) = unbounded_channel();
 
         let action_id = format!("{}", rand::random::<usize>());
-        let action = Arc::new(Action::new("trace_id", action_id.clone()));
+        let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
         let message = ActionMessage { action, span };
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));

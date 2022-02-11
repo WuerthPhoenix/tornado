@@ -158,7 +158,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.parse_action(&action);
@@ -185,7 +185,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action
             .payload
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::String("action-test".to_owned()));
@@ -209,7 +209,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::String("process-check-result".to_owned()),
@@ -231,10 +231,7 @@ mod test {
         expected_payload.insert("type".to_owned(), Value::String("Host".to_owned()));
 
         assert_eq!(
-            Ok(Icinga2Action {
-                name: "process-check-result",
-                payload: Some(&expected_payload)
-            }),
+            Ok(Icinga2Action { name: "process-check-result", payload: Some(&expected_payload) }),
             result
         );
     }

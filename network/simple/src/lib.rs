@@ -58,11 +58,7 @@ mod test {
 
         let action = ActionMessage {
             span: Span::current(),
-            action: Arc::new(Action {
-                trace_id: None,
-                id: String::from(action_id),
-                payload: Map::new(),
-            }),
+            action: Arc::new(Action { id: String::from(action_id), payload: Map::new() }),
         };
 
         // Act

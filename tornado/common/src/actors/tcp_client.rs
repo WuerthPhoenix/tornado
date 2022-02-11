@@ -8,6 +8,7 @@ use tokio::io::WriteHalf;
 use tokio::net::TcpStream;
 use tokio::time;
 use tokio_util::codec::{LinesCodec, LinesCodecError};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct TcpClientActor {
     restarted: bool,
@@ -76,9 +77,10 @@ impl Handler<EventMessage> for TcpClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let _parent_span = msg.span.clone().entered();
-        let trace_id = msg.event.trace_id.as_str();
-        let _span = tracing::error_span!("TcpClientActor", trace_id).entered();
+        let parent_span = msg.span.clone().entered();
+        let trace_id = msg.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let _span = tracing::error_span!("TcpClientActor", trace_id = trace_id.as_ref()).entered();
+
         trace!("TcpClientActor - Handling Event to be sent through TCP - {:?}", &msg.event);
 
         match &mut self.tx {
