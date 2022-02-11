@@ -29,6 +29,8 @@ impl EventApiHandler for MatcherApiHandler {
         config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
+        let span = tracing::info_span!("SendEventToConfig");
+        let _g = span.enter();
         let timer = SystemTime::now();
         let labels = [
             EVENT_SOURCE_LABEL_KEY.string("http"),
@@ -42,6 +44,7 @@ impl EventApiHandler for MatcherApiHandler {
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
+                span: span.clone(),
             })
             .await?;
         self.meter.events_received_counter.add(1, &labels);

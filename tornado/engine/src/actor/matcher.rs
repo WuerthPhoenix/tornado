@@ -13,6 +13,7 @@ use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::ProcessedEvent;
 use tornado_engine_matcher::{error, matcher};
+use tracing::Span;
 
 #[derive(Message)]
 #[rtype(result = "Result<ProcessedEvent, error::MatcherError>")]
@@ -21,6 +22,7 @@ pub struct EventMessageWithReply {
     pub config_filter: HashMap<String, NodeFilter>,
     pub process_type: ProcessType,
     pub include_metadata: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Message)]
@@ -36,6 +38,7 @@ pub struct EventMessageAndConfigWithReply {
 #[rtype(result = "Result<(), error::MatcherError>")]
 pub struct EventMessage {
     pub event: Value,
+    pub span: Span,
 }
 
 #[derive(Message)]
@@ -127,12 +130,14 @@ impl Handler<EventMessage> for MatcherActor {
     type Result = Result<(), error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
+        let _g = msg.span.entered();
         let trace_id = msg.event.trace_id().unwrap_or_default();
-        let span = tracing::error_span!("MatcherActor", trace_id).entered();
+        let actor_span = tracing::error_span!("MatcherActor", trace_id);
+        let _actor_span_guard = actor_span.enter();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
         let processed_event = self.process(&self.matcher, msg.event, false);
-        self.dispatcher_addr.try_send(ProcessedEventMessage { span: span.exit(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
+        self.dispatcher_addr.try_send(ProcessedEventMessage { span: actor_span.clone(), event: processed_event }).unwrap_or_else(|err| error!("MatcherActor -  Error while sending ProcessedEventMessage to DispatcherActor. Error: {}", err));
         Ok(())
     }
 }
@@ -314,6 +319,7 @@ mod test {
                 )]),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -376,6 +382,7 @@ mod test {
                 config_filter: config_filter.clone(),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -387,6 +394,7 @@ mod test {
                 config_filter: config_filter.clone(),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap()
@@ -454,6 +462,7 @@ mod test {
                 )]),
                 include_metadata: false,
                 process_type: ProcessType::Full,
+                span: Span::current(),
             })
             .await
             .unwrap();

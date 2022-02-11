@@ -15,6 +15,7 @@ use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberC
 use tornado_common_api::{Event, Map, Value};
 use tornado_nats_json_collector::config::{NatsJsonCollectorConfig, TornadoConnectionChannel};
 use tornado_nats_json_collector::*;
+use tracing::Span;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -78,7 +79,7 @@ async fn should_subscribe_to_nats_topics() {
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
         source.metadata = metadata;
 
-        vsphere_publisher.do_send(EventMessage { event: source.clone() });
+        vsphere_publisher.do_send(EventMessage { event: source.clone(), span: Span::current() });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("vmd", received.event_type);
@@ -100,7 +101,8 @@ async fn should_subscribe_to_nats_topics() {
         metadata.insert("some_metadata".to_owned(), Value::Number(serde_json::Number::from(1)));
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
         source.metadata = metadata;
-        another_topic_publisher.do_send(EventMessage { event: source.clone() });
+        another_topic_publisher
+            .do_send(EventMessage { event: source.clone(), span: Span::current() });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("vmd", received.event_type);
@@ -122,7 +124,8 @@ async fn should_subscribe_to_nats_topics() {
         metadata.insert("some_metadata1".to_owned(), Value::Number(serde_json::Number::from(1)));
         metadata.insert("trace_context".to_owned(), Value::Object(serde_json::Map::new()));
         source.metadata = metadata;
-        vsphere_simple_publisher.do_send(EventMessage { event: source.clone() });
+        vsphere_simple_publisher
+            .do_send(EventMessage { event: source.clone(), span: Span::current() });
 
         let received = receiver.recv().await.unwrap();
         assert_eq!("vsphere_simple", &received.event_type);

@@ -3,6 +3,7 @@ use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common_api::Event;
+use tracing::Span;
 
 const BASE_ADDRESS: &str = "127.0.0.1";
 
@@ -27,7 +28,7 @@ async fn should_perform_a_tcp_request() {
         tcp_create.await.unwrap();
 
         let client_addr = TcpClientActor::start_new(address.clone(), 16);
-        client_addr.do_send(EventMessage { event: Event::new("an_event") });
+        client_addr.do_send(EventMessage { event: Event::new("an_event"), span: Span::current() });
     });
 
     let event = receiver.recv().await.unwrap();

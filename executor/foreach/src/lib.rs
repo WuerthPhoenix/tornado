@@ -1,5 +1,6 @@
 use log::*;
 use std::sync::Arc;
+use tornado_common::actors::message::ActionMessage;
 use tornado_common_api::{Action, Map, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
@@ -59,8 +60,14 @@ impl StatelessExecutor for ForEachExecutor {
 
                         let mut item = Map::new();
                         item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(action)) {
+
+                        let result = resolve_action(&Value::Object(item), action.clone())
+                            .map(|action| self.bus.publish_action(ActionMessage {
+                                action: Arc::new(action),
+                                span: tracing::Span::current()
+                            }));
+
+                        if let Err(err) = result {
                             warn!(
                                 "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
                                 action.id, err
@@ -120,7 +127,8 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
         Value::String(text) => {
-            if let Some(parse_result) = ParserBuilder::default().build_parser(text)
+            if let Some(parse_result) = ParserBuilder::default()
+                .build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
@@ -150,8 +158,12 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{collections::{HashMap, hash_map::Entry}, sync::RwLock};
-    use serde_json::{json};
+    use serde_json::json;
+    use std::ops::Deref;
+    use std::{
+        collections::{hash_map::Entry, HashMap},
+        sync::RwLock,
+    };
     use tornado_common_api::ValueExt;
     use tornado_network_simple::SimpleEventBus;
 
@@ -357,7 +369,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_one.get(0).unwrap()
+                action_one.get(0).unwrap().action.deref()
             );
         }
 
@@ -367,7 +379,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_one.get(1).unwrap()
+                action_one.get(1).unwrap().action.deref()
             );
         }
 
@@ -382,7 +394,7 @@ mod test {
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -394,7 +406,7 @@ mod test {
             );
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -489,7 +501,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -498,7 +510,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -578,7 +590,7 @@ mod test {
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_two.get(0).unwrap()
+                action_two.get(0).unwrap().action.deref()
             );
         }
 
@@ -587,7 +599,7 @@ mod test {
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
                 &Action::new_with_payload("", "id_one", payload),
-                action_two.get(1).unwrap()
+                action_two.get(1).unwrap().action.deref()
             );
         }
     }
@@ -648,7 +660,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_map().unwrap();
+        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = Map::new();
         expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
@@ -711,7 +723,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_array().unwrap();
+        let value = lock.get(0).unwrap().action.payload.get("inner").unwrap().get_array().unwrap();
         let mut expected_array = vec![];
         expected_array.push(Value::String("first".to_owned()));
         expected_array.push(Value::String("second".to_owned()));
