@@ -348,9 +348,9 @@ pub async fn daemon(
         let trace_context_propagator = TraceContextPropagator::new();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let master_span = tracing::info_span!("Process event", otel.kind = "Server");  // todo: naming
+                let master_span = tracing::info_span!("Process event", trace_id = tracing::field::Empty, otel.kind = "Server");
                 let event = master_span.in_scope(|| {
-                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();  // todo: naming
+                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();
 
                     let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
@@ -367,10 +367,12 @@ pub async fn daemon(
                     let trace_context = event.get_trace_context();
 
                     if let Some(trace_context) = trace_context {
-                        let context = TelemetryContextExtractor::get_trace_context(trace_context, &trace_context_propagator);
-                        master_span.set_parent(context);
+                        let event_trace_context = TelemetryContextExtractor::get_trace_context(trace_context, &trace_context_propagator);
+                        master_span.set_parent(event_trace_context);
                         subscriber_span.set_parent(master_span.context());
                     }
+                    let trace_id = event.get_trace_id_for_logging(&master_span.context());
+                    master_span.record("trace_id", &trace_id.as_ref());
 
                     tornado_meter_nats.events_received_counter.add(1, &[
                         meter_event_souce_label,

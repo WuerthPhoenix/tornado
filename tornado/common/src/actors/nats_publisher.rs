@@ -172,7 +172,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         let parent_span = msg.0.span.clone().entered();
-        let trace_id = msg.0.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let trace_id = msg.0.event.get_trace_id_for_logging(&parent_span.context());
         let span =
             tracing::error_span!("NatsPublisherActor", trace_id = &trace_id.as_ref()).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(

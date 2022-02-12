@@ -76,7 +76,7 @@ impl Handler<EventMessage> for UdsClientActor {
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
         let parent_span = msg.0.span.clone().entered();
-        let trace_id = msg.0.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let trace_id = msg.0.event.get_trace_id_for_logging(&parent_span.context());
         let _span = tracing::error_span!("UdsClientActor", trace_id = trace_id.as_ref()).entered();
 
         trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.0.event);

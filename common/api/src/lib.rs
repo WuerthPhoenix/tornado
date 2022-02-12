@@ -120,12 +120,11 @@ impl Event {
 
     // Returns the event.trace_id if it is defined.
     // If event.trace_id is not defined returns the trace id of the passed context.
-    // If the passed context is None, returns an empty string.
-    pub fn get_trace_id_for_logging(&self, context: Option<&Context>) -> Cow<str> {
-        match (&self.trace_id, context) {
-            (Some(event_trace_id), _) => Cow::Borrowed(event_trace_id),
-            (None, Some(context)) => Cow::Owned(context.span().span_context().trace_id().to_hex()),
-            (None, None) => Cow::Owned("".to_owned()),
+    pub fn get_trace_id_for_logging(&self, context: &Context) -> Cow<str> {
+        if let Some(event_trace_id) = &self.trace_id {
+            Cow::Borrowed(event_trace_id)
+        } else {
+            Cow::Owned(context.span().span_context().trace_id().to_hex())
         }
     }
 
@@ -979,7 +978,7 @@ mod test {
         let context = Context::new();
 
         // Act
-        let res = event.get_trace_id_for_logging(Some(&context));
+        let res = event.get_trace_id_for_logging(&context);
 
         // Assert
         assert_eq!(res.as_ref(), trace_id);
@@ -994,23 +993,9 @@ mod test {
         let context = Context::new();
 
         // Act
-        let res = event.get_trace_id_for_logging(Some(&context));
+        let res = event.get_trace_id_for_logging(&context);
 
         // Assert
         assert_eq!(res.as_ref(), "00000000000000000000000000000000");
-    }
-
-    #[test]
-    fn get_trace_id_or_extract_from_context_should_return_empty_traceid_if_event_and_contect_traceid_are_none(
-    ) {
-        // Arrange
-        let mut event = Event::new("some_type");
-        event.trace_id = None;
-
-        // Act
-        let res = event.get_trace_id_for_logging(None);
-
-        // Assert
-        assert_eq!(res.as_ref(), "");
     }
 }
