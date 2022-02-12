@@ -1,5 +1,5 @@
 use crate::error::MatcherError;
-use crate::model::{ProcessedFilterStatus, ProcessedNode, ProcessedRuleStatus};
+use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
@@ -25,14 +25,14 @@ impl Dispatcher {
                 let _span = tracing::error_span!(
                     "dispatch_ruleset",
                     name = name.as_str(),
-                    otel.name = format!("Process Ruleset: {}", name).as_str() // todo: move to matcher
+                    otel.name = format!("Dispatch Ruleset: {}", name).as_str()
                 )
                 .entered();
                 for rule in rules.rules {
                     let _span = tracing::error_span!(
                         "dispatch_rule",
                         name = rule.name.as_str(),
-                        otel.name = format!("Process Rule: {}", rule.name).as_str() // todo: move to matcher
+                        otel.name = format!("Dispatch Rule: {}", rule.name).as_str()
                     )
                     .entered();
                     match rule.status {
@@ -56,21 +56,17 @@ impl Dispatcher {
                     }
                 }
             }
-            ProcessedNode::Filter { filter, nodes, name }
-                if filter.status == ProcessedFilterStatus::Matched =>
-            // todo: is this necessary
-            {
+            ProcessedNode::Filter { nodes, name, .. } => {
                 let _span = tracing::error_span!(
                     "dispatch_filter",
                     name = name.as_str(),
-                    otel.name = format!("Process Filter: {}", name).as_str()
+                    otel.name = format!("Dispatch Filter: {}", name).as_str()
                 )
-                .entered(); // todo: move to matcher
+                .entered();
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }
             }
-            _ => {}
         };
         Ok(())
     }

@@ -110,7 +110,7 @@ impl ActionResolverBuilder {
 /// An Action resolver creates Actions from a InternalEvent.
 pub struct ActionResolver {
     rule_name: String,
-    id: String,
+    pub id: String,
     payload: HashMap<String, ActionValueProcessor>,
 }
 

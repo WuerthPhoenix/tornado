@@ -3637,6 +3637,7 @@ dependencies = [
  "futures-util",
  "log",
  "once_cell",
+ "opentelemetry",
  "opentelemetry-prometheus",
  "port_check",
  "rand 0.8.4",
@@ -3863,6 +3864,7 @@ dependencies = [
  "tornado_network_common",
  "tornado_network_simple",
  "tracing",
+ "tracing-opentelemetry",
  "typescript-definitions-ufo-patch",
 ]
 
