@@ -5,7 +5,7 @@ use crate::metrics::{
 };
 use actix::{Actor, Addr, Context, Handler};
 use log::*;
-use opentelemetry::trace::TraceContextExt;
+use opentelemetry::trace::{StatusCode, TraceContextExt};
 use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common_api::Action;
@@ -78,14 +78,18 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                         );
                     }
                     Err(e) => {
-                        tracing::Span::current().context().span().record_exception(&e);
                         action_meter
                             .actions_processed_counter
                             .add(1, &[action_id_label, ACTION_RESULT_KEY.string(RESULT_FAILURE)]);
-                        error!(
+                        let message = format!(
                             "CommandExecutorActor - Failed to execute action [{}]: {:?}",
                             &action_id, e
                         );
+                        error!("{}", message);
+                        tracing::Span::current()
+                            .context()
+                            .span()
+                            .set_status(StatusCode::Error, message);
                     }
                 }
             }

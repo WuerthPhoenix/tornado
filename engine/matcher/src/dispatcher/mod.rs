@@ -3,7 +3,7 @@ use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
-use tornado_common_api::TracedAction;
+use tornado_common_api::{Action, TracedAction};
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
@@ -38,17 +38,7 @@ impl Dispatcher {
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
-                            let actions = rule
-                                .actions
-                                .into_iter()
-                                .map(|action| {
-                                    ActionMessage(TracedAction {
-                                        span: tracing::Span::current(),
-                                        action: Arc::new(action),
-                                    })
-                                })
-                                .collect();
-                            self.dispatch(actions)?
+                            self.dispatch(rule.actions)?
                         }
                         _ => {
                             trace!("Rule [{}] not matched, ignoring actions", rule.name);
@@ -71,16 +61,21 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
+    fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
-                action_id = action.0.action.id.as_str(),
-                otel.name = format!("Dispatch Action: {}", &action.0.action.id).as_str(),
+                action_id = action.id.as_str(),
+                otel.name = format!("Dispatch Action: {}", &action.id).as_str(),
             )
             .entered();
-            self.event_bus.publish_action(action)
+            let action_message = ActionMessage(TracedAction {
+                span: tracing::Span::current(),
+                action: Arc::new(action),
+            });
+
+            self.event_bus.publish_action(action_message)
         }
         Ok(())
     }
