@@ -52,6 +52,8 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
         let _span = msg.span.entered();
+        let _emit_matched_action_span = tracing::debug_span!("Emit matched Actions").entered();
+
         trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }
