@@ -105,18 +105,9 @@ impl ArchiveExecutor {
 
     async fn write(
         &mut self,
-        relative_path: Option<String>,
+        absolute_path_string: String,
         buf: &[u8],
     ) -> Result<(), ExecutorError> {
-        let absolute_path_string = format!(
-            "{}{}{}",
-            self.base_path,
-            std::path::MAIN_SEPARATOR,
-            relative_path
-                .map(std::borrow::Cow::Owned)
-                .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
-        );
-
         let buf_writer = match self.file_cache.entry(absolute_path_string.clone()) {
             Entry::Occupied(occupied) => occupied.into_mut(),
             Entry::Vacant(vacant) => {
@@ -175,6 +166,7 @@ impl ArchiveExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatefulExecutor for ArchiveExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
@@ -189,12 +181,19 @@ impl StatefulExecutor for ArchiveExecutor {
 
             self.extract_params_from_payload(&action)?
         };
+        let absolute_path_string = format!(
+            "{}{}{}",
+            self.base_path,
+            std::path::MAIN_SEPARATOR,
+            path.map(std::borrow::Cow::Owned)
+                .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
+        );
 
         let execution_span = tracing::error_span!(
             "ArchiveExecutor",
-            otel.name = format!("Archive Event to {}", path.as_deref().unwrap_or("")).as_str()
+            otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()
         );
-        self.write(path, &event_bytes).instrument(execution_span).await?;
+        self.write(absolute_path_string, &event_bytes).instrument(execution_span).await?;
 
         Ok(())
     }

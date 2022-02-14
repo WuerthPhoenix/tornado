@@ -77,10 +77,9 @@ impl ForEachExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ForEachExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
-
-        let _executor_span = tracing::error_span!("Run ElasticsearchExecutor").entered();
 
         let Params { values, actions } = {
             let _guard = tracing::error_span!(

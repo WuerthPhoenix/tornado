@@ -5,13 +5,11 @@ use crate::metrics::{
 };
 use actix::{Actor, Addr, Context, Handler};
 use log::*;
-use opentelemetry::trace::{StatusCode, TraceContextExt};
 use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
@@ -47,14 +45,6 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
         let _parent_guard = msg.0.span.clone().entered();
-        let action_id = msg.0.action.id.to_owned();
-
-        let execution_span_guard = tracing::error_span!(
-            "Execute Action",
-            otel.name = format!("Execute Action: {}", &action_id).as_str(),
-            otel.kind = "Consumer"
-        )
-        .entered();
 
         let command = self.command.clone();
         let action_meter = self.action_meter.clone();
@@ -62,6 +52,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
         let action = msg.0.action;
         actix::spawn(
             async move {
+                let action_id = action.id.to_owned();
                 trace!("CommandExecutorActor - received new action [{:?}]", &action);
                 debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
 
@@ -86,14 +77,14 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                             &action_id, e
                         );
                         error!("{}", message);
-                        tracing::Span::current()
-                            .context()
-                            .span()
-                            .set_status(StatusCode::Error, message);
+                        // tracing::Span::current()
+                        //     .context()
+                        //     .span()
+                        //     .set_status(StatusCode::Error, message);
                     }
                 }
             }
-            .instrument(execution_span_guard.exit()),
+            .instrument(msg.0.span),
         );
         Ok(())
     }

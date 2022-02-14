@@ -51,6 +51,7 @@ impl fmt::Display for ScriptExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ScriptExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ScriptExecutor - received action: \n{:?}", action);
 

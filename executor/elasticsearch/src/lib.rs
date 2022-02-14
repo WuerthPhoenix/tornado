@@ -220,6 +220,7 @@ impl std::fmt::Display for ElasticsearchExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ElasticsearchExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
@@ -237,7 +238,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
 
         let execution_span = tracing::error_span!(
             "ElasticsearchExecutor",
-            otel.name = format!("Send Event to {}", params.endpoint).as_str()
+            otel.name = format!("Send document to: {}", params.endpoint).as_str()
         );
 
         self.send_to_endpoint(action.as_ref(), params).instrument(execution_span).await
