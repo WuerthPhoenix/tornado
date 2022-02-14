@@ -2,15 +2,16 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::fmt::Display;
+use std::sync::Arc;
 use thiserror::Error;
-use tornado_common_api::{RetriableError, TracedAction};
+use tornado_common_api::{Action, RetriableError};
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
 /// It receives the Action description from the Tornado engine and delivers the linked operation.
 #[async_trait::async_trait(?Send)]
 pub trait StatefulExecutor: Display {
     /// Executes the operation linked to the received Action.
-    async fn execute(&mut self, action: TracedAction) -> Result<(), ExecutorError>;
+    async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError>;
 }
 
 /// An executor is in charge of performing a specific Action (typically only one, but perhaps more).
@@ -18,7 +19,7 @@ pub trait StatefulExecutor: Display {
 #[async_trait::async_trait(?Send)]
 pub trait StatelessExecutor: Display {
     /// Executes the operation linked to the received Action.
-    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError>;
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError>;
 }
 
 #[derive(Error, Debug, PartialEq)]

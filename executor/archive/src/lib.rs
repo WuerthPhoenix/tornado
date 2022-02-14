@@ -3,15 +3,15 @@ use lru_time_cache::Entry;
 use lru_time_cache::LruCache;
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use tokio::fs::create_dir_all;
 use tokio::fs::File;
 use tokio::fs::OpenOptions;
 use tokio::io::AsyncWriteExt;
 use tokio::io::BufWriter;
-use tornado_common_api::{Action, TracedAction};
+use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
 use tracing::Instrument;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod config;
 mod paths;
@@ -175,12 +175,10 @@ impl ArchiveExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatefulExecutor for ArchiveExecutor {
-    async fn execute(&mut self, action: TracedAction) -> Result<(), ExecutorError> {
+    async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
-        let executor_span = tracing::error_span!("Run ArchiveExecutor");
-        executor_span.set_parent(action.span.context());
-        let _executor_span_guard = executor_span.entered();
+        let _executor_span = tracing::error_span!("Run ArchiveExecutor").entered();
 
         let (path, event_bytes) = {
             let _guard = tracing::error_span!(
@@ -189,7 +187,7 @@ impl StatefulExecutor for ArchiveExecutor {
             )
             .entered();
 
-            self.extract_params_from_payload(action.action.as_ref())?
+            self.extract_params_from_payload(&action)?
         };
 
         let execution_span = tracing::error_span!(

@@ -43,7 +43,7 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
         if let Some(executor) = &self.executor {
             let executor = executor.clone();
             actix::spawn(async move {
-                match executor.execute(msg.0).await {
+                match executor.execute(msg.0.action).await {
                     Ok(_) => {
                         debug!(
                             "ForEachExecutorActor - {} - Action executed successfully",

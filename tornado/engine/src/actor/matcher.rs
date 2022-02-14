@@ -131,7 +131,7 @@ impl Handler<EventMessage> for MatcherActor {
 
     fn handle(&mut self, msg: EventMessage, _: &mut Context<Self>) -> Self::Result {
         let _g = msg.span.entered();
-        let actor_span = tracing::error_span!("Match against Processing Tree"); // todo: naming
+        let actor_span = tracing::error_span!("Match against Processing Tree");
         let _actor_span_guard = actor_span.enter();
         trace!("MatcherActor - received new EventMessage [{:?}]", &msg.event);
 
@@ -145,7 +145,7 @@ impl Handler<EventMessageWithReply> for MatcherActor {
     type Result = Result<ProcessedEvent, error::MatcherError>;
 
     fn handle(&mut self, msg: EventMessageWithReply, _: &mut Context<Self>) -> Self::Result {
-        let _span = tracing::error_span!("Match against Processing Tree").entered(); // todo: naming
+        let _span = tracing::error_span!("Match against Processing Tree").entered();
         trace!("MatcherActor - received new EventMessageWithReply [{:?}]", &msg.event);
 
         let filtered_config = matcher_config_filter(&self.matcher_config, &msg.config_filter)
@@ -171,7 +171,7 @@ impl Handler<EventMessageAndConfigWithReply> for MatcherActor {
         msg: EventMessageAndConfigWithReply,
         _: &mut Context<Self>,
     ) -> Self::Result {
-        let _span = tracing::error_span!("Match against Processing Tree").entered(); // todo: naming
+        let _span = tracing::error_span!("Match against Processing Tree").entered();
         trace!("MatcherActor - received new EventMessageAndConfigWithReply [{:?}]", msg);
 
         let matcher = Matcher::build(&msg.matcher_config)?;

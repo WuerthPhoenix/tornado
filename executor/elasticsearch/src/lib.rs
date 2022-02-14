@@ -4,11 +4,11 @@ use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::borrow::Cow;
+use std::sync::Arc;
 use tokio::io::AsyncReadExt;
-use tornado_common_api::{Action, Payload, TracedAction, ValueExt};
+use tornado_common_api::{Action, Payload, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tracing::Instrument;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub mod config;
 
@@ -220,12 +220,10 @@ impl std::fmt::Display for ElasticsearchExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ElasticsearchExecutor {
-    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
-        let executor_span = tracing::error_span!("Run ElasticsearchExecutor");
-        executor_span.set_parent(action.span.context());
-        let _executor_span_guard = executor_span.entered();
+        let _executor_span = tracing::error_span!("Run ElasticsearchExecutor").entered();
 
         let params = {
             let _guard = tracing::error_span!(
@@ -234,7 +232,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
             )
             .entered();
 
-            self.extract_params_from_payload(&action.action.payload)?
+            self.extract_params_from_payload(&action.payload)?
         };
 
         let execution_span = tracing::error_span!(
@@ -242,7 +240,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
             otel.name = format!("Send Event to {}", params.endpoint).as_str()
         );
 
-        self.send_to_endpoint(action.action.as_ref(), params).instrument(execution_span).await
+        self.send_to_endpoint(action.as_ref(), params).instrument(execution_span).await
     }
 }
 

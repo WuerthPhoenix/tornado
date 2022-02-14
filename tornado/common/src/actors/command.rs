@@ -5,18 +5,20 @@ use crate::metrics::{
 };
 use actix::{Actor, Addr, Context, Handler};
 use log::*;
+use opentelemetry::trace::TraceContextExt;
 use std::rc::Rc;
 use std::sync::Arc;
-use tornado_common_api::TracedAction;
+use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
 use tracing_futures::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
-pub struct CommandExecutorActor<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> {
+pub struct CommandExecutorActor<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> {
     pub command: Rc<T>,
     action_meter: Arc<ActionMeter>,
 }
 
-impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> CommandExecutorActor<T> {
+impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> CommandExecutorActor<T> {
     pub fn start_new(
         message_mailbox_capacity: usize,
         command: Rc<T>,
@@ -29,7 +31,7 @@ impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> CommandExecu
     }
 }
 
-impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Actor
+impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Actor
     for CommandExecutorActor<T>
 {
     type Context = Context<Self>;
@@ -38,28 +40,34 @@ impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Actor
     }
 }
 
-impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Handler<ActionMessage>
+impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<ActionMessage>
     for CommandExecutorActor<T>
 {
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
+        let _parent_guard = msg.0.span.clone().entered();
+        let action_id = msg.0.action.id.to_owned();
+
+        let execution_span_guard = tracing::error_span!(
+            "Execute Action",
+            otel.name = format!("Execute Action: {}", &action_id).as_str(),
+            otel.kind = "Consumer"
+        )
+        .entered();
+
         let command = self.command.clone();
         let action_meter = self.action_meter.clone();
 
-        let msg_to_executor = msg.0.to_owned();
-        let action_id = msg.0.action.id.to_owned();
+        let action = msg.0.action;
         actix::spawn(
             async move {
-                trace!(
-                    "CommandExecutorActor - received new action [{:?}]",
-                    &msg_to_executor.action
-                );
+                trace!("CommandExecutorActor - received new action [{:?}]", &action);
                 debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
 
                 let action_id_label = ACTION_ID_LABEL_KEY.string(action_id.to_owned());
 
-                match command.execute(msg_to_executor).await {
+                match command.execute(action).await {
                     Ok(_) => {
                         action_meter
                             .actions_processed_counter
@@ -70,6 +78,7 @@ impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Handler<Acti
                         );
                     }
                     Err(e) => {
+                        tracing::Span::current().context().span().record_exception(&e);
                         action_meter
                             .actions_processed_counter
                             .add(1, &[action_id_label, ACTION_RESULT_KEY.string(RESULT_FAILURE)]);
@@ -80,7 +89,7 @@ impl<T: Command<TracedAction, Result<(), ExecutorError>> + 'static> Handler<Acti
                     }
                 }
             }
-            .instrument(msg.0.span.clone()),
+            .instrument(execution_span_guard.exit()),
         );
         Ok(())
     }

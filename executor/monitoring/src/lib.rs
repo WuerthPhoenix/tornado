@@ -1,8 +1,8 @@
 use log::*;
 use serde::{Deserialize, Serialize};
-use tornado_common_api::Payload;
+use std::sync::Arc;
 use tornado_common_api::RetriableError;
-use tornado_common_api::TracedAction;
+use tornado_common_api::{Action, Payload};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
@@ -177,11 +177,10 @@ impl MonitoringExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for MonitoringExecutor {
-    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
-        let monitoring_action =
-            MonitoringExecutor::parse_monitoring_action(&action.action.payload)?;
+        let monitoring_action = MonitoringExecutor::parse_monitoring_action(&action.payload)?;
 
         let (icinga2_action, director_host_creation_action, director_service_creation_action) =
             monitoring_action.to_sub_actions()?;

@@ -240,7 +240,6 @@ pub async fn daemon(
     let event_bus = {
         let event_bus = ActixEventBus {
             callback: move |message| {
-                let _span = message.0.span.clone().entered();
                 action_meter
                     .actions_received_counter
                     .add(1, &[ACTION_ID_LABEL_KEY.string(message.0.action.id.to_owned())]);

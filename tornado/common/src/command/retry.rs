@@ -200,7 +200,7 @@ pub mod test {
     use rand::Rng;
     use std::sync::Arc;
     use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-    use tornado_common_api::{Action, TracedAction};
+    use tornado_common_api::Action;
     use tornado_executor_common::{ExecutorError, StatelessExecutor};
 
     #[test]
@@ -490,8 +490,8 @@ pub mod test {
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysFailExecutor {
-        async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
-            self.sender.send(action.action.clone()).unwrap();
+        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+            self.sender.send(action.clone()).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
@@ -513,8 +513,8 @@ pub mod test {
 
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysOkExecutor {
-        async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
-            self.sender.send(action.action.clone()).unwrap();
+        async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+            self.sender.send(action.clone()).unwrap();
             Ok(())
         }
     }

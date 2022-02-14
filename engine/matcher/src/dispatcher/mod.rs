@@ -73,11 +73,11 @@ impl Dispatcher {
 
     fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
-            let _parent_span = action.0.span.clone().entered();
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
                 action_id = action.0.action.id.as_str(),
+                otel.name = format!("Dispatch Action: {}", &action.0.action.id).as_str(),
             )
             .entered();
             self.event_bus.publish_action(action)

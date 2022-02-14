@@ -5,7 +5,6 @@ use tornado_common_api::{Action, Map, Payload, TracedAction, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
@@ -78,12 +77,10 @@ impl ForEachExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ForEachExecutor {
-    async fn execute(&self, action: TracedAction) -> Result<(), ExecutorError> {
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        let executor_span = tracing::error_span!("Run ElasticsearchExecutor");
-        executor_span.set_parent(action.span.context());
-        let _executor_span_guard = executor_span.entered();
+        let _executor_span = tracing::error_span!("Run ElasticsearchExecutor").entered();
 
         let Params { values, actions } = {
             let _guard = tracing::error_span!(
@@ -92,7 +89,7 @@ impl StatelessExecutor for ForEachExecutor {
             )
             .entered();
 
-            self.extract_params_from_payload(&action.action.payload)?
+            self.extract_params_from_payload(&action.payload)?
         };
 
         let execution_span = tracing::error_span!(
