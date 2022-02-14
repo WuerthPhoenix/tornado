@@ -62,6 +62,7 @@ impl Icinga2Executor {
         }
     }
 
+    #[instrument(level = "debug", name = "IcingaRequest", err, skip_all, fields(otel.name = format!("Send request of type: [{}] to Icinga2 ", &icinga2_action.name).as_str()))]
     pub async fn perform_request<'a>(
         &self,
         icinga2_action: &'a Icinga2Action<'a>,

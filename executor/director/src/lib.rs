@@ -96,7 +96,7 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
-    #[instrument(level = "error", name = "DirectorExecutor", skip_all, fields(otel.name = format!("Sending event to {}. Live creation: {}", director_action.name.to_director_api_subpath(), director_action.live_creation).as_str()))]
+    #[instrument(level = "error", name = "DirectorExecutor", skip_all, fields(otel.name = format!("Send request of type [{:?}] to Director. Live creation: {}", director_action.name, director_action.live_creation).as_str()))]
     pub async fn perform_request(
         &self,
         director_action: DirectorAction<'_>,
