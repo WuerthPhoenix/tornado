@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub mod client;
 pub mod config;
@@ -41,6 +42,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::ValueExt::get_map)
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload

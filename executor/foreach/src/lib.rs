@@ -5,6 +5,7 @@ use tornado_common_api::{Action, Map, Payload, TracedAction, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
+use tracing::instrument;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
@@ -33,6 +34,7 @@ impl ForEachExecutor {
         Self { bus }
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn extract_params_from_payload<'a>(
         &self,
         payload: &'a Payload,
@@ -81,15 +83,7 @@ impl StatelessExecutor for ForEachExecutor {
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        let Params { values, actions } = {
-            let _guard = tracing::error_span!(
-                "ForEachExecutor",
-                otel.name = format!("Extract parameters for Executor").as_str()
-            )
-            .entered();
-
-            self.extract_params_from_payload(&action.payload)?
-        };
+        let Params { values, actions } = self.extract_params_from_payload(&action.payload)?;
 
         let execution_span = tracing::error_span!(
             "ForEachExecutor",

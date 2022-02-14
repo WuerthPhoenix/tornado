@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tokio::io::AsyncReadExt;
 use tornado_common_api::{Action, Payload, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
-use tracing::Instrument;
+use tracing::instrument;
 
 pub mod config;
 
@@ -119,6 +119,7 @@ impl ElasticsearchExecutor {
         Ok(ElasticsearchExecutor { default_client })
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn extract_params_from_payload<'a>(
         &self,
         payload: &'a Payload,
@@ -147,6 +148,7 @@ impl ElasticsearchExecutor {
         Ok(Params { data, endpoint })
     }
 
+    #[instrument(level = "error", name = "ElasticsearchExecutor", skip_all, fields(otel.name = format!("Send document to: {}", params.endpoint).as_str()))]
     async fn send_to_endpoint(
         &self,
         action: &Action,
@@ -224,24 +226,9 @@ impl StatelessExecutor for ElasticsearchExecutor {
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
 
-        let _executor_span = tracing::error_span!("Run ElasticsearchExecutor").entered();
+        let params = self.extract_params_from_payload(&action.payload)?;
 
-        let params = {
-            let _guard = tracing::error_span!(
-                "ElasticsearchExecutor",
-                otel.name = format!("Extract parameters for Executor").as_str()
-            )
-            .entered();
-
-            self.extract_params_from_payload(&action.payload)?
-        };
-
-        let execution_span = tracing::error_span!(
-            "ElasticsearchExecutor",
-            otel.name = format!("Send document to: {}", params.endpoint).as_str()
-        );
-
-        self.send_to_endpoint(action.as_ref(), params).instrument(execution_span).await
+        self.send_to_endpoint(action.as_ref(), params).await
     }
 }
 

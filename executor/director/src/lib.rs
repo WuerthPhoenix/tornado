@@ -7,7 +7,7 @@ use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_common_api::ValueExt;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
-use tracing::Instrument;
+use tracing::instrument;
 
 pub mod config;
 
@@ -76,6 +76,7 @@ impl DirectorExecutor {
             .to_owned()
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
@@ -95,6 +96,7 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
+    #[instrument(level = "error", name = "DirectorExecutor", skip_all, fields(otel.name = format!("Sending event to {}. Live creation: {}", director_action.name.to_director_api_subpath(), director_action.live_creation).as_str()))]
     pub async fn perform_request(
         &self,
         director_action: DirectorAction<'_>,
@@ -204,29 +206,9 @@ impl StatelessExecutor for DirectorExecutor {
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
-        let _executor_span = tracing::error_span!("Run DirectorExecutor").entered();
+        let action = self.parse_action(&action)?;
 
-        let action = {
-            let _guard = tracing::error_span!(
-                "DirectorExecutor",
-                otel.name = format!("Extract parameters for Executor").as_str()
-            )
-            .entered();
-
-            self.parse_action(&action)?
-        };
-
-        let execution_span = tracing::error_span!(
-            "DirectorExecutor",
-            otel.name = format!(
-                "Sending event to {}. Live creation: {}",
-                action.name.to_director_api_subpath(),
-                action.live_creation
-            )
-            .as_str()
-        );
-
-        self.perform_request(action).instrument(execution_span).await
+        self.perform_request(action).await
     }
 }
 

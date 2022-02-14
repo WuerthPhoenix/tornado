@@ -2,14 +2,20 @@ use log::*;
 use std::fmt;
 use std::sync::Arc;
 use tokio::process::Command;
-use tornado_common_api::{Action, Value};
+use tornado_common_api::{Action, Payload, Value};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub const SCRIPT_TYPE_KEY: &str = "script";
 pub const SCRIPT_ARGS_KEY: &str = "args";
 
 #[derive(Default, Clone)]
 pub struct ScriptExecutor {}
+
+struct Params<'a> {
+    script: String,
+    args: Option<&'a Value>,
+}
 
 impl ScriptExecutor {
     pub fn new() -> ScriptExecutor {
@@ -41,22 +47,13 @@ impl ScriptExecutor {
             Value::Null => warn!("Args in payload is null. Ignore it."),
         };
     }
-}
 
-impl fmt::Display for ScriptExecutor {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ScriptExecutor")
-    }
-}
-
-#[async_trait::async_trait(?Send)]
-impl StatelessExecutor for ScriptExecutor {
-    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-        trace!("ScriptExecutor - received action: \n{:?}", action);
-
-        let script = action
-            .payload
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
+    fn extract_params_from_payload<'a>(
+        &self,
+        payload: &'a Payload,
+    ) -> Result<Params<'a>, ExecutorError> {
+        let script = payload
             .get(SCRIPT_TYPE_KEY)
             .and_then(tornado_common_api::ValueExt::get_text)
             .ok_or_else(|| ExecutorError::ActionExecutionError {
@@ -66,7 +63,12 @@ impl StatelessExecutor for ScriptExecutor {
                 data: Default::default(),
             })?
             .to_owned();
+        let args = payload.get(SCRIPT_ARGS_KEY);
+        Ok(Params { script, args })
+    }
 
+    #[instrument(level = "error", name = "ScriptExecutor", skip_all, fields(otel.name = format!("Execute script: [{}]. Args: {:?}", script, args).as_str()))]
+    async fn execute_script(script: String, args: Option<&Value>) -> Result<(), ExecutorError> {
         let output = {
             let script_iter = script.split_whitespace().collect::<Vec<&str>>();
             let mut script_iter = script_iter.iter();
@@ -83,7 +85,7 @@ impl StatelessExecutor for ScriptExecutor {
                 cmd.arg(arg);
             }
 
-            if let Some(value) = action.payload.get(SCRIPT_ARGS_KEY) {
+            if let Some(value) = args {
                 ScriptExecutor::append_args(&mut cmd, value);
             } else {
                 trace!("No args found in payload")
@@ -120,6 +122,26 @@ impl StatelessExecutor for ScriptExecutor {
                 data: Default::default(),
             })
         }
+    }
+}
+
+impl fmt::Display for ScriptExecutor {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "ScriptExecutor")
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ScriptExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+        trace!("ScriptExecutor - received action: \n{:?}", action);
+
+        let params = self.extract_params_from_payload(&action.payload)?;
+        let script = params.script;
+        let args = params.args;
+
+        ScriptExecutor::execute_script(script, args).await
     }
 }
 

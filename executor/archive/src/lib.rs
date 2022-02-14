@@ -11,7 +11,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::io::BufWriter;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
-use tracing::Instrument;
+use tracing::instrument;
 
 pub mod config;
 mod paths;
@@ -56,6 +56,7 @@ impl ArchiveExecutor {
         }
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn extract_params_from_payload(
         &self,
         action: &Action,
@@ -103,6 +104,7 @@ impl ArchiveExecutor {
         Ok((path, event_bytes))
     }
 
+    #[instrument(level = "error", name = "ArchiveExecutor", skip_all, fields(otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()))]
     async fn write(
         &mut self,
         absolute_path_string: String,
@@ -170,17 +172,7 @@ impl StatefulExecutor for ArchiveExecutor {
     async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
-        let _executor_span = tracing::error_span!("Run ArchiveExecutor").entered();
-
-        let (path, event_bytes) = {
-            let _guard = tracing::error_span!(
-                "ArchiveExecutor",
-                otel.name = format!("Extract parameters for Executor").as_str()
-            )
-            .entered();
-
-            self.extract_params_from_payload(&action)?
-        };
+        let (path, event_bytes) = self.extract_params_from_payload(&action)?;
         let absolute_path_string = format!(
             "{}{}{}",
             self.base_path,
@@ -189,11 +181,7 @@ impl StatefulExecutor for ArchiveExecutor {
                 .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
         );
 
-        let execution_span = tracing::error_span!(
-            "ArchiveExecutor",
-            otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()
-        );
-        self.write(absolute_path_string, &event_bytes).instrument(execution_span).await?;
+        self.write(absolute_path_string, &event_bytes).await?;
 
         Ok(())
     }
