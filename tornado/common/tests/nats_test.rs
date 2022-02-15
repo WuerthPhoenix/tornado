@@ -618,6 +618,7 @@ fn start_logger() {
             apm_output: false,
             apm_server_url: "http://localhost:8200".to_owned(),
             apm_server_api_credentials: None,
+            exporter: Default::default(),
         },
     };
     if let Err(err) = tornado_common_logger::setup_logger(conf) {
