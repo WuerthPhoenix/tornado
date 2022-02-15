@@ -80,6 +80,7 @@ pub fn get_opentelemetry_tracer(
     };
 
     let tornado_sampler = TornadoSampler::new(apm_output_enabled);
+    let hostname = sys_info::hostname().unwrap_or("localhost".to_owned());
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
@@ -90,9 +91,9 @@ pub fn get_opentelemetry_tracer(
         )
         .with_trace_config(config().with_sampler(tornado_sampler).with_resource(Resource::new(
             vec![
-                otel_sem_cov::resource::SERVICE_NAME.string(get_current_service_name()?).into(),
-                otel_sem_cov::resource::TELEMETRY_SDK_LANGUAGE.string("Rust").into(),
-                otel_sem_cov::resource::SERVICE_INSTANCE_ID.string("localhost").into(),
+                otel_sem_cov::resource::SERVICE_NAME.string(get_current_service_name()?),
+                otel_sem_cov::resource::HOST_NAME.string(hostname.clone()),
+                otel_sem_cov::resource::SERVICE_INSTANCE_ID.string(hostname),
             ],
         )))
         .install_batch(opentelemetry::runtime::Tokio)
