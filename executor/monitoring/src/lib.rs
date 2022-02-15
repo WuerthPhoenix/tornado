@@ -1,9 +1,8 @@
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use tornado_common_api::Action;
-use tornado_common_api::Payload;
 use tornado_common_api::RetriableError;
+use tornado_common_api::{Action, Payload};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
@@ -178,6 +177,7 @@ impl MonitoringExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for MonitoringExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("MonitoringExecutor - received action: \n[{:?}]", action);
 
@@ -221,7 +221,7 @@ mod test {
     use httpmock::MockServer;
     use maplit::*;
     use serde_json::json;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     #[tokio::test]
     async fn should_fail_if_action_missing() {
@@ -244,7 +244,7 @@ mod test {
         )
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -279,7 +279,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action
             .payload
             .insert("action_name".to_owned(), Value::String("my_invalid_action".to_owned()));
@@ -325,7 +325,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "action_name".to_owned(),
             Value::String("create_and_or_process_service_passive_check_result".to_owned()),
@@ -378,7 +378,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "action_name".to_owned(),
             Value::String("create_and_or_process_host_passive_check_result".to_owned()),
@@ -422,7 +422,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "action_name".to_owned(),
             Value::String("create_and_or_process_host_passive_check_result".to_owned()),
@@ -466,7 +466,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "action_name".to_owned(),
             Value::String("create_and_or_process_service_passive_check_result".to_owned()),
@@ -518,7 +518,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "action_name".to_owned(),
             Value::String("create_and_or_process_host_passive_check_result".to_owned()),

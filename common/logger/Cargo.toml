@@ -12,11 +12,13 @@ base64 = "0.13"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 opentelemetry = { version = "0.16", features = ["rt-tokio"] }
+opentelemetry-semantic-conventions = "0.8"
 opentelemetry-otlp = { version = "0.9", features = ["tonic", "tls", "tls-roots"] }
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
 serde = { version = "1.0", features = ['derive'] }
 serde_json = { version = "1.0" }
+sys-info = "0.9"
 thiserror = "1.0"
 tonic = "0.5"
 tracing = "0.1"
@@ -28,6 +30,7 @@ tracing-opentelemetry = "0.16"
 
 [dev-dependencies]
 rand = "0.8"
+serial_test = "0.5"
 tempfile = "3"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tornado_common_api = { path = "../api", version = "0.0.1" }

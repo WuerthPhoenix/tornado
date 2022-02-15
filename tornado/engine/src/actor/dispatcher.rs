@@ -1,16 +1,16 @@
 use actix::prelude::*;
 use log::*;
-use tornado_common_api::Action;
+use tornado_common::actors::message::ActionMessage;
 use tornado_engine_matcher::{dispatcher, error, model};
 use tornado_network_common::EventBus;
 use tracing::Span;
 
-pub struct ActixEventBus<F: Fn(Action)> {
+pub struct ActixEventBus<F: Fn(ActionMessage)> {
     pub callback: F,
 }
 
-impl<F: Fn(Action)> EventBus for ActixEventBus<F> {
-    fn publish_action(&self, message: Action) {
+impl<F: Fn(ActionMessage)> EventBus for ActixEventBus<F> {
+    fn publish_action(&self, message: ActionMessage) {
         (self.callback)(message)
     }
 }
@@ -52,6 +52,8 @@ impl Handler<ProcessedEventMessage> for DispatcherActor {
 
     fn handle(&mut self, msg: ProcessedEventMessage, _: &mut Context<Self>) -> Self::Result {
         let _span = msg.span.entered();
+        let _emit_matched_action_span = tracing::debug_span!("Emit matched Actions").entered();
+
         trace!("DispatcherActor - received new processed event [{:?}]", &msg.event);
         self.dispatcher.dispatch_actions(msg.event.result)
     }

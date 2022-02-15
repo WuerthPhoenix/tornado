@@ -1,9 +1,9 @@
 use serde::{Deserialize, Serialize};
+use tornado_common_api::ValueExt;
 use tornado_common_api::{Payload, Value};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;
-use tornado_common_api::ValueExt;
 
 const PROCESS_CHECK_RESULT_SUBURL: &str = "process-check-result";
 pub const ICINGA_FIELD_FOR_SPECIFYING_HOST: &str = "host";
@@ -145,7 +145,7 @@ mod test {
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
     ) {
         // Arrange
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert("host".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
@@ -174,7 +174,7 @@ mod test {
     fn to_sub_actions_should_throw_error_if_process_check_result_service_not_specified_with_service_field(
     ) {
         // Arrange
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),

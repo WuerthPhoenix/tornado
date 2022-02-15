@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub mod client;
 pub mod config;
@@ -41,6 +42,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::ValueExt::get_map)
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
@@ -60,6 +62,7 @@ impl Icinga2Executor {
         }
     }
 
+    #[instrument(level = "debug", name = "IcingaRequest", err, skip_all, fields(otel.name = format!("Send request of type: [{}] to Icinga2 ", &icinga2_action.name).as_str()))]
     pub async fn perform_request<'a>(
         &self,
         icinga2_action: &'a Icinga2Action<'a>,
@@ -126,6 +129,7 @@ fn to_err_data(
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for Icinga2Executor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(&action)?;
@@ -158,7 +162,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.parse_action(&action);
@@ -185,7 +189,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action
             .payload
             .insert(ICINGA2_ACTION_NAME_KEY.to_owned(), Value::String("action-test".to_owned()));
@@ -209,7 +213,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::String("process-check-result".to_owned()),
@@ -231,10 +235,7 @@ mod test {
         expected_payload.insert("type".to_owned(), Value::String("Host".to_owned()));
 
         assert_eq!(
-            Ok(Icinga2Action {
-                name: "process-check-result",
-                payload: Some(&expected_payload)
-            }),
+            Ok(Icinga2Action { name: "process-check-result", payload: Some(&expected_payload) }),
             result
         );
     }

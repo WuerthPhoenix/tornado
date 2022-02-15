@@ -1,17 +1,26 @@
-use crate::elastic_apm::{get_current_service_name, ApmTracingConfig};
+use crate::elastic_apm::{get_current_service_name, ApmTracingConfig, ExporterConfig};
 use crate::LoggerError;
 use opentelemetry::propagation::{Extractor, Injector, TextMapPropagator};
 use opentelemetry::sdk::propagation::TraceContextPropagator;
 use opentelemetry::sdk::trace::{config, SamplingDecision, SamplingResult, ShouldSample, Tracer};
 use opentelemetry::sdk::Resource;
-use opentelemetry::trace::{Link, SpanKind, TraceContextExt, TraceId, TraceState};
-use opentelemetry::{Context, ContextGuard, KeyValue};
+use opentelemetry::trace::{
+    Link, SpanContext, SpanId, SpanKind, TraceContextExt, TraceId, TraceState,
+};
+use opentelemetry::{Context, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
+use opentelemetry_semantic_conventions as otel_sem_cov;
 use serde_json::{Map, Value};
+use std::env;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tonic::metadata::MetadataMap;
+
+const OTEL_BSP_MAX_QUEUE_SIZE: &str = "OTEL_BSP_MAX_QUEUE_SIZE";
+const OTEL_BSP_MAX_EXPORT_BATCH_SIZE: &str = "OTEL_BSP_MAX_EXPORT_BATCH_SIZE";
+const OTEL_BSP_SCHEDULE_DELAY: &str = "OTEL_BSP_SCHEDULE_DELAY";
+const OTEL_BSP_EXPORT_TIMEOUT: &str = "OTEL_BSP_EXPORT_TIMEOUT";
 
 // This sampler is needed to allow to always construct the OpenTelemetry context
 // even in the case that we do not want to export the traces to APM.
@@ -78,7 +87,9 @@ pub fn get_opentelemetry_tracer(
         timeout: Duration::from_secs(10),
     };
 
+    set_opentelemetry_batch_exporter_config(&apm_tracing_config.exporter);
     let tornado_sampler = TornadoSampler::new(apm_output_enabled);
+    let hostname = sys_info::hostname().unwrap_or("localhost".to_owned());
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(
@@ -88,7 +99,11 @@ pub fn get_opentelemetry_tracer(
                 .with_metadata(tonic_metadata),
         )
         .with_trace_config(config().with_sampler(tornado_sampler).with_resource(Resource::new(
-            vec![KeyValue::new("service.name", get_current_service_name()?)],
+            vec![
+                otel_sem_cov::resource::SERVICE_NAME.string(get_current_service_name()?),
+                otel_sem_cov::resource::HOST_NAME.string(hostname.clone()),
+                otel_sem_cov::resource::SERVICE_INSTANCE_ID.string(hostname),
+            ],
         )))
         .install_batch(opentelemetry::runtime::Tokio)
         .map_err(|err| LoggerError::LoggerRuntimeError {
@@ -97,6 +112,24 @@ pub fn get_opentelemetry_tracer(
                 err
             ),
         })
+}
+
+// Currently we set the settings of `BatchConfig` via env variables because
+// the `install_batch()` function does not expose ways to configure it programmatically.
+// Avoiding to use `install_batch()` and manually configure the BatchSpanProcessorBuilder
+// would require instead to copy nearly all the logic of `install_batch()`.
+// Env variables are documented here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#batch-span-processor
+fn set_opentelemetry_batch_exporter_config(exporter_config: &ExporterConfig) {
+    env::set_var(OTEL_BSP_MAX_QUEUE_SIZE, exporter_config.max_queue_size.to_string());
+    if let Some(scheduled_delay_ms) = exporter_config.scheduled_delay_ms {
+        env::set_var(OTEL_BSP_SCHEDULE_DELAY, scheduled_delay_ms.to_string());
+    }
+    if let Some(max_export_timeout_ms) = exporter_config.max_export_timeout_ms {
+        env::set_var(OTEL_BSP_EXPORT_TIMEOUT, max_export_timeout_ms.to_string());
+    }
+    if let Some(max_export_batch_size) = exporter_config.max_export_batch_size {
+        env::set_var(OTEL_BSP_MAX_EXPORT_BATCH_SIZE, max_export_batch_size.to_string());
+    }
 }
 
 pub struct TelemetryContextInjector(pub Map<String, Value>);
@@ -131,11 +164,35 @@ impl Extractor for TelemetryContextExtractor<'_> {
 }
 
 impl TelemetryContextExtractor<'_> {
-    pub fn attach_trace_context(
+    pub fn get_trace_context(
         trace_context: &Map<String, Value>,
         trace_context_propagator: &TraceContextPropagator,
-    ) -> ContextGuard {
-        trace_context_propagator.extract(&TelemetryContextExtractor(trace_context)).attach()
+    ) -> Context {
+        let trace_context =
+            trace_context_propagator.extract(&TelemetryContextExtractor(trace_context));
+        let span_ref = trace_context.span();
+        // If the span context comes from remote and was not sampled, the new spans should be root spans,
+        // so that the tracing backend will not complain that the parent span was not received
+        // (and will consider the trace complete when received).
+        // At the same time we need to keep the TraceId of remote span, so that events can be still
+        // related by inspecting the logs.
+        // To do this, we construct a span context with SpanId to invalid.
+        if span_ref.span_context().is_remote() && !span_ref.span_context().is_sampled() {
+            let trace_id = span_ref.span_context().trace_id();
+            let trace_flags = span_ref.span_context().trace_flags();
+            let is_remote = span_ref.span_context().is_remote();
+            let trace_state = span_ref.span_context().trace_state();
+            let root_span_context = SpanContext::new(
+                trace_id,
+                SpanId::invalid(),
+                trace_flags,
+                is_remote,
+                trace_state.to_owned(),
+            );
+            Context::current().with_remote_span_context(root_span_context)
+        } else {
+            trace_context
+        }
     }
 }
 
@@ -143,6 +200,8 @@ impl TelemetryContextExtractor<'_> {
 mod test {
     use super::*;
     use crate::elastic_apm::{ApmServerApiCredentials, ApmTracingConfig};
+    use opentelemetry::sdk::trace::BatchConfig;
+    use serial_test::serial;
 
     #[tokio::test]
     async fn should_get_opentelemetry_tracer() {
@@ -153,8 +212,63 @@ mod test {
                 id: "myid".to_string(),
                 key: "mykey".to_string(),
             }),
+            exporter: ExporterConfig::default(),
         };
         let tracer = get_opentelemetry_tracer(&tracing_config, Arc::new(AtomicBool::new(true)));
         assert!(tracer.is_ok());
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_undefined() {
+        // Arrange
+        let tracing_config: ApmTracingConfig = serde_json::from_str(
+            r#"
+    {
+      "apm_output": true,
+      "apm_server_url": ""
+    }"#,
+        )
+        .unwrap();
+
+        // Act
+        set_opentelemetry_batch_exporter_config(&tracing_config.exporter);
+
+        // Assert
+        let batch_config = format!("{:?}", BatchConfig::default());
+        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 65536, scheduled_delay: 5s, max_export_batch_size: 512, max_export_timeout: 30s }");
+        remove_otel_env_vars()
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn should_set_opentelemetry_batch_exporter_config_if_batch_size_defined() {
+        // Arrange
+        let tracing_config = ExporterConfig {
+            max_queue_size: 9999,
+            scheduled_delay_ms: Some(2000),
+            max_export_batch_size: Some(3333),
+            max_export_timeout_ms: Some(1000),
+        };
+
+        // Act
+        set_opentelemetry_batch_exporter_config(&tracing_config);
+
+        // Assert
+        let batch_config = format!("{:?}", BatchConfig::default());
+        assert_eq!(batch_config.as_str(), "BatchConfig { max_queue_size: 9999, scheduled_delay: 2s, max_export_batch_size: 3333, max_export_timeout: 1s }");
+        remove_otel_env_vars()
+    }
+
+    fn remove_otel_env_vars() {
+        let vars = [
+            OTEL_BSP_MAX_QUEUE_SIZE,
+            OTEL_BSP_MAX_EXPORT_BATCH_SIZE,
+            OTEL_BSP_SCHEDULE_DELAY,
+            OTEL_BSP_EXPORT_TIMEOUT,
+        ];
+        for var in vars {
+            env::remove_var(var)
+        }
     }
 }
