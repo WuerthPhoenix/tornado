@@ -106,6 +106,10 @@ pub fn get_opentelemetry_tracer(
         })
 }
 
+// Currently we set the settings of `BatchConfig` via env variables because
+// the `install_batch()` function does expose ways to configure it programmatically.
+// Avoiding to use `install_batch()` and manually configure the BatchSpanProcessorBuilder
+// would require instead to copy nearly all the logic of `install_batch()`
 fn set_opentelemetry_batch_exporter_config(exporter_config: &ExporterConfig) {
     env::set_var(OTEL_BSP_MAX_QUEUE_SIZE, exporter_config.max_queue_size.to_string());
     if let Some(scheduled_delay_ms) = exporter_config.scheduled_delay_ms {
