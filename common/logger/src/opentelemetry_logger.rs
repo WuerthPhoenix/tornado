@@ -7,6 +7,7 @@ use opentelemetry::sdk::Resource;
 use opentelemetry::trace::{Link, SpanKind, TraceContextExt, TraceId, TraceState};
 use opentelemetry::{Context, KeyValue};
 use opentelemetry_otlp::{ExportConfig, Protocol, WithExportConfig};
+use opentelemetry_semantic_conventions as otel_sem_cov;
 use serde_json::{Map, Value};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -88,7 +89,11 @@ pub fn get_opentelemetry_tracer(
                 .with_metadata(tonic_metadata),
         )
         .with_trace_config(config().with_sampler(tornado_sampler).with_resource(Resource::new(
-            vec![KeyValue::new("service.name", get_current_service_name()?)],
+            vec![
+                otel_sem_cov::resource::SERVICE_NAME.string(get_current_service_name()?).into(),
+                otel_sem_cov::resource::TELEMETRY_SDK_LANGUAGE.string("Rust").into(),
+                otel_sem_cov::resource::SERVICE_INSTANCE_ID.string("localhost").into(),
+            ],
         )))
         .install_batch(opentelemetry::runtime::Tokio)
         .map_err(|err| LoggerError::LoggerRuntimeError {
