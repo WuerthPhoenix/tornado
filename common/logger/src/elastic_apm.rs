@@ -24,14 +24,15 @@ pub struct ApmTracingConfig {
 // These settings could be configured via env variables,
 // but to have the configuration centralized and to be
 // consistent with the other Tornado settings
-// we deserialize them from the config
+// we deserialize them from the config.
+// More info for the settings can be found here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#batch-span-processor
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExporterConfig {
     // Span exporter queue size
     pub max_queue_size: u64,
 
     // The delay interval in milliseconds between two consecutive processing
-    // of batches. The default value is 5 seconds.
+    // of batches.
     pub scheduled_delay_ms: Option<u64>,
 
     // Span exporter batch size
