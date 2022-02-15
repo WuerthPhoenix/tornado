@@ -17,6 +17,7 @@ async fn get_trace_context_should_return_remote_span_id_if_sampled() {
             apm_output: true,
             apm_server_url: "http://localhost:8200".to_string(),
             apm_server_api_credentials: None,
+            exporter: Default::default(),
         },
     };
 
