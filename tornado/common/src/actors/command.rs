@@ -44,17 +44,19 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
+        let _parent_guard = msg.0.span.clone().entered();
+
         let command = self.command.clone();
         let action_meter = self.action_meter.clone();
 
-        let action = msg.action;
+        let action = msg.0.action;
         actix::spawn(
             async move {
-                let action_id = action.id.clone();
+                let action_id = action.id.to_owned();
                 trace!("CommandExecutorActor - received new action [{:?}]", &action);
                 debug!("CommandExecutorActor - Execute action [{:?}]", &action_id);
 
-                let action_id_label = ACTION_ID_LABEL_KEY.string(action.id.to_owned());
+                let action_id_label = ACTION_ID_LABEL_KEY.string(action_id.to_owned());
 
                 match command.execute(action).await {
                     Ok(_) => {
@@ -77,7 +79,7 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                     }
                 }
             }
-            .instrument(msg.span),
+            .instrument(msg.0.span),
         );
         Ok(())
     }
@@ -91,6 +93,7 @@ mod test {
     use crate::root_test::prometheus_exporter;
     use tokio::sync::mpsc::unbounded_channel;
     use tokio::time::Duration;
+    use tornado_common_api::{Action, TracedAction};
     use tornado_common_metrics::prometheus::{Encoder, TextEncoder};
 
     #[actix_rt::test]
@@ -102,7 +105,7 @@ mod test {
         let action_id = format!("{}", rand::random::<usize>());
         let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
-        let message = ActionMessage { action, span };
+        let message = ActionMessage(TracedAction { action, span });
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
 
         let stateless_executor_command = StatelessExecutorCommand::new(
@@ -145,7 +148,7 @@ mod test {
         let action_id = format!("{}", rand::random::<usize>());
         let action = Arc::new(Action::new(action_id.clone()));
         let span = tracing::Span::current();
-        let message = ActionMessage { action, span };
+        let message = ActionMessage(TracedAction { action, span });
         let action_meter = Arc::new(ActionMeter::new("test_action_meter"));
         let stateless_executor_command = StatelessExecutorCommand::new(
             action_meter.clone(),

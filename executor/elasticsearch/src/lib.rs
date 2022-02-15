@@ -2,11 +2,13 @@ use log::*;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
 use reqwest::{Certificate, Client, Identity};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::borrow::Cow;
 use std::sync::Arc;
 use tokio::io::AsyncReadExt;
-use tornado_common_api::{Action, ValueExt};
+use tornado_common_api::{Action, Payload, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub mod config;
 
@@ -99,6 +101,11 @@ pub struct ElasticsearchExecutor {
     default_client: Option<Client>,
 }
 
+pub struct Params<'a> {
+    data: &'a Value,
+    endpoint: String,
+}
+
 impl ElasticsearchExecutor {
     pub async fn new(
         es_authentication: Option<ElasticsearchAuthentication>,
@@ -111,43 +118,25 @@ impl ElasticsearchExecutor {
 
         Ok(ElasticsearchExecutor { default_client })
     }
-}
 
-async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
-    let mut file =
-        tokio::fs::File::open(path).await.map_err(|err| ExecutorError::ConfigurationError {
-            message: format!("Error while reading file {}. Err: {:?}", path, err),
-        })?;
-    file.read_to_end(buf).await.map_err(|err| ExecutorError::ConfigurationError {
-        message: format!("Error while reading file {}. Err: {:?}", path, err),
-    })
-}
-
-impl std::fmt::Display for ElasticsearchExecutor {
-    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
-        fmt.write_str("ElasticsearchExecutor")?;
-        Ok(())
-    }
-}
-
-#[async_trait::async_trait(?Send)]
-impl StatelessExecutor for ElasticsearchExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-        trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
-
-        let data = action.payload.get(DATA_KEY).ok_or_else(|| {
-            ExecutorError::MissingArgumentError { message: "data field is missing".to_string() }
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
+    fn extract_params_from_payload<'a>(
+        &self,
+        payload: &'a Payload,
+    ) -> Result<Params<'a>, ExecutorError> {
+        let data = payload.get(DATA_KEY).ok_or_else(|| ExecutorError::MissingArgumentError {
+            message: "data field is missing".to_string(),
         })?;
 
         let index_name =
-            action.payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+            payload.get(INDEX_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
                 ExecutorError::MissingArgumentError {
                     message: "index field is missing".to_string(),
                 }
             })?;
 
         let endpoint =
-            action.payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
+            payload.get(ENDPOINT_KEY).and_then(|val| val.get_text()).ok_or_else(|| {
                 ExecutorError::MissingArgumentError {
                     message: "endpoint field is missing".to_string(),
                 }
@@ -156,6 +145,15 @@ impl StatelessExecutor for ElasticsearchExecutor {
         let endpoint =
             format!("{}/{}/_doc/", endpoint, utf8_percent_encode(index_name, NON_ALPHANUMERIC));
 
+        Ok(Params { data, endpoint })
+    }
+
+    #[instrument(level = "debug", name = "ElasticsearchExecutor", skip_all, fields(otel.name = format!("Send document to: {}", params.endpoint).as_str()))]
+    async fn send_to_endpoint(
+        &self,
+        action: &Action,
+        params: Params<'_>,
+    ) -> Result<(), ExecutorError> {
         let client = if let Some(auth) = action.payload.get(AUTH_KEY) {
             debug!("ElasticsearchExecutor - Found client data in payload. Create action specific client");
             let es_authentication: ElasticsearchAuthentication = serde_json::to_value(auth)
@@ -179,7 +177,7 @@ impl StatelessExecutor for ElasticsearchExecutor {
             })?)
         };
 
-        let res = client.post(&endpoint).json(&data).send().await.map_err(|err| {
+        let res = client.post(&params.endpoint).json(params.data).send().await.map_err(|err| {
             ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!("Error while sending document to Elasticsearch. Err: {:?}", err),
@@ -205,10 +203,39 @@ impl StatelessExecutor for ElasticsearchExecutor {
     }
 }
 
+async fn read_file(path: &str, buf: &mut Vec<u8>) -> Result<usize, ExecutorError> {
+    let mut file =
+        tokio::fs::File::open(path).await.map_err(|err| ExecutorError::ConfigurationError {
+            message: format!("Error while reading file {}. Err: {:?}", path, err),
+        })?;
+    file.read_to_end(buf).await.map_err(|err| ExecutorError::ConfigurationError {
+        message: format!("Error while reading file {}. Err: {:?}", path, err),
+    })
+}
+
+impl std::fmt::Display for ElasticsearchExecutor {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> std::fmt::Result {
+        fmt.write_str("ElasticsearchExecutor")?;
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for ElasticsearchExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+        trace!("ElasticsearchExecutor - received action: \n[{:?}]", action);
+
+        let params = self.extract_params_from_payload(&action.payload)?;
+
+        self.send_to_endpoint(action.as_ref(), params).await
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     // This can be used for local testing. It requires Elasticsearch running on localhost
     // #[tokio::test]

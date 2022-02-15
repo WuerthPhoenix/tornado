@@ -1,17 +1,11 @@
 use actix::prelude::Message;
-use std::sync::Arc;
 use thiserror::Error;
 use tokio::io::AsyncRead;
-use tornado_common_api::Action;
 use tornado_executor_common::ExecutorError;
-use tracing::Span;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
-pub struct ActionMessage {
-    pub span: Span,
-    pub action: Arc<Action>,
-}
+pub struct ActionMessage(pub tornado_common_api::TracedAction);
 
 #[derive(Error, Debug)]
 pub enum TornadoCommonActorError {
@@ -31,10 +25,7 @@ pub struct StringMessage {
 
 #[derive(Message, Debug)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]
-pub struct EventMessage {
-    pub event: tornado_common_api::Event,
-    pub span: Span,
-}
+pub struct EventMessage(pub tornado_common_api::TracedEvent);
 
 #[derive(Message)]
 #[rtype(result = "Result<(), TornadoCommonActorError>")]

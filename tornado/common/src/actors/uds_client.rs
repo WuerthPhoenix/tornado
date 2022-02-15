@@ -75,15 +75,15 @@ impl Handler<EventMessage> for UdsClientActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let parent_span = msg.span.clone().entered();
-        let trace_id = msg.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let parent_span = msg.0.span.clone().entered();
+        let trace_id = msg.0.event.get_trace_id_for_logging(&parent_span.context());
         let _span = tracing::error_span!("UdsClientActor", trace_id = trace_id.as_ref()).entered();
 
-        trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.event);
+        trace!("UdsClientActor - Handling Event to be sent through UDS - {:?}", &msg.0.event);
 
         match &mut self.tx {
             Some(stream) => {
-                let event = serde_json::to_string(&msg.event).map_err(|err| {
+                let event = serde_json::to_string(&msg.0.event).map_err(|err| {
                     TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
                 })?;
                 debug!("UdsClientActor - Publishing event");

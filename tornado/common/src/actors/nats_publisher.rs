@@ -3,6 +3,7 @@ use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
+use opentelemetry::trace::SpanKind;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::ops::Deref;
@@ -171,22 +172,22 @@ impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
     fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let parent_span = msg.span.clone().entered();
-        let trace_id = msg.event.get_trace_id_for_logging(Some(parent_span.context()).as_ref());
+        let parent_span = msg.0.span.clone().entered();
+        let trace_id = msg.0.event.get_trace_id_for_logging(&parent_span.context());
         let span =
-            tracing::error_span!("NatsPublisherActor", trace_id = &trace_id.as_ref()).entered();
+            tracing::info_span!("Send Event to NATS", trace_id = &trace_id.as_ref(), otel.name = format!("Send Event to NATS subject: {}", &self.config.subject).as_str(), otel.kind = %SpanKind::Producer).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,
         );
-        msg.event.set_trace_context(trace_context);
+        msg.0.event.set_trace_context(trace_context);
 
-        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
+        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.0.event);
 
         let address = ctx.address();
 
         if let Some(connection) = self.nats_connection.deref() {
-            let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            let event = serde_json::to_vec(&msg.0.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 
