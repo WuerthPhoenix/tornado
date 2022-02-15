@@ -2152,6 +2152,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "opentelemetry-semantic-conventions"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ffeac823339e8b0f27b961f4385057bf9f97f2863bc745bd015fd6091f2270e9"
+dependencies = [
+ "opentelemetry",
+]
+
+[[package]]
 name = "os_str_bytes"
 version = "4.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3285,6 +3294,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "sys-info"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b3a0d0aba8bf96a0e1ddfdc352fc53b3df7f39318c71854910c3c4b024ae52c"
+dependencies = [
+ "cc",
+ "libc",
+]
+
+[[package]]
 name = "tempfile"
 version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3637,6 +3656,7 @@ dependencies = [
  "futures-util",
  "log",
  "once_cell",
+ "opentelemetry",
  "opentelemetry-prometheus",
  "port_check",
  "rand 0.8.4",
@@ -3686,10 +3706,13 @@ dependencies = [
  "log",
  "opentelemetry",
  "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
  "rand 0.8.4",
  "reqwest",
  "serde",
  "serde_json",
+ "serial_test",
+ "sys-info",
  "tempfile",
  "thiserror",
  "tokio",
@@ -3747,6 +3770,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -3855,12 +3879,14 @@ dependencies = [
  "tempfile",
  "thiserror",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
  "tornado_common_parser",
  "tornado_network_common",
  "tornado_network_simple",
  "tracing",
+ "tracing-opentelemetry",
  "typescript-definitions-ufo-patch",
 ]
 
@@ -3878,6 +3904,8 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3909,6 +3937,8 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3922,8 +3952,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3935,11 +3968,14 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_common_parser",
  "tornado_executor_common",
  "tornado_network_common",
  "tornado_network_simple",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3959,6 +3995,7 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -3969,6 +4006,7 @@ dependencies = [
  "log",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -3986,6 +4024,7 @@ dependencies = [
  "tornado_executor_common",
  "tornado_executor_director",
  "tornado_executor_icinga2",
+ "tracing",
 ]
 
 [[package]]
@@ -3998,6 +4037,7 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -4018,6 +4058,7 @@ dependencies = [
  "tornado_executor_director",
  "tornado_executor_icinga2",
  "tornado_executor_monitoring",
+ "tracing",
 ]
 
 [[package]]
@@ -4044,6 +4085,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4068,12 +4110,14 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
 name = "tornado_network_common"
 version = "0.0.1"
 dependencies = [
+ "tornado_common",
  "tornado_common_api",
 ]
 
@@ -4081,8 +4125,10 @@ dependencies = [
 name = "tornado_network_simple"
 version = "0.0.1"
 dependencies = [
+ "tornado_common",
  "tornado_common_api",
  "tornado_network_common",
+ "tracing",
 ]
 
 [[package]]
@@ -4103,6 +4149,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
 ]
 
 [[package]]
@@ -4124,6 +4171,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tracing",
  "tracing-actix-web",
 ]
 

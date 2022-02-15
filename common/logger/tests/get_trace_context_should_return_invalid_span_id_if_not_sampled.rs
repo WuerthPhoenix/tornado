@@ -7,7 +7,7 @@ use tornado_common_logger::{setup_logger, LoggerConfig};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 #[tokio::test]
-async fn should_attach_context_to_span() {
+async fn get_trace_context_should_return_invalid_span_id_if_not_sampled() {
     // Arrange
     let config = LoggerConfig {
         stdout_output: false,
@@ -27,17 +27,23 @@ async fn should_attach_context_to_span() {
     let mut trace_context = serde_json::Map::new();
     trace_context.insert(
         "traceparent".to_owned(),
-        Value::String(format!("00-{}-b7ad6b7169203331-01", expected_trace_id)),
+        Value::String(format!("00-{}-b7ad6b7169203331-00", expected_trace_id)),
     );
     trace_context.insert("tracestate".to_owned(), Value::String("".to_owned()));
 
     let propagator = TraceContextPropagator::new();
 
     // Act
-    let _g = TelemetryContextExtractor::get_trace_context(&trace_context, &propagator).attach();
+    let context = TelemetryContextExtractor::get_trace_context(&trace_context, &propagator);
+    let _g = context.clone().attach();
     let span_1 = tracing::debug_span!("level", "first");
 
     // Assert
-    let trace_id = span_1.context().span().span_context().trace_id();
-    assert_eq!(expected_trace_id, trace_id.to_hex());
+    assert_eq!(context.span().span_context().trace_id().to_hex().as_str(), expected_trace_id);
+    assert_eq!(context.span().span_context().span_id().to_u64(), 0);
+    assert_eq!(
+        span_1.context().span().span_context().trace_id().to_hex().as_str(),
+        expected_trace_id
+    );
+    assert_ne!(span_1.context().span().span_context().span_id().to_u64(), 0);
 }

@@ -11,6 +11,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::io::BufWriter;
 use tornado_common_api::Action;
 use tornado_executor_common::{ExecutorError, StatefulExecutor};
+use tracing::instrument;
 
 pub mod config;
 mod paths;
@@ -55,20 +56,60 @@ impl ArchiveExecutor {
         }
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
+    fn extract_params_from_payload(
+        &self,
+        action: &Action,
+    ) -> Result<(Option<String>, Vec<u8>), ExecutorError> {
+        let path = match action
+            .payload
+            .get(ARCHIVE_TYPE_KEY)
+            .and_then(tornado_common_api::ValueExt::get_text)
+        {
+            Some(archive_type) => match self.paths.get(archive_type) {
+                Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
+                None => Err(ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: format!(
+                        "Cannot find mapping for {} value: [{}]",
+                        ARCHIVE_TYPE_KEY, archive_type
+                    ),
+                    code: None,
+                    data: Default::default(),
+                }),
+            },
+            None => Ok(None),
+        }?;
+
+        let mut event_bytes = action
+            .payload
+            .get(EVENT_KEY)
+            .ok_or_else(|| ExecutorError::ActionExecutionError {
+                can_retry: false,
+                message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
+                code: None,
+                data: Default::default(),
+            })
+            .and_then(|value| {
+                serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
+                    can_retry: false,
+                    message: format!("Cannot deserialize event:{}", err),
+                    code: None,
+                    data: Default::default(),
+                })
+            })?;
+
+        event_bytes.push(b'\n');
+
+        Ok((path, event_bytes))
+    }
+
+    #[instrument(level = "debug", name = "ArchiveExecutor", skip_all, fields(otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()))]
     async fn write(
         &mut self,
-        relative_path: Option<String>,
+        absolute_path_string: String,
         buf: &[u8],
     ) -> Result<(), ExecutorError> {
-        let absolute_path_string = format!(
-            "{}{}{}",
-            self.base_path,
-            std::path::MAIN_SEPARATOR,
-            relative_path
-                .map(std::borrow::Cow::Owned)
-                .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
-        );
-
         let buf_writer = match self.file_cache.entry(absolute_path_string.clone()) {
             Entry::Occupied(occupied) => occupied.into_mut(),
             Entry::Vacant(vacant) => {
@@ -127,50 +168,20 @@ impl ArchiveExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatefulExecutor for ArchiveExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&mut self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ArchiveExecutor - received action: \n{:?}", action);
 
-        let path = match action
-            .payload
-            .get(ARCHIVE_TYPE_KEY)
-            .and_then(tornado_common_api::ValueExt::get_text)
-        {
-            Some(archive_type) => match self.paths.get(archive_type) {
-                Some(path_matcher) => path_matcher.build_path(&action.payload).map(Some),
-                None => Err(ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: format!(
-                        "Cannot find mapping for {} value: [{}]",
-                        ARCHIVE_TYPE_KEY, archive_type
-                    ),
-                    code: None,
-                    data: Default::default(),
-                }),
-            },
-            None => Ok(None),
-        }?;
+        let (path, event_bytes) = self.extract_params_from_payload(&action)?;
+        let absolute_path_string = format!(
+            "{}{}{}",
+            self.base_path,
+            std::path::MAIN_SEPARATOR,
+            path.map(std::borrow::Cow::Owned)
+                .unwrap_or_else(|| std::borrow::Cow::Borrowed(&self.default_path))
+        );
 
-        let mut event_bytes = action
-            .payload
-            .get(EVENT_KEY)
-            .ok_or_else(|| ExecutorError::ActionExecutionError {
-                can_retry: false,
-                message: format!("Expected the [{}] key to be in action payload.", EVENT_KEY),
-                code: None,
-                data: Default::default(),
-            })
-            .and_then(|value| {
-                serde_json::to_vec(value).map_err(|err| ExecutorError::ActionExecutionError {
-                    can_retry: false,
-                    message: format!("Cannot deserialize event:{}", err),
-                    code: None,
-                    data: Default::default(),
-                })
-            })?;
-
-        event_bytes.push(b'\n');
-
-        self.write(path, &event_bytes).await?;
+        self.write(absolute_path_string, &event_bytes).await?;
 
         Ok(())
     }
@@ -208,7 +219,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
         action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
@@ -255,7 +266,7 @@ mod test {
         for i in 0..attempts {
             let event = Event::new(format!("event-name-{}", i));
             sent_events.push(event.clone());
-            let mut action = Action::new("", format!("action-{}", i));
+            let mut action = Action::new(format!("action-{}", i));
             action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
             action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
             action.payload.insert("key_one".to_owned(), Value::String("first".to_owned()));
@@ -299,7 +310,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
         action.payload.insert("key_one".to_owned(), Value::String("../".to_owned()));
@@ -330,7 +341,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("one".to_owned()));
 
@@ -359,7 +370,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
         action.payload.insert(ARCHIVE_TYPE_KEY.to_owned(), Value::String("two".to_owned()));
 
@@ -389,7 +400,7 @@ mod test {
         let mut archiver = ArchiveExecutor::new(&config);
 
         let event = Event::new("event-name");
-        let mut action = Action::new("", "action");
+        let mut action = Action::new("action");
         action.payload.insert(EVENT_KEY.to_owned(), json!(event.clone()));
 
         // Act

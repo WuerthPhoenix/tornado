@@ -2,6 +2,7 @@ pub mod action;
 pub mod extractor;
 pub mod modifier;
 pub mod operator;
+use tracing::instrument;
 
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
@@ -132,6 +133,7 @@ impl Matcher {
         }
     }
 
+    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Filter: {}", filter_name).as_str()))]
     fn process_filter(
         filter_name: &str,
         filter: &MatcherFilter,
@@ -169,6 +171,7 @@ impl Matcher {
         }
     }
 
+    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Ruleset: {}", ruleset_name).as_str()))]
     fn process_rules(
         ruleset_name: &str,
         rules: &[MatcherRule],
@@ -182,6 +185,12 @@ impl Matcher {
         let mut processed_rules = vec![];
 
         for rule in rules {
+            let _rule_span = tracing::debug_span!(
+                "process_rule",
+                name = rule.name.as_str(),
+                otel.name = format!("Process Rule: {}", rule.name).as_str()
+            )
+            .entered();
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
@@ -251,14 +260,18 @@ impl Matcher {
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
-        if let Some(metadata) = &mut processed_rule.meta {
-            for action in actions {
+        for action in actions {
+            let _action_span = tracing::debug_span!(
+                "process_action",
+                otel.name = format!("Process Action: {}", action.id).as_str()
+            )
+            .entered();
+
+            if let Some(metadata) = &mut processed_rule.meta {
                 let (action, action_metadata) = action.resolve_with_meta(processed_event)?;
                 processed_rule.actions.push(action);
                 metadata.actions.push(action_metadata);
-            }
-        } else {
-            for action in actions {
+            } else {
                 processed_rule.actions.push(action.resolve(processed_event)?);
             }
         }
@@ -2518,45 +2531,6 @@ mod test {
                 assert_eq!("action_1", &processed_rule_metadata.actions[0].id);
                 assert_eq!("action_2", &processed_rule_metadata.actions[1].id);
                 assert_eq!("action_3", &processed_rule_metadata.actions[2].id);
-            }
-            _ => assert!(false),
-        };
-    }
-
-    #[test]
-    fn actions_should_have_same_trace_id_than_event() {
-        // Arrange
-        let mut rule_1 = new_rule(
-            "rule1_email",
-            Operator::Equals {
-                first: Value::String("${event.type}".to_owned()),
-                second: Value::String("email".to_owned()),
-            },
-        );
-
-        let action = Action { id: String::from("action_id"), payload: Map::new() };
-        rule_1.actions.push(action);
-
-        let matcher = new_matcher(&MatcherConfig::Ruleset {
-            name: "ruleset".to_owned(),
-            rules: vec![rule_1],
-        })
-        .unwrap();
-
-        let event = Event::new("email");
-
-        // Act
-        let result = matcher.process(json!(event.clone()), false);
-
-        // Assert
-        match result.result {
-            ProcessedNode::Ruleset { name: _, rules } => {
-                assert_eq!(1, rules.rules.len());
-                assert!(!rules.rules[0].actions.is_empty());
-
-                for action in &rules.rules[0].actions {
-                    assert_eq!(Some(&event.trace_id), action.trace_id.as_ref())
-                }
             }
             _ => assert!(false),
         };

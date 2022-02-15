@@ -4,6 +4,7 @@ use std::rc::Rc;
 use tornado_common::actors::message::ActionMessage;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_foreach::ForEachExecutor;
+use tracing::Instrument;
 
 #[derive(Message)]
 #[rtype(result = "()")]
@@ -38,27 +39,32 @@ impl Handler<ActionMessage> for ForEachExecutorActor {
     type Result = Result<(), ExecutorError>;
 
     fn handle(&mut self, msg: ActionMessage, _: &mut Context<Self>) -> Self::Result {
-        trace!("ForEachExecutorActor - received new action [{:?}]", &msg.action);
+        let parent_span = msg.0.span.clone();
+        let _parent_guard = msg.0.span.entered();
+        let action = msg.0.action;
+        trace!("ForEachExecutorActor - received new action [{:?}]", &action);
 
         if let Some(executor) = &self.executor {
-            let action = msg.action;
             let executor = executor.clone();
-            actix::spawn(async move {
-                match executor.execute(action).await {
-                    Ok(_) => {
-                        debug!(
-                            "ForEachExecutorActor - {} - Action executed successfully",
-                            &executor
-                        );
-                    }
-                    Err(e) => {
-                        error!(
-                            "ForEachExecutorActor - {} - Failed to execute action: {:?}",
-                            &executor, e
-                        );
+            actix::spawn(
+                async move {
+                    match executor.execute(action).await {
+                        Ok(_) => {
+                            debug!(
+                                "ForEachExecutorActor - {} - Action executed successfully",
+                                &executor
+                            );
+                        }
+                        Err(e) => {
+                            error!(
+                                "ForEachExecutorActor - {} - Failed to execute action: {:?}",
+                                &executor, e
+                            );
+                        }
                     }
                 }
-            });
+                .instrument(parent_span),
+            );
             Ok(())
         } else {
             let message =

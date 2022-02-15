@@ -16,6 +16,7 @@ use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
     Icinga2Action, Icinga2Executor, ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE,
 };
+use tracing::instrument;
 
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
@@ -204,22 +205,17 @@ impl SmartMonitoringExecutor {
                 ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None, data: Default::default(), }
             )
     }
-}
 
-#[async_trait::async_trait(?Send)]
-impl StatelessExecutor for SmartMonitoringExecutor {
-    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-        trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
-
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
-
-        let host_name = monitoring_action.get_host_name().map(|val| val.to_owned());
-        let service_name = monitoring_action.get_service_name().map(|val| val.to_owned());
-
-        let (icinga2_action, director_host_creation_action, director_service_creation_action) =
-            monitoring_action.build_sub_actions()?;
-
-        let icinga2_action_result = self.icinga_executor.perform_request(&icinga2_action).await;
+    #[instrument(level = "debug", name = "SmartMonitoring", err, skip_all, fields(otel.name = format!("Perform SmartMonitoring Action for host: [{:?}], service: [{:?}]", &host_name, &service_name).as_str()))]
+    async fn execute_smart_monitoring_action(
+        &self,
+        icinga2_action: &Icinga2Action<'_>,
+        director_host_creation_action: DirectorAction<'_>,
+        director_service_creation_action: Option<DirectorAction<'_>>,
+        host_name: Option<String>,
+        service_name: Option<String>,
+    ) -> Result<(), ExecutorError> {
+        let icinga2_action_result = self.icinga_executor.perform_request(icinga2_action).await;
 
         match icinga2_action_result {
             Ok(_) => {
@@ -264,6 +260,33 @@ impl StatelessExecutor for SmartMonitoringExecutor {
     }
 }
 
+#[async_trait::async_trait(?Send)]
+impl StatelessExecutor for SmartMonitoringExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", & action.id).as_str(), otel.kind = "Consumer"))]
+    async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
+        trace!("SmartMonitoringExecutor - received action: \n[{:?}]", action);
+
+        let extraction_params_guard =
+            tracing::debug_span!("Extract parameters for Executor").entered();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
+        let host_name = monitoring_action.get_host_name().map(|val| val.to_owned());
+        let service_name = monitoring_action.get_service_name().map(|val| val.to_owned());
+
+        let (icinga2_action, director_host_creation_action, director_service_creation_action) =
+            monitoring_action.build_sub_actions()?;
+        extraction_params_guard.exit();
+
+        self.execute_smart_monitoring_action(
+            &icinga2_action,
+            director_host_creation_action,
+            director_service_creation_action,
+            host_name,
+            service_name,
+        )
+        .await
+    }
+}
+
 pub struct Icinga2ActionOwned {
     pub name: String,
     pub payload: Option<Payload>,
@@ -281,7 +304,7 @@ mod test {
     use httpmock::Method::POST;
     use httpmock::MockServer;
     use serde_json::json;
-    use tornado_common_api::{Map, Value};
+    use tornado_common_api::{Action, Map, Value};
 
     #[tokio::test]
     async fn should_fail_if_action_data_is_missing() {
@@ -305,7 +328,7 @@ mod test {
         )
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.execute(action.into()).await;
@@ -346,7 +369,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
@@ -392,7 +415,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "host".to_owned(),
             json!(hashmap!(
@@ -442,7 +465,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert("host".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
@@ -489,7 +512,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
@@ -543,7 +566,7 @@ mod test {
         )
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert("check_result".to_owned(), Value::Object(Map::new()));
         action.payload.insert(
             "host".to_owned(),
