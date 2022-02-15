@@ -107,7 +107,7 @@ pub fn get_opentelemetry_tracer(
 }
 
 // Currently we set the settings of `BatchConfig` via env variables because
-// the `install_batch()` function does expose ways to configure it programmatically.
+// the `install_batch()` function does not expose ways to configure it programmatically.
 // Avoiding to use `install_batch()` and manually configure the BatchSpanProcessorBuilder
 // would require instead to copy nearly all the logic of `install_batch()`.
 // Env variables are documented here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/sdk-environment-variables.md#batch-span-processor
