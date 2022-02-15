@@ -21,6 +21,10 @@ pub struct ApmTracingConfig {
     pub exporter: ExporterConfig,
 }
 
+// These settings could be configured via env variables,
+// but to have the configuration centralized and to be
+// consistent with the other Tornado settings
+// we deserialize them from the config
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExporterConfig {
     // Span exporter queue size
