@@ -127,7 +127,7 @@ impl ScriptExecutor {
 
 impl fmt::Display for ScriptExecutor {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "ScriptExecutor")
+        f.write_str("ScriptExecutor")
     }
 }
 
