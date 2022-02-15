@@ -2,6 +2,7 @@ pub mod action;
 pub mod extractor;
 pub mod modifier;
 pub mod operator;
+use tracing::instrument;
 
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
@@ -132,6 +133,7 @@ impl Matcher {
         }
     }
 
+    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Filter: {}", filter_name).as_str()))]
     fn process_filter(
         filter_name: &str,
         filter: &MatcherFilter,
@@ -169,6 +171,7 @@ impl Matcher {
         }
     }
 
+    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Ruleset: {}", ruleset_name).as_str()))]
     fn process_rules(
         ruleset_name: &str,
         rules: &[MatcherRule],
@@ -182,6 +185,12 @@ impl Matcher {
         let mut processed_rules = vec![];
 
         for rule in rules {
+            let _rule_span = tracing::debug_span!(
+                "process_rule",
+                name = rule.name.as_str(),
+                otel.name = format!("Process Rule: {}", rule.name).as_str()
+            )
+            .entered();
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
@@ -251,14 +260,18 @@ impl Matcher {
         processed_rule: &mut ProcessedRule,
         actions: &[action::ActionResolver],
     ) -> Result<(), MatcherError> {
-        if let Some(metadata) = &mut processed_rule.meta {
-            for action in actions {
+        for action in actions {
+            let _action_span = tracing::debug_span!(
+                "process_action",
+                otel.name = format!("Process Action: {}", action.id).as_str()
+            )
+            .entered();
+
+            if let Some(metadata) = &mut processed_rule.meta {
                 let (action, action_metadata) = action.resolve_with_meta(processed_event)?;
                 processed_rule.actions.push(action);
                 metadata.actions.push(action_metadata);
-            }
-        } else {
-            for action in actions {
+            } else {
                 processed_rule.actions.push(action.resolve(processed_event)?);
             }
         }

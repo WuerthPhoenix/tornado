@@ -3637,6 +3637,7 @@ dependencies = [
  "futures-util",
  "log",
  "once_cell",
+ "opentelemetry",
  "opentelemetry-prometheus",
  "port_check",
  "rand 0.8.4",
@@ -3863,6 +3864,7 @@ dependencies = [
  "tornado_network_common",
  "tornado_network_simple",
  "tracing",
+ "tracing-opentelemetry",
  "typescript-definitions-ufo-patch",
 ]
 
@@ -3880,6 +3882,8 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3911,6 +3915,8 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3924,8 +3930,11 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
+ "tornado_common",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3944,6 +3953,7 @@ dependencies = [
  "tornado_network_common",
  "tornado_network_simple",
  "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -3963,6 +3973,7 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -3973,6 +3984,7 @@ dependencies = [
  "log",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -3990,6 +4002,7 @@ dependencies = [
  "tornado_executor_common",
  "tornado_executor_director",
  "tornado_executor_icinga2",
+ "tracing",
 ]
 
 [[package]]
@@ -4002,6 +4015,7 @@ dependencies = [
  "tokio",
  "tornado_common_api",
  "tornado_executor_common",
+ "tracing",
 ]
 
 [[package]]
@@ -4022,6 +4036,7 @@ dependencies = [
  "tornado_executor_director",
  "tornado_executor_icinga2",
  "tornado_executor_monitoring",
+ "tracing",
 ]
 
 [[package]]

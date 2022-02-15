@@ -22,6 +22,7 @@ impl std::fmt::Display for LoggerExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for LoggerExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         info!("LoggerExecutor - received action: \n[{:?}]", action);
         Ok(())

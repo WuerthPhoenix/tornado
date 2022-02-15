@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub mod client;
 pub mod config;
@@ -41,6 +42,7 @@ impl Icinga2Executor {
         payload.get(ICINGA2_ACTION_PAYLOAD_KEY).and_then(tornado_common_api::ValueExt::get_map)
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn parse_action<'a>(&self, action: &'a Action) -> Result<Icinga2Action<'a>, ExecutorError> {
         match action
             .payload
@@ -60,6 +62,7 @@ impl Icinga2Executor {
         }
     }
 
+    #[instrument(level = "debug", name = "IcingaRequest", err, skip_all, fields(otel.name = format!("Send request of type: [{}] to Icinga2 ", &icinga2_action.name).as_str()))]
     pub async fn perform_request<'a>(
         &self,
         icinga2_action: &'a Icinga2Action<'a>,
@@ -126,6 +129,7 @@ fn to_err_data(
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for Icinga2Executor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("Icinga2Executor - received action: \n[{:?}]", action);
         let action = self.parse_action(&action)?;

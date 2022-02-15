@@ -29,7 +29,7 @@ impl EventApiHandler for MatcherApiHandler {
         config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
-        let span = tracing::info_span!("SendEventToConfig");
+        let span = tracing::info_span!("Process Event with current Processing Tree");
         let _g = span.enter();
         let timer = SystemTime::now();
         let labels = [

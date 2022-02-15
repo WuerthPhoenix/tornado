@@ -3,6 +3,7 @@ use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
+use tornado_common_api::{Action, TracedAction};
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
@@ -20,23 +21,23 @@ impl Dispatcher {
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
             ProcessedNode::Ruleset { rules, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_ruleset", name = name.as_str(),).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_ruleset",
+                    name = name.as_str(),
+                    otel.name = format!("Emit Actions of Ruleset: {}", name).as_str()
+                )
+                .entered();
                 for rule in rules.rules {
-                    let _span =
-                        tracing::error_span!("dispatch_rule", name = rule.name.as_str(),).entered();
+                    let _span = tracing::error_span!(
+                        "dispatch_rule",
+                        name = rule.name.as_str(),
+                        otel.name = format!("Emit Actions of Rule: {}", rule.name).as_str()
+                    )
+                    .entered();
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
-                            let actions = rule
-                                .actions
-                                .into_iter()
-                                .map(|action| ActionMessage {
-                                    span: tracing::Span::current(),
-                                    action: Arc::new(action),
-                                })
-                                .collect();
-                            self.dispatch(actions)?
+                            self.dispatch(rule.actions)?
                         }
                         _ => {
                             trace!("Rule [{}] not matched, ignoring actions", rule.name);
@@ -45,8 +46,12 @@ impl Dispatcher {
                 }
             }
             ProcessedNode::Filter { nodes, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_filter", name = name.as_str(),).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_filter",
+                    name = name.as_str(),
+                    otel.name = format!("Emit Actions of Filter: {}", name).as_str()
+                )
+                .entered();
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }
@@ -55,16 +60,21 @@ impl Dispatcher {
         Ok(())
     }
 
-    fn dispatch(&self, actions: Vec<ActionMessage>) -> Result<(), MatcherError> {
+    fn dispatch(&self, actions: Vec<Action>) -> Result<(), MatcherError> {
         for (index, action) in actions.into_iter().enumerate() {
-            let _parent_span = action.span.clone().entered();
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
-                action_id = action.action.id.as_str(),
+                action_id = action.id.as_str(),
+                otel.name = format!("Emit Action: {}", &action.id).as_str(),
             )
             .entered();
-            self.event_bus.publish_action(action)
+            let action_message = ActionMessage(TracedAction {
+                span: tracing::Span::current(),
+                action: Arc::new(action),
+            });
+
+            self.event_bus.publish_action(action_message)
         }
         Ok(())
     }
@@ -91,9 +101,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -130,9 +140,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -167,9 +177,9 @@ mod test {
             bus.subscribe_to_action(
                 "action1",
                 Box::new(move |message: ActionMessage| {
-                    println!("received action of id: {}", message.action.id);
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.action.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }

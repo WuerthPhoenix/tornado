@@ -8,6 +8,7 @@ use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::{actors, TornadoError};
+use tornado_common_api::TracedEvent;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 
@@ -117,7 +118,7 @@ fn start<A: Actor + actix::Handler<EventMessage>>(
                     .unwrap_or_else(|e| panic!("Not able to start JMESPath collector with configuration: \n{:?}. Err: {:?}", config.collector_config.clone(), e)),
                 stream_config: config.stream.clone(),
                 callback: move |event| {
-                    actor_address.try_send(EventMessage { event, span: tracing::Span::current() }).unwrap_or_else(|err| error!("Icinga2StreamConnector -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
+                    actor_address.try_send(EventMessage (TracedEvent { event, span: tracing::Span::current() })).unwrap_or_else(|err| error!("Icinga2StreamConnector -  Error while sending event to the TornadoConnectionChannel actor. Error: {}", err));
                 },
             };
             if let Err(err) = icinga_poll.start_polling_icinga().await {

@@ -7,6 +7,8 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
+use std::sync::Arc;
+use tracing::Span;
 
 pub mod error;
 pub mod partial_ordering;
@@ -29,6 +31,18 @@ pub struct Event {
     pub payload: Payload,
     #[serde(default)]
     pub metadata: Map<String, Value>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TracedEvent {
+    pub event: Event,
+    pub span: Span,
+}
+
+impl From<Event> for TracedEvent {
+    fn from(event: Event) -> Self {
+        Self { event, span: Span::current() }
+    }
 }
 
 pub trait WithEventData {
@@ -106,12 +120,11 @@ impl Event {
 
     // Returns the event.trace_id if it is defined.
     // If event.trace_id is not defined returns the trace id of the passed context.
-    // If the passed context is None, returns an empty string.
-    pub fn get_trace_id_for_logging(&self, context: Option<&Context>) -> Cow<str> {
-        match (&self.trace_id, context) {
-            (Some(event_trace_id), _) => Cow::Borrowed(event_trace_id),
-            (None, Some(context)) => Cow::Owned(context.span().span_context().trace_id().to_hex()),
-            (None, None) => Cow::Owned("".to_owned()),
+    pub fn get_trace_id_for_logging(&self, context: &Context) -> Cow<str> {
+        if let Some(event_trace_id) = &self.trace_id {
+            Cow::Borrowed(event_trace_id)
+        } else {
+            Cow::Owned(context.span().span_context().trace_id().to_hex())
         }
     }
 
@@ -139,6 +152,18 @@ impl Event {
 pub struct Action {
     pub id: String,
     pub payload: Payload,
+}
+
+#[derive(Debug, Clone)]
+pub struct TracedAction {
+    pub span: Span,
+    pub action: Arc<Action>,
+}
+
+impl From<Action> for TracedAction {
+    fn from(action: Action) -> Self {
+        Self { span: Span::current(), action: Arc::new(action) }
+    }
 }
 
 impl Action {
@@ -953,7 +978,7 @@ mod test {
         let context = Context::new();
 
         // Act
-        let res = event.get_trace_id_for_logging(Some(&context));
+        let res = event.get_trace_id_for_logging(&context);
 
         // Assert
         assert_eq!(res.as_ref(), trace_id);
@@ -968,23 +993,9 @@ mod test {
         let context = Context::new();
 
         // Act
-        let res = event.get_trace_id_for_logging(Some(&context));
+        let res = event.get_trace_id_for_logging(&context);
 
         // Assert
         assert_eq!(res.as_ref(), "00000000000000000000000000000000");
-    }
-
-    #[test]
-    fn get_trace_id_or_extract_from_context_should_return_empty_traceid_if_event_and_contect_traceid_are_none(
-    ) {
-        // Arrange
-        let mut event = Event::new("some_type");
-        event.trace_id = None;
-
-        // Act
-        let res = event.get_trace_id_for_logging(None);
-
-        // Assert
-        assert_eq!(res.as_ref(), "");
     }
 }
