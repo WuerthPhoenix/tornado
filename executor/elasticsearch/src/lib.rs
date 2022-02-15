@@ -148,7 +148,7 @@ impl ElasticsearchExecutor {
         Ok(Params { data, endpoint })
     }
 
-    #[instrument(level = "error", name = "ElasticsearchExecutor", skip_all, fields(otel.name = format!("Send document to: {}", params.endpoint).as_str()))]
+    #[instrument(level = "debug", name = "ElasticsearchExecutor", skip_all, fields(otel.name = format!("Send document to: {}", params.endpoint).as_str()))]
     async fn send_to_endpoint(
         &self,
         action: &Action,

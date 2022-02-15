@@ -93,7 +93,7 @@ impl MatcherActor {
     }
 
     #[inline]
-    #[instrument(level = "debug", name = "Match against Processing Tree", skip_all)]
+    #[instrument(level = "info", name = "Match against Processing Tree", skip_all)]
     fn process(&self, matcher: &Matcher, event: Value, include_metadata: bool) -> ProcessedEvent {
         let timer = SystemTime::now();
         let labels = [EVENT_TYPE_LABEL_KEY.string(

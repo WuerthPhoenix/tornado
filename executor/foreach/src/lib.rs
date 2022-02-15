@@ -85,7 +85,7 @@ impl StatelessExecutor for ForEachExecutor {
 
         let Params { values, actions } = self.extract_params_from_payload(&action.payload)?;
 
-        let execution_span = tracing::error_span!(
+        let execution_span = tracing::debug_span!(
             "ForEachExecutor",
             otel.name =
                 format!("Execute {} Actions for {} Values", actions.len(), values.len()).as_str()

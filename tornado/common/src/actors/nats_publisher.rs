@@ -175,7 +175,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
         let parent_span = msg.0.span.clone().entered();
         let trace_id = msg.0.event.get_trace_id_for_logging(&parent_span.context());
         let span =
-            tracing::error_span!("Send Event to NATS", trace_id = &trace_id.as_ref(), otel.name = format!("Send Event to NATS subject: {}", &self.config.subject).as_str(), otel.kind = %SpanKind::Producer).entered();
+            tracing::info_span!("Send Event to NATS", trace_id = &trace_id.as_ref(), otel.name = format!("Send Event to NATS subject: {}", &self.config.subject).as_str(), otel.kind = %SpanKind::Producer).entered();
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,

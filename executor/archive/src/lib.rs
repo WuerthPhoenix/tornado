@@ -104,7 +104,7 @@ impl ArchiveExecutor {
         Ok((path, event_bytes))
     }
 
-    #[instrument(level = "error", name = "ArchiveExecutor", skip_all, fields(otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()))]
+    #[instrument(level = "debug", name = "ArchiveExecutor", skip_all, fields(otel.name = format!("Archive Event to: {}", absolute_path_string).as_str()))]
     async fn write(
         &mut self,
         absolute_path_string: String,

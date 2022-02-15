@@ -349,7 +349,7 @@ pub async fn daemon(
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
                 let master_span = tracing::info_span!("Process event", trace_id = tracing::field::Empty, otel.kind = "Server");
                 let event = master_span.in_scope(|| {
-                    let subscriber_span = tracing::info_span!("Receive NATS event").entered();
+                    let subscriber_span = tracing::debug_span!("Receive NATS event").entered();
 
                     let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 

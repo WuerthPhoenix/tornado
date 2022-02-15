@@ -67,7 +67,7 @@ impl ScriptExecutor {
         Ok(Params { script, args })
     }
 
-    #[instrument(level = "error", name = "ScriptExecutor", skip_all, fields(otel.name = format!("Execute script: [{}]. Args: {:?}", script, args).as_str()))]
+    #[instrument(level = "debug", name = "ScriptExecutor", skip_all, fields(otel.name = format!("Execute script: [{}]. Args: {:?}", script, args).as_str()))]
     async fn execute_script(script: String, args: Option<&Value>) -> Result<(), ExecutorError> {
         let output = {
             let script_iter = script.split_whitespace().collect::<Vec<&str>>();

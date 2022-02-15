@@ -206,7 +206,7 @@ impl SmartMonitoringExecutor {
             )
     }
 
-    #[instrument(level = "error", name = "SmartMonitoring", err, skip_all, fields(otel.name = format!("Perform SmartMonitoring Action for host: [{:?}], service: [{:?}]", &host_name, &service_name).as_str()))]
+    #[instrument(level = "debug", name = "SmartMonitoring", err, skip_all, fields(otel.name = format!("Perform SmartMonitoring Action for host: [{:?}], service: [{:?}]", &host_name, &service_name).as_str()))]
     async fn execute_smart_monitoring_action(
         &self,
         icinga2_action: &Icinga2Action<'_>,
