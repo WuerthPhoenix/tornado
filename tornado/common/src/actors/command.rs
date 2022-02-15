@@ -72,15 +72,10 @@ impl<T: Command<Arc<Action>, Result<(), ExecutorError>> + 'static> Handler<Actio
                         action_meter
                             .actions_processed_counter
                             .add(1, &[action_id_label, ACTION_RESULT_KEY.string(RESULT_FAILURE)]);
-                        let message = format!(
+                        error!(
                             "CommandExecutorActor - Failed to execute action [{}]: {:?}",
                             &action_id, e
                         );
-                        error!("{}", message);
-                        // tracing::Span::current()
-                        //     .context()
-                        //     .span()
-                        //     .set_status(StatusCode::Error, message);
                     }
                 }
             }
