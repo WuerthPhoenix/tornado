@@ -66,7 +66,7 @@ impl Dispatcher {
                 "dispatch_action",
                 action = index,
                 action_id = action.id.as_str(),
-                otel.name = format!("Dispatch Action: {}", &action.id).as_str(),
+                otel.name = format!("Emit Action: {}", &action.id).as_str(),
             )
             .entered();
             let action_message = ActionMessage(TracedAction {
