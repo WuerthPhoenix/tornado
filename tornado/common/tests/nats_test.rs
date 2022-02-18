@@ -9,7 +9,7 @@ use std::time::Duration;
 use actix::clock::sleep;
 use log::*;
 use reqwest::Client;
-use serde_json::Value;
+use serde_json::{Map, Number, Value};
 use serial_test::serial;
 use std::sync::Arc;
 use testcontainers::images::generic::GenericImage;
@@ -20,8 +20,9 @@ use tornado_common::actors::nats_publisher::{
     NatsClientAuth, NatsClientConfig, NatsPublisherActor, NatsPublisherConfig,
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
-use tornado_common_api::Event;
+use tornado_common_api::{Event, TracedEvent};
 use tornado_common_logger::elastic_apm::ApmTracingConfig;
+use tracing::Span;
 
 fn new_nats_docker_container(
     docker: &clients::Cli,
@@ -171,7 +172,13 @@ async fn nats_publisher_should_publish_to_nats() {
 
     let random: u8 = rand::random();
     let subject = format!("test_subject_{}", random);
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert(
+        "some_metadata".to_owned(),
+        Value::Array(vec![Value::String("val1".to_owned()), Value::String("val2".to_owned())]),
+    );
+    event.metadata = metadata;
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
@@ -195,9 +202,12 @@ async fn nats_publisher_should_publish_to_nats() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
 
-    assert_eq!(serde_json::to_vec(&event).unwrap(), receiver.recv().await.unwrap());
+    let mut received_event: Event =
+        serde_json::from_slice(receiver.recv().await.unwrap().as_slice()).unwrap();
+    received_event.metadata.remove("trace_context");
+    assert_eq!(event, received_event);
 }
 
 #[actix_rt::test]
@@ -209,7 +219,10 @@ async fn should_publish_to_nats() {
     let nats_address = format!("127.0.0.1:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -237,9 +250,13 @@ async fn should_publish_to_nats() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]
@@ -251,7 +268,10 @@ async fn should_publish_to_nats_with_tls() {
     let nats_address = format!("localhost:{}", nats_port);
 
     let random: u8 = rand::random();
-    let event = Event::new(format!("event_type_{}", random));
+    let mut event = Event::new(format!("event_type_{}", random));
+    let mut metadata = Map::new();
+    metadata.insert("some_metadata".to_owned(), Value::Number(Number::from(1)));
+    event.metadata = metadata;
     let subject = format!("test_subject_{}", random);
 
     let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -287,9 +307,13 @@ async fn should_publish_to_nats_with_tls() {
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
 
-    assert_eq!(event, serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap());
+    let mut received: Event =
+        serde_json::from_slice(&receiver.recv().await.unwrap().msg.data).unwrap();
+    // We don't want to test the trace_context since it is added by the NatsPublisherActor
+    received.metadata.remove("trace_context");
+    assert_eq!(event, received);
 }
 
 #[actix_rt::test]
@@ -315,7 +339,7 @@ async fn publisher_should_reprocess_the_event_if_nats_is_not_available_at_startu
     )
     .await
     .unwrap();
-    publisher.do_send(EventMessage { event: event.clone() });
+    publisher.do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
 
     info!("Publisher started");
 
@@ -402,7 +426,8 @@ async fn subscriber_should_try_reconnect_if_nats_is_not_available_at_startup() {
 
     while !received && max_attempts > 0 {
         max_attempts -= 1;
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher
+            .do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
         time::sleep_until(time::Instant::now() + time::Duration::new(1, 0)).await;
         received = receiver.recv().await.is_some();
         if received {
@@ -477,7 +502,10 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         // is subscribed. The message would then be not received.
         loop {
             if *(subscriber_connected.read().unwrap()) {
-                publisher.do_send(EventMessage { event: event.clone() });
+                publisher.do_send(EventMessage(TracedEvent {
+                    event: event.clone(),
+                    span: Span::current(),
+                }));
                 break;
             }
             info!("Subscriber not yet connected, delaying publishing");
@@ -499,7 +527,8 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
             nats_is_up = false;
         };
 
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher
+            .do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
         in_flight_messages += 1;
 
         if nats_is_up {
@@ -551,7 +580,8 @@ async fn publisher_should_reschedule_all_events_after_a_disconnection() {
 
     for i in 0..n_events {
         info!("Sending event to publisher: {}", i);
-        publisher.do_send(EventMessage { event: event.clone() });
+        publisher
+            .do_send(EventMessage(TracedEvent { event: event.clone(), span: Span::current() }));
         time::sleep(time::Duration::from_millis(100)).await;
     }
 
@@ -586,8 +616,9 @@ fn start_logger() {
         file_output_path: None,
         tracing_elastic_apm: ApmTracingConfig {
             apm_output: false,
-            apm_server_url: "".to_owned(),
+            apm_server_url: "http://localhost:8200".to_owned(),
             apm_server_api_credentials: None,
+            exporter: Default::default(),
         },
     };
     if let Err(err) = tornado_common_logger::setup_logger(conf) {

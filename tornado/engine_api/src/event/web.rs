@@ -34,8 +34,8 @@ pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigE
     web::scope("/event")
         .app_data(Data::new(data))
         .service(
-        web::resource("/active/{param_auth}")
-            .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
+            web::resource("/active/{param_auth}")
+                .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
         )
         .service(
             web::resource("/drafts/{param_auth}/{draft_id}")
@@ -108,19 +108,14 @@ async fn send_event_to_current_config_v2<
     body: Json<SendEventRequestDto>,
     _param_auth: Path<String>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
-
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     if log_enabled!(Level::Debug) {
         let json_string = serde_json::to_string(body.deref()).unwrap();
         debug!("API - received send_event_to_current_config_v2 request: {}", json_string);
     }
 
-    let (auth_ctx, send_event_request) = prepare_data_for_send_event_v2(
-        &req,
-        &data.auth,
-        &params.param_auth,
-        body,
-    )?;
+    let (auth_ctx, send_event_request) =
+        prepare_data_for_send_event_v2(&req, &data.auth, &params.param_auth, body)?;
 
     let processed_event =
         data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
@@ -133,24 +128,18 @@ async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigE
     params: Path<AuthAndDraftId>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
-
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     if log_enabled!(Level::Debug) {
         let json_string = serde_json::to_string(body.deref()).unwrap();
         debug!("API - received send_event_to_draft_v2 request: {}", json_string);
     }
 
-    let (auth_ctx, send_event_request) = prepare_data_for_send_event_v2(
-        &req,
-        &data.auth,
-        &params.param_auth,
-        body,
-    )?;
+    let (auth_ctx, send_event_request) =
+        prepare_data_for_send_event_v2(&req, &data.auth, &params.param_auth, body)?;
     let processed_event =
         data.api.send_event_to_draft(auth_ctx, &params.draft_id, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
-
 
 #[allow(clippy::needless_lifetimes)] // clippy gets this wrong, if we remove the lifetimes, it does not compile anymore
 async fn prepare_data_for_send_event_to_draft<'a>(
@@ -223,9 +212,8 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
-                trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
@@ -245,8 +233,7 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
-        assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -264,9 +251,8 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
-                trace_id: None,
             },
             process_type: ProcessType::SkipActions,
         };
@@ -286,8 +272,7 @@ mod test {
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
             test::read_response_json(&mut srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
-        assert!(dto.event.trace_id.is_some());
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -305,9 +290,8 @@ mod test {
             event: EventDto {
                 event_type: "my_test_event".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
-                trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
@@ -344,8 +328,7 @@ mod test {
             test::read_body_json(resp).await;
 
         assert_eq!("my_test_event", dto.event.event_type);
-        assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 
     #[actix_rt::test]
@@ -363,7 +346,6 @@ mod test {
                 payload: HashMap::new(),
                 metadata: Default::default(),
                 created_ms: 0,
-                trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
@@ -403,16 +385,15 @@ mod test {
             auth: test_auth_service_v2(),
             api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
-            .await;
+        .await;
 
         let metadata = get_something();
         let send_event_request = SendEventRequestDto {
             event: EventDto {
                 event_type: "my_test_event_for_draft".to_owned(),
                 payload: HashMap::new(),
-                metadata: serde_json::to_value(&metadata).unwrap(),
+                metadata: metadata.clone(),
                 created_ms: 0,
-                trace_id: Some("my_trace_id".to_owned()),
             },
             process_type: ProcessType::SkipActions,
         };
@@ -433,7 +414,7 @@ mod test {
                     auths,
                     preferences: None,
                 })
-                    .unwrap(),
+                .unwrap(),
             ))
             .set_payload(serde_json::to_string(&send_event_request).unwrap())
             .to_request();
@@ -446,7 +427,6 @@ mod test {
             test::read_body_json(resp).await;
 
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
-        assert_eq!(Some("my_trace_id".to_owned()), dto.event.trace_id);
-        assert_eq!(serde_json::to_value(&metadata).unwrap(), dto.event.metadata);
+        assert_eq!(metadata, dto.event.metadata);
     }
 }

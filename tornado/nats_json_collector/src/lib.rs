@@ -1,6 +1,7 @@
 use crate::config::{EventConfig, NatsJsonCollectorConfig, TopicConfig, TornadoConnectionChannel};
 use actix::Recipient;
 use log::*;
+use std::collections::HashMap;
 use tornado_collector_common::{Collector, CollectorError};
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_collector_jmespath::JMESPathEventCollector;
@@ -10,8 +11,7 @@ use tornado_common::actors::nats_publisher::{
 };
 use tornado_common::actors::nats_subscriber::{subscribe_to_nats, NatsSubscriberConfig};
 use tornado_common::actors::tcp_client::TcpClientActor;
-use tornado_common_api::Value;
-use std::collections::HashMap;
+use tornado_common_api::{TracedEvent, Value};
 
 pub mod config;
 
@@ -96,9 +96,11 @@ async fn subscribe_to_topics(
                         message: format!("{}", err),
                     })?;
 
-                recipient_clone.try_send(EventMessage { event }).map_err(|err| {
-                    TornadoCommonActorError::GenericError { message: format!("{}", err) }
-                })
+                recipient_clone
+                    .try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() }))
+                    .map_err(|err| TornadoCommonActorError::GenericError {
+                        message: format!("{}", err),
+                    })
             })
             .await?;
         }

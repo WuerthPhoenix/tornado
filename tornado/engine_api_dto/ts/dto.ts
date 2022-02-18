@@ -101,7 +101,7 @@ export type TreeInfoDto = { rules_count: number; filters_count: number };
 /* 'event' types */
 /* ------------- */
 
-export type EventDto = {     type: string; trace_id: string | null; created_ms: number; metadata: Value; payload: { [key: string]: Value } };
+export type EventDto = {     type: string; created_ms: number; metadata:     { [key: string]: Value }; payload: { [key: string]: Value } };
 
 export enum ProcessType { Full = "Full", SkipActions = "SkipActions" };
 

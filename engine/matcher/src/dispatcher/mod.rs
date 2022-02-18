@@ -2,7 +2,8 @@ use crate::error::MatcherError;
 use crate::model::{ProcessedNode, ProcessedRuleStatus};
 use log::*;
 use std::sync::Arc;
-use tornado_common_api::Action;
+use tornado_common::actors::message::ActionMessage;
+use tornado_common_api::{Action, TracedAction};
 use tornado_network_common::EventBus;
 
 /// The dispatcher is in charge of dispatching the Actions defined in a ProcessedEvent.
@@ -20,11 +21,19 @@ impl Dispatcher {
     pub fn dispatch_actions(&self, processed_node: ProcessedNode) -> Result<(), MatcherError> {
         match processed_node {
             ProcessedNode::Ruleset { rules, name, .. } => {
-                let _span =
-                    tracing::error_span!("dispatch_ruleset", name = name.as_str()).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_ruleset",
+                    name = name.as_str(),
+                    otel.name = format!("Emit Actions of Ruleset: {}", name).as_str()
+                )
+                .entered();
                 for rule in rules.rules {
-                    let _span =
-                        tracing::error_span!("dispatch_rule", name = rule.name.as_str()).entered();
+                    let _span = tracing::error_span!(
+                        "dispatch_rule",
+                        name = rule.name.as_str(),
+                        otel.name = format!("Emit Actions of Rule: {}", rule.name).as_str()
+                    )
+                    .entered();
                     match rule.status {
                         ProcessedRuleStatus::Matched => {
                             debug!("Rule [{}] matched, dispatching actions", rule.name);
@@ -37,7 +46,12 @@ impl Dispatcher {
                 }
             }
             ProcessedNode::Filter { nodes, name, .. } => {
-                let _span = tracing::error_span!("dispatch_filter", name = name.as_str()).entered();
+                let _span = tracing::error_span!(
+                    "dispatch_filter",
+                    name = name.as_str(),
+                    otel.name = format!("Emit Actions of Filter: {}", name).as_str()
+                )
+                .entered();
                 for node in nodes {
                     self.dispatch_actions(node)?;
                 }
@@ -51,10 +65,16 @@ impl Dispatcher {
             let _span = tracing::error_span!(
                 "dispatch_action",
                 action = index,
-                action_id = action.id.as_str()
+                action_id = action.id.as_str(),
+                otel.name = format!("Emit Action: {}", &action.id).as_str(),
             )
             .entered();
-            self.event_bus.publish_action(action)
+            let action_message = ActionMessage(TracedAction {
+                span: tracing::Span::current(),
+                action: Arc::new(action),
+            });
+
+            self.event_bus.publish_action(action_message)
         }
         Ok(())
     }
@@ -65,7 +85,7 @@ mod test {
     use super::*;
     use crate::model::{ProcessedFilter, ProcessedFilterStatus, ProcessedRule, ProcessedRules};
     use std::sync::{Arc, Mutex};
-    use tornado_common_api::{Value, Map};
+    use tornado_common_api::{Action, Map, Value};
     use tornado_network_simple::SimpleEventBus;
 
     #[test]
@@ -80,10 +100,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -92,16 +112,8 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
+        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -127,10 +139,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -138,11 +150,7 @@ mod test {
         let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -168,10 +176,10 @@ mod test {
             let clone = received.clone();
             bus.subscribe_to_action(
                 "action1",
-                Box::new(move |message: Action| {
-                    println!("received action of id: {}", message.id);
+                Box::new(move |message: ActionMessage| {
+                    println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.clone())
+                    value.push(message.0.action.clone())
                 }),
             );
         }
@@ -180,11 +188,7 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action {
-            trace_id: None,
-            id: action_id.clone(),
-            payload: Map::new(),
-        });
+        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
 
         let node = ProcessedNode::Filter {
             name: "".to_owned(),

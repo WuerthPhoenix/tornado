@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::sync::Arc;
 use tornado_common::actors::command::CommandExecutorActor;
 use tornado_common::actors::json_event_reader::JsonEventReaderActor;
-use tornado_common::actors::message::{ActionMessage, TornadoCommonActorError};
+use tornado_common::actors::message::TornadoCommonActorError;
 use tornado_common::actors::nats_subscriber::subscribe_to_nats;
 use tornado_common::actors::tcp_server::listen_to_tcp;
 use tornado_common::command::pool::{CommandMutPool, CommandPool};
@@ -27,7 +27,9 @@ use tornado_common::metrics::{ActionMeter, ACTION_ID_LABEL_KEY};
 use tornado_common::TornadoError;
 use tornado_common_api::Event;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
+use tornado_common_logger::opentelemetry_logger::TelemetryContextExtractor;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
@@ -38,6 +40,7 @@ use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
 pub const ACTION_ID_MONITORING: &str = "monitoring";
@@ -236,16 +239,12 @@ pub async fn daemon(
     let foreach_executor_addr_clone = foreach_executor_addr.clone();
     let event_bus = {
         let event_bus = ActixEventBus {
-            callback: move |action| {
-                let action = Arc::new(action);
-                let span = tracing::Span::current();
-                let message = ActionMessage { action, span };
-
+            callback: move |message| {
                 action_meter
                     .actions_received_counter
-                    .add(1, &[ACTION_ID_LABEL_KEY.string(message.action.id.to_owned())]);
+                    .add(1, &[ACTION_ID_LABEL_KEY.string(message.0.action.id.to_owned())]);
 
-                let send_result = match message.action.id.as_ref() {
+                let send_result = match message.0.action.id.as_ref() {
                     "archive" => {
                         archive_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'archive' executor. Err: {:?}", err)
@@ -301,7 +300,7 @@ pub async fn daemon(
                             )
                         }),
 
-                    _ => Err(format!("There are not executors for action id [{}]", &message.action.id)),
+                    _ => Err(format!("There are not executors for action id [{}]", &message.0.action.id)),
                 };
                 if let Err(error_message) = send_result {
                     error!("{}", error_message)
@@ -345,30 +344,48 @@ pub async fn daemon(
         let nats_extractors = daemon_config.nats_extractors.clone();
 
         let tornado_meter_nats = tornado_meter.clone();
+        let trace_context_propagator = TraceContextPropagator::new();
         actix::spawn(async move {
             subscribe_to_nats(nats_config, message_queue_size, move |msg| {
-                let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
+                let master_span = tracing::info_span!("Process event", trace_id = tracing::field::Empty, otel.kind = "Server");
+                let event = master_span.in_scope(|| {
+                    let subscriber_span = tracing::debug_span!("Receive NATS event").entered();
 
-                let event: Event = serde_json::from_slice(&msg.msg.data)
-                    .map_err(|err| {
-                        tornado_meter_nats.invalid_events_received_counter.add(1, &[
-                            meter_event_souce_label.clone(),
-                        ]);
-                        TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
-                    })?;
-                trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                    let meter_event_souce_label = EVENT_SOURCE_LABEL_KEY.string("nats");
 
-                tornado_meter_nats.events_received_counter.add(1, &[
-                    meter_event_souce_label,
-                    EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
-                ]);
+                    let mut event: Event = serde_json::from_slice(&msg.msg.data)
+                        .map_err(|err| {
+                            tornado_meter_nats.invalid_events_received_counter.add(1, &[
+                                meter_event_souce_label.clone(),
+                            ]);
+                            TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
+                        })?;
+                    event.remove_undesired_metadata();
 
-                let mut event = json!(event);
-                for extractor in &nats_extractors {
-                    event = extractor.process(&msg.msg.subject, event)?;
-                }
+                    trace!("NatsSubscriberActor - event from message received: {:#?}", event);
+                    let trace_context = event.get_trace_context();
 
-                matcher_addr_clone.try_send(EventMessage { event }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                    if let Some(trace_context) = trace_context {
+                        let event_trace_context = TelemetryContextExtractor::get_trace_context(trace_context, &trace_context_propagator);
+                        master_span.set_parent(event_trace_context);
+                        subscriber_span.set_parent(master_span.context());
+                    }
+                    let trace_id = event.get_trace_id_for_logging(&master_span.context());
+                    master_span.record("trace_id", &trace_id.as_ref());
+
+                    tornado_meter_nats.events_received_counter.add(1, &[
+                        meter_event_souce_label,
+                        EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
+                    ]);
+
+                    let mut event = json!(event);
+                    for extractor in &nats_extractors {
+                        event = extractor.process(&msg.msg.subject, event)?;
+                    }
+
+                    Ok(event)
+                })?;
+                matcher_addr_clone.try_send(EventMessage { event, span: master_span }).unwrap_or_else(|err| error!("NatsSubscriberActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 Ok(())
             })
                 .await
@@ -410,12 +427,16 @@ pub async fn daemon(
             listen_to_tcp(tcp_address.clone(), message_queue_size, move |msg| {
                 let tornado_meter = tornado_meter_tcp.clone();
                 let json_matcher_addr_clone = json_matcher_addr_clone.clone();
-                JsonEventReaderActor::start_new(msg, message_queue_size, move |event| {
+                JsonEventReaderActor::start_new(msg, message_queue_size, move |mut event| {
                     tornado_meter.events_received_counter.add(1, &[
                         EVENT_SOURCE_LABEL_KEY.string("tcp"),
                         EVENT_TYPE_LABEL_KEY.string(event.event_type.to_owned()),
                     ]);
-                    json_matcher_addr_clone.try_send(EventMessage { event: json!(event) }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
+                    event.remove_undesired_metadata();
+
+                    let span= tracing::info_span!("From tcp");
+
+                    json_matcher_addr_clone.try_send(EventMessage { event: json!(event), span }).unwrap_or_else(|err| error!("JsonEventReaderActor - Error while sending EventMessage to MatcherActor. Error: {:?}", err));
                 });
             })
                 .await

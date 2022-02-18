@@ -3,12 +3,16 @@ use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
+use opentelemetry::trace::SpanKind;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
 use std::ops::Deref;
 use std::rc::Rc;
 use tokio::time;
+use tornado_common_logger::opentelemetry_logger::TelemetryContextInjector;
+use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_futures::Instrument;
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const WAIT_BETWEEN_RESTARTS_SEC: u64 = 10;
 
@@ -16,6 +20,7 @@ pub struct NatsPublisherActor {
     config: NatsPublisherConfig,
     nats_connection: Rc<Option<Connection>>,
     restarted: bool,
+    trace_context_propagator: TraceContextPropagator,
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -90,9 +95,15 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+        let trace_context_propagator = TraceContextPropagator::new();
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor { config, nats_connection: Rc::new(None), restarted: false }
+            NatsPublisherActor {
+                config,
+                nats_connection: Rc::new(None),
+                restarted: false,
+                trace_context_propagator,
+            }
         }))
     }
 }
@@ -160,16 +171,29 @@ impl actix::Supervised for NatsPublisherActor {
 impl Handler<EventMessage> for NatsPublisherActor {
     type Result = Result<(), TornadoCommonActorError>;
 
-    fn handle(&mut self, msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
-        let trace_id = msg.event.trace_id.as_str();
-        let span = tracing::error_span!("NatsPublisherActor", trace_id).entered();
+    fn handle(&mut self, mut msg: EventMessage, ctx: &mut Context<Self>) -> Self::Result {
+        let _parent_span = msg.0.span.clone().entered();
+        // Hardcode the service.name of the receiver. Currenlty publishers only publish to tornado.
+        // Implementing the logic to have this not hardcoded is not worth the effort atm.
+        let span = tracing::info_span!("Send Event to NATS", trace_id = tracing::field::Empty, 
+            otel.name = format!("Send Event to NATS subject: {}", &self.config.subject).as_str(),
+            otel.kind = %SpanKind::Producer,
+            peer.service = "tornado")
+        .entered();
+        let trace_id = msg.0.event.get_trace_id_for_logging(&span.context());
+        span.record("trace_id", &trace_id.as_ref());
+        let trace_context = TelemetryContextInjector::get_trace_context_map(
+            &span.context(),
+            &self.trace_context_propagator,
+        );
+        msg.0.event.set_trace_context(trace_context);
 
-        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.event);
+        trace!("NatsPublisherActor - Handling Event to be sent to Nats - {:?}", &msg.0.event);
 
         let address = ctx.address();
 
         if let Some(connection) = self.nats_connection.deref() {
-            let event = serde_json::to_vec(&msg.event).map_err(|err| {
+            let event = serde_json::to_vec(&msg.0.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
 

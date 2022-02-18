@@ -24,11 +24,14 @@ tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 #typescript-definitions = "0.1.10"
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
 tracing = "0.1"
+tracing-opentelemetry = "0.16"
+tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
 [dev-dependencies]
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 criterion = "0.3"
 maplit = "1.0"
+opentelemetry = "0.16"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }

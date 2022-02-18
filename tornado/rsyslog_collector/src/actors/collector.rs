@@ -4,6 +4,7 @@ use log::*;
 use tornado_collector_common::Collector;
 use tornado_collector_json::JsonPayloadCollector;
 use tornado_common::actors::message::{EventMessage, StringMessage};
+use tornado_common_api::TracedEvent;
 
 pub struct RsyslogCollectorActor<A: Actor + actix::Handler<EventMessage>>
 where
@@ -46,9 +47,12 @@ where
         debug!("RsyslogCollectorActor - received msg: [{}]", &msg.msg);
 
         match self.collector.to_event(&msg.msg) {
-            Ok(event) => self.writer_addr.try_send(EventMessage { event }).unwrap_or_else(|err| {
-                error!("RsyslogCollectorActor - Error while sending event. Error: {}", err)
-            }),
+            Ok(event) => self
+                .writer_addr
+                .try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() }))
+                .unwrap_or_else(|err| {
+                    error!("RsyslogCollectorActor - Error while sending event. Error: {}", err)
+                }),
             Err(e) => error!("RsyslogCollectorActor - Cannot unmarshal event from json: {:?}", e),
         };
     }

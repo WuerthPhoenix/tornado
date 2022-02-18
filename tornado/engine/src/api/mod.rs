@@ -29,6 +29,8 @@ impl EventApiHandler for MatcherApiHandler {
         config_filter: HashMap<String, NodeFilter>,
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
+        let span = tracing::info_span!("Process Event with current Processing Tree");
+        let _g = span.enter();
         let timer = SystemTime::now();
         let labels = [
             EVENT_SOURCE_LABEL_KEY.string("http"),
@@ -42,6 +44,7 @@ impl EventApiHandler for MatcherApiHandler {
                 config_filter,
                 process_type: event.process_type,
                 include_metadata: true,
+                span: span.clone(),
             })
             .await?;
         self.meter.events_received_counter.add(1, &labels);
@@ -105,9 +108,9 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
-    use std::collections::{HashMap};
+    use serde_json::Map;
+    use std::collections::HashMap;
     use std::sync::Arc;
-    use serde_json::json;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
     use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
@@ -143,7 +146,6 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type"),
-            metadata: Value::Object(Default::default()),
         };
 
         let mut config_filter = HashMap::new();
@@ -232,7 +234,6 @@ mod test {
         let send_event_request = SendEventRequest {
             process_type: ProcessType::SkipActions,
             event: Event::new("test-type-custom"),
-            metadata: Value::Object(Default::default()),
         };
 
         let config = MatcherConfig::Ruleset {
@@ -291,14 +292,12 @@ mod test {
 
         let api = MatcherApiHandler { matcher: matcher_addr, meter: Default::default() };
 
-        let mut metadata = HashMap::new();
-        metadata.insert("tenant_id".to_owned(), Value::String("beta".to_owned()));
+        let mut event = Event::new("test-type");
 
-        let send_event_request = SendEventRequest {
-            process_type: ProcessType::SkipActions,
-            event: Event::new("test-type"),
-            metadata: json!(metadata),
-        };
+        event.metadata = Map::new();
+        event.metadata.insert("tenant_id".to_owned(), Value::String("beta".to_owned()));
+
+        let send_event_request = SendEventRequest { process_type: ProcessType::SkipActions, event };
 
         let mut config_filter = HashMap::new();
         config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);

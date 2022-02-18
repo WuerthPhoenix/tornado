@@ -1,9 +1,11 @@
 use log::*;
 use std::sync::Arc;
-use tornado_common_api::{Action, Map, Value};
+use tornado_common::actors::message::ActionMessage;
+use tornado_common_api::{Action, Map, Payload, TracedAction, Value};
 use tornado_common_parser::ParserBuilder;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
+use tracing::instrument;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
@@ -13,6 +15,11 @@ const FOREACH_ACTION_PAYLOAD_KEY: &str = "payload";
 
 pub struct ForEachExecutor {
     bus: Arc<dyn EventBus>,
+}
+
+pub struct Params<'a> {
+    values: &'a Vec<Value>,
+    actions: Vec<Action>,
 }
 
 impl std::fmt::Display for ForEachExecutor {
@@ -26,69 +33,98 @@ impl ForEachExecutor {
     pub fn new(bus: Arc<dyn EventBus>) -> Self {
         Self { bus }
     }
+
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
+    fn extract_params_from_payload<'a>(
+        &self,
+        payload: &'a Payload,
+    ) -> Result<Params<'a>, ExecutorError> {
+        let values = match payload.get(FOREACH_TARGET_KEY) {
+            Some(Value::Array(values)) => values,
+            Some(_) => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - Key [{}] is not an array",
+                        FOREACH_TARGET_KEY
+                    ),
+                })
+            }
+            _ => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - No [{}] key found in payload.",
+                        FOREACH_TARGET_KEY
+                    ),
+                })
+            }
+        };
+
+        let actions: Vec<_> = match payload.get(FOREACH_ACTIONS_KEY) {
+            Some(Value::Array(actions)) => {
+                actions.iter().filter_map(|value| to_action(value).ok()).collect()
+            }
+            _ => {
+                return Err(ExecutorError::MissingArgumentError {
+                    message: format!(
+                        "ForEachExecutor - No [{}] key found in payload",
+                        FOREACH_ACTIONS_KEY
+                    ),
+                })
+            }
+        };
+
+        Ok(Params { values, actions })
+    }
 }
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for ForEachExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        let trace_id = &action.trace_id;
-        match action.payload.get(FOREACH_TARGET_KEY) {
-            Some(Value::Array(values)) => {
-                let actions: Vec<Action> = match action.payload.get(FOREACH_ACTIONS_KEY) {
-                    Some(Value::Array(actions)) => actions
-                        .iter()
-                        .map(|value| to_action(trace_id.as_ref(), value))
-                        .filter_map(Result::ok)
-                        .collect(),
-                    _ => {
-                        return Err(ExecutorError::MissingArgumentError {
-                            message: format!(
-                                "ForEachExecutor - No [{}] key found in payload",
-                                FOREACH_ACTIONS_KEY
-                            ),
-                        })
-                    }
-                };
+        let Params { values, actions } = self.extract_params_from_payload(&action.payload)?;
 
-                actions.into_iter().for_each(|action| {
-                    for value in values.iter() {
-                        //let mut cloned_action = action.clone();
-                        //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+        let execution_span = tracing::debug_span!(
+            "ForEachExecutor",
+            otel.name =
+                format!("Execute {} Actions for {} Values", actions.len(), values.len()).as_str()
+        );
 
-                        let mut item = Map::new();
-                        item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
-                        if let Err(err) = resolve_action(&Value::Object(item), action.clone())
-                            .map(|action| self.bus.publish_action(action)) {
-                            warn!(
-                                "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
-                                action.id, err
-                            )
-                        }
-                    }
+        actions.into_iter().for_each(|action| {
+            for value in values.iter() {
+                //let mut cloned_action = action.clone();
+                //cloned_action.payload.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+
+                let mut item = Map::new();
+                item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+
+                let result = resolve_action(&Value::Object(item), action.clone()).map(|action| {
+                    self.bus.publish_action(ActionMessage(TracedAction {
+                        action: Arc::new(action),
+                        span: execution_span.clone(),
+                    }))
                 });
-                Ok(())
+
+                if let Err(err) = result {
+                    warn!(
+                        "ForEachExecutor - Error while executing internal action [{}]. Err: {:?}",
+                        action.id, err
+                    )
+                }
             }
-            _ => Err(ExecutorError::MissingArgumentError {
-                message: format!(
-                    "ForEachExecutor - No [{}] key found in payload, or it's value is not an array",
-                    FOREACH_TARGET_KEY
-                ),
-            }),
-        }
+        });
+        Ok(())
     }
 }
 
-fn to_action(trace_id: Option<&String>, value: &Value) -> Result<Action, ExecutorError> {
+fn to_action(value: &Value) -> Result<Action, ExecutorError> {
     match value {
         Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Object(payload)) => Ok(Action {
-                    trace_id: trace_id.map(|s| s.to_owned()),
-                    id: id.to_owned(),
-                    payload: payload.clone(),
-                }),
+                Some(Value::Object(payload)) => {
+                    Ok(Action { id: id.to_owned(), payload: payload.clone() })
+                }
                 _ => {
                     let message =
                         "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
@@ -120,7 +156,8 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
         Value::String(text) => {
-            if let Some(parse_result) = ParserBuilder::default().build_parser(text)
+            if let Some(parse_result) = ParserBuilder::default()
+                .build_parser(text)
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),
@@ -150,8 +187,12 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
 #[cfg(test)]
 mod test {
     use super::*;
-    use std::{collections::{HashMap, hash_map::Entry}, sync::RwLock};
-    use serde_json::{json};
+    use serde_json::json;
+    use std::ops::Deref;
+    use std::{
+        collections::{hash_map::Entry, HashMap},
+        sync::RwLock,
+    };
     use tornado_common_api::ValueExt;
     use tornado_network_simple::SimpleEventBus;
 
@@ -166,21 +207,19 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
-        let trace_id = Some("asfse3t23tegre".to_owned());
 
         // Act
-        let action = to_action(trace_id.as_ref(), &action_value).unwrap();
+        let action = to_action(&action_value).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
         assert_eq!(payload_map, action.payload);
-        assert_eq!(trace_id, action.trace_id);
     }
 
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action(None, &Value::Array(vec![]));
+        let result = to_action(&Value::Array(vec![]));
 
         // Assert
         assert!(result.is_err());
@@ -198,7 +237,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -217,7 +256,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -232,7 +271,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -250,7 +289,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(None, &action_value);
+        let result = to_action(&action_value);
 
         // Assert
         assert!(result.is_err());
@@ -297,7 +336,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -356,8 +395,8 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
-                action_one.get(0).unwrap()
+                &Action::new_with_payload("id_one", payload),
+                action_one.get(0).unwrap().0.action.deref()
             );
         }
 
@@ -366,8 +405,8 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
-                action_one.get(1).unwrap()
+                &Action::new_with_payload("id_one", payload),
+                action_one.get(1).unwrap().0.action.deref()
             );
         }
 
@@ -381,8 +420,8 @@ mod test {
                 Value::String("a first_item bb <first_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(0).unwrap().0.action.deref()
             );
         }
 
@@ -393,8 +432,8 @@ mod test {
                 Value::String("a second_item bb <second_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(1).unwrap().0.action.deref()
             );
         }
     }
@@ -440,7 +479,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -488,8 +527,8 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
-                action_two.get(0).unwrap()
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(0).unwrap().0.action.deref()
             );
         }
 
@@ -497,8 +536,8 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_two", payload),
-                action_two.get(1).unwrap()
+                &Action::new_with_payload("id_two", payload),
+                action_two.get(1).unwrap().0.action.deref()
             );
         }
     }
@@ -528,7 +567,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -577,8 +616,8 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
-                action_two.get(0).unwrap()
+                &Action::new_with_payload("id_one", payload),
+                action_two.get(0).unwrap().0.action.deref()
             );
         }
 
@@ -586,8 +625,8 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("", "id_one", payload),
-                action_two.get(1).unwrap()
+                &Action::new_with_payload("id_one", payload),
+                action_two.get(1).unwrap().0.action.deref()
             );
         }
     }
@@ -612,7 +651,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
@@ -648,7 +687,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_map().unwrap();
+        let value = lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = Map::new();
         expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
@@ -674,7 +713,7 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![Value::Array(vec![
@@ -711,7 +750,8 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().payload.get("inner").unwrap().get_array().unwrap();
+        let value =
+            lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_array().unwrap();
         let mut expected_array = vec![];
         expected_array.push(Value::String("first".to_owned()));
         expected_array.push(Value::String("second".to_owned()));

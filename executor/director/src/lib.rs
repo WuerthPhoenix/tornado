@@ -2,11 +2,12 @@ use crate::config::{ApiClient, DirectorClientConfig};
 use log::*;
 use maplit::*;
 use serde::*;
-use tornado_common_api::ValueExt;
 use std::sync::Arc;
 use tornado_common_api::Action;
 use tornado_common_api::Payload;
+use tornado_common_api::ValueExt;
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tracing::instrument;
 
 pub mod config;
 
@@ -75,6 +76,7 @@ impl DirectorExecutor {
             .to_owned()
     }
 
+    #[instrument(level = "debug", name = "Extract parameters for Executor", skip_all)]
     fn parse_action<'a>(&self, action: &'a Action) -> Result<DirectorAction<'a>, ExecutorError> {
         let director_action_name = action
             .payload
@@ -94,6 +96,7 @@ impl DirectorExecutor {
         Ok(DirectorAction { name: director_action_name, payload: action_payload, live_creation })
     }
 
+    #[instrument(level = "debug", name = "DirectorExecutor", skip_all, fields(otel.name = format!("Send request of type [{:?}] to Director. Live creation: {}", director_action.name, director_action.live_creation).as_str()))]
     pub async fn perform_request(
         &self,
         director_action: DirectorAction<'_>,
@@ -199,6 +202,7 @@ impl DirectorExecutor {
 
 #[async_trait::async_trait(?Send)]
 impl StatelessExecutor for DirectorExecutor {
+    #[tracing::instrument(level = "info", skip_all, err, fields(otel.name = format!("Execute Action: {}", &action.id).as_str(), otel.kind = "Consumer"))]
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("DirectorExecutor - received action: \n[{:?}]", action);
 
@@ -233,7 +237,7 @@ mod test {
         })
         .unwrap();
 
-        let action = Action::new("", "");
+        let action = Action::new("");
 
         // Act
         let result = executor.parse_action(&action);
@@ -259,10 +263,11 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
-        action
-            .payload
-            .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_service".to_owned()));
+        let mut action = Action::new("");
+        action.payload.insert(
+            DIRECTOR_ACTION_NAME_KEY.to_owned(),
+            Value::String("create_service".to_owned()),
+        );
         action.payload.insert(DIRECTOR_ACTION_LIVE_CREATION_KEY.to_owned(), Value::Bool(true));
 
         // Act
@@ -284,7 +289,7 @@ mod test {
         })
         .unwrap();
 
-        let mut action = Action::new("", "");
+        let mut action = Action::new("");
         action
             .payload
             .insert(DIRECTOR_ACTION_NAME_KEY.to_owned(), Value::String("create_host".to_owned()));
