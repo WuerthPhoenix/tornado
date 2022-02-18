@@ -269,13 +269,6 @@ pub mod test {
         assert!(api.send_event_to_draft(user_view.clone(), "id", request.clone()).await.is_err());
     }
 
-    fn get_something() -> HashMap<String, Value> {
-        let mut something = HashMap::new();
-        something
-            .insert("something".to_owned(), Value::String(format!("{}", rand::random::<usize>())));
-        something
-    }
-
     #[actix_rt::test]
     async fn send_event_to_current_config_should_propagate_metadata() {
         // Arrange
