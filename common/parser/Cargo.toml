@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 tornado_common_api = { path = "../api", version = "0.0.1" }
+log = "0.4"
 lazy_static = "1.4"
 regex = "1.5"
 serde = "1.0"

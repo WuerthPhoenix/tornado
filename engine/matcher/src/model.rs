@@ -1,30 +1,28 @@
+use crate::accessor::{EVENT_KEY, EXTRACTED_VARIABLES_KEY, FOREACH_ITEM_KEY};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use tornado_common_api::{Action, ValueGet};
 use typescript_definitions::TypeScriptify;
-use crate::accessor::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
 
 pub struct InternalEvent<'o> {
     pub event: &'o Value,
-    pub extracted_variables: &'o mut Value
+    pub extracted_variables: &'o mut Value,
 }
 
-impl <'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
+impl<'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
     fn from((event, extracted_variables): (&'o Value, &'o mut Value)) -> Self {
-        Self {
-            event,
-            extracted_variables
-        }
+        Self { event, extracted_variables }
     }
 }
 
-impl <'o> ValueGet for InternalEvent<'o> {
+impl<'o> ValueGet for InternalEvent<'o> {
     fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
         match key {
             EVENT_KEY => Some(self.event),
             EXTRACTED_VARIABLES_KEY => Some(self.extracted_variables),
-            _ => None
+            FOREACH_ITEM_KEY => Some(self.event),
+            _ => None,
         }
     }
 

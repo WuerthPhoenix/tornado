@@ -171,7 +171,7 @@ impl ActionValueProcessor {
                 .ok_or(MatcherError::CreateActionError {
                     action_id: action_id.to_owned(),
                     rule_name: rule_name.to_owned(),
-                    cause: format!("Accessor [{:?}] returned empty value.", accessor),
+                    cause: format!("Accessor [{:?}] returned empty value.2", accessor),
                 })?
                 .into_owned()),
             ActionValueProcessor::Null => Ok(Value::Null),
@@ -208,7 +208,7 @@ impl ActionValueProcessor {
                     .ok_or(MatcherError::CreateActionError {
                         action_id: action_id.to_owned(),
                         rule_name: rule_name.to_owned(),
-                        cause: format!("Accessor [{:?}] returned empty value.", accessor),
+                        cause: format!("Accessor [{:?}] returned empty value.3", accessor),
                     })?
                     .into_owned();
                 Ok((

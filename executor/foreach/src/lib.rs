@@ -98,6 +98,17 @@ impl StatelessExecutor for ForEachExecutor {
 
                 let mut item = Map::new();
                 item.insert(FOREACH_ITEM_KEY.to_owned(), value.clone());
+                // {
+                //  "item" : {"hostname": "host1"}
+                // }
+
+                //        {
+                //           "id": "archive",
+                //           "payload": {
+                //             "archive_type": null,
+                //             "event": "prefix ${item.blabla}"
+                //           }
+                //         }
 
                 let result = resolve_action(&Value::Object(item), action.clone()).map(|action| {
                     self.bus.publish_action(ActionMessage(TracedAction {
@@ -146,6 +157,18 @@ fn to_action(value: &Value) -> Result<Action, ExecutorError> {
     }
 }
 
+// {
+//  "item" : {"hostname": "host1"}
+// }
+
+//        {
+//           "id": "archive",
+//           "payload": {
+//             "archive_type": null,
+//             "event": "prefix ${item.blabla}"
+//           }
+//         }
+
 fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
     for (_key, element) in action.payload.iter_mut() {
         resolve_payload(item, element)?;
@@ -153,6 +176,9 @@ fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorEr
     Ok(action)
 }
 
+// item -> "item" : {"hostname": "host1"}
+
+// value -> "event": "prefix ${item}"
 fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorError> {
     match &mut value {
         Value::String(text) => {

@@ -3745,6 +3745,7 @@ name = "tornado_common_parser"
 version = "0.0.1"
 dependencies = [
  "lazy_static",
+ "log",
  "regex",
  "serde",
  "serde_json",
