@@ -82,9 +82,7 @@ impl<T: Debug> ParserBuilder<T> {
             // So when the ParserBuilder is constructed with some ignored_expressions, we leave them
             // as they are by returning a constant Parser::Val().
             if self.ignored_expressions.iter().any(|ignored_expression| {
-                expression
-                    .starts_with(&format! {"{}{}", ignored_expression, EXPRESSION_NESTED_DELIMITER})
-                    || expression.eq(ignored_expression)
+                Parser::<T>::key_is_root_entry_of_expression(ignored_expression, expression)
             }) {
                 return Ok(Parser::Val(Value::String(text.to_owned())));
             }
@@ -131,6 +129,16 @@ impl<T: Debug> Parser<T> {
         let trimmed = text.trim();
         trimmed.starts_with(EXPRESSION_START_DELIMITER)
             && trimmed.ends_with(EXPRESSION_END_DELIMITER)
+    }
+
+    // Determines if a key is the first part of an expression.
+    // E.g.:
+    // key_is_root_entry_of_expression("mykey", "mykey.somefield.something") evaluates to true
+    // key_is_root_entry_of_expression("mykeys", "mykey.somefield.something") evaluates to false
+    pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
+        expression.eq(key)
+            || expression.starts_with(&format!("{}{}", key, EXPRESSION_NESTED_DELIMITER))
+            || expression.starts_with(&format!("{}{}", key, PAYLOAD_ARRAY_KEY_START_DELIMITER))
     }
 
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
@@ -639,6 +647,42 @@ mod test {
 
         // Assert
         assert_eq!(&json!("my ignored expression is ${ignored_expr.something}!!"), result.as_ref());
+    }
+
+    #[test]
+    fn builder_should_register_and_use_an_ignored_expressions_if_accessed_as_array() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_ignored_expression("ignored_expr".to_owned())
+            .build_parser("my ignored expression is ${ignored_expr[0].something}!!")
+            .unwrap();
+
+        let map = json!({
+            "key": true,
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(
+            &json!("my ignored expression is ${ignored_expr[0].something}!!"),
+            result.as_ref()
+        );
+    }
+
+    #[test]
+    fn key_is_root_entry_of_expression_should_evaluate() {
+        // Assert
+        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey"));
+        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "somekeyss"));
+        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey.something"));
+        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey[0]"));
+        assert!(Parser::<String>::key_is_root_entry_of_expression(
+            "somekey",
+            "somekey[0].something"
+        ));
+        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "some[0].something"));
     }
 
     #[test]

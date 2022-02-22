@@ -73,8 +73,10 @@ impl AccessorBuilder {
                     val if (val.starts_with(&format!("{}.", EVENT_KEY))
                         || val.eq(EVENT_KEY)
                         || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
-                        || val.eq(FOREACH_ITEM_KEY)
-                        || val.starts_with(&format!("{}.", FOREACH_ITEM_KEY))) =>
+                        || Parser::<()>::key_is_root_entry_of_expression(
+                            FOREACH_ITEM_KEY,
+                            val,
+                        )) =>
                     {
                         let parser = parser_builder.build_parser(input)?;
                         Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
@@ -850,6 +852,24 @@ mod test {
         // Arrange
         let builder = AccessorBuilder::new();
         let value = "my body is ${item.body}!".to_owned();
+        let internal_event = InternalEvent {
+            event: &Default::default(),
+            extracted_variables: &mut Default::default(),
+        };
+
+        // Act
+        let accessor = builder.build("rule_name", &value).unwrap();
+
+        // Assert
+        let parsed_value = accessor.get(&internal_event);
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
+    }
+
+    #[test]
+    fn should_build_a_constant_parser_val_for_ignored_expression_array_access() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "my body is ${item[0].body}!".to_owned();
         let internal_event = InternalEvent {
             event: &Default::default(),
             extracted_variables: &mut Default::default(),
