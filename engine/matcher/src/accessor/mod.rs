@@ -24,7 +24,6 @@ impl Default for AccessorBuilder {
     }
 }
 
-const IGNORED_EXPRESSION_PREFIXES: &[&str] = &[FOREACH_ITEM_KEY];
 pub const EVENT_KEY: &str = "event";
 pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
@@ -73,16 +72,12 @@ impl AccessorBuilder {
                 match path.trim() {
                     val if (val.starts_with(&format!("{}.", EVENT_KEY))
                         || val.eq(EVENT_KEY)
-                        || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))) =>
+                        || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
+                        || val.eq(FOREACH_ITEM_KEY)
+                        || val.starts_with(&format!("{}.", FOREACH_ITEM_KEY))) =>
                     {
                         let parser = parser_builder.build_parser(input)?;
                         Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
-                    }
-                    val if IGNORED_EXPRESSION_PREFIXES
-                        .iter()
-                        .any(|prefix| val.starts_with(prefix)) =>
-                    {
-                        Ok(Accessor::Constant { value: Value::String(input.to_owned()) })
                     }
                     _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
                 }
@@ -815,7 +810,7 @@ mod test {
     }
 
     #[test]
-    fn should_build_a_constant_accessor_for_expression_who_start_with_an_ignored_prefix() {
+    fn should_build_a_constant_parser_val_accessor_for_expression_who_start_with_item() {
         // Arrange
         let builder = AccessorBuilder::new();
         let value = "${item.body}".to_owned();
@@ -825,11 +820,47 @@ mod test {
 
         // Assert
         match accessor {
-            Accessor::Constant { value: Value::String(inner_value) } => {
-                assert_eq!("${item.body}", &inner_value);
+            Accessor::Parser { rule_name: _, parser: Parser::Val(Value::String(inner_value)) } => {
+                assert_eq!(&value, &inner_value);
             }
             _ => assert!(false),
         }
+    }
+
+    #[test]
+    fn should_get_a_constant_val_expression_starting_with_item() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "${item.body}".to_owned();
+        let internal_event = InternalEvent {
+            event: &Default::default(),
+            extracted_variables: &mut Default::default(),
+        };
+
+        // Act
+        let accessor = builder.build("rule_name", &value).unwrap();
+
+        // Assert
+        let parsed_value = accessor.get(&internal_event);
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
+    }
+
+    #[test]
+    fn should_build_a_constant_parser_val_for_interpolated_ignored_expression_item() {
+        // Arrange
+        let builder = AccessorBuilder::new();
+        let value = "my body is ${item.body}!".to_owned();
+        let internal_event = InternalEvent {
+            event: &Default::default(),
+            extracted_variables: &mut Default::default(),
+        };
+
+        // Act
+        let accessor = builder.build("rule_name", &value).unwrap();
+
+        // Assert
+        let parsed_value = accessor.get(&internal_event);
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
     }
 
     #[test]
