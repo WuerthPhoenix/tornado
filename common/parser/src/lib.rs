@@ -584,6 +584,85 @@ mod test {
         assert_eq!(&json!({"one": 1, "two": 2 }), result.as_ref());
     }
 
+    #[test]
+    fn builder_should_register_and_use_an_ignored_expressions_if_expression_is_equal_to_ignored() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_ignored_expression("ignored_expr".to_owned())
+            .build_parser("${ignored_expr}")
+            .unwrap();
+
+        let map = json!({
+            "key": true,
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(&json!("${ignored_expr}"), result.as_ref());
+    }
+
+    #[test]
+    fn builder_should_register_and_use_an_ignored_expressions_if_expression_starts_with_ignored() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_ignored_expression("ignored_expr".to_owned())
+            .build_parser("${ignored_expr.something}")
+            .unwrap();
+
+        let map = json!({
+            "key": true,
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(&json!("${ignored_expr.something}"), result.as_ref());
+    }
+
+    #[test]
+    fn builder_should_register_and_use_an_ignored_expressions_if_interpolated() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_ignored_expression("ignored_expr".to_owned())
+            .build_parser("my ignored expression is ${ignored_expr.something}!!")
+            .unwrap();
+
+        let map = json!({
+            "key": true,
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(&json!("my ignored expression is ${ignored_expr.something}!!"), result.as_ref());
+    }
+
+    #[test]
+    fn builder_should_evaluate_expression_if_not_ignored() {
+        // Arrange
+        let parser = ParserBuilder::<String>::default()
+            .add_ignored_expression("ignored_expr".to_owned())
+            .build_parser("${not_ignored_expr.something}")
+            .unwrap();
+
+        let map = json!({
+            "key": true,
+            "not_ignored_expr": {
+              "something": 1,
+            }
+        });
+
+        // Act
+        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+
+        // Assert
+        assert_eq!(&json!(1), result.as_ref());
+    }
+
     #[derive(Debug)]
     pub struct MyParser {
         pub expression: String,
