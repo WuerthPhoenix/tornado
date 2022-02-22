@@ -148,7 +148,8 @@ mod test {
             event: Event::new("test-type"),
         };
 
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
 
         // Act
         let res = api.send_event_to_current_config(config_filter, send_event_request).await;
@@ -298,7 +299,8 @@ mod test {
 
         let send_event_request = SendEventRequest { process_type: ProcessType::SkipActions, event };
 
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
 
         // Act
         let res =
