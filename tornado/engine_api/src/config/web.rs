@@ -925,6 +925,12 @@ mod test {
         Ok(())
     }
 
+    fn auth_map(name: &str, auth: Authorization) -> HashMap<String, Authorization> {
+        let mut auths = HashMap::new();
+        auths.insert(name.to_owned(), auth);
+        auths
+    }
+
     #[actix_rt::test]
     async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError>
     {
@@ -942,13 +948,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -979,13 +985,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1018,13 +1024,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1068,13 +1074,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1105,13 +1111,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1142,13 +1148,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1179,13 +1185,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1215,13 +1221,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1252,13 +1258,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned(), "edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1289,13 +1295,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1326,13 +1332,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned(), "child_2".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1363,13 +1369,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned(), "child_1".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1400,13 +1406,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned(), "child_2".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1436,14 +1442,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "admin".to_string(),
-
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["view".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1473,14 +1478,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1516,14 +1520,13 @@ mod test {
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
-
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))
@@ -1560,13 +1563,13 @@ mod test {
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
                     user: "user".to_string(),
 
-                    auths: HashMap::from([(
-                        "auth1".to_owned(),
+                    auths: auth_map(
+                        "auth1",
                         Authorization {
                             path: vec!["root".to_owned()],
                             roles: vec!["edit".to_owned()],
                         },
-                    )]),
+                    ),
                     preferences: None,
                 })?,
             ))

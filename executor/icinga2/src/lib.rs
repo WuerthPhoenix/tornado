@@ -213,18 +213,15 @@ mod test {
         })
         .unwrap();
 
+        let mut action_payload = HashMap::new();
+        action_payload.insert("filter".to_owned(), Value::String("filter_value".to_owned()));
+        action_payload.insert("type".to_owned(), Value::String("Host".to_owned()));
         let mut action = Action::new("");
         action.payload.insert(
             ICINGA2_ACTION_NAME_KEY.to_owned(),
             Value::String("process-check-result".to_owned()),
         );
-        action.payload.insert(
-            ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
-            json!(HashMap::from([
-                ("filter".to_owned(), Value::String("filter_value".to_owned())),
-                ("type".to_owned(), Value::String("Host".to_owned()))
-            ])),
-        );
+        action.payload.insert(ICINGA2_ACTION_PAYLOAD_KEY.to_owned(), json!(action_payload));
 
         // Act
         let result = executor.parse_action(&action);

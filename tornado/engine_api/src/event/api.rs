@@ -65,7 +65,8 @@ impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
         event: SendEventRequest,
     ) -> Result<ProcessedEvent, ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
-        let config_filter = HashMap::from([(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren)]);
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
         self.handler.send_event_to_current_config(config_filter, event).await
     }
 

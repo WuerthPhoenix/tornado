@@ -524,9 +524,8 @@ mod test {
         let parser = ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
 
         let value = Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13.0)]);
-        let map = HashMap::from([
-            ("key", &value)
-        ]);
+        let mut map = HashMap::new();
+        map.insert("key", &value);
 
         // Act
         let result = parser.parse_value(&map, &());

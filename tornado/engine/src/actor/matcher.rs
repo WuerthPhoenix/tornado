@@ -223,11 +223,11 @@ impl Handler<ReconfigureMessage> for MatcherActor {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
     use crate::actor::dispatcher::ProcessedEventMessage;
     use crate::command::upgrade_rules::test::prepare_temp_dirs;
     use crate::config::parse_config_files;
+    use maplit::hashmap;
     use serde_json::json;
     use tornado_common_api::{Event, Value};
     use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
@@ -305,13 +305,12 @@ mod test {
         event.add_to_metadata("tenant_id".to_owned(), Value::String("alpha".to_owned())).unwrap();
 
         // Act
+        let mut config_filter = HashMap::new();
+        config_filter.insert(ROOT_NODE_NAME.to_owned(), NodeFilter::AllChildren);
         let processed_event: ProcessedEvent = matcher_actor
             .send(EventMessageWithReply {
                 event,
-                config_filter: HashMap::from([(
-                    ROOT_NODE_NAME.to_owned(),
-                    NodeFilter::AllChildren,
-                )]),
+                config_filter,
                 include_metadata: false,
                 process_type: ProcessType::Full,
                 span: Span::current(),
@@ -362,13 +361,11 @@ mod test {
             .add_to_metadata("tenant_id".to_owned(), Value::String("beta".to_owned()))
             .unwrap();
 
-        let config_filter = HashMap::from([(
-            ROOT_NODE_NAME.to_owned(),
-            NodeFilter::SelectedChildren(HashMap::from([(
-                "tenant_id_beta".to_owned(),
-                NodeFilter::AllChildren,
-            )])),
-        )]);
+        let config_filter = hashmap![
+            ROOT_NODE_NAME.to_owned() => NodeFilter::SelectedChildren(hashmap![
+                "tenant_id_beta".to_owned() => NodeFilter::AllChildren
+            ])
+        ];
 
         // Act
         let processed_event_alpha: ProcessedEvent = matcher_actor
@@ -448,13 +445,11 @@ mod test {
         let processed_event = matcher_actor
             .send(EventMessageWithReply {
                 event,
-                config_filter: HashMap::from([(
-                    ROOT_NODE_NAME.to_owned(),
-                    NodeFilter::SelectedChildren(HashMap::from([(
-                        "NOT_EXISTING_NODE_NAME".to_owned(),
-                        NodeFilter::AllChildren,
-                    )])),
-                )]),
+                config_filter: hashmap![
+                    ROOT_NODE_NAME.to_owned() => NodeFilter::SelectedChildren(hashmap![
+                        "NOT_EXISTING_NODE_NAME".to_owned() => NodeFilter::AllChildren
+                    ]),
+                ],
                 include_metadata: false,
                 process_type: ProcessType::Full,
                 span: Span::current(),

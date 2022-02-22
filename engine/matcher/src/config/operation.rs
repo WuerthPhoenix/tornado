@@ -91,7 +91,7 @@ pub fn matcher_config_filter(
 
 #[cfg(test)]
 mod test {
-
+    use maplit::hashmap;
     use super::*;
     use crate::config::filter::Filter;
     use crate::config::Defaultable;
@@ -113,7 +113,8 @@ mod test {
             }],
         };
 
-        let filter = HashMap::from([("other".to_owned(), NodeFilter::AllChildren)]);
+        let mut filter =  HashMap::new();
+        filter.insert("other".to_owned(), NodeFilter::AllChildren);
 
         // Act
         let filtered_config = matcher_config_filter(&config, &filter);
@@ -165,7 +166,8 @@ mod test {
             }],
         };
 
-        let filter = HashMap::from([("root".to_owned(), NodeFilter::AllChildren)]);
+        let mut filter = HashMap::new();
+        filter.insert("root".to_owned(), NodeFilter::AllChildren);
 
         // Act
         let filtered_config = matcher_config_filter(&config, &filter);
@@ -263,26 +265,16 @@ mod test {
             ],
         };
 
-        let filter = HashMap::from([(
-            "root".to_owned(),
-            NodeFilter::SelectedChildren(HashMap::from([
-                (
-                    "child_1".to_owned(),
-                    NodeFilter::SelectedChildren(HashMap::from([
-                        ("child_1_1".to_owned(), NodeFilter::AllChildren),
-                        (
-                            "child_1_2".to_owned(),
-                            NodeFilter::SelectedChildren(HashMap::from([(
-                                "child_1_2_2".to_owned(),
-                                NodeFilter::AllChildren,
-                            )])),
-                        ),
-                    ])),
-                ),
-                ("child_2".to_owned(), NodeFilter::AllChildren),
-                ("child_4".to_owned(), NodeFilter::AllChildren),
-            ])),
-        )]);
+        let filter = hashmap![
+            "root".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                "child_1".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                        "child_1_1".to_owned() => NodeFilter::AllChildren,
+                        "child_1_2".to_owned() => NodeFilter::SelectedChildren(hashmap!["child_1_2_2".to_owned() => NodeFilter::AllChildren])
+                    ]),
+                "child_2".to_owned() => NodeFilter::AllChildren,
+                "child_4".to_owned() => NodeFilter::AllChildren,
+            ],
+        )];
 
         // Act
         let filtered_config = matcher_config_filter(&config, &filter);
@@ -394,7 +386,8 @@ mod test {
         let filter_map = NodeFilter::map_from(&paths);
 
         // Assert
-        let expected_filter_map = HashMap::from([("root".to_owned(), NodeFilter::AllChildren)]);
+        let mut expected_filter_map = HashMap::new();
+        expected_filter_map.insert("root".to_owned(), NodeFilter::AllChildren);
 
         assert_eq!(expected_filter_map, filter_map);
     }
@@ -408,16 +401,13 @@ mod test {
         let filter_map = NodeFilter::map_from(&paths);
 
         // Assert
-        let expected_filter_map = HashMap::from([(
-            "root".to_owned(),
-            NodeFilter::SelectedChildren(HashMap::from([(
-                "child_1".to_owned(),
-                NodeFilter::SelectedChildren(HashMap::from([(
-                    "child_1_2".to_owned(),
-                    NodeFilter::AllChildren,
-                )])),
-            )])),
-        )]);
+        let expected_filter_map = hashmap![
+            "root".to_owned() => NodeFilter::SelectedChildren( hashmap![
+                "child_1".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                    "child_1_2".to_owned() => NodeFilter::AllChildren
+                ]),
+            ]),
+        ];
 
         assert_eq!(expected_filter_map, filter_map);
     }
@@ -443,29 +433,18 @@ mod test {
         let filter_map = NodeFilter::map_from(&paths);
 
         // Assert
-        let expected_filter_map = HashMap::from([
-            (
-                "root".to_owned(),
-                NodeFilter::SelectedChildren(HashMap::from([
-                    ("child_1".to_owned(), NodeFilter::AllChildren),
-                    (
-                        "child_2".to_owned(),
-                        NodeFilter::SelectedChildren(HashMap::from([(
-                            "child_2_1".to_owned(),
-                            NodeFilter::AllChildren,
-                        )])),
-                    ),
-                    ("child_3".to_owned(), NodeFilter::AllChildren),
-                ])),
-            ),
-            (
-                "another_root".to_owned(),
-                NodeFilter::SelectedChildren(HashMap::from([(
-                    "child_1".to_owned(),
-                    NodeFilter::AllChildren,
-                )])),
-            ),
-        ]);
+        let expected_filter_map = hashmap![
+            "root".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                "child_1".to_owned() => NodeFilter::AllChildren,
+                "child_2".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                    "child_2_1".to_owned() => NodeFilter::AllChildren,
+                ]),
+                "child_3".to_owned() => NodeFilter::AllChildren,
+            ]),
+            "another_root".to_owned() => NodeFilter::SelectedChildren(hashmap![
+                "child_1".to_owned() => NodeFilter::AllChildren,
+            ]),
+        ];
 
         assert_eq!(expected_filter_map, filter_map);
     }
@@ -483,7 +462,8 @@ mod test {
         let filter_map = NodeFilter::map_from(&paths);
 
         // Assert
-        let expected_filter_map = HashMap::from([("root".to_owned(), NodeFilter::AllChildren)]);
+        let mut expected_filter_map = HashMap::new();
+        expected_filter_map.insert("root".to_owned(), NodeFilter::AllChildren);
 
         assert_eq!(expected_filter_map, filter_map);
     }
