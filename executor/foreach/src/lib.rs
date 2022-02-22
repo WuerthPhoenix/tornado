@@ -2,14 +2,13 @@ use log::*;
 use std::sync::Arc;
 use tornado_common::actors::message::ActionMessage;
 use tornado_common_api::{Action, Map, Payload, TracedAction, Value};
-use tornado_common_parser::ParserBuilder;
+use tornado_common_parser::{ParserBuilder, FOREACH_ITEM_KEY};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_network_common::EventBus;
 use tracing::instrument;
 
 const FOREACH_TARGET_KEY: &str = "target";
 const FOREACH_ACTIONS_KEY: &str = "actions";
-const FOREACH_ITEM_KEY: &str = "item";
 const FOREACH_ACTION_ID_KEY: &str = "id";
 const FOREACH_ACTION_PAYLOAD_KEY: &str = "payload";
 
