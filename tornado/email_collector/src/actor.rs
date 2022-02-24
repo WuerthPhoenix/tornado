@@ -50,6 +50,7 @@ where
         let tcp = self.client_addr.clone();
         let collector = self.email_collector.clone();
         let fut = async move {
+            let _span = tracing::debug_span!("Collect email Event").entered();
             let mut buf = Vec::new();
             msg.stream.read_to_end(&mut buf).await.unwrap();
 
