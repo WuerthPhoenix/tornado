@@ -2,6 +2,7 @@ use actix::prelude::Message;
 use thiserror::Error;
 use tokio::io::AsyncRead;
 use tornado_executor_common::ExecutorError;
+use tracing::Span;
 
 #[derive(Debug, Message, Clone)]
 #[rtype(result = "Result<(), ExecutorError>")]
@@ -21,6 +22,7 @@ pub enum TornadoCommonActorError {
 #[rtype(result = "()")]
 pub struct StringMessage {
     pub msg: String,
+    pub span: Span,
 }
 
 #[derive(Message, Debug)]

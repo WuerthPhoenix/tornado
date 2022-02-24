@@ -104,11 +104,12 @@ where
             let mut input = String::new();
             match stdin_lock.read_line(&mut input) {
                 Ok(len) => {
+                    let span = tracing::debug_span!("Collect rsyslog Event").entered();
                     if len == 0 {
                         info!("EOF received. Stopping Rsyslog collector.");
                         system.stop();
                     } else {
-                        rsyslog_addr.try_send(StringMessage { msg: input }).unwrap_or_else(|err| error!("RsyslogCollector -  Error while sending message to RsyslogCollectorActor. Error: {}", err));
+                        rsyslog_addr.try_send(StringMessage { msg: input, span: span.exit() }).unwrap_or_else(|err| error!("RsyslogCollector -  Error while sending message to RsyslogCollectorActor. Error: {}", err));
                     }
                 }
                 Err(error) => {

@@ -45,7 +45,7 @@ where
 
     fn handle(&mut self, msg: StringMessage, _: &mut Context<Self>) -> Self::Result {
         debug!("RsyslogCollectorActor - received msg: [{}]", &msg.msg);
-
+        let _s = msg.span.entered();
         match self.collector.to_event(&msg.msg) {
             Ok(event) => self
                 .writer_addr

@@ -74,6 +74,7 @@ impl<F: 'static + Fn(Event) + Unpin> Icinga2StreamConnector<F> {
         loop {
             match lines.next_line().await {
                 Ok(Some(line)) => {
+                    let _span = tracing::debug_span!("Collect Icinga2 Event").entered();
                     debug!("Received line: {}", line);
                     match self.collector.to_event(&line) {
                         Ok(event) => (self.callback)(event),
@@ -136,8 +137,8 @@ mod test {
     use actix_web::{web, App, HttpServer};
     use maplit::*;
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
-    use tornado_common_api::{Value, ValueExt};
     use tornado_common_api::ValueGet;
+    use tornado_common_api::{Value, ValueExt};
     //use tornado_common_logger::{setup_logger, LoggerConfig};
 
     #[actix_rt::test]
