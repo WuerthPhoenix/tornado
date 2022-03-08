@@ -24,3 +24,4 @@ tracing-actix-web = "0.4.0-beta.9"
 
 [dev-dependencies]
 actix-rt = "2.2"
+itertools = "0.10.3"

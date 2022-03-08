@@ -90,6 +90,7 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
 pub struct WebhookConfig {
     pub id: String,
     pub token: String,
+    pub max_payload_bytes: Option<usize>,
     pub collector_config: JMESPathEventCollectorConfig,
 }
 
