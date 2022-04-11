@@ -2,7 +2,8 @@ use crate::auth::{AuthContext, Permission};
 use crate::error::ApiError;
 use tornado_engine_api_dto::runtime_config::{
     LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
-    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetSmartMonitoringStatusRequestDto,
+    SetStdoutPriorityConfigurationRequestDto,
 };
 
 /// The ApiHandler trait defines the contract that a struct has to respect to
@@ -32,6 +33,11 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
     async fn set_stdout_first_configuration(
         &self,
         dto: SetStdoutPriorityConfigurationRequestDto,
+    ) -> Result<(), ApiError>;
+
+    async fn set_smart_monitoring_executor_status(
+        &mut self,
+        dto: SetSmartMonitoringStatusRequestDto,
     ) -> Result<(), ApiError>;
 }
 
@@ -104,6 +110,16 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::RuntimeConfigEdit)?;
         self.handler.set_stdout_first_configuration(dto).await
+    }
+
+    /// Activate or disactivate the smartmonitoring executor
+    pub async fn set_smartmonitoring_executor_status(
+        &mut self,
+        auth: AuthContext<'_>,
+        dto: SetSmartMonitoringStatusRequestDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::RuntimeConfigEdit)?;
+        self.handler.set_smart_monitoring_executor_status(dto).await
     }
 }
 

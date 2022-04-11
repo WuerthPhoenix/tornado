@@ -37,3 +37,8 @@ pub const SET_STDOUT_PRIORITY_CONFIG_REST: Rest<SetStdoutPriorityConfigurationRe
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct SetStdoutPriorityConfigurationRequestDto {}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct SetSmartMonitoringStatusRequestDto {
+    pub active: bool,
+}

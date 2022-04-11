@@ -1,22 +1,49 @@
 use async_trait::async_trait;
 use log::*;
 use std::sync::Arc;
+use tokio::sync::{AcquireError, OwnedSemaphorePermit, Semaphore};
 use tornado_common_logger::LogWorkerGuard;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApiHandler;
 use tornado_engine_api_dto::runtime_config::{
     LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
-    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetSmartMonitoringStatusRequestDto,
+    SetStdoutPriorityConfigurationRequestDto,
 };
 
-#[derive(Clone)]
 pub struct RuntimeConfigApiHandlerImpl {
     logger_guard: Arc<LogWorkerGuard>,
+    smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
+}
+
+pub struct SmartMonitoringExecutorStatus {
+    semaphore: Arc<Semaphore>,
+    semaphore_size: usize,
+    semaphore_permit: Option<OwnedSemaphorePermit>,
+}
+
+impl SmartMonitoringExecutorStatus {
+    pub fn new(semaphore: Arc<Semaphore>, semaphore_size: usize) -> Self {
+        Self { semaphore, semaphore_size, semaphore_permit: None }
+    }
+
+    pub async fn disable(&mut self) -> Result<(), AcquireError> {
+        self.semaphore_permit =
+            Some(self.semaphore.clone().acquire_many_owned(self.semaphore_size as u32).await?);
+        Ok(())
+    }
+
+    pub fn enable(&mut self) {
+        self.semaphore_permit = None;
+    }
 }
 
 impl RuntimeConfigApiHandlerImpl {
-    pub fn new(logger_guard: Arc<LogWorkerGuard>) -> Self {
-        Self { logger_guard }
+    pub fn new(
+        logger_guard: Arc<LogWorkerGuard>,
+        smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
+    ) -> Self {
+        Self { logger_guard, smart_monitoring_executor_semaphore }
     }
 }
 
@@ -83,6 +110,15 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
             .map(|_| self.logger_guard.set_apm_enabled(false))
             .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err) })?;
         Ok(())
+    }
+
+    async fn set_smart_monitoring_executor_status(
+        &mut self,
+        dto: SetSmartMonitoringStatusRequestDto,
+    ) -> Result<(), ApiError> {
+        info!("RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status");
+        self.smart_monitoring_executor_semaphore.disable().await.unwrap();
+        unimplemented!()
     }
 }
 
