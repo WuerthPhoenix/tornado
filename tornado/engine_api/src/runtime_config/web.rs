@@ -7,8 +7,9 @@ use ajars::actix_web::ActixWebHandler;
 use log::*;
 use tornado_engine_api_dto::runtime_config::{
     LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
-    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
-    SET_APM_PRIORITY_CONFIG_REST, SET_STDOUT_PRIORITY_CONFIG_REST,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetSmartMonitoringStatusRequestDto,
+    SetStdoutPriorityConfigurationRequestDto, SET_APM_PRIORITY_CONFIG_REST,
+    SET_STDOUT_PRIORITY_CONFIG_REST,
 };
 
 pub const RUNTIME_CONFIG_ENDPOINT_V1_BASE: &str = "/v1_beta/runtime_config";
@@ -27,6 +28,10 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
         .service(SET_STDOUT_PRIORITY_CONFIG_REST.to(set_stdout_priority_config::<A>))
         .service(
             web::resource("/logger").route(web::get().to(get_current_logger_configuration::<A>)),
+        )
+        .service(
+            web::resource("/executor/smartmonitoring")
+                .route(web::post().to(set_smartmonitoring_executor_status::<A>)),
         )
 }
 
@@ -91,6 +96,17 @@ async fn set_stdout_priority_config<A: RuntimeConfigApiHandler + 'static>(
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
     data.api.set_stdout_priority_configuration(auth_ctx, body).await
+}
+
+async fn set_smartmonitoring_executor_status<A: RuntimeConfigApiHandler + 'static>(
+    req: HttpRequest,
+    data: Data<ApiData<RuntimeConfigApi<A>>>,
+    body: Json<SetSmartMonitoringStatusRequestDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let result = data.api.set_smartmonitoring_executor_status(auth_ctx, body.into_inner()).await?;
+    Ok(Json(result))
 }
 
 #[cfg(test)]
