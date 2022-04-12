@@ -32,15 +32,15 @@ impl SmartMonitoringExecutorStatus {
             let mut lock = self.semaphore_permit.lock().await;
             *lock = None;
         } else {
-            let mut lock = self.semaphore_permit.lock().await;
-            *lock = Some(self.semaphore
+            let permit = self.semaphore
                 .clone()
                 .acquire_many_owned(self.semaphore_size as u32)
                 .await
                 .map_err(|err| ApiError::InternalServerError {
                     cause: format!("Could not acquire the semaphore controlling the smart_monitoring executor. Err: {}", err),
-                })?
-            );
+                })?;
+            let mut lock = self.semaphore_permit.lock().await;
+            *lock = Some(permit);
         }
         Ok(())
     }
