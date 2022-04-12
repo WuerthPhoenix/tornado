@@ -30,7 +30,7 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
             web::resource("/logger").route(web::get().to(get_current_logger_configuration::<A>)),
         )
         .service(
-            web::resource("/executor/smartmonitoring")
+            web::resource("/executor/smart_monitoring")
                 .route(web::post().to(set_smartmonitoring_executor_status::<A>)),
         )
 }
@@ -122,6 +122,7 @@ mod test {
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::runtime_config::{
         SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto,
+        SetSmartMonitoringStatusRequestDto,
     };
 
     #[actix_rt::test]
@@ -316,6 +317,38 @@ mod test {
 
         // Assert
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn set_apm_enabled_should_set_apm() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+                auth: test_auth_service(),
+                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthService::auth_to_token_header(&Auth::new("user", vec!["runtime_config_edit"]))
+                    .unwrap(),
+            ))
+            .set_payload(
+                serde_json::to_string(&SetSmartMonitoringStatusRequestDto { active: false })
+                    .unwrap(),
+            )
+            .uri("/v1_beta/runtime_config/executor/smart_monitoring")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
         Ok(())
     }
 }
