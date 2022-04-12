@@ -13,7 +13,7 @@ use tornado_engine_api_dto::runtime_config::{
 
 pub struct RuntimeConfigApiHandlerImpl {
     logger_guard: Arc<LogWorkerGuard>,
-    smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
+    smart_monitoring_executor_semaphore: Arc<SmartMonitoringExecutorStatus>,
 }
 
 pub struct SmartMonitoringExecutorStatus {
@@ -49,7 +49,7 @@ impl SmartMonitoringExecutorStatus {
 impl RuntimeConfigApiHandlerImpl {
     pub fn new(
         logger_guard: Arc<LogWorkerGuard>,
-        smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
+        smart_monitoring_executor_semaphore: Arc<SmartMonitoringExecutorStatus>,
     ) -> Self {
         Self { logger_guard, smart_monitoring_executor_semaphore }
     }
