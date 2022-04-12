@@ -321,7 +321,7 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn set_apm_enabled_should_set_apm() -> Result<(), ApiError> {
+    async fn set_smart_monitoring_status_should_set_status() -> Result<(), ApiError> {
         // Arrange
         let mut srv =
             test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
