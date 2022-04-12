@@ -215,7 +215,6 @@ pub async fn daemon(
     };
 
     // Start smart_monitoring_check_result executor actor
-    // let command_pool = CommandPool::new(threads_per_queue, stateless_executor_command);
     let (smart_monitoring_check_result_executor_addr, smart_monitoring_executor_semaphore) = {
         let executor =
             tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
