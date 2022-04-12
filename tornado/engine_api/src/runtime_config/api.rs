@@ -36,7 +36,7 @@ pub trait RuntimeConfigApiHandler: Send + Sync {
     ) -> Result<(), ApiError>;
 
     async fn set_smart_monitoring_executor_status(
-        &mut self,
+        &self,
         dto: SetSmartMonitoringStatusRequestDto,
     ) -> Result<(), ApiError>;
 }
@@ -114,7 +114,7 @@ impl<A: RuntimeConfigApiHandler> RuntimeConfigApi<A> {
 
     /// Activate or disactivate the smartmonitoring executor
     pub async fn set_smartmonitoring_executor_status(
-        &mut self,
+        &self,
         auth: AuthContext<'_>,
         dto: SetSmartMonitoringStatusRequestDto,
     ) -> Result<(), ApiError> {
@@ -170,6 +170,13 @@ pub mod test {
         async fn set_stdout_first_configuration(
             &self,
             _dto: SetStdoutPriorityConfigurationRequestDto,
+        ) -> Result<(), ApiError> {
+            Ok(())
+        }
+
+        async fn set_smart_monitoring_executor_status(
+            &self,
+            _dto: SetSmartMonitoringStatusRequestDto,
         ) -> Result<(), ApiError> {
             Ok(())
         }
@@ -316,5 +323,28 @@ pub mod test {
         // Act & Assert
         assert!(api.set_stdout_priority_configuration(auth_view, dto.clone()).await.is_err());
         assert!(api.set_stdout_priority_configuration(auth_edit, dto).await.is_ok());
+    }
+
+    #[actix_rt::test]
+    async fn set_smart_monitoring_status_should_require_edit_permission() {
+        // Arrange
+        let api = RuntimeConfigApi::new(TestRuntimeConfigApiHandler {});
+        let permissions_map = &auth_permissions();
+
+        let auth_view = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["view".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let auth_edit = AuthContext::new(
+            Auth { user: "1".to_owned(), roles: vec!["edit".to_owned()], preferences: None },
+            permissions_map,
+        );
+
+        let dto = SetSmartMonitoringStatusRequestDto { active: false };
+
+        // Act & Assert
+        assert!(api.set_smartmonitoring_executor_status(auth_view, dto.clone()).await.is_err());
+        assert!(api.set_smartmonitoring_executor_status(auth_edit, dto).await.is_ok());
     }
 }
