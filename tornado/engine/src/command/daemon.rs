@@ -471,6 +471,10 @@ pub async fn daemon(
 
     // Start API and monitoring endpoint
     let service_logger_guard = logger_guard.clone();
+    let smart_monitoring_executor_status = Arc::new(SmartMonitoringExecutorStatus::new(
+        smart_monitoring_executor_semaphore.clone(),
+        threads_per_queue,
+    ));
     let server_binding_result = HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
 
@@ -494,10 +498,7 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
                 service_logger_guard.clone(),
-                SmartMonitoringExecutorStatus::new(
-                    smart_monitoring_executor_semaphore.clone(),
-                    threads_per_queue,
-                ),
+                smart_monitoring_executor_status.clone(),
             )),
         };
         let metrics = metrics.clone();
