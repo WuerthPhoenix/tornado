@@ -169,7 +169,7 @@ mod test {
         let smart_monitoring_status =
             SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard, smart_monitoring_status);
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(smart_monitoring_status));
 
         // Act
         let logger_level_before = api.get_logger_configuration().await.unwrap();
@@ -212,7 +212,8 @@ mod test {
         let smart_monitoring_status =
             SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api =
+            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_status));
 
         // Act
         assert!(!log_guard.apm_enabled());
@@ -252,7 +253,8 @@ mod test {
         let smart_monitoring_status =
             SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api =
+            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_status));
 
         // Act
         assert!(!log_guard.stdout_enabled());
@@ -292,7 +294,8 @@ mod test {
         let smart_monitoring_status =
             SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api =
+            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_status));
 
         // Set APM first
         {
@@ -355,7 +358,8 @@ mod test {
         let smart_monitoring_status =
             SmartMonitoringExecutorStatus::new(semaphore.clone(), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api =
+            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_status));
 
         {
             // Disable smart monitoring executor
