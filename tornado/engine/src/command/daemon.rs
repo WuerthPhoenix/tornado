@@ -227,6 +227,19 @@ pub async fn daemon(
             StatelessExecutorCommand::new(action_meter.clone(), executor);
         let command_pool = CommandPool::new(threads_per_queue, stateless_executor_command);
         let command_pool_handle = command_pool.handle();
+
+        // Deactivate the smart_monitoring executor if icinga2 is performing a restart to avoid
+        // pending states due to race conditions in icinga2
+        match director_client_config.new_client()?.get_icinga2_restart_current_status().await {
+            Ok(status) => {
+                if status.pending {
+                    command_pool_handle.lock_all().await?
+                }
+            }
+            Err(err) => {
+                warn!("Failed to get the status of the latest Icinga 2 restart. Smart monitoring actions may incur in race conditions causing the loss of the objects status. Error: {}", err);
+            }
+        }
         (
             CommandExecutorActor::start_new(
                 message_queue_size,
