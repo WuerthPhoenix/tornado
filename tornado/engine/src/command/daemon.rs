@@ -234,7 +234,7 @@ pub async fn daemon(
             Ok(status) => {
                 if status.pending {
                     info!("Icinga 2 is currently restarting. Smart Monitoring actions are blocked until further notice.");
-                    command_pool_handle.lock_all().await?
+                    command_pool_handle.deactivate().await?
                 }
             }
             Err(err) => {
