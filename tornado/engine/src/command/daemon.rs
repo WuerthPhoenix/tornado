@@ -233,6 +233,7 @@ pub async fn daemon(
         match director_client_config.new_client()?.get_icinga2_restart_current_status().await {
             Ok(status) => {
                 if status.pending {
+                    info!("Icinga 2 is currently restarting. Smart Monitoring actions are blocked until further notice.");
                     command_pool_handle.lock_all().await?
                 }
             }
