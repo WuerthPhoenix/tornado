@@ -24,8 +24,6 @@ pub struct CommandPool<I, O, T: Command<I, O>> {
     phantom_o: PhantomData<O>,
 }
 
-impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {}
-
 impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {
     pub fn new(max_parallel_executions: usize, command: T) -> Self {
         Self {
