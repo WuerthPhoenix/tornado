@@ -112,6 +112,8 @@ impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMut
     }
 }
 
+// Allows to activate/disactivate a CommandPool by acquiring all permits
+// of the CommandPool semaphore
 pub struct CommandPoolHandle {
     semaphore: Arc<Semaphore>,
     semaphore_size: usize,
@@ -123,6 +125,9 @@ impl CommandPoolHandle {
         Self { semaphore, semaphore_size, semaphore_permit: Mutex::new(None) }
     }
 
+    // Deactivates the CommandPool by acquiring all the permits of the pool semaphore.
+    // If the CommandPool is already deactivated via the CommandPoolHandle, the function returns
+    // without waiting to acquire the semaphore for a second time.
     pub async fn deactivate(&self) -> Result<(), AcquireError> {
         let mut lock = self.semaphore_permit.lock().await;
         if Self::is_active(&lock) {
