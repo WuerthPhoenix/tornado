@@ -94,7 +94,10 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         &self,
         dto: SetSmartMonitoringStatusRequestDto,
     ) -> Result<(), ApiError> {
-        info!("RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status");
+        info!(
+            "RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status activation to: {}",
+            dto.active
+        );
 
         if dto.active {
             self.smart_monitoring_executor_handle.activate().await
