@@ -7,8 +7,9 @@ use ajars::actix_web::ActixWebHandler;
 use log::*;
 use tornado_engine_api_dto::runtime_config::{
     LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
-    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
-    SET_APM_PRIORITY_CONFIG_REST, SET_STDOUT_PRIORITY_CONFIG_REST,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetSmartMonitoringStatusRequestDto,
+    SetStdoutPriorityConfigurationRequestDto, SET_APM_PRIORITY_CONFIG_REST,
+    SET_STDOUT_PRIORITY_CONFIG_REST,
 };
 
 pub const RUNTIME_CONFIG_ENDPOINT_V1_BASE: &str = "/v1_beta/runtime_config";
@@ -27,6 +28,10 @@ pub fn build_runtime_config_endpoints<A: RuntimeConfigApiHandler + 'static>(
         .service(SET_STDOUT_PRIORITY_CONFIG_REST.to(set_stdout_priority_config::<A>))
         .service(
             web::resource("/logger").route(web::get().to(get_current_logger_configuration::<A>)),
+        )
+        .service(
+            web::resource("/executor/smart_monitoring")
+                .route(web::post().to(set_smartmonitoring_executor_status::<A>)),
         )
 }
 
@@ -93,6 +98,17 @@ async fn set_stdout_priority_config<A: RuntimeConfigApiHandler + 'static>(
     data.api.set_stdout_priority_configuration(auth_ctx, body).await
 }
 
+async fn set_smartmonitoring_executor_status<A: RuntimeConfigApiHandler + 'static>(
+    req: HttpRequest,
+    data: Data<ApiData<RuntimeConfigApi<A>>>,
+    body: Json<SetSmartMonitoringStatusRequestDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req)?;
+    let result = data.api.set_smartmonitoring_executor_status(auth_ctx, body.into_inner()).await?;
+    Ok(Json(result))
+}
+
 #[cfg(test)]
 mod test {
     use crate::auth::test::test_auth_service;
@@ -106,6 +122,7 @@ mod test {
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::runtime_config::{
         SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto,
+        SetSmartMonitoringStatusRequestDto,
     };
 
     #[actix_rt::test]
@@ -300,6 +317,38 @@ mod test {
 
         // Assert
         assert_eq!(StatusCode::UNAUTHORIZED, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn set_smart_monitoring_status_should_set_status() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+                auth: test_auth_service(),
+                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::post()
+            .insert_header((header::CONTENT_TYPE, "application/json"))
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthService::auth_to_token_header(&Auth::new("user", vec!["runtime_config_edit"]))
+                    .unwrap(),
+            ))
+            .set_payload(
+                serde_json::to_string(&SetSmartMonitoringStatusRequestDto { active: false })
+                    .unwrap(),
+            )
+            .uri("/v1_beta/runtime_config/executor/smart_monitoring")
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
         Ok(())
     }
 }

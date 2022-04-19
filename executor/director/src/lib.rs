@@ -1,4 +1,4 @@
-use crate::config::{ApiClient, DirectorClientConfig};
+use crate::config::{DirectorClient, DirectorClientConfig};
 use log::*;
 use maplit::*;
 use serde::*;
@@ -45,7 +45,7 @@ impl DirectorActionName {
 /// An executor that calls the APIs of the IcingaWeb2 Director
 #[derive(Clone)]
 pub struct DirectorExecutor {
-    api_client: ApiClient,
+    api_client: DirectorClient,
 }
 
 impl std::fmt::Display for DirectorExecutor {

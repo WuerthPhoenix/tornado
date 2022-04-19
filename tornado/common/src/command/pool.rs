@@ -2,7 +2,8 @@ use crate::command::{Command, CommandMut};
 use async_channel::{bounded, Sender};
 use log::*;
 use std::marker::PhantomData;
-use tokio::sync::Semaphore;
+use std::sync::Arc;
+use tokio::sync::{AcquireError, Mutex, MutexGuard, OwnedSemaphorePermit, Semaphore};
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
 use tracing_futures::Instrument;
@@ -16,7 +17,8 @@ pub struct ReplyRequest<I, O> {
 /// A Command pool.
 /// It allows a max concurrent number of accesses to the internal Command.
 pub struct CommandPool<I, O, T: Command<I, O>> {
-    semaphore: Semaphore,
+    semaphore: Arc<Semaphore>,
+    semaphore_size: usize,
     command: T,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
@@ -25,11 +27,16 @@ pub struct CommandPool<I, O, T: Command<I, O>> {
 impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {
     pub fn new(max_parallel_executions: usize, command: T) -> Self {
         Self {
-            semaphore: Semaphore::new(max_parallel_executions),
+            semaphore: Arc::new(Semaphore::new(max_parallel_executions)),
+            semaphore_size: max_parallel_executions,
             command,
             phantom_i: PhantomData,
             phantom_o: PhantomData,
         }
+    }
+
+    pub fn handle(&self) -> CommandPoolHandle {
+        CommandPoolHandle::new(self.semaphore.clone(), self.semaphore_size)
     }
 }
 
@@ -100,6 +107,42 @@ impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMut
         rx.recv().await.map_err(|err| ExecutorError::SenderError {
             message: format!("Error receiving message response: {:?}", err),
         })?
+    }
+}
+
+// Allows to activate/disactivate a CommandPool by acquiring all permits
+// of the CommandPool semaphore
+pub struct CommandPoolHandle {
+    semaphore: Arc<Semaphore>,
+    semaphore_size: usize,
+    semaphore_permit: Mutex<Option<OwnedSemaphorePermit>>,
+}
+
+impl CommandPoolHandle {
+    pub fn new(semaphore: Arc<Semaphore>, semaphore_size: usize) -> Self {
+        Self { semaphore, semaphore_size, semaphore_permit: Mutex::new(None) }
+    }
+
+    // Deactivates the CommandPool by acquiring all the permits of the pool semaphore.
+    // If the CommandPool is already deactivated via the CommandPoolHandle, the function returns
+    // without waiting to acquire the semaphore for a second time.
+    pub async fn deactivate(&self) -> Result<(), AcquireError> {
+        let mut lock = self.semaphore_permit.lock().await;
+        if Self::is_active(&lock) {
+            let permit =
+                self.semaphore.clone().acquire_many_owned(self.semaphore_size as u32).await?;
+            *lock = Some(permit);
+        }
+        Ok(())
+    }
+
+    pub async fn activate(&self) {
+        let mut lock = self.semaphore_permit.lock().await;
+        *lock = None;
+    }
+
+    fn is_active(lock: &MutexGuard<Option<OwnedSemaphorePermit>>) -> bool {
+        lock.is_none()
     }
 }
 
@@ -292,5 +335,39 @@ mod test {
                 }
             }
         }
+    }
+
+    #[actix_rt::test]
+    async fn command_pool_handle_should_deactivate() {
+        // Arrange
+        let semaphore_size = 5;
+        let semaphore = Arc::new(Semaphore::new(semaphore_size));
+        let handle = CommandPoolHandle::new(semaphore.clone(), semaphore_size);
+
+        // Act
+        handle.deactivate().await.unwrap();
+
+        // Assert
+        assert!(semaphore.try_acquire().is_err());
+    }
+
+    #[actix_rt::test]
+    async fn command_pool_handle_should_activate_after_two_deactivations() {
+        // Arrange
+        let semaphore_size = 5;
+        let semaphore = Arc::new(Semaphore::new(semaphore_size));
+        let handle = CommandPoolHandle::new(semaphore.clone(), semaphore_size);
+        handle.deactivate().await.unwrap();
+        handle.deactivate().await.unwrap();
+
+        assert_eq!(semaphore.available_permits(), 0);
+        assert!(semaphore.try_acquire().is_err());
+
+        // Act
+        handle.activate().await;
+
+        // Assert
+        assert_eq!(semaphore.available_permits(), 5);
+        assert!(semaphore.try_acquire().is_ok());
     }
 }
