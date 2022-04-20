@@ -35,6 +35,8 @@ pub enum ExecutorError {
     },
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
+    #[error("RuntimeError: [{message}]")]
+    RuntimeError { message: String },
     #[error("JsonError: {cause}")]
     JsonError { cause: String },
     #[error("MissingArgumentError: [{message}]")]
