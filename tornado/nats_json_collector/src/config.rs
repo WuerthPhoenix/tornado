@@ -2,12 +2,12 @@ use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::fs;
 use tornado_common::actors::nats_publisher::NatsClientConfig;
 use tornado_common::TornadoError;
 use tornado_common_api::Value;
 use tornado_common_logger::LoggerConfig;
-use std::collections::HashMap;
 
 pub const CONFIG_DIR_DEFAULT: Option<&'static str> =
     option_env!("TORNADO_NATS_JSON_COLLECTOR_CONFIG_DIR_DEFAULT");

@@ -5,8 +5,8 @@
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tornado_common_api::Payload;
 use std::collections::HashMap;
+use tornado_common_api::Payload;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -18,7 +18,7 @@ pub struct Rule {
     pub do_continue: bool,
     pub active: bool,
     pub constraint: Constraint,
-    pub actions: Vec<Action>,
+    pub actions: Vec<ConfigAction>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -118,7 +118,7 @@ pub enum Operator {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct Action {
+pub struct ConfigAction {
     pub id: String,
     pub payload: Payload,
 }

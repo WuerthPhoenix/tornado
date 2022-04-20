@@ -232,8 +232,17 @@ pub struct MatcherConfigDraftDataDto {
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 #[serde(tag = "type")]
 pub enum ProcessingTreeNodeConfigDto {
-    Filter { name: String, rules_count: usize, children_count: usize, description: String, active: bool },
-    Ruleset { name: String, rules_count: usize },
+    Filter {
+        name: String,
+        rules_count: usize,
+        children_count: usize,
+        description: String,
+        active: bool,
+    },
+    Ruleset {
+        name: String,
+        rules_count: usize,
+    },
 }
 
 impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {

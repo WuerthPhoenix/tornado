@@ -95,7 +95,6 @@ mod test {
 
         assert_eq!("not", operator.name());
         assert_eq!("equals", operator.operator.name());
-
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use crate::config::MatcherConfig;
-use std::collections::HashMap;
 use log::*;
+use std::collections::HashMap;
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum NodeFilter {
@@ -48,13 +48,10 @@ pub fn matcher_config_filter(
     matcher_config: &MatcherConfig,
     filter: &HashMap<String, NodeFilter>,
 ) -> Option<MatcherConfig> {
-
     trace!("matcher_config_filter called with matcher_config: {:?}", matcher_config);
     trace!("matcher_config_filter called with filter: {:?}", filter);
 
     let node_name = matcher_config.get_name();
-
-    
 
     if let Some(node_filter) = filter.get(node_name) {
         match matcher_config {
@@ -91,10 +88,10 @@ pub fn matcher_config_filter(
 
 #[cfg(test)]
 mod test {
-    use maplit::hashmap;
     use super::*;
     use crate::config::filter::Filter;
     use crate::config::Defaultable;
+    use maplit::hashmap;
 
     #[test]
     fn filter_should_return_the_none_if_no_matching_name() {
@@ -113,7 +110,7 @@ mod test {
             }],
         };
 
-        let mut filter =  HashMap::new();
+        let mut filter = HashMap::new();
         filter.insert("other".to_owned(), NodeFilter::AllChildren);
 
         // Act
