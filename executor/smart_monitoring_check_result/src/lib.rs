@@ -268,7 +268,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
 
         let extraction_params_guard =
             tracing::debug_span!("Extract parameters for Executor").entered();
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action)?;
         let host_name = monitoring_action.get_host_name().map(|val| val.to_owned());
         let service_name = monitoring_action.get_service_name().map(|val| val.to_owned());
 

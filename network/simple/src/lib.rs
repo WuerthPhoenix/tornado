@@ -33,7 +33,7 @@ impl EventBus for SimpleEventBus {
 
 #[cfg(test)]
 mod test {
-    use tornado_common_api::{Action, Map, TracedAction};
+    use tornado_common_api::{Action, TracedAction};
 
     use super::*;
     use std::sync::{Arc, Mutex};
@@ -58,7 +58,7 @@ mod test {
 
         let action = ActionMessage(TracedAction {
             span: Span::current(),
-            action: Arc::new(Action { id: String::from(action_id), payload: Map::new() }),
+            action: Arc::new(Action::new(action_id)),
         });
 
         // Act

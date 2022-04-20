@@ -8,6 +8,7 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::UNIX_EPOCH;
 use tracing::Span;
 
 pub mod error;
@@ -148,10 +149,17 @@ impl Event {
 
 /// An Action is produced when an Event matches a specific Rule.
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,
+    pub created_ms: u64,
+}
+
+impl PartialEq for Action {
+    fn eq(&self, other: &Self) -> bool {
+        self.id == other.id && self.payload == other.payload
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -166,12 +174,22 @@ impl From<Action> for TracedAction {
     }
 }
 
+impl From<Event> for Action {
+    fn from(e: Event) -> Self {
+        Action { id: e.event_type, payload: e.payload, created_ms: e.created_ms }
+    }
+}
+
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
         Action::new_with_payload(id, Map::new())
     }
     pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
-        Action { id: id.into(), payload }
+        Action {
+            id: id.into(),
+            payload,
+            created_ms: UNIX_EPOCH.elapsed().expect("Time travel").as_millis() as u64,
+        }
     }
 }
 

@@ -1,8 +1,8 @@
-use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
+use crate::{accessor::Accessor, model::InternalEvent};
 use std::cmp::Ordering;
-use tornado_common_api::{partial_cmp_option_cow_value};
+use tornado_common_api::partial_cmp_option_cow_value;
 
 const OPERATOR_NAME: &str = "ge";
 
@@ -26,9 +26,7 @@ impl Operator for GreaterEqualThan {
     }
 
     fn evaluate(&self, event: &InternalEvent) -> bool {
-        let cmp = partial_cmp_option_cow_value(&self.first.get(event), || {
-            self.second.get(event)
-        });
+        let cmp = partial_cmp_option_cow_value(&self.first.get(event), || self.second.get(event));
         cmp == Some(Ordering::Greater) || cmp == Some(Ordering::Equal)
     }
 }
@@ -60,8 +58,14 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!(
+            "one",
+            operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
+        assert_eq!(
+            "two",
+            operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
     }
 
     #[test]
@@ -186,17 +190,8 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert(
-            "one".to_owned(),
-            Value::Array(vec![
-                json!(1000000001),
-                json!(-2),
-            ]),
-        );
-        event.payload.insert(
-            "two".to_owned(),
-            Value::Array(vec![json!(1), json!(-2)]),
-        );
+        event.payload.insert("one".to_owned(), Value::Array(vec![json!(1000000001), json!(-2)]));
+        event.payload.insert("two".to_owned(), Value::Array(vec![json!(1), json!(-2)]));
 
         assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
@@ -251,11 +246,7 @@ mod test {
         );
         event.payload.insert(
             "two".to_owned(),
-            Value::Array(vec![
-                Value::String("id".to_owned()),
-                json!(10),
-                json!(110),
-            ]),
+            Value::Array(vec![Value::String("id".to_owned()), json!(10), json!(110)]),
         );
 
         assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));

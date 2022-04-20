@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use tornado_common_api::Value;
 
 #[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]

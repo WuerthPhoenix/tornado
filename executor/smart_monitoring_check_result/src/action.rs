@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tornado_common_api::ValueExt;
-use tornado_common_api::{Payload, Value};
+use serde_json::json;
+use tornado_common_api::{Action, Payload, Value, ValueExt};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;
@@ -20,15 +20,21 @@ pub struct SimpleCreateAndProcess {
 }
 
 impl SimpleCreateAndProcess {
-    pub fn new(payload: &Payload) -> Result<SimpleCreateAndProcess, ExecutorError> {
-        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
-            ExecutorError::ConfigurationError {
+    pub fn new(action: &Action) -> Result<Self, ExecutorError> {
+        let mut scap: Self = serde_json::to_value(&action.payload)
+            .and_then(serde_json::from_value)
+            .map_err(|err| ExecutorError::ConfigurationError {
                 message: format!(
                     "Invalid SimpleCreateAndProcess Action configuration. Err: {:?}",
                     err
                 ),
-            }
-        })
+            })?;
+
+        let created_ms = action.created_ms as f32 / 1000.0;
+        scap.check_result.entry("execution_start").or_insert(json!(created_ms));
+        scap.check_result.entry("execution_end").or_insert(json!(created_ms));
+
+        Ok(scap)
     }
 
     // Transforms the SimpleCreateAndProcess into the actions needed to call the IcingaExecutor and the
@@ -140,6 +146,7 @@ mod test {
     use maplit::*;
     use serde_json::json;
     use tornado_common_api::{Action, Map, Value};
+    use tornado_engine_matcher::config::rule::ConfigAction;
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
@@ -155,7 +162,7 @@ mod test {
             )),
         );
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -184,7 +191,7 @@ mod test {
         );
         action.payload.insert("service".to_owned(), Value::Object(Map::new()));
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -207,11 +214,10 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action =
-            serde_json::from_str(&json).unwrap();
+        let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Assert
         assert!(action.service.is_none());
@@ -224,93 +230,19 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action =
-            serde_json::from_str(&json).unwrap();
+        let action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Assert
         assert!(action.service.is_some());
-    }
-
-    #[test]
-    fn simple_create_should_be_equivalent_to_full_create_host_01() {
-        // Arrange
-        let filename_full = "./tests_resources/monitoring_host_01_full.json";
-        let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
-
-        let monitoring_action_full: MonitoringHostData = serde_json::from_str(
-            &std::fs::read_to_string(filename_full)
-                .expect(&format!("Unable to open the file [{}]", filename_full)),
-        )
-        .unwrap();
-
-        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
-            &std::fs::read_to_string(filename_simple)
-                .expect(&format!("Unable to open the file [{}]", filename_simple)),
-        )
-        .unwrap();
-
-        // Act
-        let sub_actions_full = monitoring_action_full.to_sub_actions();
-
-        let mut monitoring_action_simple =
-            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
-        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
-        // Assert
-        assert_eq!(sub_actions_full, sub_actions_simple)
-    }
-
-    #[test]
-    fn simple_create_should_be_equivalent_to_full_create_service_01() {
-        // Arrange
-        let filename_full = "./tests_resources/monitoring_service_01_full.json";
-        let filename_simple = "./tests_resources/monitoring_service_01_simple.json";
-
-        let monitoring_action_full: MonitoringServiceData = serde_json::from_str(
-            &std::fs::read_to_string(filename_full)
-                .expect(&format!("Unable to open the file [{}]", filename_full)),
-        )
-        .unwrap();
-
-        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
-            &std::fs::read_to_string(filename_simple)
-                .expect(&format!("Unable to open the file [{}]", filename_simple)),
-        )
-        .unwrap();
-
-        // Act
-        let sub_actions_full = monitoring_action_full.to_sub_actions();
-
-        let mut monitoring_action_simple =
-            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
-        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
-        // Assert
-        assert_eq!(sub_actions_full, sub_actions_simple)
     }
 
     #[derive(Debug, PartialEq, Deserialize)]
     pub struct MonitoringHostData {
         process_check_result_payload: Payload,
         host_creation_payload: Payload,
-    }
-
-    impl MonitoringHostData {
-        fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
-            (
-                Icinga2Action {
-                    name: PROCESS_CHECK_RESULT_SUBURL,
-                    payload: Some(&self.process_check_result_payload),
-                },
-                DirectorAction {
-                    name: DirectorActionName::CreateHost,
-                    payload: &self.host_creation_payload,
-                    live_creation: true,
-                },
-                None,
-            )
-        }
     }
 
     #[derive(Debug, PartialEq, Deserialize)]

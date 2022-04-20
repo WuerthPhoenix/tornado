@@ -1,10 +1,16 @@
 use serde_json::Error;
-use tornado_engine_api_dto::config::{ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto, MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto, ProcessingTreeNodeDetailsDto, RuleDto};
+use tornado_engine_api_dto::config::{
+    ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
+    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
+    ProcessingTreeNodeDetailsDto, RuleDto,
+};
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
-    Action, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
+    ConfigAction, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
 };
-use tornado_engine_matcher::config::{Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData};
+use tornado_engine_matcher::config::{
+    Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+};
 
 pub fn matcher_config_draft_into_dto(
     draft: MatcherConfigDraft,
@@ -45,7 +51,7 @@ pub fn rule_into_dto(rule: Rule) -> Result<RuleDto, Error> {
     })
 }
 
-fn action_into_dto(action: Action) -> Result<ActionDto, Error> {
+fn action_into_dto(action: ConfigAction) -> Result<ActionDto, Error> {
     Ok(ActionDto { id: action.id, payload: serde_json::to_value(action.payload)? })
 }
 
@@ -124,28 +130,25 @@ pub fn dto_into_matcher_config(config: MatcherConfigDto) -> Result<MatcherConfig
     })
 }
 
-pub fn processing_tree_node_details_dto_into_matcher_config(config: ProcessingTreeNodeDetailsDto) -> Result<MatcherConfig, Error> {
+pub fn processing_tree_node_details_dto_into_matcher_config(
+    config: ProcessingTreeNodeDetailsDto,
+) -> Result<MatcherConfig, Error> {
     Ok(match config {
-        ProcessingTreeNodeDetailsDto::Ruleset { name, rules: _ } => MatcherConfig::Ruleset {
-            name,
-            rules: vec![],
-        },
+        ProcessingTreeNodeDetailsDto::Ruleset { name, rules: _ } => {
+            MatcherConfig::Ruleset { name, rules: vec![] }
+        }
         ProcessingTreeNodeDetailsDto::Filter { name, description, active, filter } => {
             let filter_matcher_config = if let Some(filter_inner) = filter {
                 Defaultable::from(Option::Some(dto_into_operator(filter_inner)?))
             } else {
-                Defaultable::Default{}
+                Defaultable::Default {}
             };
             MatcherConfig::Filter {
                 name,
-                filter: Filter {
-                    description,
-                    filter: filter_matcher_config,
-                    active,
-                },
+                filter: Filter { description, filter: filter_matcher_config, active },
                 nodes: vec![],
             }
-        },
+        }
     })
 }
 
@@ -169,8 +172,8 @@ fn dto_into_rule(rule: RuleDto) -> Result<Rule, Error> {
     })
 }
 
-fn dto_into_action(action: ActionDto) -> Result<Action, Error> {
-    Ok(Action { id: action.id, payload: serde_json::from_value(action.payload)? })
+fn dto_into_action(action: ActionDto) -> Result<ConfigAction, Error> {
+    Ok(ConfigAction { id: action.id, payload: serde_json::from_value(action.payload)? })
 }
 
 fn dto_into_constraint(constraint: ConstraintDto) -> Result<Constraint, Error> {
@@ -278,15 +281,16 @@ fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRege
 
 #[cfg(test)]
 mod test {
+    use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
     use serde_json::json;
     use tornado_engine_api_dto::config::{OperatorDto, ProcessingTreeNodeDetailsDto};
     use tornado_engine_matcher::config::filter::Filter;
-    use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
     use tornado_engine_matcher::config::rule::Operator;
-    use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
+    use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 
     #[actix_rt::test]
-    async fn processing_tree_node_details_dto_filter_into_matcher_config_should_return_a_matcher_config_filter() {
+    async fn processing_tree_node_details_dto_filter_into_matcher_config_should_return_a_matcher_config_filter(
+    ) {
         // Arrange
         let expected_maatcher_config_filter_with_empty_filter = MatcherConfig::Filter {
             name: "test_filter".to_string(),
@@ -295,47 +299,66 @@ mod test {
                 active: false,
                 filter: Defaultable::Default {},
             },
-            nodes: vec![]
+            nodes: vec![],
         };
         let expected_maatcher_config_filter = MatcherConfig::Filter {
             name: "test_filter".to_string(),
             filter: Filter {
                 description: "test_filter description".to_string(),
                 active: false,
-                filter: Defaultable::from(Option::Some(Operator::And { operators: vec![Operator::Equals { first: json!(12), second: json!(15) }] })),
+                filter: Defaultable::from(Option::Some(Operator::And {
+                    operators: vec![Operator::Equals { first: json!(12), second: json!(15) }],
+                })),
             },
-            nodes: vec![]
+            nodes: vec![],
         };
-        let processing_tree_node_details_dto_filter_with_empty_filter = ProcessingTreeNodeDetailsDto::Filter {
-            name: "test_filter".to_string(),
-            description: "test_filter description".to_string(),
-            active: false,
-            filter: None
-        };
+        let processing_tree_node_details_dto_filter_with_empty_filter =
+            ProcessingTreeNodeDetailsDto::Filter {
+                name: "test_filter".to_string(),
+                description: "test_filter description".to_string(),
+                active: false,
+                filter: None,
+            };
         let processing_tree_node_details_dto = ProcessingTreeNodeDetailsDto::Filter {
             name: "test_filter".to_string(),
             description: "test_filter description".to_string(),
             active: false,
-            filter: Option::Some(OperatorDto::And { operators: vec![OperatorDto::Equals { first: json!(12), second: json!(15) }] })
+            filter: Option::Some(OperatorDto::And {
+                operators: vec![OperatorDto::Equals { first: json!(12), second: json!(15) }],
+            }),
         };
 
         // Act
-        let actual_maatcher_config_filter_with_empty_filter = processing_tree_node_details_dto_into_matcher_config(processing_tree_node_details_dto_filter_with_empty_filter);
-        let actual_maatcher_config_filter = processing_tree_node_details_dto_into_matcher_config(processing_tree_node_details_dto);
+        let actual_maatcher_config_filter_with_empty_filter =
+            processing_tree_node_details_dto_into_matcher_config(
+                processing_tree_node_details_dto_filter_with_empty_filter,
+            );
+        let actual_maatcher_config_filter =
+            processing_tree_node_details_dto_into_matcher_config(processing_tree_node_details_dto);
 
         // Assert
-        assert_eq!(actual_maatcher_config_filter_with_empty_filter.unwrap(), expected_maatcher_config_filter_with_empty_filter);
+        assert_eq!(
+            actual_maatcher_config_filter_with_empty_filter.unwrap(),
+            expected_maatcher_config_filter_with_empty_filter
+        );
         assert_eq!(actual_maatcher_config_filter.unwrap(), expected_maatcher_config_filter);
     }
 
     #[actix_rt::test]
-    async fn processing_tree_node_details_dto_ruleset_into_matcher_config_should_return_a_matcher_config_ruleset() {
+    async fn processing_tree_node_details_dto_ruleset_into_matcher_config_should_return_a_matcher_config_ruleset(
+    ) {
         // Arrange
-        let expected_maatcher_config_ruleset = MatcherConfig::Ruleset { name: "ruleset_test".to_string(), rules: vec![] };
-        let processing_tree_node_details_dto_ruleset = ProcessingTreeNodeDetailsDto::Ruleset { name: "ruleset_test".to_string(), rules: vec![] };
+        let expected_maatcher_config_ruleset =
+            MatcherConfig::Ruleset { name: "ruleset_test".to_string(), rules: vec![] };
+        let processing_tree_node_details_dto_ruleset = ProcessingTreeNodeDetailsDto::Ruleset {
+            name: "ruleset_test".to_string(),
+            rules: vec![],
+        };
 
         // Act
-        let actual_maatcher_config_ruleset = processing_tree_node_details_dto_into_matcher_config(processing_tree_node_details_dto_ruleset);
+        let actual_maatcher_config_ruleset = processing_tree_node_details_dto_into_matcher_config(
+            processing_tree_node_details_dto_ruleset,
+        );
 
         // Assert
         assert_eq!(actual_maatcher_config_ruleset.unwrap(), expected_maatcher_config_ruleset);

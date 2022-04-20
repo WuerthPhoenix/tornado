@@ -107,7 +107,6 @@ mod test {
         assert_eq!(2, operator.operators.len());
         assert_eq!("equals", operator.operators[0].name());
         assert_eq!("and", operator.operators[1].name());
-
     }
 
     #[test]

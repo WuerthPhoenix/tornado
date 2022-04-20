@@ -5,14 +5,14 @@
 //! produced by a matching Event.
 
 use crate::accessor::{Accessor, AccessorBuilder};
-use crate::config::rule::Action as ConfigAction;
+use crate::config::rule::ConfigAction;
 use crate::error::MatcherError;
 use crate::model::{
     ActionMetaData, EnrichedValue, EnrichedValueContent, InternalEvent, ValueMetaData,
 };
 use serde_json::{Map, Number, Value};
 use std::collections::HashMap;
-use tornado_common_api::Action;
+use tornado_common_api::{Action, WithEventData};
 
 #[derive(Default)]
 pub struct ActionResolverBuilder {
@@ -118,7 +118,11 @@ impl ActionResolver {
     /// Builds an Action by extracting the required data from the InternalEvent.
     /// The outcome is a fully resolved Action ready to be processed by the executors.
     pub fn resolve(&self, data: &InternalEvent) -> Result<Action, MatcherError> {
-        let mut action = Action { id: self.id.to_owned(), payload: Map::new() };
+        let mut action = Action {
+            id: self.id.to_owned(),
+            payload: Map::new(),
+            created_ms: data.event.created_ms().unwrap_or_default(),
+        };
 
         for (key, action_value_processor) in &self.payload {
             action.payload.insert(
@@ -134,7 +138,7 @@ impl ActionResolver {
         &self,
         data: &InternalEvent,
     ) -> Result<(Action, ActionMetaData), MatcherError> {
-        let mut action = Action { id: self.id.to_owned(), payload: Map::new() };
+        let mut action = self.resolve(data)?;
         let mut action_meta = ActionMetaData { id: self.id.to_owned(), payload: HashMap::new() };
 
         for (key, action_value_processor) in &self.payload {

@@ -122,7 +122,7 @@ fn to_action(value: &Value) -> Result<Action, ExecutorError> {
         Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
                 Some(Value::Object(payload)) => {
-                    Ok(Action { id: id.to_owned(), payload: payload.clone() })
+                    Ok(Action::new_with_payload(id.to_owned(), payload.clone()))
                 }
                 _ => {
                     let message =

@@ -4,7 +4,7 @@ use crate::command::daemon::{
 use crate::config::parse_config_files;
 use serde_json::json;
 use tornado_common_api::{Value, ValueExt};
-use tornado_engine_matcher::config::rule::Action;
+use tornado_engine_matcher::config::rule::ConfigAction;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 use tornado_engine_matcher::error::MatcherError;
 
@@ -50,7 +50,7 @@ fn upgrade(
 }
 
 fn upgrade_action(
-    action: &mut Action,
+    action: &mut ConfigAction,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     if action.id == ACTION_ID_MONITORING {
         println!(
@@ -61,7 +61,7 @@ fn upgrade_action(
             &action.payload,
         ) {
             Ok(migrated_payload) => {
-                *action = Action {
+                *action = ConfigAction {
                     id: ACTION_ID_SMART_MONITORING_CHECK_RESULT.to_owned(),
                     payload: migrated_payload,
                 };
@@ -84,12 +84,12 @@ fn upgrade_action(
     }
 }
 
-fn value_to_action(value: &Value) -> Result<Action, MatcherError> {
+fn value_to_action(value: &Value) -> Result<ConfigAction, MatcherError> {
     let option_id = value.get_map().and_then(|map| map.get("id")).and_then(|id| id.get_text());
     let option_payload =
         value.get_map().and_then(|map| map.get("payload")).and_then(|id| id.get_map());
     if let (Some(id), Some(payload)) = (option_id, option_payload) {
-        Ok(Action { id: id.to_owned(), payload: payload.clone() })
+        Ok(ConfigAction { id: id.to_owned(), payload: payload.clone() })
     } else {
         Err(MatcherError::ConfigurationError {
             message: "foreach actions in payload must have 'id' and 'payload'".to_owned(),
@@ -149,7 +149,7 @@ pub mod test {
         );
     }
 
-    fn get_foreach_inner_action_id(foreach_action: &Action, position: usize) -> &str {
+    fn get_foreach_inner_action_id(foreach_action: &ConfigAction, position: usize) -> &str {
         foreach_action.payload.get("actions").unwrap().get_array().unwrap()[position]
             .get_map()
             .unwrap()["id"]

@@ -1,4 +1,7 @@
-use crate::auth::{roles_contain_any_permission, AuthService, Permission, FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, JWT_TOKEN_HEADER_SUFFIX, AuthContextTrait, WithOwner};
+use crate::auth::{
+    roles_contain_any_permission, AuthContextTrait, AuthService, Permission, WithOwner,
+    FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, JWT_TOKEN_HEADER_SUFFIX,
+};
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
@@ -143,8 +146,8 @@ impl AuthServiceV2 {
 pub mod test {
 
     use super::*;
+    use actix_web::http::header;
     use actix_web::test::TestRequest;
-    use actix_web::{http::header};
     use tornado_engine_api_dto::auth::UserPreferences;
     use tornado_engine_api_dto::auth_v2::Authorization;
 
@@ -468,7 +471,10 @@ pub mod test {
     fn should_be_the_owner() {
         let auth = AuthV2 {
             user: "USER_123".to_owned(),
-            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            authorization: Authorization {
+                path: vec![],
+                roles: vec!["role1".to_owned(), "role2".to_owned()],
+            },
             preferences: None,
         };
         let role_permissions = BTreeMap::new();
@@ -483,7 +489,10 @@ pub mod test {
     fn should_not_be_the_owner() {
         let auth = AuthV2 {
             user: "USER_123".to_owned(),
-            authorization: Authorization { path: vec![], roles: vec!["role1".to_owned(), "role2".to_owned()] },
+            authorization: Authorization {
+                path: vec![],
+                roles: vec!["role1".to_owned(), "role2".to_owned()],
+            },
             preferences: None,
         };
         let role_permissions = BTreeMap::new();

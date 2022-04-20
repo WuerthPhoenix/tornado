@@ -1,8 +1,8 @@
-use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
+use crate::{accessor::Accessor, model::InternalEvent};
 use log::*;
-use tornado_common_api::{ValueExt, cow_to_str};
+use tornado_common_api::{cow_to_str, ValueExt};
 
 const OPERATOR_NAME: &str = "equalsIgnoreCase";
 
@@ -77,8 +77,14 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!(
+            "one",
+            operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
+        assert_eq!(
+            "two",
+            operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
     }
 
     #[test]

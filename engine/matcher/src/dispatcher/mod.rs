@@ -112,8 +112,8 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
-        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
+        rule.actions.push(Action::new(action_id.clone()));
+        rule.actions.push(Action::new(action_id));
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -150,7 +150,7 @@ mod test {
         let dispatcher = Dispatcher::build(Arc::new(bus)).unwrap();
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
-        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
+        rule.actions.push(Action::new(action_id));
 
         let node = ProcessedNode::Ruleset {
             name: "".to_owned(),
@@ -188,7 +188,7 @@ mod test {
 
         let mut rule = ProcessedRule::new("rule1".to_owned());
         rule.status = ProcessedRuleStatus::Matched;
-        rule.actions.push(Action { id: action_id.clone(), payload: Map::new() });
+        rule.actions.push(Action::new(action_id));
 
         let node = ProcessedNode::Filter {
             name: "".to_owned(),

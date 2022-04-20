@@ -8,13 +8,13 @@ use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::{Extractor, ExtractorRegex};
 use crate::error::MatcherError;
 use crate::matcher::modifier::ValueModifier;
-use crate::model::{InternalEvent};
+use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
 use log::*;
 use regex::{Captures, Regex as RustRegex};
 use serde_json::{Map, Value};
-use tornado_common_api::ValueExt;
 use std::collections::HashMap;
+use tornado_common_api::ValueExt;
 
 /// The MatcherExtractor instance builder.
 #[derive(Default)]
@@ -115,10 +115,7 @@ impl MatcherExtractor {
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
-    pub fn process_all(
-        &self,
-        event: &mut InternalEvent,
-    ) -> Result<(), MatcherError> {
+    pub fn process_all(&self, event: &mut InternalEvent) -> Result<(), MatcherError> {
         if !self.extractors.is_empty() {
             let mut vars = Map::new();
             for (key, extractor) in &self.extractors {
@@ -164,8 +161,7 @@ impl ValueExtractor {
         variable_name: &str,
         event: &InternalEvent,
     ) -> Result<Value, MatcherError> {
-        let mut extracted_value =
-            self.regex_extractor.extract(variable_name, event)?;
+        let mut extracted_value = self.regex_extractor.extract(variable_name, event)?;
         for modifier in &self.modifiers_post {
             modifier.apply(variable_name, &mut extracted_value, event)?;
         }
@@ -549,8 +545,8 @@ mod test {
         // Assert
         assert_eq!(1, extractor.modifiers_post.len());
         match extractor.modifiers_post[0] {
-            ValueModifier::Trim => {},
-            _ => assert!(false)
+            ValueModifier::Trim => {}
+            _ => assert!(false),
         }
     }
 
@@ -619,7 +615,10 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert_eq!(Value::String("http".to_owned()), extractor.extract("", &(&event, &mut Value::Null).into()).unwrap());
+        assert_eq!(
+            Value::String("http".to_owned()),
+            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+        );
     }
 
     #[test]
