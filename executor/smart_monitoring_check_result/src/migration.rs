@@ -60,8 +60,8 @@ fn remove_entries(payload: &mut Payload) {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
+    use tornado_engine_matcher::config::rule::ConfigAction;
 
     #[test]
     fn test_before_and_after_migration() {
@@ -84,15 +84,16 @@ mod test {
     fn check_migration(source_action_filename: &str, dest_action_filename: &str) {
         println!("Check migration from {} to {}", source_action_filename, dest_action_filename);
 
-        return;
         // Arrange
         let source_action = to_action(source_action_filename);
         let dest_action = to_action(dest_action_filename);
 
         // Act
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
-        let migrated_action =
-            Action::new_with_payload("smart_monitoring_check_result".to_owned(), migrated_payload);
+        let migrated_action = ConfigAction {
+            id: "smart_monitoring_check_result".to_string(),
+            payload: migrated_payload,
+        };
 
         // Assert
         assert_eq!(dest_action, migrated_action);
@@ -109,7 +110,7 @@ mod test {
         );
     }
 
-    fn to_action(filename: &str) -> Action {
+    fn to_action(filename: &str) -> ConfigAction {
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
         serde_json::from_str(&json).unwrap()
