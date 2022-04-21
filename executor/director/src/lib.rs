@@ -16,6 +16,7 @@ pub const DIRECTOR_ACTION_PAYLOAD_KEY: &str = "action_payload";
 pub const DIRECTOR_ACTION_LIVE_CREATION_KEY: &str = "icinga2_live_creation";
 
 const ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE: u16 = 422;
+pub const ICINGA2_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE: u16 = 304;
 const ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE: &str = "Trying to recreate";
 pub const ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectAlreadyExisting";
 
