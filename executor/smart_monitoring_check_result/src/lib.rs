@@ -10,7 +10,8 @@ use tornado_common_api::{Action, Payload};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
-    DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
+    DirectorAction, DirectorExecutor, ICINGA2_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE,
+    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
@@ -146,21 +147,28 @@ impl SmartMonitoringExecutor {
             let url = response.url;
             let method = response.method;
 
-            let response_json = response.response.json().await.map_err(|err| {
-                ExecutorError::ActionExecutionError {
-                    can_retry: true,
-                    message: format!(
-                        "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
-                        err
-                    ),
-                    code: None,
-                    data: hashmap![
-                        "url" => url.into(),
-                        "method" => method.into()
-                    ]
-                    .into(),
+            let response_json = match response.response.json().await {
+                Ok(response_json) if SmartMonitoringExecutor::was_discarded(response_json) => {
+                    // Todo: log
+                    return Ok(());
                 }
-            })?;
+                Ok(response_json) => response_json,
+                Err(err) => {
+                    return Err(ExecutorError::ActionExecutionError {
+                        can_retry: true,
+                        message: format!(
+                            "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
+                            err
+                        ),
+                        code: None,
+                        data: hashmap![
+                            "url" => url.into(),
+                            "method" => method.into()
+                        ]
+                        .into(),
+                    })
+                }
+            };
 
             match SmartMonitoringExecutor::is_pending(&response_json) {
                 Ok(false) => Ok(()),
@@ -196,14 +204,23 @@ impl SmartMonitoringExecutor {
         );
 
         icinga_object_query_response.get("results")
-            .and_then(|results| results.as_array())
             .and_then(|results| results.get(0))
             .and_then(|result| result.get("attrs"))
             .and_then(|attrs| attrs.get("last_check_result"))
-            .map(|last_check_result| last_check_result.is_null())
+            .map(Value::is_null)
             .ok_or_else(||
                 ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None, data: Default::default(), }
             )
+    }
+
+    fn was_discarded(icinga_object_query_response: &Value) -> bool {
+        icinga_object_query_response
+            .get("results")
+            .and_then(|r| r.get(0))
+            .and_then(|r| r.get("code"))
+            .and_then(Value::as_f64) // Icinga returns the error codes as '304.0' so we need to parse it as a float
+            .map(|code| code as u16 == ICINGA2_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE)
+            .unwrap_or(false)
     }
 
     #[instrument(level = "debug", name = "SmartMonitoring", err, skip_all, fields(otel.name = format!("Perform SmartMonitoring Action for host: [{:?}], service: [{:?}]", &host_name, &service_name).as_str()))]
