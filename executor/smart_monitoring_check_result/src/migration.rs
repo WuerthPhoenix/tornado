@@ -92,7 +92,7 @@ mod test {
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
         let migrated_action = ConfigAction {
             id: "smart_monitoring_check_result".to_string(),
-            payload: migrated_payload,
+            payload: migrated_payload.clone(),
         };
 
         // Assert
@@ -103,12 +103,20 @@ mod test {
                 &source_action.payload,
             )
             .unwrap();
-        // todo: convert action
-        let mut smart_monitoring_action = SimpleCreateAndProcess::new(&migrated_action).unwrap();
-        assert_eq!(
-            monitoring_action.to_sub_actions().unwrap(),
-            smart_monitoring_action.build_sub_actions().unwrap()
-        );
+        let smart_monitoring_action = Action {
+            id: "smart_monitoring_check_result".to_string(),
+            payload: migrated_payload,
+            created_ms: 1650643471000,
+        };
+        let mut smart_monitoring_action =
+            SimpleCreateAndProcess::new(&smart_monitoring_action).unwrap();
+        let monitoring_sub_actions = monitoring_action.to_sub_actions().unwrap();
+        let smart_monitoring_sub_actions = smart_monitoring_action.build_sub_actions().unwrap();
+        assert_eq!(monitoring_sub_actions.0.name, smart_monitoring_sub_actions.0.name);
+        assert!(monitoring_sub_actions.0.payload.unwrap().iter().all(|(key, value)| value
+            == smart_monitoring_sub_actions.0.payload.unwrap().get(key).unwrap()));
+        assert_eq!(monitoring_sub_actions.1, smart_monitoring_sub_actions.1);
+        assert_eq!(monitoring_sub_actions.2, smart_monitoring_sub_actions.2);
     }
 
     fn to_action(filename: &str) -> ConfigAction {
