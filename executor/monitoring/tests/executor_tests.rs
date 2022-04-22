@@ -16,7 +16,8 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
 
     let icinga_mock = server.mock(|when, then| {
         when.method(POST).path("/v1/actions/process-check-result");
-        then.status(500);
+        then.status(500)
+            .body("{\"results\":[{\"code\":500.0,\"status\":\"Some error occurred.\"}]}");
     });
 
     let executor = MonitoringExecutor::new(
@@ -74,7 +75,7 @@ async fn should_return_ok_if_process_check_result_is_successful() {
 
     let icinga_mock = icinga_server.mock(|when, then| {
         when.method(POST).path("/v1/actions/process-check-result");
-        then.status(201);
+        then.status(201).body("{\"results\":[{\"code\":201.0,\"status\":\"Successfully processed check result for object 'myhost'.\"}]}");
     });
 
     let executor = MonitoringExecutor::new(
@@ -112,6 +113,7 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     let result = executor.execute(action.into()).await;
 
     // Assert
+    println!("{:?}", result);
     assert!(result.is_ok());
     assert_eq!(icinga_mock.hits(), 1);
 }

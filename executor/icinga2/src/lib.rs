@@ -1,12 +1,12 @@
 use crate::client::ApiClient;
 use crate::config::Icinga2ClientConfig;
 use log::*;
-use serde::Serialize;
-use serde_json::Value;
+use serde::{Deserialize, Serialize};
+use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tornado_common_api::Action;
 use tornado_common_api::Payload;
+use tornado_common_api::{Action, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tracing::instrument;
 
@@ -19,6 +19,9 @@ pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 const ICINGA2_OBJECT_NOT_EXISTING_RESPONSE: &str = "No objects found";
 const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
 pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
+const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE: u16 = 409;
+const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESPONSE: &str =
+    "Newer check result already present";
 
 /// An executor that logs received actions at the 'info' level
 #[derive(Clone)]
@@ -90,20 +93,31 @@ impl Icinga2Executor {
             }
         })?;
 
+        let icinga_action_response: IcingaActionResponse = serde_json::from_str(&response_body)?;
         if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
         {
             Err(ExecutorError::ActionExecutionError {
-                message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body ),
+                message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, response_body),
                 can_retry: true,
                 code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
+                data: to_err_data(method, &url, payload)?.into()
+            })
+        } else if !response_status.is_success() && !icinga_action_response.is_recoverable() {
+            icinga_action_response.log_unrecoverable_errors()?;
+            Err(ExecutorError::ActionExecutionError {
+                can_retry: false,
+                message: format!(
+                    "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", response_status, response_body.to_string()
+                ),
+                code: None,
                 data: to_err_data(method, &url, payload)?.into()
             })
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
-                    "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body
+                    "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body.to_string()
                 ),
                 code: None,
                 data: to_err_data(method, &url, payload)?.into()
@@ -112,6 +126,100 @@ impl Icinga2Executor {
             debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
             Ok(())
         }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum IcingaActionResponse {
+    ErrorResponse(ErrorBody),
+    OkResponse(ResultsBody),
+}
+
+impl IcingaActionResponse {
+    fn is_recoverable(&self) -> bool {
+        match &self {
+            IcingaActionResponse::ErrorResponse(_body) => true,
+            IcingaActionResponse::OkResponse(body) => body.is_recoverable(),
+        }
+    }
+    fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
+        match &self {
+            IcingaActionResponse::ErrorResponse(_body) => Ok(()),
+            IcingaActionResponse::OkResponse(body) => body.log_unrecoverable_errors(),
+        }
+    }
+}
+#[derive(Serialize, Deserialize)]
+pub struct ErrorBody {
+    pub error: f64,
+    pub status: String,
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct ResultsBody {
+    pub results: Vec<Icinga2Result>,
+}
+
+impl ResultsBody {
+    fn is_recoverable(&self) -> bool {
+        let mut is_recoverable = true;
+        if self.results.is_empty() {
+            is_recoverable = !self
+                .results
+                .iter()
+                .all(|result| result.is_unrecoverable() || result.is_successful())
+        }
+        is_recoverable
+    }
+
+    fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
+        for result in &self.results {
+            if result.is_unrecoverable() {
+                error!("{}", result.get_log_message()?);
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+pub struct Icinga2Result {
+    pub code: f64,
+    pub status: String,
+    #[serde(flatten)]
+    other: Map<String, Value>,
+}
+
+impl Icinga2Result {
+    pub fn is_successful(&self) -> bool {
+        (self.code as u16) < 300 && (self.code as u16) >= 200
+    }
+    pub fn is_unrecoverable(&self) -> bool {
+        self.is_discarded_process_check_result()
+    }
+
+    pub fn is_discarded_process_check_result(&self) -> bool {
+        (self.code as u16) == ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE
+            && self.status.contains(ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESPONSE)
+    }
+
+    pub fn get_log_message(&self) -> Result<String, ExecutorError> {
+        let tag = if self.is_discarded_process_check_result() {
+            "DISCARDED_PROCESS_CHECK_RESULT".to_string()
+        } else {
+            "".to_string()
+        };
+        let result_value = serde_json::to_value(self)?;
+        let mut message_object = Value::Object(Map::new());
+        message_object
+            .get_map_mut()
+            .map(|map| {
+                map.insert("tag".to_string(), serde_json::Value::String(tag));
+                map.insert("content".to_string(), result_value);
+            })
+            .ok_or(ExecutorError::JsonError { cause: "".to_string() })?;
+        serde_json::to_string(&message_object).map_err(|err| err.into())
     }
 }
 
