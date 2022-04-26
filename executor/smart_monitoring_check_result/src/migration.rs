@@ -113,8 +113,14 @@ mod test {
         let monitoring_sub_actions = monitoring_action.to_sub_actions().unwrap();
         let smart_monitoring_sub_actions = smart_monitoring_action.build_sub_actions().unwrap();
         assert_eq!(monitoring_sub_actions.0.name, smart_monitoring_sub_actions.0.name);
-        assert!(monitoring_sub_actions.0.payload.unwrap().iter().all(|(key, value)| value
-            == smart_monitoring_sub_actions.0.payload.unwrap().get(key).unwrap()));
+        assert!(monitoring_sub_actions
+            .0
+            .payload
+            .unwrap()
+            .iter()
+            .all(|(key, value)| key.eq("execution_start")
+                || key.eq("execution_end")
+                || value == smart_monitoring_sub_actions.0.payload.unwrap().get(key).unwrap()));
         assert_eq!(monitoring_sub_actions.1, smart_monitoring_sub_actions.1);
         assert_eq!(monitoring_sub_actions.2, smart_monitoring_sub_actions.2);
     }
