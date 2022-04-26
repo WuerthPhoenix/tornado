@@ -1,6 +1,7 @@
 use crate::client::ApiClient;
 use crate::config::Icinga2ClientConfig;
 use log::*;
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
@@ -78,7 +79,7 @@ impl Icinga2Executor {
 
         let response_status = response.response.status();
 
-        let icinga_action_response: IcingaActionResponse =
+        let icinga2_action_response: Icinga2ActionResponse =
             response.response.json().await.map_err(|err| {
                 match to_err_data(method, &url, payload) {
                     Ok(data) => ExecutorError::ActionExecutionError {
@@ -94,55 +95,128 @@ impl Icinga2Executor {
                 }
             })?;
 
-        if response_status.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
-            && icinga_action_response.is_no_object_found_error()
-        {
-            Err(ExecutorError::ActionExecutionError {
-                message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, serde_json::to_string(&icinga_action_response)?),
-                can_retry: true,
-                code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
-                data: to_err_data(method, &url, payload)?.into()
-            })
-        } else if !response_status.is_success() && !icinga_action_response.is_recoverable() {
-            icinga_action_response.log_unrecoverable_errors()?;
-            Err(ExecutorError::ActionExecutionError {
-                can_retry: false,
-                message: format!(
-                    "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&icinga_action_response)?
-                ),
-                code: None,
-                data: to_err_data(method, &url, payload)?.into()
-            })
-        } else if !response_status.is_success() {
-            Err(ExecutorError::ActionExecutionError {
-                can_retry: true,
-                message: format!(
-                    "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&icinga_action_response)?
-                ),
-                code: None,
-                data: to_err_data(method, &url, payload)?.into()
-            })
-        } else {
-            debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
-            Ok(())
+        match Icinga2ActionResponseType::new(icinga2_action_response, &response_status) {
+            Icinga2ActionResponseType::ObjectNotFoundError(response) => {
+                Self::handle_object_not_found_error(
+                    payload,
+                    method,
+                    &url,
+                    response_status,
+                    &response,
+                )
+            }
+            Icinga2ActionResponseType::UnrecoverableError(response) => {
+                Self::handle_unrecoverable_error(payload, method, &url, response_status, &response)
+            }
+            Icinga2ActionResponseType::GenericRecoverableError(response) => {
+                Self::handle_generic_recoverable_error(
+                    payload,
+                    method,
+                    &url,
+                    response_status,
+                    &response,
+                )
+            }
+            Icinga2ActionResponseType::Ok(_response) => Self::handle_ok(),
         }
+    }
+
+    fn handle_ok() -> Result<(), ExecutorError> {
+        debug!("Icinga2Executor - Data correctly sent to Icinga2 API");
+        Ok(())
+    }
+
+    fn handle_generic_recoverable_error(
+        payload: &Option<&Payload>,
+        method: &str,
+        url: &String,
+        response_status: StatusCode,
+        response: &Icinga2ActionResponse,
+    ) -> Result<(), ExecutorError> {
+        Err(ExecutorError::ActionExecutionError {
+            can_retry: true,
+            message: format!(
+                "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?
+            ),
+            code: None,
+            data: to_err_data(method, &url, payload)?.into()
+        })
+    }
+
+    fn handle_unrecoverable_error(
+        payload: &Option<&Payload>,
+        method: &str,
+        url: &String,
+        response_status: StatusCode,
+        response: &Icinga2ActionResponse,
+    ) -> Result<(), ExecutorError> {
+        response.log_unrecoverable_errors()?;
+        Err(ExecutorError::ActionExecutionError {
+            can_retry: false,
+            message: format!(
+                "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?
+            ),
+            code: None,
+            data: to_err_data(method, &url, payload)?.into()
+        })
+    }
+
+    fn handle_object_not_found_error(
+        payload: &Option<&Payload>,
+        method: &str,
+        url: &String,
+        response_status: StatusCode,
+        response: &Icinga2ActionResponse,
+    ) -> Result<(), ExecutorError> {
+        Err(ExecutorError::ActionExecutionError {
+            message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?),
+            can_retry: true,
+            code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
+            data: to_err_data(method, &url, payload)?.into()
+        })
     }
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
-pub enum IcingaActionResponse {
+pub enum Icinga2ActionResponse {
     ErrorResponse(ErrorBody),
     OkResponse(ResultsBody),
 }
 
-impl IcingaActionResponse {
+pub enum Icinga2ActionResponseType {
+    ObjectNotFoundError(Icinga2ActionResponse),
+    UnrecoverableError(Icinga2ActionResponse),
+    GenericRecoverableError(Icinga2ActionResponse),
+    Ok(Icinga2ActionResponse),
+}
+
+impl Icinga2ActionResponseType {
+    pub fn new(
+        icinga2_action_response: Icinga2ActionResponse,
+        response_status_code: &StatusCode,
+    ) -> Self {
+        if response_status_code.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
+            && icinga2_action_response.is_no_object_found_error()
+        {
+            Self::ObjectNotFoundError(icinga2_action_response)
+        } else if !response_status_code.is_success() && !icinga2_action_response.is_recoverable() {
+            Self::UnrecoverableError(icinga2_action_response)
+        } else if !response_status_code.is_success() {
+            Self::GenericRecoverableError(icinga2_action_response)
+        } else {
+            Self::Ok(icinga2_action_response)
+        }
+    }
+}
+
+impl Icinga2ActionResponse {
     fn is_no_object_found_error(&self) -> bool {
         match &self {
-            IcingaActionResponse::ErrorResponse(error_body) => {
+            Icinga2ActionResponse::ErrorResponse(error_body) => {
                 error_body.status.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
             }
-            IcingaActionResponse::OkResponse(_) => false,
+            Icinga2ActionResponse::OkResponse(_) => false,
         }
     }
 
@@ -150,16 +224,16 @@ impl IcingaActionResponse {
         match &self {
             // We consider any "global" error returned by Icinga 2 as retryable
             // to be on the safe side (trying our best to execute actions)
-            IcingaActionResponse::ErrorResponse(_body) => true,
-            IcingaActionResponse::OkResponse(body) => body.is_recoverable(),
+            Icinga2ActionResponse::ErrorResponse(_body) => true,
+            Icinga2ActionResponse::OkResponse(body) => body.is_recoverable(),
         }
     }
 
     fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
         match &self {
             // Currently no "global" error is considered as unrecoverable
-            IcingaActionResponse::ErrorResponse(_body) => Ok(()),
-            IcingaActionResponse::OkResponse(body) => body.log_unrecoverable_errors(),
+            Icinga2ActionResponse::ErrorResponse(_body) => Ok(()),
+            Icinga2ActionResponse::OkResponse(body) => body.log_unrecoverable_errors(),
         }
     }
 }
@@ -519,16 +593,16 @@ mod test {
 }"#;
 
         // Act
-        let icinga2_response: IcingaActionResponse = serde_json::from_str(result).unwrap();
+        let icinga2_response: Icinga2ActionResponse = serde_json::from_str(result).unwrap();
 
         // Assert
         match icinga2_response {
-            IcingaActionResponse::OkResponse(results_body) => {
+            Icinga2ActionResponse::OkResponse(results_body) => {
                 assert_eq!(results_body.results.len(), 2);
                 assert_eq!(results_body.results.get(0).unwrap().code as u16, 200);
                 assert_eq!(results_body.results.get(1).unwrap().code as u16, 500);
             }
-            IcingaActionResponse::ErrorResponse(_) => {
+            Icinga2ActionResponse::ErrorResponse(_) => {
                 assert!(false)
             }
         }
@@ -540,15 +614,15 @@ mod test {
         let result = r#"{"error":404.0,"status":"No objects found."}"#;
 
         // Act
-        let icinga2_response: IcingaActionResponse = serde_json::from_str(result).unwrap();
+        let icinga2_response: Icinga2ActionResponse = serde_json::from_str(result).unwrap();
 
         // Assert
         match icinga2_response {
-            IcingaActionResponse::ErrorResponse(error_body) => {
+            Icinga2ActionResponse::ErrorResponse(error_body) => {
                 assert_eq!(error_body.error as u16, 404);
                 assert_eq!(error_body.status, "No objects found.");
             }
-            IcingaActionResponse::OkResponse(_) => {
+            Icinga2ActionResponse::OkResponse(_) => {
                 assert!(false)
             }
         }
@@ -654,7 +728,7 @@ mod test {
     fn is_no_object_found_error_should_return_true_for_such_response() {
         // Arrange
         let response = r#"{"error":404.0,"status":"No objects found."}"#;
-        let response: IcingaActionResponse = serde_json::from_str(response).unwrap();
+        let response: Icinga2ActionResponse = serde_json::from_str(response).unwrap();
 
         // Assert
         assert!(response.is_no_object_found_error())
@@ -664,7 +738,7 @@ mod test {
     fn is_no_object_found_error_should_return_false_for_other_errors() {
         // Arrange
         let response = r#"{"error":400.0,"status":"Invalid request body: Error: [json.exception.parse_error.101] parse error at line 1, column 101: syntax error while parsing value - unexpected '}'; expected '[', '{', or a literal\n\n"}"#;
-        let response: IcingaActionResponse = serde_json::from_str(response).unwrap();
+        let response: Icinga2ActionResponse = serde_json::from_str(response).unwrap();
 
         // Assert
         assert!(!response.is_no_object_found_error())
