@@ -117,7 +117,7 @@ impl Icinga2Executor {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
                 message: format!(
-                    "Icinga2Executor - Icinga2 API returned an error. Response status: {}. Response body: {}", response_status, response_body.to_string()
+                    "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", response_status, response_body.to_string()
                 ),
                 code: None,
                 data: to_err_data(method, &url, payload)?.into()
@@ -139,12 +139,16 @@ pub enum IcingaActionResponse {
 impl IcingaActionResponse {
     fn is_recoverable(&self) -> bool {
         match &self {
+            // We consider any "global" error returned by Icinga 2 as retryable
+            // to be on the safe side (trying our best to execute actions)
             IcingaActionResponse::ErrorResponse(_body) => true,
             IcingaActionResponse::OkResponse(body) => body.is_recoverable(),
         }
     }
+
     fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
         match &self {
+            // Currently no "global" error is considered as unrecoverable
             IcingaActionResponse::ErrorResponse(_body) => Ok(()),
             IcingaActionResponse::OkResponse(body) => body.log_unrecoverable_errors(),
         }
@@ -163,19 +167,16 @@ pub struct ResultsBody {
 
 impl ResultsBody {
     fn is_recoverable(&self) -> bool {
-        let mut is_recoverable = true;
-        if self.results.is_empty() {
-            is_recoverable = !self
-                .results
-                .iter()
-                .all(|result| result.is_unrecoverable() || result.is_successful())
-        }
-        is_recoverable
+        let mut error_results =
+            self.results.iter().filter(|result| !result.is_successful()).peekable();
+        let all_results_are_success = error_results.peek().is_none();
+        let any_error_is_recoverable = error_results.all(|result| result.is_recoverable());
+        all_results_are_success || any_error_is_recoverable
     }
 
     fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
         for result in &self.results {
-            if result.is_unrecoverable() {
+            if !result.is_recoverable() {
                 error!("{}", result.to_log_message()?);
             }
         }
@@ -195,8 +196,8 @@ impl Icinga2Result {
     pub fn is_successful(&self) -> bool {
         (self.code as u16) < 300 && (self.code as u16) >= 200
     }
-    pub fn is_unrecoverable(&self) -> bool {
-        self.is_discarded_process_check_result()
+    pub fn is_recoverable(&self) -> bool {
+        !self.is_discarded_process_check_result()
     }
 
     pub fn is_discarded_process_check_result(&self) -> bool {
@@ -426,8 +427,8 @@ mod test {
         };
 
         // Assert
-        assert!(result.is_unrecoverable());
         assert!(result.is_discarded_process_check_result());
+        assert!(!result.is_recoverable());
     }
 
     #[test]
@@ -447,10 +448,10 @@ mod test {
         };
 
         // Assert
-        assert!(!result_1.is_unrecoverable());
         assert!(!result_1.is_discarded_process_check_result());
-        assert!(!result_2.is_unrecoverable());
+        assert!(result_1.is_recoverable());
         assert!(!result_2.is_discarded_process_check_result());
+        assert!(result_2.is_recoverable());
     }
 
     #[test]
@@ -486,5 +487,157 @@ mod test {
         // Assert
         let expected = r#"{"content":{"code":500.0,"status":"Internal server error."},"tag":""}"#;
         assert_eq!(message, expected);
+    }
+
+    #[test]
+    fn should_deserialize_results_body() {
+        // Arrange
+        let result = r#"{
+    "results": [
+        {
+            "code": 200.0,
+            "legacy_id": 26.0,
+            "name": "icinga2-satellite1.localdomain!ping4!7e7861c8-8008-4e8d-9910-2a0bb26921bd",
+            "status": "Successfully added comment 'icinga2-satellite1.localdomain!ping4!7e7861c8-8008-4e8d-9910-2a0bb26921bd' for object 'icinga2-satellite1.localdomain!ping4'."
+        },
+        {
+            "code": 500.0,
+            "legacy_id": 27.0,
+            "name": "icinga2-satellite2.localdomain!ping4!9a4c43f5-9407-a536-18bf-4a6cc4b73a9f",
+            "status": "Successfully added comment 'icinga2-satellite2.localdomain!ping4!9a4c43f5-9407-a536-18bf-4a6cc4b73a9f' for object 'icinga2-satellite2.localdomain!ping4'."
+        }
+    ]
+}"#;
+
+        // Act
+        let icinga2_response: IcingaActionResponse = serde_json::from_str(result).unwrap();
+
+        // Assert
+        match icinga2_response {
+            IcingaActionResponse::OkResponse(results_body) => {
+                assert_eq!(results_body.results.len(), 2);
+                assert_eq!(results_body.results.get(0).unwrap().code as u16, 200);
+                assert_eq!(results_body.results.get(1).unwrap().code as u16, 500);
+            }
+            IcingaActionResponse::ErrorResponse(_) => {
+                assert!(false)
+            }
+        }
+    }
+
+    #[test]
+    fn should_deserialize_icinga_error_response_body() {
+        // Arrange
+        let result = r#"{"error":404.0,"status":"No objects found."}"#;
+
+        // Act
+        let icinga2_response: IcingaActionResponse = serde_json::from_str(result).unwrap();
+
+        // Assert
+        match icinga2_response {
+            IcingaActionResponse::ErrorResponse(error_body) => {
+                assert_eq!(error_body.error as u16, 404);
+                assert_eq!(error_body.status, "No objects found.");
+            }
+            IcingaActionResponse::OkResponse(_) => {
+                assert!(false)
+            }
+        }
+    }
+
+    #[test]
+    fn results_body_should_return_unrecoverable_if_all_results_are_recoverable_errors() {
+        // Arrange
+        let results_body = ResultsBody {
+            results: vec![Icinga2Result {
+                code: 409.0,
+                status: "Newer check result already present. Check result for 'myhost' was discarded.".to_string(),
+                additional_fields: Default::default(),
+            },
+          Icinga2Result {
+              code: 409.0,
+              status: "Newer check result already present. Check result for 'myhost' was discarded.".to_string(),
+              additional_fields: Default::default(),
+          }],
+        };
+
+        // Assert
+        assert!(!results_body.is_recoverable());
+    }
+
+    #[test]
+    fn results_body_should_return_unrecoverable_if_all_results_are_recoverable_errors_and_successes(
+    ) {
+        // Arrange
+        let results_body = ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 409.0,
+                    status: "Newer check result already present. Check result for 'myhost' was discarded.".to_string(),
+                    additional_fields: Default::default(),
+                },
+              Icinga2Result {
+                  code: 200.0,
+                  status: "Ok.".to_string(),
+                  additional_fields: Default::default(),
+              }
+            ],
+        };
+
+        // Assert
+        assert!(!results_body.is_recoverable());
+    }
+
+    #[test]
+    fn results_body_should_return_recoverable_if_all_results_are_successes() {
+        // Arrange
+        let results_body = ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+            ],
+        };
+
+        // Assert
+        assert!(results_body.is_recoverable());
+    }
+
+    #[test]
+    fn results_body_should_return_recoverable_if_all_results_are_successes_or_recoverable_errors() {
+        // Arrange
+        let results_body = ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 404.0,
+                    status: "No objects found.".to_string(),
+                    additional_fields: Default::default(),
+                },
+            ],
+        };
+
+        // Assert
+        assert!(results_body.is_recoverable());
+    }
+
+    #[test]
+    fn results_body_should_return_recoverable_if_results_is_empty() {
+        // Arrange
+        let results_body = ResultsBody { results: vec![] };
+
+        // Assert
+        assert!(results_body.is_recoverable());
     }
 }
