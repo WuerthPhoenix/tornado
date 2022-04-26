@@ -10,8 +10,7 @@ use tornado_common_api::{Action, Payload};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
-    DirectorAction, DirectorExecutor, ICINGA2_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE,
-    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
+    DirectorAction, DirectorExecutor, ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 use tornado_executor_icinga2::config::Icinga2ClientConfig;
 use tornado_executor_icinga2::{
