@@ -173,12 +173,6 @@ impl From<Action> for TracedAction {
     }
 }
 
-impl From<Event> for Action {
-    fn from(e: Event) -> Self {
-        Action { id: e.event_type, payload: e.payload, created_ms: e.created_ms }
-    }
-}
-
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
         Action::new_with_payload_and_created_ms(
