@@ -46,7 +46,7 @@ pub fn migrate_from_monitoring(input: &Payload) -> Result<Payload, ExecutorError
     }
 
     // Verify the generated payload is valid
-    SimpleCreateAndProcess::new(&Action::new_with_payload("", output.clone()))?;
+    SimpleCreateAndProcess::new(&Action::new_with_payload_and_created_ms("", output.clone(), 0))?;
 
     Ok(output)
 }
@@ -61,6 +61,7 @@ fn remove_entries(payload: &mut Payload) {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::action::test::compare_actions_discard_execution_start_execution_end;
     use tornado_engine_matcher::config::rule::ConfigAction;
 
     #[test]
@@ -112,17 +113,10 @@ mod test {
             SimpleCreateAndProcess::new(&smart_monitoring_action).unwrap();
         let monitoring_sub_actions = monitoring_action.to_sub_actions().unwrap();
         let smart_monitoring_sub_actions = smart_monitoring_action.build_sub_actions().unwrap();
-        assert_eq!(monitoring_sub_actions.0.name, smart_monitoring_sub_actions.0.name);
-        assert!(monitoring_sub_actions
-            .0
-            .payload
-            .unwrap()
-            .iter()
-            .all(|(key, value)| key.eq("execution_start")
-                || key.eq("execution_end")
-                || value == smart_monitoring_sub_actions.0.payload.unwrap().get(key).unwrap()));
-        assert_eq!(monitoring_sub_actions.1, smart_monitoring_sub_actions.1);
-        assert_eq!(monitoring_sub_actions.2, smart_monitoring_sub_actions.2);
+        compare_actions_discard_execution_start_execution_end(
+            monitoring_sub_actions,
+            smart_monitoring_sub_actions,
+        );
     }
 
     fn to_action(filename: &str) -> ConfigAction {
