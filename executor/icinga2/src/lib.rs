@@ -95,27 +95,22 @@ impl Icinga2Executor {
                 }
             })?;
 
-        match Icinga2ActionResponseType::new(icinga2_action_response, &response_status) {
-            Icinga2ActionResponseType::ObjectNotFoundError(response) => {
-                Self::handle_object_not_found_error(
-                    payload,
-                    method,
-                    &url,
-                    response_status,
-                    &response,
-                )
+        let handle_response_params = HandleResponseParams {
+            payload,
+            method,
+            url: &url,
+            response_status,
+            response: &icinga2_action_response,
+        };
+        match Icinga2ActionResponseType::new(&icinga2_action_response, &response_status) {
+            Icinga2ActionResponseType::ObjectNotFoundError(_response) => {
+                Self::handle_object_not_found_error(handle_response_params)
             }
-            Icinga2ActionResponseType::UnrecoverableError(response) => {
-                Self::handle_unrecoverable_error(payload, method, &url, response_status, &response)
+            Icinga2ActionResponseType::UnrecoverableError(_response) => {
+                Self::handle_unrecoverable_error(handle_response_params)
             }
-            Icinga2ActionResponseType::GenericRecoverableError(response) => {
-                Self::handle_generic_recoverable_error(
-                    payload,
-                    method,
-                    &url,
-                    response_status,
-                    &response,
-                )
+            Icinga2ActionResponseType::GenericRecoverableError(_response) => {
+                Self::handle_generic_recoverable_error(handle_response_params)
             }
             Icinga2ActionResponseType::Ok(_response) => Self::handle_ok(),
         }
@@ -126,55 +121,45 @@ impl Icinga2Executor {
         Ok(())
     }
 
-    fn handle_generic_recoverable_error(
-        payload: &Option<&Payload>,
-        method: &str,
-        url: &String,
-        response_status: StatusCode,
-        response: &Icinga2ActionResponse,
-    ) -> Result<(), ExecutorError> {
+    fn handle_generic_recoverable_error(params: HandleResponseParams) -> Result<(), ExecutorError> {
         Err(ExecutorError::ActionExecutionError {
             can_retry: true,
             message: format!(
-                "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?
+                "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?
             ),
             code: None,
-            data: to_err_data(method, &url, payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload)?.into()
         })
     }
 
-    fn handle_unrecoverable_error(
-        payload: &Option<&Payload>,
-        method: &str,
-        url: &String,
-        response_status: StatusCode,
-        response: &Icinga2ActionResponse,
-    ) -> Result<(), ExecutorError> {
-        response.log_unrecoverable_errors()?;
+    fn handle_unrecoverable_error(params: HandleResponseParams) -> Result<(), ExecutorError> {
+        params.response.log_unrecoverable_errors()?;
         Err(ExecutorError::ActionExecutionError {
             can_retry: false,
             message: format!(
-                "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?
+                "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?
             ),
             code: None,
-            data: to_err_data(method, &url, payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload)?.into()
         })
     }
 
-    fn handle_object_not_found_error(
-        payload: &Option<&Payload>,
-        method: &str,
-        url: &String,
-        response_status: StatusCode,
-        response: &Icinga2ActionResponse,
-    ) -> Result<(), ExecutorError> {
+    fn handle_object_not_found_error(params: HandleResponseParams) -> Result<(), ExecutorError> {
         Err(ExecutorError::ActionExecutionError {
-            message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", response_status, serde_json::to_string(&response)?),
+            message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?),
             can_retry: true,
             code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
-            data: to_err_data(method, &url, payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload)?.into()
         })
     }
+}
+
+struct HandleResponseParams<'a> {
+    payload: &'a Option<&'a Payload>,
+    method: &'a str,
+    url: &'a str,
+    response_status: StatusCode,
+    response: &'a Icinga2ActionResponse,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -184,16 +169,16 @@ pub enum Icinga2ActionResponse {
     OkResponse(ResultsBody),
 }
 
-pub enum Icinga2ActionResponseType {
-    ObjectNotFoundError(Icinga2ActionResponse),
-    UnrecoverableError(Icinga2ActionResponse),
-    GenericRecoverableError(Icinga2ActionResponse),
-    Ok(Icinga2ActionResponse),
+pub enum Icinga2ActionResponseType<'a> {
+    ObjectNotFoundError(&'a Icinga2ActionResponse),
+    UnrecoverableError(&'a Icinga2ActionResponse),
+    GenericRecoverableError(&'a Icinga2ActionResponse),
+    Ok(&'a Icinga2ActionResponse),
 }
 
-impl Icinga2ActionResponseType {
+impl<'a> Icinga2ActionResponseType<'a> {
     pub fn new(
-        icinga2_action_response: Icinga2ActionResponse,
+        icinga2_action_response: &'a Icinga2ActionResponse,
         response_status_code: &StatusCode,
     ) -> Self {
         if response_status_code.eq(&ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE)
