@@ -146,7 +146,6 @@ mod test {
     use maplit::*;
     use serde_json::json;
     use tornado_common_api::{Action, Map, Value};
-    use tornado_engine_matcher::config::rule::ConfigAction;
 
     #[test]
     fn to_sub_actions_should_throw_error_if_process_check_result_host_not_specified_with_host_field(
@@ -221,6 +220,10 @@ mod test {
 
         // Assert
         assert!(action.service.is_none());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
     }
 
     #[test]
@@ -237,12 +240,115 @@ mod test {
 
         // Assert
         assert!(action.service.is_some());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_process_action_without_add_execution_start_end_if_present()
+    {
+        // Arrange
+        let filename =
+            "./tests_resources/simple_create_and_or_process_passive_check_result_host_with_execution_start.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
+
+        // Assert
+        assert!(action.service.is_none());
+        assert_eq!(
+            action.check_result.get("execution_start").unwrap().as_i64().unwrap(),
+            1650963718
+        );
+        assert_eq!(action.check_result.get("execution_end").unwrap().as_i64().unwrap(), 1650963719);
+    }
+
+    #[test]
+    fn simple_create_should_be_equivalent_to_full_create_host_01() {
+        // Arrange
+        let filename_full = "./tests_resources/monitoring_host_01_full.json";
+        let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
+        let monitoring_action_full: MonitoringHostData = serde_json::from_str(
+            &std::fs::read_to_string(filename_full)
+                .expect(&format!("Unable to open the file [{}]", filename_full)),
+        )
+        .unwrap();
+        let action_simple: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_simple)
+                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+        )
+        .unwrap();
+        // Act
+        let sub_actions_full = monitoring_action_full.to_sub_actions();
+        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
+        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
+        // Assert
+        compare_actions_discard_execution_start_execution_end(sub_actions_full, sub_actions_simple)
+    }
+
+    #[test]
+    fn simple_create_should_be_equivalent_to_full_create_service_01() {
+        // Arrange
+        let filename_full = "./tests_resources/monitoring_service_01_full.json";
+        let filename_simple = "./tests_resources/monitoring_service_01_simple.json";
+        let monitoring_action_full: MonitoringServiceData = serde_json::from_str(
+            &std::fs::read_to_string(filename_full)
+                .expect(&format!("Unable to open the file [{}]", filename_full)),
+        )
+        .unwrap();
+        let action_simple: Action = serde_json::from_str(
+            &std::fs::read_to_string(filename_simple)
+                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+        )
+        .unwrap();
+        // Act
+        let sub_actions_full = monitoring_action_full.to_sub_actions();
+        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
+        let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
+        // Assert
+        compare_actions_discard_execution_start_execution_end(sub_actions_full, sub_actions_simple)
+    }
+
+    fn compare_actions_discard_execution_start_execution_end(
+        actions_1: (Icinga2Action, DirectorAction, Option<DirectorAction>),
+        actions_2: (Icinga2Action, DirectorAction, Option<DirectorAction>),
+    ) {
+        assert!(actions_1.0.payload.unwrap().iter().all(|(key, value)| key.eq("execution_start")
+            || key.eq("execution_end")
+            || value == actions_2.0.payload.unwrap().get(key).unwrap()));
+        assert!(actions_2.0.payload.unwrap().iter().all(|(key, value)| key.eq("execution_start")
+            || key.eq("execution_end")
+            || value == actions_1.0.payload.unwrap().get(key).unwrap()));
+        assert_eq!(actions_1.1, actions_2.1);
+        assert_eq!(actions_1.2, actions_2.2);
     }
 
     #[derive(Debug, PartialEq, Deserialize)]
     pub struct MonitoringHostData {
         process_check_result_payload: Payload,
         host_creation_payload: Payload,
+    }
+
+    impl MonitoringHostData {
+        fn to_sub_actions(&self) -> (Icinga2Action, DirectorAction, Option<DirectorAction>) {
+            (
+                Icinga2Action {
+                    name: PROCESS_CHECK_RESULT_SUBURL,
+                    payload: Some(&self.process_check_result_payload),
+                },
+                DirectorAction {
+                    name: DirectorActionName::CreateHost,
+                    payload: &self.host_creation_payload,
+                    live_creation: true,
+                },
+                None,
+            )
+        }
     }
 
     #[derive(Debug, PartialEq, Deserialize)]
