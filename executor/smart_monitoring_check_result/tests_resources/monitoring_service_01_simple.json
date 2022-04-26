@@ -1,5 +1,6 @@
 {
   "id": "smart_monitoring_check_result",
+  "created_ms": 12345,
   "payload": {
     "check_result": {
       "exit_status": 1,
