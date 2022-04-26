@@ -140,7 +140,7 @@ impl SimpleCreateAndProcess {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
 
     use super::*;
     use maplit::*;
@@ -314,7 +314,7 @@ mod test {
         compare_actions_discard_execution_start_execution_end(sub_actions_full, sub_actions_simple)
     }
 
-    fn compare_actions_discard_execution_start_execution_end(
+    pub fn compare_actions_discard_execution_start_execution_end(
         actions_1: (Icinga2Action, DirectorAction, Option<DirectorAction>),
         actions_2: (Icinga2Action, DirectorAction, Option<DirectorAction>),
     ) {

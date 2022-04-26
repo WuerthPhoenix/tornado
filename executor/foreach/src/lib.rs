@@ -37,6 +37,7 @@ impl ForEachExecutor {
     fn extract_params_from_payload<'a>(
         &self,
         payload: &'a Payload,
+        action_created_ms: u64,
     ) -> Result<Params<'a>, ExecutorError> {
         let values = match payload.get(FOREACH_TARGET_KEY) {
             Some(Value::Array(values)) => values,
@@ -59,9 +60,10 @@ impl ForEachExecutor {
         };
 
         let actions: Vec<_> = match payload.get(FOREACH_ACTIONS_KEY) {
-            Some(Value::Array(actions)) => {
-                actions.iter().filter_map(|value| to_action(value).ok()).collect()
-            }
+            Some(Value::Array(actions)) => actions
+                .iter()
+                .filter_map(|value| to_action(value, action_created_ms).ok())
+                .collect(),
             _ => {
                 return Err(ExecutorError::MissingArgumentError {
                     message: format!(
@@ -82,7 +84,8 @@ impl StatelessExecutor for ForEachExecutor {
     async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
         trace!("ForEachExecutor - received action: \n[{:?}]", action);
 
-        let Params { values, actions } = self.extract_params_from_payload(&action.payload)?;
+        let Params { values, actions } =
+            self.extract_params_from_payload(&action.payload, action.created_ms)?;
 
         let execution_span = tracing::debug_span!(
             "ForEachExecutor",
@@ -117,13 +120,15 @@ impl StatelessExecutor for ForEachExecutor {
     }
 }
 
-fn to_action(value: &Value) -> Result<Action, ExecutorError> {
+fn to_action(value: &Value, action_created_ms: u64) -> Result<Action, ExecutorError> {
     match value {
         Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
             Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Object(payload)) => {
-                    Ok(Action::new_with_payload(id.to_owned(), payload.clone()))
-                }
+                Some(Value::Object(payload)) => Ok(Action::new_with_payload_and_created_ms(
+                    id.to_owned(),
+                    payload.clone(),
+                    action_created_ms,
+                )),
                 _ => {
                     let message =
                         "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
@@ -206,19 +211,21 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
+        let created_ms = 123456;
 
         // Act
-        let action = to_action(&action_value).unwrap();
+        let action = to_action(&action_value, created_ms).unwrap();
 
         // Assert
         assert_eq!("my_action", action.id);
         assert_eq!(payload_map, action.payload);
+        assert_eq!(created_ms, action.created_ms);
     }
 
     #[test]
     fn to_action_should_fail_if_value_not_a_map() {
         // Act
-        let result = to_action(&Value::Array(vec![]));
+        let result = to_action(&Value::Array(vec![]), 123456);
 
         // Assert
         assert!(result.is_err());
@@ -234,9 +241,10 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
+        let created_ms = 123456;
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action(&action_value, created_ms);
 
         // Assert
         assert!(result.is_err());
@@ -253,9 +261,10 @@ mod test {
         action_map.insert("payload".to_owned(), Value::Object(payload_map.clone()));
 
         let action_value = Value::Object(action_map);
+        let created_ms = 123456;
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action(&action_value, created_ms);
 
         // Assert
         assert!(result.is_err());
@@ -270,7 +279,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action(&action_value, 123456);
 
         // Assert
         assert!(result.is_err());
@@ -288,7 +297,7 @@ mod test {
         let action_value = Value::Object(action_map);
 
         // Act
-        let result = to_action(&action_value);
+        let result = to_action(&action_value, 123456);
 
         // Assert
         assert!(result.is_err());
@@ -394,7 +403,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_one", payload),
+                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
                 action_one.get(0).unwrap().0.action.deref()
             );
         }
@@ -404,7 +413,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_one", payload),
+                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
                 action_one.get(1).unwrap().0.action.deref()
             );
         }
@@ -419,7 +428,7 @@ mod test {
                 Value::String("a first_item bb <first_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("id_two", payload),
+                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -431,7 +440,7 @@ mod test {
                 Value::String("a second_item bb <second_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload("id_two", payload),
+                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }
@@ -526,7 +535,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_two", payload),
+                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -535,7 +544,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_two", payload),
+                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }
@@ -615,7 +624,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_one", payload),
+                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -624,7 +633,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
-                &Action::new_with_payload("id_one", payload),
+                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }

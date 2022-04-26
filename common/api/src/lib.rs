@@ -8,7 +8,6 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::UNIX_EPOCH;
 use tracing::Span;
 
 pub mod error;
@@ -182,14 +181,19 @@ impl From<Event> for Action {
 
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
-        Action::new_with_payload(id, Map::new())
+        Action::new_with_payload_and_created_ms(
+            id,
+            Map::new(),
+            Local::now().timestamp_millis() as u64,
+        )
     }
-    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
-        Action {
-            id: id.into(),
-            payload,
-            created_ms: UNIX_EPOCH.elapsed().expect("Time travel").as_millis() as u64,
-        }
+
+    pub fn new_with_payload_and_created_ms<S: Into<String>>(
+        id: S,
+        payload: Payload,
+        created_ms: u64,
+    ) -> Action {
+        Action { id: id.into(), payload, created_ms }
     }
 }
 
