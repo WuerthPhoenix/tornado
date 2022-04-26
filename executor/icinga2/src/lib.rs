@@ -19,8 +19,8 @@ pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 const ICINGA2_OBJECT_NOT_EXISTING_RESPONSE: &str = "No objects found";
 const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
 pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
-const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE: u16 = 409;
-const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESPONSE: &str =
+const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_CODE: u16 = 409;
+const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_STATUS: &str =
     "Newer check result already present";
 
 /// An executor that logs received actions at the 'info' level
@@ -201,8 +201,8 @@ impl Icinga2Result {
     }
 
     pub fn is_discarded_process_check_result(&self) -> bool {
-        (self.code as u16) == ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_STATUS_CODE
-            && self.status.contains(ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESPONSE)
+        (self.code as u16) == ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_CODE
+            && self.status.contains(ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_STATUS)
     }
 
     pub fn to_log_message(&self) -> Result<String, ExecutorError> {
