@@ -177,7 +177,7 @@ impl ResultsBody {
     fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
         for result in &self.results {
             if !result.is_recoverable() {
-                error!("{}", result.to_log_message()?);
+                error!("Unrecoverable error encountered: {}", result.to_log_message()?);
             }
         }
         Ok(())
