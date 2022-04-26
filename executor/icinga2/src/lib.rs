@@ -176,7 +176,7 @@ impl ResultsBody {
     fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
         for result in &self.results {
             if result.is_unrecoverable() {
-                error!("{}", result.get_log_message()?);
+                error!("{}", result.to_log_message()?);
             }
         }
         Ok(())
@@ -188,7 +188,7 @@ pub struct Icinga2Result {
     pub code: f64,
     pub status: String,
     #[serde(flatten)]
-    other: Map<String, Value>,
+    additional_fields: Map<String, Value>,
 }
 
 impl Icinga2Result {
@@ -204,7 +204,7 @@ impl Icinga2Result {
             && self.status.contains(ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESPONSE)
     }
 
-    pub fn get_log_message(&self) -> Result<String, ExecutorError> {
+    pub fn to_log_message(&self) -> Result<String, ExecutorError> {
         let tag = if self.is_discarded_process_check_result() {
             "DISCARDED_PROCESS_CHECK_RESULT".to_string()
         } else {
@@ -343,5 +343,148 @@ mod test {
             Ok(Icinga2Action { name: "process-check-result", payload: Some(&expected_payload) }),
             result
         );
+    }
+
+    #[test]
+    fn should_deserialize_icinga2_result() {
+        // Arrange
+        let result = r#"{
+            "code": 200.0,
+            "legacy_id": 26.0,
+            "name": "icinga2-satellite1.localdomain!ping4!7e7861c8-8008-4e8d-9910-2a0bb26921bd",
+            "status": "Successfully added comment 'icinga2-satellite1.localdomain!ping4!7e7861c8-8008-4e8d-9910-2a0bb26921bd' for object 'icinga2-satellite1.localdomain!ping4'."
+        }"#;
+
+        // Act
+        let icinga2_result: Icinga2Result = serde_json::from_str(result).unwrap();
+
+        // Assert
+        assert_eq!(icinga2_result.code as u16, 200);
+        assert_eq!(icinga2_result.status, "Successfully added comment 'icinga2-satellite1.localdomain!ping4!7e7861c8-8008-4e8d-9910-2a0bb26921bd' for object 'icinga2-satellite1.localdomain!ping4'.");
+        assert!(icinga2_result.additional_fields.get("code").is_none());
+        assert!(icinga2_result.additional_fields.get("status").is_none());
+        assert!(icinga2_result.additional_fields.get("name").is_some());
+        assert!(icinga2_result.additional_fields.get("legacy_id").is_some());
+    }
+
+    #[test]
+    fn should_return_if_icinga2_result_is_successful() {
+        // Arrange
+        let successful_icinga2_results = vec![
+            Icinga2Result {
+                code: 200.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+            Icinga2Result {
+                code: 201.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+            Icinga2Result {
+                code: 299.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+        ];
+        let unsuccessful_icinga2_results = vec![
+            Icinga2Result {
+                code: 150.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+            Icinga2Result {
+                code: 300.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+            Icinga2Result {
+                code: 409.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+            Icinga2Result {
+                code: 500.0,
+                status: "".to_string(),
+                additional_fields: Default::default(),
+            },
+        ];
+
+        // Assert
+        assert!(successful_icinga2_results.iter().all(|result| result.is_successful()));
+        assert!(unsuccessful_icinga2_results.iter().all(|result| !result.is_successful()));
+    }
+
+    #[test]
+    fn icinga2_result_is_discarded_process_check_result_should_return_true() {
+        // Arrange
+        let result = Icinga2Result {
+            code: 409.0,
+            status: "Newer check result already present. Check result for 'myhost' was discarded."
+                .to_string(),
+            additional_fields: Default::default(),
+        };
+
+        // Assert
+        assert!(result.is_unrecoverable());
+        assert!(result.is_discarded_process_check_result());
+    }
+
+    #[test]
+    fn icinga2_result_is_discarded_process_check_result_should_return_false() {
+        // Arrange
+        let result_1 = Icinga2Result {
+            code: 500.0,
+            status: "Newer check result already present. Check result for 'myhost' was discarded."
+                .to_string(),
+            additional_fields: Default::default(),
+        };
+
+        let result_2 = Icinga2Result {
+            code: 409.0,
+            status: "Conflict".to_string(),
+            additional_fields: Default::default(),
+        };
+
+        // Assert
+        assert!(!result_1.is_unrecoverable());
+        assert!(!result_1.is_discarded_process_check_result());
+        assert!(!result_2.is_unrecoverable());
+        assert!(!result_2.is_discarded_process_check_result());
+    }
+
+    #[test]
+    fn icinga2_result_should_return_log_message() {
+        // Arrange
+        let result = Icinga2Result {
+            code: 409.0,
+            status: "Newer check result already present. Check result for 'myhost' was discarded."
+                .to_string(),
+            additional_fields: Default::default(),
+        };
+
+        // Act
+        let message = result.to_log_message().unwrap();
+
+        // Assert
+        let expected = r#"{"content":{"code":409.0,"status":"Newer check result already present. Check result for 'myhost' was discarded."},"tag":"DISCARDED_PROCESS_CHECK_RESULT"}"#;
+        assert_eq!(message, expected);
+    }
+
+    #[test]
+    fn icinga2_result_should_return_log_message_with_empty_tag_for_unknown_error() {
+        // Arrange
+        let result = Icinga2Result {
+            code: 500.0,
+            status: "Internal server error.".to_string(),
+            additional_fields: Default::default(),
+        };
+
+        // Act
+        let message = result.to_log_message().unwrap();
+
+        // Assert
+        let expected = r#"{"content":{"code":500.0,"status":"Internal server error."},"tag":""}"#;
+        assert_eq!(message, expected);
     }
 }

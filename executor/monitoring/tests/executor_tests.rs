@@ -113,7 +113,6 @@ async fn should_return_ok_if_process_check_result_is_successful() {
     let result = executor.execute(action.into()).await;
 
     // Assert
-    println!("{:?}", result);
     assert!(result.is_ok());
     assert_eq!(icinga_mock.hits(), 1);
 }
