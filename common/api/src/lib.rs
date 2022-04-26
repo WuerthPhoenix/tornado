@@ -148,17 +148,11 @@ impl Event {
 
 /// An Action is produced when an Event matches a specific Rule.
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,
     pub created_ms: u64,
-}
-
-impl PartialEq for Action {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id && self.payload == other.payload
-    }
 }
 
 #[derive(Debug, Clone)]

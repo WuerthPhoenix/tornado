@@ -344,7 +344,8 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let created_ms = 123456;
+        let mut action = Action::new_with_payload_and_created_ms("", Payload::new(), created_ms);
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -403,7 +404,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
                 action_one.get(0).unwrap().0.action.deref()
             );
         }
@@ -413,7 +414,7 @@ mod test {
             payload.insert("key_one".to_owned(), Value::Array(vec![]));
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
                 action_one.get(1).unwrap().0.action.deref()
             );
         }
@@ -428,7 +429,7 @@ mod test {
                 Value::String("a first_item bb <first_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -440,7 +441,7 @@ mod test {
                 Value::String("a second_item bb <second_item>".to_owned()),
             );
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }
@@ -487,7 +488,8 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let created_ms = 123456;
+        let mut action = Action::new_with_payload_and_created_ms("", Payload::new(), created_ms);
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -535,7 +537,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -544,7 +546,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("item".to_owned(), Value::String("second_item".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_two", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }
@@ -575,7 +577,8 @@ mod test {
 
         let executor = ForEachExecutor::new(Arc::new(bus));
 
-        let mut action = Action::new("");
+        let created_ms = 123456;
+        let mut action = Action::new_with_payload_and_created_ms("", Payload::new(), created_ms);
         action.payload.insert(
             "target".to_owned(),
             Value::Array(vec![
@@ -624,7 +627,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
                 action_two.get(0).unwrap().0.action.deref()
             );
         }
@@ -633,7 +636,7 @@ mod test {
             let mut payload = Map::new();
             payload.insert("value".to_owned(), Value::String("third + fourth".to_owned()));
             assert_eq!(
-                &Action::new_with_payload_and_created_ms("id_one", payload, 123456),
+                &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
                 action_two.get(1).unwrap().0.action.deref()
             );
         }
