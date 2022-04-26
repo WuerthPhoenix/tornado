@@ -220,6 +220,10 @@ mod test {
 
         // Assert
         assert!(action.service.is_none());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
     }
 
     #[test]
@@ -236,6 +240,32 @@ mod test {
 
         // Assert
         assert!(action.service.is_some());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_process_action_without_add_execution_start_end_if_present()
+    {
+        // Arrange
+        let filename =
+            "./tests_resources/simple_create_and_or_process_passive_check_result_host_with_execution_start.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
+
+        // Assert
+        assert!(action.service.is_none());
+        assert_eq!(
+            action.check_result.get("execution_start").unwrap().as_i64().unwrap(),
+            1650963718
+        );
+        assert_eq!(action.check_result.get("execution_end").unwrap().as_i64().unwrap(), 1650963719);
     }
 
     #[test]
