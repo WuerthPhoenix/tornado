@@ -100,7 +100,7 @@ impl Icinga2Executor {
             payload,
             method,
             url: &url,
-            tags: &tags.as_slice(),
+            tags: tags.as_slice(),
             response_status,
             response: &icinga2_action_response,
         };
@@ -187,9 +187,11 @@ impl<'a> Icinga2ActionResponseType<'a> {
             && icinga2_action_response.is_no_object_found_error()
         {
             Self::ObjectNotFoundError(icinga2_action_response)
-        } else if !response_status_code.is_success() && !icinga2_action_response.is_recoverable() {
+        } else if icinga2_action_response.contains_errors()
+            && !icinga2_action_response.is_recoverable()
+        {
             Self::UnrecoverableError(icinga2_action_response)
-        } else if !response_status_code.is_success() {
+        } else if icinga2_action_response.contains_errors() {
             Self::GenericRecoverableError(icinga2_action_response)
         } else {
             Self::Ok(icinga2_action_response)
@@ -204,6 +206,15 @@ impl Icinga2ActionResponse {
                 error_body.status.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
             }
             Icinga2ActionResponse::OkResponse(_) => false,
+        }
+    }
+
+    fn contains_errors(&self) -> bool {
+        match &self {
+            Icinga2ActionResponse::ErrorResponse(_body) => true,
+            Icinga2ActionResponse::OkResponse(body) => {
+                body.results.iter().any(|res| (res.code as u64) >= 300 || (res.code as u64) < 200)
+            }
         }
     }
 
@@ -723,6 +734,69 @@ mod test {
 
         // Assert
         assert!(results_body.is_recoverable());
+    }
+
+    #[test]
+    fn contains_errors_should_return_true_if_any_result_is_error() {
+        // Arrange
+        let res = Icinga2ActionResponse::OkResponse(ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 404.0,
+                    status: "No objects found.".to_string(),
+                    additional_fields: Default::default(),
+                },
+            ],
+        });
+
+        // Assert
+        assert!(res.contains_errors());
+    }
+
+    #[test]
+    fn contains_errors_should_return_false_if_no_result_is_error() {
+        // Arrange
+        let res = Icinga2ActionResponse::OkResponse(ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 200.0,
+                    status: "Ok.".to_string(),
+                    additional_fields: Default::default(),
+                },
+            ],
+        });
+
+        // Assert
+        assert!(!res.contains_errors());
+    }
+
+    #[test]
+    fn contains_errors_should_return_false_if_results_is_empty() {
+        // Arrange
+        let res = Icinga2ActionResponse::OkResponse(ResultsBody { results: vec![] });
+
+        // Assert
+        assert!(!res.contains_errors());
+    }
+
+    #[test]
+    fn contains_errors_should_return_true_for_error_response() {
+        // Arrange
+        let res =
+            Icinga2ActionResponse::ErrorResponse(ErrorBody { error: 0.0, status: "".to_string() });
+
+        // Assert
+        assert!(res.contains_errors());
     }
 
     #[test]
