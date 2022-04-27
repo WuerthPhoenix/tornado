@@ -196,11 +196,10 @@ impl SmartMonitoringExecutor {
         );
 
         icinga_object_query_response.get("results")
-            .and_then(|results| results.as_array())
             .and_then(|results| results.get(0))
             .and_then(|result| result.get("attrs"))
             .and_then(|attrs| attrs.get("last_check_result"))
-            .map(|last_check_result| last_check_result.is_null())
+            .map(Value::is_null)
             .ok_or_else(||
                 ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None, data: Default::default(), }
             )
@@ -268,7 +267,7 @@ impl StatelessExecutor for SmartMonitoringExecutor {
 
         let extraction_params_guard =
             tracing::debug_span!("Extract parameters for Executor").entered();
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload)?;
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action)?;
         let host_name = monitoring_action.get_host_name().map(|val| val.to_owned());
         let service_name = monitoring_action.get_service_name().map(|val| val.to_owned());
 

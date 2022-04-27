@@ -148,10 +148,11 @@ impl Event {
 
 /// An Action is produced when an Event matches a specific Rule.
 /// Once created, the Tornado Engine sends the Action to the Executors to be resolved.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Action {
     pub id: String,
     pub payload: Payload,
+    pub created_ms: u64,
 }
 
 #[derive(Debug, Clone)]
@@ -168,10 +169,19 @@ impl From<Action> for TracedAction {
 
 impl Action {
     pub fn new<S: Into<String>>(id: S) -> Action {
-        Action::new_with_payload(id, Map::new())
+        Action::new_with_payload_and_created_ms(
+            id,
+            Map::new(),
+            Local::now().timestamp_millis() as u64,
+        )
     }
-    pub fn new_with_payload<S: Into<String>>(id: S, payload: Payload) -> Action {
-        Action { id: id.into(), payload }
+
+    pub fn new_with_payload_and_created_ms<S: Into<String>>(
+        id: S,
+        payload: Payload,
+        created_ms: u64,
+    ) -> Action {
+        Action { id: id.into(), payload, created_ms }
     }
 }
 

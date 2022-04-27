@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use tornado_common_api::ValueExt;
-use tornado_common_api::{Payload, Value};
+use serde_json::json;
+use tornado_common_api::{Action, Payload, Value, ValueExt};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_director::{DirectorAction, DirectorActionName};
 use tornado_executor_icinga2::Icinga2Action;
@@ -20,15 +20,21 @@ pub struct SimpleCreateAndProcess {
 }
 
 impl SimpleCreateAndProcess {
-    pub fn new(payload: &Payload) -> Result<SimpleCreateAndProcess, ExecutorError> {
-        serde_json::to_value(payload).and_then(serde_json::from_value).map_err(|err| {
-            ExecutorError::ConfigurationError {
+    pub fn new(action: &Action) -> Result<Self, ExecutorError> {
+        let mut scap: Self = serde_json::to_value(&action.payload)
+            .and_then(serde_json::from_value)
+            .map_err(|err| ExecutorError::ConfigurationError {
                 message: format!(
                     "Invalid SimpleCreateAndProcess Action configuration. Err: {:?}",
                     err
                 ),
-            }
-        })
+            })?;
+
+        let created_ms = action.created_ms as f32 / 1000.0;
+        scap.check_result.entry("execution_start").or_insert(json!(created_ms));
+        scap.check_result.entry("execution_end").or_insert(json!(created_ms));
+
+        Ok(scap)
     }
 
     // Transforms the SimpleCreateAndProcess into the actions needed to call the IcingaExecutor and the
@@ -134,7 +140,7 @@ impl SimpleCreateAndProcess {
 }
 
 #[cfg(test)]
-mod test {
+pub mod test {
 
     use super::*;
     use maplit::*;
@@ -155,7 +161,7 @@ mod test {
             )),
         );
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -184,7 +190,7 @@ mod test {
         );
         action.payload.insert("service".to_owned(), Value::Object(Map::new()));
 
-        let mut monitoring_action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let mut monitoring_action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Act
         let result = monitoring_action.build_sub_actions();
@@ -207,14 +213,17 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action =
-            serde_json::from_str(&json).unwrap();
+        let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Assert
         assert!(action.service.is_none());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
     }
 
     #[test]
@@ -224,14 +233,39 @@ mod test {
             "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
-        let action: tornado_engine_matcher::config::rule::Action =
-            serde_json::from_str(&json).unwrap();
+        let action = serde_json::from_str(&json).unwrap();
 
         // Act
-        let action = SimpleCreateAndProcess::new(&action.payload).unwrap();
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
 
         // Assert
         assert!(action.service.is_some());
+        assert!(
+            action.check_result.get("execution_start").unwrap().as_f64().unwrap() > 123.0
+                && action.check_result.get("execution_start").unwrap().as_f64().unwrap() < 124.0
+        );
+    }
+
+    #[test]
+    fn should_parse_a_simple_create_and_process_action_without_add_execution_start_end_if_present()
+    {
+        // Arrange
+        let filename =
+            "./tests_resources/simple_create_and_or_process_passive_check_result_host_with_execution_start.json";
+        let json = std::fs::read_to_string(filename)
+            .expect(&format!("Unable to open the file [{}]", filename));
+        let action: Action = serde_json::from_str(&json).unwrap();
+
+        // Act
+        let action = SimpleCreateAndProcess::new(&action).unwrap();
+
+        // Assert
+        assert!(action.service.is_none());
+        assert_eq!(
+            action.check_result.get("execution_start").unwrap().as_i64().unwrap(),
+            1650963718
+        );
+        assert_eq!(action.check_result.get("execution_end").unwrap().as_i64().unwrap(), 1650963719);
     }
 
     #[test]
@@ -239,27 +273,22 @@ mod test {
         // Arrange
         let filename_full = "./tests_resources/monitoring_host_01_full.json";
         let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
-
         let monitoring_action_full: MonitoringHostData = serde_json::from_str(
             &std::fs::read_to_string(filename_full)
                 .expect(&format!("Unable to open the file [{}]", filename_full)),
         )
         .unwrap();
-
-        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
+        let action_simple: Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
                 .expect(&format!("Unable to open the file [{}]", filename_simple)),
         )
         .unwrap();
-
         // Act
         let sub_actions_full = monitoring_action_full.to_sub_actions();
-
-        let mut monitoring_action_simple =
-            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
+        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
         let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
         // Assert
-        assert_eq!(sub_actions_full, sub_actions_simple)
+        compare_actions_discard_execution_start_execution_end(sub_actions_full, sub_actions_simple)
     }
 
     #[test]
@@ -267,27 +296,36 @@ mod test {
         // Arrange
         let filename_full = "./tests_resources/monitoring_service_01_full.json";
         let filename_simple = "./tests_resources/monitoring_service_01_simple.json";
-
         let monitoring_action_full: MonitoringServiceData = serde_json::from_str(
             &std::fs::read_to_string(filename_full)
                 .expect(&format!("Unable to open the file [{}]", filename_full)),
         )
         .unwrap();
-
-        let action_simple: tornado_engine_matcher::config::rule::Action = serde_json::from_str(
+        let action_simple: Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
                 .expect(&format!("Unable to open the file [{}]", filename_simple)),
         )
         .unwrap();
-
         // Act
         let sub_actions_full = monitoring_action_full.to_sub_actions();
-
-        let mut monitoring_action_simple =
-            SimpleCreateAndProcess::new(&action_simple.payload).unwrap();
+        let mut monitoring_action_simple = SimpleCreateAndProcess::new(&action_simple).unwrap();
         let sub_actions_simple = monitoring_action_simple.build_sub_actions().unwrap();
         // Assert
-        assert_eq!(sub_actions_full, sub_actions_simple)
+        compare_actions_discard_execution_start_execution_end(sub_actions_full, sub_actions_simple)
+    }
+
+    pub fn compare_actions_discard_execution_start_execution_end(
+        actions_1: (Icinga2Action, DirectorAction, Option<DirectorAction>),
+        actions_2: (Icinga2Action, DirectorAction, Option<DirectorAction>),
+    ) {
+        assert!(actions_1.0.payload.unwrap().iter().all(|(key, value)| key.eq("execution_start")
+            || key.eq("execution_end")
+            || value == actions_2.0.payload.unwrap().get(key).unwrap()));
+        assert!(actions_2.0.payload.unwrap().iter().all(|(key, value)| key.eq("execution_start")
+            || key.eq("execution_end")
+            || value == actions_1.0.payload.unwrap().get(key).unwrap()));
+        assert_eq!(actions_1.1, actions_2.1);
+        assert_eq!(actions_1.2, actions_2.2);
     }
 
     #[derive(Debug, PartialEq, Deserialize)]

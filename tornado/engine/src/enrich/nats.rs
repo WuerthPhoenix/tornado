@@ -51,7 +51,7 @@ impl NatsExtractor {
 
 #[cfg(test)]
 mod test {
-    
+
     use crate::enrich::nats::NatsExtractor;
     use regex::Regex;
     use serde_json::json;
@@ -71,7 +71,10 @@ mod test {
         let event = extractor.process("MY.TENANT_ID.tornado.events", original_event).unwrap();
 
         // Assert
-        let tenant_id = event.metadata().and_then(|val| val.get_from_map("tenant_id")).and_then(|val| val.get_text());
+        let tenant_id = event
+            .metadata()
+            .and_then(|val| val.get_from_map("tenant_id"))
+            .and_then(|val| val.get_text());
         assert_eq!(Some("MY.TENANT_ID"), tenant_id);
     }
 
@@ -91,7 +94,10 @@ mod test {
         // Assert
         assert_eq!(original_event, event);
 
-        let tenant_id = event.metadata().and_then(|val| val.get_from_map("tenant_id")).and_then(|val| val.get_text());
+        let tenant_id = event
+            .metadata()
+            .and_then(|val| val.get_from_map("tenant_id"))
+            .and_then(|val| val.get_text());
         assert!(tenant_id.is_none());
     }
 }

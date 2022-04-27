@@ -1,6 +1,6 @@
-use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
+use crate::{accessor::Accessor, model::InternalEvent};
 use tornado_common_api::{cow_to_str, Value};
 
 const OPERATOR_NAME: &str = "contains";
@@ -82,8 +82,14 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!(
+            "one",
+            operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
+        assert_eq!(
+            "two",
+            operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
     }
 
     #[test]
@@ -201,15 +207,10 @@ mod test {
             AccessorBuilder::new()
                 .build_from_value(
                     "",
-                    &Value::Array(vec![
-                        Value::String("two or one".to_owned()),
-                        json!(999),
-                    ]),
+                    &Value::Array(vec![Value::String("two or one".to_owned()), json!(999)]),
                 )
                 .unwrap(),
-            AccessorBuilder::new()
-                .build_from_value("", &json!(999))
-                .unwrap(),
+            AccessorBuilder::new().build_from_value("", &json!(999)).unwrap(),
         )
         .unwrap();
 
@@ -233,10 +234,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "array".to_owned(),
-            Value::Array(vec![
-                Value::String("two or one".to_owned()),
-                json!(999),
-            ]),
+            Value::Array(vec![Value::String("two or one".to_owned()), json!(999)]),
         );
         event.payload.insert("value".to_owned(), Value::String("two or one".to_owned()));
 
@@ -258,10 +256,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "array".to_owned(),
-            Value::Array(vec![
-                Value::String("two or one".to_owned()),
-                json!(999),
-            ]),
+            Value::Array(vec![Value::String("two or one".to_owned()), json!(999)]),
         );
         event.payload.insert("value".to_owned(), Value::String("two or one or three".to_owned()));
 

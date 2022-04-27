@@ -1,7 +1,7 @@
 use crate::accessor::{Accessor, AccessorBuilder};
 use crate::config::rule::Modifier;
 use crate::error::MatcherError;
-use crate::model::{InternalEvent};
+use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
 use log::*;
 use serde_json::Value;
@@ -91,13 +91,7 @@ impl ValueModifier {
                 replace::replace_all(variable_name, value, find, replace, event)
             }
             ValueModifier::ReplaceAllRegex { find_regex, replace } => {
-                replace::replace_all_with_regex(
-                    variable_name,
-                    value,
-                    find_regex,
-                    replace,
-                    event,
-                )
+                replace::replace_all_with_regex(variable_name, value, find_regex, replace, event)
             }
             ValueModifier::ToNumber => number::to_number(variable_name, value),
             ValueModifier::Trim => trim::trim(variable_name, value),
@@ -136,7 +130,6 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-
     }
 
     #[test]
@@ -150,7 +143,6 @@ mod test {
 
         // Assert
         assert_eq!(2, value_modifiers.len());
-
     }
 
     #[test]
@@ -165,8 +157,8 @@ mod test {
         // Assert
         assert_eq!(1, value_modifiers.len());
         match &value_modifiers[0] {
-            ValueModifier::ToNumber => {},
-            _ => assert!(false)
+            ValueModifier::ToNumber => {}
+            _ => assert!(false),
         }
     }
 
@@ -186,11 +178,10 @@ mod test {
         // Assert
         assert_eq!(1, value_modifiers.len());
         match &value_modifiers[0] {
-            ValueModifier::ReplaceAll {find, replace: _ } => {
+            ValueModifier::ReplaceAll { find, replace: _ } => {
                 assert_eq!("some", find);
-
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -211,13 +202,16 @@ mod test {
         // Assert
         assert_eq!(1, value_modifiers.len());
         match &value_modifiers[0] {
-            ValueModifier::Map {mapping, default_value } => {
-                assert_eq!(mapping, &hashmap!(
-                    "0".to_owned() => "David Gilmour".to_owned(),
-                ));
+            ValueModifier::Map { mapping, default_value } => {
+                assert_eq!(
+                    mapping,
+                    &hashmap!(
+                        "0".to_owned() => "David Gilmour".to_owned(),
+                    )
+                );
                 assert_eq!(default_value, &Some("Keith Richards".to_owned()));
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -237,11 +231,10 @@ mod test {
         // Assert
         assert_eq!(1, value_modifiers.len());
         match &value_modifiers[0] {
-            ValueModifier::ReplaceAllRegex {find_regex, replace: _ } => {
+            ValueModifier::ReplaceAllRegex { find_regex, replace: _ } => {
                 assert_eq!(&RegexWrapper::new("./*").unwrap(), find_regex);
-
-            },
-            _ => assert!(false)
+            }
+            _ => assert!(false),
         }
     }
 
@@ -354,7 +347,9 @@ mod test {
 
         {
             let mut input = Value::String("something".to_owned());
-            assert!(value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).is_err());
+            assert!(value_modifier
+                .apply("", &mut input, &(&event, &mut Value::Null).into())
+                .is_err());
         }
     }
 

@@ -1,10 +1,12 @@
 {
   "trace_id": "123478965132198744",
   "id": "foreach",
+  "created_ms": 123456,
   "payload": {
     "actions": [
       {
         "id": "elasticsearch",
+        "created_ms": 123456,
         "payload": {
           "data": {
             "message": "${item}"
