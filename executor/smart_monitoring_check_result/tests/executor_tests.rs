@@ -18,7 +18,7 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
 
     let icinga_mock = icinga_server.mock(|when, then| {
         when.method(POST).path("/v1/actions/process-check-result");
-        then.status(500);
+        then.status(500).body("{\"results\":[{\"code\":503.0,\"status\":\"Error during process check result on object 'myhost'.\"}]}");
     });
 
     let config = SmartMonitoringCheckResultConfig {
@@ -83,7 +83,7 @@ async fn should_return_ok_if_process_check_result_is_successful() {
 
     let icinga_mock = icinga_server.mock(|when, then| {
         when.method(POST).path("/v1/actions/process-check-result");
-        then.status(201);
+        then.status(200).body("{\"results\":[{\"code\":200.0,\"status\":\"Successfully processed check result for object 'myhost'.\"}]}");
     });
 
     let config = SmartMonitoringCheckResultConfig {

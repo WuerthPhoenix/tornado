@@ -30,7 +30,7 @@ impl SimpleCreateAndProcess {
                 ),
             })?;
 
-        let created_ms = action.created_ms as f32 / 1000.0;
+        let created_ms = action.created_ms as f64 / 1000.0;
         scap.check_result.entry("execution_start").or_insert(json!(created_ms));
         scap.check_result.entry("execution_end").or_insert(json!(created_ms));
 

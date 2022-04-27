@@ -346,7 +346,7 @@ mod test {
 
         mock_server.mock(|when, then| {
             when.method(POST).path("/v1/actions/process-check-result");
-            then.status(200);
+            then.status(200).body("{\"results\":[{\"code\":200.0,\"status\":\"Successfully processed check result for object 'myhost'.\"}]}");
         });
 
         let executor = SmartMonitoringExecutor::new(
@@ -543,7 +543,7 @@ mod test {
 
         mock_server.mock(|when, then| {
             when.method(POST).path("/v1/actions/process-check-result");
-            then.status(200);
+            then.status(200).body("{\"results\":[{\"code\":200.0,\"status\":\"Successfully processed check result for object 'myhost'.\"}]}");
         });
 
         let executor = SmartMonitoringExecutor::new(
