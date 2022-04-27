@@ -6,8 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
+use tornado_common_api::Action;
 use tornado_common_api::Payload;
-use tornado_common_api::{Action, ValueExt};
 use tornado_executor_common::{ExecutorError, StatelessExecutor};
 use tracing::instrument;
 
@@ -81,7 +81,7 @@ impl Icinga2Executor {
 
         let icinga2_action_response: Icinga2ActionResponse =
             response.response.json().await.map_err(|err| {
-                match to_err_data(method, &url, payload) {
+                match to_err_data(method, &url, payload, &[]) {
                     Ok(data) => ExecutorError::ActionExecutionError {
                         can_retry: true,
                         message: format!(
@@ -95,10 +95,12 @@ impl Icinga2Executor {
                 }
             })?;
 
+        let tags = icinga2_action_response.get_tags();
         let handle_response_params = HandleResponseParams {
             payload,
             method,
             url: &url,
+            tags: &tags.as_slice(),
             response_status,
             response: &icinga2_action_response,
         };
@@ -128,19 +130,18 @@ impl Icinga2Executor {
                 "Icinga2Executor - Icinga2 API returned a recoverable error. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?
             ),
             code: None,
-            data: to_err_data(params.method, params.url, params.payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload, params.tags)?.into()
         })
     }
 
     fn handle_unrecoverable_error(params: HandleResponseParams) -> Result<(), ExecutorError> {
-        params.response.log_unrecoverable_errors()?;
         Err(ExecutorError::ActionExecutionError {
             can_retry: false,
             message: format!(
                 "Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?
             ),
             code: None,
-            data: to_err_data(params.method, params.url, params.payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload, params.tags)?.into()
         })
     }
 
@@ -149,7 +150,7 @@ impl Icinga2Executor {
             message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", params.response_status, serde_json::to_string(params.response)?),
             can_retry: true,
             code: Some(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE),
-            data: to_err_data(params.method, params.url, params.payload)?.into()
+            data: to_err_data(params.method, params.url, params.payload, params.tags)?.into()
         })
     }
 }
@@ -158,6 +159,7 @@ struct HandleResponseParams<'a> {
     payload: &'a Option<&'a Payload>,
     method: &'a str,
     url: &'a str,
+    tags: &'a [&'a str],
     response_status: StatusCode,
     response: &'a Icinga2ActionResponse,
 }
@@ -214,11 +216,11 @@ impl Icinga2ActionResponse {
         }
     }
 
-    fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
+    fn get_tags(&self) -> Vec<&str> {
         match &self {
-            // Currently no "global" error is considered as unrecoverable
-            Icinga2ActionResponse::ErrorResponse(_body) => Ok(()),
-            Icinga2ActionResponse::OkResponse(body) => body.log_unrecoverable_errors(),
+            // Currently we have to tags for "global" errors
+            Icinga2ActionResponse::ErrorResponse(_body) => vec![],
+            Icinga2ActionResponse::OkResponse(body) => body.get_error_tags(),
         }
     }
 }
@@ -242,13 +244,14 @@ impl ResultsBody {
         all_results_are_success || any_error_is_recoverable
     }
 
-    fn log_unrecoverable_errors(&self) -> Result<(), ExecutorError> {
+    fn get_error_tags(&self) -> Vec<&str> {
+        let mut tags = vec![];
         for result in &self.results {
-            if !result.is_recoverable() {
-                error!("Unrecoverable error encountered: {}", result.to_log_message()?);
+            if let Some(tag) = result.get_tag() {
+                tags.push(tag);
             }
         }
-        Ok(())
+        tags
     }
 }
 
@@ -268,27 +271,17 @@ impl Icinga2Result {
         !self.is_discarded_process_check_result()
     }
 
+    pub fn get_tag(&self) -> Option<&str> {
+        if self.is_discarded_process_check_result() {
+            Some("DISCARDED_PROCESS_CHECK_RESULT")
+        } else {
+            None
+        }
+    }
+
     pub fn is_discarded_process_check_result(&self) -> bool {
         (self.code as u16) == ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_CODE
             && self.status.contains(ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_STATUS)
-    }
-
-    pub fn to_log_message(&self) -> Result<String, ExecutorError> {
-        let tag = if self.is_discarded_process_check_result() {
-            "DISCARDED_PROCESS_CHECK_RESULT".to_string()
-        } else {
-            "".to_string()
-        };
-        let result_value = serde_json::to_value(self)?;
-        let mut message_object = Value::Object(Map::new());
-        message_object
-            .get_map_mut()
-            .map(|map| {
-                map.insert("tag".to_string(), serde_json::Value::String(tag));
-                map.insert("content".to_string(), result_value);
-            })
-            .ok_or(ExecutorError::JsonError { cause: "".to_string() })?;
-        serde_json::to_string(&message_object).map_err(|err| err.into())
     }
 }
 
@@ -296,11 +289,13 @@ fn to_err_data(
     method: &str,
     url: &str,
     payload: &Option<&Payload>,
+    tags: &[&str],
 ) -> Result<HashMap<&'static str, Value>, ExecutorError> {
     let mut data = HashMap::<&'static str, Value>::default();
     data.insert("method", method.into());
     data.insert("url", url.into());
     data.insert("payload", serde_json::to_value(payload)?);
+    data.insert("tags", tags.into());
     Ok(data)
 }
 
@@ -523,7 +518,7 @@ mod test {
     }
 
     #[test]
-    fn icinga2_result_should_return_log_message() {
+    fn icinga2_result_should_return_tag() {
         // Arrange
         let result = Icinga2Result {
             code: 409.0,
@@ -533,15 +528,14 @@ mod test {
         };
 
         // Act
-        let message = result.to_log_message().unwrap();
+        let tag = result.get_tag().unwrap();
 
         // Assert
-        let expected = r#"{"content":{"code":409.0,"status":"Newer check result already present. Check result for 'myhost' was discarded."},"tag":"DISCARDED_PROCESS_CHECK_RESULT"}"#;
-        assert_eq!(message, expected);
+        assert_eq!(tag, "DISCARDED_PROCESS_CHECK_RESULT");
     }
 
     #[test]
-    fn icinga2_result_should_return_log_message_with_empty_tag_for_unknown_error() {
+    fn icinga2_result_should_return_no_tag_for_unknown_error() {
         // Arrange
         let result = Icinga2Result {
             code: 500.0,
@@ -550,11 +544,10 @@ mod test {
         };
 
         // Act
-        let message = result.to_log_message().unwrap();
+        let message = result.get_tag();
 
         // Assert
-        let expected = r#"{"content":{"code":500.0,"status":"Internal server error."},"tag":""}"#;
-        assert_eq!(message, expected);
+        assert!(message.is_none());
     }
 
     #[test]
