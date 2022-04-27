@@ -126,6 +126,7 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
 
     // Assert
     assert!(result.is_err());
+    let tags: &[&str] = &[];
     assert_eq!(result, Err(ExecutorError::ActionExecutionError {
         message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response),
         can_retry: true,
@@ -133,7 +134,8 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
         data: hashmap! {
             "method" => "POST".into(),
             "url" => format!("{}/v1/actions/icinga2-api-action", server.url("")).into(),
-            "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap()
+            "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap(),
+            "tags" => serde_json::to_value(tags).unwrap()
         }.into(),
     }))
 }
@@ -183,6 +185,7 @@ async fn should_return_non_retryable_error_in_case_of_outdated_process_check_res
             "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap(),
             "method" => "POST".into(),
             "url" => format!("{}/v1/actions/process-check-result", server.url("")).into(),
+            "tags" => serde_json::to_value(&["DISCARDED_PROCESS_CHECK_RESULT"]).unwrap()
         }.into(),
     }))
 }
