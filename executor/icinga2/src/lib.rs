@@ -213,7 +213,7 @@ impl Icinga2ActionResponse {
         match &self {
             Icinga2ActionResponse::ErrorResponse(_body) => true,
             Icinga2ActionResponse::OkResponse(body) => {
-                body.results.iter().any(|res| (res.code as u64) >= 300 || (res.code as u64) < 200)
+                body.results.iter().any(|res| !res.is_successful())
             }
         }
     }
@@ -248,11 +248,10 @@ pub struct ResultsBody {
 
 impl ResultsBody {
     fn is_recoverable(&self) -> bool {
-        let mut error_results =
-            self.results.iter().filter(|result| !result.is_successful()).peekable();
-        let all_results_are_success = error_results.peek().is_none();
-        let any_error_is_recoverable = error_results.all(|result| result.is_recoverable());
-        all_results_are_success || any_error_is_recoverable
+        self.results
+            .iter()
+            .filter(|result| !result.is_successful())
+            .all(|result| result.is_recoverable())
     }
 
     fn get_error_tags(&self) -> Vec<&str> {
@@ -650,7 +649,7 @@ mod test {
     }
 
     #[test]
-    fn results_body_should_return_unrecoverable_if_all_results_are_recoverable_errors() {
+    fn results_body_should_return_unrecoverable_if_all_results_are_unrecoverable_errors() {
         // Arrange
         let results_body = ResultsBody {
             results: vec![Icinga2Result {
@@ -670,7 +669,7 @@ mod test {
     }
 
     #[test]
-    fn results_body_should_return_unrecoverable_if_all_results_are_recoverable_errors_and_successes(
+    fn results_body_should_return_unrecoverable_if_all_results_are_unrecoverable_errors_and_successes(
     ) {
         // Arrange
         let results_body = ResultsBody {
