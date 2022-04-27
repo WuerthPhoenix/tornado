@@ -121,33 +121,23 @@ impl StatelessExecutor for ForEachExecutor {
 }
 
 fn to_action(value: &Value, action_created_ms: u64) -> Result<Action, ExecutorError> {
-    match value {
-        Value::Object(action) => match action.get(FOREACH_ACTION_ID_KEY) {
-            Some(Value::String(id)) => match action.get(FOREACH_ACTION_PAYLOAD_KEY) {
-                Some(Value::Object(payload)) => Ok(Action::new_with_payload_and_created_ms(
-                    id.to_owned(),
-                    payload.clone(),
-                    action_created_ms,
-                )),
-                _ => {
-                    let message =
-                        "ForEachExecutor - Not valid action format: Missing payload.".to_owned();
-                    warn!("{}", message);
-                    Err(ExecutorError::MissingArgumentError { message })
-                }
-            },
-            _ => {
-                let message = "ForEachExecutor - Not valid action format: Missing id.".to_owned();
-                warn!("{}", message);
-                Err(ExecutorError::MissingArgumentError { message })
-            }
-        },
-        _ => {
-            let message = "ForEachExecutor - Not valid action format".to_owned();
-            warn!("{}", message);
-            Err(ExecutorError::MissingArgumentError { message })
+    let message = match (value.get(FOREACH_ACTION_ID_KEY), value.get(FOREACH_ACTION_PAYLOAD_KEY)) {
+        (Some(Value::String(id)), Some(Value::Object(payload))) => {
+            return Ok(Action::new_with_payload_and_created_ms(
+                id.to_owned(),
+                payload.clone(),
+                action_created_ms,
+            ))
         }
-    }
+        (Some(Value::String(_)), _) => {
+            "ForEachExecutor - Not valid action format: Missing payload."
+        }
+        (_, Some(Value::Object(_))) => "ForEachExecutor - Not valid action format: Missing id.",
+        _ => "ForEachExecutor - Not valid action format",
+    };
+
+    warn!("{}", message);
+    Err(ExecutorError::MissingArgumentError { message: message.to_owned() })
 }
 
 fn resolve_action(item: &Value, mut action: Action) -> Result<Action, ExecutorError> {
