@@ -35,9 +35,11 @@ async fn should_setup_logger_with_env_filter() -> Result<(), std::io::Error> {
     // The retry loop with a sleep of 0,5 sec is needed because in the CI this test could fail.
     // The problem is that the logs buffer could not be flushed yet when we search for them in the
     // log file.
-    for _ in 1 .. 30 {
+    for _ in 1..30 {
         let log_content = std::fs::read_to_string(path).unwrap();
-        if log_content.contains("main - this is info") && !log_content.contains("main - this is debug") {
+        if log_content.contains("main - this is info")
+            && !log_content.contains("main - this is debug")
+        {
             found = true;
             break;
         }

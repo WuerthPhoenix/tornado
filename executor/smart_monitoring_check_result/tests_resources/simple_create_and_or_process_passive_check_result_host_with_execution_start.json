@@ -3,6 +3,8 @@
   "created_ms": 123456,
   "payload": {
     "check_result": {
+      "execution_start": 1650963718,
+      "execution_end": 1650963719,
       "exit_status": 2,
       "plugin_output": "Something Went Wrong",
       "performance_data": "blablabla | 1,2,3"
@@ -12,10 +14,6 @@
       "address": "127.0.0.2",
       "imports": "my_host_template",
       "vars": {}
-    },
-    "service": {
-      "object_name": "my_service",
-      "imports": "my_service_template"
     }
   }
 }

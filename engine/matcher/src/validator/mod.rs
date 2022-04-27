@@ -103,10 +103,10 @@ impl MatcherConfigValidator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::rule::{Action, Constraint, Extractor, ExtractorRegex, Operator};
+    use crate::config::rule::{ConfigAction, Constraint, Extractor, ExtractorRegex, Operator};
     use crate::config::Defaultable;
-    use std::collections::HashMap;
     use serde_json::Map;
+    use std::collections::HashMap;
     use tornado_common_api::Value;
 
     #[test]
@@ -283,7 +283,7 @@ mod test {
         };
         let mut rule_1 = new_rule("rule_name", op.clone());
 
-        rule_1.actions.push(Action {
+        rule_1.actions.push(ConfigAction {
             id: "id.with.dot.and.question.mark?".to_owned(),
             payload: Map::new(),
         });

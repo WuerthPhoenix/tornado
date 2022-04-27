@@ -1,5 +1,5 @@
 use crate::action::SimpleCreateAndProcess;
-use tornado_common_api::{Payload, Value};
+use tornado_common_api::{Action, Payload, Value};
 use tornado_executor_common::ExecutorError;
 use tornado_executor_monitoring::MonitoringAction;
 
@@ -46,7 +46,7 @@ pub fn migrate_from_monitoring(input: &Payload) -> Result<Payload, ExecutorError
     }
 
     // Verify the generated payload is valid
-    SimpleCreateAndProcess::new(&output)?;
+    SimpleCreateAndProcess::new(&Action::new_with_payload_and_created_ms("", output.clone(), 0))?;
 
     Ok(output)
 }
@@ -60,9 +60,9 @@ fn remove_entries(payload: &mut Payload) {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
-    use tornado_engine_matcher::config::rule::Action;
+    use crate::action::test::compare_actions_discard_execution_start_execution_end;
+    use tornado_engine_matcher::config::rule::ConfigAction;
 
     #[test]
     fn test_before_and_after_migration() {
@@ -91,8 +91,10 @@ mod test {
 
         // Act
         let migrated_payload = migrate_from_monitoring(&source_action.payload).unwrap();
-        let migrated_action =
-            Action { id: "smart_monitoring_check_result".to_owned(), payload: migrated_payload };
+        let migrated_action = ConfigAction {
+            id: "smart_monitoring_check_result".to_string(),
+            payload: migrated_payload.clone(),
+        };
 
         // Assert
         assert_eq!(dest_action, migrated_action);
@@ -102,15 +104,22 @@ mod test {
                 &source_action.payload,
             )
             .unwrap();
+        let smart_monitoring_action = Action {
+            id: "smart_monitoring_check_result".to_string(),
+            payload: migrated_payload,
+            created_ms: 1650643471000,
+        };
         let mut smart_monitoring_action =
-            SimpleCreateAndProcess::new(&migrated_action.payload).unwrap();
-        assert_eq!(
-            monitoring_action.to_sub_actions().unwrap(),
-            smart_monitoring_action.build_sub_actions().unwrap()
+            SimpleCreateAndProcess::new(&smart_monitoring_action).unwrap();
+        let monitoring_sub_actions = monitoring_action.to_sub_actions().unwrap();
+        let smart_monitoring_sub_actions = smart_monitoring_action.build_sub_actions().unwrap();
+        compare_actions_discard_execution_start_execution_end(
+            monitoring_sub_actions,
+            smart_monitoring_sub_actions,
         );
     }
 
-    fn to_action(filename: &str) -> Action {
+    fn to_action(filename: &str) -> ConfigAction {
         let json = std::fs::read_to_string(filename)
             .expect(&format!("Unable to open the file [{}]", filename));
         serde_json::from_str(&json).unwrap()

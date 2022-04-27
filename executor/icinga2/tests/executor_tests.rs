@@ -126,6 +126,7 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
 
     // Assert
     assert!(result.is_err());
+    let tags: &[&str] = &[];
     assert_eq!(result, Err(ExecutorError::ActionExecutionError {
         message: format!("Icinga2Executor - Icinga2 API returned an error, object seems to be not existing in Icinga2. Response status: {}. Response body: {}", "404 Not Found", server_response),
         can_retry: true,
@@ -133,7 +134,58 @@ async fn should_return_object_not_existing_error_in_case_of_404_status_code() {
         data: hashmap! {
             "method" => "POST".into(),
             "url" => format!("{}/v1/actions/icinga2-api-action", server.url("")).into(),
-            "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap()
+            "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap(),
+            "tags" => serde_json::to_value(tags).unwrap()
+        }.into(),
+    }))
+}
+
+#[tokio::test]
+async fn should_return_non_retryable_error_in_case_of_outdated_process_check_result() {
+    // Arrange
+    let server = MockServer::start();
+    let server_response = r#"{"results":[{"code":409.0,"status":"Newer check result already present. Check result for 'my_service' was discarded."}]}"#;
+
+    server.mock(|when, then| {
+        when.method(POST).path("/v1/actions/process-check-result");
+        then.body(server_response).status(500);
+    });
+
+    let executor = Icinga2Executor::new(Icinga2ClientConfig {
+        timeout_secs: None,
+        username: "".to_owned(),
+        password: "".to_owned(),
+        disable_ssl_verification: true,
+        server_api_url: server.url(""),
+    })
+    .unwrap();
+
+    let mut action = Action::new("");
+    action.payload.insert(
+        ICINGA2_ACTION_NAME_KEY.to_owned(),
+        Value::String("process-check-result".to_owned()),
+    );
+    action.payload.insert(
+        ICINGA2_ACTION_PAYLOAD_KEY.to_owned(),
+        json!(hashmap![
+            "filter".to_owned() => Value::String("my_service".to_owned()),
+        ]),
+    );
+
+    // Act
+    let result = executor.execute(action.clone().into()).await;
+
+    // Assert
+    assert!(result.is_err());
+    assert_eq!(result, Err(ExecutorError::ActionExecutionError {
+        message: format!("Icinga2Executor - Icinga2 API returned an unrecoverable error. Response status: {}. Response body: {}", "500 Internal Server Error", server_response),
+        can_retry: false,
+        code: None,
+        data: hashmap! {
+            "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap(),
+            "method" => "POST".into(),
+            "url" => format!("{}/v1/actions/process-check-result", server.url("")).into(),
+            "tags" => serde_json::to_value(&["DISCARDED_PROCESS_CHECK_RESULT"]).unwrap()
         }.into(),
     }))
 }

@@ -1,4 +1,7 @@
-use crate::auth::{roles_contain_any_permission, AuthService, Permission, FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, JWT_TOKEN_HEADER_SUFFIX, AuthContextTrait, WithOwner};
+use crate::auth::{
+    roles_contain_any_permission, AuthContextTrait, AuthService, Permission, WithOwner,
+    FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, JWT_TOKEN_HEADER_SUFFIX,
+};
 use crate::error::ApiError;
 use actix_web::HttpRequest;
 use log::*;
@@ -143,8 +146,8 @@ impl AuthServiceV2 {
 pub mod test {
 
     use super::*;
+    use actix_web::http::header;
     use actix_web::test::TestRequest;
-    use actix_web::{http::header};
     use tornado_engine_api_dto::auth::UserPreferences;
     use tornado_engine_api_dto::auth_v2::Authorization;
 
@@ -362,20 +365,24 @@ pub mod test {
 
         // Assert
         let mut auths = HashMap::new();
-        auths.insert("tenantA1".to_owned(),
-                     Authorization {
-                         path: vec!["root".to_owned()],
-                         roles: vec![
-                             "view".to_owned(),
-                             "edit".to_owned(),
-                             "test_event_execute_actions".to_owned(),
-                         ],
-                     });
-        auths.insert("tenantA2".to_owned(),
-                     Authorization {
-                         path: vec!["root".to_owned(), "filter2".to_owned(), "tenantA".to_owned()],
-                         roles: vec!["view".to_owned(), "test_event_execute_actions".to_owned()],
-                     });
+        auths.insert(
+            "tenantA1".to_owned(),
+            Authorization {
+                path: vec!["root".to_owned()],
+                roles: vec![
+                    "view".to_owned(),
+                    "edit".to_owned(),
+                    "test_event_execute_actions".to_owned(),
+                ],
+            },
+        );
+        auths.insert(
+            "tenantA2".to_owned(),
+            Authorization {
+                path: vec!["root".to_owned(), "filter2".to_owned(), "tenantA".to_owned()],
+                roles: vec!["view".to_owned(), "test_event_execute_actions".to_owned()],
+            },
+        );
         let expected = AuthHeaderV2 {
             user: "mario".to_string(),
             auths,
@@ -413,11 +420,10 @@ pub mod test {
     #[test]
     fn auth_from_request_should_build_auth_from_http_request() {
         let mut auths = HashMap::new();
-        auths.insert("auth1".to_owned(),
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["view".to_owned()],
-                        });
+        auths.insert(
+            "auth1".to_owned(),
+            Authorization { path: vec!["root".to_owned()], roles: vec!["view".to_owned()] },
+        );
         // Arrange
         let permission_map = permission_map();
         let auth_service = AuthServiceV2::new(Arc::new(permission_map.clone()));

@@ -4,8 +4,8 @@ use crate::matcher::operator::Operator;
 use crate::model::InternalEvent;
 use log::*;
 use serde_json::Value;
-use tornado_common_api::ValueExt;
 use std::borrow::Borrow;
+use tornado_common_api::ValueExt;
 
 const OPERATOR_NAME: &str = "containsIgnoreCase";
 
@@ -36,8 +36,9 @@ impl Operator for ContainsIgnoreCase {
                         let option_first = self.first.get(event);
                         match option_first {
                             Some(first_arg_value) => match first_arg_value.borrow() {
-                                Value::String(first_arg_string) => (first_arg_string.to_lowercase())
-                                    .contains(&second_arg_lowercased),
+                                Value::String(first_arg_string) => (first_arg_string
+                                    .to_lowercase())
+                                .contains(&second_arg_lowercased),
                                 Value::Array(first_arg_array) => {
                                     first_arg_array.iter().any(|arr_el| {
                                         arr_el
@@ -95,8 +96,14 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!(
+            "one",
+            operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
+        assert_eq!(
+            "two",
+            operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
     }
 
     #[test]
@@ -255,15 +262,10 @@ mod test {
             AccessorBuilder::new()
                 .build_from_value(
                     "",
-                    &Value::Array(vec![
-                        Value::String("two or one".to_owned()),
-                        json!(999),
-                    ]),
+                    &Value::Array(vec![Value::String("two or one".to_owned()), json!(999)]),
                 )
                 .unwrap(),
-            AccessorBuilder::new()
-                .build_from_value("", &json!(999))
-                .unwrap(),
+            AccessorBuilder::new().build_from_value("", &json!(999)).unwrap(),
         )
         .unwrap();
 
@@ -296,10 +298,7 @@ mod test {
             AccessorBuilder::new()
                 .build_from_value(
                     "",
-                    &Value::Array(vec![
-                        Value::String("two or ONE".to_owned()),
-                        json!(999),
-                    ]),
+                    &Value::Array(vec![Value::String("two or ONE".to_owned()), json!(999)]),
                 )
                 .unwrap(),
             AccessorBuilder::new()
@@ -328,10 +327,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "array".to_owned(),
-            Value::Array(vec![
-                Value::String("tWo or oNE".to_owned()),
-                json!(999),
-            ]),
+            Value::Array(vec![Value::String("tWo or oNE".to_owned()), json!(999)]),
         );
         event.payload.insert("value".to_owned(), Value::String("TWo or one".to_owned()));
 
@@ -353,10 +349,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert(
             "array".to_owned(),
-            Value::Array(vec![
-                Value::String("two or one".to_owned()),
-                json!(999),
-            ]),
+            Value::Array(vec![Value::String("two or one".to_owned()), json!(999)]),
         );
         event.payload.insert("value".to_owned(), Value::String("two or one or three".to_owned()));
 

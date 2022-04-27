@@ -1,8 +1,8 @@
-use crate::{accessor::Accessor, model::InternalEvent};
 use crate::error::MatcherError;
 use crate::matcher::operator::Operator;
+use crate::{accessor::Accessor, model::InternalEvent};
 use std::cmp::Ordering;
-use tornado_common_api::{partial_cmp_option_cow_value};
+use tornado_common_api::partial_cmp_option_cow_value;
 
 const OPERATOR_NAME: &str = "lt";
 
@@ -25,9 +25,7 @@ impl Operator for LessThan {
     }
 
     fn evaluate(&self, event: &InternalEvent) -> bool {
-        let cmp = partial_cmp_option_cow_value(&self.first.get(event), || {
-            self.second.get(event)
-        });
+        let cmp = partial_cmp_option_cow_value(&self.first.get(event), || self.second.get(event));
         cmp == Some(Ordering::Less)
     }
 }
@@ -59,8 +57,14 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!("one", operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
-        assert_eq!("two", operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref());
+        assert_eq!(
+            "one",
+            operator.first.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
+        assert_eq!(
+            "two",
+            operator.second.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+        );
     }
 
     #[test]
@@ -185,17 +189,8 @@ mod test {
         .unwrap();
 
         let mut event = Event::new("test_type");
-        event.payload.insert(
-            "one".to_owned(),
-            Value::Array(vec![
-                json!(1),
-                json!(-2000),
-            ]),
-        );
-        event.payload.insert(
-            "two".to_owned(),
-            Value::Array(vec![json!(1), json!(-2)]),
-        );
+        event.payload.insert("one".to_owned(), Value::Array(vec![json!(1), json!(-2000)]));
+        event.payload.insert("two".to_owned(), Value::Array(vec![json!(1), json!(-2)]));
 
         assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }

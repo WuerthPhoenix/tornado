@@ -1,6 +1,6 @@
 use criterion::Criterion;
-use serde_json::Map;
 use serde_json::json;
+use serde_json::Map;
 use std::collections::HashMap;
 use tornado_common_api::{Event, Value};
 use tornado_engine_matcher::config::rule::*;
@@ -33,7 +33,7 @@ pub fn bench(c: &mut Criterion) {
         );
 
         // Add action
-        let mut action = Action { id: "log".to_owned(), payload: Map::new() };
+        let mut action = ConfigAction { id: "log".to_owned(), payload: Map::new() };
 
         action
             .payload

@@ -3,7 +3,6 @@ use std::cmp::Ordering;
 use num_cmp::NumCmp;
 use serde_json::{Number, Value};
 
-
 pub trait PartialOrdering<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
@@ -58,7 +57,6 @@ impl PartialOrdering for Value {
 
 impl PartialOrdering for Vec<Value> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-
         let left = self;
         let right = other;
         let l = std::cmp::min(left.len(), right.len());
@@ -76,7 +74,6 @@ impl PartialOrdering for Vec<Value> {
         }
 
         left.len().partial_cmp(&right.len())
-
     }
 }
 
@@ -91,7 +88,7 @@ impl PartialOrdering for Number {
                 NumCmp::num_cmp(first, second)
             } else {
                 None
-            } 
+            }
         } else if let Some(first) = self.as_u64() {
             if let Some(second) = other.as_f64() {
                 NumCmp::num_cmp(first, second)
@@ -115,6 +112,5 @@ impl PartialOrdering for Number {
         } else {
             None
         }
-
     }
 }
