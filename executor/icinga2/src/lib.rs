@@ -248,7 +248,9 @@ impl ResultsBody {
         let mut tags = vec![];
         for result in &self.results {
             if let Some(tag) = result.get_tag() {
-                tags.push(tag);
+                if !tags.contains(&tag) {
+                    tags.push(tag);
+                }
             }
         }
         tags
@@ -551,6 +553,36 @@ mod test {
 
         // Assert
         assert!(message.is_none());
+    }
+
+    #[test]
+    fn icinga2_response_get_tags_should_return_all_tags_non_repeated() {
+        // Arrange
+        let results = Icinga2ActionResponse::OkResponse(ResultsBody {
+            results: vec![
+                Icinga2Result {
+                    code: 500.0,
+                    status: "Internal server error.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 409.0,
+                    status: "Newer check result already present. Check result for 'myhost1' was discarded.".to_string(),
+                    additional_fields: Default::default(),
+                },
+                Icinga2Result {
+                    code: 409.0,
+                    status: "Newer check result already present. Check result for 'myhost2' was discarded.".to_string(),
+                    additional_fields: Default::default(),
+                },
+            ],
+        });
+
+        // Act
+        let tags = results.get_tags();
+
+        // Assert
+        assert_eq!(tags, vec!["DISCARDED_PROCESS_CHECK_RESULT"]);
     }
 
     #[test]
