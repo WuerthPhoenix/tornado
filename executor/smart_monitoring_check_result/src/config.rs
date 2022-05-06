@@ -14,8 +14,8 @@ pub struct SmartMonitoringCheckResultConfig {
 impl Default for SmartMonitoringCheckResultConfig {
     fn default() -> Self {
         Self {
-            pending_object_set_status_retries_attempts: 5,
-            pending_object_set_status_retries_sleep_ms: 2000,
+            pending_object_set_status_retries_attempts: 2,
+            pending_object_set_status_retries_sleep_ms: 1000,
         }
     }
 }
