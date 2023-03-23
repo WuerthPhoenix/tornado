@@ -1,9 +1,5 @@
-use crate::config::SmartMonitoringCheckResultConfig;
 use action::SimpleCreateAndProcess;
 use log::*;
-use maplit::hashmap;
-use serde_json::Value;
-use std::time::Duration;
 use std::{future::Future, pin::Pin, sync::Arc};
 use tornado_common_api::RetriableError;
 use tornado_common_api::{Action, Payload};
@@ -21,13 +17,11 @@ use tracing::instrument;
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
 mod action;
-pub mod config;
 pub mod migration;
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
 #[derive(Clone)]
 pub struct SmartMonitoringExecutor {
-    config: SmartMonitoringCheckResultConfig,
     icinga_executor: Arc<Icinga2Executor>,
     director_executor: DirectorExecutor,
 }
@@ -41,12 +35,10 @@ impl std::fmt::Display for SmartMonitoringExecutor {
 
 impl SmartMonitoringExecutor {
     pub fn new(
-        config: SmartMonitoringCheckResultConfig,
         icinga2_client_config: Icinga2ClientConfig,
         director_client_config: DirectorClientConfig,
     ) -> Result<SmartMonitoringExecutor, ExecutorError> {
         Ok(SmartMonitoringExecutor {
-            config,
             icinga_executor: Arc::new(Icinga2Executor::new(icinga2_client_config)?),
             director_executor: DirectorExecutor::new(director_client_config)?,
         })
@@ -107,102 +99,19 @@ impl SmartMonitoringExecutor {
         icinga2_action: Icinga2ActionOwned,
         host_name: Option<String>,
         service_name: Option<String>,
-        total_attempts: u32,
-        performed_attempts: u32,
-        sleep_ms_between_retries: u64,
     ) -> Pin<Box<dyn Future<Output = Result<(), ExecutorError>>>> {
         Box::pin(async move {
             match icinga_executor.perform_request(&(&icinga2_action).into()).await {
                 Ok(()) => {
                     trace!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] successfully performed.", host_name, service_name);
+                    Ok(())
                 }
                 Err(err) => {
                     warn!("SmartMonitoringExecutor - process_check_result for object host [{:?}] service [{:?}] completed with errors. err: {:?}", host_name, service_name, err);
-                }
-            }
-
-            // check status
-            let response = match (&host_name, &service_name) {
-                (Some(host_name), Some(service_name)) => {
-                    debug!(
-                        "SmartMonitoringExecutor - check host [{}] service [{}] status",
-                        host_name, service_name
-                    );
-                    icinga_executor
-                        .api_client
-                        .api_get_objects_service(host_name, service_name)
-                        .await
-                }
-                (Some(host_name), None) => {
-                    debug!("SmartMonitoringExecutor - check host [{}] status", host_name);
-                    icinga_executor.api_client.api_get_objects_host(host_name).await
-                }
-                _ => {
-                    warn!("SmartMonitoringExecutor - cannot identify host or service name to retry process_check_result");
-                    Err(ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot identify host or service name to retry process_check_result".to_owned(), can_retry: false, code: None, data: Default::default() })
-                }
-            }?;
-
-            let url = response.url;
-            let method = response.method;
-
-            let response_json = response.response.json().await.map_err(|err| {
-                ExecutorError::ActionExecutionError {
-                    can_retry: true,
-                    message: format!(
-                        "SmartMonitoringExecutor - Cannot extract response body. Err: {:?}",
-                        err
-                    ),
-                    code: None,
-                    data: hashmap![
-                        "url" => url.into(),
-                        "method" => method.into()
-                    ]
-                    .into(),
-                }
-            })?;
-
-            match SmartMonitoringExecutor::is_pending(&response_json) {
-                Ok(false) => Ok(()),
-                _ => {
-                    if (total_attempts - performed_attempts) > 0 {
-                        let new_performed_attempts = performed_attempts + 1;
-                        info!("SmartMonitoringExecutor - the object host [{:?}] service [{:?}] is found to be pending or the state cannot be determined. Retrying to set the status. Retries: {} out of {}", host_name, service_name, new_performed_attempts, total_attempts);
-                        tokio::time::sleep(Duration::from_millis(sleep_ms_between_retries)).await;
-                        SmartMonitoringExecutor::set_state_with_retry(
-                            icinga_executor,
-                            icinga2_action,
-                            host_name,
-                            service_name,
-                            total_attempts,
-                            new_performed_attempts,
-                            sleep_ms_between_retries,
-                        )
-                        .await
-                    } else {
-                        Err(ExecutorError::ActionExecutionError { message: format!("The object host [{:?}] service [{:?}] is found to be pending after {} attempts and no more attempts to set the status will be performed.", host_name, service_name, total_attempts), can_retry: true, code: None, data: Default::default() })
-                    }
+                    Err(err)
                 }
             }
         })
-    }
-
-    /// Returns whether an object is pending.
-    /// An object is pending if `last_check_result` is null.
-    fn is_pending(icinga_object_query_response: &Value) -> Result<bool, ExecutorError> {
-        trace!(
-            "SmartMonitoringExecutor - icinga_object_query_response is {}",
-            icinga_object_query_response
-        );
-
-        icinga_object_query_response.get("results")
-            .and_then(|results| results.get(0))
-            .and_then(|result| result.get("attrs"))
-            .and_then(|attrs| attrs.get("last_check_result"))
-            .map(Value::is_null)
-            .ok_or_else(||
-                ExecutorError::ActionExecutionError { message: "SmartMonitoringExecutor - Cannot determine whether the object is in pending state".to_owned(), can_retry: false, code: None, data: Default::default(), }
-            )
     }
 
     #[instrument(level = "debug", name = "SmartMonitoring", err, skip_all, fields(otel.name = format!("Perform SmartMonitoring Action for host: [{:?}], service: [{:?}]", &host_name, &service_name).as_str()))]
@@ -242,9 +151,6 @@ impl SmartMonitoringExecutor {
                     },
                     host_name,
                     service_name,
-                    self.config.pending_object_set_status_retries_attempts,
-                    0,
-                    self.config.pending_object_set_status_retries_sleep_ms,
                 )
                 .await
             }
@@ -309,7 +215,6 @@ mod test {
     async fn should_fail_if_action_data_is_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -350,7 +255,6 @@ mod test {
         });
 
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -397,13 +301,6 @@ mod test {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
-            Icinga2ClientConfig {
-                timeout_secs: None,
-                username: "".to_owned(),
-                password: "".to_owned(),
-                disable_ssl_verification: true,
-                server_api_url: "".to_owned(),
-            },
             DirectorClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -447,13 +344,6 @@ mod test {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
             Default::default(),
-            Icinga2ClientConfig {
-                timeout_secs: None,
-                username: "".to_owned(),
-                password: "".to_owned(),
-                disable_ssl_verification: true,
-                server_api_url: "".to_owned(),
-            },
             DirectorClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),

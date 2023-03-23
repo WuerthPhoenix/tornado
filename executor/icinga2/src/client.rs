@@ -81,14 +81,17 @@ impl ApiClient {
 
         trace!("Icinga2Executor - HTTP GET - url: {}", url);
 
-        match self
+        let result = self
             .client
             .get(&url)
             .header(reqwest::header::ACCEPT, "application/json")
             .header(reqwest::header::AUTHORIZATION, http_auth_header)
             .send()
-            .await
-        {
+            .await;
+
+        debug!("Icinga2Executor - HTTP GET response - {:?}", result);
+
+        match result {
             Ok(response) => Ok(ResponseData { response, url, method: "GET" }),
             Err(err) => Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
