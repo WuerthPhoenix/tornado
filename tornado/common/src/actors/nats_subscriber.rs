@@ -92,7 +92,7 @@ where
 
     fn handle(&mut self, msg: NatsMessage, _: &mut Context<Self>) -> Self::Result {
         trace!("NatsSubscriberActor - message received");
-        if let Err(err) = (&mut self.callback)(msg) {
+        if let Err(err) = (self.callback)(msg) {
             error!("Error processing received Nats message. Err: {:?}", err);
             Err(err)
         } else {

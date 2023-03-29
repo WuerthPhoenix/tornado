@@ -206,7 +206,7 @@ pub fn setup_logger(logger_config: LoggerConfig) -> Result<LogWorkerGuard, Logge
 }
 
 fn path_to_dir_and_filename(full_path: &str) -> Result<(String, String), LoggerError> {
-    let full_path = full_path.replace(r#"\"#, "/");
+    let full_path = full_path.replace('\\', "/");
     if let Some(last_separator_index) = full_path.rfind('/') {
         Ok((
             full_path[0..last_separator_index + 1].to_owned(),

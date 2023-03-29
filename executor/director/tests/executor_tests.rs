@@ -20,7 +20,7 @@ async fn should_perform_a_post_request() {
 
     actix_rt::spawn(async move {
         let api = "/director";
-        let api_clone = api.clone();
+        let api_clone = api;
 
         HttpServer::new(move || {
             let url = format!("{}{}", api, "/host");

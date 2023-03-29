@@ -293,7 +293,7 @@ pub trait RetriableError {
 
 impl<'o> ValueGet for HashMap<&'o str, &'o Value> {
     fn get_from_map(&self, key: &str) -> Option<&Value> {
-        self.get(key).map(|s| *s)
+        self.get(key).copied()
     }
     fn get_from_array(&self, _index: usize) -> Option<&Value> {
         None

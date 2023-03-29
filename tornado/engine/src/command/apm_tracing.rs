@@ -1,6 +1,7 @@
 use crate::config::{build_config, EnableOrDisableSubCommand};
 use ajars::reqwest::reqwest::ClientBuilder;
 use ajars::reqwest::AjarsReqwest;
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use tornado_engine_api::runtime_config::web::RUNTIME_CONFIG_ENDPOINT_V1_BASE;
 use tornado_engine_api_dto::auth::Auth;
 use tornado_engine_api_dto::runtime_config::{
@@ -42,7 +43,7 @@ async fn call_apm_tracing_endpoint(
 
     let ajars = AjarsReqwest::new(ClientBuilder::new().build()?, base_url);
 
-    let auth_header = base64::encode(serde_json::to_string(&Auth {
+    let auth_header = base64.encode(serde_json::to_string(&Auth {
         user: "tornado".to_owned(),
         roles: vec!["admin".to_owned()],
         preferences: None,

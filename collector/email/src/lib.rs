@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use log::*;
 use mailparse::body::Body;
 use mailparse::{
@@ -121,8 +122,8 @@ fn extract_body_and_attachments(
                     .map_err(|err| CollectorError::EventCreationError {
                         message: format!("{}", err),
                     })?,
-                    Body::SevenBit(body) | Body::EightBit(body) => base64::encode(body.get_raw()),
-                    Body::Binary(body) => base64::encode(body.get_raw()),
+                    Body::SevenBit(body) | Body::EightBit(body) => base64.encode(body.get_raw()),
+                    Body::Binary(body) => base64.encode(body.get_raw()),
                 };
 
                 attachment.insert("content".to_owned(), Value::String(base64_content));

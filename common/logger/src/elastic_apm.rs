@@ -1,4 +1,5 @@
 use crate::LoggerError;
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufReader;
@@ -109,7 +110,7 @@ impl ApmServerApiCredentials {
     /// This can be used in the "authorization" HTTP header to authenticate to APM Server, and
     /// other Elastic services.
     pub fn to_authorization_header_value(&self) -> String {
-        format!("ApiKey {}", base64::encode(format!("{}:{}", self.id, self.key)))
+        format!("ApiKey {}", base64.encode(format!("{}:{}", self.id, self.key)))
     }
 }
 
