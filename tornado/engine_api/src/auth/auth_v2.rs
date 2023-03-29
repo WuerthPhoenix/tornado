@@ -359,7 +359,7 @@ pub mod test {
     "language": "en_US"
   }
 }"#;
-        let token = base64::encode(header);
+        let token = base64.encode(header);
 
         // Act
         let result = AuthServiceV2::auth_header_from_token_string(&token).unwrap();
@@ -409,7 +409,7 @@ pub mod test {
     "language": "en_US"
   }
 }"#;
-        let token = base64::encode(header);
+        let token = base64.encode(header);
 
         // Act
         let result = AuthServiceV2::auth_header_from_token_string(&token);

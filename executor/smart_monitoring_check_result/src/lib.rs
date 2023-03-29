@@ -208,6 +208,7 @@ mod test {
     use super::*;
     use httpmock::Method::POST;
     use httpmock::MockServer;
+    use maplit::hashmap;
     use serde_json::json;
     use tornado_common_api::{Action, Map, Value};
 
@@ -300,7 +301,13 @@ mod test {
     async fn should_throw_error_if_process_check_result_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
             DirectorClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -343,7 +350,13 @@ mod test {
     async fn should_throw_error_if_host_name_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
+            Icinga2ClientConfig {
+                timeout_secs: None,
+                username: "".to_owned(),
+                password: "".to_owned(),
+                disable_ssl_verification: true,
+                server_api_url: "".to_owned(),
+            },
             DirectorClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -383,7 +396,6 @@ mod test {
     async fn should_throw_error_if_service_name_missing() {
         // Arrange
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -437,7 +449,6 @@ mod test {
         });
 
         let executor = SmartMonitoringExecutor::new(
-            Default::default(),
             Icinga2ClientConfig {
                 timeout_secs: None,
                 username: "".to_owned(),
@@ -471,119 +482,5 @@ mod test {
 
         // Assert
         assert!(result.is_ok());
-    }
-
-    #[tokio::test]
-    async fn should_return_state_check_pending() {
-        // Arrange
-        let icinga_response: serde_json::Value = serde_json::from_str(
-            r#"
-{
-  "results": [
-    {
-      "attrs": {
-        "__name": "ALCATEL-a360!ALCATEL-vrIFD_a360/r01sr1sl23/port#38-#3-7-3-Tu12-TMi",
-        "last_check": -1,
-        "last_check_result": null,
-        "last_hard_state": 3,
-        "last_hard_state_change": 0,
-        "last_reachable": true,
-        "last_state": 3,
-        "last_state_change": 0,
-        "state": 3,
-        "state_type": 0,
-        "type": "Service",
-        "version": 0,
-        "volatile": true,
-        "zone": "master"
-      },
-      "joins": {},
-      "meta": {},
-      "name": "ALCATEL-a360!ALCATEL-vrIFD_a360/r01sr1sl23/port#38-#3-7-3-Tu12-TMi",
-      "type": "Service"
-    }
-  ]
-}
-        "#,
-        )
-        .unwrap();
-
-        // Act
-        let is_pending = SmartMonitoringExecutor::is_pending(&icinga_response).unwrap();
-
-        // Assert
-        assert!(is_pending);
-    }
-
-    #[test]
-    fn should_return_state_check_not_pending() {
-        // Arrange
-        let icinga_response: serde_json::Value = serde_json::from_str(r#"
-{
-  "results": [
-    {
-      "attrs": {
-        "__name": "test03!service_test03",
-        "last_check": 1611653536.602431,
-        "last_check_result": {
-          "active": true,
-          "check_source": "713182e2afcb",
-          "command": [
-            "/sbin/neteye",
-            "check"
-          ],
-          "execution_end": 1611653536.602379,
-          "execution_start": 1611653535.630243,
-          "exit_status": 3,
-          "output": "UNKNOWN - At least one health check is in unknown state.\n\n[+] light/00100_neteye_target_enabled.sh\n[+] light/00200_drbd_status.sh\n[-] light/01000_elastic_health_check.sh\n[-] Something went wrong in contacting Elasticsearch\n[-] Error: \n[-] Exit code of curl: 35\n[-] light/01001_elastic_indices_check.sh\n[-] Elasticsearch API (cluster health) not reachable\n[-] light/01002_elastic_indices_read_only_check.sh\n[-] Elasticsearch API (settings) not reachable\n[+] light/01003_elastic_nodes_health_check.sh\n[+] light/01010_service_assetmanagement_glpi_roles_fullentities_map_enabled_post_4.14.sh\n[+] light/01020_tornado_tcp_is_enabled.sh\n[+] light/01030_logstash_health_check.sh\n[+] light/01031_check_logstash_user_health_check.sh\n[+] light/01203_analytics_grafana_user_check.sh\n[+] light/01210_analytics_grafana_sync_enabled.sh\n[+] light/01500_log_manager_log_check_light.sh\n[+] light/01600_neteye_retentionpolicy_enabled.sh\n[+] light/01800_ntopng_sync_enabled.sh",
-          "performance_data": [],
-          "schedule_end": 1611653536.602431,
-          "schedule_start": 1611653535.63,
-          "state": 3,
-          "ttl": 0,
-          "type": "CheckResult",
-          "vars_after": {
-            "attempt": 1,
-            "reachable": false,
-            "state": 3,
-            "state_type": 1
-          },
-          "vars_before": {
-            "attempt": 1,
-            "reachable": false,
-            "state": 3,
-            "state_type": 1
-          }
-        },
-        "last_hard_state": 3,
-        "last_hard_state_change": 1611648919.80426,
-        "last_reachable": false,
-        "last_state": 3,
-        "last_state_change": 1611648803.615403,
-        "last_state_critical": 0,
-        "last_state_ok": 1611596478.584076,
-        "last_state_type": 1,
-        "state": 3,
-        "state_type": 1,
-        "type": "Service",
-        "vars": null,
-        "version": 0,
-        "volatile": false,
-        "zone": "master"
-      },
-      "joins": {},
-      "meta": {},
-      "name": "test03!service_test03",
-      "type": "Service"
-    }
-  ]
-}
-        "#).unwrap();
-
-        // Act
-        let is_pending = SmartMonitoringExecutor::is_pending(&icinga_response).unwrap();
-
-        // Assert
-        assert!(!is_pending);
     }
 }
