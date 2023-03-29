@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -71,7 +72,7 @@ impl DirectorClient {
 impl DirectorClientConfig {
     pub fn new_client(&self) -> Result<DirectorClient, ExecutorError> {
         let auth = format!("{}:{}", self.username, self.password);
-        let http_auth_header = format!("Basic {}", base64::encode(&auth));
+        let http_auth_header = format!("Basic {}", base64.encode(&auth));
 
         let mut client_builder = Client::builder()
             .use_rustls_tls()

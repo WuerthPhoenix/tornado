@@ -197,7 +197,7 @@ impl<T: Debug> Parser<T> {
                     while let (Some(key), Some(val)) = (key_iter.next(), temp_value) {
                         temp_value = key.get(val);
                     }
-                    temp_value.map(|value| Cow::Borrowed(value))
+                    temp_value.map(Cow::Borrowed)
                 } else {
                     None
                 }

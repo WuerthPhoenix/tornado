@@ -59,6 +59,6 @@ where
 
     fn handle(&mut self, msg: AsyncReadMessage<TcpStream>, _: &mut Context<Self>) {
         debug!("TcpServerActor - new client connected to [{}]", &self.address);
-        (&mut self.callback)(msg);
+        (self.callback)(msg);
     }
 }

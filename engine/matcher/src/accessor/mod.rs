@@ -58,7 +58,7 @@ impl AccessorBuilder {
         let parser_builder = ParserBuilder::default()
             .add_parser_factory(
                 EXTRACTED_VARIABLES_KEY.to_owned(),
-                Box::new(ExtractedVarParser::new),
+                Box::new(ExtractedVarParser::try_new),
             )
             .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
 
@@ -105,7 +105,7 @@ pub struct ExtractedVarParser {
 }
 
 impl ExtractedVarParser {
-    pub fn new(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
+    pub fn try_new(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
         let parser = ParserBuilder::default().build_parser(&format!(
             "{}{}{}",
             EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER

@@ -4,6 +4,7 @@ use crate::auth::{
 };
 use crate::error::ApiError;
 use actix_web::HttpRequest;
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use log::*;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -112,7 +113,7 @@ impl AuthServiceV2 {
         auth_key: &str,
     ) -> Result<AuthContextV2, ApiError> {
         let auth_header = AuthService::token_string_from_request(req)
-            .and_then(|token| Self::auth_header_from_token_string(token))?;
+            .and_then(Self::auth_header_from_token_string)?;
         let auth_ctx =
             AuthContextV2::from_header(auth_header, auth_key, &self.permission_roles_map)?;
         Ok(auth_ctx)
@@ -134,7 +135,7 @@ impl AuthServiceV2 {
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
             })?;
-        Ok(base64::encode(auth_str.as_bytes()))
+        Ok(base64.encode(auth_str.as_bytes()))
     }
 
     pub fn auth_to_token_header(auth: &AuthHeaderV2) -> Result<String, ApiError> {
@@ -358,7 +359,7 @@ pub mod test {
     "language": "en_US"
   }
 }"#;
-        let token = base64::encode(header);
+        let token = base64.encode(header);
 
         // Act
         let result = AuthServiceV2::auth_header_from_token_string(&token).unwrap();
@@ -408,7 +409,7 @@ pub mod test {
     "language": "en_US"
   }
 }"#;
-        let token = base64::encode(header);
+        let token = base64.encode(header);
 
         // Act
         let result = AuthServiceV2::auth_header_from_token_string(&token);

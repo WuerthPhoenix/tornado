@@ -218,7 +218,6 @@ pub async fn daemon(
     let (smart_monitoring_check_result_executor_addr, smart_monitoring_executor_handle) = {
         let executor =
             tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
-                configs.smart_monitoring_check_result_config.clone(),
                 configs.icinga2_executor_config.clone(),
                 configs.director_executor_config.clone(),
             )
