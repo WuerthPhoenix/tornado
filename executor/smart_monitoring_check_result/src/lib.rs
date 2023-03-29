@@ -94,7 +94,7 @@ impl SmartMonitoringExecutor {
         Ok(())
     }
 
-    fn set_state_with_retry(
+    fn set_state(
         icinga_executor: Arc<Icinga2Executor>,
         icinga2_action: Icinga2ActionOwned,
         host_name: Option<String>,
@@ -130,12 +130,9 @@ impl SmartMonitoringExecutor {
                 debug!("SmartMonitoringExecutor - Process check result correctly performed");
                 Ok(())
             }
-            Err(ExecutorError::ActionExecutionError {
-                message,
-                code: Some(code),
-                data: _,
-                can_retry: _,
-            }) if code.eq(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) => {
+            Err(ExecutorError::ActionExecutionError { message, code: Some(code), .. })
+                if code.eq(ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE) =>
+            {
                 debug!("SmartMonitoringExecutor - Process check result action failed with message {:?}. Looks like Icinga2 object does not exist yet. Proceeding with the creation of the object..", message);
                 self.perform_creation_of_icinga_objects(
                     director_host_creation_action,
@@ -143,7 +140,7 @@ impl SmartMonitoringExecutor {
                 )
                 .await?;
 
-                SmartMonitoringExecutor::set_state_with_retry(
+                SmartMonitoringExecutor::set_state(
                     self.icinga_executor.clone(),
                     Icinga2ActionOwned {
                         name: icinga2_action.name.to_owned(),
