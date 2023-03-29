@@ -89,7 +89,7 @@ pub fn get_opentelemetry_tracer(
 
     set_opentelemetry_batch_exporter_config(&apm_tracing_config.exporter);
     let tornado_sampler = TornadoSampler::new(apm_output_enabled);
-    let hostname = sys_info::hostname().unwrap_or("localhost".to_owned());
+    let hostname = sys_info::hostname().unwrap_or_else(|_| "localhost".to_owned());
     opentelemetry_otlp::new_pipeline()
         .tracing()
         .with_exporter(

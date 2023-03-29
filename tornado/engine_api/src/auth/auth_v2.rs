@@ -113,7 +113,7 @@ impl AuthServiceV2 {
         auth_key: &str,
     ) -> Result<AuthContextV2, ApiError> {
         let auth_header = AuthService::token_string_from_request(req)
-            .and_then(|token| Self::auth_header_from_token_string(token))?;
+            .and_then(Self::auth_header_from_token_string)?;
         let auth_ctx =
             AuthContextV2::from_header(auth_header, auth_key, &self.permission_roles_map)?;
         Ok(auth_ctx)

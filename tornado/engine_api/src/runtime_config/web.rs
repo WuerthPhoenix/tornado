@@ -52,8 +52,8 @@ async fn set_current_logger_level<A: RuntimeConfigApiHandler + 'static>(
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.set_logger_level(auth_ctx, body.into_inner()).await?;
-    Ok(Json(result))
+    data.api.set_logger_level(auth_ctx, body.into_inner()).await?;
+    Ok(Json(()))
 }
 
 async fn set_apm<A: RuntimeConfigApiHandler + 'static>(
@@ -63,8 +63,8 @@ async fn set_apm<A: RuntimeConfigApiHandler + 'static>(
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.set_apm_enabled(auth_ctx, body.into_inner()).await?;
-    Ok(Json(result))
+    data.api.set_apm_enabled(auth_ctx, body.into_inner()).await?;
+    Ok(Json(()))
 }
 
 async fn set_stdout<A: RuntimeConfigApiHandler + 'static>(
@@ -74,8 +74,8 @@ async fn set_stdout<A: RuntimeConfigApiHandler + 'static>(
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.set_stdout_enabled(auth_ctx, body.into_inner()).await?;
-    Ok(Json(result))
+    data.api.set_stdout_enabled(auth_ctx, body.into_inner()).await?;
+    Ok(Json(()))
 }
 
 async fn set_apm_priority_config<A: RuntimeConfigApiHandler + 'static>(
@@ -105,8 +105,8 @@ async fn set_smartmonitoring_executor_status<A: RuntimeConfigApiHandler + 'stati
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.set_smartmonitoring_executor_status(auth_ctx, body.into_inner()).await?;
-    Ok(Json(result))
+    data.api.set_smartmonitoring_executor_status(auth_ctx, body.into_inner()).await?;
+    Ok(Json(()))
 }
 
 #[cfg(test)]

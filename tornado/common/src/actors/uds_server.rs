@@ -83,6 +83,6 @@ where
 
     fn handle(&mut self, msg: AsyncReadMessage<UnixStream>, _: &mut Context<Self>) {
         debug!("UdsServerActor - new client connected to [{}]", &self.path);
-        (&mut self.callback)(msg);
+        (self.callback)(msg);
     }
 }
