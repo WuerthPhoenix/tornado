@@ -561,6 +561,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "base64"
+version = "0.21.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a4a4ddaa51a5bc52a6948f74c06d20aaaddb71924eab79b8c97a8c556e942d6a"
+
+[[package]]
 name = "base64-url"
 version = "1.4.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3724,7 +3730,7 @@ dependencies = [
 name = "tornado_collector_email"
 version = "0.0.1"
 dependencies = [
- "base64 0.13.0",
+ "base64 0.21.0",
  "log",
  "mailparse",
  "serde_json",
@@ -3812,7 +3818,7 @@ name = "tornado_common_logger"
 version = "0.0.1"
 dependencies = [
  "arc-swap",
- "base64 0.13.0",
+ "base64 0.21.0",
  "chrono",
  "log",
  "opentelemetry",
@@ -3893,7 +3899,7 @@ dependencies = [
  "actix-web",
  "ajars",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.21.0",
  "chrono",
  "clap 3.0.0-beta.5",
  "config",
@@ -3947,7 +3953,7 @@ dependencies = [
  "actix-web",
  "ajars",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.21.0",
  "json-patch",
  "lazy_static",
  "log",
@@ -4038,7 +4044,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.21.0",
  "httpmock",
  "log",
  "maplit",
@@ -4096,7 +4102,7 @@ dependencies = [
  "actix-rt",
  "actix-web",
  "async-trait",
- "base64 0.13.0",
+ "base64 0.21.0",
  "httpmock",
  "log",
  "maplit",

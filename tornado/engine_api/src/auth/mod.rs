@@ -1,5 +1,6 @@
 use crate::error::ApiError;
 use actix_web::HttpRequest;
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
@@ -196,7 +197,7 @@ impl AuthService {
     }
 
     pub fn decode_token_from_base64(token: &str) -> Result<String, ApiError> {
-        let auth_vec = base64::decode(token).map_err(|err| ApiError::InvalidTokenError {
+        let auth_vec = base64.decode(token).map_err(|err| ApiError::InvalidTokenError {
             message: format!("Cannot perform base64::decode of auth token. Err: {:?}", err),
         })?;
         String::from_utf8(auth_vec).map_err(|err| ApiError::InvalidTokenError {
@@ -210,7 +211,7 @@ impl AuthService {
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
             })?;
-        Ok(base64::encode(auth_str.as_bytes()))
+        Ok(base64.encode(auth_str.as_bytes()))
     }
 
     /// Generates the auth HTTP header in the form:

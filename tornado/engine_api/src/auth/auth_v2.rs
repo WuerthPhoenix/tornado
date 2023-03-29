@@ -4,6 +4,7 @@ use crate::auth::{
 };
 use crate::error::ApiError;
 use actix_web::HttpRequest;
+use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use log::*;
 use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
@@ -134,7 +135,7 @@ impl AuthServiceV2 {
             serde_json::to_string(&auth).map_err(|err| ApiError::InternalServerError {
                 cause: format!("Cannot serialize auth into string. Err: {:?}", err),
             })?;
-        Ok(base64::encode(auth_str.as_bytes()))
+        Ok(base64.encode(auth_str.as_bytes()))
     }
 
     pub fn auth_to_token_header(auth: &AuthHeaderV2) -> Result<String, ApiError> {
