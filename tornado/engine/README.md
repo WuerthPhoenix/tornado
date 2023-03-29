@@ -548,17 +548,8 @@ contained in the Action itself as described in the
 
 ### Structure and Configuration:  The Smart Monitoring Check Result Executor
 
-The configuration of the [smart_monitoring_check_result executor](../../executor/smart_monitoring_check_result/README.md) 
-is specified in the `smart_monitoring_check_result.toml` file into the Tornado config folder.
-
-The smart_monitoring_check_result.toml has the following configuration options:
-- __pending_object_set_status_retries_attempts__: The number of attempts to perform a `process_check_result` for an object in pending state.
-- __pending_object_set_status_retries_sleep_ms__: The sleep time in ms between attempts to perform a process_check_result for an object in pending state.
-
-The `smart_monitoring_check_result.toml` file is optional; if not provided, the following default values will be used:
-- __pending_object_set_status_retries_attempts__ = 5
-- __pending_object_set_status_retries_sleep_ms__ = 2000
-
+The [Smart Monitoring Executor](../../executor/smart_monitoring_check_result/README.md)
+processes and executes Actions of type "smart_monitoring_check_result".
 
 More details about the executor can be found in the
 [smart_monitoring_check_result documentation](../../executor/smart_monitoring_check_result/README.md).
