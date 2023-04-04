@@ -69,7 +69,7 @@ my $tornado_writer = async {
                 # Try to read from NATS connection, re-enqueue the JSON event in case of errors
                 my $ret = $client->wait_for_op(0);
                 if (!defined $ret && "$!" eq "") {
-                    event_error($json_event);
+                    reEnqueueEventAndCloseConnection($json_event);
                     next;
                 }
 
@@ -83,7 +83,7 @@ my $tornado_writer = async {
                 }
 
                 if ($failed) {
-                    event_error($json_event);
+                    reEnqueueEventAndCloseConnection($json_event);
                 }
             }
 
@@ -206,7 +206,7 @@ sub printTrapInfo {
     }
 }
 
-sub event_error {
+sub reEnqueueEventAndCloseConnection {
     my ( $json_event ) = @_;
 
     print "[tornado_nats_writer] Cannot send Event to the NATS Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
