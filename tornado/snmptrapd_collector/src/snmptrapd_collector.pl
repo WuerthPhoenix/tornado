@@ -65,6 +65,14 @@ my $tornado_writer = async {
 		    {
                 local $@;
                 my $result;
+
+                # Try to read from NATS connection, re-enqueue the JSON event in case of errors
+                my $ret = $client->wait_for_op(0);
+                if (!defined $ret && "$!" eq "") {
+                    event_error($json_event);
+                    next;
+                }
+
                 eval{$result = $client->publish($subject, $json_event);};
 
                 my $failed = ! defined $result || $result ne 1;
@@ -75,11 +83,7 @@ my $tornado_writer = async {
                 }
 
                 if ($failed) {
-                    print "[tornado_nats_writer] Cannot send Event to the NATS Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
-                    enqueue($json_event);
-                    sleep($sleep_seconds_between_connection_attempts);
-                    eval{$client->close();};
-                    $client = undef;
+                    event_error($json_event);
                 }
             }
 
@@ -200,6 +204,16 @@ sub printTrapInfo {
     foreach my $x (@{$VarBinds}) { 
         printf "  %-30s type=%-2d value=%s\n", $x->[0], $x->[2], $x->[1]; 
     }
+}
+
+sub event_error {
+    my ( $json_event ) = @_;
+
+    print "[tornado_nats_writer] Cannot send Event to the NATS Server! Attempt a new connection in $sleep_seconds_between_connection_attempts seconds\n";
+    enqueue($json_event);
+    sleep($sleep_seconds_between_connection_attempts);
+    eval {$client->close();};
+    $client = undef;
 }
 
 NetSNMP::TrapReceiver::register("all", \&my_receiver) ||
