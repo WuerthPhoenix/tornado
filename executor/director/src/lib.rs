@@ -170,7 +170,7 @@ impl DirectorExecutor {
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
         {
-            warning!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body);
+            warn!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body);
             Ok(())
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
