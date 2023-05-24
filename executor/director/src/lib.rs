@@ -170,16 +170,8 @@ impl DirectorExecutor {
         if response_status.eq(&ICINGA2_OBJECT_ALREADY_EXISTING_STATUS_CODE)
             && response_body.contains(ICINGA2_OBJECT_ALREADY_EXISTING_RESPONSE)
         {
-            Err(ExecutorError::ActionExecutionError {
-                message: format!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body ), 
-                can_retry: true,
-                code: Some(ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE),
-                data: hashmap![
-                    "method" => "POST".into(),
-                    "url" => url.into(),
-                    "payload" => payload
-                ].into()
-            })
+            warn!("DirectorExecutor - Icinga Director API returned an error, object seems to be already existing. Response status: {}. Response body: {}", response_status, response_body);
+            Ok(())
         } else if !response_status.is_success() {
             Err(ExecutorError::ActionExecutionError {
                 can_retry: true,
