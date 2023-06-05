@@ -93,10 +93,8 @@ pub fn build_config_v2_endpoints<
                         .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
                 )
                 .service(
-                    web::resource(
-                        "/rule/details/{param_auth}/{draft_id}/{ruleset_path}",
-                    )
-                    .route(web::put().to(create_draft_rule_details::<A, CM>)),
+                    web::resource("/rule/details/{param_auth}/{draft_id}/{ruleset_path}")
+                        .route(web::post().to(create_draft_rule_details::<A, CM>)),
                 )
                 .service(
                     web::resource(
@@ -143,6 +141,13 @@ struct DraftRuleDetailsParams {
     draft_id: String,
     ruleset_path: String,
     rule_name: String,
+}
+
+#[derive(Deserialize)]
+struct DraftRuleDetailsCreateParams {
+    param_auth: String,
+    draft_id: String,
+    ruleset_path: String,
 }
 
 #[derive(Deserialize)]
@@ -355,19 +360,18 @@ async fn create_draft_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsParams>,
+    endpoint_params: Path<DraftRuleDetailsCreateParams>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
     rule_dto: Json<RuleDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data
-        .api
+    data.api
         .create_draft_rule_details_by_path(
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.ruleset_path,
-            &rule_dto,
+            rule_dto.0,
         )
         .await?;
     Ok(Json(()))

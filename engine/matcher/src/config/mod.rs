@@ -79,7 +79,7 @@ impl MatcherConfig {
         Some(current_node)
     }
 
-    pub fn get_mut_node_by_path(&mut self, path: &[&str]) -> Option<&mut MatcherConfig> {
+    fn get_mut_node_by_path(&mut self, path: &[&str]) -> Option<&mut MatcherConfig> {
         // empty path returns None
         if path.is_empty() {
             return None;
@@ -243,30 +243,30 @@ impl MatcherConfig {
     }
 
     // Create a node at a specific path
-    pub fn create_rule(
-        &mut self,
-        ruleset: &mut MatcherConfig,
-        rule: &Rule,
-    ) -> Result<(), MatcherError> {
-
-        let rules = match ruleset {
-            MatcherConfig::Filter { .. } => return Err(MatcherError::ConfigurationError {
-                message: "Cannot create rules in filter nodes".to_string(),
-            }),
-            MatcherConfig::Ruleset { rules, .. } => rules
-        };
-        for existing_rule in rules.iter() {
-            if existing_rule.name == rule.name {
-                return Err(MatcherError::ConfigurationError {
-                    message: format!(
-                        "A rule with name {} already exists in ruleset {}",
-                        rule.name,
-                        ruleset.get_name()
-                    ),
-                });
+    pub fn create_rule(&mut self, ruleset_path: &[&str], rule: Rule) -> Result<(), MatcherError> {
+        let node = self.get_mut_node_by_path(ruleset_path).ok_or_else(|| {
+            MatcherError::ConfigurationError {
+                message: format!("Path to parent node does not exist: {:?}", ruleset_path),
             }
-        }
-        rules.push(rule.clone());
+        })?;
+        let rules = match node {
+            MatcherConfig::Filter { .. } => {
+                return Err(MatcherError::ConfigurationError {
+                    message: "Cannot create rules in filter nodes".to_string(),
+                })
+            }
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+        if rules.iter().any(|Rule { name, .. }| name == &rule.name) {
+            return Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "A rule with name {} already exists in ruleset {}",
+                    rule.name,
+                    node.get_name()
+                ),
+            });
+        };
+        rules.push(rule);
         Ok(())
     }
 }
