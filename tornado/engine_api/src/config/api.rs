@@ -162,7 +162,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         filtered_matcher: &MatcherConfig,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let absolute_node_path = self.get_absolute_path_from_relative(auth, &relative_node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, relative_node_path)?;
 
         let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
             ApiError::NodeNotFoundError {
@@ -223,8 +223,6 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_rule_details(auth, &filtered_matcher, ruleset_path, rule_name).await
     }
 
-    /// Returns processing tree node details by path
-    /// in the current configuration of tornado
     pub async fn create_draft_rule_details_by_path(
         &self,
         auth: AuthContextV2<'_>,
@@ -234,9 +232,28 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &ruleset_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
         let rule = dto_into_rule(rule_dto)?;
         draft.config.create_rule(&absolute_node_path, rule)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
+    pub async fn edit_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+        rule_dto: RuleDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        let rule = dto_into_rule(rule_dto)?;
+        draft.config.edit_rule(&absolute_node_path, rule_name, rule)?;
         Ok(self
             .config_manager
             .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
@@ -251,7 +268,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         rule_name: &str,
     ) -> Result<RuleDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &ruleset_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, ruleset_path)?;
 
         let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
             ApiError::NodeNotFoundError {
@@ -450,7 +467,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
         draft.config.create_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
@@ -465,7 +482,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
         draft.config.edit_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
@@ -479,7 +496,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
         draft.config.delete_node_in_path(&absolute_node_path)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }

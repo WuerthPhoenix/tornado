@@ -1,3 +1,4 @@
+#![cfg(feature = "nats_integration_tests")]
 //
 // WARN: This tests require docker on the host machine
 //
@@ -27,7 +28,6 @@ fn new_nats_docker_container(
     (node, nats_port)
 }
 
-#[cfg(feature = "nats_integration_tests")]
 #[actix_rt::test]
 async fn should_subscribe_to_nats_topics() {
     // Arrange
