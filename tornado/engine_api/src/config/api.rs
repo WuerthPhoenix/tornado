@@ -1,6 +1,6 @@
 use crate::auth::auth_v2::AuthContextV2;
 use crate::auth::{AuthContext, AuthContextTrait, Permission};
-use crate::config::convert::rule_into_dto;
+use crate::config::convert::{dto_into_rule, rule_into_dto};
 use crate::error::ApiError;
 use log::*;
 use std::sync::Arc;
@@ -224,6 +224,32 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_rule_details(auth, &filtered_matcher, ruleset_path, rule_name).await
     }
 
+    /// Returns processing tree node details by path
+    /// in the current configuration of tornado
+    pub async fn create_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_dto: &RuleDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let mut filtered_matcher =
+            get_filtered_matcher(&self.config_manager.get_config().await?, &auth).await?;
+        let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &ruleset_path)?;
+
+        let node = filtered_matcher.get_mut_node_by_path(absolute_node_path.as_slice()).ok_or(
+            ApiError::NodeNotFoundError {
+                message: format!("Node for relative path {:?} not found", ruleset_path),
+            },
+        )?;
+        let rule = dto_into_rule(rule_dto.clone())?;
+        draft.config.create_rule(node, &rule)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.clone().auth.user, &draft.config).await?)
+    }
+
     async fn get_rule_details(
         &self,
         auth: &AuthContextV2<'_>,
@@ -233,18 +259,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<RuleDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
         let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-
-        let authorized_path =
-            auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
-
-        if authorized_path.last() != ruleset_path.first() {
-            return Err(self.get_unauthorized_path_error());
-        }
-        // We must remove the last element of the authorized path because node_path starts from
-        // the entry point (included) of the authorized tree.
-        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
-        let absolute_node_path =
-            pop_authorized_path_and_append_relative_path(authorized_path, ruleset_path.clone())?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &ruleset_path)?;
 
         let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
             ApiError::NodeNotFoundError {

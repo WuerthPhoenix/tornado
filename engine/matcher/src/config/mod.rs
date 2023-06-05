@@ -241,6 +241,34 @@ impl MatcherConfig {
 
         Ok(())
     }
+
+    // Create a node at a specific path
+    pub fn create_rule(
+        &mut self,
+        ruleset: &mut MatcherConfig,
+        rule: &Rule,
+    ) -> Result<(), MatcherError> {
+
+        let rules = match ruleset {
+            MatcherConfig::Filter { .. } => return Err(MatcherError::ConfigurationError {
+                message: "Cannot create rules in filter nodes".to_string(),
+            }),
+            MatcherConfig::Ruleset { rules, .. } => rules
+        };
+        for existing_rule in rules.iter() {
+            if existing_rule.name == rule.name {
+                return Err(MatcherError::ConfigurationError {
+                    message: format!(
+                        "A rule with name {} already exists in ruleset {}",
+                        rule.name,
+                        ruleset.get_name()
+                    ),
+                });
+            }
+        }
+        rules.push(rule.clone());
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]

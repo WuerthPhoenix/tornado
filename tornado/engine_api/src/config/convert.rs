@@ -161,7 +161,7 @@ fn dto_into_filter(filter: FilterDto) -> Result<Filter, Error> {
     })
 }
 
-fn dto_into_rule(rule: RuleDto) -> Result<Rule, Error> {
+pub fn dto_into_rule(rule: RuleDto) -> Result<Rule, Error> {
     Ok(Rule {
         active: rule.active,
         actions: rule.actions.into_iter().map(dto_into_action).collect::<Result<Vec<_>, _>>()?,

@@ -94,6 +94,12 @@ pub fn build_config_v2_endpoints<
                 )
                 .service(
                     web::resource(
+                        "/rule/details/{param_auth}/{draft_id}/{ruleset_path}",
+                    )
+                    .route(web::put().to(create_draft_rule_details::<A, CM>)),
+                )
+                .service(
+                    web::resource(
                         "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
                     )
                     .route(web::get().to(get_draft_rule_details::<A, CM>)),
@@ -342,6 +348,29 @@ async fn get_draft_rule_details<
         )
         .await?;
     Ok(Json(result))
+}
+
+async fn create_draft_rule_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftRuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    rule_dto: Json<RuleDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    data
+        .api
+        .create_draft_rule_details_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &rule_dto,
+        )
+        .await?;
+    Ok(Json(()))
 }
 
 async fn get_draft_tree_node<
