@@ -1490,6 +1490,144 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+        assert!(result.is_ok());
         assert_eq!(config, expected_config);
+    }
+
+    #[test]
+    fn test_edit_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule".to_string(),
+                    description: "My Rule Description".to_string(),
+                    do_continue: true,
+                    active: true,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule2".to_string(),
+                    description: "My Second Rule Description".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(config, expected_config);
+    }
+
+    #[test]
+    fn test_edit_not_existing_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(config, expected_config);
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
+    }
+
+    #[test]
+    fn test_edit_rule_in_not_existing_ruleset() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_err());
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
     }
 }
