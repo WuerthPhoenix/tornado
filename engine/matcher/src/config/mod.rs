@@ -1313,4 +1313,160 @@ mod tests {
         assert_eq!(result.is_ok(), true);
         assert_eq!(config, expected_config);
     }
+
+    #[test]
+    fn test_create_rule_in_non_existing_path() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] }],
+        };
+
+        let new_rule = Rule {
+            name: "rule-1".to_string(),
+            description: "nothing to say here".to_string(),
+            do_continue: false,
+            active: true,
+            constraint: Constraint { where_operator: None, with: Default::default() },
+            actions: vec![],
+        };
+
+        // Act
+        let result = config.create_rule(&["root", "ruleset2"], new_rule.clone());
+
+        // Assert
+        assert_eq!(result.is_err(), true);
+        assert_eq!(
+            result.err(),
+            Some(MatcherError::ConfigurationError {
+                message: "Path to parent node does not exist: [\"root\", \"ruleset2\"]".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn test_create_rule_in_filter() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Filter {
+                name: "filter1".to_string(),
+                filter: Filter {
+                    description: "nothing relevant".to_string(),
+                    active: true,
+                    filter: Defaultable::Default {},
+                },
+                nodes: vec![],
+            }],
+        };
+
+        let new_rule = Rule {
+            name: "rule-1".to_string(),
+            description: "nothing to say here".to_string(),
+            do_continue: false,
+            active: true,
+            constraint: Constraint { where_operator: None, with: Default::default() },
+            actions: vec![],
+        };
+
+        // Act
+        let result = config.create_rule(&["root", "filter1"], new_rule.clone());
+
+        // Assert
+        assert_eq!(result.is_err(), true);
+        assert_eq!(
+            result.err(),
+            Some(MatcherError::ConfigurationError {
+                message: "Cannot create rules in filter nodes".to_string(),
+            })
+        );
+    }
+
+    #[test]
+    fn test_create_rule_already_existing() {
+        // Arrange
+        let new_rule = Rule {
+            name: "rule-1".to_string(),
+            description: "nothing to say here".to_string(),
+            do_continue: false,
+            active: true,
+            constraint: Constraint { where_operator: None, with: Default::default() },
+            actions: vec![],
+        };
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "ruleset1".to_string(),
+                rules: vec![new_rule.clone()],
+            }],
+        };
+
+        // Act
+        let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
+
+        // Assert
+        assert_eq!(result.is_err(), true);
+        assert_eq!(
+            result.err(),
+            Some(MatcherError::ConfigurationError {
+                message: "A rule with name rule-1 already exists in ruleset ruleset1".to_string(),
+            })
+        );
+    }
+    #[test]
+    fn test_create_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] }],
+        };
+
+        let new_rule = Rule {
+            name: "rule-1".to_string(),
+            description: "nothing to say here".to_string(),
+            do_continue: false,
+            active: true,
+            constraint: Constraint { where_operator: None, with: Default::default() },
+            actions: vec![],
+        };
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "ruleset1".to_string(),
+                rules: vec![new_rule.clone()],
+            }],
+        };
+
+        // Act
+        let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
+
+        // Assert
+        assert_eq!(result.is_ok(), true);
+        assert_eq!(config, expected_config);
+    }
 }
