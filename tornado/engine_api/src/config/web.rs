@@ -88,8 +88,8 @@ pub fn build_config_v2_endpoints<
                 .service(
                     web::resource("/tree/details/{param_auth}/{draft_id}/{node_path}")
                         .route(web::get().to(get_draft_tree_node_details::<A, CM>))
-                        .route(web::put().to(create_draft_tree_node::<A, CM>))
-                        .route(web::post().to(edit_draft_tree_node::<A, CM>))
+                        .route(web::post().to(create_draft_tree_node::<A, CM>))
+                        .route(web::put().to(edit_draft_tree_node::<A, CM>))
                         .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
                 )
                 .service(
@@ -1473,7 +1473,7 @@ mod test {
             .await;
 
         // Act
-        let request = test::TestRequest::put()
+        let request = test::TestRequest::post()
             .insert_header((
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
@@ -1515,7 +1515,7 @@ mod test {
             .await;
 
         // Act
-        let request = test::TestRequest::post()
+        let request = test::TestRequest::put()
             .insert_header((
                 header::AUTHORIZATION,
                 AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
