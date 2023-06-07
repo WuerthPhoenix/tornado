@@ -764,7 +764,7 @@ mod tests {
             config.create_node_in_path(&["root", "filter1", "new_filter"], &new_filter);
 
         // Assert
-        assert_eq!(result_not_existing.is_err(), true);
+        assert!(result_not_existing.is_err());
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
@@ -773,14 +773,14 @@ mod tests {
                 ),
             })
         );
-        assert_eq!(result_ruleset.is_err(), true);
+        assert!(result_ruleset.is_err());
         assert_eq!(
             result_ruleset.err(),
             Some(MatcherError::ConfigurationError {
                 message: format!("A ruleset cannot have children nodes"),
             })
         );
-        assert_eq!(result_already_existing_node.is_err(), true);
+        assert!(result_already_existing_node.is_err());
         assert_eq!(
             result_already_existing_node.err(),
             Some(MatcherError::ConfigurationError {
@@ -893,7 +893,7 @@ mod tests {
             config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
 
         // Assert
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
         assert_eq!(config, expected_config);
     }
 
@@ -966,7 +966,7 @@ mod tests {
             config.edit_node_in_path(&["root", "filter2", "filter3"], &new_ruleset);
 
         // Assert
-        assert_eq!(result_not_existing.is_err(), true);
+        assert!(result_not_existing.is_err());
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
@@ -975,7 +975,7 @@ mod tests {
                 ),
             })
         );
-        assert_eq!(result_node_different_type.is_err(), true);
+        assert!(result_node_different_type.is_err());
         assert_eq!(
             result_node_different_type.err(),
             Some(MatcherError::ConfigurationError {
@@ -1154,9 +1154,9 @@ mod tests {
             config_filter.edit_node_in_path(&["root", "filter2", "filter3"], &edited_filter);
 
         // Assert
-        assert_eq!(result_ruleset.is_ok(), true);
+        assert!(result_ruleset.is_ok());
         assert_eq!(config_ruleset, expected_config_ruleset);
-        assert_eq!(result_filter.is_ok(), true);
+        assert!(result_filter.is_ok());
         assert_eq!(config_filter, expected_config_filter);
     }
 
@@ -1217,7 +1217,7 @@ mod tests {
         let result_child_not_existing = config.delete_node_in_path(&["root", "filter2", "filter4"]);
 
         // Assert
-        assert_eq!(result_parent_not_existing.is_err(), true);
+        assert!(result_parent_not_existing.is_err());
         assert_eq!(
             result_parent_not_existing.err(),
             Some(MatcherError::ConfigurationError {
@@ -1226,7 +1226,7 @@ mod tests {
                         .to_string(),
             })
         );
-        assert_eq!(result_child_not_existing.is_err(), true);
+        assert!(result_child_not_existing.is_err());
         assert_eq!(
             result_child_not_existing.err(),
             Some(MatcherError::ConfigurationError {
@@ -1310,7 +1310,7 @@ mod tests {
         let result = config.delete_node_in_path(&["root", "filter2"]);
 
         // Assert
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
         assert_eq!(config, expected_config);
     }
 
@@ -1340,7 +1340,7 @@ mod tests {
         let result = config.create_rule(&["root", "ruleset2"], new_rule.clone());
 
         // Assert
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
@@ -1383,7 +1383,7 @@ mod tests {
         let result = config.create_rule(&["root", "filter1"], new_rule.clone());
 
         // Assert
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
@@ -1420,7 +1420,7 @@ mod tests {
         let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
 
         // Assert
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
@@ -1466,7 +1466,7 @@ mod tests {
         let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
 
         // Assert
-        assert_eq!(result.is_ok(), true);
+        assert!(result.is_ok());
         assert_eq!(config, expected_config);
     }
 }
