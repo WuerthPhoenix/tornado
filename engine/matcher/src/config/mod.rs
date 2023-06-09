@@ -791,9 +791,7 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!(
-                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                ),
+                message: format!("Node in this path does not exist: [\"root\", \"filter3\"]"),
             })
         );
         assert!(result_ruleset.is_err());
@@ -994,7 +992,7 @@ mod tests {
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
                 message: format!(
-                    "Node to edit not found at path [\"root\", \"filter3\", \"new_filter\"]"
+                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
                 ),
             })
         );
@@ -1244,9 +1242,7 @@ mod tests {
         assert_eq!(
             result_parent_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message:
-                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                        .to_string(),
+                message: "Node in this path does not exist: [\"root\", \"filter3\"]".to_string(),
             })
         );
         assert!(result_child_not_existing.is_err());
@@ -1367,7 +1363,7 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
-                message: "Path to parent node does not exist: [\"root\", \"ruleset2\"]".to_string(),
+                message: "Node in this path does not exist: [\"root\", \"ruleset2\"]".to_string(),
             })
         );
     }
