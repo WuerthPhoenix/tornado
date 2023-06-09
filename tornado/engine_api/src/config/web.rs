@@ -100,7 +100,8 @@ pub fn build_config_v2_endpoints<
                     web::resource(
                         "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
                     )
-                    .route(web::get().to(get_draft_rule_details::<A, CM>)),
+                    .route(web::get().to(get_draft_rule_details::<A, CM>))
+                    .route(web::put().to(edit_draft_rule_details::<A, CM>)),
                 ),
         )
         .service(
@@ -371,6 +372,29 @@ async fn create_draft_rule_details<
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.ruleset_path,
+            rule_dto.0,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
+async fn edit_draft_rule_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftRuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    rule_dto: Json<RuleDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    data.api
+        .edit_draft_rule_details_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
             rule_dto.0,
         )
         .await?;
@@ -1566,6 +1590,50 @@ mod test {
             .uri("/config/draft/rule/details/auth1/draft123/root,child_2")
             .set_json(&RuleDto {
                 name: "rule-1".to_string(),
+                description: "nothing relevant".to_string(),
+                do_continue: false,
+                active: true,
+                constraint: ConstraintDto { where_operator: None, with: Default::default() },
+                actions: vec![],
+            })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_edit_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header((
+                header::AUTHORIZATION,
+                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                    user: "user".to_string(),
+                    auths: auth_map(
+                        "auth1",
+                        Authorization {
+                            path: vec!["root".to_owned()],
+                            roles: vec!["edit".to_owned()],
+                        },
+                    ),
+                    preferences: None,
+                })?,
+            ))
+            .uri("/config/draft/rule/details/auth1/draft123/root,child_2/rule_1")
+            .set_json(&RuleDto {
+                name: "rule_2".to_string(),
                 description: "nothing relevant".to_string(),
                 do_continue: false,
                 active: true,

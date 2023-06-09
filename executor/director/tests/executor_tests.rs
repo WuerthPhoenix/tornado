@@ -7,11 +7,10 @@ use serde_json::json;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 use tornado_common_api::{Action, Value};
-use tornado_executor_common::{ExecutorError, StatelessExecutor};
+use tornado_executor_common::StatelessExecutor;
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_director::{
     DirectorExecutor, DIRECTOR_ACTION_NAME_KEY, DIRECTOR_ACTION_PAYLOAD_KEY,
-    ICINGA2_OBJECT_ALREADY_EXISTING_EXECUTOR_ERROR_CODE,
 };
 
 #[actix_rt::test]

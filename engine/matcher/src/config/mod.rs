@@ -35,8 +35,7 @@ pub enum MatcherConfig {
 impl MatcherConfig {
     pub fn get_name(&self) -> &str {
         match self {
-            MatcherConfig::Filter { name, .. } => name,
-            MatcherConfig::Ruleset { name, .. } => name,
+            MatcherConfig::Filter { name, .. } | MatcherConfig::Ruleset { name, .. } => name,
         }
     }
 
@@ -100,6 +99,15 @@ impl MatcherConfig {
         Some(current_node)
     }
 
+    fn get_mut_node_by_path_or_err(
+        &mut self,
+        path: &[&str],
+    ) -> Result<&mut MatcherConfig, MatcherError> {
+        self.get_mut_node_by_path(path).ok_or_else(|| MatcherError::ConfigurationError {
+            message: format!("Node in this path does not exist: {:?}", path),
+        })
+    }
+
     // Returns child nodes of a node found by a path
     // If the path is empty [], the [self] is returned
     pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Cow<Vec<MatcherConfig>>> {
@@ -142,11 +150,7 @@ impl MatcherConfig {
             });
         }
         let path_to_parent = &path[0..path.len() - 1];
-        let current_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
-            MatcherError::ConfigurationError {
-                message: format!("Path to parent node does not exist: {:?}", path),
-            }
-        })?;
+        let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::ConfigurationError {
@@ -181,19 +185,16 @@ impl MatcherConfig {
             });
         }
 
-        let old_node =
-            self.get_mut_node_by_path(path).ok_or_else(|| MatcherError::ConfigurationError {
-                message: format!("Node to edit not found at path {:?}", path),
-            })?;
+        let old_node = self.get_mut_node_by_path_or_err(path)?;
         match (old_node, node) {
             (
-                MatcherConfig::Ruleset { ref mut name, .. },
+                MatcherConfig::Ruleset { name, .. },
                 MatcherConfig::Ruleset { name: new_name, .. },
             ) => {
                 *name = new_name.clone();
             }
             (
-                MatcherConfig::Filter { ref mut name, ref mut filter, .. },
+                MatcherConfig::Filter { name, filter, .. },
                 MatcherConfig::Filter { name: new_name, filter: new_filter, .. },
             ) => {
                 *name = new_name.clone();
@@ -218,11 +219,7 @@ impl MatcherConfig {
 
         let path_to_parent = &path[0..path.len() - 1];
         let node_to_delete = path.last().unwrap_or(&"");
-        let parent_node = self.get_mut_node_by_path(path_to_parent).ok_or_else(|| {
-            MatcherError::ConfigurationError {
-                message: format!("Path to parent node does not exist: {:?}", path),
-            }
-        })?;
+        let parent_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
         if parent_node.get_child_node_by_name(node_to_delete).is_none() {
             return Err(MatcherError::ConfigurationError {
@@ -235,7 +232,7 @@ impl MatcherConfig {
 
         // Parent node is guaranteed to be of type filter because get_child_node_by_name return
         // Option<None> if the parent node is of type ruleset and this match arm is never reached.
-        if let MatcherConfig::Filter { name: _, filter: _, ref mut nodes } = parent_node {
+        if let MatcherConfig::Filter { nodes, .. } = parent_node {
             nodes.retain(|node| &node.get_name() != node_to_delete);
         }
 
@@ -244,11 +241,7 @@ impl MatcherConfig {
 
     // Create a node at a specific path
     pub fn create_rule(&mut self, ruleset_path: &[&str], rule: Rule) -> Result<(), MatcherError> {
-        let node = self.get_mut_node_by_path(ruleset_path).ok_or_else(|| {
-            MatcherError::ConfigurationError {
-                message: format!("Path to parent node does not exist: {:?}", ruleset_path),
-            }
-        })?;
+        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
         let rules = match node {
             MatcherConfig::Filter { .. } => {
                 return Err(MatcherError::ConfigurationError {
@@ -268,6 +261,36 @@ impl MatcherConfig {
         };
         rules.push(rule);
         Ok(())
+    }
+
+    pub fn edit_rule(
+        &mut self,
+        ruleset_path: &[&str],
+        rule_name: &str,
+        new_rule: Rule,
+    ) -> Result<(), MatcherError> {
+        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
+        let rules = match node {
+            MatcherConfig::Filter { .. } => {
+                return Err(MatcherError::ConfigurationError {
+                    message: "Cannot edit rules in filter nodes".to_string(),
+                })
+            }
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+
+        match rules.iter_mut().find(|rule| rule.name == rule_name) {
+            None => Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "No rule with name {} exists in ruleset {}",
+                    new_rule.name, rule_name
+                ),
+            }),
+            Some(rule) => {
+                *rule = new_rule;
+                Ok(())
+            }
+        }
     }
 }
 
@@ -768,9 +791,7 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!(
-                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                ),
+                message: format!("Node in this path does not exist: [\"root\", \"filter3\"]"),
             })
         );
         assert!(result_ruleset.is_err());
@@ -971,7 +992,7 @@ mod tests {
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
                 message: format!(
-                    "Node to edit not found at path [\"root\", \"filter3\", \"new_filter\"]"
+                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
                 ),
             })
         );
@@ -1221,9 +1242,7 @@ mod tests {
         assert_eq!(
             result_parent_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message:
-                    "Path to parent node does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                        .to_string(),
+                message: "Node in this path does not exist: [\"root\", \"filter3\"]".to_string(),
             })
         );
         assert!(result_child_not_existing.is_err());
@@ -1344,7 +1363,7 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
-                message: "Path to parent node does not exist: [\"root\", \"ruleset2\"]".to_string(),
+                message: "Node in this path does not exist: [\"root\", \"ruleset2\"]".to_string(),
             })
         );
     }
@@ -1467,6 +1486,144 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
+        assert!(result.is_ok());
         assert_eq!(config, expected_config);
+    }
+
+    #[test]
+    fn test_edit_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule".to_string(),
+                    description: "My Rule Description".to_string(),
+                    do_continue: true,
+                    active: true,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule2".to_string(),
+                    description: "My Second Rule Description".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(config, expected_config);
+    }
+
+    #[test]
+    fn test_edit_not_existing_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(config, expected_config);
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
+    }
+
+    #[test]
+    fn test_edit_rule_in_not_existing_ruleset() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        let result = config.edit_rule(
+            &["root", "my-ruleset"],
+            "my-rule",
+            Rule {
+                name: "my-rule2".to_string(),
+                description: "My Second Rule Description".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            },
+        );
+
+        // Assert
+        assert!(result.is_err());
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
     }
 }
