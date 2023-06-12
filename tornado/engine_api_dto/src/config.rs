@@ -44,6 +44,11 @@ pub struct RuleDto {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct RulePositionDto {
+    pub position: usize,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ConstraintDto {
     #[serde(rename = "WHERE")]
     pub where_operator: Option<OperatorDto>,

@@ -293,6 +293,52 @@ impl MatcherConfig {
         }
     }
 
+    pub fn move_rule(
+        &mut self,
+        ruleset_path: &[&str],
+        rule_name: &str,
+        position: usize,
+    ) -> Result<(), MatcherError> {
+        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
+        let rules = match node {
+            MatcherConfig::Filter { .. } => {
+                return Err(MatcherError::ConfigurationError {
+                    message: "Cannot edit rules in filter nodes".to_string(),
+                })
+            }
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+
+        if !(position < rules.len()) {
+            return Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "Rule position {} out of bounds for ruleset with {} rules.",
+                    position,
+                    rules.len()
+                ),
+            });
+        }
+
+        match rules
+            .iter()
+            .enumerate()
+            .find(|(_, rule)| rule.name == rule_name)
+            .map(|(index, _)| index)
+        {
+            None => Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "No rule with name {} exists in ruleset {:?}",
+                    rule_name, ruleset_path
+                ),
+            }),
+            Some(index) => {
+                let rule = rules.remove(index);
+                rules.insert(position, rule);
+                Ok(())
+            }
+        }
+    }
+
     pub fn delete_rule(
         &mut self,
         ruleset_path: &[&str],
