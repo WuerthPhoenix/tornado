@@ -1839,4 +1839,66 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
     }
+
+    #[test]
+    fn test_move_rule() {
+        let mut config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![
+                Rule {
+                    name: "my-rule-001".to_string(),
+                    description: "".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                },
+                Rule {
+                    name: "my-rule-002".to_string(),
+                    description: "".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                },
+            ],
+        };
+
+        let result = config.move_rule(&["root"], "my-rule-002", 0);
+
+        assert!(result.is_ok());
+
+        let rules = match &config {
+            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+        assert_eq!(rules[0].name, "my-rule-002")
+    }
+
+    #[test]
+    fn test_move_rule_bounds() {
+        let mut config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![Rule {
+                name: "my-rule-001".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+
+        let result = config.move_rule(&["root"], "my-rule-001", 0);
+        let result2 = config.move_rule(&["root"], "my-rule-001", 1);
+
+        assert!(result.is_ok());
+        assert!(result2.is_err());
+
+        let rules = match &config {
+            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+        assert_eq!(rules[0].name, "my-rule-001")
+    }
 }

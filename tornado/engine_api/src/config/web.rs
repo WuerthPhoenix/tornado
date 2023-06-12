@@ -1621,6 +1621,55 @@ mod test {
     }
 
     #[actix_rt::test]
+    async fn v2_endpoint_move_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header(test_auth_root_edit())
+            .uri("/config/draft/rule/move/auth1/draft123/root,child_2/rule_1")
+            .set_json(&RulePositionDto { position: 0 })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_move_rule_in_draft_out_of_bounds_by_path_should_return_err(
+    ) -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header(test_auth_root_edit())
+            .uri("/config/draft/rule/move/auth1/draft123/root,child_2/rule_1")
+            .set_json(&RulePositionDto { position: 5 })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::BAD_REQUEST, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
     async fn v2_endpoint_edit_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
         let mut srv =
