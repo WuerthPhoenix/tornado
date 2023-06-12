@@ -1,6 +1,6 @@
 use crate::auth::auth_v2::AuthContextV2;
 use crate::auth::{AuthContext, AuthContextTrait, Permission};
-use crate::config::convert::rule_into_dto;
+use crate::config::convert::{dto_into_rule, rule_into_dto};
 use crate::error::ApiError;
 use log::*;
 use std::sync::Arc;
@@ -162,8 +162,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         filtered_matcher: &MatcherConfig,
         relative_node_path: &str,
     ) -> Result<ProcessingTreeNodeDetailsDto, ApiError> {
-        let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-        let absolute_node_path = self.get_absolute_path_from_relative(auth, &relative_node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, relative_node_path)?;
 
         let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
             ApiError::NodeNotFoundError {
@@ -176,10 +175,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     fn get_absolute_path_from_relative<'a>(
         &self,
         auth: &'a AuthContextV2,
-        relative_node_path: &[&'a str],
+        relative_node_path: &'a str,
     ) -> Result<Vec<&'a str>, ApiError> {
         let authorized_path =
             auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
+
+        let relative_node_path = relative_node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
 
         if authorized_path.last() != relative_node_path.first() {
             return Err(self.get_unauthorized_path_error());
@@ -187,10 +188,8 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         // We must remove the last element of the authorized path because node_path starts from
         // the entry point (included) of the authorized tree.
         // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
-        let absolute_node_path = pop_authorized_path_and_append_relative_path(
-            authorized_path,
-            relative_node_path.to_owned(),
-        )?;
+        let absolute_node_path =
+            pop_authorized_path_and_append_relative_path(authorized_path, relative_node_path)?;
         Ok(absolute_node_path)
     }
 
@@ -224,6 +223,60 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_rule_details(auth, &filtered_matcher, ruleset_path, rule_name).await
     }
 
+    pub async fn create_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_dto: RuleDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        let rule = dto_into_rule(rule_dto)?;
+        draft.config.create_rule(&absolute_node_path, rule)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
+    pub async fn edit_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+        rule_dto: RuleDto,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        let rule = dto_into_rule(rule_dto)?;
+        draft.config.edit_rule(&absolute_node_path, rule_name, rule)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
+    pub async fn delete_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        draft.config.delete_rule(&absolute_node_path, rule_name)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
     async fn get_rule_details(
         &self,
         auth: &AuthContextV2<'_>,
@@ -232,19 +285,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         rule_name: &str,
     ) -> Result<RuleDto, ApiError> {
         auth.has_permission(&Permission::ConfigView)?;
-        let ruleset_path = ruleset_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-
-        let authorized_path =
-            auth.auth.authorization.path.iter().map(|s| s as &str).collect::<Vec<_>>();
-
-        if authorized_path.last() != ruleset_path.first() {
-            return Err(self.get_unauthorized_path_error());
-        }
-        // We must remove the last element of the authorized path because node_path starts from
-        // the entry point (included) of the authorized tree.
-        // It is safe to pop from the authorized path because the MatcherConfig is already filtered.
-        let absolute_node_path =
-            pop_authorized_path_and_append_relative_path(authorized_path, ruleset_path.clone())?;
+        let absolute_node_path = self.get_absolute_path_from_relative(auth, ruleset_path)?;
 
         let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
             ApiError::NodeNotFoundError {
@@ -443,8 +484,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
         draft.config.create_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
@@ -459,8 +499,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
         draft.config.edit_node_in_path(&absolute_node_path, &config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
@@ -474,9 +513,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
     ) -> Result<(), ApiError> {
         auth.has_permission(&Permission::ConfigEdit)?;
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
-        let node_path = node_path.split(NODE_PATH_SEPARATOR).collect::<Vec<_>>();
-        let absolute_node_path = self.get_absolute_path_from_relative(&auth, &node_path)?;
-
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
         draft.config.delete_node_in_path(&absolute_node_path)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
