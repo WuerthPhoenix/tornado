@@ -276,6 +276,13 @@ pub enum ProcessingTreeNodeDetailsDto {
     Ruleset { name: String, rules: Vec<RuleDetailsDto> },
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+#[serde(tag = "type")]
+pub enum ProcessingTreeNodeEditDto {
+    Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Ruleset { name: String },
+}
+
 impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
     fn from(matcher_config_node: &MatcherConfig) -> Self {
         match matcher_config_node {

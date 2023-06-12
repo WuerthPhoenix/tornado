@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
-    ProcessingTreeNodeDetailsDto, RuleDto, RulePositionDto, TreeInfoDto,
+    ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto, RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
@@ -249,7 +249,7 @@ async fn create_draft_tree_node<
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-    body: Json<ProcessingTreeNodeDetailsDto>,
+    body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
@@ -272,7 +272,7 @@ async fn edit_draft_tree_node<
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-    body: Json<ProcessingTreeNodeDetailsDto>,
+    body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
