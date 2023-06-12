@@ -292,6 +292,40 @@ impl MatcherConfig {
             }
         }
     }
+
+    pub fn delete_rule(
+        &mut self,
+        ruleset_path: &[&str],
+        rule_name: &str,
+    ) -> Result<(), MatcherError> {
+        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
+        let rules = match node {
+            MatcherConfig::Filter { .. } => {
+                return Err(MatcherError::ConfigurationError {
+                    message: "Cannot edit rules in filter nodes".to_string(),
+                })
+            }
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+
+        match rules
+            .iter()
+            .enumerate()
+            .find(|(_, rule)| rule.name == rule_name)
+            .map(|(index, _)| index)
+        {
+            None => Err(MatcherError::ConfigurationError {
+                message: format!(
+                    "No rule with name {} exists in ruleset {:?}",
+                    rule_name, ruleset_path
+                ),
+            }),
+            Some(index) => {
+                rules.remove(index);
+                Ok(())
+            }
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -1486,7 +1520,6 @@ mod tests {
 
         // Assert
         assert!(result.is_ok());
-        assert!(result.is_ok());
         assert_eq!(config, expected_config);
     }
 
@@ -1621,6 +1654,140 @@ mod tests {
                 actions: vec![],
             },
         );
+
+        // Assert
+        assert!(result.is_err());
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
+    }
+
+    #[test]
+    fn test_delete_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![
+                    Rule {
+                        name: "my-rule".to_string(),
+                        description: "My Rule Description".to_string(),
+                        do_continue: true,
+                        active: true,
+                        constraint: Constraint { where_operator: None, with: Default::default() },
+                        actions: vec![],
+                    },
+                    Rule {
+                        name: "my-rule2".to_string(),
+                        description: "My Second Rule Description".to_string(),
+                        do_continue: false,
+                        active: false,
+                        constraint: Constraint { where_operator: None, with: Default::default() },
+                        actions: vec![],
+                    },
+                ],
+            }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule2".to_string(),
+                    description: "My Second Rule Description".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        // Act
+        let result = config.delete_rule(&["root", "my-ruleset"], "my-rule");
+
+        // Assert
+        assert!(result.is_ok());
+        assert_eq!(config, expected_config);
+    }
+
+    #[test]
+    fn test_delete_not_existing_rule() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule2".to_string(),
+                    description: "My Second Rule Description".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        let expected_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Ruleset {
+                name: "my-ruleset".to_string(),
+                rules: vec![Rule {
+                    name: "my-rule2".to_string(),
+                    description: "My Second Rule Description".to_string(),
+                    do_continue: false,
+                    active: false,
+                    constraint: Constraint { where_operator: None, with: Default::default() },
+                    actions: vec![],
+                }],
+            }],
+        };
+
+        // Act
+        let result = config.delete_rule(&["root", "my-ruleset"], "my-rule");
+
+        // Assert
+        assert!(result.is_err());
+        assert_eq!(config, expected_config);
+        assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
+    }
+
+    #[test]
+    fn test_delete_rule_in_not_existing_ruleset() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        let result = config.delete_rule(&["root", "my-ruleset"], "my-rule");
 
         // Assert
         assert!(result.is_err());
