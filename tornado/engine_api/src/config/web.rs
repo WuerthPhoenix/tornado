@@ -101,7 +101,8 @@ pub fn build_config_v2_endpoints<
                         "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
                     )
                     .route(web::get().to(get_draft_rule_details::<A, CM>))
-                    .route(web::put().to(edit_draft_rule_details::<A, CM>)),
+                    .route(web::put().to(edit_draft_rule_details::<A, CM>))
+                    .route(web::delete().to(delete_draft_rule_details::<A, CM>)),
                 ),
         )
         .service(
@@ -401,6 +402,27 @@ async fn edit_draft_rule_details<
     Ok(Json(()))
 }
 
+async fn delete_draft_rule_details<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftRuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    data.api
+        .delete_draft_rule_details_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
 async fn get_draft_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -633,6 +655,7 @@ mod test {
     use crate::auth::AuthService;
     use crate::error::ApiError;
     use crate::{auth::auth_v2::test::test_auth_service_v2, test_root::start_context};
+    use actix_web::http::HeaderName;
     use actix_web::{
         http::{header, StatusCode},
         test, App,
@@ -988,6 +1011,21 @@ mod test {
         auths
     }
 
+    fn test_auth_root_edit() -> (HeaderName, String) {
+        (
+            header::AUTHORIZATION,
+            AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
+                user: "user".to_string(),
+                auths: auth_map(
+                    "auth1",
+                    Authorization { path: vec!["root".to_owned()], roles: vec!["edit".to_owned()] },
+                ),
+                preferences: None,
+            })
+            .unwrap(),
+        )
+    }
+
     #[actix_rt::test]
     async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError>
     {
@@ -1001,20 +1039,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/drafts/auth1")
             .to_request();
 
@@ -1038,20 +1063,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::get()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/tree/children/auth1/draft123")
             .to_request();
 
@@ -1127,20 +1139,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "admin".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/drafts/auth1")
             .to_request();
 
@@ -1164,20 +1163,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::delete()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/drafts/auth1/draft123")
             .to_request();
 
@@ -1201,20 +1187,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/drafts/auth1/draft123/deploy")
             .to_request();
 
@@ -1238,20 +1211,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "admin".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/drafts/auth1/draft123/takeover")
             .to_request();
 
@@ -1531,20 +1491,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
             .set_json(&ProcessingTreeNodeDetailsDto::Filter {
                 name: "test_filter".to_string(),
@@ -1573,20 +1520,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/rule/details/auth1/draft123/root,child_2")
             .set_json(&RuleDto {
                 name: "rule-1".to_string(),
@@ -1617,20 +1551,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::put()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/rule/details/auth1/draft123/root,child_2/rule_1")
             .set_json(&RuleDto {
                 name: "rule_2".to_string(),
@@ -1640,6 +1561,29 @@ mod test {
                 constraint: ConstraintDto { where_operator: None, with: Default::default() },
                 actions: vec![],
             })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_delete_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::delete()
+            .insert_header(test_auth_root_edit())
+            .uri("/config/draft/rule/details/auth1/draft123/root,child_2/rule_1")
             .to_request();
 
         let response = test::call_service(&mut srv, request).await;
@@ -1661,20 +1605,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::put()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
             .set_json(&ProcessingTreeNodeDetailsDto::Filter {
                 name: "test_filter".to_string(),
@@ -1703,21 +1634,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::delete()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthServiceV2::auth_to_token_header(&AuthHeaderV2 {
-                    user: "user".to_string(),
-
-                    auths: auth_map(
-                        "auth1",
-                        Authorization {
-                            path: vec!["root".to_owned()],
-                            roles: vec!["edit".to_owned()],
-                        },
-                    ),
-                    preferences: None,
-                })?,
-            ))
+            .insert_header(test_auth_root_edit())
             .uri("/config/draft/tree/details/auth1/draft123/root,child_1")
             .to_request();
 

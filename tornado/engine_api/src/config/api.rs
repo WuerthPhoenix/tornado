@@ -260,6 +260,23 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .await?)
     }
 
+    pub async fn delete_draft_rule_details_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        draft.config.delete_rule(&absolute_node_path, rule_name)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
     async fn get_rule_details(
         &self,
         auth: &AuthContextV2<'_>,
