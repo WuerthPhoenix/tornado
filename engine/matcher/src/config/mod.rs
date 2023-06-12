@@ -104,7 +104,7 @@ impl MatcherConfig {
         path: &[&str],
     ) -> Result<&mut MatcherConfig, MatcherError> {
         self.get_mut_node_by_path(path).ok_or_else(|| MatcherError::ConfigurationError {
-            message: format!("Couldn't find a node at this path: {:?}", path),
+            message: format!("Node in this path does not exist: {:?}", path),
         })
     }
 
@@ -825,7 +825,7 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("Couldn't find a node at this path: [\"root\", \"filter3\"]"),
+                message: format!("Node in this path does not exist: [\"root\", \"filter3\"]"),
             })
         );
         assert!(result_ruleset.is_err());
@@ -1026,7 +1026,7 @@ mod tests {
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
                 message: format!(
-                    "Couldn't find a node at this path: [\"root\", \"filter3\", \"new_filter\"]"
+                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
                 ),
             })
         );
@@ -1276,7 +1276,7 @@ mod tests {
         assert_eq!(
             result_parent_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: "Couldn't find a node at this path: [\"root\", \"filter3\"]".to_string(),
+                message: "Node in this path does not exist: [\"root\", \"filter3\"]".to_string(),
             })
         );
         assert!(result_child_not_existing.is_err());
@@ -1397,7 +1397,7 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
-                message: "Couldn't find a node at this path: [\"root\", \"ruleset2\"]".to_string(),
+                message: "Node in this path does not exist: [\"root\", \"ruleset2\"]".to_string(),
             })
         );
     }
