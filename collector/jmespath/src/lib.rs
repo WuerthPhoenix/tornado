@@ -222,7 +222,7 @@ mod test {
             }
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -244,7 +244,7 @@ mod test {
             }
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -266,7 +266,7 @@ mod test {
             }
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -288,7 +288,7 @@ mod test {
             }
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -308,7 +308,7 @@ mod test {
             "key": true
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -328,7 +328,7 @@ mod test {
             "key": 99.66
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -348,7 +348,7 @@ mod test {
             "key": ["one", true, 13]
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -374,7 +374,7 @@ mod test {
             }
         }
         "#;
-        let data = jmespath::Variable::from_json(&json).unwrap();
+        let data = jmespath::Variable::from_json(json).unwrap();
 
         // Act
         let result = value_proc.process(&data);
@@ -483,17 +483,17 @@ mod test {
             payload: HashMap::new(),
         };
 
-        let mut inner_array = vec![];
-        inner_array.push(Value::String("${first.second[0]}".to_owned()));
-        config.payload.insert("array".to_owned(), Value::Array(inner_array));
+        config.payload.insert(
+            "array".to_owned(),
+            Value::Array(vec![Value::String("${first.second[0]}".to_owned())]),
+        );
 
         let expected_payload_expression = jmespath::compile("first.second[0]").unwrap();
 
         // Act
         let event_processor = EventProcessor::build(config).unwrap();
 
-        let mut inner_processor = vec![];
-        inner_processor.push(ValueProcessor::Expression { exp: expected_payload_expression });
+        let inner_processor = vec![ValueProcessor::Expression { exp: expected_payload_expression }];
         assert_eq!(
             &ValueProcessor::Array(inner_processor),
             event_processor.payload.get("array").unwrap()
@@ -522,7 +522,7 @@ mod test {
     fn verify_io(config_path: &str, input_path: &str, output_path: &str) {
         // Arrange
         let config_json = fs::read_to_string(config_path)
-            .expect(&format!("Unable to open the file [{}]", config_path));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", config_path));
         let config: config::JMESPathEventCollectorConfig = serde_json::from_str(&config_json)
             .map_err(|e| panic!("Cannot parse config json. Err: {:?}", e))
             .unwrap();
@@ -530,10 +530,10 @@ mod test {
         let collector = JMESPathEventCollector::build(config).unwrap();
 
         let input_json = fs::read_to_string(input_path)
-            .expect(&format!("Unable to open the file [{}]", input_path));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", input_path));
 
         let output_json = fs::read_to_string(output_path)
-            .expect(&format!("Unable to open the file [{}]", output_path));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", output_path));
         let mut expected_event: Event = serde_json::from_str(&output_json)
             .map_err(|e| panic!("Cannot parse output json. Err: {:?}", e))
             .unwrap();
@@ -546,7 +546,7 @@ mod test {
 
         let result_event = result.unwrap();
         expected_event.trace_id = result_event.trace_id.clone();
-        expected_event.created_ms = result_event.created_ms.clone();
+        expected_event.created_ms = result_event.created_ms;
 
         assert_eq!(expected_event, result_event);
     }

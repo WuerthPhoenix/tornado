@@ -505,7 +505,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json);
@@ -519,7 +519,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/event_with_null_value.json";
         let event_json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json);
@@ -533,7 +533,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -547,7 +547,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -561,7 +561,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
         let event_json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -650,7 +650,7 @@ mod test {
         let event = Event::new_with_payload("my-event-type", payload.clone());
 
         // Act
-        let value_from_event: Value = json!(event.clone());
+        let value_from_event: Value = json!(event);
         let json_from_value = serde_json::to_string(&value_from_event).unwrap();
         let event_from_value: Event = serde_json::from_str(&json_from_value).unwrap();
 
@@ -810,7 +810,7 @@ mod test {
         let created_ms = event.created_ms.to_owned();
 
         // Act
-        let value: Value = json!(event.clone());
+        let value: Value = json!(event);
 
         // Assert
         assert_eq!(Some(created_ms), value.created_ms());
@@ -842,7 +842,7 @@ mod test {
                 assert_eq!(&value_1, payload.get(key_1).unwrap());
                 assert_eq!(&value_2, payload.get(key_2).unwrap());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -858,7 +858,7 @@ mod test {
         let value_2 = json!(3.4);
 
         // Act
-        event.add_to_metadata(key_1.to_owned(), value_1.clone()).unwrap();
+        event.add_to_metadata(key_1.to_owned(), value_1).unwrap();
         event.add_to_metadata(key_1.to_owned(), value_2.clone()).unwrap();
 
         // Assert
@@ -867,7 +867,7 @@ mod test {
                 assert_eq!(1, payload.len());
                 assert_eq!(&value_2, payload.get(key_1).unwrap());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

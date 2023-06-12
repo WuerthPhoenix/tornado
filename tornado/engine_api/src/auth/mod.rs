@@ -409,7 +409,7 @@ pub mod test {
             Err(ApiError::ForbiddenError { code, .. }) => {
                 assert_eq!(FORBIDDEN_MISSING_REQUIRED_PERMISSIONS, code)
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         Ok(())
@@ -588,7 +588,7 @@ pub mod test {
                 assert_eq!("USER_567", params["OWNER"]);
                 assert_eq!("abc", params["ID"]);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -622,7 +622,7 @@ pub mod test {
         ));
         assert!(!roles_contain_any_permission(
             &permission_roles_map,
-            &vec!["role_non_existing".to_owned()],
+            &["role_non_existing".to_owned()],
             &[&Permission::ConfigView, &Permission::RuntimeConfigEdit]
         ));
     }

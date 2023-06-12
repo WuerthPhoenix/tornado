@@ -439,7 +439,7 @@ mod test {
         let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
         let result = accessor.get(&internal_event).unwrap();
 
-        let event_value: Value = event.clone().into();
+        let event_value: Value = event.clone();
         assert_eq!(&event_value, result.as_ref());
 
         let json_from_result = serde_json::to_string(result.as_ref()).unwrap();
@@ -581,7 +581,7 @@ mod test {
             Accessor::Parser { parser: Parser::Val(inner_value), rule_name: _ } => {
                 assert_eq!("constant_value", &inner_value);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -603,7 +603,7 @@ mod test {
                 );
                 assert_eq!(rule_name, "");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -626,7 +626,7 @@ mod test {
                 );
                 assert_eq!(rule_name, "rule");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -652,7 +652,7 @@ mod test {
                 );
                 assert_eq!(rule_name, "rule");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -667,7 +667,7 @@ mod test {
             Accessor::Parser { parser: Parser::Custom { .. }, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -682,7 +682,7 @@ mod test {
             Accessor::Parser { parser: Parser::Custom { .. }, rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -702,7 +702,7 @@ mod test {
         let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
         let result = accessor.get(&internal_event).unwrap();
 
-        let event_value: Value = event.clone().into();
+        let event_value: Value = event.clone();
         assert_eq!(&event_value, result.as_ref());
 
         match accessor {
@@ -710,7 +710,7 @@ mod test {
                 assert_eq!(vec![ValueGetter::Map { key: "event".to_owned() },], keys);
                 assert_eq!(rule_name, "rule");
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -745,7 +745,7 @@ mod test {
 
         match accessor.err().unwrap() {
             MatcherError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -760,7 +760,7 @@ mod test {
 
         match accessor.err().unwrap() {
             MatcherError::UnknownAccessorError { accessor } => assert_eq!(value, accessor),
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -825,7 +825,7 @@ mod test {
             Accessor::Parser { rule_name: _, parser: Parser::Val(Value::String(inner_value)) } => {
                 assert_eq!(&value, &inner_value);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -844,7 +844,7 @@ mod test {
 
         // Assert
         let parsed_value = accessor.get(&internal_event);
-        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value));
     }
 
     #[test]
@@ -862,7 +862,7 @@ mod test {
 
         // Assert
         let parsed_value = accessor.get(&internal_event);
-        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value));
     }
 
     #[test]
@@ -880,7 +880,7 @@ mod test {
 
         // Assert
         let parsed_value = accessor.get(&internal_event);
-        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value.to_owned()));
+        assert_eq!(parsed_value.unwrap().as_ref(), &Value::String(value));
     }
 
     #[test]

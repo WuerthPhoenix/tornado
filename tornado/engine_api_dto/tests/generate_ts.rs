@@ -41,7 +41,7 @@ fn check_ts_file_status() -> Result<(), Box<dyn std::error::Error>> {
 // Whether the ts files need to be regenerated
 fn is_regenerate_ts_file() -> Result<bool, Box<dyn std::error::Error>> {
     let fail_if_changed =
-        std::env::var(TORNADO_DTO_BUILD_REGENERATE_TS_FILES).unwrap_or("false".to_owned());
+        std::env::var(TORNADO_DTO_BUILD_REGENERATE_TS_FILES).unwrap_or_else(|_| "false".to_owned());
     let regenerate_files = bool::from_str(&fail_if_changed)?;
 
     println!("Should DTO TS files be regenerated? {}", regenerate_files);

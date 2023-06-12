@@ -238,7 +238,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::ConfigurationError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -339,7 +339,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("check_result"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -385,7 +385,7 @@ mod test {
                 assert!(message.contains("host"));
                 assert!(message.contains("object_name"));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -431,7 +431,7 @@ mod test {
                 assert!(message.contains("service"));
                 assert!(message.contains("object_name"));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

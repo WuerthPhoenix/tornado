@@ -700,12 +700,12 @@ mod tests {
         };
 
         // Act
-        let empty_path = config.get_child_nodes_by_path(&vec![]);
-        let one_level = config.get_child_nodes_by_path(&vec!["root"]);
-        let nested_levels = config.get_child_nodes_by_path(&vec!["root", "filter2"]);
+        let empty_path = config.get_child_nodes_by_path(&[]);
+        let one_level = config.get_child_nodes_by_path(&["root"]);
+        let nested_levels = config.get_child_nodes_by_path(&["root", "filter2"]);
         let nested_levels_path_with_ruleset =
-            config.get_child_nodes_by_path(&vec!["root", "filter2", "filter3", "ruleset1"]);
-        let not_existing_path = config.get_child_nodes_by_path(&vec!["foo", "bar"]);
+            config.get_child_nodes_by_path(&["root", "filter2", "filter3", "ruleset1"]);
+        let not_existing_path = config.get_child_nodes_by_path(&["foo", "bar"]);
 
         // Assert
         assert_eq!(empty_path.clone().unwrap().len(), 1);
@@ -774,13 +774,13 @@ mod tests {
         };
 
         // Act
-        let result_with_empty_path = config.get_node_by_path(&vec![]);
-        let result_with_wrong_path = config.get_node_by_path(&vec!["root", "foo"]);
-        let result_with_first_level_path = config.get_node_by_path(&vec!["root"]);
+        let result_with_empty_path = config.get_node_by_path(&[]);
+        let result_with_wrong_path = config.get_node_by_path(&["root", "foo"]);
+        let result_with_first_level_path = config.get_node_by_path(&["root"]);
         let result_with_filter_same_name =
-            config.get_node_by_path(&vec!["root", "filter1", "filter2", "filter1"]);
+            config.get_node_by_path(&["root", "filter1", "filter2", "filter1"]);
         let result_with_ruleset =
-            config.get_node_by_path(&vec!["root", "filter1", "filter2", "ruleset2"]);
+            config.get_node_by_path(&["root", "filter1", "filter2", "ruleset2"]);
 
         // Assert
         assert_eq!(result_with_empty_path, None);
@@ -871,21 +871,21 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("Node in this path does not exist: [\"root\", \"filter3\"]"),
+                message: "Node in this path does not exist: [\"root\", \"filter3\"]".to_string(),
             })
         );
         assert!(result_ruleset.is_err());
         assert_eq!(
             result_ruleset.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("A ruleset cannot have children nodes"),
+                message: "A ruleset cannot have children nodes".to_string(),
             })
         );
         assert!(result_already_existing_node.is_err());
         assert_eq!(
             result_already_existing_node.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]"),
+                message: "A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]".to_string(),
             })
         );
     }
@@ -1071,16 +1071,16 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!(
+                message:
                     "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                )
+                        .to_string(),
             })
         );
         assert!(result_node_different_type.is_err());
         assert_eq!(
             result_node_different_type.err(),
             Some(MatcherError::ConfigurationError {
-                message: format!("Node to edit is not of same type of the new one passed"),
+                message: "Node to edit is not of same type of the new one passed".to_string(),
             })
         );
     }
@@ -1436,7 +1436,7 @@ mod tests {
         };
 
         // Act
-        let result = config.create_rule(&["root", "ruleset2"], new_rule.clone());
+        let result = config.create_rule(&["root", "ruleset2"], new_rule);
 
         // Assert
         assert!(result.is_err());
@@ -1479,7 +1479,7 @@ mod tests {
         };
 
         // Act
-        let result = config.create_rule(&["root", "filter1"], new_rule.clone());
+        let result = config.create_rule(&["root", "filter1"], new_rule);
 
         // Assert
         assert!(result.is_err());
@@ -1516,7 +1516,7 @@ mod tests {
         };
 
         // Act
-        let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
+        let result = config.create_rule(&["root", "ruleset1"], new_rule);
 
         // Assert
         assert!(result.is_err());
@@ -1562,7 +1562,7 @@ mod tests {
         };
 
         // Act
-        let result = config.create_rule(&["root", "ruleset1"], new_rule.clone());
+        let result = config.create_rule(&["root", "ruleset1"], new_rule);
 
         // Assert
         assert!(result.is_ok());

@@ -121,7 +121,7 @@ mod test {
 
     fn to_action(filename: &str) -> ConfigAction {
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         serde_json::from_str(&json).unwrap()
     }
 }

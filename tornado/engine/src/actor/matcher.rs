@@ -332,7 +332,7 @@ mod test {
 
                 assert!(tenant_node_matched);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -405,7 +405,7 @@ mod test {
 
                 assert!(!tenant_node_matched);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
 
         match processed_event_beta.result {
@@ -419,7 +419,7 @@ mod test {
 
                 assert!(tenant_node_matched);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 

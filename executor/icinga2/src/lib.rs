@@ -623,7 +623,7 @@ mod test {
                 assert_eq!(results_body.results.get(1).unwrap().code as u16, 500);
             }
             Icinga2ActionResponse::ErrorResponse(_) => {
-                assert!(false)
+                unreachable!()
             }
         }
     }
@@ -643,7 +643,7 @@ mod test {
                 assert_eq!(error_body.status, "No objects found.");
             }
             Icinga2ActionResponse::OkResponse(_) => {
-                assert!(false)
+                unreachable!()
             }
         }
     }

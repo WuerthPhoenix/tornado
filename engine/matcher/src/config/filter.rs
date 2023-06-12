@@ -29,7 +29,7 @@ mod test {
     fn should_deserialize_filter_from_json() {
         let filename = "./test_resources/filter/filter_01.json";
         let json =
-            fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename));
+            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         let filter = Filter::from_json(&json).unwrap();
 
@@ -50,7 +50,7 @@ mod test {
           "filter": {}
         }"##;
 
-        let filter = Filter::from_json(&json).unwrap();
+        let filter = Filter::from_json(json).unwrap();
 
         assert_eq!(Defaultable::Default {}, filter.filter);
     }
@@ -64,7 +64,7 @@ mod test {
           "constraint": {}
         }"##;
 
-        assert!(Filter::from_json(&json).is_err());
+        assert!(Filter::from_json(json).is_err());
     }
 
     #[test]
@@ -74,6 +74,6 @@ mod test {
           "active": true
         }"##;
 
-        assert!(Filter::from_json(&json).is_err());
+        assert!(Filter::from_json(json).is_err());
     }
 }

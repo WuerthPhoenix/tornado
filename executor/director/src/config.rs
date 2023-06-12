@@ -121,7 +121,7 @@ mod test {
         let result = client.get_icinga2_restart_current_status().await;
 
         // Assert
-        assert_eq!(result.unwrap().pending, true);
+        assert!(result.unwrap().pending);
     }
 
     #[tokio::test]

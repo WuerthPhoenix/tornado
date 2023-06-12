@@ -188,7 +188,7 @@ mod test_unix {
     #[tokio::test]
     async fn should_execute_echo_script() {
         // Arrange
-        let script = format!("{}", "./test_resources/echo.sh");
+        let script = "./test_resources/echo.sh".to_string();
 
         let mut action = Action::new("script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));
@@ -202,7 +202,7 @@ mod test_unix {
     #[tokio::test]
     async fn should_execute_echo_script_with_args() {
         // Arrange
-        let script = format!("{}", "./test_resources/echo.sh");
+        let script = "./test_resources/echo.sh".to_string();
 
         let mut action = Action::new("script");
         action.payload.insert(SCRIPT_TYPE_KEY.to_owned(), Value::String(script));

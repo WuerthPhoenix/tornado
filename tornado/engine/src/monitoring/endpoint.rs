@@ -91,7 +91,7 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+        let srv = test::init_service(App::new().service(monitoring_endpoints(
             web::scope("/monitoring"),
             daemon_config,
             Arc::new(Metrics::new("a")),
@@ -100,7 +100,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring").to_request();
-        let response = test::read_response(&mut srv, request).await;
+        let response = test::read_response(&srv, request).await;
 
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
@@ -128,7 +128,7 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+        let srv = test::init_service(App::new().service(monitoring_endpoints(
             web::scope("/monitoring"),
             daemon_config,
             Arc::new(Metrics::new("a")),
@@ -139,10 +139,10 @@ mod test {
         let request = test::TestRequest::get().uri("/monitoring/ping").to_request();
 
         // Assert
-        let pong: PongResponse = test::read_response_json(&mut srv, request).await;
+        let pong: PongResponse = test::read_response_json(&srv, request).await;
         assert!(pong.message.contains("pong - "));
 
-        let date = DateTime::parse_from_rfc3339(&pong.message.clone()[7..]);
+        let date = DateTime::parse_from_rfc3339(&pong.message[7..]);
         // Assert
         assert!(date.is_ok());
     }
@@ -165,7 +165,7 @@ mod test {
             retry_strategy: Default::default(),
             auth: AuthConfig::default(),
         };
-        let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+        let srv = test::init_service(App::new().service(monitoring_endpoints(
             web::scope("/monitoring"),
             daemon_config,
             Arc::new(Metrics::new("a")),
@@ -178,9 +178,9 @@ mod test {
 
         // Assert
         let channel_config: CommunicationChannelConfig =
-            test::read_response_json(&mut srv, request).await;
-        assert_eq!(channel_config.event_tcp_socket_enabled, true);
-        assert_eq!(channel_config.nats_enabled, false);
+            test::read_response_json(&srv, request).await;
+        assert!(channel_config.event_tcp_socket_enabled);
+        assert!(!channel_config.nats_enabled);
     }
 
     #[actix_rt::test]
@@ -208,7 +208,7 @@ mod test {
                 auth: AuthConfig::default(),
             };
             let metrics = Arc::new(Metrics::new("aa"));
-            let mut srv = test::init_service(App::new().service(monitoring_endpoints(
+            let srv = test::init_service(App::new().service(monitoring_endpoints(
                 web::scope("/monitoring-test"),
                 daemon_config,
                 metrics.clone(),
@@ -226,7 +226,7 @@ mod test {
                 test::TestRequest::get().uri("/monitoring-test/v1/metrics/prometheus").to_request();
 
             // Act
-            let response = test::call_service(&mut srv, request).await;
+            let response = test::call_service(&srv, request).await;
             let metrics = test::read_body(response).await;
             let content = std::str::from_utf8(&metrics).unwrap();
 

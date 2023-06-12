@@ -152,14 +152,14 @@ mod test {
         assert_eq!(&32, &interpolator.parsers[0].end);
         match &interpolator.parsers[0].parser {
             Parser::Exp { keys } => assert_eq!(3, keys.len()),
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         assert_eq!(&36, &interpolator.parsers[1].start);
         assert_eq!(&49, &interpolator.parsers[1].end);
         match &interpolator.parsers[1].parser {
             Parser::Exp { keys } => assert_eq!(2, keys.len()),
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         assert_eq!(&58, &interpolator.parsers[2].start);
@@ -170,7 +170,7 @@ mod test {
                 assert_eq!(ValueGetter::Map { key: "_variables".to_owned() }, keys[0]);
                 assert_eq!(ValueGetter::Map { key: "test12".to_owned() }, keys[1]);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

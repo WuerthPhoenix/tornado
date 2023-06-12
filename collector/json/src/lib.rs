@@ -79,11 +79,11 @@ mod test {
         // Arrange
         let rsyslog_filename = "./test_resources/rsyslog_01_input.json";
         let rsyslog_string = fs::read_to_string(rsyslog_filename)
-            .expect(&format!("Unable to open the file [{}]", rsyslog_filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", rsyslog_filename));
 
         let expected_event_filename = "./test_resources/rsyslog_01_output.json";
         let expected_event_string = fs::read_to_string(expected_event_filename)
-            .expect(&format!("Unable to open the file [{}]", expected_event_filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", expected_event_filename));
         let mut expected_event =
             serde_json::from_str::<Event>(&expected_event_string).expect("should parse the event");
 
@@ -97,7 +97,7 @@ mod test {
         assert_eq!("2018-11-01T23:59:59+01:00", event.payload.get("@timestamp").unwrap());
 
         expected_event.trace_id = event.trace_id.clone();
-        expected_event.created_ms = event.created_ms.clone();
+        expected_event.created_ms = event.created_ms;
         assert_eq!(expected_event, event);
     }
 }

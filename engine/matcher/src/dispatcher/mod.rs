@@ -103,7 +103,7 @@ mod test {
                 Box::new(move |message: ActionMessage| {
                     println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.0.action.clone())
+                    value.push(message.0.action)
                 }),
             );
         }
@@ -142,7 +142,7 @@ mod test {
                 Box::new(move |message: ActionMessage| {
                     println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.0.action.clone())
+                    value.push(message.0.action)
                 }),
             );
         }
@@ -179,7 +179,7 @@ mod test {
                 Box::new(move |message: ActionMessage| {
                     println!("received action of id: {}", message.0.action.id);
                     let mut value = clone.lock().unwrap();
-                    value.push(message.0.action.clone())
+                    value.push(message.0.action)
                 }),
             );
         }

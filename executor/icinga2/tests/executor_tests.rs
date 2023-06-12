@@ -38,7 +38,7 @@ async fn should_perform_a_post_request() {
             ))
         })
         .bind("127.0.0.1:0")
-        .and_then(|server| {
+        .map(|server| {
             let server_port = server.addrs()[0].port();
 
             let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
@@ -74,7 +74,7 @@ async fn should_perform_a_post_request() {
                 println!("Executor action sent");
             });
 
-            Ok(server)
+            server
         })
         .expect("Can not bind to port 0")
         .run()

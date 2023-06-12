@@ -147,7 +147,6 @@ mod test {
         let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
 
         let api = "/v1/events";
-        let api_clone = api.clone();
 
         actix::spawn(async move {
             HttpServer::new(move || {
@@ -159,10 +158,10 @@ mod test {
                 )))
             })
             .bind("127.0.0.1:0")
-            .and_then(|server| {
+            .map(|server| {
                 let server_port = server.addrs()[0].port();
 
-                let url = format!("http://127.0.0.1:{}{}", server_port, api_clone);
+                let url = format!("http://127.0.0.1:{}{}", server_port, api);
                 warn!("Client connecting to: {}", url);
 
                 actix::spawn(async move {
@@ -202,7 +201,7 @@ mod test {
                     icinga_poll.start_polling_icinga().await.unwrap();
                 });
 
-                Ok(server)
+                server
             })
             .expect("Can not bind to port 0")
             .run()
