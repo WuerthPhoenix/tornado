@@ -96,6 +96,8 @@ export type RuleDetailsDto = {     name: string; description: string; continue: 
 
 export type TreeInfoDto = { rules_count: number; filters_count: number };
 
+export type RulePositionDto = { position: number };
+
 
 /* ------------- */
 /* 'event' types */
