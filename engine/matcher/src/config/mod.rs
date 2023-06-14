@@ -108,6 +108,18 @@ impl MatcherConfig {
         })
     }
 
+    fn get_mut_rules_by_path_or_err(
+        &mut self,
+        path: &[&str],
+    ) -> Result<&mut Vec<Rule>, MatcherError> {
+        match self.get_mut_node_by_path_or_err(path)? {
+            MatcherConfig::Filter { .. } => Err(MatcherError::ConfigurationError {
+                message: "Cannot access rules in filter nodes".to_string(),
+            }),
+            MatcherConfig::Ruleset { rules, .. } => Ok(rules),
+        }
+    }
+
     // Returns child nodes of a node found by a path
     // If the path is empty [], the [self] is returned
     pub fn get_child_nodes_by_path(&self, path: &[&str]) -> Option<Cow<Vec<MatcherConfig>>> {
@@ -241,24 +253,17 @@ impl MatcherConfig {
 
     // Create a node at a specific path
     pub fn create_rule(&mut self, ruleset_path: &[&str], rule: Rule) -> Result<(), MatcherError> {
-        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
-        let rules = match node {
-            MatcherConfig::Filter { .. } => {
-                return Err(MatcherError::ConfigurationError {
-                    message: "Cannot create rules in filter nodes".to_string(),
-                })
-            }
-            MatcherConfig::Ruleset { rules, .. } => rules,
-        };
+        let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
+
         if rules.iter().any(|Rule { name, .. }| name == &rule.name) {
             return Err(MatcherError::ConfigurationError {
                 message: format!(
-                    "A rule with name {} already exists in ruleset {}",
-                    rule.name,
-                    node.get_name()
+                    "A rule with name {} already exists in ruleset {:?}",
+                    rule.name, ruleset_path,
                 ),
             });
         };
+
         rules.push(rule);
         Ok(())
     }
@@ -269,15 +274,7 @@ impl MatcherConfig {
         rule_name: &str,
         new_rule: Rule,
     ) -> Result<(), MatcherError> {
-        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
-        let rules = match node {
-            MatcherConfig::Filter { .. } => {
-                return Err(MatcherError::ConfigurationError {
-                    message: "Cannot edit rules in filter nodes".to_string(),
-                })
-            }
-            MatcherConfig::Ruleset { rules, .. } => rules,
-        };
+        let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
         match rules.iter_mut().find(|rule| rule.name == rule_name) {
             None => Err(MatcherError::ConfigurationError {
@@ -299,17 +296,9 @@ impl MatcherConfig {
         rule_name: &str,
         position: usize,
     ) -> Result<(), MatcherError> {
-        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
-        let rules = match node {
-            MatcherConfig::Filter { .. } => {
-                return Err(MatcherError::ConfigurationError {
-                    message: "Cannot edit rules in filter nodes".to_string(),
-                })
-            }
-            MatcherConfig::Ruleset { rules, .. } => rules,
-        };
+        let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
-        if !(position < rules.len()) {
+        if position >= rules.len() {
             return Err(MatcherError::ConfigurationError {
                 message: format!(
                     "Rule position {} out of bounds for ruleset with {} rules.",
@@ -344,33 +333,20 @@ impl MatcherConfig {
         ruleset_path: &[&str],
         rule_name: &str,
     ) -> Result<(), MatcherError> {
-        let node = self.get_mut_node_by_path_or_err(ruleset_path)?;
-        let rules = match node {
-            MatcherConfig::Filter { .. } => {
-                return Err(MatcherError::ConfigurationError {
-                    message: "Cannot edit rules in filter nodes".to_string(),
-                })
-            }
-            MatcherConfig::Ruleset { rules, .. } => rules,
-        };
+        let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
+        let rule_count = rules.len();
+        rules.retain(|rule| rule.name != rule_name);
 
-        match rules
-            .iter()
-            .enumerate()
-            .find(|(_, rule)| rule.name == rule_name)
-            .map(|(index, _)| index)
-        {
-            None => Err(MatcherError::ConfigurationError {
+        if rule_count == rules.len() {
+            return Err(MatcherError::ConfigurationError {
                 message: format!(
                     "No rule with name {} exists in ruleset {:?}",
                     rule_name, ruleset_path
                 ),
-            }),
-            Some(index) => {
-                rules.remove(index);
-                Ok(())
-            }
+            });
         }
+
+        Ok(())
     }
 }
 
@@ -1486,7 +1462,7 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
-                message: "Cannot create rules in filter nodes".to_string(),
+                message: "Cannot access rules in filter nodes".to_string(),
             })
         );
     }
@@ -1523,7 +1499,9 @@ mod tests {
         assert_eq!(
             result.err(),
             Some(MatcherError::ConfigurationError {
-                message: "A rule with name rule-1 already exists in ruleset ruleset1".to_string(),
+                message:
+                    "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
+                        .to_string(),
             })
         );
     }
