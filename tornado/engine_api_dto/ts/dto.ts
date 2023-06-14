@@ -88,6 +88,10 @@ export type ProcessingTreeNodeConfigDto =
  | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; active: boolean } 
  | { type: "Ruleset"; name: string; rules_count: number };
 
+export type ProcessingTreeNodeEditDto = 
+ | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
+ | { type: "Ruleset"; name: string };
+
 export type ProcessingTreeNodeDetailsDto = 
  | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
  | { type: "Ruleset"; name: string; rules: RuleDetailsDto [] };
