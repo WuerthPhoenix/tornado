@@ -1073,7 +1073,7 @@ mod tests {
             Some(MatcherError::ConfigurationError {
                 message: format!(
                     "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                ),
+                )
             })
         );
         assert!(result_node_different_type.is_err());
@@ -1840,57 +1840,100 @@ mod tests {
         assert!(matches!(result, Err(MatcherError::ConfigurationError { .. })))
     }
 
-    #[test]
-    fn test_move_rule() {
-        let mut config = MatcherConfig::Ruleset {
-            name: "root".to_string(),
-            rules: vec![
-                Rule {
-                    name: "my-rule-001".to_string(),
-                    description: "".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
-                },
-                Rule {
-                    name: "my-rule-002".to_string(),
-                    description: "".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
-                },
-            ],
+    fn move_rule_test_ruleset() -> MatcherConfig {
+        let default = Rule {
+            name: "default-rule".to_string(),
+            description: "".to_string(),
+            do_continue: true,
+            active: true,
+            constraint: Constraint { where_operator: None, with: Default::default() },
+            actions: vec![],
         };
 
-        let result = config.move_rule(&["root"], "my-rule-002", 0);
+        MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![
+                Rule { name: "my-rule-001".to_string(), ..default.clone() },
+                Rule { name: "my-rule-002".to_string(), ..default.clone() },
+                Rule { name: "my-rule-003".to_string(), ..default.clone() },
+            ],
+        }
+    }
 
+    #[test]
+    fn test_move_rule_front() {
+        // Arrange
+        let mut config = move_rule_test_ruleset();
+
+        // Act
+        let result = config.move_rule(&["root"], "my-rule-003", 0);
+
+        // Assert
         assert!(result.is_ok());
 
         let rules = match &config {
             MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
         };
-        assert_eq!(rules[0].name, "my-rule-002")
+
+        assert_eq!(rules.len(), 3);
+        assert_eq!(rules[0].name, "my-rule-003");
+        assert_eq!(rules[1].name, "my-rule-001");
+        assert_eq!(rules[2].name, "my-rule-002")
+    }
+
+    #[test]
+    fn test_move_rule_back() {
+        // Arrange
+        let mut config = move_rule_test_ruleset();
+
+        // Act
+        let result = config.move_rule(&["root"], "my-rule-001", 2);
+
+        // Assert
+        assert!(result.is_ok());
+
+        let rules = match &config {
+            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+
+        assert_eq!(rules.len(), 3);
+        assert_eq!(rules[0].name, "my-rule-002");
+        assert_eq!(rules[1].name, "my-rule-003");
+        assert_eq!(rules[2].name, "my-rule-001")
+    }
+
+    #[test]
+    fn test_move_rule_repeated() {
+        // Arrange
+        let mut config = move_rule_test_ruleset();
+
+        // Act
+        let result = config.move_rule(&["root"], "my-rule-001", 2);
+        let result2 = config.move_rule(&["root"], "my-rule-002", 1);
+
+        // Assert
+        assert!(result.is_ok());
+        assert!(result2.is_ok());
+
+        let rules = match &config {
+            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
+            MatcherConfig::Ruleset { rules, .. } => rules,
+        };
+
+        assert_eq!(rules.len(), 3);
+        assert_eq!(rules[0].name, "my-rule-003");
+        assert_eq!(rules[1].name, "my-rule-002");
+        assert_eq!(rules[2].name, "my-rule-001")
     }
 
     #[test]
     fn test_move_rule_bounds() {
-        let mut config = MatcherConfig::Ruleset {
-            name: "root".to_string(),
-            rules: vec![Rule {
-                name: "my-rule-001".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
-            }],
-        };
+        let mut config = move_rule_test_ruleset();
 
-        let result = config.move_rule(&["root"], "my-rule-001", 0);
-        let result2 = config.move_rule(&["root"], "my-rule-001", 1);
+        let result = config.move_rule(&["root"], "my-rule-001", 2);
+        let result2 = config.move_rule(&["root"], "my-rule-001", 3);
 
         assert!(result.is_ok());
         assert!(result2.is_err());
@@ -1899,6 +1942,10 @@ mod tests {
             MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
         };
-        assert_eq!(rules[0].name, "my-rule-001")
+
+        assert_eq!(rules.len(), 3);
+        assert_eq!(rules[0].name, "my-rule-002");
+        assert_eq!(rules[1].name, "my-rule-003");
+        assert_eq!(rules[2].name, "my-rule-001")
     }
 }
