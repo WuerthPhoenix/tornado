@@ -11,7 +11,7 @@ use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
-    ProcessingTreeNodeDetailsDto, RuleDto, TreeInfoDto,
+    ProcessingTreeNodeDetailsDto, RuleDto, RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
@@ -103,6 +103,10 @@ pub fn build_config_v2_endpoints<
                     .route(web::get().to(get_draft_rule_details::<A, CM>))
                     .route(web::put().to(edit_draft_rule_details::<A, CM>))
                     .route(web::delete().to(delete_draft_rule_details::<A, CM>)),
+                )
+                .service(
+                    web::resource("/rule/move/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}")
+                        .route(web::put().to(draft_move_rule::<A, CM>)),
                 ),
         )
         .service(
@@ -397,6 +401,29 @@ async fn edit_draft_rule_details<
             &endpoint_params.ruleset_path,
             &endpoint_params.rule_name,
             rule_dto.0,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
+async fn draft_move_rule<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftRuleDetailsParams>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    rule_dto: Json<RulePositionDto>,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    data.api
+        .move_draft_rule_by_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.ruleset_path,
+            &endpoint_params.rule_name,
+            rule_dto.0.position,
         )
         .await?;
     Ok(Json(()))
@@ -1590,6 +1617,55 @@ mod test {
 
         // Assert
         assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_move_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header(test_auth_root_edit())
+            .uri("/config/draft/rule/move/auth1/draft123/root,child_2/rule_1")
+            .set_json(&RulePositionDto { position: 0 })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::OK, response.status());
+        Ok(())
+    }
+
+    #[actix_rt::test]
+    async fn v2_endpoint_move_rule_in_draft_out_of_bounds_by_path_should_return_err(
+    ) -> Result<(), ApiError> {
+        // Arrange
+        let mut srv =
+            test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
+                auth: test_auth_service_v2(),
+                api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            })))
+            .await;
+
+        // Act
+        let request = test::TestRequest::put()
+            .insert_header(test_auth_root_edit())
+            .uri("/config/draft/rule/move/auth1/draft123/root,child_2/rule_1")
+            .set_json(&RulePositionDto { position: 5 })
+            .to_request();
+
+        let response = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(StatusCode::BAD_REQUEST, response.status());
         Ok(())
     }
 
