@@ -502,7 +502,7 @@ pub mod test {
                 assert_eq!("USER_567", params["OWNER"]);
                 assert_eq!("abc", params["ID"]);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

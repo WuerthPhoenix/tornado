@@ -200,7 +200,7 @@ mod test {
     #[actix_rt::test]
     async fn should_send_event_to_current_config() {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
+        let srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
             auth: test_auth_service(),
             api: EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
@@ -231,7 +231,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&mut srv, request).await;
+            test::read_response_json(&srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(metadata, dto.event.metadata);
     }
@@ -239,7 +239,7 @@ mod test {
     #[actix_rt::test]
     async fn should_send_event_to_draft() {
         // Arrange
-        let mut srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
+        let srv = test::init_service(App::new().service(build_event_endpoints(ApiData {
             auth: test_auth_service(),
             api: EventApi::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
         })))
@@ -270,7 +270,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&mut srv, request).await;
+            test::read_response_json(&srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
         assert_eq!(metadata, dto.event.metadata);
     }

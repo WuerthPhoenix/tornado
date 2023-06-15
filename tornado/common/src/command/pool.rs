@@ -281,7 +281,7 @@ mod test {
                 let result = sender.execute(Action::new(&message).into()).await;
                 match result {
                     Ok(result_message) => assert_eq!(result_message, message),
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             } else {
                 let message = format!("err {}", i);
@@ -290,7 +290,7 @@ mod test {
                     Err(ExecutorError::SenderError { message: err_message }) => {
                         assert_eq!(err_message, message)
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
         }
@@ -322,7 +322,7 @@ mod test {
                 let result = sender.execute(Action::new(&message).into()).await;
                 match result {
                     Ok(result_message) => assert_eq!(result_message, message),
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             } else {
                 let message = format!("err {}", i);
@@ -331,7 +331,7 @@ mod test {
                     Err(TornadoError::SenderError { message: err_message }) => {
                         assert_eq!(err_message, message)
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
         }

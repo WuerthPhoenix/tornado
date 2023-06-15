@@ -366,7 +366,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::MissingArgumentError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -389,7 +389,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::MissingArgumentError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -414,7 +414,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::MissingArgumentError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -440,7 +440,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::MissingArgumentError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -464,7 +464,7 @@ mod test {
         // Assert
         match result {
             Err(ExecutorError::MissingArgumentError { .. }) => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 }

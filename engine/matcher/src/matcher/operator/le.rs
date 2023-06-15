@@ -41,8 +41,8 @@ mod test {
     #[test]
     fn should_return_the_operator_name() {
         let operator = LessEqualThan {
-            first: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
-            second: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
+            first: AccessorBuilder::new().build("", "").unwrap(),
+            second: AccessorBuilder::new().build("", "").unwrap(),
         };
         assert_eq!(OPERATOR_NAME, operator.name());
     }
@@ -50,8 +50,8 @@ mod test {
     #[test]
     fn should_build_the_operator_with_expected_arguments() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
+            AccessorBuilder::new().build("", "two").unwrap(),
         )
         .unwrap();
 
@@ -70,8 +70,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_equal_arguments() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
         )
         .unwrap();
 
@@ -83,8 +83,8 @@ mod test {
     #[test]
     fn should_evaluate_using_accessors() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "two").unwrap(),
         )
         .unwrap();
 
@@ -96,8 +96,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_greater() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"aaa".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "aaa").unwrap(),
         )
         .unwrap();
 
@@ -109,8 +109,8 @@ mod test {
     #[test]
     fn should_compare_event_fields() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.type}").unwrap(),
         )
         .unwrap();
 
@@ -125,8 +125,8 @@ mod test {
     #[test]
     fn should_return_false_if_fields_do_not_exist() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.1}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.2}").unwrap(),
         )
         .unwrap();
 
@@ -138,8 +138,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_equal_values_of_type_bool() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -153,8 +153,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_equal_values_of_type_number() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -168,8 +168,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_type_number_and_less() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -183,8 +183,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_with_values_of_type_array() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -198,8 +198,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_map() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -218,8 +218,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_values_of_different_type() {
         let operator = LessEqualThan::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 

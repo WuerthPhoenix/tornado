@@ -517,7 +517,6 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
 
         for _ in 0..in_flight_messages {
             assert!(receiver.recv().await.is_some());
-            in_flight_messages -= 1;
             received_messages += 1;
         }
 
@@ -534,7 +533,6 @@ async fn publisher_and_subscriber_should_reconnect_and_reprocess_events_if_nats_
         if nats_is_up {
             for _ in 0..in_flight_messages {
                 assert!(receiver.recv().await.is_some());
-                in_flight_messages -= 1;
                 received_messages += 1;
             }
         }
@@ -599,7 +597,7 @@ async fn publisher_should_reschedule_all_events_after_a_disconnection() {
         } else {
             break;
         }
-        retries = retries - 1;
+        retries -= 1;
         if retries <= 0 {
             break;
         }

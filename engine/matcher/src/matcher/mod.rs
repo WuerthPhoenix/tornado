@@ -314,7 +314,7 @@ mod test {
                 assert_eq!(1, rules.len());
                 assert_eq!("rule_name", rules[0].name);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -340,7 +340,7 @@ mod test {
                 assert_eq!(0, nodes.len());
                 assert_eq!("filter", name);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -367,7 +367,7 @@ mod test {
                 assert_eq!(0, nodes.len());
                 assert_eq!("filter", name)
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -415,10 +415,10 @@ mod test {
                                 assert_eq!(1, rules2.len());
                                 assert_eq!("rule2", rules2.get(0).unwrap().name);
                             }
-                            _ => assert!(false),
+                            _ => unreachable!(),
                         }
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
 
                 match &nodes1.get(1).unwrap() {
@@ -427,10 +427,10 @@ mod test {
                         assert_eq!(1, rules1.len());
                         assert_eq!("rule1", rules1.get(0).unwrap().name);
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -442,7 +442,7 @@ mod test {
             second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule_name", op.clone());
-        let rule_2 = new_rule("rule_name", op.clone());
+        let rule_2 = new_rule("rule_name", op);
 
         // Act
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -455,7 +455,7 @@ mod test {
 
         match matcher.err().unwrap() {
             MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -475,7 +475,7 @@ mod test {
             MatcherError::NotValidIdOrNameError { message } => {
                 assert!(message.contains("filter?!!"));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -489,7 +489,7 @@ mod test {
         let rule_1 = new_rule("rule1", op.clone());
         let rule_2 = new_rule("rule2", op.clone());
         let rule_3 = new_rule("rule3", op.clone());
-        let rule_4 = new_rule("rule4", op.clone());
+        let rule_4 = new_rule("rule4", op);
 
         // Act
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -508,7 +508,7 @@ mod test {
                 assert_eq!("rule3", rules[2].name);
                 assert_eq!("rule4", rules[3].name);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -527,7 +527,7 @@ mod test {
         let mut rule_3 = new_rule("rule3", op.clone());
         rule_3.active = false;
 
-        let rule_4 = new_rule("rule4", op.clone());
+        let rule_4 = new_rule("rule4", op);
 
         // Act
         let matcher = new_matcher(&MatcherConfig::Ruleset {
@@ -544,7 +544,7 @@ mod test {
                 assert_eq!("rule2", rules[0].name);
                 assert_eq!("rule4", rules[1].name);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -599,7 +599,7 @@ mod test {
                 assert_eq!(rules.rules.get(2).unwrap().name, "rule3_email");
                 assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(2).unwrap().status);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -666,7 +666,7 @@ mod test {
                 assert_eq!("ai", processed_rule.actions[0].payload.get("temp").unwrap());
                 assert!(processed_rule.message.is_none())
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -700,7 +700,7 @@ mod test {
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::NotMatched, processed_rule.status);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -750,7 +750,7 @@ mod test {
                 info!("Message: {:?}", processed_rule.message);
                 assert!(processed_rule.message.clone().unwrap().contains("extracted_temp"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -816,7 +816,7 @@ mod test {
                     .unwrap()
                     .contains(r#"parser: Exp { keys: [Map { key: \"missing\" }] } "#))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -833,7 +833,7 @@ mod test {
         let mut rule_2 = new_rule("rule2_email", op.clone());
         rule_2.do_continue = false;
 
-        let rule_3 = new_rule("rule3_email", op.clone());
+        let rule_3 = new_rule("rule3_email", op);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
             name: "ruleset".to_owned(),
@@ -856,7 +856,7 @@ mod test {
                 assert_eq!(rules.rules.get(1).unwrap().name, "rule2_email");
                 assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(1).unwrap().status);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -879,7 +879,7 @@ mod test {
         );
         rule_2.do_continue = false;
 
-        let rule_3 = new_rule("rule3_email", op.clone());
+        let rule_3 = new_rule("rule3_email", op);
 
         let matcher = new_matcher(&MatcherConfig::Ruleset {
             name: "ruleset".to_owned(),
@@ -902,7 +902,7 @@ mod test {
 
                 assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(2).unwrap().status);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -957,7 +957,7 @@ mod test {
                         .unwrap()
                 );
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1045,7 +1045,7 @@ mod test {
                         .unwrap()
                 );
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1129,7 +1129,7 @@ mod test {
                         .unwrap()
                 );
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1190,7 +1190,7 @@ mod test {
                         .unwrap()
                 );
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1251,7 +1251,7 @@ mod test {
                         .unwrap()
                 );
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1272,7 +1272,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node2".to_owned(),
-                rules: vec![new_rule("rule_b1", op.clone())],
+                rules: vec![new_rule("rule_b1", op)],
             },
         ];
 
@@ -1296,7 +1296,7 @@ mod test {
                         assert_eq!(1, rules.rules.len());
                         assert_eq!(rules.rules.get(0).unwrap().name, "rule_a1");
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(1).unwrap() {
@@ -1305,10 +1305,10 @@ mod test {
                         assert_eq!(1, rules.rules.len());
                         assert_eq!(rules.rules.get(0).unwrap().name, "rule_b1");
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1329,7 +1329,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node2".to_owned(),
-                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
+                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op)],
             },
         ];
 
@@ -1364,7 +1364,7 @@ mod test {
                             rules.rules.get(1).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(1).unwrap() {
@@ -1384,10 +1384,10 @@ mod test {
                             rules.rules.get(1).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1427,7 +1427,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node3".to_owned(),
-                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op.clone())],
+                rules: vec![new_rule("rule_b1", None), new_rule("rule_b2", op)],
             },
         ];
 
@@ -1460,10 +1460,10 @@ mod test {
                                     rules.rules.get(0).unwrap().status
                                 );
                             }
-                            _ => assert!(false),
+                            _ => unreachable!(),
                         };
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(1).unwrap() {
@@ -1472,7 +1472,7 @@ mod test {
                         assert_eq!(ProcessedFilterStatus::NotMatched, filter.status);
                         assert_eq!(0, nodes.len());
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(2).unwrap() {
@@ -1490,7 +1490,7 @@ mod test {
                             rules.rules.get(1).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(3).unwrap() {
@@ -1508,10 +1508,10 @@ mod test {
                             rules.rules.get(1).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1533,7 +1533,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node1".to_owned(),
-                rules: vec![new_rule("rule_b1", op.clone())],
+                rules: vec![new_rule("rule_b1", op)],
             },
         ];
 
@@ -1551,7 +1551,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::Inactive, filter.status);
                 assert_eq!(0, nodes.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1575,7 +1575,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node1".to_owned(),
-                rules: vec![new_rule("rule_b1", op.clone()), new_rule("rule_b2", op.clone())],
+                rules: vec![new_rule("rule_b1", op.clone()), new_rule("rule_b2", op)],
             },
         ];
 
@@ -1593,7 +1593,7 @@ mod test {
                 assert_eq!(ProcessedFilterStatus::NotMatched, filter.status);
                 assert_eq!(0, nodes.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1627,7 +1627,7 @@ mod test {
             },
             MatcherConfig::Ruleset {
                 name: "node2".to_owned(),
-                rules: vec![rule_c1, new_rule("rule_c2", op.clone())],
+                rules: vec![rule_c1, new_rule("rule_c2", op)],
             },
         ];
 
@@ -1655,7 +1655,7 @@ mod test {
                             rules.rules.get(0).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(1).unwrap() {
@@ -1668,7 +1668,7 @@ mod test {
                             rules.rules.get(0).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(2).unwrap() {
@@ -1681,10 +1681,10 @@ mod test {
                             rules.rules.get(0).unwrap().status
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1764,7 +1764,7 @@ mod test {
                                 .unwrap()
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
 
                 match nodes.get(1).unwrap() {
@@ -1786,10 +1786,10 @@ mod test {
                                 .unwrap()
                         );
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -1798,7 +1798,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/004_cmp_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "cmp_operators".to_owned();
 
@@ -1824,7 +1824,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1843,7 +1843,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1862,7 +1862,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1881,7 +1881,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1900,7 +1900,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1919,7 +1919,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1938,7 +1938,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
         // Value equal to 140 should not match
@@ -1957,7 +1957,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1977,7 +1977,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -1997,7 +1997,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -2020,7 +2020,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
 
@@ -2043,7 +2043,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2053,7 +2053,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2082,7 +2082,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2092,7 +2092,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2118,7 +2118,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2128,7 +2128,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2160,7 +2160,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2170,7 +2170,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2202,7 +2202,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2212,7 +2212,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2240,7 +2240,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2250,7 +2250,7 @@ mod test {
         // Arrange
         let filename = "./test_resources/rules/005_contains_operators.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let mut rule = Rule::from_json(&json).unwrap();
         rule.name = "ccontains_operators".to_owned();
 
@@ -2280,7 +2280,7 @@ mod test {
                     assert_eq!(rules.rules.get(0).unwrap().name, rule.name);
                     assert_eq!(ProcessedRuleStatus::Matched, rules.rules.get(0).unwrap().status);
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             };
         }
     }
@@ -2367,7 +2367,7 @@ mod test {
                 let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -2489,7 +2489,7 @@ mod test {
                 assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
                 assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -2518,7 +2518,7 @@ mod test {
                 let rule_processed = rules.rules.get(0).expect("should contain rule");
                 assert!(rule_processed.meta.is_none())
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
 
         match result_with_metadata.result {
@@ -2534,7 +2534,7 @@ mod test {
                 assert_eq!("action_2", &processed_rule_metadata.actions[1].id);
                 assert_eq!("action_3", &processed_rule_metadata.actions[2].id);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 
@@ -2559,7 +2559,7 @@ mod test {
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
         let filter = filter
             .into()
-            .map(|filter| Defaultable::Value(filter))
+            .map(Defaultable::Value)
             .unwrap_or_else(|| Defaultable::Default {});
         Filter { active: true, description: "".to_owned(), filter }
     }

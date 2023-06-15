@@ -546,7 +546,7 @@ mod test {
         assert_eq!(1, extractor.modifiers_post.len());
         match extractor.modifiers_post[0] {
             ValueModifier::Trim => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -1281,7 +1281,7 @@ mod test {
         assert_eq!("key", &extractor.key);
         match extractor.regex_extractor {
             RegexValueExtractor::SingleKeyMatch { .. } => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

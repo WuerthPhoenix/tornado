@@ -128,7 +128,7 @@ pub mod test {
         // Arrange
         let filename = "./config/rules.d/ruleset_01/080_monitoring_foreach.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let foreach_action = Rule::from_json(&json).unwrap().actions[0].clone();
 
         let mut migrated_action = foreach_action.clone();
@@ -195,7 +195,7 @@ pub mod test {
                         check_migrated_rules(&before_nodes[i], &after_nodes[i]);
                     }
                 }
-                _ => assert!(false),
+                _ => unreachable!(),
             },
             MatcherConfig::Ruleset { name: name_before, rules: before_rules, .. } => {
                 match matcher_config_after {
@@ -232,7 +232,7 @@ pub mod test {
                             }
                         }
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
         }

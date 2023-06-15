@@ -188,7 +188,7 @@ mod test {
         assert!(res.is_ok());
         match res.unwrap() {
             MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
-            MatcherConfig::Filter { .. } => assert!(false),
+            MatcherConfig::Filter { .. } => unreachable!(),
         }
 
         // Add one rule after the tornado start
@@ -205,7 +205,7 @@ mod test {
         assert!(res.is_ok());
         match res.unwrap() {
             MatcherConfig::Ruleset { rules, .. } => assert_eq!(1, rules.len()),
-            MatcherConfig::Filter { .. } => assert!(false),
+            MatcherConfig::Filter { .. } => unreachable!(),
         }
     }
 
@@ -266,7 +266,7 @@ mod test {
                 assert_eq!(1, rules.rules.len());
                 assert_eq!(ProcessedRuleStatus::Matched, rules.rules[0].status)
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -326,7 +326,7 @@ mod test {
                 });
                 assert!(!tenant_alpha_node_matched);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         };
     }
 }

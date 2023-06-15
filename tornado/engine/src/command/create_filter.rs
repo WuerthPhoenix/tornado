@@ -165,11 +165,11 @@ pub mod test {
                         assert_eq!(nodes, &vec![]);
                     }
                     MatcherConfig::Ruleset { .. } => {
-                        assert!(false)
+                        unreachable!()
                     }
                 }
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 
@@ -193,7 +193,7 @@ pub mod test {
         };
 
         // Act
-        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add.clone()).unwrap();
+        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
 
         // Assert
         assert_ne!(matcher_config_before, matcher_config);
@@ -215,7 +215,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 
@@ -239,7 +239,7 @@ pub mod test {
         };
 
         // Act
-        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add.clone()).unwrap();
+        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
 
         // Assert
         assert_ne!(matcher_config_before, matcher_config);
@@ -261,7 +261,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 
@@ -285,7 +285,7 @@ pub mod test {
         };
 
         // Act
-        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add.clone()).unwrap();
+        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
 
         // Assert
         assert_eq!(matcher_config_before, matcher_config);
@@ -319,10 +319,10 @@ pub mod test {
                         assert_eq!(name, filter_to_add_name);
                         assert_eq!(nodes.len(), 0);
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 
@@ -398,10 +398,10 @@ pub mod test {
                         assert_eq!(name, filter_to_add_name);
                         assert_eq!(nodes.len(), 0);
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 };
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 
@@ -458,13 +458,13 @@ pub mod test {
                 assert_eq!(nodes.len(), 5);
                 let added_node = nodes.iter().find(|node| match node {
                     MatcherConfig::Filter { name, filter, nodes } => {
-                        name == filter_to_add_name && filter == &filter_to_add && nodes.len() == 0
+                        name == filter_to_add_name && filter == &filter_to_add && nodes.is_empty()
                     }
                     _ => false,
                 });
                 assert!(added_node.is_some());
             }
-            MatcherConfig::Ruleset { .. } => assert!(false),
+            MatcherConfig::Ruleset { .. } => unreachable!(),
         }
     }
 }

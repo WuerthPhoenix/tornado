@@ -41,8 +41,8 @@ mod test {
     #[test]
     fn should_return_the_operator_name() {
         let operator = NotEquals {
-            first_arg: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
-            second_arg: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
+            first_arg: AccessorBuilder::new().build("", "").unwrap(),
+            second_arg: AccessorBuilder::new().build("", "").unwrap(),
         };
         assert_eq!(OPERATOR_NAME, operator.name());
     }
@@ -50,8 +50,8 @@ mod test {
     #[test]
     fn should_build_the_operator_with_expected_arguments() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
+            AccessorBuilder::new().build("", "two").unwrap(),
         )
         .unwrap();
 
@@ -70,34 +70,34 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_equal_arguments() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
         )
         .unwrap();
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), false);
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_using_accessors() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"test_type".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "test_type").unwrap(),
         )
         .unwrap();
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), false);
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_true_if_different_arguments() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"wrong_test_type".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "wrong_test_type").unwrap(),
         )
         .unwrap();
 
@@ -109,8 +109,8 @@ mod test {
     #[test]
     fn should_compare_event_fields() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.type}").unwrap(),
         )
         .unwrap();
 
@@ -119,14 +119,14 @@ mod test {
 
         let event = Event::new_with_payload("type", payload);
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), false);
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_return_false_if_both_fields_do_not_exist() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.1}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.2}").unwrap(),
         )
         .unwrap();
 
@@ -138,21 +138,21 @@ mod test {
     #[test]
     fn should_return_true_if_one_field_do_not_exist() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.1}").unwrap(),
         )
         .unwrap();
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), true);
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_bool() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -166,8 +166,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_type_bool_but_not_equal() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -181,8 +181,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_number() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -196,8 +196,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_type_number_but_not_equal() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -211,8 +211,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_array() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -226,8 +226,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_type_array_but_different() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -241,8 +241,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_equal_values_of_type_map() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -261,8 +261,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_type_map_but_different() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -282,8 +282,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_values_of_different_type() {
         let operator = NotEquals::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 

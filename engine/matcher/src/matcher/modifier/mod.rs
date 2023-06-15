@@ -101,6 +101,8 @@ impl ValueModifier {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::approx_constant)]
+
     use super::*;
     use maplit::*;
     use serde_json::json;
@@ -158,7 +160,7 @@ mod test {
         assert_eq!(1, value_modifiers.len());
         match &value_modifiers[0] {
             ValueModifier::ToNumber => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -181,7 +183,7 @@ mod test {
             ValueModifier::ReplaceAll { find, replace: _ } => {
                 assert_eq!("some", find);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -211,7 +213,7 @@ mod test {
                 );
                 assert_eq!(default_value, &Some("Keith Richards".to_owned()));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -234,7 +236,7 @@ mod test {
             ValueModifier::ReplaceAllRegex { find_regex, replace: _ } => {
                 assert_eq!(&RegexWrapper::new("./*").unwrap(), find_regex);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

@@ -111,7 +111,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), true);
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), false);
+        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert_eq!(operator.evaluate(&(&json!(event), &mut Value::Null).into()), true);
+        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
     }
 
     #[test]

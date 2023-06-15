@@ -61,8 +61,8 @@ mod test {
     #[test]
     fn should_return_the_operator_name() {
         let operator = EqualsIgnoreCase {
-            first: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
-            second: AccessorBuilder::new().build("", &"".to_owned()).unwrap(),
+            first: AccessorBuilder::new().build("", "").unwrap(),
+            second: AccessorBuilder::new().build("", "").unwrap(),
         };
         assert_eq!(OPERATOR_NAME, operator.name());
     }
@@ -70,8 +70,8 @@ mod test {
     #[test]
     fn should_build_the_operator_with_expected_arguments() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"one".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one").unwrap(),
+            AccessorBuilder::new().build("", "two").unwrap(),
         )
         .unwrap();
 
@@ -90,8 +90,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_first_arg_is_not_string() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"9".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.value}").unwrap(),
+            AccessorBuilder::new().build("", "9").unwrap(),
         )
         .unwrap();
 
@@ -104,8 +104,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_second_arg_is_not_string() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"9".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.value}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "9").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.value}").unwrap(),
         )
         .unwrap();
 
@@ -118,8 +118,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_args_are_equal_but_not_string() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"${event.payload.one}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.two}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.one}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.two}").unwrap(),
         )
         .unwrap();
 
@@ -133,8 +133,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_text_equals_with_diff_case() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"one tWo_THREE".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"ONE tWo_three".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one tWo_THREE").unwrap(),
+            AccessorBuilder::new().build("", "ONE tWo_three").unwrap(),
         )
         .unwrap();
 
@@ -146,8 +146,8 @@ mod test {
     #[test]
     fn should_evaluate_to_true_if_texts_are_equal_numbers() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"12".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"12".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "12").unwrap(),
+            AccessorBuilder::new().build("", "12").unwrap(),
         )
         .unwrap();
 
@@ -159,8 +159,8 @@ mod test {
     #[test]
     fn should_evaluate_to_false_if_text_is_not_equal() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"one two three".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"one two".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "one two three").unwrap(),
+            AccessorBuilder::new().build("", "one two").unwrap(),
         )
         .unwrap();
 
@@ -172,8 +172,8 @@ mod test {
     #[test]
     fn should_evaluate_using_accessors() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"test_TYPE".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "test_TYPE").unwrap(),
         )
         .unwrap();
 
@@ -185,8 +185,8 @@ mod test {
     #[test]
     fn should_compare_event_fields() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"${event.type}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.type}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.type}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.type}").unwrap(),
         )
         .unwrap();
 
@@ -201,8 +201,8 @@ mod test {
     #[test]
     fn should_return_false_if_fields_do_not_exist() {
         let operator = EqualsIgnoreCase::build(
-            AccessorBuilder::new().build("", &"${event.payload.1}".to_owned()).unwrap(),
-            AccessorBuilder::new().build("", &"${event.payload.2}".to_owned()).unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.1}").unwrap(),
+            AccessorBuilder::new().build("", "${event.payload.2}").unwrap(),
         )
         .unwrap();
 

@@ -491,7 +491,7 @@ pub mod test {
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysFailExecutor {
         async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-            self.sender.send(action.clone()).unwrap();
+            self.sender.send(action).unwrap();
             Err(ExecutorError::ActionExecutionError {
                 message: "".to_owned(),
                 can_retry: self.can_retry,
@@ -514,7 +514,7 @@ pub mod test {
     #[async_trait::async_trait(?Send)]
     impl StatelessExecutor for AlwaysOkExecutor {
         async fn execute(&self, action: Arc<Action>) -> Result<(), ExecutorError> {
-            self.sender.send(action.clone()).unwrap();
+            self.sender.send(action).unwrap();
             Ok(())
         }
     }

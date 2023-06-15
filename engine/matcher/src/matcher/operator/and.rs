@@ -53,7 +53,7 @@ mod test {
     fn should_build_the_and_with_expected_arguments() {
         let operator = And::build(
             "",
-            &vec![config::rule::Operator::Equals {
+            &[config::rule::Operator::Equals {
                 first: Value::String("first_arg=".to_owned()),
                 second: Value::String("second_arg".to_owned()),
             }],
@@ -66,7 +66,7 @@ mod test {
 
     #[test]
     fn should_build_the_and_with_no_arguments() {
-        let operator = And::build("", &vec![], &OperatorBuilder::new()).unwrap();
+        let operator = And::build("", &[], &OperatorBuilder::new()).unwrap();
         assert_eq!(0, operator.operators.len());
     }
 
@@ -74,7 +74,7 @@ mod test {
     fn build_should_fail_if_wrong_nested_operator() {
         let operator = And::build(
             "",
-            &vec![config::rule::Operator::Equals {
+            &[config::rule::Operator::Equals {
                 first: Value::String("${NOT_EXISTING}".to_owned()),
                 second: Value::String("second_arg".to_owned()),
             }],
@@ -87,8 +87,7 @@ mod test {
     fn build_should_be_recursive() {
         let operator = And::build(
             "",
-            &vec![
-                config::rule::Operator::Equals {
+            &[config::rule::Operator::Equals {
                     first: Value::String("1".to_owned()),
                     second: Value::String("2".to_owned()),
                 },
@@ -97,8 +96,7 @@ mod test {
                         first: Value::String("3".to_owned()),
                         second: Value::String("4".to_owned()),
                     }],
-                },
-            ],
+                }],
             &OperatorBuilder::new(),
         )
         .unwrap();
@@ -111,7 +109,7 @@ mod test {
 
     #[test]
     fn should_evaluate_to_true_if_no_children() {
-        let operator = And::build("", &vec![], &OperatorBuilder::new()).unwrap();
+        let operator = And::build("", &[], &OperatorBuilder::new()).unwrap();
 
         let event = Event::new("test_type");
 

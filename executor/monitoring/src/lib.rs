@@ -254,7 +254,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -300,7 +300,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -346,7 +346,7 @@ mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("Invalid Monitoring Action configuration"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

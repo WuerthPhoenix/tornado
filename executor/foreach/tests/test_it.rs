@@ -3,7 +3,7 @@ use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use tornado_common_api::Action;
 use tornado_executor_common::StatelessExecutor;
-use tornado_executor_foreach;
+
 use tornado_executor_foreach::ForEachExecutor;
 use tornado_network_simple::SimpleEventBus;
 
@@ -12,12 +12,12 @@ async fn should_convert_value_to_action() {
     // Arrange
     let action_filename = "./test_resources/elasticsearch_usecase_01/action.json";
     let action_json = fs::read_to_string(action_filename)
-        .expect(&format!("Unable to open the file [{}]", action_filename));
+        .unwrap_or_else(|_| panic!("Unable to open the file [{}]", action_filename));
     let action: Action = serde_json::from_str(&action_json).unwrap();
 
     let expected_filename = "./test_resources/elasticsearch_usecase_01/expected.json";
     let expected_json = fs::read_to_string(expected_filename)
-        .expect(&format!("Unable to open the file [{}]", expected_filename));
+        .unwrap_or_else(|_| panic!("Unable to open the file [{}]", expected_filename));
     let expected: Vec<Action> = serde_json::from_str(&expected_json).unwrap();
 
     let execution_results = Arc::new(RwLock::new(vec![]));

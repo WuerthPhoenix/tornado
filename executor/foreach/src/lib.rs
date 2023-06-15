@@ -729,9 +729,10 @@ mod test {
             let mut action = Map::new();
             action.insert("id".to_owned(), Value::String("id_one".to_owned()));
 
-            let mut inner_array = vec![];
-            inner_array.push(Value::String("${item[0]}".to_owned()));
-            inner_array.push(Value::String("${item[1]}".to_owned()));
+            let inner_array = vec![
+                Value::String("${item[0]}".to_owned()),
+                Value::String("${item[1]}".to_owned()),
+            ];
 
             let mut payload_one = Map::new();
             payload_one.insert("inner".to_owned(), Value::Array(inner_array));
@@ -753,9 +754,8 @@ mod test {
 
         let value =
             lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_array().unwrap();
-        let mut expected_array = vec![];
-        expected_array.push(Value::String("first".to_owned()));
-        expected_array.push(Value::String("second".to_owned()));
+        let expected_array =
+            vec![Value::String("first".to_owned()), Value::String("second".to_owned())];
         assert_eq!(&expected_array, value);
     }
 }

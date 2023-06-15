@@ -172,7 +172,7 @@ pub mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("host"));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -202,7 +202,7 @@ pub mod test {
             Err(ExecutorError::ConfigurationError { message }) => {
                 assert!(message.contains("service"))
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -212,7 +212,7 @@ pub mod test {
         let filename =
             "./tests_resources/simple_create_and_or_process_passive_check_result_host.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
@@ -232,7 +232,7 @@ pub mod test {
         let filename =
             "./tests_resources/simple_create_and_or_process_passive_check_result_service.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let action = serde_json::from_str(&json).unwrap();
 
         // Act
@@ -253,7 +253,7 @@ pub mod test {
         let filename =
             "./tests_resources/simple_create_and_or_process_passive_check_result_host_with_execution_start.json";
         let json = std::fs::read_to_string(filename)
-            .expect(&format!("Unable to open the file [{}]", filename));
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
         let action: Action = serde_json::from_str(&json).unwrap();
 
         // Act
@@ -275,12 +275,12 @@ pub mod test {
         let filename_simple = "./tests_resources/monitoring_host_01_simple.json";
         let monitoring_action_full: MonitoringHostData = serde_json::from_str(
             &std::fs::read_to_string(filename_full)
-                .expect(&format!("Unable to open the file [{}]", filename_full)),
+                .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename_full)),
         )
         .unwrap();
         let action_simple: Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
-                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+                .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename_simple)),
         )
         .unwrap();
         // Act
@@ -298,12 +298,12 @@ pub mod test {
         let filename_simple = "./tests_resources/monitoring_service_01_simple.json";
         let monitoring_action_full: MonitoringServiceData = serde_json::from_str(
             &std::fs::read_to_string(filename_full)
-                .expect(&format!("Unable to open the file [{}]", filename_full)),
+                .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename_full)),
         )
         .unwrap();
         let action_simple: Action = serde_json::from_str(
             &std::fs::read_to_string(filename_simple)
-                .expect(&format!("Unable to open the file [{}]", filename_simple)),
+                .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename_simple)),
         )
         .unwrap();
         // Act
