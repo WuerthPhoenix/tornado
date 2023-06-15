@@ -258,7 +258,7 @@ mod test {
             Parser::Val(value) => {
                 assert_eq!(Value::String("  hello world  ".to_owned()), value);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -272,7 +272,7 @@ mod test {
             Parser::Exp { keys } => {
                 assert!(!keys.is_empty());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -417,7 +417,7 @@ mod test {
             &Value::Array(vec![
                 Value::String("one".to_owned()),
                 Value::Bool(true),
-                json!(13 as f64)
+                json!(13_f64)
             ]),
             result.unwrap().as_ref()
         );

@@ -36,7 +36,7 @@ mod test {
     async fn should_expose_a_metrics_endpoint() {
         // Arrange
         let metrics = Arc::new(Metrics::new("tornado"));
-        let mut srv =
+        let srv =
             test::init_service(App::new().service(metrics_endpoints(metrics.clone()))).await;
 
         // Record a metric
@@ -52,7 +52,7 @@ mod test {
         let request = test::TestRequest::get().uri("/v1/metrics/prometheus").to_request();
 
         // Act
-        let response = test::call_service(&mut srv, request).await;
+        let response = test::call_service(&srv, request).await;
 
         // Assert
 

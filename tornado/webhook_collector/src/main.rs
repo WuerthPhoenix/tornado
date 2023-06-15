@@ -206,13 +206,13 @@ mod test {
     #[actix_rt::test]
     async fn ping_should_return_pong() {
         // Arrange
-        let mut srv =
+        let srv =
             test::init_service(App::new().service(create_app(vec![], || |_| {}).unwrap())).await;
 
         // Act
         let request = test::TestRequest::get().uri("/ping").to_request();
 
-        let response = test::read_response(&mut srv, request).await;
+        let response = test::read_response(&srv, request).await;
 
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
@@ -223,24 +223,25 @@ mod test {
     #[actix_rt::test]
     async fn should_create_a_path_per_webhook() {
         // Arrange
-        let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig {
-            id: "hook_1".to_owned(),
-            token: "hook_1_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "hook_1_type".to_owned(),
-                payload: HashMap::new(),
+        let webhooks_config = vec![
+            WebhookConfig {
+                id: "hook_1".to_owned(),
+                token: "hook_1_token".to_owned(),
+                collector_config: JMESPathEventCollectorConfig {
+                    event_type: "hook_1_type".to_owned(),
+                    payload: HashMap::new(),
+                },
             },
-        });
-        webhooks_config.push(WebhookConfig {
-            id: "hook_2".to_owned(),
-            token: "hook_2_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "hook_2_type".to_owned(),
-                payload: HashMap::new(),
+            WebhookConfig {
+                id: "hook_2".to_owned(),
+                token: "hook_2_token".to_owned(),
+                collector_config: JMESPathEventCollectorConfig {
+                    event_type: "hook_2_type".to_owned(),
+                    payload: HashMap::new(),
+                },
             },
-        });
-        let mut srv = test::init_service(
+        ];
+        let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
         )
         .await;
@@ -251,14 +252,14 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_1 = test::read_response(&mut srv, request_1).await;
+        let response_1 = test::read_response(&srv, request_1).await;
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=hook_2_token")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_2 = test::read_response(&mut srv, request_2).await;
+        let response_2 = test::read_response(&srv, request_2).await;
 
         // Assert
         let body_1 = std::str::from_utf8(&response_1).unwrap();
@@ -271,24 +272,25 @@ mod test {
     #[actix_rt::test]
     async fn should_accept_calls_only_if_token_matches() {
         // Arrange
-        let mut webhooks_config = vec![];
-        webhooks_config.push(WebhookConfig {
-            id: "hook_1".to_owned(),
-            token: "hook_1_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "hook_1_type".to_owned(),
-                payload: HashMap::new(),
+        let webhooks_config = vec![
+            WebhookConfig {
+                id: "hook_1".to_owned(),
+                token: "hook_1_token".to_owned(),
+                collector_config: JMESPathEventCollectorConfig {
+                    event_type: "hook_1_type".to_owned(),
+                    payload: HashMap::new(),
+                },
             },
-        });
-        webhooks_config.push(WebhookConfig {
-            id: "hook_2".to_owned(),
-            token: "hook_2_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "hook_2_type".to_owned(),
-                payload: HashMap::new(),
+            WebhookConfig {
+                id: "hook_2".to_owned(),
+                token: "hook_2_token".to_owned(),
+                collector_config: JMESPathEventCollectorConfig {
+                    event_type: "hook_2_type".to_owned(),
+                    payload: HashMap::new(),
+                },
             },
-        });
-        let mut srv = test::init_service(
+        ];
+        let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
         )
         .await;
@@ -299,14 +301,14 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_1 = test::call_service(&mut srv, request_1).await;
+        let response_1 = test::call_service(&srv, request_1).await;
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=WRONG_TOKEN")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_2 = test::call_service(&mut srv, request_2).await;
+        let response_2 = test::call_service(&srv, request_2).await;
 
         // Assert
         assert!(response_1.status().is_success());
@@ -316,21 +318,19 @@ mod test {
     #[actix_rt::test]
     async fn should_call_the_callback_on_each_event() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
+        let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
             },
-        });
+        }];
 
         let event = Arc::new(Mutex::new(None));
         let event_clone = event.clone();
 
-        let mut srv = test::init_service(
+        let srv = test::init_service(
             App::new().service(
                 create_app(webhooks_config.clone(), || {
                     let clone = event.clone();
@@ -356,7 +356,7 @@ mod test {
                 }"#,
             )
             .to_request();
-        let response_1 = test::read_response(&mut srv, request_1).await;
+        let response_1 = test::read_response(&srv, request_1).await;
 
         // Assert
         let body_1 = std::str::from_utf8(&response_1).unwrap();
@@ -369,18 +369,16 @@ mod test {
     #[actix_rt::test]
     async fn should_return_404_if_hook_does_not_exists() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
+        let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
             },
-        });
+        }];
 
-        let mut srv = test::init_service(
+        let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
         )
         .await;
@@ -391,7 +389,7 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response = test::call_service(&mut srv, request).await;
+        let response = test::call_service(&srv, request).await;
 
         // Assert
         assert_eq!(http::StatusCode::NOT_FOUND, response.status());
@@ -400,18 +398,16 @@ mod test {
     #[actix_rt::test]
     async fn should_return_405_if_get_instead_of_post() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
+        let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
             },
-        });
+        }];
 
-        let mut srv = test::init_service(
+        let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
         )
         .await;
@@ -421,7 +417,7 @@ mod test {
             .uri("/event/hook_1?token=hook_1_token")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .to_request();
-        let response = test::call_service(&mut srv, request).await;
+        let response = test::call_service(&srv, request).await;
 
         // Assert
         assert_eq!(http::StatusCode::METHOD_NOT_ALLOWED, response.status());
@@ -430,18 +426,16 @@ mod test {
     #[actix_rt::test]
     async fn should_url_encode_id_and_token() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
+        let webhooks_config = vec![WebhookConfig {
             id: "hook with space".to_owned(),
             token: "token&#?=".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "type".to_owned(),
                 payload: HashMap::new(),
             },
-        });
+        }];
 
-        let mut srv = test::init_service(
+        let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
         )
         .await;
@@ -452,7 +446,7 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response = test::call_service(&mut srv, request).await;
+        let response = test::call_service(&srv, request).await;
 
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());

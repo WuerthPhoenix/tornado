@@ -310,7 +310,7 @@ mod test {
                 assert_eq!("root", name);
                 assert_eq!(4, nodes.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -391,8 +391,8 @@ mod test {
         let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
-        assert_eq!(event_tcp_socket_enabled, false);
-        assert_eq!(nats_enabled, true);
+        assert!(!event_tcp_socket_enabled);
+        assert!(nats_enabled);
     }
 
     #[test]
@@ -419,8 +419,8 @@ mod test {
         let nats_enabled = daemon_configs.is_nats_enabled();
 
         // Assert
-        assert_eq!(event_tcp_socket_enabled, true);
-        assert_eq!(nats_enabled, false);
+        assert!(event_tcp_socket_enabled);
+        assert!(!nats_enabled);
     }
 
     #[test]

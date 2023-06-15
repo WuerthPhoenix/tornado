@@ -121,7 +121,7 @@ mod test {
         );
 
         // Act
-        let result = MatcherConfigValidator::new().validate_ruleset("", &vec![rule]);
+        let result = MatcherConfigValidator::new().validate_ruleset("", &[rule]);
 
         // Assert
         assert!(result.is_err());
@@ -139,7 +139,7 @@ mod test {
         );
 
         // Act
-        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule]);
+        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule]);
 
         // Assert
         assert!(result.is_ok());
@@ -184,7 +184,7 @@ mod test {
         );
 
         // Act
-        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
+        let result = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule_1]);
 
         // Assert
         assert!(result.is_err());
@@ -198,7 +198,7 @@ mod test {
             second: Value::String("1".to_owned()),
         };
         let rule_1 = new_rule("rule_name", op.clone());
-        let rule_2 = new_rule("rule_name", op.clone());
+        let rule_2 = new_rule("rule_name", op);
 
         // Act
         let matcher =
@@ -209,7 +209,7 @@ mod test {
 
         match matcher.err().unwrap() {
             MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -220,10 +220,10 @@ mod test {
             first: Value::String("1".to_owned()),
             second: Value::String("1".to_owned()),
         };
-        let rule_1 = new_rule("rule name", op.clone());
+        let rule_1 = new_rule("rule name", op);
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -236,10 +236,10 @@ mod test {
             first: Value::String("1".to_owned()),
             second: Value::String("1".to_owned()),
         };
-        let rule_1 = new_rule("rule.name", op.clone());
+        let rule_1 = new_rule("rule.name", op);
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -252,7 +252,7 @@ mod test {
             first: Value::String("1".to_owned()),
             second: Value::String("1".to_owned()),
         };
-        let mut rule_1 = new_rule("rule_name", op.clone());
+        let mut rule_1 = new_rule("rule_name", op);
 
         rule_1.constraint.with.insert(
             "var.with.dot".to_owned(),
@@ -268,7 +268,7 @@ mod test {
         );
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -281,7 +281,7 @@ mod test {
             first: Value::String("1".to_owned()),
             second: Value::String("1".to_owned()),
         };
-        let mut rule_1 = new_rule("rule_name", op.clone());
+        let mut rule_1 = new_rule("rule_name", op);
 
         rule_1.actions.push(ConfigAction {
             id: "id.with.dot.and.question.mark?".to_owned(),
@@ -289,7 +289,7 @@ mod test {
         });
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &vec![rule_1]);
+        let matcher = MatcherConfigValidator::new().validate_ruleset("ruleset", &[rule_1]);
 
         // Assert
         assert!(matcher.is_err());
@@ -305,7 +305,7 @@ mod test {
         let matcher = MatcherConfigValidator::new().validate_filter(
             "wrong.because.of.dots",
             &filter,
-            &vec![],
+            &[],
         );
 
         // Assert
@@ -319,7 +319,7 @@ mod test {
             Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_filter("good_name", &filter, &vec![]);
+        let matcher = MatcherConfigValidator::new().validate_filter("good_name", &filter, &[]);
 
         // Assert
         assert!(matcher.is_ok());
@@ -335,7 +335,7 @@ mod test {
 
         // Act
         let matcher =
-            MatcherConfigValidator::new().validate_filter("good_names", &filter, &vec![rules]);
+            MatcherConfigValidator::new().validate_filter("good_names", &filter, &[rules]);
 
         // Assert
         assert!(matcher.is_err());
@@ -351,7 +351,7 @@ mod test {
 
         // Act
         let matcher =
-            MatcherConfigValidator::new().validate_filter("good_names", &filter, &vec![rules]);
+            MatcherConfigValidator::new().validate_filter("good_names", &filter, &[rules]);
 
         // Assert
         assert!(matcher.is_ok());

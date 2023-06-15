@@ -260,6 +260,24 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .await?)
     }
 
+    pub async fn move_draft_rule_by_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        ruleset_path: &str,
+        rule_name: &str,
+        position: usize,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, ruleset_path)?;
+        draft.config.move_rule(&absolute_node_path, rule_name, position)?;
+        Ok(self
+            .config_manager
+            .update_draft(draft_id, auth.auth.user.clone(), &draft.config)
+            .await?)
+    }
+
     pub async fn delete_draft_rule_details_by_path(
         &self,
         auth: AuthContextV2<'_>,
@@ -1148,7 +1166,7 @@ mod test {
         let res = api
             .get_current_config_processing_tree_nodes_by_path(
                 user_root_1,
-                Some(&"root_1".to_string()),
+                Some("root_1"),
             )
             .await
             .unwrap();
@@ -1206,21 +1224,21 @@ mod test {
         assert!(!matches!(
             api.get_current_config_node_details_by_path(
                 not_owner_edit_and_view,
-                &"root".to_string()
+                "root"
             )
             .await,
             Err(ApiError::ForbiddenError { .. })
         ));
         assert!(!matches!(
-            api.get_current_config_node_details_by_path(owner_view, &"root".to_string()).await,
+            api.get_current_config_node_details_by_path(owner_view, "root").await,
             Err(ApiError::ForbiddenError { .. })
         ));
         assert!(matches!(
-            api.get_current_config_node_details_by_path(owner_edit, &"root".to_string()).await,
+            api.get_current_config_node_details_by_path(owner_edit, "root").await,
             Err(ApiError::ForbiddenError { .. })
         ));
         assert!(!matches!(
-            api.get_current_config_node_details_by_path(owner_edit_and_view, &"root".to_string())
+            api.get_current_config_node_details_by_path(owner_edit_and_view, "root")
                 .await,
             Err(ApiError::ForbiddenError { .. })
         ));
@@ -1248,11 +1266,11 @@ mod test {
 
         // Act
         let res_get_node_details = api
-            .get_node_details(&user, &filtered_matcher, &"root_1,root_1_2".to_string())
+            .get_node_details(&user, &filtered_matcher, "root_1,root_1_2")
             .await
             .unwrap();
         let res = api
-            .get_current_config_node_details_by_path(user, &"root_1,root_1_2".to_string())
+            .get_current_config_node_details_by_path(user, "root_1,root_1_2")
             .await
             .unwrap();
 
@@ -1387,7 +1405,7 @@ mod test {
 
         // Act & Assert
         assert!(matches!(
-            api.get_node_details(&user, &filtered_matcher, &"root,root_2".to_string()).await,
+            api.get_node_details(&user, &filtered_matcher, "root,root_2").await,
             Err(ApiError::ForbiddenError { .. })
         ))
     }

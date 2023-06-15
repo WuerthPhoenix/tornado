@@ -326,7 +326,7 @@ mod test {
                 assert_eq!("contains_operators", rules.get(4).unwrap().name);
                 assert_eq!("with_single_key_match", rules.get(5).unwrap().name);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -340,7 +340,7 @@ mod test {
                 assert_eq!("root", name);
                 assert_eq!(0, rules.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -408,21 +408,21 @@ mod test {
                 assert!(is_ruleset(
                     get_config_by_name("node2", &nodes).unwrap(),
                     "node2",
-                    &vec!["rule1"]
+                    &["rule1"]
                 ));
 
                 match get_config_by_name("node1", &nodes).unwrap() {
                     MatcherConfig::Filter { name: _, filter: _, nodes: inner_nodes } => {
                         assert!(is_ruleset(
-                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
+                            get_config_by_name("inner_node1", inner_nodes).unwrap(),
                             "inner_node1",
-                            &vec!["rule2", "rule3"]
+                            &["rule2", "rule3"]
                         ));
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -443,7 +443,7 @@ mod test {
                 assert!(is_ruleset(
                     get_config_by_name("node2", &nodes).unwrap(),
                     "node2",
-                    &vec!["rule1"]
+                    &["rule1"]
                 ));
 
                 match get_config_by_name("node1", &nodes).unwrap() {
@@ -454,15 +454,15 @@ mod test {
                     } => {
                         assert_eq!(Defaultable::Default {}, inner_filter.filter);
                         assert!(is_ruleset(
-                            get_config_by_name("inner_node1", &inner_nodes).unwrap(),
+                            get_config_by_name("inner_node1", inner_nodes).unwrap(),
                             "inner_node1",
-                            &vec!["rule2"]
+                            &["rule2"]
                         ));
                     }
-                    _ => assert!(false),
+                    _ => unreachable!(),
                 }
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -547,13 +547,13 @@ mod test {
         // Assert
         assert!(result.is_err());
         match result {
-            Err(e) => match e {
-                MatcherError::ConfigurationError { message } => assert!(message.contains(
-                    &format!("Path {} contains {} file(s) and {} directories.", dir, 2, 2)
-                )),
-                _ => assert!(false),
-            },
-            _ => assert!(false),
+            Err(MatcherError::ConfigurationError { message }) => {
+                assert!(message.contains(&format!(
+                    "Path {} contains {} file(s) and {} directories.",
+                    dir, 2, 2
+                )));
+            }
+            _ => unreachable!(),
         }
     }
 

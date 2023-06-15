@@ -150,7 +150,7 @@ pub mod test {
         }
 
         async fn set_apm_enabled(&self, _logger_config: SetLoggerApmRequestDto) -> () {
-            ()
+            
         }
 
         async fn set_stdout_enabled(

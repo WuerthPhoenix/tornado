@@ -2,7 +2,7 @@ use serde_json::Error;
 use tornado_engine_api_dto::config::{
     ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
     MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
-    ProcessingTreeNodeDetailsDto, RuleDto,
+    ProcessingTreeNodeEditDto, RuleDto,
 };
 use tornado_engine_matcher::config::filter::Filter;
 use tornado_engine_matcher::config::rule::{
@@ -131,13 +131,13 @@ pub fn dto_into_matcher_config(config: MatcherConfigDto) -> Result<MatcherConfig
 }
 
 pub fn processing_tree_node_details_dto_into_matcher_config(
-    config: ProcessingTreeNodeDetailsDto,
+    config: ProcessingTreeNodeEditDto,
 ) -> Result<MatcherConfig, Error> {
     Ok(match config {
-        ProcessingTreeNodeDetailsDto::Ruleset { name, rules: _ } => {
+        ProcessingTreeNodeEditDto::Ruleset { name } => {
             MatcherConfig::Ruleset { name, rules: vec![] }
         }
-        ProcessingTreeNodeDetailsDto::Filter { name, description, active, filter } => {
+        ProcessingTreeNodeEditDto::Filter { name, description, active, filter } => {
             let filter_matcher_config = if let Some(filter_inner) = filter {
                 Defaultable::from(Option::Some(dto_into_operator(filter_inner)?))
             } else {
@@ -283,7 +283,7 @@ fn dto_into_extractor_regex(extractor_regex: ExtractorRegexDto) -> ExtractorRege
 mod test {
     use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
     use serde_json::json;
-    use tornado_engine_api_dto::config::{OperatorDto, ProcessingTreeNodeDetailsDto};
+    use tornado_engine_api_dto::config::{OperatorDto, ProcessingTreeNodeEditDto};
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::Operator;
     use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
@@ -313,13 +313,13 @@ mod test {
             nodes: vec![],
         };
         let processing_tree_node_details_dto_filter_with_empty_filter =
-            ProcessingTreeNodeDetailsDto::Filter {
+            ProcessingTreeNodeEditDto::Filter {
                 name: "test_filter".to_string(),
                 description: "test_filter description".to_string(),
                 active: false,
                 filter: None,
             };
-        let processing_tree_node_details_dto = ProcessingTreeNodeDetailsDto::Filter {
+        let processing_tree_node_details_dto = ProcessingTreeNodeEditDto::Filter {
             name: "test_filter".to_string(),
             description: "test_filter description".to_string(),
             active: false,
@@ -350,10 +350,8 @@ mod test {
         // Arrange
         let expected_maatcher_config_ruleset =
             MatcherConfig::Ruleset { name: "ruleset_test".to_string(), rules: vec![] };
-        let processing_tree_node_details_dto_ruleset = ProcessingTreeNodeDetailsDto::Ruleset {
-            name: "ruleset_test".to_string(),
-            rules: vec![],
-        };
+        let processing_tree_node_details_dto_ruleset =
+            ProcessingTreeNodeEditDto::Ruleset { name: "ruleset_test".to_string() };
 
         // Act
         let actual_maatcher_config_ruleset = processing_tree_node_details_dto_into_matcher_config(

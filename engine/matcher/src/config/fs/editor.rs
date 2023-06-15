@@ -444,7 +444,7 @@ mod test {
         // current_config must be a filter for this test
         match current_config {
             MatcherConfig::Filter { .. } => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         Ok(())
@@ -476,13 +476,13 @@ mod test {
                 assert_eq!(1, nodes.len());
                 assert_eq!(current_config, nodes[0]);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         // current_config must be a ruleset for this test
         match current_config {
             MatcherConfig::Ruleset { .. } => {}
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         Ok(())

@@ -37,6 +37,8 @@ pub fn to_number(variable_name: &str, value: &mut Value) -> Result<(), MatcherEr
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::approx_constant)]
+
     use super::*;
     use serde_json::json;
 

@@ -44,6 +44,11 @@ pub struct RuleDto {
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct RulePositionDto {
+    pub position: usize,
+}
+
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
 pub struct ConstraintDto {
     #[serde(rename = "WHERE")]
     pub where_operator: Option<OperatorDto>,
@@ -271,6 +276,13 @@ pub enum ProcessingTreeNodeDetailsDto {
     Ruleset { name: String, rules: Vec<RuleDetailsDto> },
 }
 
+#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
+#[serde(tag = "type")]
+pub enum ProcessingTreeNodeEditDto {
+    Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Ruleset { name: String },
+}
+
 impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
     fn from(matcher_config_node: &MatcherConfig) -> Self {
         match matcher_config_node {
@@ -314,6 +326,6 @@ impl Add for TreeInfoDto {
 
 impl Sum for TreeInfoDto {
     fn sum<I: Iterator<Item = Self>>(iter: I) -> Self {
-        iter.reduce(|l, r| l + r).unwrap_or(TreeInfoDto { rules_count: 0, filters_count: 0 })
+        iter.fold(TreeInfoDto::default(), Add::add)
     }
 }

@@ -140,7 +140,7 @@ mod test {
     #[test]
     fn should_return_error_if_invalid_json() {
         let json = r#"{"hello":"world"}"#;
-        let rule = Rule::from_json(&json);
+        let rule = Rule::from_json(json);
         assert!(rule.is_err())
     }
 
@@ -155,7 +155,7 @@ mod test {
             Operator::And { operators } => {
                 assert_eq!(2, operators.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         let extractor1 = &rule.constraint.with["extracted_temp"];
@@ -166,7 +166,7 @@ mod test {
                 assert_eq!(&Some(2), group_match_idx);
                 assert_eq!(all_matches, &None);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         let extractor2 = &rule.constraint.with["all_temperatures"];
@@ -177,7 +177,7 @@ mod test {
                 assert_eq!(&None, group_match_idx);
                 assert_eq!(all_matches, &Some(true));
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         let extractor2 = &rule.constraint.with["all_temperatures_named"];
@@ -187,7 +187,7 @@ mod test {
                 assert_eq!("(?P<DEGREES>[0-9]+\\sDegrees)", regex);
                 assert_eq!(all_matches, &None);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 
@@ -204,7 +204,7 @@ mod test {
     }
 
     fn file_to_string(filename: &str) -> String {
-        fs::read_to_string(filename).expect(&format!("Unable to open the file [{}]", filename))
+        fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename))
     }
 
     #[test]
@@ -218,7 +218,7 @@ mod test {
             Operator::And { operators } => {
                 assert_eq!(1, operators.len());
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
 
         let extractor1 = &rule.constraint.with["extracted_temp"];
@@ -228,7 +228,7 @@ mod test {
                 assert_eq!("([0-9]+\\sDegrees)", regex);
                 assert_eq!(all_matches, &None);
             }
-            _ => assert!(false),
+            _ => unreachable!(),
         }
     }
 

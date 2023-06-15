@@ -326,7 +326,7 @@ mod test {
         // Arrange
         let mut action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
         let value = "constant value".to_owned();
-        action.payload.insert("key".to_owned(), Value::String(value.clone()));
+        action.payload.insert("key".to_owned(), Value::String(value));
 
         let config = vec![action];
 
@@ -638,7 +638,7 @@ mod test {
         // Assert
         assert_eq!(&"an_action_id", &result.id);
 
-        let event_value: Value = event.clone().into();
+        let event_value: Value = event;
         assert_eq!(&event_value, result.payload.get("event").unwrap());
     }
 
@@ -777,7 +777,7 @@ mod test {
         assert_eq!("an_action_id", &action_meta_data.id);
 
         let expected_action_meta_data = ActionMetaData {
-            id: config_action.id.to_owned(),
+            id: config_action.id,
             payload: hashmap! {
                 "inner_map_static".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Map {
@@ -850,7 +850,7 @@ mod test {
         assert_eq!("an_action_id", &action_meta_data.id);
 
         let expected_action_meta_data = ActionMetaData {
-            id: config_action.id.to_owned(),
+            id: config_action.id,
             payload: hashmap! {
                 "inner_vec_static".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Array {

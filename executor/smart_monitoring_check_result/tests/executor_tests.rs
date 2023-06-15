@@ -64,7 +64,7 @@ async fn should_return_error_if_process_check_result_fails_with_error_different_
             assert!(message
                 .contains(&format!("{}/v1/actions/process-check-result", icinga_server.url(""))));
         }
-        _ => assert!(false),
+        _ => unreachable!(),
     };
 }
 
@@ -247,6 +247,6 @@ async fn should_return_return_error_on_object_creation_failure() {
                 message.contains(&format!("{}/host?live-creation=true", director_server.url("")))
             );
         }
-        _ => assert!(false),
+        _ => unreachable!(),
     };
 }
