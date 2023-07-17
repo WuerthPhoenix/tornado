@@ -1,0 +1,190 @@
+[logger]
+
+# The Logger level filter
+# Example of a valid filter: "warn,tornado=info,rants=debug"
+#                              ^      ^           ^
+#                              |      |           logger level of the 'rants' library (Nats client library)
+#                              |      logger level of 'tornado'
+#                             global logger level
+# Valid values: trace, debug, info, warn, error.
+level = "info,tornado=debug,actix=debug"
+
+# Whether the Logger should print to standard output.
+# Valid values: true, false
+stdout_output = true
+
+# A file path in the file system; if provided, the Logger will append any output to it.
+# file_output_path = "/output/file.log"
+
+[logger.tracing_elastic_apm]
+# Whether the Logger data should be sent to the Elastic APM Server.
+# Valid values: true, false
+apm_output = false
+## The url of the Elastic APM server.
+apm_server_url = "http://localhost:8200"
+#apm_server_api_credentials.id = "api_id"
+#apm_server_api_credentials.key = "api_key"
+
+[tornado]
+
+[tornado.daemon]
+
+# The configuration of the thread pools bound to the internal queues.
+# This entry is optional and should be rarely configured manually.
+# For more details see https://neteye.guide/4.30/monitoring/tornado/configuration.html#example-of-thread-pool-s-dynamical-configuration
+#thread_pool_config = {type = "CPU", factor = 1.0}
+#thread_pool_config = {type = "Fixed", size = 18}
+
+# The global retry policy for reprocessing failed actions. (Optional. Defaults to 'MaxAttempts' if not provided).
+# For more details see https://neteye.guide/4.31/monitoring/tornado/configuration.html#structure-and-configuration-retry-strategy-configuration
+#retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
+#retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
+
+# Whether to enable the TCP listener (Optional. Valid values: true, false. Default to "true" if not provided).
+event_tcp_socket_enabled = true
+# The IP address where we will listen for incoming events. (Mandatory if "event_tcp_socket_enabled" is set to true).
+event_socket_ip = "0.0.0.0"
+#The port where Tornado will listen for incoming events. (Mandatory if "event_tcp_socket_enabled" is set to true).
+event_socket_port = 4747
+
+# Whether to connect to the NATS server (Optional. Valid values: true, false. Defaults to "false" if not provided).
+nats_enabled = false
+
+# List of data extractors for incoming Nats messages (Optional)
+# Valid extractors:
+#   - "FromSubject": using a regex, extracts the first matching group from the Nats subject and adds its value to
+#                    the event.metadata scope using the specified key.
+nats_extractors = [
+    { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" }
+]
+
+# Array of addresses of the NATS nodes of a cluster. (Mandatory if "nats_enabled" is set to "true").
+nats.client.addresses = ["localhost:4222"]
+# The NATS Subject where tornado will subscribe and listen for incoming events (Mandatory if "nats_enabled" is set to "true").
+nats.subject = "*.tornado.events"
+# The type of authentication used when connecting to the NATS server (Optional. Valid values are "None" and "Tls". Defaults to "None" if not provided).
+nats.client.auth.type = "None"
+#nats.client.auth.type = "Tls"
+
+# The path to the client certificate (in .pem format) used to authenicate to the NATS server
+# (Mandatory if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.certificate_path = "/path/to/certificate.pem"
+# The path to the client certificate private key (in .pem format) used to authenicate to the NATS server
+# (Mandatory if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.private_key_path = "/path/to/key.pem"
+# The path to a root certificate (in .pem format) to trust in addition to system's trust root.
+# May be useful if the NATS server is not trusted by the system as default.
+# (Optional, valid if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.path_to_root_certificate = "/path/to/root/certificate.crt.pem"
+
+# The IP address where the Tornado Web Server will listen for HTTP requests.
+# This is used, for example, by the monitoring endpoints.
+web_server_ip = "0.0.0.0"
+# The port where the Tornado Web Server will listen for HTTP requests.
+web_server_port = 4748
+# (Optional) The max JSON size in bytes accepted by a Tornado endpoint.
+# Default is 67108860 (i.e. 64MB)
+web_max_json_payload_size = 1048000
+# Set the size of the in-memory queue where messages will be stored before being processed
+message_queue_size = 10000
+
+[tornado.daemon.auth.role_permissions]
+admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView", "TestEventExecuteActions"]
+edit = ["ConfigEdit"]
+view = ["ConfigView"]
+test_event_execute_actions = ["TestEventExecuteActions"]
+[logger]
+
+# The Logger level filter
+# Example of a valid filter: "warn,tornado=info,rants=debug"
+#                              ^      ^           ^
+#                              |      |           logger level of the 'rants' library (Nats client library)
+#                              |      logger level of 'tornado'
+#                             global logger level
+# Valid values: trace, debug, info, warn, error.
+level = "info,tornado=debug,actix=debug"
+
+# Whether the Logger should print to standard output.
+# Valid values: true, false
+stdout_output = true
+
+# A file path in the file system; if provided, the Logger will append any output to it.
+# file_output_path = "/output/file.log"
+
+[logger.tracing_elastic_apm]
+# Whether the Logger data should be sent to the Elastic APM Server.
+# Valid values: true, false
+apm_output = false
+## The url of the Elastic APM server.
+apm_server_url = "http://localhost:8200"
+#apm_server_api_credentials.id = "api_id"
+#apm_server_api_credentials.key = "api_key"
+
+[tornado]
+
+[tornado.daemon]
+
+# The configuration of the thread pools bound to the internal queues.
+# This entry is optional and should be rarely configured manually.
+# For more details see https://neteye.guide/4.30/monitoring/tornado/configuration.html#example-of-thread-pool-s-dynamical-configuration
+#thread_pool_config = {type = "CPU", factor = 1.0}
+#thread_pool_config = {type = "Fixed", size = 18}
+
+# The global retry policy for reprocessing failed actions. (Optional. Defaults to 'MaxAttempts' if not provided).
+# For more details see https://neteye.guide/4.31/monitoring/tornado/configuration.html#structure-and-configuration-retry-strategy-configuration
+#retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
+#retry_strategy.backoff_policy = {type = "Variable", ms = [1000, 5000, 10000]}
+
+# Whether to enable the TCP listener (Optional. Valid values: true, false. Default to "true" if not provided).
+event_tcp_socket_enabled = true
+# The IP address where we will listen for incoming events. (Mandatory if "event_tcp_socket_enabled" is set to true).
+event_socket_ip = "0.0.0.0"
+#The port where Tornado will listen for incoming events. (Mandatory if "event_tcp_socket_enabled" is set to true).
+event_socket_port = 4747
+
+# Whether to connect to the NATS server (Optional. Valid values: true, false. Defaults to "false" if not provided).
+nats_enabled = false
+
+# List of data extractors for incoming Nats messages (Optional)
+# Valid extractors:
+#   - "FromSubject": using a regex, extracts the first matching group from the Nats subject and adds its value to
+#                    the event.metadata scope using the specified key.
+nats_extractors = [
+    { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" }
+]
+
+# Array of addresses of the NATS nodes of a cluster. (Mandatory if "nats_enabled" is set to "true").
+nats.client.addresses = ["localhost:4222"]
+# The NATS Subject where tornado will subscribe and listen for incoming events (Mandatory if "nats_enabled" is set to "true").
+nats.subject = "*.tornado.events"
+# The type of authentication used when connecting to the NATS server (Optional. Valid values are "None" and "Tls". Defaults to "None" if not provided).
+nats.client.auth.type = "None"
+#nats.client.auth.type = "Tls"
+
+# The path to the client certificate (in .pem format) used to authenicate to the NATS server
+# (Mandatory if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.certificate_path = "/path/to/certificate.pem"
+# The path to the client certificate private key (in .pem format) used to authenicate to the NATS server
+# (Mandatory if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.private_key_path = "/path/to/key.pem"
+# The path to a root certificate (in .pem format) to trust in addition to system's trust root.
+# May be useful if the NATS server is not trusted by the system as default.
+# (Optional, valid if "nats.client.auth.type" is set to "Tls").
+#nats.client.auth.path_to_root_certificate = "/path/to/root/certificate.crt.pem"
+
+# The IP address where the Tornado Web Server will listen for HTTP requests.
+# This is used, for example, by the monitoring endpoints.
+web_server_ip = "0.0.0.0"
+# The port where the Tornado Web Server will listen for HTTP requests.
+web_server_port = 4748
+# (Optional) The max JSON size in bytes accepted by a Tornado endpoint.
+# Default is 67108860 (i.e. 64MB)
+web_max_json_payload_size = 1048000
+# Set the size of the in-memory queue where messages will be stored before being processed
+message_queue_size = 10000
+
+[tornado.daemon.auth.role_permissions]
+admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView", "TestEventExecuteActions"]
+edit = ["ConfigEdit"]
+view = ["ConfigView"]
+test_event_execute_actions = ["TestEventExecuteActions"]
