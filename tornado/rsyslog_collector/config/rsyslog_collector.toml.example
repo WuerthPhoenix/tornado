@@ -2,7 +2,7 @@
 
 # The Logger level
 # Valid values: trace, debug, info, warn, error
-level = "info,tornado=debug"
+level = "info"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false
@@ -36,15 +36,15 @@ message_queue_size = 10000
 # -----------------------------------
 # The addresses of the NATS server
 #nats.client.addresses = ["127.0.0.1:4222"]
-# The NATS Subject where tornado will subscribe and listen for incoming events
+# The NATS Subject to which tornado will subscribe to and listens for incoming events
 #nats.subject = "tornado.events"
 # The type of authentication used when connecting to the NATS server
 # (Optional. Valid values: None, Tls. Defaults to "None" if not provided).
 #nats.client.auth.type = "None"
 #nats.client.auth.type = "Tls"
-# The path to the client certificate (in .pem format) used to authenicate to the NATS server
+# The path to the client certificate (in .pem format) used to authenticate to the NATS server
 #nats.client.auth.certificate_path = "/path/to/certificate.pem"
-# The path to the client certificate private key (in .pem format) used to authenicate to the NATS server
+# The path to the client certificate private key (in .pem format) used to authenticate to the NATS server
 #nats.client.auth.private_key_path = "/path/to/key.pem"
 # The path to a root certificate (in .pem format) to trust in addition to system's trust root.
 # May be useful if the NATS server is not trusted by the system as default.
@@ -53,9 +53,7 @@ message_queue_size = 10000
 
 # In case of TCP Connection uncomment these entries; otherwise, comment them.
 # -----------------------------------
-# The Tornado IP address where outgoing events will be written
-# This should be the address where the Tornado Engine listens for incoming events.
+# The IP on which the Tornado Engine is listening for incoming events.
 tcp_socket_ip = "127.0.0.1"
-# The Tornado port where outgoing events will be written
-# This should be the port where the Tornado Engine listens for incoming events.
+# The port on which the Tornado Engine is listening for incoming events.
 tcp_socket_port = 4747
