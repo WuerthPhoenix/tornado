@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
-use reqwest::Client;
+use reqwest::{Client, Error};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tornado_executor_common::ExecutorError;
@@ -37,7 +37,7 @@ pub struct Icinga2RestartCurrentStatus {
 impl DirectorClient {
     pub async fn get_icinga2_restart_current_status(
         &self,
-    ) -> Result<Icinga2RestartCurrentStatus, ExecutorError> {
+    ) -> Result<Icinga2RestartCurrentStatus, Error> {
         let url = format!("{}/icinga2restart/currentstatus", self.server_api_url);
         match self
             .client
@@ -47,24 +47,8 @@ impl DirectorClient {
             .send()
             .await
         {
-            Ok(res) => {
-                if res.status().is_success() {
-                    res.json().await.map_err(|err| ExecutorError::RuntimeError {
-                        message: format!(
-                            "Failed to get the current status of the Icinga 2 restart. Err: {}",
-                            err
-                        ),
-                    })
-                } else {
-                    Err(ExecutorError::RuntimeError { message: format!("Failed to get the current status of the Icinga 2 restart. API status code: {}", res.status()) })
-                }
-            }
-            Err(err) => Err(ExecutorError::RuntimeError {
-                message: format!(
-                    "Failed to get the current status of the Icinga 2 restart. Err: {}",
-                    err
-                ),
-            }),
+            Ok(res) => res.json().await,
+            Err(err) => Err(err),
         }
     }
 }
@@ -87,68 +71,5 @@ impl DirectorClientConfig {
         })?;
 
         Ok(DirectorClient { server_api_url: self.server_api_url.clone(), http_auth_header, client })
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use httpmock::Method::GET;
-    use httpmock::MockServer;
-
-    #[tokio::test]
-    async fn should_get_icinga2_restart_current_status() {
-        // Arrange
-        let mock_server = MockServer::start();
-
-        mock_server.mock(|when, then| {
-            when.method(GET).path("/icinga2restart/currentstatus");
-            then.status(200).body("{\"pending\": true}");
-        });
-        let director_port = mock_server.port();
-
-        let client = DirectorClientConfig {
-            server_api_url: format!("http://localhost:{}", director_port),
-            username: "".to_string(),
-            password: "".to_string(),
-            disable_ssl_verification: false,
-            timeout_secs: None,
-        }
-        .new_client()
-        .unwrap();
-
-        // Act
-        let result = client.get_icinga2_restart_current_status().await;
-
-        // Assert
-        assert!(result.unwrap().pending);
-    }
-
-    #[tokio::test]
-    async fn get_icinga2_restart_current_status_should_fail_if_not_succeeded() {
-        // Arrange
-        let mock_server = MockServer::start();
-
-        mock_server.mock(|when, then| {
-            when.method(GET).path("/icinga2restart/currentstatus");
-            then.status(400);
-        });
-        let director_port = mock_server.port();
-
-        let client = DirectorClientConfig {
-            server_api_url: format!("http://localhost:{}", director_port),
-            username: "".to_string(),
-            password: "".to_string(),
-            disable_ssl_verification: false,
-            timeout_secs: None,
-        }
-        .new_client()
-        .unwrap();
-
-        // Act
-        let result = client.get_icinga2_restart_current_status().await;
-
-        // Assert
-        assert!(result.is_err());
     }
 }
