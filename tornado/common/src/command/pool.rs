@@ -3,7 +3,7 @@ use async_channel::{bounded, Sender};
 use log::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use tokio::sync::{AcquireError, Mutex, MutexGuard, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::{AcquireError, Mutex, OwnedSemaphorePermit, Semaphore};
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
 use tracing_futures::Instrument;
@@ -123,23 +123,16 @@ impl CommandPoolHandle {
         Self { semaphore, semaphore_size, semaphore_permit: Mutex::new(None) }
     }
 
-    pub async fn deactivate(&self) -> Result<(), AcquireError> {
+    pub async fn lock_all(&self) -> Result<(), AcquireError> {
+        let permit = self.semaphore.clone().acquire_many_owned(self.semaphore_size as u32).await?;
         let mut lock = self.semaphore_permit.lock().await;
-        if Self::is_active(&lock) {
-            let permit =
-                self.semaphore.clone().acquire_many_owned(self.semaphore_size as u32).await?;
-            *lock = Some(permit);
-        }
+        *lock = Some(permit);
         Ok(())
     }
 
-    pub async fn activate(&self) {
+    pub async fn unlock_all(&self) {
         let mut lock = self.semaphore_permit.lock().await;
         *lock = None;
-    }
-
-    fn is_active(lock: &MutexGuard<Option<OwnedSemaphorePermit>>) -> bool {
-        lock.is_none()
     }
 }
 
@@ -332,39 +325,5 @@ mod test {
                 }
             }
         }
-    }
-
-    #[actix_rt::test]
-    async fn command_pool_handle_should_deactivate() {
-        // Arrange
-        let semaphore_size = 5;
-        let semaphore = Arc::new(Semaphore::new(semaphore_size));
-        let handle = CommandPoolHandle::new(semaphore.clone(), semaphore_size);
-
-        // Act
-        handle.deactivate().await.unwrap();
-
-        // Assert
-        assert!(semaphore.try_acquire().is_err());
-    }
-
-    #[actix_rt::test]
-    async fn command_pool_handle_should_activate_after_two_deactivations() {
-        // Arrange
-        let semaphore_size = 5;
-        let semaphore = Arc::new(Semaphore::new(semaphore_size));
-        let handle = CommandPoolHandle::new(semaphore.clone(), semaphore_size);
-        handle.deactivate().await.unwrap();
-        handle.deactivate().await.unwrap();
-
-        assert_eq!(semaphore.available_permits(), 0);
-        assert!(semaphore.try_acquire().is_err());
-
-        // Act
-        handle.activate().await;
-
-        // Assert
-        assert_eq!(semaphore.available_permits(), 5);
-        assert!(semaphore.try_acquire().is_ok());
     }
 }

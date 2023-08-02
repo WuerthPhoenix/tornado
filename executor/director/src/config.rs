@@ -1,5 +1,5 @@
 use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
-use reqwest::{Client, Error};
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tornado_executor_common::ExecutorError;
@@ -23,38 +23,14 @@ pub struct DirectorClientConfig {
 }
 
 #[derive(Clone)]
-pub struct DirectorClient {
+pub struct ApiClient {
     pub server_api_url: String,
     pub http_auth_header: String,
     pub client: Client,
 }
 
-#[derive(Deserialize)]
-pub struct Icinga2RestartCurrentStatus {
-    pub pending: bool,
-}
-
-impl DirectorClient {
-    pub async fn get_icinga2_restart_current_status(
-        &self,
-    ) -> Result<Icinga2RestartCurrentStatus, Error> {
-        let url = format!("{}/icinga2restart/currentstatus", self.server_api_url);
-        match self
-            .client
-            .get(url)
-            .header(reqwest::header::ACCEPT, "application/json")
-            .header(reqwest::header::AUTHORIZATION, self.http_auth_header.as_str())
-            .send()
-            .await
-        {
-            Ok(res) => res.json().await,
-            Err(err) => Err(err),
-        }
-    }
-}
-
 impl DirectorClientConfig {
-    pub fn new_client(&self) -> Result<DirectorClient, ExecutorError> {
+    pub fn new_client(&self) -> Result<ApiClient, ExecutorError> {
         let auth = format!("{}:{}", self.username, self.password);
         let http_auth_header = format!("Basic {}", base64.encode(&auth));
 
@@ -70,6 +46,6 @@ impl DirectorClientConfig {
             message: format!("Error while building DirectorClient. Err: {:?}", err),
         })?;
 
-        Ok(DirectorClient { server_api_url: self.server_api_url.clone(), http_auth_header, client })
+        Ok(ApiClient { server_api_url: self.server_api_url.clone(), http_auth_header, client })
     }
 }

@@ -97,9 +97,9 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
         info!("RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status");
 
         if dto.active {
-            self.smart_monitoring_executor_handle.activate().await
+            self.smart_monitoring_executor_handle.unlock_all().await
         } else {
-            self.smart_monitoring_executor_handle.deactivate().await.map_err(|err| ApiError::InternalServerError {
+            self.smart_monitoring_executor_handle.lock_all().await.map_err(|err| ApiError::InternalServerError {
                 cause: format!("Could not acquire the semaphore controlling the smart_monitoring executor. Err: {}", err),
             })?
         }
