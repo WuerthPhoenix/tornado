@@ -1,60 +1,22 @@
 use async_trait::async_trait;
 use log::*;
-use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::Arc;
-use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tornado_common_logger::LogWorkerGuard;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApiHandler;
 use tornado_engine_api_dto::runtime_config::{
     LoggerConfigDto, SetApmPriorityConfigurationRequestDto, SetLoggerApmRequestDto,
-    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetSmartMonitoringStatusRequestDto,
-    SetStdoutPriorityConfigurationRequestDto,
+    SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto, SetStdoutPriorityConfigurationRequestDto,
 };
 
+#[derive(Clone)]
 pub struct RuntimeConfigApiHandlerImpl {
     logger_guard: Arc<LogWorkerGuard>,
-    smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
-}
-
-pub struct SmartMonitoringExecutorStatus {
-    semaphore: Arc<Semaphore>,
-    semaphore_size: usize,
-    semaphore_permit: AtomicPtr<Option<OwnedSemaphorePermit>>,
-}
-
-impl SmartMonitoringExecutorStatus {
-    pub fn new(semaphore: Arc<Semaphore>, semaphore_size: usize) -> Self {
-        Self { semaphore, semaphore_size, semaphore_permit: AtomicPtr::new(&mut None) }
-    }
-
-    pub async fn set_smart_monitoring_status(&self, active: bool) -> Result<(), ApiError> {
-        if active {
-            self.semaphore_permit.store(&mut None, Ordering::Relaxed);
-        } else {
-            self.semaphore_permit.store(
-                &mut Some(
-                    self.semaphore
-                        .clone()
-                        .acquire_many_owned(self.semaphore_size as u32)
-                        .await
-                        .map_err(|err| ApiError::InternalServerError {
-                            cause: format!("Could not acquire the semaphore controlling the smart_monitoring executor. Err: {}", err),
-                        })?,
-                ),
-                Ordering::Relaxed,
-            );
-        }
-        Ok(())
-    }
 }
 
 impl RuntimeConfigApiHandlerImpl {
-    pub fn new(
-        logger_guard: Arc<LogWorkerGuard>,
-        smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
-    ) -> Self {
-        Self { logger_guard, smart_monitoring_executor_semaphore }
+    pub fn new(logger_guard: Arc<LogWorkerGuard>) -> Self {
+        Self { logger_guard }
     }
 }
 
@@ -122,15 +84,6 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
             .map_err(|err| ApiError::BadRequestError { cause: format!("{:?}", err) })?;
         Ok(())
     }
-
-    async fn set_smart_monitoring_executor_status(
-        &self,
-        dto: SetSmartMonitoringStatusRequestDto,
-    ) -> Result<(), ApiError> {
-        info!("RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status");
-
-        self.smart_monitoring_executor_semaphore.set_smart_monitoring_status(dto.active).await
-    }
 }
 
 #[cfg(test)]
@@ -167,12 +120,7 @@ mod test {
             reloadable_env_filter_handle,
         ));
 
-        let semaphore_size = 5;
-        let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_status =
-            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
-
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard, smart_monitoring_status);
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard);
 
         // Act
         let logger_level_before = api.get_logger_configuration().await.unwrap();
@@ -210,12 +158,7 @@ mod test {
             reloadable_env_filter_handle,
         ));
 
-        let semaphore_size = 5;
-        let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_status =
-            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
-
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
         // Act
         assert!(!log_guard.apm_enabled());
@@ -250,12 +193,7 @@ mod test {
             reloadable_env_filter_handle,
         ));
 
-        let semaphore_size = 5;
-        let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_status =
-            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
-
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
         // Act
         assert!(!log_guard.stdout_enabled());
@@ -290,12 +228,7 @@ mod test {
             reloadable_env_filter_handle,
         ));
 
-        let semaphore_size = 5;
-        let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_status =
-            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
-
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone());
 
         // Set APM first
         {

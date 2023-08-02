@@ -1,7 +1,7 @@
 use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
 use crate::actor::foreach::{ForEachExecutorActor, ForEachExecutorActorInitMessage};
 use crate::actor::matcher::{EventMessage, MatcherActor};
-use crate::api::runtime_config::{RuntimeConfigApiHandlerImpl, SmartMonitoringExecutorStatus};
+use crate::api::runtime_config::RuntimeConfigApiHandlerImpl;
 use crate::api::MatcherApiHandler;
 use crate::config;
 use crate::config::build_config;
@@ -215,8 +215,7 @@ pub async fn daemon(
     };
 
     // Start smart_monitoring_check_result executor actor
-    // let command_pool = CommandPool::new(threads_per_queue, stateless_executor_command);
-    let (smart_monitoring_check_result_executor_addr, smart_monitoring_executor_semaphore) = {
+    let smart_monitoring_check_result_executor_addr = {
         let executor =
             tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
                 configs.icinga2_executor_config.clone(),
@@ -225,15 +224,13 @@ pub async fn daemon(
             .expect("Cannot start the SmartMonitoringExecutor Executor");
         let stateless_executor_command =
             StatelessExecutorCommand::new(action_meter.clone(), executor);
-        let command_pool = CommandPool::new(threads_per_queue, stateless_executor_command);
-        let command_pool_semaphore = command_pool.semaphore.clone();
-        (
-            CommandExecutorActor::start_new(
-                message_queue_size,
-                Rc::new(RetryCommand::new(retry_strategy.clone(), command_pool)),
-                action_meter.clone(),
-            ),
-            command_pool_semaphore,
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
+            )),
+            action_meter.clone(),
         )
     };
 
@@ -493,10 +490,6 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
                 service_logger_guard.clone(),
-                SmartMonitoringExecutorStatus::new(
-                    smart_monitoring_executor_semaphore.clone(),
-                    threads_per_queue,
-                ),
             )),
         };
         let metrics = metrics.clone();

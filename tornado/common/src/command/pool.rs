@@ -2,7 +2,6 @@ use crate::command::{Command, CommandMut};
 use async_channel::{bounded, Sender};
 use log::*;
 use std::marker::PhantomData;
-use std::sync::Arc;
 use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
@@ -17,7 +16,7 @@ pub struct ReplyRequest<I, O> {
 /// A Command pool.
 /// It allows a max concurrent number of accesses to the internal Command.
 pub struct CommandPool<I, O, T: Command<I, O>> {
-    pub semaphore: Arc<Semaphore>,
+    semaphore: Semaphore,
     command: T,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
@@ -26,7 +25,7 @@ pub struct CommandPool<I, O, T: Command<I, O>> {
 impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {
     pub fn new(max_parallel_executions: usize, command: T) -> Self {
         Self {
-            semaphore: Arc::new(Semaphore::new(max_parallel_executions)),
+            semaphore: Semaphore::new(max_parallel_executions),
             command,
             phantom_i: PhantomData,
             phantom_o: PhantomData,
