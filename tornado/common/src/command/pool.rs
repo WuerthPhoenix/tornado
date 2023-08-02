@@ -3,7 +3,7 @@ use async_channel::{bounded, Sender};
 use log::*;
 use std::marker::PhantomData;
 use std::sync::Arc;
-use tokio::sync::{AcquireError, Mutex, OwnedSemaphorePermit, Semaphore};
+use tokio::sync::Semaphore;
 use tornado_executor_common::ExecutorError;
 use tracing::Span;
 use tracing_futures::Instrument;
@@ -17,28 +17,20 @@ pub struct ReplyRequest<I, O> {
 /// A Command pool.
 /// It allows a max concurrent number of accesses to the internal Command.
 pub struct CommandPool<I, O, T: Command<I, O>> {
-    semaphore: Arc<Semaphore>,
-    semaphore_size: usize,
+    pub semaphore: Arc<Semaphore>,
     command: T,
     phantom_i: PhantomData<I>,
     phantom_o: PhantomData<O>,
 }
 
-impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {}
-
 impl<I, O, T: Command<I, O>> CommandPool<I, O, T> {
     pub fn new(max_parallel_executions: usize, command: T) -> Self {
         Self {
             semaphore: Arc::new(Semaphore::new(max_parallel_executions)),
-            semaphore_size: max_parallel_executions,
             command,
             phantom_i: PhantomData,
             phantom_o: PhantomData,
         }
-    }
-
-    pub fn handle(&self) -> CommandPoolHandle {
-        CommandPoolHandle::new(self.semaphore.clone(), self.semaphore_size)
     }
 }
 
@@ -109,30 +101,6 @@ impl<I: 'static, O: 'static> Command<I, Result<O, ExecutorError>> for CommandMut
         rx.recv().await.map_err(|err| ExecutorError::SenderError {
             message: format!("Error receiving message response: {:?}", err),
         })?
-    }
-}
-
-pub struct CommandPoolHandle {
-    semaphore: Arc<Semaphore>,
-    semaphore_size: usize,
-    semaphore_permit: Mutex<Option<OwnedSemaphorePermit>>,
-}
-
-impl CommandPoolHandle {
-    pub fn new(semaphore: Arc<Semaphore>, semaphore_size: usize) -> Self {
-        Self { semaphore, semaphore_size, semaphore_permit: Mutex::new(None) }
-    }
-
-    pub async fn lock_all(&self) -> Result<(), AcquireError> {
-        let permit = self.semaphore.clone().acquire_many_owned(self.semaphore_size as u32).await?;
-        let mut lock = self.semaphore_permit.lock().await;
-        *lock = Some(permit);
-        Ok(())
-    }
-
-    pub async fn unlock_all(&self) {
-        let mut lock = self.semaphore_permit.lock().await;
-        *lock = None;
     }
 }
 

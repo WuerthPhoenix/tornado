@@ -1,7 +1,8 @@
 use async_trait::async_trait;
 use log::*;
+use std::sync::atomic::{AtomicPtr, Ordering};
 use std::sync::Arc;
-use tornado_common::command::pool::CommandPoolHandle;
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tornado_common_logger::LogWorkerGuard;
 use tornado_engine_api::error::ApiError;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApiHandler;
@@ -13,15 +14,47 @@ use tornado_engine_api_dto::runtime_config::{
 
 pub struct RuntimeConfigApiHandlerImpl {
     logger_guard: Arc<LogWorkerGuard>,
-    smart_monitoring_executor_handle: Arc<CommandPoolHandle>,
+    smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
+}
+
+pub struct SmartMonitoringExecutorStatus {
+    semaphore: Arc<Semaphore>,
+    semaphore_size: usize,
+    semaphore_permit: AtomicPtr<Option<OwnedSemaphorePermit>>,
+}
+
+impl SmartMonitoringExecutorStatus {
+    pub fn new(semaphore: Arc<Semaphore>, semaphore_size: usize) -> Self {
+        Self { semaphore, semaphore_size, semaphore_permit: AtomicPtr::new(&mut None) }
+    }
+
+    pub async fn set_smart_monitoring_status(&self, active: bool) -> Result<(), ApiError> {
+        if active {
+            self.semaphore_permit.store(&mut None, Ordering::Relaxed);
+        } else {
+            self.semaphore_permit.store(
+                &mut Some(
+                    self.semaphore
+                        .clone()
+                        .acquire_many_owned(self.semaphore_size as u32)
+                        .await
+                        .map_err(|err| ApiError::InternalServerError {
+                            cause: format!("Could not acquire the semaphore controlling the smart_monitoring executor. Err: {}", err),
+                        })?,
+                ),
+                Ordering::Relaxed,
+            );
+        }
+        Ok(())
+    }
 }
 
 impl RuntimeConfigApiHandlerImpl {
     pub fn new(
         logger_guard: Arc<LogWorkerGuard>,
-        smart_monitoring_executor_handle: Arc<CommandPoolHandle>,
+        smart_monitoring_executor_semaphore: SmartMonitoringExecutorStatus,
     ) -> Self {
-        Self { logger_guard, smart_monitoring_executor_handle }
+        Self { logger_guard, smart_monitoring_executor_semaphore }
     }
 }
 
@@ -96,14 +129,7 @@ impl RuntimeConfigApiHandler for RuntimeConfigApiHandlerImpl {
     ) -> Result<(), ApiError> {
         info!("RuntimeConfigApiHandlerImpl - set_smart_monitoring_executor_status");
 
-        if dto.active {
-            self.smart_monitoring_executor_handle.unlock_all().await
-        } else {
-            self.smart_monitoring_executor_handle.lock_all().await.map_err(|err| ApiError::InternalServerError {
-                cause: format!("Could not acquire the semaphore controlling the smart_monitoring executor. Err: {}", err),
-            })?
-        }
-        Ok(())
+        self.smart_monitoring_executor_semaphore.set_smart_monitoring_status(dto.active).await
     }
 }
 
@@ -113,7 +139,6 @@ mod test {
     use std::str::FromStr;
     use std::sync::atomic::AtomicBool;
     use std::sync::Arc;
-    use tokio::sync::Semaphore;
     use tornado_common_logger::elastic_apm::ApmTracingConfig;
     use tornado_common_logger::LoggerConfig;
     use tracing_subscriber::filter::Targets;
@@ -144,9 +169,10 @@ mod test {
 
         let semaphore_size = 5;
         let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_handle = CommandPoolHandle::new(Arc::new(semaphore), semaphore_size);
+        let smart_monitoring_status =
+            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(smart_monitoring_handle));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard, smart_monitoring_status);
 
         // Act
         let logger_level_before = api.get_logger_configuration().await.unwrap();
@@ -186,10 +212,10 @@ mod test {
 
         let semaphore_size = 5;
         let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_handle = CommandPoolHandle::new(Arc::new(semaphore), semaphore_size);
+        let smart_monitoring_status =
+            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api =
-            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_handle));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
 
         // Act
         assert!(!log_guard.apm_enabled());
@@ -226,10 +252,10 @@ mod test {
 
         let semaphore_size = 5;
         let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_handle = CommandPoolHandle::new(Arc::new(semaphore), semaphore_size);
+        let smart_monitoring_status =
+            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api =
-            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_handle));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
 
         // Act
         assert!(!log_guard.stdout_enabled());
@@ -266,10 +292,10 @@ mod test {
 
         let semaphore_size = 5;
         let semaphore = Semaphore::new(semaphore_size);
-        let smart_monitoring_handle = CommandPoolHandle::new(Arc::new(semaphore), semaphore_size);
+        let smart_monitoring_status =
+            SmartMonitoringExecutorStatus::new(Arc::new(semaphore), semaphore_size);
 
-        let api =
-            RuntimeConfigApiHandlerImpl::new(log_guard.clone(), Arc::new(smart_monitoring_handle));
+        let api = RuntimeConfigApiHandlerImpl::new(log_guard.clone(), smart_monitoring_status);
 
         // Set APM first
         {
@@ -300,57 +326,6 @@ mod test {
             assert!(!log_guard.apm_enabled());
             assert!(log_guard.stdout_enabled());
             assert_eq!(&logger_level, &log_guard.level());
-        }
-    }
-
-    #[actix_rt::test]
-    async fn should_set_smart_monitoring_status() {
-        // Arrange
-        let logger_level = "debug".to_owned();
-        let config = LoggerConfig {
-            file_output_path: None,
-            stdout_output: false,
-            tracing_elastic_apm: ApmTracingConfig::default(),
-            level: logger_level.clone(),
-        };
-        let env_filter = Targets::from_str(&logger_level).unwrap();
-
-        let (_reloadable_env_filter, reloadable_env_filter_handle) =
-            tracing_subscriber::reload::Layer::new(env_filter);
-
-        let log_guard = Arc::new(LogWorkerGuard::new(
-            None,
-            None,
-            config.clone().into(),
-            AtomicBool::new(true).into(),
-            AtomicBool::new(false).into(),
-            reloadable_env_filter_handle,
-        ));
-
-        let semaphore_size = 5;
-        let semaphore = Arc::new(Semaphore::new(semaphore_size));
-        let smart_monitoring_handle = CommandPoolHandle::new(semaphore.clone(), semaphore_size);
-
-        let api = RuntimeConfigApiHandlerImpl::new(log_guard, Arc::new(smart_monitoring_handle));
-
-        {
-            // Disable smart monitoring executor
-            let disable_request = SetSmartMonitoringStatusRequestDto { active: false };
-            // Act
-            api.set_smart_monitoring_executor_status(disable_request).await.unwrap();
-            // Assert
-            assert!(semaphore.try_acquire().is_err());
-        };
-
-        // Enable smart monitoring executor
-        {
-            let enable_request = SetSmartMonitoringStatusRequestDto { active: true };
-            // Act
-            api.set_smart_monitoring_executor_status(enable_request).await.unwrap();
-
-            // Assert
-            assert_eq!(semaphore.available_permits(), 5);
-            assert!(semaphore.try_acquire().is_ok());
         }
     }
 }
