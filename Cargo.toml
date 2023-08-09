@@ -53,4 +53,8 @@ debug = true
 #lto = true
 
 [workspace.dependencies]
-regex-syntax = "0.7"
+
+# Important: Always keep the versions of these two in sync in order to prevent
+# bugs in the tornado carbon frontend.
+regex-syntax = "0.7.4"
+regex = "1.9.1"
