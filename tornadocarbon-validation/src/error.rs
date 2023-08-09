@@ -1,7 +1,7 @@
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Error {
     kind: ErrorKind,
     span: Span,
@@ -21,7 +21,7 @@ impl Error {
 }
 
 #[wasm_bindgen]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum ErrorKind {
     CaptureLimitExceeded,
     ClassEscapeInvalid,
@@ -71,44 +71,12 @@ pub struct Span {
 }
 
 #[wasm_bindgen]
-impl Span {
-    #[wasm_bindgen(getter)]
-    pub fn start(&self) -> Position {
-        self.start
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn end(&self) -> Position {
-        self.end
-    }
-}
-
-#[wasm_bindgen]
 #[derive(Copy, Clone)]
 pub struct Position {
     pub offset: usize,
     pub line: usize,
     pub column: usize,
 }
-
-#[wasm_bindgen]
-impl Position {
-    #[wasm_bindgen(getter)]
-    pub fn offset(&self) -> usize {
-        self.offset
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn line(&self) -> usize {
-        self.line
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn column(&self) -> usize {
-        self.column
-    }
-}
-
 
 impl From<regex_syntax::ast::Error> for Error {
     fn from(value: regex_syntax::ast::Error) -> Self {

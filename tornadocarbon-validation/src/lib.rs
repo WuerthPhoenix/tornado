@@ -6,22 +6,9 @@ mod error;
 
 #[wasm_bindgen]
 pub struct ValidationResult {
-    is_valid: bool,
-    has_named_groups: bool,
-    error: Option<Error>,
-}
-
-#[wasm_bindgen]
-impl ValidationResult {
-    #[wasm_bindgen(getter)]
-    pub fn is_valid(&self) -> bool {
-        self.is_valid
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn error(&self) -> Option<Error> {
-        self.error.clone()
-    }
+    pub is_valid: bool,
+    pub has_named_groups: bool,
+    pub error: Option<Error>,
 }
 
 #[wasm_bindgen]
