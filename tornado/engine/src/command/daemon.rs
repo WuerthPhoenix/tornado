@@ -215,7 +215,7 @@ pub async fn daemon(
     };
 
     // Start smart_monitoring_check_result executor actor
-    let (smart_monitoring_check_result_executor_addr, smart_monitoring_executor_handle) = {
+    let smart_monitoring_check_result_executor_addr = {
         let executor =
             tornado_executor_smart_monitoring_check_result::SmartMonitoringExecutor::new(
                 configs.icinga2_executor_config.clone(),
@@ -224,29 +224,13 @@ pub async fn daemon(
             .expect("Cannot start the SmartMonitoringExecutor Executor");
         let stateless_executor_command =
             StatelessExecutorCommand::new(action_meter.clone(), executor);
-        let command_pool = CommandPool::new(threads_per_queue, stateless_executor_command);
-        let command_pool_handle = command_pool.handle();
-
-        // Deactivate the smart_monitoring executor if icinga2 is performing a restart to avoid
-        // pending states due to race conditions in icinga2
-        match director_client_config.new_client()?.get_icinga2_restart_current_status().await {
-            Ok(status) => {
-                if status.pending {
-                    info!("Icinga 2 is currently restarting. Smart Monitoring actions are blocked until further notice.");
-                    command_pool_handle.deactivate().await?
-                }
-            }
-            Err(err) => {
-                warn!("Failed to get the status of the latest Icinga 2 restart. Smart monitoring actions may incur in race conditions causing the loss of the objects status. Error: {}", err);
-            }
-        }
-        (
-            CommandExecutorActor::start_new(
-                message_queue_size,
-                Rc::new(RetryCommand::new(retry_strategy.clone(), command_pool)),
-                action_meter.clone(),
-            ),
-            command_pool_handle,
+        CommandExecutorActor::start_new(
+            message_queue_size,
+            Rc::new(RetryCommand::new(
+                retry_strategy.clone(),
+                CommandPool::new(threads_per_queue, stateless_executor_command),
+            )),
+            action_meter.clone(),
         )
     };
 
@@ -483,7 +467,6 @@ pub async fn daemon(
 
     // Start API and monitoring endpoint
     let service_logger_guard = logger_guard.clone();
-    let smart_monitoring_executor_handle_arc = Arc::new(smart_monitoring_executor_handle);
     let server_binding_result = HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
 
@@ -507,7 +490,6 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: RuntimeConfigApi::new(RuntimeConfigApiHandlerImpl::new(
                 service_logger_guard.clone(),
-                smart_monitoring_executor_handle_arc.clone(),
             )),
         };
         let metrics = metrics.clone();
