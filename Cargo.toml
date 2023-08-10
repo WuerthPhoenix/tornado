@@ -55,6 +55,6 @@ debug = true
 [workspace.dependencies]
 
 # Important: Always keep the versions of these two in sync in order to prevent
-# bugs in the tornado carbon frontend.
+# bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
 regex-syntax = "0.7.4"
 regex = "1.9.1"
