@@ -1,3 +1,5 @@
+use crate::error::Error;
+use regex_syntax::hir::{Hir, HirKind};
 use wasm_bindgen::prelude::*;
 
 mod error;
