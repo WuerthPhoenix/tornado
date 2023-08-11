@@ -33,6 +33,7 @@ members = [
    "tornado/nats_json_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
+   "tornado-regex-validation"
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
@@ -50,3 +51,10 @@ debug = true
 # When lto is enabled the profiler results are less clear.
 # It should be taken into account a performance penalty of at least the 15% without the lto.
 #lto = true
+
+[workspace.dependencies]
+
+# Important: Always keep the versions of these two in sync in order to prevent
+# bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
+regex-syntax = "0.7.4"
+regex = "1.9.1"
