@@ -21,7 +21,7 @@ pub enum SmsCollectorError {
     SmsParseError { error: SmsParseError },
     #[error("Could not find or open sms file {sms_file}: {error} ")]
     SmsFileAccessError { sms_file: SmsFile, error: io::Error },
-    #[error("Could not send data to nats. The sms will be copied to {failed_sms_file}")]
+    #[error("Could not send data to nats, {error} - The sms will be copied to {failed_sms_file}")]
     TornadoConnectionError { error: io::Error, failed_sms_file: PathBuf },
 }
 

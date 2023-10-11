@@ -1,11 +1,12 @@
 use config_rs::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 use tornado_common::actors::nats_publisher::NatsPublisherConfig;
 use tornado_common_logger::LoggerConfig;
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SmsCollectorConfig {
-    pub failed_sms_folder: String,
+    pub failed_sms_folder: PathBuf,
     pub tornado_connection_channel: Nats,
 }
 

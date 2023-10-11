@@ -34,7 +34,7 @@ struct SmsCollectorArgs {
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
-    let (args, collector_config, _guard) = match load_config() {
+    let (args, collector_config, _logger_guard) = match load_config() {
         Ok(res) => res,
         Err(error) => {
             println!("Could not load config: {error}");
@@ -49,35 +49,26 @@ async fn main() -> io::Result<()> {
 
     let collector_result = execute_collector(&args.sms_file, collector_config).await;
 
-    match collector_result {
-        Ok(()) => {
-            tokio::fs::remove_file(&args.sms_file).await?;
+    match &collector_result {
+        Ok(()) => tokio::fs::remove_file(&args.sms_file).await,
+        Err(err @ SmsCollectorError::TornadoConnectionError { failed_sms_file, .. }) => {
+            error!("Could not forward the sms to Tornado. Error: {err}");
+            std::fs::rename(&args.sms_file, failed_sms_file)
         }
         Err(err) => {
-            error!("Could not forward the sms to Tornado. Error: {err}");
-
-            match err {
-                SmsCollectorError::TornadoConnectionError { failed_sms_file, .. } => {
-                    std::fs::rename(&args.sms_file, failed_sms_file)?;
-                }
-                _ => {
-                    info!("Removing sms file {}", args.sms_file.display());
-                    std::fs::remove_file(&args.sms_file)?;
-                }
-            }
+            error!("Could not process sms file: {err}");
+            exit(1);
         }
     }
-
-    Ok(())
 }
 
 fn load_config(
 ) -> Result<(SmsCollectorArgs, CollectorConfig, LogWorkerGuard), SmsCollectorConfigError> {
-    let args = SmsCollectorArgs::parse();
+    let args = SmsCollectorArgs::try_parse()?;
 
     let mut collector_config = build_config(&args.config_dir)?;
 
-    let guard = setup_logger(collector_config.logger.clone())?;
+    let logger_guard = setup_logger(collector_config.logger.clone())?;
 
     let apm_server_api_credentials_filepath =
         format!("{}/{}", args.config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
@@ -90,7 +81,7 @@ fn load_config(
         warn!("{:?}", apm_credentials_read_error);
     }
 
-    Ok((args, collector_config, guard))
+    Ok((args, collector_config, logger_guard))
 }
 
 async fn execute_collector(
@@ -134,18 +125,15 @@ async fn execute_collector(
     let serialized_full_event_message =
         serde_json::to_string(&full_event_message).expect("payload is always serializable");
     let nats = collector_config.sms_collector.tornado_connection_channel.nats;
-    match publish_on_nats(serialized_full_event_message, &nats).await {
-        Ok(_) => Ok(()),
-        Err(err) => {
-            let mut failed_sms_file =
-                PathBuf::from(collector_config.sms_collector.failed_sms_folder);
-            let sms_file =
-                sms_file.file_name().expect("filename of already read file to be present.");
-            failed_sms_file.push(sms_file);
+    if let Err(err) = publish_on_nats(serialized_full_event_message, &nats).await {
+        let mut failed_sms_file = collector_config.sms_collector.failed_sms_folder;
+        let sms_file = sms_file.file_name().expect("filename of already read file to be present.");
+        failed_sms_file.push(sms_file);
 
-            Err(SmsCollectorError::TornadoConnectionError { error: err, failed_sms_file })
-        }
+        return Err(SmsCollectorError::TornadoConnectionError { error: err, failed_sms_file });
     }
+
+    Ok(())
 }
 
 async fn publish_on_nats(
@@ -155,5 +143,6 @@ async fn publish_on_nats(
     info!("Connect to Tornado through NATS");
     let nats_connection = nats.client.new_client().await?;
     nats_connection.publish(&nats.subject, serialized_full_event_message).await?;
-    Ok(())
+    nats_connection.flush().await?;
+    nats_connection.close().await
 }
