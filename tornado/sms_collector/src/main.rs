@@ -3,13 +3,14 @@ use clap::Parser;
 use config_rs::{Config, ConfigError, File};
 use log::*;
 use opentelemetry::trace::SpanKind;
-use serde::de::{Error, Visitor};
+use serde::de::Visitor;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::collections::HashMap;
 use std::fmt::Formatter;
-use std::path::Path;
+use std::io;
+use std::path::{Path, PathBuf};
+use thiserror::Error;
 use tornado_common::actors::nats_publisher::NatsPublisherConfig;
-use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common_api::{Event, Value};
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::opentelemetry_logger::TelemetryContextInjector;
@@ -17,10 +18,14 @@ use tornado_common_logger::{setup_logger, LoggerConfig};
 use tornado_common_metrics::opentelemetry::sdk::propagation::TraceContextPropagator;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
+const SMS_EVENT_HANDLE_ACTION: &str = "RECEIVED";
+
+type SmsFile = String;
+
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SmsCollectorConfig {
     pub failed_sms_folder: String,
-    pub tornado_connection_channel: TornadoConnectionChannel,
+    pub tornado_connection_channel: NatsPublisherConfig,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -31,14 +36,22 @@ pub struct CollectorConfig {
 }
 
 #[derive(Parser)]
-enum SmsCollectorArgs {
+enum SmsCollectorAction {
     #[clap(name = "RECEIVED")]
     Received {
         #[clap(index = 1)]
-        smsfile: String,
-        #[clap(short = 'c', long = "config-dir")]
-        config_dir: String,
+        sms_file: SmsFile,
     },
+}
+
+#[derive(Parser)]
+struct SmsCollectorArgs {
+    #[clap(short = 'c', long = "config-dir")]
+    config_dir: String,
+    #[clap(index = 1)]
+    event: String,
+    #[clap(index = 2)]
+    sms_file: SmsFile,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -50,24 +63,111 @@ pub struct SmsEventPayload {
     text: String,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    let SmsCollectorArgs::Received { smsfile, config_dir } = SmsCollectorArgs::parse();
-    let apm_server_api_credentials_filepath =
-        format!("{}/{}", config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
-    let mut collector_config = build_config(&config_dir)?;
+#[derive(Error, Debug)]
+enum SmsCollectorError {
+    #[error("{0}")]
+    ArgumentParseError(#[from] clap::Error),
+    #[error("Could not load config file for the collector: {error}")]
+    ConfigError {
+        error: Box<dyn std::error::Error + Send + Sync + 'static>,
+        event: String,
+        sms_file: SmsFile,
+    },
+    #[error("Ignoring event \"{event}\"")]
+    IgnoreAction { event: String, sms_file: SmsFile },
+    #[error("Could not find or open sms file {sms_file}: {error} ")]
+    SmsFileAccessError { sms_file: SmsFile, error: io::Error },
+    #[error("Could not forward sms contents to nats. The sms will be copied to {failed_sms_file}")]
+    TornadoConnectionError { error: io::Error, sms_file: SmsFile, failed_sms_file: PathBuf },
+}
 
+impl SmsCollectorError {
+    fn sms_file(&self) -> Option<&SmsFile> {
+        match self {
+            SmsCollectorError::ArgumentParseError(_) => None,
+            SmsCollectorError::IgnoreAction { sms_file, .. } => Some(sms_file),
+            SmsCollectorError::SmsFileAccessError { sms_file, .. } => Some(sms_file),
+            SmsCollectorError::TornadoConnectionError { sms_file, .. } => Some(sms_file),
+            SmsCollectorError::ConfigError { sms_file, .. } => Some(sms_file),
+        }
+    }
+}
+
+#[tokio::main]
+async fn main() -> io::Result<()> {
+    let collector_result = execute_collector().await;
+
+    match collector_result {
+        Ok(sms_file) => {
+            tokio::fs::remove_file(&sms_file).await?;
+        }
+        Err(err) => {
+            error!("Could not forward the sms to Tornado. Error: {err}");
+
+            match err {
+                SmsCollectorError::TornadoConnectionError { sms_file, failed_sms_file, .. } => {
+                    std::fs::rename(sms_file, failed_sms_file)?;
+                }
+                err => {
+                    if let Some(sms_file) = err.sms_file() {
+                        std::fs::remove_file(sms_file)?;
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn execute_collector() -> Result<SmsFile, SmsCollectorError> {
+    let args = SmsCollectorArgs::parse();
+
+    let mut collector_config = match build_config(&args.config_dir) {
+        Ok(config) => config,
+        Err(err) => {
+            return Err(SmsCollectorError::ConfigError {
+                error: err.into(),
+                event: args.event,
+                sms_file: args.sms_file,
+            })
+        }
+    };
+    match setup_logger(collector_config.logger.clone()) {
+        Ok(guard) => std::mem::forget(guard),
+        Err(err) => {
+            return Err(SmsCollectorError::ConfigError {
+                error: err.into(),
+                event: args.event,
+                sms_file: args.sms_file,
+            })
+        }
+    }
+
+    if args.event != SMS_EVENT_HANDLE_ACTION {
+        return Err(SmsCollectorError::IgnoreAction { event: args.event, sms_file: args.sms_file });
+    }
+
+    let apm_server_api_credentials_filepath =
+        format!("{}/{}", args.config_dir, DEFAULT_APM_SERVER_CREDENTIALS_FILENAME);
     let apm_credentials_read_result = collector_config
         .logger
         .tracing_elastic_apm
         .read_apm_server_api_credentials_if_not_set(&apm_server_api_credentials_filepath);
 
-    let _guard = setup_logger(collector_config.logger)?;
     if let Err(apm_credentials_read_error) = apm_credentials_read_result {
         warn!("{:?}", apm_credentials_read_error);
     }
 
-    let sms_content = std::fs::read_to_string(&smsfile)?;
+    let sms_content = match std::fs::read_to_string(&args.sms_file) {
+        Ok(sms_content) => sms_content,
+        Err(err) => {
+            return Err(SmsCollectorError::SmsFileAccessError {
+                sms_file: args.sms_file,
+                error: err,
+            });
+        }
+    };
     let sms_event_payload = parse_sms(&sms_content);
 
     let Value::Object(payload) = serde_json::to_value(sms_event_payload).unwrap() else { unreachable!() };
@@ -86,38 +186,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     full_event_message.set_trace_context(trace_context);
 
     let serialized_full_event_message = serde_json::to_string(&full_event_message).unwrap();
-    let publish_result = match collector_config.sms_collector.tornado_connection_channel {
-        TornadoConnectionChannel::Nats { ref nats } => {
-            publish_on_nats(serialized_full_event_message, &nats).await
-        }
-        _ => Err(("Cannot find a valid Tornado connection channel").into()),
-    };
-
-    match publish_result {
-        Ok(_) => {
-            tokio::fs::remove_file(&smsfile).await?;
-        }
+    let nats = collector_config.sms_collector.tornado_connection_channel;
+    match publish_on_nats(serialized_full_event_message, &nats).await {
+        Ok(_) => Ok(args.sms_file),
         Err(err) => {
-            error!(
-                "The following sms could not be forwarded to Tornado engine: {}. Problem: {}",
-                sms_content, err
-            );
-            let failed_sms_file_name = format!(
-                "{}{}",
-                collector_config.sms_collector.failed_sms_folder,
-                Path::new(&smsfile).file_name().unwrap().to_str().unwrap()
-            );
-            tokio::fs::rename(&smsfile, &failed_sms_file_name).await?;
+            let mut failed_sms_file =
+                PathBuf::from(collector_config.sms_collector.failed_sms_folder);
+            let sms_file = Path::new(&args.sms_file)
+                .file_name()
+                .expect("filename of already read file to be present.");
+            failed_sms_file.push(sms_file);
+
+            Err(SmsCollectorError::TornadoConnectionError {
+                error: err,
+                sms_file: args.sms_file,
+                failed_sms_file,
+            })
         }
     }
-
-    Ok(())
 }
 
 async fn publish_on_nats(
     serialized_full_event_message: String,
     nats: &NatsPublisherConfig,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+) -> io::Result<()> {
     info!("Connect to Tornado through NATS");
     let nats_connection = nats.client.new_client().await?;
     nats_connection.publish(&nats.subject, serialized_full_event_message).await?;
@@ -159,11 +251,11 @@ where
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
-            E: Error,
+            E: serde::de::Error,
         {
             match NaiveDateTime::parse_from_str(v, "%y-%m-%d %H:%M:%S") {
                 Ok(value) => Ok(value.timestamp()),
-                Err(err) => Err(Error::custom(err)),
+                Err(err) => Err(serde::de::Error::custom(err)),
             }
         }
     }

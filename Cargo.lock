@@ -4417,12 +4417,18 @@ dependencies = [
  "clap 3.0.0-beta.5",
  "config",
  "log",
+ "opentelemetry",
  "serde",
  "serde_json",
+ "thiserror",
  "tokio",
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tornado_common_metrics",
+ "tracing",
+ "tracing-futures",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
