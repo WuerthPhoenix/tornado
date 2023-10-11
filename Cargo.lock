@@ -1475,6 +1475,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gethostname"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0176e0459c2e4a1fe232f984bca6890e681076abb9934f6cea7c326f3fc47818"
+dependencies = [
+ "libc",
+ "windows-targets",
+]
+
+[[package]]
 name = "getrandom"
 version = "0.1.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4416,6 +4426,7 @@ dependencies = [
  "chrono",
  "clap 3.0.0-beta.5",
  "config",
+ "gethostname",
  "log",
  "opentelemetry",
  "serde",

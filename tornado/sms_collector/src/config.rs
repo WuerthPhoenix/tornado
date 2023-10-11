@@ -6,7 +6,12 @@ use tornado_common_logger::LoggerConfig;
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct SmsCollectorConfig {
     pub failed_sms_folder: String,
-    pub tornado_connection_channel: NatsPublisherConfig,
+    pub tornado_connection_channel: Nats,
+}
+
+#[derive(Deserialize, Serialize, Clone, Debug)]
+pub struct Nats {
+    pub nats: NatsPublisherConfig,
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]

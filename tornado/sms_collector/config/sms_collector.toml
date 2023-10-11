@@ -31,12 +31,12 @@ failed_sms_folder = "/neteye/local/tornado_sms_collector/data/processing_failure
 # In case of Nats Connection uncomment these entries; otherwise, comment them.
 # -----------------------------------
 # The addresses of the  NATS server
-#nats.client.addresses = ["127.0.0.1:4222"]
+nats.client.addresses = ["127.0.0.1:4222"]
 # The NATS Subject to which tornado will subscribe to and listens for incoming events
-#nats.subject = "tornado.events"
+nats.subject = "tornado.events"
 # The type of authentication used when connecting to the NATS server
 # (Optional. Valid values: None, Tls. Defaults to "None" if not provided).
-#nats.client.auth.type = "None"
+nats.client.auth.type = "None"
 #nats.client.auth.type = "Tls"
 # The path to the client certificate (in .pem format) used to authenticate to the NATS server
 #nats.client.auth.certificate_path = "/path/to/certificate.pem"
@@ -46,10 +46,3 @@ failed_sms_folder = "/neteye/local/tornado_sms_collector/data/processing_failure
 # May be useful if the NATS server is not trusted by the system as default.
 # (Optional, valid if "nats.client.auth.type" is set to "Tls").
 #nats.client.auth.path_to_root_certificate = "/path/to/root/certificate.crt.pem"
-
-# In case of TCP Connection uncomment these entries; otherwise, comment them.
-# -----------------------------------
-# The IP on which the Tornado Engine is listening for incoming events.
-tcp_socket_ip = "127.0.0.1"
-# The port on which the Tornado Engine is listening for incoming events.
-tcp_socket_port = 4747

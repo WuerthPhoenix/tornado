@@ -1,7 +1,7 @@
 use crate::error::SmsParseError;
 use chrono::NaiveDateTime;
 use serde::de::Visitor;
-use serde::{Deserialize, Deserializer, Serialize};
+use serde::{de, Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
@@ -11,6 +11,11 @@ pub struct SmsEventPayload {
     sender: String,
     #[serde(alias = "Sent", deserialize_with = "deserialize_timestamp_from_datetime_string")]
     timestamp: i64,
+    // This is not documented in the official documentation, but a test on the rdneteye showed that
+    // the field is infact there.
+    #[serde(alias = "Modem")]
+    modem: String,
+    hostname: String,
     text: String,
 }
 
@@ -34,6 +39,13 @@ pub fn parse_sms(sms: &str) -> Result<SmsEventPayload, SmsParseError> {
 
     fields.insert("text", text.trim());
 
+    let hostname = gethostname::gethostname();
+    let Some(hostname) = hostname.to_str() else {
+        return Err(SmsParseError::HostnameFormatError);
+    };
+
+    fields.insert("hostname", hostname);
+
     match serde_json::to_value(fields).and_then(serde_json::from_value) {
         Ok(value) => Ok(value),
         Err(error) => Err(SmsParseError::ContentError(error)),
@@ -42,7 +54,7 @@ pub fn parse_sms(sms: &str) -> Result<SmsEventPayload, SmsParseError> {
 
 pub fn deserialize_timestamp_from_datetime_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
-    D: Deserializer<'de>,
+    D: de::Deserializer<'de>,
 {
     struct DateTimeVisitor;
     impl Visitor<'_> for DateTimeVisitor {
@@ -54,7 +66,7 @@ where
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
-            E: serde::de::Error,
+            E: de::Error,
         {
             match NaiveDateTime::parse_from_str(v, "%y-%m-%d %H:%M:%S") {
                 Ok(value) => Ok(value.timestamp()),

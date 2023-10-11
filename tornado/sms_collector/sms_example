@@ -1,9 +1,13 @@
-From: 491721234567
-From_SMSC: 491722270333
-Sent: 00-02-21 22:26:23
-Received: 00-02-21 22:26:29
-Subject: modem1
+From: 393406903097
+From_TOA: 91 international, ISDN/telephone
+From_SMSC: 393205957111
+Sent: 23-10-09 12:15:19
+Received: 23-10-09 12:15:31
+Subject: GSM1
+Modem: GSM1
+IMSI: 222018005102877
+Report: no
 Alphabet: ISO
-UDH: false
+Length: 6
 
-This is the Text that I have sent with my mobile phone to the computer.
+Test 3
