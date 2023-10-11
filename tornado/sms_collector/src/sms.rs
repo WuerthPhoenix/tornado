@@ -77,3 +77,58 @@ where
 
     deserializer.deserialize_str(DateTimeVisitor)
 }
+
+#[cfg(test)]
+mod test {
+    use crate::error::SmsParseError;
+    use crate::sms::parse_sms;
+
+    #[test]
+    fn should_parse_sms_correctly() {
+        let sms = include_str!("../test_sms/example_sms_minimal");
+
+        let sms_event_payload = parse_sms(sms).unwrap();
+
+        assert_eq!(sms_event_payload.sender, "393333333333");
+        assert_eq!(sms_event_payload.timestamp, 1696853719);
+        assert_eq!(sms_event_payload.modem, "GSM1");
+        assert_eq!(sms_event_payload.text, "Test 3");
+    }
+
+    #[test]
+    fn should_parse_sms_with_extra_fields_correctly() {
+        let sms = include_str!("../test_sms/example_sms");
+
+        let sms_event_payload = parse_sms(sms).unwrap();
+
+        assert_eq!(sms_event_payload.sender, "393333333333");
+        assert_eq!(sms_event_payload.timestamp, 1696853719);
+        assert_eq!(sms_event_payload.modem, "GSM1");
+        assert_eq!(sms_event_payload.text, "Test 3");
+    }
+
+    #[test]
+    fn should_fail_parsing_sms_on_missing_header() {
+        let sms = include_str!("../test_sms/example_sms_missing_header");
+
+        let sms_event_payload = parse_sms(sms);
+        assert!(matches!(sms_event_payload, Err(SmsParseError::ContentError(_))))
+    }
+
+    #[test]
+    fn should_fail_parsing_sms_on_broken_header() {
+        let sms = include_str!("../test_sms/example_sms_broken_header");
+
+        let sms_event_payload = parse_sms(sms);
+
+        assert!(matches!(sms_event_payload, Err(SmsParseError::FormatError(_))))
+    }
+
+    #[test]
+    fn should_fail_parsing_sms_on_missing_text() {
+        let sms = include_str!("../test_sms/example_sms_missing_text");
+
+        let sms_event_payload = parse_sms(sms);
+        assert!(matches!(sms_event_payload, Err(SmsParseError::FormatError(_))))
+    }
+}
