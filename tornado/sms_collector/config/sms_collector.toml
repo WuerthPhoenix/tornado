@@ -22,6 +22,7 @@ apm_server_url = "http://localhost:8200"
 
 [sms_collector]
 
+# The location where sms who could not be sent to tornado end up in.
 failed_sms_folder = "/neteye/local/tornado_sms_collector/data/processing_failures_sms/"
 
 # The channel to send events to Tornado.

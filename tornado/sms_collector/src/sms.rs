@@ -11,8 +11,8 @@ pub struct SmsEventPayload {
     sender: String,
     #[serde(alias = "Sent", deserialize_with = "deserialize_timestamp_from_datetime_string")]
     timestamp: i64,
-    // This is not documented in the official documentation, but a test on the rdneteye showed that
-    // the field is infact there. See also the test files in ../test_sms
+    // This is not documented in the official documentation, but tests with smsd showed that
+    // the field is in fact there. See also the test files in ../test_sms
     #[serde(alias = "Modem")]
     modem: String,
     hostname: String,
