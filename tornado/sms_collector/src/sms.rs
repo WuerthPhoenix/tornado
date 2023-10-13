@@ -1,5 +1,4 @@
 use crate::error::SmsParseError;
-use chrono::NaiveDateTime;
 use serde::de::Visitor;
 use serde::{de, Deserialize, Serialize};
 use std::collections::HashMap;
@@ -9,13 +8,12 @@ use std::fmt::Formatter;
 pub struct SmsEventPayload {
     #[serde(alias = "From")]
     sender: String,
-    #[serde(alias = "Sent", deserialize_with = "deserialize_timestamp_from_datetime_string")]
+    #[serde(alias = "Sent", deserialize_with = "deserialize_timestamp_from_string")]
     timestamp: i64,
     // This is not documented in the official documentation, but tests with smsd showed that
     // the field is in fact there. See also the test files in ../test_sms
     #[serde(alias = "Modem")]
     modem: String,
-    hostname: String,
     text: String,
 }
 
@@ -39,43 +37,36 @@ pub fn parse_sms(sms: &str) -> Result<SmsEventPayload, SmsParseError> {
 
     fields.insert("text", text.trim());
 
-    let hostname = gethostname::gethostname();
-    let Some(hostname) = hostname.to_str() else {
-        return Err(SmsParseError::HostnameFormatError);
-    };
-
-    fields.insert("hostname", hostname);
-
     match serde_json::to_value(fields).and_then(serde_json::from_value) {
         Ok(value) => Ok(value),
         Err(error) => Err(SmsParseError::ContentError(error)),
     }
 }
 
-pub fn deserialize_timestamp_from_datetime_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
+pub fn deserialize_timestamp_from_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
 where
     D: de::Deserializer<'de>,
 {
-    struct DateTimeVisitor;
-    impl Visitor<'_> for DateTimeVisitor {
+    struct TimestampVisitor;
+    impl Visitor<'_> for TimestampVisitor {
         type Value = i64;
 
         fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-            formatter.write_str("Sent datetime not formatted as expected: dd-mm-yy HH:MM:SS")
+            formatter.write_str("The timestamp string cannot be converted into integer")
         }
 
         fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
         where
             E: de::Error,
         {
-            match NaiveDateTime::parse_from_str(v, "%y-%m-%d %H:%M:%S") {
-                Ok(value) => Ok(value.timestamp()),
+            match v.to_string().parse::<i64>() {
+                Ok(value) => Ok(value),
                 Err(err) => Err(serde::de::Error::custom(err)),
             }
         }
     }
 
-    deserializer.deserialize_str(DateTimeVisitor)
+    deserializer.deserialize_str(TimestampVisitor)
 }
 
 #[cfg(test)]

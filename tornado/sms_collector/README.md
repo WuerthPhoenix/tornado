@@ -5,12 +5,17 @@ The SMS Collector is executed by the smsd daemon as the eventhandler.
 
 ## How It Works
 
-The SMS collector executable is built on [actix](https://github.com/actix/actix).
+The SMS collector executable is built on [tokio](https://tokio.rs/).
 
 It receives as commandline arguments a path to the config files, the event type and a path to the sms file. If the event
-is `RECEIVED`, the collector will parse the sms file send the corresponding event to tornado via Nats. Should Nats not
-be available at the moment, it will copy the sms file to the specified path in the configuration. If the event could be
-sent, then the sms file will be deleted afterward.
+is `RECEIVED`, the collector will parse the sms file and then will send the corresponding event to tornado via Nats. 
+Should Nats not be available at the moment, it will copy the sms file to the specified path in the configuration. 
+If the event could be sent, then the sms file will be deleted afterward.
+Following an example of how to call the collector:
+
+```bash
+./tornado_sms_collector RECEIVED "/path/to/sms/file" -c "/path/to/conf/folder/"
+```
 
 ## Configuration
 

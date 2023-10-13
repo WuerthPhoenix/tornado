@@ -26,11 +26,9 @@ apm_server_url = "http://localhost:8200"
 failed_sms_folder = "/neteye/local/tornado_sms_collector/data/processing_failures_sms/"
 
 # The channel to send events to Tornado.
-# It contains the set of entries required to configure a Nats or a TCP connection.
+# It contains the set of entries required to configure a Nats connection.
 [sms_collector.tornado_connection_channel]
 
-# In case of Nats Connection uncomment these entries; otherwise, comment them.
-# -----------------------------------
 # The addresses of the  NATS server
 nats.client.addresses = ["127.0.0.1:4222"]
 # The NATS Subject to which tornado will subscribe to and listens for incoming events

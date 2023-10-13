@@ -97,6 +97,9 @@ async fn execute_collector(
             });
         }
     };
+
+    debug!("SMS collector received the following SMS: {}", sms_content);
+
     let mut full_event_message = match parse_sms(&sms_content) {
         Ok(sms_event_payload) => {
             let Ok(Value::Object(payload)) = serde_json::to_value(sms_event_payload) else {

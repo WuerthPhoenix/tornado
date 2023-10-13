@@ -29,8 +29,6 @@ pub enum SmsCollectorError {
 pub enum SmsParseError {
     #[error("{0}")]
     FormatError(String),
-    #[error("Could not fetch hostname. Hostname is not valid utf-8")]
-    HostnameFormatError,
     #[error("{0}")]
     ContentError(serde_json::Error),
 }

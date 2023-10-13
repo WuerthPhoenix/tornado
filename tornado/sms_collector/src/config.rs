@@ -17,7 +17,6 @@ pub struct Nats {
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct CollectorConfig {
-    /// The logger configuration
     pub logger: LoggerConfig,
     pub sms_collector: SmsCollectorConfig,
 }
