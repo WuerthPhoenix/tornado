@@ -1,15 +1,11 @@
 use crate::error::SmsParseError;
-use serde::de::Visitor;
-use serde::{de, Deserialize, Serialize};
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::Formatter;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SmsEventPayload {
     #[serde(alias = "From")]
     sender: String,
-    #[serde(alias = "Sent", deserialize_with = "deserialize_timestamp_from_string")]
-    timestamp: i64,
     // This is not documented in the official documentation, but tests with smsd showed that
     // the field is in fact there. See also the test files in ../test_sms
     #[serde(alias = "Modem")]
@@ -43,32 +39,6 @@ pub fn parse_sms(sms: &str) -> Result<SmsEventPayload, SmsParseError> {
     }
 }
 
-pub fn deserialize_timestamp_from_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
-where
-    D: de::Deserializer<'de>,
-{
-    struct TimestampVisitor;
-    impl Visitor<'_> for TimestampVisitor {
-        type Value = i64;
-
-        fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-            formatter.write_str("The timestamp string cannot be converted into integer")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            match v.to_string().parse::<i64>() {
-                Ok(value) => Ok(value),
-                Err(err) => Err(serde::de::Error::custom(err)),
-            }
-        }
-    }
-
-    deserializer.deserialize_str(TimestampVisitor)
-}
-
 #[cfg(test)]
 mod test {
     use crate::error::SmsParseError;
@@ -81,7 +51,6 @@ mod test {
         let sms_event_payload = parse_sms(sms).unwrap();
 
         assert_eq!(sms_event_payload.sender, "393333333333");
-        assert_eq!(sms_event_payload.timestamp, 1696853719);
         assert_eq!(sms_event_payload.modem, "GSM1");
         assert_eq!(sms_event_payload.text, "Test 3");
     }
@@ -93,7 +62,6 @@ mod test {
         let sms_event_payload = parse_sms(sms).unwrap();
 
         assert_eq!(sms_event_payload.sender, "393333333333");
-        assert_eq!(sms_event_payload.timestamp, 1696853719);
         assert_eq!(sms_event_payload.modem, "GSM1");
         assert_eq!(sms_event_payload.text, "Test 3");
     }
