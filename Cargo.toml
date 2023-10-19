@@ -33,6 +33,7 @@ members = [
    "tornado/nats_json_collector",
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
+   "tornado/sms_collector",
    "tornado-regex-validation"
 ]
 
