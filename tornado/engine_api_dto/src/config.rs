@@ -80,6 +80,9 @@ pub enum ModifierDto {
     },
     ToNumber {},
     Trim {},
+    DateAndTime {
+        timezone: String,
+    },
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
