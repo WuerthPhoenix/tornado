@@ -65,7 +65,8 @@ export type ModifierDto =
  | {     type: "Map"; mapping: { [key: string]: string }; default_value:     string | null } 
  | {     type: "ReplaceAll"; find: string; replace: string; is_regex:     boolean } 
  | { type: "ToNumber" } 
- | { type: "Trim" };
+ | { type: "Trim" } 
+ | { type: "DateAndTime"; timezone: string };
 
 export type OperatorDto = 
  | { type: "AND"; operators: OperatorDto [] } 

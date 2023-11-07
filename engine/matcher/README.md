@@ -1054,6 +1054,15 @@ The available modifiers are:
            "type": "Trim"
        }
     ```
+  - *DateAndTime*: it converts a timestamp (autodetects if it is in seconds, milliseconds or nanoseconds)
+    to an RFC3339 standard datetime. For example the timestamp `1698933188760`, with the `Europe/Rome` timezone,
+    will become `2023-11-02 14:53:08+01:00` string. Syntax:
+    ```json
+       {
+           "type": "DateAndTime",
+           "timezone": "Europe/Rome" 
+       }
+    ```
 
 A full example of a WITH clause using modifiers is:
 ```json
