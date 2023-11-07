@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono-tz = "0.7.0"
 fs_extra = "1.2"
 lazy_static = "1.4"
 log = "0.4"

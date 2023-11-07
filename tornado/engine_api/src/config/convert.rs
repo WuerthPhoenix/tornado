@@ -85,6 +85,7 @@ fn extractor_into_dto(extractor: Extractor) -> ExtractorDto {
                 }
                 Modifier::ToNumber {} => ModifierDto::ToNumber {},
                 Modifier::Trim {} => ModifierDto::Trim {},
+                Modifier::DateAndTime { timezone } => ModifierDto::DateAndTime { timezone },
             })
             .collect(),
     }
@@ -262,6 +263,7 @@ fn dto_into_extractor(extractor: ExtractorDto) -> Extractor {
                 }
                 ModifierDto::ToNumber {} => Modifier::ToNumber {},
                 ModifierDto::Trim {} => Modifier::Trim {},
+                ModifierDto::DateAndTime { timezone } => Modifier::DateAndTime { timezone },
             })
             .collect(),
     }

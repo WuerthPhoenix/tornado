@@ -56,6 +56,9 @@ pub enum Modifier {
     },
     ToNumber {},
     Trim {},
+    DateAndTime {
+        timezone: String,
+    },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -204,7 +207,8 @@ mod test {
     }
 
     fn file_to_string(filename: &str) -> String {
-        fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename))
+        fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename))
     }
 
     #[test]

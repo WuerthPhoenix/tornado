@@ -3,10 +3,12 @@ use crate::config::rule::Modifier;
 use crate::error::MatcherError;
 use crate::model::InternalEvent;
 use crate::regex::RegexWrapper;
+use chrono_tz::Tz;
 use log::*;
 use serde_json::Value;
 use std::collections::HashMap;
 
+pub mod dateandtime;
 pub mod lowercase;
 pub mod map;
 pub mod number;
@@ -21,6 +23,7 @@ pub enum ValueModifier {
     ReplaceAllRegex { find_regex: RegexWrapper, replace: Accessor },
     ToNumber,
     Trim,
+    DateAndTime { timezone: Tz },
 }
 
 impl ValueModifier {
@@ -70,6 +73,15 @@ impl ValueModifier {
                     trace!("Add post modifier to extractor: trim");
                     value_modifiers.push(ValueModifier::Trim);
                 }
+                Modifier::DateAndTime { timezone } => {
+                    trace!("Add post modifier to extractor: DateAndTime (timezone: {})", timezone);
+                    let Ok(timezone): Result<Tz, _> = timezone.trim().parse() else {
+                        return Err(MatcherError::ConfigurationError {
+                            message: format!("Unknown timezone ({timezone}). Expected timezone from the IANA timezone database.")
+                        })
+                    };
+                    value_modifiers.push(ValueModifier::DateAndTime { timezone });
+                }
             }
         }
 
@@ -95,6 +107,9 @@ impl ValueModifier {
             }
             ValueModifier::ToNumber => number::to_number(variable_name, value),
             ValueModifier::Trim => trim::trim(variable_name, value),
+            ValueModifier::DateAndTime { timezone } => {
+                dateandtime::dateandtime(variable_name, value, timezone)
+            }
         }
     }
 }
