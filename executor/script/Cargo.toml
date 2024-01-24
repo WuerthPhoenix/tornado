@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-async-trait = "0.1"
+async-trait.workspace = true
 log.workspace = true
 tokio.workspace = true
 tornado_executor_common = { path = "../common", version = "0.0.1" }
