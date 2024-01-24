@@ -9,7 +9,7 @@ config_rs = { version = "0.11", package = "config", default-features = false, fe
 gethostname = "0.4"
 log.workspace = true
 serde.workspace = true
-chrono = "0.4"
+chrono.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true

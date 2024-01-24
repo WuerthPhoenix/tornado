@@ -8,7 +8,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono.workspace = true
 num-cmp = "0.1"
 serde.workspace = true
 serde_json.workspace = true
