@@ -43,7 +43,7 @@ tornado_executor_monitoring = { path = "../../executor/monitoring", version = "0
 tornado_executor_script = { path = "../../executor/script", version = "0.0.1" }
 tornado_executor_smart_monitoring_check_result = { path = "../../executor/smart_monitoring_check_result", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
-tracing = "0.1"
+tracing.workspace = true
 tracing-actix-web.workspace = true
 tracing-futures = "0.2"
 tracing-opentelemetry = "0.16"

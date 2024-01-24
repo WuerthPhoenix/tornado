@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 log.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 tracing-opentelemetry = "0.16"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }

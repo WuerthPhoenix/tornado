@@ -24,7 +24,7 @@ tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 #typescript-definitions = "0.1.10"
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
-tracing = "0.1"
+tracing.workspace = true
 tracing-opentelemetry = "0.16"
 tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 

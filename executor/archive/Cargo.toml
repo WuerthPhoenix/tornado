@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 log.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 tracing-opentelemetry = "0.16"
 regex = { workspace = true }
 lru_time_cache = "0.11"

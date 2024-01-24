@@ -12,7 +12,7 @@ log.workspace = true
 tokio.workspace = true
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
-tracing = "0.1"
+tracing.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
