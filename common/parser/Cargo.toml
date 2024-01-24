@@ -9,8 +9,8 @@ edition = "2018"
 tornado_common_api = { path = "../api", version = "0.0.1" }
 lazy_static = "1.4"
 regex = { workspace = true }
-serde = "1.0"
-serde_json = "1.0"
-thiserror = "1.0"
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
