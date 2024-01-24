@@ -15,10 +15,10 @@ regex = { workspace = true }
 lru_time_cache = "0.11"
 serde.workspace = true
 serde_json.workspace = true
-tokio = { version = "1", features = ["io-util", "fs"] }
+tokio.workspace = true
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]
 tempfile = "3"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio.workspace = true

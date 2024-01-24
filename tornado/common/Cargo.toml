@@ -14,7 +14,7 @@ opentelemetry = "0.16"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tokio = { version = "1", features = ["net", "time"] }
+tokio.workspace = true
 tokio-stream = { version = "0.1", features = ["net"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }

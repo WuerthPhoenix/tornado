@@ -12,7 +12,7 @@ log.workspace = true
 maplit = "1.0"
 serde.workspace = true
 serde_json.workspace = true
-tokio = { version = "1", features = ["time"] }
+tokio.workspace = true
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_executor_director = { path = "../director", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../icinga2", version = "0.0.1" }
@@ -24,4 +24,4 @@ tracing = "0.1"
 [dev-dependencies]
 httpmock = "0.6"
 rand = "0.8"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio.workspace = true
