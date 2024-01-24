@@ -6,8 +6,8 @@ use serde_json::Value;
 use std::borrow::Cow;
 use tornado_common_api::ValueGet;
 use tornado_common_parser::{
-    CustomParser, Parser, ParserBuilder, ParserError, EXPRESSION_END_DELIMITER,
-    EXPRESSION_START_DELIMITER, FOREACH_ITEM_KEY,
+    key_is_root_entry_of_expression, CustomParser, Parser, ParserBuilder, ParserError, Template,
+    EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, FOREACH_ITEM_KEY,
 };
 
 pub struct AccessorBuilder {
@@ -62,32 +62,28 @@ impl AccessorBuilder {
             )
             .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
 
-        let result = match input.trim() {
-            value
-                if value.starts_with(self.start_delimiter)
-                    && value.ends_with(self.end_delimiter) =>
-            {
-                let path =
-                    &value[self.start_delimiter.len()..(value.len() - self.end_delimiter.len())];
-                match path.trim() {
-                    val if (val.starts_with(&format!("{}.", EVENT_KEY))
-                        || val.eq(EVENT_KEY)
-                        || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
-                        || Parser::<()>::key_is_root_entry_of_expression(
-                            FOREACH_ITEM_KEY,
-                            val,
-                        )) =>
-                    {
-                        let parser = parser_builder.build_parser(input)?;
-                        Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
-                    }
-                    _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
+        let template = Template::from(input);
+        let result = if template.is_accessor() {
+            let path_start = self.start_delimiter.len();
+            let path_end = template.source().len() - self.end_delimiter.len();
+            let path = &template.source()[path_start..path_end];
+
+            match path.trim() {
+                val if (val.starts_with(&format!("{}.", EVENT_KEY))
+                    || val.eq(EVENT_KEY)
+                    || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
+                    || key_is_root_entry_of_expression(FOREACH_ITEM_KEY, val)) =>
+                {
+                    let parser = parser_builder.build_parser(input)?;
+                    Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                 }
+                _ => Err(MatcherError::UnknownAccessorError {
+                    accessor: template.source().to_owned(),
+                }),
             }
-            _value => {
-                let parser = parser_builder.build_parser(input)?;
-                Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
-            }
+        } else {
+            let parser = parser_builder.build_parser(input)?;
+            Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
         };
 
         trace!(

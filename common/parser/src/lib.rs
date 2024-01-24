@@ -1,6 +1,6 @@
 use crate::interpolator::StringInterpolator;
 use lazy_static::*;
-use regex::Regex;
+use regex::{Match, Regex};
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
@@ -22,6 +22,38 @@ pub const FOREACH_ITEM_KEY: &str = "item";
 
 lazy_static! {
     static ref RE: Regex = Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
+}
+
+pub struct Template<'source> {
+    source: &'source str,
+    matches: Vec<Match<'source>>,
+}
+
+impl<'source> From<&'source str> for Template<'source> {
+    fn from(source: &'source str) -> Self {
+        let matches = interpolator::RE.find_iter(source).collect();
+        Template { matches, source }
+    }
+}
+
+impl Template<'_> {
+    pub fn needs_interpolation(&self) -> bool {
+        self.matches.len() > 0 && !self.is_accessor()
+    }
+
+    pub fn is_accessor(&self) -> bool {
+        self.matches.len() == 1
+            && self.matches[0].start() == 0
+            && self.matches[0].end() == self.source.len()
+    }
+
+    pub fn source(&self) -> &str {
+        self.source
+    }
+
+    pub fn matches(&self) -> &[Match] {
+        &self.matches
+    }
 }
 
 #[derive(Error, Debug)]
@@ -69,12 +101,15 @@ impl<T: Debug> ParserBuilder<T> {
     }
 
     pub fn build_parser(&self, text: &str) -> Result<Parser<T>, ParserError> {
-        if let Some(interpolator) = StringInterpolator::build(text, self)? {
-            Ok(Parser::Interpolator { interpolator })
-        } else if Parser::<T>::is_expression(text) {
-            let trimmed = text.trim();
-            let expression = &trimmed[EXPRESSION_START_DELIMITER.len()
-                ..(trimmed.len() - EXPRESSION_END_DELIMITER.len())];
+        let template = Template::from(text.trim());
+
+        if template.needs_interpolation() {
+            StringInterpolator::build(template, self)
+                .map(|interpolator| Parser::Interpolator { interpolator })
+        } else if template.is_accessor() {
+            let expression_start = EXPRESSION_START_DELIMITER.len();
+            let expression_end = template.source.len() - EXPRESSION_END_DELIMITER.len();
+            let expression = &template.source[expression_start..expression_end];
 
             // In some cases we cannot evaluate the expressions and we need to leave them as they are
             // for later evaluation. For example this is needed for the ${item} expressions, which
@@ -82,7 +117,7 @@ impl<T: Debug> ParserBuilder<T> {
             // So when the ParserBuilder is constructed with some ignored_expressions, we leave them
             // as they are by returning a constant Parser::Val().
             if self.ignored_expressions.iter().any(|ignored_expression| {
-                Parser::<T>::key_is_root_entry_of_expression(ignored_expression, expression)
+                key_is_root_entry_of_expression(ignored_expression, expression)
             }) {
                 return Ok(Parser::Val(Value::String(text.to_owned())));
             }
@@ -129,16 +164,6 @@ impl<T: Debug> Parser<T> {
         let trimmed = text.trim();
         trimmed.starts_with(EXPRESSION_START_DELIMITER)
             && trimmed.ends_with(EXPRESSION_END_DELIMITER)
-    }
-
-    // Determines if a key is the first part of an expression.
-    // E.g.:
-    // key_is_root_entry_of_expression("mykey", "mykey.somefield.something") evaluates to true
-    // key_is_root_entry_of_expression("mykeys", "mykey.somefield.something") evaluates to false
-    pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
-        expression.eq(key)
-            || expression.starts_with(&format!("{}{}", key, EXPRESSION_NESTED_DELIMITER))
-            || expression.starts_with(&format!("{}{}", key, PAYLOAD_ARRAY_KEY_START_DELIMITER))
     }
 
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
@@ -211,6 +236,21 @@ impl<T: Debug> Parser<T> {
             }
         }
     }
+}
+
+// Determines if a key is the first part of an expression.
+// E.g.:
+// key_is_root_entry_of_expression("mykey", "mykey.somefield.something") evaluates to true
+// key_is_root_entry_of_expression("mykeys", "mykey.somefield.something") evaluates to false
+pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
+    expression
+        .strip_prefix(key)
+        .map(|rest| {
+            rest.len() == 0
+                || rest.starts_with(EXPRESSION_NESTED_DELIMITER)
+                || rest.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
+        })
+        .unwrap_or(false)
 }
 
 #[derive(PartialEq, Debug)]
@@ -414,11 +454,7 @@ mod test {
         // Assert
         assert!(result.is_some());
         assert_eq!(
-            &Value::Array(vec![
-                Value::String("one".to_owned()),
-                Value::Bool(true),
-                json!(13_f64)
-            ]),
+            &Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13_f64)]),
             result.unwrap().as_ref()
         );
     }
@@ -675,15 +711,12 @@ mod test {
     #[test]
     fn key_is_root_entry_of_expression_should_evaluate() {
         // Assert
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey"));
-        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "somekeyss"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey.something"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey[0]"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression(
-            "somekey",
-            "somekey[0].something"
-        ));
-        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "some[0].something"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey"));
+        assert!(!key_is_root_entry_of_expression("somekey", "somekeyss"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey.something"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey[0]"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey[0].something"));
+        assert!(!key_is_root_entry_of_expression("somekey", "some[0].something"));
     }
 
     #[test]
