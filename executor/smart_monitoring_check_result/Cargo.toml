@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 async-trait.workspace = true
 log.workspace = true
-maplit = "1.0"
+maplit.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

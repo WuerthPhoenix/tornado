@@ -63,14 +63,15 @@ regex = "1.9.1"
 
 async-trait = "0.1"
 base64 = "0.21"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+log = "0.4"
+maplit = "1.0"
 serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
-log = "0.4"
 thiserror = "1.0"
 tokio = "1.35"
 tracing = "0.1"
 tracing-opentelemetry = "0.16"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 actix = "0.13"
 actix-web = "4.4"
