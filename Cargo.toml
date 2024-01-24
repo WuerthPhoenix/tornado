@@ -67,6 +67,7 @@ log = "0.4"
 thiserror = "1.0"
 tokio = "1.35"
 tracing = "0.1"
+tracing-opentelemetry = "0.16"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
 actix = "0.13"

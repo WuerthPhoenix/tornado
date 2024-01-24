@@ -15,7 +15,7 @@ thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-futures = "0.2"
-tracing-opentelemetry = "0.16.0"
+tracing-opentelemetry.workspace = true
 opentelemetry = "0.16"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
