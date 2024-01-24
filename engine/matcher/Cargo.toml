@@ -7,35 +7,35 @@ authors = [
 edition = "2018"
 
 [dependencies]
-async-trait.workspace = true
-chrono.workspace = true
 chrono-tz = "0.7.0"
 fs_extra = "1.2"
 lazy_static = "1.4"
-log.workspace = true
-regex = { workspace = true }
-serde.workspace = true
-serde_json.workspace = true
 tempfile = "3"
-thiserror.workspace = true
-tokio.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
 #typescript-definitions = "0.1.10"
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
-tracing.workspace = true
-tracing-opentelemetry.workspace = true
 tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
-[dev-dependencies]
+async-trait.workspace = true
 chrono.workspace = true
-criterion = "0.3"
-maplit.workspace = true
-opentelemetry = "0.16"
+log.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 tokio.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+
+[dev-dependencies]
+criterion = "0.3"
+opentelemetry = "0.16"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
+
+maplit.workspace = true
 
 [[bench]]
 name = "matcher_bench"

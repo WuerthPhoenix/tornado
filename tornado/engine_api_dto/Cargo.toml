@@ -8,10 +8,11 @@ edition = "2018"
 
 [dependencies]
 ajars = "0.6"
-serde.workspace = true
-serde_json.workspace = true
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 #typescript-definitions = "0.1.10"
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
+
+serde.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]

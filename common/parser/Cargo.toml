@@ -8,7 +8,8 @@ edition = "2018"
 [dependencies]
 tornado_common_api = { path = "../api", version = "0.0.1" }
 lazy_static = "1.4"
-regex = { workspace = true }
+
+regex.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

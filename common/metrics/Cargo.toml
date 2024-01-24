@@ -7,11 +7,12 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix-web = { workspace = true, optional = true }
-log.workspace = true
 opentelemetry = { version = "0.16", features = ["metrics", "rt-tokio"] }
 opentelemetry-prometheus = "0.9"
 prometheus = "0.12"
+
+actix-web = { workspace = true, optional = true }
+log.workspace = true
 
 [dev-dependencies]
 actix-rt = "2.2"
