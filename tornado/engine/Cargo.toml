@@ -11,7 +11,7 @@ actix.workspace = true
 actix-web.workspace = true
 ajars = { version = "0.6", features = ["reqwest"] }
 async-trait.workspace = true
-base64 = "0.21"
+base64.workspace = true
 chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
