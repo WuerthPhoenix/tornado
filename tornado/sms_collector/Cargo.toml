@@ -8,13 +8,13 @@ clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
 gethostname = "0.4"
 tracing-futures = "0.2"
-opentelemetry = "0.16"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 tornado_common_metrics = { path = "../../common/metrics", version = "0.0.1" }
 
 log.workspace = true
+opentelemetry.workspace = true
 serde.workspace = true
 chrono.workspace = true
 serde_json.workspace = true

@@ -8,7 +8,6 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "1"
-opentelemetry = { version = "0.16", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.8"
 opentelemetry-otlp = { version = "0.9", features = ["tonic", "tls", "tls-roots"] }
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
@@ -23,6 +22,7 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 base64.workspace = true
 chrono.workspace = true
 log.workspace = true
+opentelemetry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

@@ -55,12 +55,6 @@ debug = true
 #lto = true
 
 [workspace.dependencies]
-
-# Important: Always keep the versions of these two in sync in order to prevent
-# bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
-regex-syntax = "0.7.4"
-regex = "1.9.1"
-
 async-trait = "0.1"
 base64 = "0.21"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
@@ -70,9 +64,18 @@ serde = { version = "1.0", features = ['derive'] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = "1.35"
+
+# Important: Always keep the versions of these two in sync in order to prevent
+# bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
+regex-syntax = "0.7.4"
+regex = "1.9.1"
+
+# Always update these together. Version changes might otherwise cause problems.
+opentelemetry = { version = "0.16", features = ["metrics", "rt-tokio"] }
 tracing = "0.1"
 tracing-opentelemetry = "0.16"
 
+# Always update these together. Version changes might otherwise cause problems.
 actix = "0.13"
 actix-web = "4.4"
 tracing-actix-web = "0.7.9"

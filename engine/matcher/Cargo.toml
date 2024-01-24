@@ -31,10 +31,10 @@ tracing-opentelemetry.workspace = true
 
 [dev-dependencies]
 criterion = "0.3"
-opentelemetry = "0.16"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
 
+opentelemetry.workspace = true
 maplit.workspace = true
 
 [[bench]]

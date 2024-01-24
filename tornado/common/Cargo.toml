@@ -7,19 +7,19 @@ edition = "2018"
 [dependencies]
 async-channel = "1.6"
 futures-util = { version = "0.3", default-features = false, features=["std"]}
-opentelemetry = "0.16"
 tokio-stream = { version = "0.1", features = ["net"] }
+tracing-futures = "0.2"
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_common_metrics = { path = "../../common/metrics", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
-tracing-futures = "0.2"
 
 actix.workspace = true
 async-trait.workspace = true
 log.workspace = true
+opentelemetry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
