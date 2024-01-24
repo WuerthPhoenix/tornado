@@ -68,5 +68,7 @@ thiserror = "1.0"
 tokio = "1.35"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 
+actix = "0.13"
 actix-web = "4.4"
 tracing-actix-web = "0.7.9"
+tokio-util = { version = "0.7", features = ["codec", "compat"] }

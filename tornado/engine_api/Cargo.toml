@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.12"
+actix.workspace = true
 actix-web.workspace = true
 ajars = { version = "0.6", features = ["actix_web"] }
 async-trait = "0.1"
