@@ -74,7 +74,7 @@ impl AccessorBuilder {
                     || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
                     || key_is_root_entry_of_expression(FOREACH_ITEM_KEY, val)) =>
                 {
-                    let parser = parser_builder.build_parser(input)?;
+                    let parser = parser_builder.build_parser(input.into())?;
                     Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
                 }
                 _ => Err(MatcherError::UnknownAccessorError {
@@ -82,7 +82,7 @@ impl AccessorBuilder {
                 }),
             }
         } else {
-            let parser = parser_builder.build_parser(input)?;
+            let parser = parser_builder.build_parser(input.into())?;
             Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
         };
 
@@ -102,10 +102,11 @@ pub struct ExtractedVarParser {
 
 impl ExtractedVarParser {
     pub fn try_new(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
-        let parser = ParserBuilder::default().build_parser(&format!(
-            "{}{}{}",
-            EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
-        ))?;
+        let parser = ParserBuilder::default().build_parser(
+            format!("{}{}{}", EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER)
+                .as_str()
+                .into(),
+        )?;
         Ok(Box::new(ExtractedVarParser { parser }))
     }
 }
@@ -220,7 +221,7 @@ mod test {
     #[test]
     fn should_return_value_from_payload_if_exists() {
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload.body}".into()).unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -242,7 +243,9 @@ mod test {
     fn should_return_bool_value_from_payload() {
         // Arrange
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.bool_true}").unwrap(),
+            parser: ParserBuilder::default()
+                .build_parser("${event.payload.bool_true}".into())
+                .unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -266,7 +269,9 @@ mod test {
     fn should_return_number_value_from_payload() {
         // Arrange
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.num_555}").unwrap(),
+            parser: ParserBuilder::default()
+                .build_parser("${event.payload.num_555}".into())
+                .unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -289,7 +294,7 @@ mod test {
     fn should_return_non_text_nodes() {
         // Arrange
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload.body}".into()).unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -318,7 +323,9 @@ mod test {
     fn should_return_value_from_nested_map_if_exists() {
         // Arrange
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.body.first}").unwrap(),
+            parser: ParserBuilder::default()
+                .build_parser("${event.payload.body.first}".into())
+                .unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -345,7 +352,9 @@ mod test {
     fn should_return_value_from_nested_array_if_exists() {
         // Arrange
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.body[1]}").unwrap(),
+            parser: ParserBuilder::default()
+                .build_parser("${event.payload.body[1]}".into())
+                .unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -400,7 +409,7 @@ mod test {
     #[test]
     fn should_return_none_from_payload_if_not_exists() {
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload.date}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload.date}".into()).unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -448,7 +457,7 @@ mod test {
     #[test]
     fn should_return_the_entire_payload() {
         let accessor = Accessor::Parser {
-            parser: ParserBuilder::default().build_parser("${event.payload}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload}".into()).unwrap(),
             rule_name: "rule".to_owned(),
         };
 
@@ -554,7 +563,7 @@ mod test {
     fn should_return_none_if_no_match() {
         let accessor = Accessor::Parser {
             rule_name: "rule1".to_owned(),
-            parser: ParserBuilder::default().build_parser("${event.payload.body}").unwrap(),
+            parser: ParserBuilder::default().build_parser("${event.payload.body}".into()).unwrap(),
         };
 
         let event = json!(Event::new("event_type_string"));
@@ -951,6 +960,8 @@ mod test {
 
     #[test]
     fn accessor_should_not_trim_the_values() {
+        let logger = logger();
+
         let accessor_1 = AccessorBuilder::new().build("", "  ${event.type}  ").unwrap();
         let accessor_2 = AccessorBuilder::new().build("", "  CONSTANT  ").unwrap();
 

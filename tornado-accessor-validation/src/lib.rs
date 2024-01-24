@@ -26,5 +26,5 @@ impl From<Result<Parser<&str>, ParserError>> for AccessorValidationResult {
 
 #[wasm_bindgen]
 pub fn validate_accessor(parser: &str) -> AccessorValidationResult {
-    AccessorValidationResult::from(ParserBuilder::default().build_parser(parser))
+    AccessorValidationResult::from(ParserBuilder::default().build_parser(parser.into()))
 }

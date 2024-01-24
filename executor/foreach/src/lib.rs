@@ -151,7 +151,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
     match &mut value {
         Value::String(text) => {
             if let Some(parse_result) = ParserBuilder::default()
-                .build_parser(text)
+                .build_parser(text.as_str().into())
                 .map_err(|err| ExecutorError::ActionExecutionError {
                     can_retry: false,
                     message: format!("Cannot build parser for [{}]. Err: {:?}", text, err),

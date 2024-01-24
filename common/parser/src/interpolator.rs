@@ -7,7 +7,7 @@
 
 use crate::{Parser, ParserBuilder, ParserError, Template};
 use lazy_static::*;
-use regex::{Match, Regex};
+use regex::Regex;
 use serde_json::Value;
 use std::fmt::Debug;
 use std::marker::PhantomData;
@@ -42,7 +42,7 @@ impl<T: Debug> StringInterpolator<T> {
             .matches
             .iter()
             .map(|m| {
-                parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
+                parser_builder.build_parser(m.as_str().into()).map(|parser| BoundedAccessor {
                     start: m.start(),
                     end: m.end(),
                     parser,
@@ -52,17 +52,6 @@ impl<T: Debug> StringInterpolator<T> {
             .collect::<Result<Vec<_>, ParserError>>()?;
 
         Ok(StringInterpolator { template: template.source.to_owned(), parsers })
-    }
-
-    /// Returns whether the template used to create this StringInterpolator
-    /// requires interpolation.
-    /// This is true only if the template contains at least both a static part (e.g. constant text)
-    /// and a dynamic part (e.g. placeholders to be resolved at runtime).
-    /// When the interpolator is not required, it can be replaced by a simpler Accessor.
-    fn interpolation_required(template: &str, matches: &[Match]) -> bool {
-        matches.len() > 1
-            || (matches.len() == 1
-                && !(matches[0].start() == 0 && matches[0].end() == template.len()))
     }
 
     /// Performs the placeholders substitution on the internal template and return the

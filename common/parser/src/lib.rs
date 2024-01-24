@@ -37,6 +37,11 @@ impl<'source> From<&'source str> for Template<'source> {
 }
 
 impl Template<'_> {
+    /// Returns whether the template used to create this StringInterpolator
+    /// requires interpolation.
+    /// This is true only if the template contains at least both a static part (e.g. constant text)
+    /// and a dynamic part (e.g. placeholders to be resolved at runtime).
+    /// When the interpolator is not required, it can be replaced by a simpler Accessor.
     pub fn needs_interpolation(&self) -> bool {
         self.matches.len() > 0 && !self.is_accessor()
     }
@@ -100,9 +105,7 @@ impl<T: Debug> ParserBuilder<T> {
         self
     }
 
-    pub fn build_parser(&self, text: &str) -> Result<Parser<T>, ParserError> {
-        let template = Template::from(text.trim());
-
+    pub fn build_parser(&self, template: Template) -> Result<Parser<T>, ParserError> {
         if template.needs_interpolation() {
             StringInterpolator::build(template, self)
                 .map(|interpolator| Parser::Interpolator { interpolator })
@@ -119,7 +122,7 @@ impl<T: Debug> ParserBuilder<T> {
             if self.ignored_expressions.iter().any(|ignored_expression| {
                 key_is_root_entry_of_expression(ignored_expression, expression)
             }) {
-                return Ok(Parser::Val(Value::String(text.to_owned())));
+                return Ok(Parser::Val(Value::String(template.source().to_owned())));
             }
 
             for (key, factory) in &self.custom_parser_factories {
@@ -146,7 +149,7 @@ impl<T: Debug> ParserBuilder<T> {
 
             Ok(Parser::Exp { keys: Parser::<T>::parse_keys(expression)? })
         } else {
-            Ok(Parser::Val(Value::String(text.to_owned())))
+            Ok(Parser::Val(Value::String(template.source().to_owned())))
         }
     }
 }
@@ -289,10 +292,32 @@ mod test {
     use std::collections::HashMap;
 
     #[test]
+    fn template_struct_should_detect_interpolation() {
+        let template1 = Template::from("event.payload");
+        assert!(!template1.is_accessor());
+        assert!(!template1.needs_interpolation());
+
+        let template2 = Template::from("${event.payload}");
+        assert!(template2.is_accessor());
+        assert!(!template2.needs_interpolation());
+
+        let template3 = Template::from("${event.timestamp} - ${event.payload}");
+        assert!(!template3.is_accessor());
+        assert!(template3.needs_interpolation());
+
+        let template4 = Template::from(" - ${event.payload}");
+        assert!(!template4.is_accessor());
+        assert!(template4.needs_interpolation());
+
+        let template5 = Template::from("${event.payload} - ");
+        assert!(!template5.is_accessor());
+        assert!(template5.needs_interpolation());
+    }
+
+    #[test]
     fn parser_builder_should_return_value_type() {
         // Act
-        let parser = ParserBuilder::<()>::default().build_parser("  hello world  ").unwrap();
-
+        let parser = ParserBuilder::<()>::default().build_parser("  hello world  ".into()).unwrap();
         // Assert
         match parser {
             Parser::Val(value) => {
@@ -305,7 +330,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_exp() {
         // Act
-        let parser = ParserBuilder::<()>::default().build_parser("${hello.world}").unwrap();
+        let parser = ParserBuilder::<()>::default().build_parser("${hello.world}".into()).unwrap();
 
         // Assert
         match parser {
@@ -340,7 +365,8 @@ mod test {
     #[test]
     fn parser_expression_should_return_from_json() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${level_one.level_two}").unwrap();
+        let parser =
+            ParserBuilder::default().build_parser("${level_one.level_two}".into()).unwrap();
         let json = r#"
         {
             "level_one": {
@@ -361,7 +387,8 @@ mod test {
     #[test]
     fn parser_expression_should_return_none_if_not_present() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${level_one.level_three}").unwrap();
+        let parser =
+            ParserBuilder::default().build_parser("${level_one.level_three}".into()).unwrap();
         let json = r#"
         {
             "level_one": {
@@ -381,7 +408,8 @@ mod test {
     #[test]
     fn parser_expression_should_return_none_if_not_present_in_array() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${level_one.level_two[2]}").unwrap();
+        let parser =
+            ParserBuilder::default().build_parser("${level_one.level_two[2]}".into()).unwrap();
         let json = r#"
         {
             "level_one": {
@@ -401,7 +429,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_boolean_values() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}".into()).unwrap();
         let json = r#"
         {
             "key": true
@@ -420,7 +448,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_numeric_values() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}".into()).unwrap();
         let json = r#"
         {
             "key": 99.66
@@ -439,7 +467,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_arrays() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}".into()).unwrap();
         let json = r#"
         {
             "key": ["one", true, 13.0]
@@ -462,7 +490,7 @@ mod test {
     #[test]
     fn parser_expression_should_handle_maps() {
         // Arrange
-        let parser = ParserBuilder::default().build_parser("${key}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${key}".into()).unwrap();
         let json = r#"
         {
             "key": {
@@ -489,8 +517,9 @@ mod test {
     #[test]
     fn parser_expression_should_use_the_interpolators() {
         // Arrange
-        let parser =
-            ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let parser = ParserBuilder::default()
+            .build_parser("${key[0]} - ${key[1]} - ${key[2]}".into())
+            .unwrap();
         let json = r#"
         {
             "key": ["one", true, 13.0]
@@ -590,8 +619,9 @@ mod test {
     #[test]
     fn parser_expression_should_work_with_hashmaps() {
         // Arrange
-        let parser =
-            ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
+        let parser = ParserBuilder::default()
+            .build_parser("${key[0]} - ${key[1]} - ${key[2]}".into())
+            .unwrap();
 
         let value =
             Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13.0)]);
@@ -611,7 +641,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_parser_factory("custom_key".to_owned(), Box::new(custom_parser))
-            .build_parser("${custom_key.something.else}")
+            .build_parser("${custom_key.something.else}".into())
             .unwrap();
 
         let map = json!({
@@ -634,7 +664,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("${ignored_expr}")
+            .build_parser("${ignored_expr}".into())
             .unwrap();
 
         let map = json!({
@@ -653,7 +683,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("${ignored_expr.something}")
+            .build_parser("${ignored_expr.something}".into())
             .unwrap();
 
         let map = json!({
@@ -672,7 +702,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("my ignored expression is ${ignored_expr.something}!!")
+            .build_parser("my ignored expression is ${ignored_expr.something}!!".into())
             .unwrap();
 
         let map = json!({
@@ -691,7 +721,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("my ignored expression is ${ignored_expr[0].something}!!")
+            .build_parser("my ignored expression is ${ignored_expr[0].something}!!".into())
             .unwrap();
 
         let map = json!({
@@ -724,7 +754,7 @@ mod test {
         // Arrange
         let parser = ParserBuilder::<String>::default()
             .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("${not_ignored_expr.something}")
+            .build_parser("${not_ignored_expr.something}".into())
             .unwrap();
 
         let map = json!({
