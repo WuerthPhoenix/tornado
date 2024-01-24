@@ -3930,6 +3930,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "tornado-accessor-validation"
+version = "0.1.0"
+dependencies = [
+ "tornado_common_parser",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "tornado-regex-validation"
 version = "0.1.0"
 dependencies = [
