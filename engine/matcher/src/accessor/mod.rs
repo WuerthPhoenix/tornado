@@ -960,8 +960,6 @@ mod test {
 
     #[test]
     fn accessor_should_not_trim_the_values() {
-        let logger = logger();
-
         let accessor_1 = AccessorBuilder::new().build("", "  ${event.type}  ").unwrap();
         let accessor_2 = AccessorBuilder::new().build("", "  CONSTANT  ").unwrap();
 

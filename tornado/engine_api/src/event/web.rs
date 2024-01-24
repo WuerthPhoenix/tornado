@@ -231,7 +231,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
         assert_eq!("my_test_event", dto.event.event_type);
         assert_eq!(metadata, dto.event.metadata);
     }
@@ -270,7 +270,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::event::ProcessedEventDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
         assert_eq!("my_test_event_for_draft", dto.event.event_type);
         assert_eq!(metadata, dto.event.metadata);
     }

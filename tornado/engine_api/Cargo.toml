@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 actix = "0.12"
-actix-web = "4.0.0-beta.9"
+actix-web.workspace = true
 ajars = { version = "0.6", features = ["actix_web"] }
 async-trait = "0.1"
 base64 = "0.21"

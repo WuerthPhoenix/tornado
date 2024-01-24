@@ -212,7 +212,7 @@ mod test {
         // Act
         let request = test::TestRequest::get().uri("/ping").to_request();
 
-        let response = test::read_response(&srv, request).await;
+        let response = test::call_and_read_body(&srv, request).await;
 
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
@@ -252,14 +252,14 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_1 = test::read_response(&srv, request_1).await;
+        let response_1 = test::call_and_read_body(&srv, request_1).await;
 
         let request_2 = test::TestRequest::post()
             .uri("/event/hook_2?token=hook_2_token")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload("{}")
             .to_request();
-        let response_2 = test::read_response(&srv, request_2).await;
+        let response_2 = test::call_and_read_body(&srv, request_2).await;
 
         // Assert
         let body_1 = std::str::from_utf8(&response_1).unwrap();
@@ -356,7 +356,7 @@ mod test {
                 }"#,
             )
             .to_request();
-        let response_1 = test::read_response(&srv, request_1).await;
+        let response_1 = test::call_and_read_body(&srv, request_1).await;
 
         // Assert
         let body_1 = std::str::from_utf8(&response_1).unwrap();

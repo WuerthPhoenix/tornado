@@ -100,7 +100,7 @@ mod test {
 
         // Act
         let request = test::TestRequest::get().uri("/monitoring").to_request();
-        let response = test::read_response(&srv, request).await;
+        let response = test::call_and_read_body(&srv, request).await;
 
         // Assert
         let body = std::str::from_utf8(&response).unwrap();
@@ -139,7 +139,7 @@ mod test {
         let request = test::TestRequest::get().uri("/monitoring/ping").to_request();
 
         // Assert
-        let pong: PongResponse = test::read_response_json(&srv, request).await;
+        let pong: PongResponse = test::call_and_read_body_json(&srv, request).await;
         assert!(pong.message.contains("pong - "));
 
         let date = DateTime::parse_from_rfc3339(&pong.message[7..]);
@@ -178,7 +178,7 @@ mod test {
 
         // Assert
         let channel_config: CommunicationChannelConfig =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
         assert!(channel_config.event_tcp_socket_enabled);
         assert!(!channel_config.nats_enabled);
     }
