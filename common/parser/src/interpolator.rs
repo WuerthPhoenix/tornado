@@ -11,7 +11,7 @@ use regex::{Match, Regex};
 use serde_json::Value;
 use std::fmt::Debug;
 use std::marker::PhantomData;
-use tornado_common_api::ValueGet;
+use tornado_common_types::ValueGet;
 
 lazy_static! {
     static ref RE: Regex =
@@ -134,7 +134,7 @@ mod test {
     use super::*;
     use crate::{Parser, ValueGetter};
     use serde_json::json;
-    use tornado_common_api::Payload;
+    use tornado_common_types::Payload;
 
     #[test]
     fn should_create_new_interpolator() {

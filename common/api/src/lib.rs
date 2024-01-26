@@ -6,7 +6,6 @@ use partial_ordering::PartialOrdering;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 use std::cmp::Ordering;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tracing::Span;
 
@@ -16,6 +15,9 @@ pub mod partial_ordering;
 pub type Value = serde_json::Value;
 pub type Map<K, V> = serde_json::Map<K, V>;
 pub type Number = serde_json::Number;
+
+// Re-export types so not all other packages need to dependo on it as well
+pub use tornado_common_types::*;
 
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message
 ///   that could be meaningful to the system.
@@ -185,13 +187,6 @@ impl Action {
     }
 }
 
-pub type Payload = Map<String, Value>;
-
-pub trait ValueGet {
-    fn get_from_map(&self, key: &str) -> Option<&Value>;
-    fn get_from_array(&self, index: usize) -> Option<&Value>;
-}
-
 pub trait ValueExt {
     fn get_map(&self) -> Option<&Map<String, Value>>;
 
@@ -204,21 +199,6 @@ pub trait ValueExt {
     fn get_bool(&self) -> Option<&bool>;
 
     fn get_number(&self) -> Option<&Number>;
-}
-
-impl ValueGet for Value {
-    fn get_from_map(&self, key: &str) -> Option<&Value> {
-        match self {
-            Value::Object(payload) => payload.get(key),
-            _ => None,
-        }
-    }
-    fn get_from_array(&self, index: usize) -> Option<&Value> {
-        match self {
-            Value::Array(array) => array.get(index),
-            _ => None,
-        }
-    }
 }
 
 impl ValueExt for Value {
@@ -289,33 +269,6 @@ pub fn partial_cmp_option_cow_value<'o, F: FnOnce() -> Option<Cow<'o, Value>>>(
 
 pub trait RetriableError {
     fn can_retry(&self) -> bool;
-}
-
-impl<'o> ValueGet for HashMap<&'o str, &'o Value> {
-    fn get_from_map(&self, key: &str) -> Option<&Value> {
-        self.get(key).copied()
-    }
-    fn get_from_array(&self, _index: usize) -> Option<&Value> {
-        None
-    }
-}
-
-impl ValueGet for Map<String, Value> {
-    fn get_from_map(&self, key: &str) -> Option<&Value> {
-        self.get(key)
-    }
-    fn get_from_array(&self, _index: usize) -> Option<&Value> {
-        None
-    }
-}
-
-impl ValueGet for HashMap<String, Value> {
-    fn get_from_map(&self, key: &str) -> Option<&Value> {
-        self.get(key)
-    }
-    fn get_from_array(&self, _index: usize) -> Option<&Value> {
-        None
-    }
 }
 
 #[cfg(test)]
@@ -504,8 +457,8 @@ mod test {
     fn should_parse_a_json_event_with_nested_payload() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
-        let event_json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let event_json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json);
@@ -518,8 +471,8 @@ mod test {
     fn should_parse_a_json_event_with_a_null_value() {
         // Arrange
         let filename = "./test_resources/event_with_null_value.json";
-        let event_json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let event_json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json);
@@ -532,8 +485,8 @@ mod test {
     fn should_parse_numbers_as_float() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
-        let event_json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let event_json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -546,8 +499,8 @@ mod test {
     fn should_parse_numbers_as_neg_in() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
-        let event_json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let event_json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -560,8 +513,8 @@ mod test {
     fn should_parse_numbers_as_pos_int() {
         // Arrange
         let filename = "./test_resources/event_nested_01.json";
-        let event_json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let event_json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         // Act
         let event = serde_json::from_str::<Event>(&event_json).unwrap();
@@ -571,64 +524,22 @@ mod test {
     }
 
     #[test]
-    fn value_text_should_return_no_child() {
-        // Arrange
-        let value = Value::String("".to_owned());
-
-        // Act
-        let result = value.get_from_map("");
-
-        // Assert
-        assert!(result.is_none());
-    }
-
-    #[test]
-    fn value_map_should_return_child_if_exists() {
-        // Arrange
-        let mut children = Map::new();
-        children.insert("first".to_owned(), Value::String("first_value".to_owned()));
-        children.insert("second".to_owned(), Value::String("second_value".to_owned()));
-
-        let value = Value::Object(children);
-
-        // Act
-        let result = value.get_from_map("second");
-
-        // Assert
-        assert!(result.is_some());
-        assert_eq!("second_value", result.unwrap());
-    }
-
-    #[test]
-    fn value_map_should_return_no_child_if_absent() {
-        // Arrange
-        let mut children = Map::new();
-        children.insert("first".to_owned(), Value::String("first_value".to_owned()));
-        children.insert("second".to_owned(), Value::String("second_value".to_owned()));
-
-        let value = Value::Object(children);
-
-        // Act
-        let result = value.get_from_map("third");
-
-        // Assert
-        assert!(result.is_none());
-    }
-
-    #[test]
     fn should_convert_event_into_value() {
         // Arrange
         let mut payload = Payload::new();
-        payload.insert("one-key".to_owned(), Value::String("one-value".to_owned()));
-        payload.insert("two-key".to_owned(), Value::String("two-value".to_owned()));
-        payload.insert("number".to_owned(), Value::Number(Number::from_f64(999.99).unwrap()));
-        payload.insert("bool".to_owned(), Value::Bool(false));
+        payload.insert("one-key".to_owned(), serde_json::Value::String("one-value".to_owned()));
+        payload.insert("two-key".to_owned(), serde_json::Value::String("two-value".to_owned()));
+        payload.insert(
+            "number".to_owned(),
+            serde_json::Value::Number(serde_json::Number::from_f64(999.99).unwrap()),
+        );
+        payload.insert("bool".to_owned(), serde_json::Value::Bool(false));
 
         let event = Event::new_with_payload("my-event-type", payload.clone());
         let created_ms = event.created_ms.to_owned();
 
         // Act
-        let value_from_event: Value = json!(event);
+        let value_from_event: serde_json::Value = json!(event);
 
         // Assert
         assert_eq!(
@@ -636,7 +547,10 @@ mod test {
             value_from_event.get_from_map("type").unwrap().get_text().unwrap()
         );
         assert_eq!(&created_ms, value_from_event.get_from_map("created_ms").unwrap());
-        assert_eq!(&Value::Object(payload), value_from_event.get_from_map("payload").unwrap());
+        assert_eq!(
+            &serde_json::Value::Object(payload),
+            value_from_event.get_from_map("payload").unwrap()
+        );
     }
 
     #[test]

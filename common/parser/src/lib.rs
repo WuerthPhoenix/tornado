@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::fmt::Debug;
 use thiserror::Error;
-use tornado_common_api::ValueGet;
+use tornado_common_types::ValueGet;
 
 mod interpolator;
 
@@ -414,11 +414,7 @@ mod test {
         // Assert
         assert!(result.is_some());
         assert_eq!(
-            &Value::Array(vec![
-                Value::String("one".to_owned()),
-                Value::Bool(true),
-                json!(13_f64)
-            ]),
+            &Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13_f64)]),
             result.unwrap().as_ref()
         );
     }

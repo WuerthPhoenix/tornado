@@ -5,6 +5,7 @@ members = [
    "common/logger",
    "common/metrics",
    "common/parser",
+   "common/types",
    "collector/common",
    "collector/email",
    "collector/jmespath",
