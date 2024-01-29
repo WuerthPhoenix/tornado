@@ -12,9 +12,9 @@ use tornado_common_types::ValueGet;
 
 pub const EXPRESSION_NESTED_DELIMITER: &str = ".";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
-const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
-const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
-const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
+const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: &str = "\"";
+const PAYLOAD_ARRAY_KEY_START_DELIMITER: &str = "[";
+const PAYLOAD_ARRAY_KEY_END_DELIMITER: &str = "]";
 pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
 lazy_static! {
@@ -23,10 +23,14 @@ lazy_static! {
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("ConfigurationError: [{message}]")]
-    ConfigurationError { message: String },
     #[error("UnknownKeyError: [{key}]")]
     UnknownKeyError { key: String },
+    #[error("NotANumberError: [{key}]")]
+    NotANumberError { key: String },
+    #[error("InvalidCharacterError: [{character}] in [{key}]")]
+    InvalidCharacterError { key: String, character: String },
+    #[error("EmptyAccessorError")]
+    EmptyAccessorError,
 }
 
 pub trait ParserFactory {
@@ -95,8 +99,8 @@ impl ParserBuilder {
 
         let getters = Parser::parse_keys(expression)?;
         let (head, tail) = match getters.as_slice() {
-            [] // "${}"
-            | [ValueGetter::Map { .. }] // "${event}"
+            [] => return Err(ParserError::EmptyAccessorError), // "${}"
+            [ValueGetter::Map { .. }] // "${event}"
             | [ValueGetter::Array { .. }, ..] // "${[123]event}"
             | [ValueGetter::Map { .. }, ValueGetter::Array { .. }, ..] => { // "${event[123]}"
                 return Ok(Parser::Exp { keys: getters })
@@ -127,42 +131,33 @@ pub enum Parser {
 
 impl Parser {
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
-        RE.captures_iter(expression)
-            .map(|cap| {
-                let capture = cap.get(0).ok_or_else(|| ParserError::ConfigurationError {
-                    message: format!("Error parsing expression [{}]", expression),
-                })?;
-                let mut result = capture.as_str().to_string();
-
+        RE.find_iter(expression)
+            .map(|next_match| {
+                let result = next_match.as_str();
                 // Remove trailing delimiters
-                {
-                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
-                        && result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
-                    {
-                        result = result[1..(result.len() - 1)].to_string();
+                if let Some(key) = get_key_between_delimiters(
+                    result,
+                    PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                    PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                ) {
+                    Ok(ValueGetter::from(key))
+                } else if let Some(key) = get_key_between_delimiters(
+                    result,
+                    PAYLOAD_ARRAY_KEY_START_DELIMITER,
+                    PAYLOAD_ARRAY_KEY_END_DELIMITER,
+                ) {
+                    match key.parse() {
+                        Ok(index) => Ok(ValueGetter::Array { index }),
+                        Err(_) => Err(ParserError::NotANumberError { key: key.to_owned() }),
                     }
-                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
-                        && result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER)
-                    {
-                        result = result[1..(result.len() - 1)].to_string();
-                        let index =
-                            result.parse().map_err(|err| ParserError::ConfigurationError {
-                                message: format!(
-                                    "Cannot parse value [{}] to number: {}",
-                                    &result, err
-                                ),
-                            })?;
-                        return Ok(ValueGetter::Array { index });
-                    }
-                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
-                        let error_message = format!(
-                            "Parser expression [{}] contains not valid characters: [{}]",
-                            expression, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
-                        );
-                        return Err(ParserError::ConfigurationError { message: error_message });
-                    }
+                } else if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
+                    Err(ParserError::InvalidCharacterError {
+                        key: result.to_owned(),
+                        character: PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER.to_owned(),
+                    })
+                } else {
+                    Ok(ValueGetter::Map { key: result.to_owned() })
                 }
-                Ok(ValueGetter::Map { key: result })
             })
             .collect()
     }
@@ -194,6 +189,14 @@ impl Parser {
             }
         }
     }
+}
+
+pub fn get_key_between_delimiters<'input_string>(
+    full_string: &'input_string str,
+    start_delimiter: &str,
+    end_delimiter: &str,
+) -> Option<&'input_string str> {
+    full_string.strip_prefix(start_delimiter)?.strip_suffix(end_delimiter)
 }
 
 /// Determines if a key is the first part of an expression.
