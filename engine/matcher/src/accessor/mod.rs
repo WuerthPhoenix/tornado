@@ -6,8 +6,8 @@ use serde_json::Value;
 use std::borrow::Cow;
 use tornado_common_api::ValueGet;
 use tornado_common_parser::{
-    CustomParser, Parser, ParserBuilder, ParserError, EXPRESSION_END_DELIMITER,
-    EXPRESSION_START_DELIMITER, FOREACH_ITEM_KEY,
+    key_is_root_entry_of_expression, CustomParser, Parser, ParserBuilder, ParserError,
+    EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, FOREACH_ITEM_KEY,
 };
 
 pub struct AccessorBuilder {
@@ -73,10 +73,7 @@ impl AccessorBuilder {
                     val if (val.starts_with(&format!("{}.", EVENT_KEY))
                         || val.eq(EVENT_KEY)
                         || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
-                        || Parser::<()>::key_is_root_entry_of_expression(
-                            FOREACH_ITEM_KEY,
-                            val,
-                        )) =>
+                        || key_is_root_entry_of_expression(FOREACH_ITEM_KEY, val)) =>
                     {
                         let parser = parser_builder.build_parser(input)?;
                         Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })

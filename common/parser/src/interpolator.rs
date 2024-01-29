@@ -5,18 +5,12 @@
 // - https://github.com/hoodie/concatenation_benchmarks-rs
 //
 
-use crate::{Parser, ParserBuilder, ParserError};
-use lazy_static::*;
-use regex::{Match, Regex};
+use crate::parser::{Parser, ParserBuilder, ParserError};
+use crate::Template;
 use serde_json::Value;
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use tornado_common_types::ValueGet;
-
-lazy_static! {
-    static ref RE: Regex =
-        Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
-}
 
 #[derive(Debug)]
 pub struct StringInterpolator<T: Debug> {
@@ -34,42 +28,24 @@ struct BoundedAccessor<T: Debug> {
 
 impl<T: Debug> StringInterpolator<T> {
     /// Creates a new StringInterpolator
-    pub fn build<S: Into<String>>(
-        template: S,
+    pub fn build(
+        template: Template,
         parser_builder: &ParserBuilder<T>,
-    ) -> Result<Option<Self>, ParserError> {
-        let template_string = template.into();
-
-        let regex: &Regex = &RE;
-        let matchers = regex.find_iter(&template_string).collect::<Vec<Match<'_>>>();
-
-        if StringInterpolator::<T>::interpolation_required(&template_string, &matchers) {
-            let parsers = matchers
-                .iter()
-                .map(|m| {
-                    parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
-                        start: m.start(),
-                        end: m.end(),
-                        parser,
-                        _phantom: PhantomData,
-                    })
+    ) -> Result<Self, ParserError> {
+        let parsers = template
+            .matches()
+            .iter()
+            .map(|m| {
+                parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
+                    start: m.start(),
+                    end: m.end(),
+                    parser,
+                    _phantom: PhantomData,
                 })
-                .collect::<Result<Vec<_>, ParserError>>()?;
+            })
+            .collect::<Result<Vec<_>, ParserError>>()?;
 
-            return Ok(Some(StringInterpolator { template: template_string.clone(), parsers }));
-        }
-        Ok(None)
-    }
-
-    /// Returns whether the template used to create this StringInterpolator
-    /// requires interpolation.
-    /// This is true only if the template contains at least both a static part (e.g. constant text)
-    /// and a dynamic part (e.g. placeholders to be resolved at runtime).
-    /// When the interpolator is not required, it can be replaced by a simpler Accessor.
-    fn interpolation_required(template: &str, matches: &[Match]) -> bool {
-        matches.len() > 1
-            || (matches.len() == 1
-                && !(matches[0].start() == 0 && matches[0].end() == template.len()))
+        Ok(StringInterpolator { template: template.template_string.to_owned(), parsers })
     }
 
     /// Performs the placeholders substitution on the internal template and return the
