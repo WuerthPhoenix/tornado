@@ -51,7 +51,7 @@ impl StringInterpolator {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render<I: ValueGet>(&self, event: &I, context: &str) -> Result<String, ParserError> {
+    pub fn render<I: ValueGet>(&self, event: &I, context: &str) -> Option<String> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -64,25 +64,13 @@ impl StringInterpolator {
 
             let accessor = &bounded_accessor.parser;
 
-            let value = accessor.parse_value(event, context).ok_or(
-                ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned empty value.", accessor),
-                },
-            )?;
+            let value = accessor.parse_value(event, context)?;
             match value.as_ref() {
                 Value::String(text) => render.push_str(text.as_str()),
                 Value::Bool(val) => render.push_str(&val.to_string()),
                 Value::Number(val) => render.push_str(&val.to_string()),
                 Value::Null => render.push_str("null"),
-                Value::Object(..) => return Err(ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned a Map. Expected text, number, boolean or null.", accessor),
-                }),
-                Value::Array(..) => return Err(ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned an Array. Expected text, number, boolean or null.", accessor),
-                }),
+                Value::Object(..) | Value::Array(..) => return None,
             }
 
             prev_end = bounded_accessor.end;
@@ -96,7 +84,7 @@ impl StringInterpolator {
             render.push_str(&self.template[prev_end..template_len])
         }
 
-        Ok(render)
+        Some(render)
     }
 }
 
@@ -181,7 +169,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!(" 1554130814854 ", &render);
@@ -222,7 +210,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!(" void:  null ", &render);
@@ -243,7 +231,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!("first line\nsecond line", &render);
@@ -262,7 +250,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -281,7 +269,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -301,7 +289,7 @@ mod test {
         let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -333,7 +321,7 @@ mod test {
 
         println!("{result:?}");
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
 
         println!("---------------------------");
         println!("Event: \n{:?}", event);

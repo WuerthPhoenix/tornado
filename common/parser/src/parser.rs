@@ -1,8 +1,5 @@
 use crate::interpolator::StringInterpolator;
-use crate::{
-    CustomParser, Template, ValueGetter, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER,
-    FOREACH_ITEM_KEY,
-};
+use crate::{CustomParser, Template, ValueGetter, FOREACH_ITEM_KEY};
 use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
@@ -28,19 +25,16 @@ lazy_static! {
 pub enum ParserError {
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
-    #[error("ParsingError: [{message}]")]
-    ParsingError { message: String },
-    #[error("InterpolatorRenderError: Cannot resolve placeholders in template [{template}] cause: [{cause}]"
-    )]
-    InterpolatorRenderError { template: String, cause: String },
+    #[error("UnknownKeyError: [{key}]")]
+    UnknownKeyError { key: String },
 }
 
 pub trait ParserFactory {
-    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser>, ParserError>;
+    fn build(&self, expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError>;
 }
 
-impl<F: Fn(&str) -> Result<Box<dyn CustomParser>, ParserError>> ParserFactory for F {
-    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
+impl<F: Fn(&[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError>> ParserFactory for F {
+    fn build(&self, expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
         self(expression)
     }
 }
@@ -65,7 +59,7 @@ impl ParserBuilder {
     pub fn is_ignored_extractor(&self, extractor: &str) -> bool {
         extractor
             .strip_prefix("${")
-            .and_then(|rest| rest.strip_suffix("}"))
+            .and_then(|rest| rest.strip_suffix('}'))
             .map(|rest| {
                 self.ignored_expressions
                     .iter()
@@ -99,29 +93,27 @@ impl ParserBuilder {
     pub fn parse_expression(&self, keys: &str) -> Result<Parser, ParserError> {
         let expression = &keys[2..keys.len() - 1];
 
+        let getters = Parser::parse_keys(expression)?;
+        let (head, tail) = match getters.as_slice() {
+            [] // "${}"
+            | [ValueGetter::Map { .. }] // "${event}"
+            | [ValueGetter::Array { .. }, ..] // "${[123]event}"
+            | [ValueGetter::Map { .. }, ValueGetter::Array { .. }, ..] => { // "${event[123]}"
+                return Ok(Parser::Exp { keys: getters })
+            }
+            [ValueGetter::Map { key }, tail @ ..] => (key, tail), // "${event.timestamp}"
+        };
+
         for (key, factory) in &self.custom_parser_factories {
-            let custom_key_start = format! {"{}{}", key, EXPRESSION_NESTED_DELIMITER};
-            if expression.starts_with(&custom_key_start) {
-                let mut getters = Parser::parse_keys(expression)?;
-                return if !getters.is_empty() {
-                    let first_getter = getters.remove(0);
-                    let trimmed_custom_key = &expression[custom_key_start.len()..];
-                    Ok(Parser::Custom {
-                        key: first_getter,
-                        parser: factory.build(trimmed_custom_key)?,
-                    })
-                } else {
-                    Err(ParserError::ConfigurationError {
-                        message: format!(
-                            "Error parsing expression [{}]. Error building Custom Parser keys",
-                            expression
-                        ),
-                    })
-                };
+            if key == head {
+                return Ok(Parser::Custom {
+                    key: ValueGetter::Map { key: head.to_owned() },
+                    parser: factory.build(tail)?,
+                });
             }
         }
 
-        Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
+        Ok(Parser::Exp { keys: getters })
     }
 }
 
@@ -194,7 +186,7 @@ impl Parser {
                 }
             }
             Parser::Interpolator { interpolator } => {
-                interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text))).ok()
+                interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text)))
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
             Parser::Custom { key, parser } => {
@@ -250,11 +242,8 @@ pub struct ExtractedVarParser {
 }
 
 impl ExtractedVarParser {
-    pub fn try_new(expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
-        let parser = ParserBuilder::default().build_parser(&format!(
-            "{}{}{}",
-            EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
-        ))?;
+    pub fn try_new(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
+        let parser = Parser::Exp { keys: expression.to_vec() };
         Ok(Box::new(ExtractedVarParser { parser }))
     }
 }
@@ -721,7 +710,7 @@ mod test {
 
     #[derive(Debug)]
     pub struct MyParser {
-        pub expression: String,
+        pub expression: Vec<ValueGetter>,
     }
 
     impl CustomParser for MyParser {
@@ -731,8 +720,8 @@ mod test {
         }
     }
 
-    fn custom_parser(expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
-        println!("build custom parser with expression: [{}]", expression);
-        Ok(Box::new(MyParser { expression: expression.to_owned() }))
+    fn custom_parser(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
+        println!("build custom parser with expression: [{:?}]", expression);
+        Ok(Box::new(MyParser { expression: expression.to_vec() }))
     }
 }

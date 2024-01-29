@@ -64,7 +64,7 @@ pub trait CustomParser: Sync + Send + Debug {
     fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>>;
 }
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, Clone)]
 pub enum ValueGetter {
     Map { key: String },
     Array { index: usize },
