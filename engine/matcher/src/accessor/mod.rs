@@ -4,33 +4,17 @@ use crate::{error::MatcherError, model::InternalEvent};
 use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
-use tornado_common_api::ValueGet;
-use tornado_common_parser::{
-    key_is_root_entry_of_expression, CustomParser, Parser, ParserBuilder, ParserError,
-    EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER, FOREACH_ITEM_KEY,
-};
+use tornado_common_parser::{Parser, ParserBuilder};
 
-pub struct AccessorBuilder {
-    start_delimiter: &'static str,
-    end_delimiter: &'static str,
-}
-
-impl Default for AccessorBuilder {
-    fn default() -> Self {
-        AccessorBuilder {
-            start_delimiter: EXPRESSION_START_DELIMITER,
-            end_delimiter: EXPRESSION_END_DELIMITER,
-        }
-    }
-}
+#[derive(Default)]
+pub struct AccessorBuilder;
 
 pub const EVENT_KEY: &str = "event";
-pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
 /// A builder for the Event Accessors
 impl AccessorBuilder {
     pub fn new() -> AccessorBuilder {
-        Default::default()
+        AccessorBuilder
     }
 
     pub fn build_from_value(
@@ -40,115 +24,42 @@ impl AccessorBuilder {
     ) -> Result<Accessor, MatcherError> {
         match input {
             Value::String(text) => self.build(rule_name, text),
-            _ => Ok(Accessor::Constant { value: input.clone() }),
+            _ => {
+                Ok(Accessor { rule_name: rule_name.to_owned(), parser: Parser::Val(input.clone()) })
+            }
         }
     }
 
-    /// Returns an Accessor instance based on its string definition.
-    /// E.g.:
-    /// - "${event}": returns the entire Event instance
-    /// - "${event.type}": returns an instance of Accessor::Type
-    /// - "${event.created_ms}": returns an instance of Accessor::CreatedTs
-    /// - "${event.payload}": returns the entire Payload of the Event
-    /// - "${event.payload.body}": returns an instance of Accessor::Payload that returns the value of the entry with the key "body" from the event payload
-    /// - "event.type": returns an instance of Accessor::Constant that always returns the String "event.type"
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
         trace!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
 
-        let parser_builder = ParserBuilder::default()
-            .add_parser_factory(
-                EXTRACTED_VARIABLES_KEY.to_owned(),
-                Box::new(ExtractedVarParser::try_new),
-            )
-            .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
-
-        let result = match input.trim() {
-            value
-                if value.starts_with(self.start_delimiter)
-                    && value.ends_with(self.end_delimiter) =>
-            {
-                let path =
-                    &value[self.start_delimiter.len()..(value.len() - self.end_delimiter.len())];
-                match path.trim() {
-                    val if (val.starts_with(&format!("{}.", EVENT_KEY))
-                        || val.eq(EVENT_KEY)
-                        || val.starts_with(&format!("{}.", EXTRACTED_VARIABLES_KEY))
-                        || key_is_root_entry_of_expression(FOREACH_ITEM_KEY, val)) =>
-                    {
-                        let parser = parser_builder.build_parser(input)?;
-                        Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
-                    }
-                    _ => Err(MatcherError::UnknownAccessorError { accessor: value.to_owned() }),
-                }
-            }
-            _value => {
-                let parser = parser_builder.build_parser(input)?;
-                Ok(Accessor::Parser { rule_name: rule_name.to_owned(), parser })
-            }
-        };
+        let parser_builder = ParserBuilder::engine_matcher();
+        let result = parser_builder.build_parser(input);
 
         trace!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
             &result,
             input
         );
-        result
+        Ok(Accessor { rule_name: rule_name.to_owned(), parser: result? })
     }
 }
 
 #[derive(Debug)]
-pub struct ExtractedVarParser {
-    parser: Parser<String>,
-}
-
-impl ExtractedVarParser {
-    pub fn try_new(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
-        let parser = ParserBuilder::default().build_parser(&format!(
-            "{}{}{}",
-            EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
-        ))?;
-        Ok(Box::new(ExtractedVarParser { parser }))
-    }
-}
-
-impl CustomParser<String> for ExtractedVarParser {
-    fn parse_value<'o>(&'o self, value: &'o Value, context: &String) -> Option<Cow<'o, Value>> {
-        value
-            .get_from_map(context.as_str())
-            .and_then(|rule_vars| self.parser.parse_value(rule_vars, context))
-            .or_else(|| self.parser.parse_value(value, context))
-    }
-}
-
-/// An Accessor returns the value of a specific field of an Event.
-/// The following Accessors are defined:
-/// - Constant: returns a constant value regardless of the Event;
-/// - CreatedTs: returns the value of the "created_ms" field of an Event
-/// - ExtractedVar: returns the value of one extracted variable
-/// - Payload: returns the value of an entry in the payload of an Event
-/// - Type: returns the value of the "type" field of an Event
-/// - Event: returns the entire Event
-#[derive(Debug)]
-pub enum Accessor {
-    Constant { value: Value },
-    Parser { rule_name: String, parser: Parser<String> },
+pub struct Accessor {
+    rule_name: String,
+    parser: Parser,
 }
 
 impl Accessor {
     pub fn get<'o>(&'o self, data: &'o InternalEvent) -> Option<Cow<'o, Value>> {
-        match &self {
-            Accessor::Constant { value } => Some(Cow::Borrowed(value)),
-            Accessor::Parser { rule_name, parser } => parser.parse_value(data, rule_name),
-        }
+        self.parser.parse_value(data, &self.rule_name)
     }
 
     /// Returns true if this Accessor returns a dynamic value that changes
     /// based on the event and extracted_vars content
     pub fn dynamic_value(&self) -> bool {
-        match &self {
-            Accessor::Constant { .. } => false,
-            Accessor::Parser { .. } => true,
-        }
+        matches!(&self.parser, Parser::Val(_))
     }
 }
 

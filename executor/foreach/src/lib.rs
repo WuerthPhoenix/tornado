@@ -158,7 +158,7 @@ fn resolve_payload(item: &Value, mut value: &mut Value) -> Result<(), ExecutorEr
                     code: None,
                     data: Default::default(),
                 })?
-                .parse_value(item, &())
+                .parse_value(item, "")
             {
                 *value = parse_result.into_owned();
             }

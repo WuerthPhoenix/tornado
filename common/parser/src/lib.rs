@@ -8,7 +8,10 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
-pub use crate::parser::{key_is_root_entry_of_expression, Parser, ParserBuilder, ParserError};
+pub use crate::parser::{
+    key_is_root_entry_of_expression, ExtractedVarParser, Parser, ParserBuilder, ParserError,
+    EXTRACTED_VARIABLES_KEY,
+};
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
@@ -52,12 +55,12 @@ impl Template<'_> {
     /// and a dynamic part (e.g. placeholders to be resolved at runtime).
     /// When the interpolator is not required, it can be replaced by a simpler Accessor.
     pub fn is_interpolator(&self) -> bool {
-        self.matches.len() > 0 && !self.is_accessor()
+        !self.matches.is_empty() && !self.is_accessor()
     }
 }
 
-pub trait CustomParser<T: Debug>: Sync + Send + Debug {
-    fn parse_value<'o>(&'o self, value: &'o Value, context: &T) -> Option<Cow<'o, Value>>;
+pub trait CustomParser: Sync + Send + Debug {
+    fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>>;
 }
 
 #[derive(PartialEq, Debug)]

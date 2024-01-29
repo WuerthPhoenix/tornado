@@ -1,5 +1,8 @@
 use crate::interpolator::StringInterpolator;
-use crate::{CustomParser, Template, ValueGetter};
+use crate::{
+    CustomParser, Template, ValueGetter, EXPRESSION_END_DELIMITER, EXPRESSION_START_DELIMITER,
+    FOREACH_ITEM_KEY,
+};
 use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
@@ -14,6 +17,7 @@ const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
 const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
 const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
 const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
+pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
 lazy_static! {
     static ref RE: Regex = Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");
@@ -30,26 +34,24 @@ pub enum ParserError {
     InterpolatorRenderError { template: String, cause: String },
 }
 
-pub trait ParserFactory<T: Debug> {
-    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser<T>>, ParserError>;
+pub trait ParserFactory {
+    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser>, ParserError>;
 }
 
-impl<T: Debug, F: Fn(&str) -> Result<Box<dyn CustomParser<T>>, ParserError>> ParserFactory<T>
-    for F
-{
-    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser<T>>, ParserError> {
+impl<F: Fn(&str) -> Result<Box<dyn CustomParser>, ParserError>> ParserFactory for F {
+    fn build(&self, expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
         self(expression)
     }
 }
 
 #[derive(Default)]
-pub struct ParserBuilder<T: Debug> {
-    custom_parser_factories: HashMap<String, Box<dyn ParserFactory<T>>>,
+pub struct ParserBuilder {
+    custom_parser_factories: HashMap<String, Box<dyn ParserFactory>>,
     ignored_expressions: Vec<String>,
 }
 
-impl<T: Debug> ParserBuilder<T> {
-    pub fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory<T>>) -> Self {
+impl ParserBuilder {
+    pub fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory>) -> Self {
         self.custom_parser_factories.insert(key, factory);
         self
     }
@@ -59,7 +61,16 @@ impl<T: Debug> ParserBuilder<T> {
         self
     }
 
-    pub fn build_parser(&self, template_string: &str) -> Result<Parser<T>, ParserError> {
+    pub fn engine_matcher() -> ParserBuilder {
+        ParserBuilder::default()
+            .add_parser_factory(
+                EXTRACTED_VARIABLES_KEY.to_owned(),
+                Box::new(ExtractedVarParser::try_new),
+            )
+            .add_ignored_expression(FOREACH_ITEM_KEY.to_owned())
+    }
+
+    pub fn build_parser(&self, template_string: &str) -> Result<Parser, ParserError> {
         let template = Template::from(template_string);
 
         if template.is_interpolator() {
@@ -71,13 +82,13 @@ impl<T: Debug> ParserBuilder<T> {
         }
     }
 
-    pub fn parse_expression(&self, keys: &str) -> Result<Parser<T>, ParserError> {
+    pub fn parse_expression(&self, keys: &str) -> Result<Parser, ParserError> {
         let expression = &keys[1..keys.len() - 1];
 
         for (key, factory) in &self.custom_parser_factories {
             let custom_key_start = format! {"{}{}", key, EXPRESSION_NESTED_DELIMITER};
             if expression.starts_with(&custom_key_start) {
-                let mut getters = Parser::<T>::parse_keys(expression)?;
+                let mut getters = Parser::parse_keys(expression)?;
                 return if !getters.is_empty() {
                     let first_getter = getters.remove(0);
                     let trimmed_custom_key = &expression[custom_key_start.len()..];
@@ -96,23 +107,21 @@ impl<T: Debug> ParserBuilder<T> {
             }
         }
 
-        Ok(Parser::Exp { keys: Parser::<T>::parse_keys(expression)? })
+        Ok(Parser::Exp { keys: Parser::parse_keys(expression)? })
     }
 }
 
 #[derive(Debug)]
-pub enum Parser<T: Debug> {
+pub enum Parser {
     Exp { keys: Vec<ValueGetter> },
-    Interpolator { interpolator: StringInterpolator<T> },
+    Interpolator { interpolator: StringInterpolator },
     Val(Value),
-    Custom { key: ValueGetter, parser: Box<dyn CustomParser<T>> },
+    Custom { key: ValueGetter, parser: Box<dyn CustomParser> },
 }
 
-impl<T: Debug> Parser<T> {
+impl Parser {
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
-        let regex: &Regex = &RE;
-        regex
-            .captures_iter(expression)
+        RE.captures_iter(expression)
             .map(|cap| {
                 let capture = cap.get(0).ok_or_else(|| ParserError::ConfigurationError {
                     message: format!("Error parsing expression [{}]", expression),
@@ -155,7 +164,7 @@ impl<T: Debug> Parser<T> {
     pub fn parse_value<'o, I: ValueGet>(
         &'o self,
         value: &'o I,
-        context: &T,
+        context: &str,
     ) -> Option<Cow<'o, Value>> {
         match self {
             Parser::Exp { keys } => {
@@ -196,11 +205,35 @@ pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
     expression
         .strip_prefix(key)
         .map(|rest| {
-            rest.len() == 0
+            rest.is_empty()
                 || rest.starts_with(EXPRESSION_NESTED_DELIMITER)
                 || rest.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
         })
         .unwrap_or(false)
+}
+
+#[derive(Debug)]
+pub struct ExtractedVarParser {
+    parser: Parser,
+}
+
+impl ExtractedVarParser {
+    pub fn try_new(expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
+        let parser = ParserBuilder::default().build_parser(&format!(
+            "{}{}{}",
+            EXPRESSION_START_DELIMITER, expression, EXPRESSION_END_DELIMITER
+        ))?;
+        Ok(Box::new(ExtractedVarParser { parser }))
+    }
+}
+
+impl CustomParser for ExtractedVarParser {
+    fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>> {
+        value
+            .get_from_map(context)
+            .and_then(|rule_vars| self.parser.parse_value(rule_vars, context))
+            .or_else(|| self.parser.parse_value(value, context))
+    }
 }
 
 #[cfg(test)]

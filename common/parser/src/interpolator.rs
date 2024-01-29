@@ -9,29 +9,24 @@ use crate::parser::{Parser, ParserBuilder, ParserError};
 use crate::Template;
 use serde_json::Value;
 use std::fmt::Debug;
-use std::marker::PhantomData;
 use tornado_common_types::ValueGet;
 
 #[derive(Debug)]
-pub struct StringInterpolator<T: Debug> {
+pub struct StringInterpolator {
     template: String,
-    parsers: Vec<BoundedAccessor<T>>,
+    parsers: Vec<BoundedAccessor>,
 }
 
 #[derive(Debug)]
-struct BoundedAccessor<T: Debug> {
+struct BoundedAccessor {
     start: usize,
     end: usize,
-    parser: Parser<T>,
-    _phantom: PhantomData<T>,
+    parser: Parser,
 }
 
-impl<T: Debug> StringInterpolator<T> {
+impl StringInterpolator {
     /// Creates a new StringInterpolator
-    pub fn build(
-        template: Template,
-        parser_builder: &ParserBuilder<T>,
-    ) -> Result<Self, ParserError> {
+    pub fn build(template: Template, parser_builder: &ParserBuilder) -> Result<Self, ParserError> {
         let parsers = template
             .matches()
             .iter()
@@ -40,7 +35,6 @@ impl<T: Debug> StringInterpolator<T> {
                     start: m.start(),
                     end: m.end(),
                     parser,
-                    _phantom: PhantomData,
                 })
             })
             .collect::<Result<Vec<_>, ParserError>>()?;
@@ -56,7 +50,7 @@ impl<T: Debug> StringInterpolator<T> {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render<I: ValueGet>(&self, event: &I, context: &T) -> Result<String, ParserError> {
+    pub fn render<I: ValueGet>(&self, event: &I, context: &str) -> Result<String, ParserError> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
