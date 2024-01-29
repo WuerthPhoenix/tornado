@@ -18,9 +18,10 @@ pub const EXPRESSION_END_DELIMITER: &str = "}";
 pub const FOREACH_ITEM_KEY: &str = "item";
 pub const EVENT_KEY: &str = "event";
 
+// This regex is used to match the `${event.something}` pattern.
+// It literally matches the sequence `${` followed by one or more chars followed by `}`.
 lazy_static! {
-    static ref RE: Regex =
-        Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
+    static ref RE: Regex = Regex::new(r"(\$\{[^}]+})").expect("Accessor regex must be valid");
 }
 
 pub struct Template<'template> {
@@ -45,13 +46,10 @@ impl Template<'_> {
     }
 
     pub fn is_accessor(&self) -> bool {
-        self.matches.len() == 1
-            && self.matches[0].start() == 0
-            && self.matches[0].end() == self.template_string.len()
+        self.matches.len() == 1 && self.matches[0].as_str() == self.template_string
     }
 
-    /// Returns whether the template used to create this StringInterpolator
-    /// requires interpolation.
+    /// Returns whether this template requires interpolation.
     /// This is true only if the template contains at least both a static part (e.g. constant text)
     /// and a dynamic part (e.g. placeholders to be resolved at runtime).
     /// When the interpolator is not required, it can be replaced by a simpler Accessor.
@@ -105,5 +103,34 @@ pub fn is_valid_matcher_root(keys: &[ValueGetter]) -> bool {
             true
         }
         _ => false,
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn empty_template_is_not_an_accessor() {
+        let template = Template::from("");
+        assert_eq!(template.is_accessor(), false);
+    }
+
+    #[test]
+    fn wrong_syntax_template_is_not_an_accessor() {
+        let template = Template::from("$}sadf}");
+        assert_eq!(template.is_accessor(), false);
+    }
+
+    #[test]
+    fn interpolator_template_is_not_an_accessor() {
+        let template = Template::from("${sadf} sdfhj");
+        assert_eq!(template.is_accessor(), false);
+    }
+
+    #[test]
+    fn accessor_template_is_not_an_accessor() {
+        let template = Template::from("${sadf}");
+        assert_eq!(template.is_accessor(), true);
     }
 }
