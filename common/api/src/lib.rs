@@ -16,7 +16,7 @@ pub type Value = serde_json::Value;
 pub type Map<K, V> = serde_json::Map<K, V>;
 pub type Number = serde_json::Number;
 
-// Re-export types so not all other packages need to dependo on it as well
+// Re-export types so not all other packages need to depend on it as well
 pub use tornado_common_types::*;
 
 /// An Event is correlated with an incoming episode, incident, situation or any kind of message

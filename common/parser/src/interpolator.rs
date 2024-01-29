@@ -30,7 +30,7 @@ impl StringInterpolator {
         let parsers = template
             .matches()
             .iter()
-            .filter(|&m| !parser_builder.is_ignored_extractor(m.as_str()))
+            .filter(|&m| !parser_builder.is_ignored_expression(m.as_str()))
             .map(|m| {
                 parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
                     start: m.start(),

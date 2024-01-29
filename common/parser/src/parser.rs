@@ -12,9 +12,9 @@ use tornado_common_types::ValueGet;
 
 pub const EXPRESSION_NESTED_DELIMITER: &str = ".";
 const PAYLOAD_KEY_PARSE_REGEX: &str = r#"("[^"]+"|[^\.^\[]+|\[[^\]]+\])"#;
-const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: char = '"';
-const PAYLOAD_ARRAY_KEY_START_DELIMITER: char = '[';
-const PAYLOAD_ARRAY_KEY_END_DELIMITER: char = ']';
+const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: &str = "\"";
+const PAYLOAD_ARRAY_KEY_START_DELIMITER: &str = "[";
+const PAYLOAD_ARRAY_KEY_END_DELIMITER: &str = "]";
 pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
 
 lazy_static! {
@@ -23,10 +23,14 @@ lazy_static! {
 
 #[derive(Error, Debug)]
 pub enum ParserError {
-    #[error("ConfigurationError: [{message}]")]
-    ConfigurationError { message: String },
     #[error("UnknownKeyError: [{key}]")]
     UnknownKeyError { key: String },
+    #[error("NotANumberError: [{key}]")]
+    NotANumberError { key: String },
+    #[error("InvalidCharacterError: [{character}] in [{key}]")]
+    InvalidCharacterError { key: String, character: String },
+    #[error("EmptyAccessorError")]
+    EmptyAccessorError,
 }
 
 pub trait ParserFactory {
@@ -56,7 +60,7 @@ impl ParserBuilder {
         self
     }
 
-    pub fn is_ignored_extractor(&self, extractor: &str) -> bool {
+    pub fn is_ignored_expression(&self, extractor: &str) -> bool {
         extractor
             .strip_prefix("${")
             .and_then(|rest| rest.strip_suffix('}'))
@@ -83,7 +87,7 @@ impl ParserBuilder {
 
         if template.is_interpolator() {
             Ok(Parser::Interpolator { interpolator: StringInterpolator::build(template, self)? })
-        } else if template.is_accessor() && !self.is_ignored_extractor(template_string) {
+        } else if template.is_accessor() && !self.is_ignored_expression(template_string) {
             self.parse_expression(template_string)
         } else {
             Ok(Parser::Val(Value::String(template_string.to_owned())))
@@ -95,8 +99,8 @@ impl ParserBuilder {
 
         let getters = Parser::parse_keys(expression)?;
         let (head, tail) = match getters.as_slice() {
-            [] // "${}"
-            | [ValueGetter::Map { .. }] // "${event}"
+            [] => return Err(ParserError::EmptyAccessorError), // "${}"
+            [ValueGetter::Map { .. }] // "${event}"
             | [ValueGetter::Array { .. }, ..] // "${[123]event}"
             | [ValueGetter::Map { .. }, ValueGetter::Array { .. }, ..] => { // "${event[123]}"
                 return Ok(Parser::Exp { keys: getters })
@@ -127,39 +131,34 @@ pub enum Parser {
 
 impl Parser {
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
-        RE.captures_iter(expression)
-            .map(|cap| {
-                let capture = cap.get(0).ok_or_else(|| ParserError::ConfigurationError {
-                    message: format!("Error parsing expression [{}]", expression),
-                })?;
-                let mut result = capture.as_str().to_string();
+        RE.find_iter(expression)
+            .map(|next_match| {
+                let next_match_string = next_match.as_str();
+                let mut result = next_match_string.to_string();
 
-                // Remove trailing delimiters
                 {
-                    if result.starts_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
-                        && result.ends_with(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER)
-                    {
-                        result = result[1..(result.len() - 1)].to_string();
-                    }
-                    if result.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
-                        && result.ends_with(PAYLOAD_ARRAY_KEY_END_DELIMITER)
-                    {
-                        result = result[1..(result.len() - 1)].to_string();
-                        let index =
-                            result.parse().map_err(|err| ParserError::ConfigurationError {
-                                message: format!(
-                                    "Cannot parse value [{}] to number: {}",
-                                    &result, err
-                                ),
-                            })?;
-                        return Ok(ValueGetter::Array { index });
+                    if let Some(key) = get_key_between_delimiters(
+                        next_match_string,
+                        PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                        PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                    ) {
+                        result = key.to_string();
+                    };
+                    if let Some(key) = get_key_between_delimiters(
+                        result.as_str(),
+                        PAYLOAD_ARRAY_KEY_START_DELIMITER,
+                        PAYLOAD_ARRAY_KEY_END_DELIMITER,
+                    ) {
+                        return match key.parse() {
+                            Ok(index) => Ok(ValueGetter::Array { index }),
+                            Err(_) => Err(ParserError::NotANumberError { key: key.to_owned() }),
+                        };
                     }
                     if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
-                        let error_message = format!(
-                            "Parser expression [{}] contains not valid characters: [{}]",
-                            expression, PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER
-                        );
-                        return Err(ParserError::ConfigurationError { message: error_message });
+                        return Err(ParserError::InvalidCharacterError {
+                            key: result.to_owned(),
+                            character: PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER.to_owned(),
+                        });
                     }
                 }
                 Ok(ValueGetter::Map { key: result })
@@ -196,6 +195,14 @@ impl Parser {
     }
 }
 
+pub fn get_key_between_delimiters<'input_string>(
+    full_string: &'input_string str,
+    start_delimiter: &str,
+    end_delimiter: &str,
+) -> Option<&'input_string str> {
+    full_string.strip_prefix(start_delimiter)?.strip_suffix(end_delimiter)
+}
+
 /// Determines if a key is the first part of an expression.
 ///
 /// # Example:
@@ -215,24 +222,6 @@ pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
                 || rest.starts_with(EXPRESSION_NESTED_DELIMITER)
                 || rest.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
         })
-        .unwrap_or(false)
-}
-
-/// Determines if a key is the first part of an expression.
-///
-/// # Example:
-///
-/// ``` Rust
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey"))
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey[0]"))
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey.somefield.something"))
-/// assert!(!key_is_root_entry_of_expression("mykey", "mykeys,.somefield.something"))
-/// assert!(!key_is_root_entry_of_expression("mykeys", "mykey.somefield.something"))
-/// ```
-pub fn key_is_object_root_entry_of_expression(key: &str, expression: &str) -> bool {
-    expression
-        .strip_prefix(key)
-        .map(|rest| rest.is_empty() || rest.starts_with(EXPRESSION_NESTED_DELIMITER))
         .unwrap_or(false)
 }
 
@@ -263,6 +252,7 @@ mod test {
     use serde_json::{json, Map};
 
     use super::*;
+    use crate::ValueGetter::Array;
     use std::collections::HashMap;
 
     #[test]
@@ -505,6 +495,9 @@ mod test {
             vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
         assert_eq!(expected, Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
 
+        let expected: Vec<ValueGetter> = vec!["one".into(), Array { index: 1 }];
+        assert_eq!(expected, Parser::parse_keys(r#"one."[1]""#).unwrap());
+
         let expected: Vec<ValueGetter> =
             vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
         assert_eq!(
@@ -612,7 +605,7 @@ mod test {
         let parser = ParserBuilder::default().add_ignored_expression("ignored_expr".to_owned());
 
         // Assert
-        assert!(parser.is_ignored_extractor("${ignored_expr}"))
+        assert!(parser.is_ignored_expression("${ignored_expr}"))
     }
 
     #[test]
