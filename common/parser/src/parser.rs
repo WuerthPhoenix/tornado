@@ -1,5 +1,5 @@
 use crate::interpolator::StringInterpolator;
-use crate::{CustomParser, Template, ValueGetter, FOREACH_ITEM_KEY};
+use crate::{is_valid_matcher_root, CustomParser, Template, ValueGetter, FOREACH_ITEM_KEY};
 use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
@@ -50,17 +50,17 @@ pub struct ParserBuilder {
 }
 
 impl ParserBuilder {
-    pub fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory>) -> Self {
+    fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory>) -> Self {
         self.custom_parser_factories.insert(key, factory);
         self
     }
 
-    pub fn add_ignored_expression(mut self, field: String) -> Self {
+    fn add_ignored_expression(mut self, field: String) -> Self {
         self.ignored_expressions.push(field);
         self
     }
 
-    pub fn is_ignored_extractor(&self, extractor: &str) -> bool {
+    pub(crate) fn is_ignored_extractor(&self, extractor: &str) -> bool {
         extractor
             .strip_prefix("${")
             .and_then(|rest| rest.strip_suffix('}'))
@@ -73,13 +73,27 @@ impl ParserBuilder {
             .unwrap_or(false)
     }
 
-    pub fn engine_matcher() -> ParserBuilder {
-        ParserBuilder::default()
+    pub fn engine_matcher(input: &str) -> Result<Parser, ParserError> {
+        let parser_builder = ParserBuilder::default()
             .add_parser_factory(
                 EXTRACTED_VARIABLES_KEY.to_owned(),
                 Box::new(ExtractedVarParser::try_new),
             )
-            .add_ignored_expression(FOREACH_ITEM_KEY.to_owned())
+            .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
+
+        match parser_builder.build_parser(input) {
+            Ok(Parser::Exp { keys }) if is_valid_matcher_root(&keys) => Ok(Parser::Exp { keys }),
+            Ok(Parser::Exp { mut keys }) => match keys.first_mut() {
+                Some(ValueGetter::Array { index }) => {
+                    Err(ParserError::UnknownKeyError { key: format!("{}", index) })
+                }
+                Some(ValueGetter::Map { key }) => {
+                    Err(ParserError::UnknownKeyError { key: std::mem::take(key) })
+                }
+                None => Err(ParserError::EmptyAccessorError),
+            },
+            res => res,
+        }
     }
 
     pub fn build_parser(&self, template_string: &str) -> Result<Parser, ParserError> {
@@ -94,7 +108,7 @@ impl ParserBuilder {
         }
     }
 
-    pub fn parse_expression(&self, keys: &str) -> Result<Parser, ParserError> {
+    fn parse_expression(&self, keys: &str) -> Result<Parser, ParserError> {
         let expression = &keys[2..keys.len() - 1];
 
         let getters = Parser::parse_keys(expression)?;
@@ -191,7 +205,7 @@ impl Parser {
     }
 }
 
-pub fn get_key_between_delimiters<'input_string>(
+fn get_key_between_delimiters<'input_string>(
     full_string: &'input_string str,
     start_delimiter: &str,
     end_delimiter: &str,
@@ -210,7 +224,7 @@ pub fn get_key_between_delimiters<'input_string>(
 /// assert!(!key_is_root_entry_of_expression("mykey", "mykeys,.somefield.something"))
 /// assert!(!key_is_root_entry_of_expression("mykeys", "mykey.somefield.something"))
 /// ```
-pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
+fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
     expression
         .strip_prefix(key)
         .map(|rest| {
@@ -221,31 +235,13 @@ pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Determines if a key is the first part of an expression.
-///
-/// # Example:
-///
-/// ``` Rust
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey"))
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey[0]"))
-/// assert!(key_is_root_entry_of_expression("mykey", "mykey.somefield.something"))
-/// assert!(!key_is_root_entry_of_expression("mykey", "mykeys,.somefield.something"))
-/// assert!(!key_is_root_entry_of_expression("mykeys", "mykey.somefield.something"))
-/// ```
-pub fn key_is_object_root_entry_of_expression(key: &str, expression: &str) -> bool {
-    expression
-        .strip_prefix(key)
-        .map(|rest| rest.is_empty() || rest.starts_with(EXPRESSION_NESTED_DELIMITER))
-        .unwrap_or(false)
-}
-
 #[derive(Debug)]
-pub struct ExtractedVarParser {
+struct ExtractedVarParser {
     parser: Parser,
 }
 
 impl ExtractedVarParser {
-    pub fn try_new(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
+    fn try_new(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
         let parser = Parser::Exp { keys: expression.to_vec() };
         Ok(Box::new(ExtractedVarParser { parser }))
     }

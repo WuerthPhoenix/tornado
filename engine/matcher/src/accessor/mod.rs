@@ -4,9 +4,7 @@ use crate::{error::MatcherError, model::InternalEvent};
 use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
-use tornado_common_parser::{
-    is_valid_matcher_root, Parser, ParserBuilder, ParserError, ValueGetter,
-};
+use tornado_common_parser::{Parser, ParserBuilder, ValueGetter};
 
 #[derive(Default)]
 pub struct AccessorBuilder;
@@ -33,27 +31,14 @@ impl AccessorBuilder {
     pub fn build(&self, rule_name: &str, input: &str) -> Result<Accessor, MatcherError> {
         trace!("AccessorBuilder - build: build accessor [{}] for rule [{}]", input, rule_name);
 
-        let parser_builder = ParserBuilder::engine_matcher();
-        let result = match parser_builder.build_parser(input) {
-            Ok(Parser::Exp { keys }) if is_valid_matcher_root(&keys) => Ok(Parser::Exp { keys }),
-            Ok(Parser::Exp { mut keys }) => match keys.first_mut() {
-                Some(ValueGetter::Array { index }) => {
-                    Err(ParserError::UnknownKeyError { key: format!("{}", index) })
-                }
-                Some(ValueGetter::Map { key }) => {
-                    Err(ParserError::UnknownKeyError { key: std::mem::take(key) })
-                }
-                None => Err(ParserError::EmptyAccessorError),
-            },
-            res => res,
-        };
+        let parser = ParserBuilder::engine_matcher(input);
 
         trace!(
             "AccessorBuilder - build: return accessor [{:?}] for input value [{}]",
-            &result,
+            &parser,
             input
         );
-        Ok(Accessor { rule_name: rule_name.to_owned(), parser: result? })
+        Ok(Accessor { rule_name: rule_name.to_owned(), parser: parser? })
     }
 }
 

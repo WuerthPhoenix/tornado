@@ -2,13 +2,13 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
-pub struct Error {
-    kind: ErrorKind,
+pub struct RegexError {
+    kind: RegexErrorKind,
     span: Span,
 }
 
 #[wasm_bindgen]
-impl Error {
+impl RegexError {
     #[wasm_bindgen(getter)]
     pub fn kind(&self) -> String {
         format!("{:?}", self.kind)
@@ -22,7 +22,7 @@ impl Error {
 
 #[wasm_bindgen]
 #[derive(Debug, Clone, Copy)]
-pub enum ErrorKind {
+pub enum RegexErrorKind {
     CaptureLimitExceeded,
     ClassEscapeInvalid,
     ClassRangeInvalid,
@@ -78,54 +78,66 @@ pub struct Position {
     pub column: usize,
 }
 
-impl From<regex_syntax::ast::Error> for Error {
+impl From<regex_syntax::ast::Error> for RegexError {
     fn from(value: regex_syntax::ast::Error) -> Self {
         let kind = match value.kind() {
-            regex_syntax::ast::ErrorKind::CaptureLimitExceeded => ErrorKind::CaptureLimitExceeded,
-            regex_syntax::ast::ErrorKind::ClassEscapeInvalid => ErrorKind::ClassEscapeInvalid,
-            regex_syntax::ast::ErrorKind::ClassRangeInvalid => ErrorKind::ClassRangeInvalid,
-            regex_syntax::ast::ErrorKind::ClassRangeLiteral => ErrorKind::ClassRangeLiteral,
-            regex_syntax::ast::ErrorKind::ClassUnclosed => ErrorKind::ClassUnclosed,
-            regex_syntax::ast::ErrorKind::DecimalEmpty => ErrorKind::DecimalEmpty,
-            regex_syntax::ast::ErrorKind::DecimalInvalid => ErrorKind::DecimalInvalid,
-            regex_syntax::ast::ErrorKind::EscapeHexEmpty => ErrorKind::EscapeHexEmpty,
-            regex_syntax::ast::ErrorKind::EscapeHexInvalid => ErrorKind::EscapeHexInvalid,
-            regex_syntax::ast::ErrorKind::EscapeHexInvalidDigit => ErrorKind::EscapeHexInvalidDigit,
-            regex_syntax::ast::ErrorKind::EscapeUnexpectedEof => ErrorKind::EscapeUnexpectedEof,
-            regex_syntax::ast::ErrorKind::EscapeUnrecognized => ErrorKind::EscapeUnrecognized,
-            regex_syntax::ast::ErrorKind::FlagDanglingNegation => ErrorKind::FlagDanglingNegation,
-            regex_syntax::ast::ErrorKind::FlagDuplicate { .. } => ErrorKind::FlagDuplicate,
+            regex_syntax::ast::ErrorKind::CaptureLimitExceeded => {
+                RegexErrorKind::CaptureLimitExceeded
+            }
+            regex_syntax::ast::ErrorKind::ClassEscapeInvalid => RegexErrorKind::ClassEscapeInvalid,
+            regex_syntax::ast::ErrorKind::ClassRangeInvalid => RegexErrorKind::ClassRangeInvalid,
+            regex_syntax::ast::ErrorKind::ClassRangeLiteral => RegexErrorKind::ClassRangeLiteral,
+            regex_syntax::ast::ErrorKind::ClassUnclosed => RegexErrorKind::ClassUnclosed,
+            regex_syntax::ast::ErrorKind::DecimalEmpty => RegexErrorKind::DecimalEmpty,
+            regex_syntax::ast::ErrorKind::DecimalInvalid => RegexErrorKind::DecimalInvalid,
+            regex_syntax::ast::ErrorKind::EscapeHexEmpty => RegexErrorKind::EscapeHexEmpty,
+            regex_syntax::ast::ErrorKind::EscapeHexInvalid => RegexErrorKind::EscapeHexInvalid,
+            regex_syntax::ast::ErrorKind::EscapeHexInvalidDigit => {
+                RegexErrorKind::EscapeHexInvalidDigit
+            }
+            regex_syntax::ast::ErrorKind::EscapeUnexpectedEof => {
+                RegexErrorKind::EscapeUnexpectedEof
+            }
+            regex_syntax::ast::ErrorKind::EscapeUnrecognized => RegexErrorKind::EscapeUnrecognized,
+            regex_syntax::ast::ErrorKind::FlagDanglingNegation => {
+                RegexErrorKind::FlagDanglingNegation
+            }
+            regex_syntax::ast::ErrorKind::FlagDuplicate { .. } => RegexErrorKind::FlagDuplicate,
             regex_syntax::ast::ErrorKind::FlagRepeatedNegation { .. } => {
-                ErrorKind::FlagRepeatedNegation
+                RegexErrorKind::FlagRepeatedNegation
             }
-            regex_syntax::ast::ErrorKind::FlagUnexpectedEof => ErrorKind::FlagUnexpectedEof,
-            regex_syntax::ast::ErrorKind::FlagUnrecognized => ErrorKind::FlagUnrecognized,
+            regex_syntax::ast::ErrorKind::FlagUnexpectedEof => RegexErrorKind::FlagUnexpectedEof,
+            regex_syntax::ast::ErrorKind::FlagUnrecognized => RegexErrorKind::FlagUnrecognized,
             regex_syntax::ast::ErrorKind::GroupNameDuplicate { .. } => {
-                ErrorKind::GroupNameDuplicate
+                RegexErrorKind::GroupNameDuplicate
             }
-            regex_syntax::ast::ErrorKind::GroupNameEmpty => ErrorKind::GroupNameEmpty,
-            regex_syntax::ast::ErrorKind::GroupNameInvalid => ErrorKind::GroupNameInvalid,
+            regex_syntax::ast::ErrorKind::GroupNameEmpty => RegexErrorKind::GroupNameEmpty,
+            regex_syntax::ast::ErrorKind::GroupNameInvalid => RegexErrorKind::GroupNameInvalid,
             regex_syntax::ast::ErrorKind::GroupNameUnexpectedEof => {
-                ErrorKind::GroupNameUnexpectedEof
+                RegexErrorKind::GroupNameUnexpectedEof
             }
-            regex_syntax::ast::ErrorKind::GroupUnclosed => ErrorKind::GroupUnclosed,
-            regex_syntax::ast::ErrorKind::GroupUnopened => ErrorKind::GroupUnopened,
-            regex_syntax::ast::ErrorKind::NestLimitExceeded(_) => ErrorKind::NestLimitExceeded,
+            regex_syntax::ast::ErrorKind::GroupUnclosed => RegexErrorKind::GroupUnclosed,
+            regex_syntax::ast::ErrorKind::GroupUnopened => RegexErrorKind::GroupUnopened,
+            regex_syntax::ast::ErrorKind::NestLimitExceeded(_) => RegexErrorKind::NestLimitExceeded,
             regex_syntax::ast::ErrorKind::RepetitionCountInvalid => {
-                ErrorKind::RepetitionCountInvalid
+                RegexErrorKind::RepetitionCountInvalid
             }
             regex_syntax::ast::ErrorKind::RepetitionCountDecimalEmpty => {
-                ErrorKind::RepetitionCountDecimalEmpty
+                RegexErrorKind::RepetitionCountDecimalEmpty
             }
             regex_syntax::ast::ErrorKind::RepetitionCountUnclosed => {
-                ErrorKind::RepetitionCountUnclosed
+                RegexErrorKind::RepetitionCountUnclosed
             }
-            regex_syntax::ast::ErrorKind::RepetitionMissing => ErrorKind::RepetitionMissing,
-            regex_syntax::ast::ErrorKind::UnicodeClassInvalid => ErrorKind::UnicodeClassInvalid,
+            regex_syntax::ast::ErrorKind::RepetitionMissing => RegexErrorKind::RepetitionMissing,
+            regex_syntax::ast::ErrorKind::UnicodeClassInvalid => {
+                RegexErrorKind::UnicodeClassInvalid
+            }
             regex_syntax::ast::ErrorKind::UnsupportedBackreference => {
-                ErrorKind::UnsupportedBackreference
+                RegexErrorKind::UnsupportedBackreference
             }
-            regex_syntax::ast::ErrorKind::UnsupportedLookAround => ErrorKind::UnsupportedLookAround,
+            regex_syntax::ast::ErrorKind::UnsupportedLookAround => {
+                RegexErrorKind::UnsupportedLookAround
+            }
             _ => panic!(),
         };
 
@@ -146,23 +158,25 @@ impl From<regex_syntax::ast::Error> for Error {
     }
 }
 
-impl From<regex_syntax::hir::Error> for Error {
+impl From<regex_syntax::hir::Error> for RegexError {
     fn from(value: regex_syntax::hir::Error) -> Self {
         let kind = match value.kind() {
-            regex_syntax::hir::ErrorKind::UnicodeNotAllowed => ErrorKind::UnicodeNotAllowed,
-            regex_syntax::hir::ErrorKind::InvalidUtf8 => ErrorKind::InvalidUtf8,
-            regex_syntax::hir::ErrorKind::InvalidLineTerminator => ErrorKind::InvalidLineTerminator,
+            regex_syntax::hir::ErrorKind::UnicodeNotAllowed => RegexErrorKind::UnicodeNotAllowed,
+            regex_syntax::hir::ErrorKind::InvalidUtf8 => RegexErrorKind::InvalidUtf8,
+            regex_syntax::hir::ErrorKind::InvalidLineTerminator => {
+                RegexErrorKind::InvalidLineTerminator
+            }
             regex_syntax::hir::ErrorKind::UnicodePropertyNotFound => {
-                ErrorKind::UnicodePropertyNotFound
+                RegexErrorKind::UnicodePropertyNotFound
             }
             regex_syntax::hir::ErrorKind::UnicodePropertyValueNotFound => {
-                ErrorKind::UnicodePropertyValueNotFound
+                RegexErrorKind::UnicodePropertyValueNotFound
             }
             regex_syntax::hir::ErrorKind::UnicodePerlClassNotFound => {
-                ErrorKind::UnicodePerlClassNotFound
+                RegexErrorKind::UnicodePerlClassNotFound
             }
             regex_syntax::hir::ErrorKind::UnicodeCaseUnavailable => {
-                ErrorKind::UnicodeCaseUnavailable
+                RegexErrorKind::UnicodeCaseUnavailable
             }
             _ => panic!(),
         };

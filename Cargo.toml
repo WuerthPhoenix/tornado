@@ -45,6 +45,10 @@ members = [
 debug = true
 #lto = true
 
+[profile.release.package.tornado-input-validation]
+opt-level = "z"
+debug = false
+
 # To perform a CPU specific build, launch cargo with RUSTFLAGS='-C target-cpu=native'
 # E.g.:
 # > RUSTFLAGS='-C target-cpu=native' cargo bench

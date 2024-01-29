@@ -1,4 +1,4 @@
-use crate::regex::error::Error;
+use crate::regex::error::RegexError;
 use regex_syntax::hir::{Hir, HirKind};
 use wasm_bindgen::prelude::*;
 
@@ -8,7 +8,7 @@ mod error;
 pub struct RegexValidationResult {
     pub is_valid: bool,
     pub has_named_groups: bool,
-    pub error: Option<Error>,
+    pub error: Option<RegexError>,
 }
 
 #[wasm_bindgen]
