@@ -35,7 +35,7 @@ members = [
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
    "tornado/sms_collector",
-   "tornado-regex-validation"
+   "tornado-input-validation"
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
