@@ -8,6 +8,7 @@ use regex::Regex;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::convert::identity;
 use std::fmt::Debug;
 use thiserror::Error;
 use tornado_common_types::ValueGet;
@@ -61,6 +62,19 @@ impl ParserBuilder {
         self
     }
 
+    pub fn is_ignored_extractor(&self, extractor: &str) -> bool {
+        extractor
+            .strip_prefix("${")
+            .and_then(|rest| rest.strip_suffix("}"))
+            .map(|rest| {
+                self.ignored_expressions
+                    .iter()
+                    .map(|expr| key_is_root_entry_of_expression(expr, rest))
+                    .any(identity)
+            })
+            .unwrap_or(false)
+    }
+
     pub fn engine_matcher() -> ParserBuilder {
         ParserBuilder::default()
             .add_parser_factory(
@@ -75,7 +89,7 @@ impl ParserBuilder {
 
         if template.is_interpolator() {
             Ok(Parser::Interpolator { interpolator: StringInterpolator::build(template, self)? })
-        } else if template.is_accessor() {
+        } else if template.is_accessor() && !self.is_ignored_extractor(template_string) {
             self.parse_expression(template_string)
         } else {
             Ok(Parser::Val(Value::String(template_string.to_owned())))
@@ -83,7 +97,7 @@ impl ParserBuilder {
     }
 
     pub fn parse_expression(&self, keys: &str) -> Result<Parser, ParserError> {
-        let expression = &keys[1..keys.len() - 1];
+        let expression = &keys[2..keys.len() - 1];
 
         for (key, factory) in &self.custom_parser_factories {
             let custom_key_start = format! {"{}{}", key, EXPRESSION_NESTED_DELIMITER};
@@ -212,6 +226,24 @@ pub fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Determines if a key is the first part of an expression.
+///
+/// # Example:
+///
+/// ``` Rust
+/// assert!(key_is_root_entry_of_expression("mykey", "mykey"))
+/// assert!(key_is_root_entry_of_expression("mykey", "mykey[0]"))
+/// assert!(key_is_root_entry_of_expression("mykey", "mykey.somefield.something"))
+/// assert!(!key_is_root_entry_of_expression("mykey", "mykeys,.somefield.something"))
+/// assert!(!key_is_root_entry_of_expression("mykeys", "mykey.somefield.something"))
+/// ```
+pub fn key_is_object_root_entry_of_expression(key: &str, expression: &str) -> bool {
+    expression
+        .strip_prefix(key)
+        .map(|rest| rest.is_empty() || rest.starts_with(EXPRESSION_NESTED_DELIMITER))
+        .unwrap_or(false)
+}
+
 #[derive(Debug)]
 pub struct ExtractedVarParser {
     parser: Parser,
@@ -247,7 +279,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_type() {
         // Act
-        let parser = ParserBuilder::<()>::default().build_parser("  hello world  ").unwrap();
+        let parser = ParserBuilder::default().build_parser("  hello world  ").unwrap();
 
         // Assert
         match parser {
@@ -261,7 +293,7 @@ mod test {
     #[test]
     fn parser_builder_should_return_value_exp() {
         // Act
-        let parser = ParserBuilder::<()>::default().build_parser("${hello.world}").unwrap();
+        let parser = ParserBuilder::default().build_parser("${hello.world}").unwrap();
 
         // Assert
         match parser {
@@ -275,7 +307,7 @@ mod test {
     #[test]
     fn parser_text_should_return_static_text() {
         // Arrange
-        let parser = Parser::<()>::Val(Value::String("hello world".to_owned()));
+        let parser = Parser::Val(Value::String("hello world".to_owned()));
         let json = r#"
         {
             "level_one": {
@@ -286,7 +318,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -307,7 +339,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -328,7 +360,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_none());
@@ -348,7 +380,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_none());
@@ -366,7 +398,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -385,7 +417,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -405,7 +437,7 @@ mod test {
         let value: Value = serde_json::from_str(json).unwrap();
 
         // Act
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -430,7 +462,7 @@ mod test {
 
         // Act
         let value: Value = serde_json::from_str(json).unwrap();
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -456,7 +488,7 @@ mod test {
         let value: Value = serde_json::from_str(json).unwrap();
 
         // Act
-        let result = parser.parse_value(&value, &());
+        let result = parser.parse_value(&value, "");
 
         // Assert
         assert!(result.is_some());
@@ -466,29 +498,29 @@ mod test {
     #[test]
     fn builder_should_parse_a_payload_key() {
         let expected: Vec<ValueGetter> = vec!["one".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys("one").unwrap());
+        assert_eq!(expected, Parser::parse_keys("one").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys("one.two").unwrap());
+        assert_eq!(expected, Parser::parse_keys("one.two").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys("one.two.").unwrap());
+        assert_eq!(expected, Parser::parse_keys("one.two.").unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys(r#"one."""#).unwrap());
+        assert_eq!(expected, Parser::parse_keys(r#"one."""#).unwrap());
 
         let expected: Vec<ValueGetter> = vec!["one".into(), "two".into(), "th ir.d".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys(r#"one.two."th ir.d""#).unwrap());
+        assert_eq!(expected, Parser::parse_keys(r#"one.two."th ir.d""#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
+        assert_eq!(expected, Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
         assert_eq!(
             expected,
-            Parser::<()>::parse_keys(r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#)
+            Parser::parse_keys(r#"payload.oids."SNMPv2-SMI::enterprises.14848.2.1.1.6.0""#)
                 .unwrap()
         );
     }
@@ -496,7 +528,7 @@ mod test {
     #[test]
     fn payload_key_parser_should_fail_if_key_contains_double_quotes() {
         // Act
-        let result = Parser::<()>::parse_keys(r#"o"ne"#);
+        let result = Parser::parse_keys(r#"o"ne"#);
 
         // Assert
         assert!(result.is_err());
@@ -505,7 +537,7 @@ mod test {
     #[test]
     fn payload_key_parser_should_fail_if_key_does_not_contain_both_trailing_and_ending_quotes() {
         // Act
-        let result = Parser::<()>::parse_keys(r#"one."two"#);
+        let result = Parser::parse_keys(r#"one."two"#);
 
         // Assert
         assert!(result.is_err());
@@ -514,33 +546,33 @@ mod test {
     #[test]
     fn builder_parser_should_return_empty_vector_if_no_matches() {
         let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, Parser::<()>::parse_keys("").unwrap())
+        assert_eq!(expected, Parser::parse_keys("").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_empty_vector_if_single_dot() {
         let expected: Vec<ValueGetter> = vec![];
-        assert_eq!(expected, Parser::<()>::parse_keys(".").unwrap())
+        assert_eq!(expected, Parser::parse_keys(".").unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_ignore_trailing_dot() {
         let expected: Vec<ValueGetter> = vec!["hello".into(), "world".into()];
-        assert_eq!(expected, Parser::<()>::parse_keys(".hello.world").unwrap())
+        assert_eq!(expected, Parser::parse_keys(".hello.world").unwrap())
     }
 
     #[test]
     fn builder_parser_should_not_return_array_reader_if_within_double_quotes() {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world[11]".into(), "inner".into(), 0.into()];
-        assert_eq!(expected, Parser::<()>::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap())
+        assert_eq!(expected, Parser::parse_keys(r#"hello."world[11]".inner[0]"#).unwrap())
     }
 
     #[test]
     fn builder_parser_should_return_array_reader() {
         let expected: Vec<ValueGetter> =
             vec!["hello".into(), "world".into(), 11.into(), "inner".into(), 0.into()];
-        assert_eq!(expected, Parser::<()>::parse_keys("hello.world[11].inner[0]").unwrap())
+        assert_eq!(expected, Parser::parse_keys("hello.world[11].inner[0]").unwrap())
     }
 
     #[test]
@@ -555,7 +587,7 @@ mod test {
         map.insert("key", &value);
 
         // Act
-        let result = parser.parse_value(&map, &());
+        let result = parser.parse_value(&map, "");
 
         // Assert
         assert!(result.is_some());
@@ -565,7 +597,7 @@ mod test {
     #[test]
     fn builder_should_register_and_use_a_custom_parser() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
+        let parser = ParserBuilder::default()
             .add_parser_factory("custom_key".to_owned(), Box::new(custom_parser))
             .build_parser("${custom_key.something.else}")
             .unwrap();
@@ -579,7 +611,7 @@ mod test {
         });
 
         // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let result = parser.parse_value(&map, "custom_context").unwrap();
 
         // Assert
         assert_eq!(&json!({"one": 1, "two": 2 }), result.as_ref());
@@ -588,26 +620,16 @@ mod test {
     #[test]
     fn builder_should_register_and_use_an_ignored_expressions_if_expression_is_equal_to_ignored() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
-            .add_ignored_expression("ignored_expr".to_owned())
-            .build_parser("${ignored_expr}")
-            .unwrap();
-
-        let map = json!({
-            "key": true,
-        });
-
-        // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let parser = ParserBuilder::default().add_ignored_expression("ignored_expr".to_owned());
 
         // Assert
-        assert_eq!(&json!("${ignored_expr}"), result.as_ref());
+        assert!(parser.is_ignored_extractor("${ignored_expr}"))
     }
 
     #[test]
     fn builder_should_register_and_use_an_ignored_expressions_if_expression_starts_with_ignored() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
+        let parser = ParserBuilder::default()
             .add_ignored_expression("ignored_expr".to_owned())
             .build_parser("${ignored_expr.something}")
             .unwrap();
@@ -617,7 +639,7 @@ mod test {
         });
 
         // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let result = parser.parse_value(&map, "custom_context").unwrap();
 
         // Assert
         assert_eq!(&json!("${ignored_expr.something}"), result.as_ref());
@@ -626,7 +648,7 @@ mod test {
     #[test]
     fn builder_should_register_and_use_an_ignored_expressions_if_interpolated() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
+        let parser = ParserBuilder::default()
             .add_ignored_expression("ignored_expr".to_owned())
             .build_parser("my ignored expression is ${ignored_expr.something}!!")
             .unwrap();
@@ -636,7 +658,7 @@ mod test {
         });
 
         // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let result = parser.parse_value(&map, "custom_context").unwrap();
 
         // Assert
         assert_eq!(&json!("my ignored expression is ${ignored_expr.something}!!"), result.as_ref());
@@ -645,7 +667,7 @@ mod test {
     #[test]
     fn builder_should_register_and_use_an_ignored_expressions_if_accessed_as_array() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
+        let parser = ParserBuilder::default()
             .add_ignored_expression("ignored_expr".to_owned())
             .build_parser("my ignored expression is ${ignored_expr[0].something}!!")
             .unwrap();
@@ -655,7 +677,7 @@ mod test {
         });
 
         // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let result = parser.parse_value(&map, "custom_context").unwrap();
 
         // Assert
         assert_eq!(
@@ -667,21 +689,18 @@ mod test {
     #[test]
     fn key_is_root_entry_of_expression_should_evaluate() {
         // Assert
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey"));
-        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "somekeyss"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey.something"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression("somekey", "somekey[0]"));
-        assert!(Parser::<String>::key_is_root_entry_of_expression(
-            "somekey",
-            "somekey[0].something"
-        ));
-        assert!(!Parser::<String>::key_is_root_entry_of_expression("somekey", "some[0].something"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey"));
+        assert!(!key_is_root_entry_of_expression("somekey", "somekeyss"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey.something"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey[0]"));
+        assert!(key_is_root_entry_of_expression("somekey", "somekey[0].something"));
+        assert!(!key_is_root_entry_of_expression("somekey", "some[0].something"));
     }
 
     #[test]
     fn builder_should_evaluate_expression_if_not_ignored() {
         // Arrange
-        let parser = ParserBuilder::<String>::default()
+        let parser = ParserBuilder::default()
             .add_ignored_expression("ignored_expr".to_owned())
             .build_parser("${not_ignored_expr.something}")
             .unwrap();
@@ -694,7 +713,7 @@ mod test {
         });
 
         // Act
-        let result = parser.parse_value(&map, &"custom_context".to_owned()).unwrap();
+        let result = parser.parse_value(&map, "custom_context").unwrap();
 
         // Assert
         assert_eq!(&json!(1), result.as_ref());
@@ -705,14 +724,14 @@ mod test {
         pub expression: String,
     }
 
-    impl CustomParser<String> for MyParser {
-        fn parse_value<'o>(&'o self, value: &'o Value, context: &String) -> Option<Cow<'o, Value>> {
-            assert_eq!("custom_context", context.as_str());
+    impl CustomParser for MyParser {
+        fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>> {
+            assert_eq!("custom_context", context);
             Some(Cow::Borrowed(value))
         }
     }
 
-    fn custom_parser(expression: &str) -> Result<Box<dyn CustomParser<String>>, ParserError> {
+    fn custom_parser(expression: &str) -> Result<Box<dyn CustomParser>, ParserError> {
         println!("build custom parser with expression: [{}]", expression);
         Ok(Box::new(MyParser { expression: expression.to_owned() }))
     }

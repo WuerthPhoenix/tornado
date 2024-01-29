@@ -9,13 +9,14 @@ use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
 pub use crate::parser::{
-    key_is_root_entry_of_expression, ExtractedVarParser, Parser, ParserBuilder, ParserError,
-    EXTRACTED_VARIABLES_KEY,
+    key_is_object_root_entry_of_expression, key_is_root_entry_of_expression, ExtractedVarParser,
+    Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY,
 };
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
 pub const FOREACH_ITEM_KEY: &str = "item";
+pub const EVENT_KEY: &str = "event";
 
 lazy_static! {
     static ref RE: Regex =
@@ -87,5 +88,22 @@ impl From<&str> for ValueGetter {
 impl From<usize> for ValueGetter {
     fn from(index: usize) -> Self {
         ValueGetter::Array { index }
+    }
+}
+
+pub fn is_valid_matcher_root(keys: &[ValueGetter]) -> bool {
+    match keys {
+        [ValueGetter::Map { key }, ..] if key == FOREACH_ITEM_KEY => true,
+        [ValueGetter::Map { key }] | [ValueGetter::Map { key }, ValueGetter::Map { .. }, ..]
+            if key == EVENT_KEY =>
+        {
+            true
+        }
+        [ValueGetter::Map { key }, ValueGetter::Map { .. }, ..]
+            if key == EXTRACTED_VARIABLES_KEY =>
+        {
+            true
+        }
+        _ => false,
     }
 }
