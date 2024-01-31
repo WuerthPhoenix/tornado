@@ -27,4 +27,4 @@ tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
 actix-web.workspace = true
-maplit = "1.0"
+maplit.workspace = true

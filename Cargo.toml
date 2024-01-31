@@ -76,6 +76,7 @@ tracing = "0.1"
 opentelemetry = { version = "0.16", features = ["rt-tokio"] }
 async-trait = "0.1"
 lazy_static = "1.4"
+maplit = "1.0"
 
 actix = "0.13"
 actix-web = "4.4"
