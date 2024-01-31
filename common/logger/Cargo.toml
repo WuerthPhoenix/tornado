@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "1"
-base64 = "0.21"
+base64.workspace = true
 chrono.workspace = true
 log.workspace = true
 opentelemetry = { version = "0.16", features = ["rt-tokio"] }

@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-base64 = "0.21"
+base64.workspace = true
 log.workspace = true
 mailparse = "0.13"
 serde_json.workspace = true
