@@ -12,7 +12,7 @@ log.workspace = true
 tracing.workspace = true
 tracing-opentelemetry = "0.16"
 percent-encoding = "2.1"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

@@ -13,7 +13,7 @@ config_rs = { version = "0.11", package = "config", default-features = false, fe
 futures = "0.3"
 log.workspace = true
 tracing.workspace = true
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "stream"]}
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
