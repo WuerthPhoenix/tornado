@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
-log = "0.4"
+log.workspace = true
 serde_json.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }

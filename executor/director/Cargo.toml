@@ -9,7 +9,7 @@ edition = "2018"
 [dependencies]
 async-trait = "0.1"
 base64 = "0.21"
-log = "0.4"
+log.workspace = true
 tracing = "0.1"
 tracing-opentelemetry = "0.16"
 maplit = "1.0"

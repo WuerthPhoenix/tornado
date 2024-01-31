@@ -9,7 +9,7 @@ actix = "0.12"
 async-channel = "1.6"
 async-trait = "0.1"
 futures-util = { version = "0.3", default-features = false, features=["std"]}
-log = "0.4"
+log.workspace = true
 opentelemetry = "0.16"
 serde.workspace = true
 serde_json.workspace = true

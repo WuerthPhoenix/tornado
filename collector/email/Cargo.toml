@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.21"
-log = "0.4"
+log.workspace = true
 mailparse = "0.13"
 serde_json.workspace = true
 tornado_collector_common = { path = "../common", version = "0.0.1" }
