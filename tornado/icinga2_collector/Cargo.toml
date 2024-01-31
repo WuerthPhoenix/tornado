@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 actix = "0.12"
 actix-rt = "2.2"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
 futures = "0.3"

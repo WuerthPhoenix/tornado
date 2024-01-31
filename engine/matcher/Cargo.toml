@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 async-trait = "0.1"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono.workspace = true
 chrono-tz = "0.7.0"
 fs_extra = "1.2"
 lazy_static = "1.4"
@@ -29,7 +29,7 @@ tracing-opentelemetry = "0.16"
 tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
 [dev-dependencies]
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+chrono.workspace = true
 criterion = "0.3"
 maplit = "1.0"
 opentelemetry = "0.16"
