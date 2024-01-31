@@ -18,7 +18,7 @@ serde.workspace = true
 serde_json.workspace = true
 tempfile = "3"
 thiserror.workspace = true
-tokio = { version = "1", features = ["io-util", "fs", "rt"] }
+tokio.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
@@ -33,7 +33,7 @@ chrono.workspace = true
 criterion = "0.3"
 maplit = "1.0"
 opentelemetry.workspace = true
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio.workspace = true
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
 

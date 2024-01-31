@@ -81,3 +81,4 @@ actix = "0.13"
 actix-web = "4.4"
 tracing-actix-web = "0.7"
 tokio-util = { version = "0.7", features = ["codec", "compat"] }
+tokio = { version = "1.35", features = ["full"] }

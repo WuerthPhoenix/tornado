@@ -32,6 +32,6 @@ tracing-opentelemetry = "0.16"
 rand = "0.8"
 serial_test = "0.5"
 tempfile = "3"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio.workspace = true
 tornado_common_api = { path = "../api", version = "0.0.1" }
 
