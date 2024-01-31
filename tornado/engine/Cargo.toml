@@ -21,7 +21,7 @@ regex = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 serde_regex = "1.1"
-thiserror = "1.0"
+thiserror.workspace = true
 tokio = { version = "1", features = ["sync"] }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

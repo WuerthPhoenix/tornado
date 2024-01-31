@@ -7,5 +7,5 @@ authors = [
 edition = "2018"
 
 [dependencies]
-thiserror = "1.0"
+thiserror.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

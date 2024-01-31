@@ -11,5 +11,5 @@ async-trait = "0.1"
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-thiserror = "1.0"
+thiserror.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

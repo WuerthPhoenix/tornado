@@ -14,7 +14,7 @@ log.workspace = true
 tracing = "0.1"
 serde.workspace = true
 serde_json.workspace = true
-thiserror = "1.0"
+thiserror.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }

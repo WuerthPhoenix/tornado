@@ -11,7 +11,7 @@ log.workspace = true
 serde.workspace = true
 chrono.workspace = true
 serde_json.workspace = true
-thiserror = "1"
+thiserror.workspace = true
 tokio = { version = "1" }
 tracing = "0.1"
 tracing-futures = "0.2"
