@@ -74,6 +74,7 @@ thiserror = "1"
 base64 = "0.21"
 tracing = "0.1"
 opentelemetry = { version = "0.16", features = ["rt-tokio"] }
+async-trait = "0.1"
 
 actix = "0.13"
 actix-web = "4.4"
