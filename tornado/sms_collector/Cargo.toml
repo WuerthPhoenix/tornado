@@ -13,7 +13,7 @@ chrono.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1" }
-tracing = "0.1"
+tracing.workspace = true
 tracing-futures = "0.2"
 tracing-opentelemetry = "0.16.0"
 opentelemetry = "0.16"

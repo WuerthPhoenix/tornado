@@ -72,3 +72,4 @@ log = "0.4"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 thiserror = "1"
 base64 = "0.21"
+tracing = "0.1"

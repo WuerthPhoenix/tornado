@@ -14,7 +14,7 @@ chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
 log.workspace = true
-tracing = "0.1"
+tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
