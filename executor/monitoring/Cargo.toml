@@ -10,7 +10,7 @@ edition = "2018"
 async-trait = "0.1"
 log = "0.4"
 serde.workspace = true
-serde_json = { version = "1.0" }
+serde_json.workspace = true
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../icinga2", version = "0.0.1" }
 tornado_executor_director = { path = "../director", version = "0.0.1" }

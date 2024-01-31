@@ -15,7 +15,7 @@ base64 = "0.21"
 json-patch = "0.2"
 log = "0.4"
 serde.workspace = true
-serde_json = "1.0"
+serde_json.workspace = true
 thiserror = "1.0"
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_api_dto = { path = "../engine_api_dto", version = "0.0.1" }
