@@ -1827,10 +1827,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b71991ff56294aa922b450139ee08b3bfc70982c6b2c7562771375cf73542dd4"
 
 [[package]]
-name = "jmespatch"
+name = "jmespath"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7acf91a732ade34d8eda2dee9500a051833f14f0d3d10d77c149845d6ac6a5f0"
+checksum = "017f8f53dd3b8ada762acb1f850da2a742d0ef3f921c60849a644380de1d683a"
 dependencies = [
  "lazy_static",
  "serde",
@@ -3962,7 +3962,7 @@ dependencies = [
 name = "tornado_collector_jmespath"
 version = "0.0.1"
 dependencies = [
- "jmespatch",
+ "jmespath",
  "log",
  "serde",
  "serde_json",
