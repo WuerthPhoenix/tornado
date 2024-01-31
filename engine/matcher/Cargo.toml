@@ -32,7 +32,7 @@ tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 chrono.workspace = true
 criterion = "0.3"
 maplit = "1.0"
-opentelemetry = "0.16"
+opentelemetry.workspace = true
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }

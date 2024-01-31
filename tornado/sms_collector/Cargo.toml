@@ -16,7 +16,7 @@ tokio = { version = "1" }
 tracing.workspace = true
 tracing-futures = "0.2"
 tracing-opentelemetry = "0.16.0"
-opentelemetry = "0.16"
+opentelemetry.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }

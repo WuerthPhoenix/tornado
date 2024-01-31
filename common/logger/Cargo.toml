@@ -11,7 +11,7 @@ arc-swap = "1"
 base64.workspace = true
 chrono.workspace = true
 log.workspace = true
-opentelemetry = { version = "0.16", features = ["rt-tokio"] }
+opentelemetry.workspace = true
 opentelemetry-semantic-conventions = "0.8"
 opentelemetry-otlp = { version = "0.9", features = ["tonic", "tls", "tls-roots"] }
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
