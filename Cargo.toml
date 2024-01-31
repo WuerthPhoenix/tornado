@@ -64,3 +64,5 @@ debug = true
 # bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
 regex-syntax = "0.7.4"
 regex = "1.9.1"
+
+serde = { version = "1.0", features = ['derive'] }

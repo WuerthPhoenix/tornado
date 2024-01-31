@@ -19,7 +19,7 @@ tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
 
 [dev-dependencies]
-serde = "1.0"
+serde.workspace = true
 serde_json = "1.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }

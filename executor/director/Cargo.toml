@@ -14,7 +14,7 @@ tracing = "0.1"
 tracing-opentelemetry = "0.16"
 maplit = "1.0"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots"]}
-serde = { version = "1.0", features = ['derive'] }
+serde.workspace = true
 serde_json = { version = "1.0" }
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

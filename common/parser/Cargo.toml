@@ -9,7 +9,7 @@ edition = "2018"
 tornado_common_types = { path = "../types" }
 lazy_static = "1.4"
 regex = { workspace = true }
-serde = "1.0"
+serde.workspace = true
 serde_json = "1.0"
 thiserror = "1.0"
 
