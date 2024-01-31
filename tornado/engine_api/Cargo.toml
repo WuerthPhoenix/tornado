@@ -23,6 +23,6 @@ tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 
 [dev-dependencies]
 actix-rt = "2.2"
-lazy_static = "1.4"
+lazy_static.workspace = true
 rand = "0.8"
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
