@@ -25,7 +25,7 @@ tornado_common_metrics = { path = "../../common/metrics", version = "0.0.1" }
 tornado_executor_common = { path = "../../executor/common", version = "0.0.1" }
 tracing.workspace = true
 tracing-futures = "0.2"
-tracing-opentelemetry = "0.16.0"
+tracing-opentelemetry.workspace = true
 
 # Feature nats
 async-nats = { version = "0.10", optional = true }

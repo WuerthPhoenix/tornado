@@ -18,6 +18,6 @@ opentelemetry.workspace = true
 tornado_common_logger = { path = "../logger", version = "0.0.1" }
 tornado_common_types = { path = "../types" }
 tracing.workspace = true
-tracing-opentelemetry = "0.16"
+tracing-opentelemetry.workspace = true
 
 [dev-dependencies]
