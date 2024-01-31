@@ -75,3 +75,7 @@ base64 = "0.21"
 tracing = "0.1"
 opentelemetry = { version = "0.16", features = ["rt-tokio"] }
 
+actix = "0.13"
+actix-web = "4.4"
+tracing-actix-web = "0.7"
+tokio-util = { version = "0.7", features = ["codec", "compat"] }

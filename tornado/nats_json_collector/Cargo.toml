@@ -8,7 +8,7 @@ edition = "2018"
 nats_integration_tests = []
 
 [dependencies]
-actix = "0.12"
+actix.workspace = true
 actix-rt = "2.2"
 chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }

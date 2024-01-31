@@ -5,7 +5,7 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix = "0.12"
+actix.workspace = true
 actix-rt = "2.2"
 chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
@@ -18,7 +18,7 @@ serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1" }
-tokio-util = { version = "0.6", features = ["compat"] }
+tokio-util.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
@@ -26,5 +26,5 @@ tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
 
 [dev-dependencies]
-actix-web = "4.0.0-beta.9"
+actix-web.workspace = true
 maplit = "1.0"

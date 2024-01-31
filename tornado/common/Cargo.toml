@@ -5,7 +5,7 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix = "0.12"
+actix.workspace = true
 async-channel = "1.6"
 async-trait = "0.1"
 futures-util = { version = "0.3", default-features = false, features=["std"]}
@@ -16,7 +16,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio = { version = "1", features = ["net", "time"] }
 tokio-stream = { version = "0.1", features = ["net"] }
-tokio-util = { version = "0.6", features = ["codec"] }
+tokio-util.workspace = true
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_json = { path = "../../collector/json", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
