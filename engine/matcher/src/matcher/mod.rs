@@ -2557,10 +2557,8 @@ mod test {
     }
 
     fn new_filter<O: Into<Option<Operator>>>(filter: O) -> Filter {
-        let filter = filter
-            .into()
-            .map(Defaultable::Value)
-            .unwrap_or_else(|| Defaultable::Default {});
+        let filter =
+            filter.into().map(Defaultable::Value).unwrap_or_else(|| Defaultable::Default {});
         Filter { active: true, description: "".to_owned(), filter }
     }
 }

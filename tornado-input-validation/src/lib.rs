@@ -1,3 +1,5 @@
+#![allow(clippy::enum_variant_names)]
+
 mod accessor;
 mod regex;
 

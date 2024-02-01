@@ -32,7 +32,7 @@ pub struct ApiClient {
 impl DirectorClientConfig {
     pub fn new_client(&self) -> Result<ApiClient, ExecutorError> {
         let auth = format!("{}:{}", self.username, self.password);
-        let http_auth_header = format!("Basic {}", base64.encode(&auth));
+        let http_auth_header = format!("Basic {}", base64.encode(auth));
 
         let mut client_builder = Client::builder()
             .use_rustls_tls()

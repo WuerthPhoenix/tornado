@@ -118,7 +118,7 @@ async fn execute_collector(
 
     // Instantiate tracing for the event
     let trace_id = full_event_message.get_trace_id_for_logging(&span.context());
-    span.record("trace_id", &trace_id.as_ref());
+    span.record("trace_id", trace_id.as_ref());
     let trace_context_propagator = TraceContextPropagator::new();
     let trace_context =
         TelemetryContextInjector::get_trace_context_map(&span.context(), &trace_context_propagator);

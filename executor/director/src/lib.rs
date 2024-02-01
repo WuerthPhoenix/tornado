@@ -119,7 +119,7 @@ impl DirectorExecutor {
 
         trace!("DirectorExecutor - calling url: {}", url);
 
-        let payload = serde_json::to_value(&director_action.payload)?;
+        let payload = serde_json::to_value(director_action.payload)?;
 
         let response = match client
             .post(&url)

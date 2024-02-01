@@ -105,8 +105,10 @@ impl<Message, Output, C: CommandMut<Message, Output>> CommandMutWrapper<Message,
 }
 
 #[async_trait::async_trait(?Send)]
+#[allow(clippy::await_holding_refcell_ref)]
 impl<I, O, T: CommandMut<I, O>> Command<I, O> for CommandMutWrapper<I, O, T> {
     async fn execute(&self, message: I) -> O {
+        // this is valid because the executor schedules it for us.
         let mut command = self.command.borrow_mut();
         command.execute(message).await
     }
