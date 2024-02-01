@@ -474,7 +474,7 @@ mod test {
             ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
         let json = r#"
         {
-            "key": ["one", true, 13]
+            "key": ["one", true, 13.0]
         }
         "#;
 
@@ -578,7 +578,7 @@ mod test {
             ParserBuilder::default().build_parser("${key[0]} - ${key[1]} - ${key[2]}").unwrap();
 
         let value =
-            Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13)]);
+            Value::Array(vec![Value::String("one".to_owned()), Value::Bool(true), json!(13.0)]);
         let mut map = HashMap::new();
         map.insert("key", &value);
 

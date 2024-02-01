@@ -3330,9 +3330,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.113"
+version = "1.0.84"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "69801b70b1c3dac963ecb03a364ba0ceda9cf60c71cfe475e99864759c8b8a79"
+checksum = "d4f86b279ded49a29018bdf9c7436a9473296cef8d4a310614fa402854f48f5d"
 dependencies = [
  "itoa 1.0.10",
  "ryu",
