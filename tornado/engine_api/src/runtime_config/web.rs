@@ -152,7 +152,7 @@ mod test {
             .to_request();
 
         let dto: tornado_engine_api_dto::runtime_config::LoggerConfigDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
 
         // Assert
         assert!(!dto.level.is_empty());

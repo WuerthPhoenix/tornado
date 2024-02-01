@@ -936,7 +936,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
 
         assert_eq!(
             MatcherConfigDto::Filter {
@@ -994,7 +994,7 @@ mod test {
 
         // Assert
         let dto: tornado_engine_api_dto::config::MatcherConfigDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
 
         assert_eq!(
             tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {

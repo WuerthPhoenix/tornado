@@ -51,7 +51,7 @@ fn is_regenerate_ts_file() -> Result<bool, Box<dyn std::error::Error>> {
 // Reads the content of the current ts file from the file system
 fn read_ts_file() -> String {
     let path = format!("{}/{}", TS_OUTPUT_DIR, TS_OUTPUT_FILE);
-    if let Ok(txt) = read_to_string(&path) {
+    if let Ok(txt) = read_to_string(path) {
         txt
     } else {
         "".to_owned()
