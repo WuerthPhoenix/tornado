@@ -16,11 +16,11 @@ pub fn arg_matches() -> ArgMatches {
     App::new("tornado_nats_json_collector")
         .arg(Arg::new("config-dir")
             .long("config-dir")
-            .about("The filesystem folder where the Tornado Nats JSON collector configuration is saved")
+            .help("The filesystem folder where the Tornado Nats JSON collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_nats_json_collector")))
         .arg(Arg::new("topics-dir")
             .long("topics-dir")
-            .about("The folder where the topics Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .help("The folder where the topics Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/topics/"))
         .get_matches()
 }

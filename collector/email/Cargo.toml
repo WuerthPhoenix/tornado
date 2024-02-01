@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-mailparse = "0.13"
+mailparse = "0.13.6"
 
 base64.workspace = true
 log.workspace = true

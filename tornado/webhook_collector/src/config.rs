@@ -15,11 +15,11 @@ pub fn arg_matches() -> ArgMatches {
     App::new("tornado_webhook_collector")
         .arg(Arg::new("config-dir")
             .long("config-dir")
-            .about("The filesystem folder where the Tornado Webhook collector configuration is saved")
+            .help("The filesystem folder where the Tornado Webhook collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_webhook_collector")))
         .arg(Arg::new("webhooks-dir")
             .long("webhooks-dir")
-            .about("The folder where the Webhooks Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .help("The folder where the Webhooks Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/webhooks/"))
         .get_matches()
 }
