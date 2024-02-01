@@ -7,9 +7,11 @@ authors = [
 edition = "2018"
 
 [dependencies]
-log.workspace = true
 jmespath = "0.3.0"
+
+log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+
 tornado_collector_common = { path = "../common", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

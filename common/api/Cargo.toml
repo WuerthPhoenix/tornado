@@ -8,16 +8,18 @@ authors = [
 edition = "2018"
 
 [dependencies]
-chrono.workspace = true
 num-cmp = "0.1"
+uuid = { version = "1.3", default-features = false, features = ["v4"] }
+
+chrono.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-uuid = { version = "1.3", default-features = false, features = ["v4"] }
 opentelemetry.workspace = true
-tornado_common_logger = { path = "../logger", version = "0.0.1" }
-tornado_common_types = { path = "../types" }
 tracing.workspace = true
 tracing-opentelemetry.workspace = true
+
+tornado_common_logger = { path = "../logger", version = "0.0.1" }
+tornado_common_types = { path = "../types" }
 
 [dev-dependencies]

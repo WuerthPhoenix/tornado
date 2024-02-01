@@ -59,27 +59,29 @@ debug = true
 #lto = true
 
 [workspace.dependencies]
+async-trait = "0.1"
+base64 = "0.21"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+lazy_static = "1.4"
+maplit = "1.0"
+# reqwest features required to enable system level certificates to be used by tracing-elastic-apm
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "stream"]}
+thiserror = "1"
+
+serde = { version = "1.0", features = ['derive'] }
+serde_json = "1.0"
+
+log = "0.4"
+tracing = "0.1"
+tracing-opentelemetry = "0.16"
+opentelemetry = { version = "0.16", features = ["rt-tokio"] }
 
 # Important: Always keep the versions of these two in sync in order to prevent
 # bugs in the tornado carbon frontend. In case of update rememeber to rebuild also tornado fronted.
 regex-syntax = "0.7.4"
 regex = "1.9.1"
 
-serde = { version = "1.0", features = ['derive'] }
-serde_json = "1.0"
-log = "0.4"
-
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
-thiserror = "1"
-base64 = "0.21"
-tracing = "0.1"
-opentelemetry = { version = "0.16", features = ["rt-tokio"] }
-async-trait = "0.1"
-lazy_static = "1.4"
-maplit = "1.0"
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "stream"]}
-tracing-opentelemetry = "0.16"
-
+# These dependencies will probably be updated together.
 actix = "0.13"
 actix-web = "4.4"
 tracing-actix-web = "0.7"

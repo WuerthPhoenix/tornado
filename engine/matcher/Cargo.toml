@@ -7,33 +7,36 @@ authors = [
 edition = "2018"
 
 [dependencies]
-async-trait.workspace = true
-chrono.workspace = true
+tempfile = "3"
 chrono-tz = "0.8.5"
 fs_extra = "1.2"
+
+async-trait.workspace = true
+chrono.workspace = true
 lazy_static.workspace = true
 log.workspace = true
 regex = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
-tempfile = "3"
 thiserror.workspace = true
 tokio.workspace = true
+tracing.workspace = true
+tracing-opentelemetry.workspace = true
+
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_parser = { path = "../../common/parser", version = "0.0.1" }
 tornado_network_common = { path = "../../network/common", version = "0.0.1" }
-#typescript-definitions = "0.1.10"
 typescript-definitions = { package = "typescript-definitions-ufo-patch", version = "0.1.11" }
-tracing.workspace = true
-tracing-opentelemetry.workspace = true
 tornado_common = { path = "../../tornado/common", version = "0.0.1" }
 
 [dev-dependencies]
-chrono.workspace = true
 criterion = "0.3"
+
+chrono.workspace = true
 maplit.workspace = true
 opentelemetry.workspace = true
 tokio.workspace = true
+
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_network_simple = { path = "../../network/simple", version = "0.0.1" }
 

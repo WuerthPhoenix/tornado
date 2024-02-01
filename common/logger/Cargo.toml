@@ -8,30 +8,32 @@ edition = "2018"
 
 [dependencies]
 arc-swap = "1"
-base64.workspace = true
-chrono.workspace = true
-log.workspace = true
-opentelemetry.workspace = true
 opentelemetry-semantic-conventions = "0.8"
 opentelemetry-otlp = { version = "0.9", features = ["tonic", "tls", "tls-roots"] }
-# reqwest features required to enable system level certificates to be used by tracing-elastic-apm
-reqwest.workspace = true
-serde.workspace = true
-serde_json.workspace = true
 sys-info = "0.9"
-thiserror.workspace = true
 tonic = "0.5"
-tracing.workspace = true
 tracing-appender = "0.2"
 tracing-futures = "0.2"
 tracing-log = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt", "tracing-log"] }
+
+base64.workspace = true
+chrono.workspace = true
+log.workspace = true
+opentelemetry.workspace = true
+reqwest.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
 tracing-opentelemetry.workspace = true
 
 [dev-dependencies]
 rand = "0.8"
 serial_test = "0.5"
 tempfile = "3"
+
 tokio.workspace = true
+
 tornado_common_api = { path = "../api", version = "0.0.1" }
 

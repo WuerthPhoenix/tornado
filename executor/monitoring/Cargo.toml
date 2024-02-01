@@ -11,13 +11,15 @@ async-trait.workspace = true
 log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tracing.workspace = true
+
 tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../icinga2", version = "0.0.1" }
 tornado_executor_director = { path = "../director", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
-tracing.workspace = true
 
 [dev-dependencies]
-maplit.workspace = true
 httpmock = "0.6"
+
+maplit.workspace = true
 tokio.workspace = true

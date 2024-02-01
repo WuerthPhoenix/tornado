@@ -6,11 +6,12 @@ edition = "2018"
 
 
 [dependencies]
-tornado_common_types = { path = "../types" }
 lazy_static.workspace = true
 regex = { workspace = true }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+
+tornado_common_types = { path = "../types" }
 
 [dev-dependencies]
