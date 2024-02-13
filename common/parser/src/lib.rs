@@ -8,10 +8,7 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
-pub use crate::parser::{
-    key_is_object_root_entry_of_expression, key_is_root_entry_of_expression, ExtractedVarParser,
-    Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY,
-};
+pub use crate::parser::{Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY};
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";

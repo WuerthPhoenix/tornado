@@ -147,31 +147,35 @@ impl Parser {
     fn parse_keys(expression: &str) -> Result<Vec<ValueGetter>, ParserError> {
         RE.find_iter(expression)
             .map(|next_match| {
-                let result = next_match.as_str();
-                // Remove trailing delimiters
-                if let Some(key) = get_key_between_delimiters(
-                    result,
-                    PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
-                    PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
-                ) {
-                    Ok(ValueGetter::from(key))
-                } else if let Some(key) = get_key_between_delimiters(
-                    result,
-                    PAYLOAD_ARRAY_KEY_START_DELIMITER,
-                    PAYLOAD_ARRAY_KEY_END_DELIMITER,
-                ) {
-                    match key.parse() {
-                        Ok(index) => Ok(ValueGetter::Array { index }),
-                        Err(_) => Err(ParserError::NotANumberError { key: key.to_owned() }),
+                let next_match_string = next_match.as_str();
+                let mut result = next_match_string.to_string();
+
+                {
+                    if let Some(key) = get_key_between_delimiters(
+                        next_match_string,
+                        PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                        PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER,
+                    ) {
+                        result = key.to_string();
+                    };
+                    if let Some(key) = get_key_between_delimiters(
+                        result.as_str(),
+                        PAYLOAD_ARRAY_KEY_START_DELIMITER,
+                        PAYLOAD_ARRAY_KEY_END_DELIMITER,
+                    ) {
+                        return match key.parse() {
+                            Ok(index) => Ok(ValueGetter::Array { index }),
+                            Err(_) => Err(ParserError::NotANumberError { key: key.to_owned() }),
+                        };
                     }
-                } else if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
-                    Err(ParserError::InvalidCharacterError {
-                        key: result.to_owned(),
-                        character: PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER.to_owned(),
-                    })
-                } else {
-                    Ok(ValueGetter::Map { key: result.to_owned() })
+                    if result.contains(PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER) {
+                        return Err(ParserError::InvalidCharacterError {
+                            key: result.to_owned(),
+                            character: PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER.to_owned(),
+                        });
+                    }
                 }
+                Ok(ValueGetter::Map { key: result })
             })
             .collect()
     }
@@ -262,6 +266,7 @@ mod test {
     use serde_json::{json, Map};
 
     use super::*;
+    use crate::ValueGetter::Array;
     use std::collections::HashMap;
 
     #[test]
@@ -503,6 +508,9 @@ mod test {
         let expected: Vec<ValueGetter> =
             vec!["th ir.d".into(), "a".into(), "fourth".into(), "two".into()];
         assert_eq!(expected, Parser::parse_keys(r#""th ir.d".a."fourth".two"#).unwrap());
+
+        let expected: Vec<ValueGetter> = vec!["one".into(), Array { index: 1 }];
+        assert_eq!(expected, Parser::parse_keys(r#"one."[1]""#).unwrap());
 
         let expected: Vec<ValueGetter> =
             vec!["payload".into(), "oids".into(), "SNMPv2-SMI::enterprises.14848.2.1.1.6.0".into()];
