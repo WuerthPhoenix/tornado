@@ -60,7 +60,7 @@ impl ParserBuilder {
         self
     }
 
-    pub(crate) fn is_ignored_extractor(&self, extractor: &str) -> bool {
+    pub(crate) fn is_ignored_expression(&self, extractor: &str) -> bool {
         extractor
             .strip_prefix("${")
             .and_then(|rest| rest.strip_suffix('}'))
@@ -101,7 +101,7 @@ impl ParserBuilder {
 
         if template.is_interpolator() {
             Ok(Parser::Interpolator { interpolator: StringInterpolator::build(template, self)? })
-        } else if template.is_accessor() && !self.is_ignored_extractor(template_string) {
+        } else if template.is_accessor() && !self.is_ignored_expression(template_string) {
             self.parse_expression(template_string)
         } else {
             Ok(Parser::Val(Value::String(template_string.to_owned())))
@@ -611,7 +611,7 @@ mod test {
         let parser = ParserBuilder::default().add_ignored_expression("ignored_expr".to_owned());
 
         // Assert
-        assert!(parser.is_ignored_extractor("${ignored_expr}"))
+        assert!(parser.is_ignored_expression("${ignored_expr}"))
     }
 
     #[test]

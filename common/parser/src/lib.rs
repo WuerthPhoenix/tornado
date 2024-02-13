@@ -8,7 +8,10 @@ use std::borrow::Cow;
 use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
-pub use crate::parser::{Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY};
+pub use crate::parser::{
+    key_is_object_root_entry_of_expression, key_is_root_entry_of_expression, ExtractedVarParser,
+    Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY,
+};
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";
 pub const EXPRESSION_END_DELIMITER: &str = "}";
@@ -18,8 +21,7 @@ pub const EVENT_KEY: &str = "event";
 // This regex is used to match the `${event.something}` pattern.
 // It literally matches the sequence `${` followed by one or more chars followed by `}`.
 lazy_static! {
-    static ref RE: Regex =
-        Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
+    static ref RE: Regex = Regex::new(r"(\$\{[^}]+})").expect("Accessor regex must be valid");
 }
 
 pub struct Template<'template> {
@@ -44,11 +46,10 @@ impl Template<'_> {
     }
 
     pub fn is_accessor(&self) -> bool {
-        // it is an accessor if only one match is found, and if the
         self.matches.len() == 1 && self.matches[0].as_str() == self.template_string
     }
 
-    /// Returns whether this Template requires interpolation.
+    /// Returns whether this template requires interpolation.
     /// This is true only if the template contains at least both a static part (e.g. constant text)
     /// and a dynamic part (e.g. placeholders to be resolved at runtime).
     /// When the interpolator is not required, it can be replaced by a simpler Accessor.
