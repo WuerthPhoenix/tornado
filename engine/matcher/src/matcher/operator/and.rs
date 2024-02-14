@@ -80,6 +80,7 @@ mod test {
             }],
             &OperatorBuilder::new(),
         );
+
         assert!(operator.is_err());
     }
 
@@ -87,7 +88,8 @@ mod test {
     fn build_should_be_recursive() {
         let operator = And::build(
             "",
-            &[config::rule::Operator::Equals {
+            &[
+                config::rule::Operator::Equals {
                     first: Value::String("1".to_owned()),
                     second: Value::String("2".to_owned()),
                 },
@@ -96,7 +98,8 @@ mod test {
                         first: Value::String("3".to_owned()),
                         second: Value::String("4".to_owned()),
                     }],
-                }],
+                },
+            ],
             &OperatorBuilder::new(),
         )
         .unwrap();

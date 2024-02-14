@@ -5,6 +5,7 @@ members = [
    "common/logger",
    "common/metrics",
    "common/parser",
+   "common/types",
    "collector/common",
    "collector/email",
    "collector/jmespath",
@@ -34,7 +35,7 @@ members = [
    "tornado/rsyslog_collector",
    "tornado/webhook_collector",
    "tornado/sms_collector",
-   "tornado-regex-validation"
+   "tornado-input-validation"
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
@@ -43,6 +44,10 @@ members = [
 [profile.release]
 debug = true
 #lto = true
+
+[profile.release.package.tornado-input-validation]
+opt-level = "z"
+debug = false
 
 # To perform a CPU specific build, launch cargo with RUSTFLAGS='-C target-cpu=native'
 # E.g.:
