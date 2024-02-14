@@ -1,8 +1,8 @@
-use crate::accessor::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use tornado_common_api::{Action, ValueGet};
+use tornado_common_parser::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
 use typescript_definitions::TypeScriptify;
 
 pub struct InternalEvent<'o> {

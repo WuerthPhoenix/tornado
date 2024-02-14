@@ -5,71 +5,42 @@
 // - https://github.com/hoodie/concatenation_benchmarks-rs
 //
 
-use crate::{Parser, ParserBuilder, ParserError};
-use lazy_static::*;
-use regex::{Match, Regex};
+use crate::parser::{Parser, ParserBuilder, ParserError};
+use crate::Template;
 use serde_json::Value;
 use std::fmt::Debug;
-use std::marker::PhantomData;
-use tornado_common_api::ValueGet;
-
-lazy_static! {
-    static ref RE: Regex =
-        Regex::new(r"(\$\{[^}]+})").expect("StringInterpolator regex must be valid");
-}
+use tornado_common_types::ValueGet;
 
 #[derive(Debug)]
-pub struct StringInterpolator<T: Debug> {
+pub struct StringInterpolator {
     template: String,
-    parsers: Vec<BoundedAccessor<T>>,
+    parsers: Vec<BoundedAccessor>,
 }
 
 #[derive(Debug)]
-struct BoundedAccessor<T: Debug> {
+struct BoundedAccessor {
     start: usize,
     end: usize,
-    parser: Parser<T>,
-    _phantom: PhantomData<T>,
+    parser: Parser,
 }
 
-impl<T: Debug> StringInterpolator<T> {
+impl StringInterpolator {
     /// Creates a new StringInterpolator
-    pub fn build<S: Into<String>>(
-        template: S,
-        parser_builder: &ParserBuilder<T>,
-    ) -> Result<Option<Self>, ParserError> {
-        let template_string = template.into();
-
-        let regex: &Regex = &RE;
-        let matchers = regex.find_iter(&template_string).collect::<Vec<Match<'_>>>();
-
-        if StringInterpolator::<T>::interpolation_required(&template_string, &matchers) {
-            let parsers = matchers
-                .iter()
-                .map(|m| {
-                    parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
-                        start: m.start(),
-                        end: m.end(),
-                        parser,
-                        _phantom: PhantomData,
-                    })
+    pub fn build(template: Template, parser_builder: &ParserBuilder) -> Result<Self, ParserError> {
+        let parsers = template
+            .matches()
+            .iter()
+            .filter(|&m| !parser_builder.is_ignored_expression(m.as_str()))
+            .map(|m| {
+                parser_builder.build_parser(m.as_str()).map(|parser| BoundedAccessor {
+                    start: m.start(),
+                    end: m.end(),
+                    parser,
                 })
-                .collect::<Result<Vec<_>, ParserError>>()?;
+            })
+            .collect::<Result<Vec<_>, ParserError>>()?;
 
-            return Ok(Some(StringInterpolator { template: template_string.clone(), parsers }));
-        }
-        Ok(None)
-    }
-
-    /// Returns whether the template used to create this StringInterpolator
-    /// requires interpolation.
-    /// This is true only if the template contains at least both a static part (e.g. constant text)
-    /// and a dynamic part (e.g. placeholders to be resolved at runtime).
-    /// When the interpolator is not required, it can be replaced by a simpler Accessor.
-    fn interpolation_required(template: &str, matches: &[Match]) -> bool {
-        matches.len() > 1
-            || (matches.len() == 1
-                && !(matches[0].start() == 0 && matches[0].end() == template.len()))
+        Ok(StringInterpolator { template: template.template_string.to_owned(), parsers })
     }
 
     /// Performs the placeholders substitution on the internal template and return the
@@ -80,7 +51,7 @@ impl<T: Debug> StringInterpolator<T> {
     /// - the placeholder cannot be resolved
     /// - the value associated with the placeholder is of type Array
     /// - the value associated with the placeholder is of type Map
-    pub fn render<I: ValueGet>(&self, event: &I, context: &T) -> Result<String, ParserError> {
+    pub fn render<I: ValueGet>(&self, event: &I, context: &str) -> Option<String> {
         let mut render = String::new();
 
         // keeps the index of the previous argument end
@@ -93,25 +64,13 @@ impl<T: Debug> StringInterpolator<T> {
 
             let accessor = &bounded_accessor.parser;
 
-            let value = accessor.parse_value(event, context).ok_or(
-                ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned empty value.", accessor),
-                },
-            )?;
+            let value = accessor.parse_value(event, context)?;
             match value.as_ref() {
                 Value::String(text) => render.push_str(text.as_str()),
                 Value::Bool(val) => render.push_str(&val.to_string()),
                 Value::Number(val) => render.push_str(&val.to_string()),
                 Value::Null => render.push_str("null"),
-                Value::Object(..) => return Err(ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned a Map. Expected text, number, boolean or null.", accessor),
-                }),
-                Value::Array(..) => return Err(ParserError::InterpolatorRenderError {
-                    template: self.template.to_owned(),
-                    cause: format!("Accessor [{:?}] returned an Array. Expected text, number, boolean or null.", accessor),
-                }),
+                Value::Object(..) | Value::Array(..) => return None,
             }
 
             prev_end = bounded_accessor.end;
@@ -125,7 +84,7 @@ impl<T: Debug> StringInterpolator<T> {
             render.push_str(&self.template[prev_end..template_len])
         }
 
-        Ok(render)
+        Some(render)
     }
 }
 
@@ -134,7 +93,7 @@ mod test {
     use super::*;
     use crate::{Parser, ValueGetter};
     use serde_json::json;
-    use tornado_common_api::Payload;
+    use tornado_common_types::Payload;
 
     #[test]
     fn should_create_new_interpolator() {
@@ -143,7 +102,7 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::<()>::build(template, &ParserBuilder::default()).unwrap().unwrap();
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -175,36 +134,13 @@ mod test {
     }
 
     #[test]
-    fn should_return_none_with_no_expressions_delimiters() {
-        // Arrange
-        let template = "constant string";
-
-        // Act
-        let result = StringInterpolator::<()>::build(template, &ParserBuilder::default()).unwrap();
-
-        // Assert
-        assert!(result.is_none());
-    }
-    #[test]
-    fn should_return_none_with_single_expression() {
-        // Arrange
-        let template = "${event.type}";
-
-        // Act
-        let result = StringInterpolator::<()>::build(template, &ParserBuilder::default()).unwrap();
-
-        // Assert
-        assert!(result.is_none());
-    }
-
-    #[test]
     fn should_split_with_only_expressions() {
         // Arrange
         let template = "${event.type}${event.created_ms}${event.type}";
 
         // Act
         let interpolator =
-            StringInterpolator::<()>::build(template, &ParserBuilder::default()).unwrap().unwrap();
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
 
         // Assert
         assert_eq!(3, interpolator.parsers.len());
@@ -229,11 +165,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!(" 1554130814854 ", &render);
@@ -250,8 +186,8 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
         // assert!(result.is_ok());
@@ -270,11 +206,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!(" void:  null ", &render);
@@ -291,11 +227,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
         let render = result.unwrap();
 
         assert_eq!("first line\nsecond line", &render);
@@ -310,11 +246,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -329,11 +265,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -349,11 +285,11 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&Value::Object(payload), &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&Value::Object(payload), "");
 
         // Assert
-        assert!(result.is_err());
+        assert!(result.is_none());
     }
 
     #[test]
@@ -380,11 +316,12 @@ mod test {
 
         // Act
         let interpolator =
-            StringInterpolator::build(template, &ParserBuilder::default()).unwrap().unwrap();
-        let result = interpolator.render(&event, &());
+            StringInterpolator::build(template.into(), &ParserBuilder::default()).unwrap();
+        let result = interpolator.render(&event, "");
 
+        println!("{result:?}");
         // Assert
-        assert!(result.is_ok());
+        assert!(result.is_some());
 
         println!("---------------------------");
         println!("Event: \n{:?}", event);

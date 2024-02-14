@@ -6,7 +6,7 @@ edition = "2018"
 
 
 [dependencies]
-tornado_common_api = { path = "../api", version = "0.0.1" }
+tornado_common_types = { path = "../types" }
 lazy_static = "1.4"
 regex = { workspace = true }
 serde = "1.0"

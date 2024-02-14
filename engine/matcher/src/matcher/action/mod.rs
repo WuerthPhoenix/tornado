@@ -701,6 +701,15 @@ mod test {
         let expected_action_meta_data = ActionMetaData {
             id: config_action.id.to_owned(),
             payload: hashmap! {
+                "constant".to_owned() => EnrichedValue {
+                    content: EnrichedValueContent::Single {
+                        content: Value::String("Into The Great Wide Open".to_owned())
+                    },
+                    meta: ValueMetaData {
+                        modified: false,
+                        is_leaf: true
+                    },
+                },
                 "event_payload".to_owned() => EnrichedValue {
                     content: EnrichedValueContent::Single {
                         content: json!(hashmap! {
@@ -712,15 +721,6 @@ mod test {
                         is_leaf: true
                     },
                 },
-                "constant".to_owned() => EnrichedValue {
-                    content: EnrichedValueContent::Single {
-                        content: Value::String("Into The Great Wide Open".to_owned())
-                    },
-                    meta: ValueMetaData {
-                        modified: true,
-                        is_leaf: true
-                    },
-                }
             },
         };
         println!("\n expected_action_meta_data: \n {:#?}", expected_action_meta_data);

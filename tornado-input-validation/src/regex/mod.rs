@@ -1,31 +1,35 @@
-use crate::error::Error;
+use crate::regex::error::RegexError;
 use regex_syntax::hir::{Hir, HirKind};
 use wasm_bindgen::prelude::*;
 
 mod error;
 
 #[wasm_bindgen]
-pub struct ValidationResult {
+pub struct RegexValidationResult {
     pub is_valid: bool,
     pub has_named_groups: bool,
-    pub error: Option<Error>,
+    pub error: Option<RegexError>,
 }
 
 #[wasm_bindgen]
-pub fn validate_regex(reg_exp: &str) -> ValidationResult {
+pub fn validate_regex(reg_exp: &str) -> RegexValidationResult {
     match regex_syntax::parse(reg_exp) {
-        Ok(hir) => ValidationResult {
+        Ok(hir) => RegexValidationResult {
             is_valid: true,
             has_named_groups: find_named_group(&hir),
             error: None,
         },
-        Err(regex_syntax::Error::Parse(e)) => {
-            ValidationResult { is_valid: false, has_named_groups: false, error: Some(e.into()) }
-        }
-        Err(regex_syntax::Error::Translate(e)) => {
-            ValidationResult { is_valid: false, has_named_groups: false, error: Some(e.into()) }
-        }
-        Err(_) => ValidationResult { is_valid: false, has_named_groups: false, error: None },
+        Err(regex_syntax::Error::Parse(e)) => RegexValidationResult {
+            is_valid: false,
+            has_named_groups: false,
+            error: Some(e.into()),
+        },
+        Err(regex_syntax::Error::Translate(e)) => RegexValidationResult {
+            is_valid: false,
+            has_named_groups: false,
+            error: Some(e.into()),
+        },
+        Err(_) => RegexValidationResult { is_valid: false, has_named_groups: false, error: None },
     }
 }
 
