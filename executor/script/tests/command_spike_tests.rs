@@ -54,7 +54,7 @@ async fn spike_execute_script_write_file() {
     // Act
     let output = Command::new("./test_resources/write_file.sh")
         .arg(&filename)
-        .arg(&content)
+        .arg(content)
         .output()
         .await
         .expect("failed to execute process");

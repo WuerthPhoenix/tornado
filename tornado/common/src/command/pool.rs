@@ -145,7 +145,7 @@ mod test {
             let exec_rx = exec_rx.clone();
             let sender = sender.clone();
             actix::spawn(async move {
-                let message = Action::new(&format!("hello {}", i));
+                let message = Action::new(format!("hello {}", i));
                 println!("send message: [{:?}]", message);
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads
@@ -196,7 +196,7 @@ mod test {
             let exec_rx = exec_rx.clone();
             let sender = sender.clone();
             actix::spawn(async move {
-                let message = Action::new(&format!("hello {}", i));
+                let message = Action::new(format!("hello {}", i));
                 println!("send message: [{:?}]", message);
                 assert!(sender.execute(Arc::new(message)).await.is_ok());
                 // There should never be more messages in the queue than available threads

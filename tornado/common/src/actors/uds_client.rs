@@ -39,7 +39,7 @@ impl Actor for UdsClientActor {
         if self.restarted {
             sleep_until += time::Duration::new(1, 0)
         }
-        let path = (&self.socket_path).clone();
+        let path = self.socket_path.clone();
 
         ctx.wait(
             async move {

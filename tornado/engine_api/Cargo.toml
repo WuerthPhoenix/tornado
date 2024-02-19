@@ -7,22 +7,26 @@ authors = [
 edition = "2018"
 
 [dependencies]
-actix = "0.12"
-actix-web = "4.0.0-beta.9"
 ajars = { version = "0.6", features = ["actix_web"] }
-async-trait = "0.1"
-base64 = "0.21"
 json-patch = "0.2"
-log = "0.4"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-thiserror = "1.0"
+
+actix.workspace = true
+actix-web.workspace = true
+async-trait.workspace = true
+base64.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_api_dto = { path = "../engine_api_dto", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
 
 [dev-dependencies]
 actix-rt = "2.2"
-lazy_static = "1.4"
 rand = "0.8"
+
+lazy_static.workspace = true
+
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }

@@ -4,9 +4,7 @@ use crate::{error::MatcherError, model::InternalEvent};
 use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
-use tornado_common_parser::{
-    is_valid_matcher_root, Parser, ParserBuilder, ParserError, ValueGetter,
-};
+use tornado_common_parser::{Parser, ParserBuilder};
 
 #[derive(Default)]
 pub struct AccessorBuilder;

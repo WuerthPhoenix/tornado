@@ -301,7 +301,7 @@ mod test {
         let value = Value::String("text_value".to_owned());
 
         // Act
-        let text = (&value).get_text();
+        let text = value.get_text();
 
         // Assert
         assert!(text.is_some());
@@ -314,7 +314,7 @@ mod test {
         let value = Value::Object(Map::new());
 
         // Act
-        let text = (&value).get_text();
+        let text = value.get_text();
 
         // Assert
         assert!(text.is_none());

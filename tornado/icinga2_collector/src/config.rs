@@ -15,11 +15,11 @@ pub fn arg_matches() -> ArgMatches {
     App::new("tornado_icinga2_collector")
         .arg(Arg::new("config-dir")
             .long("config-dir")
-            .about("The filesystem folder where the Tornado Icinga2 Collector configuration is saved")
+            .help("The filesystem folder where the Tornado Icinga2 Collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_icinga2_collector")))
         .arg(Arg::new("streams-dir")
             .long("streams-dir")
-            .about("The folder where the Stream Configurations are saved in JSON format; this folder is relative to the `config-dir`")
+            .help("The folder where the Stream Configurations are saved in JSON format; this folder is relative to the `config-dir`")
             .default_value("/streams"))
         .get_matches()
 }

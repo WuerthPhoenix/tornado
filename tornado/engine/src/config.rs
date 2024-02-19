@@ -444,8 +444,8 @@ mod test {
     fn thread_pool_config_cpu_should_return_count_by_factor() {
         let cpus = num_cpus::get();
         assert_eq!(cpus, ThreadPoolConfig::CPU { factor: 1.0 }.get_threads_count());
-        assert_eq!((cpus / 2) as usize, ThreadPoolConfig::CPU { factor: 0.5 }.get_threads_count());
-        assert_eq!((cpus * 3) as usize, ThreadPoolConfig::CPU { factor: 3.0 }.get_threads_count());
+        assert_eq!(cpus / 2, ThreadPoolConfig::CPU { factor: 0.5 }.get_threads_count());
+        assert_eq!(cpus * 3, ThreadPoolConfig::CPU { factor: 3.0 }.get_threads_count());
     }
 
     #[test]

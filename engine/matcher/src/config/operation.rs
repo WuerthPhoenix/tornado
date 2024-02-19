@@ -14,7 +14,7 @@ impl NodeFilter {
     pub fn map_from(paths: &[Vec<String>]) -> HashMap<String, NodeFilter> {
         let mut filters = HashMap::new();
         for path in paths {
-            path_to_node_filter(&mut filters, &(*path))
+            path_to_node_filter(&mut filters, path.as_slice())
         }
         filters
     }

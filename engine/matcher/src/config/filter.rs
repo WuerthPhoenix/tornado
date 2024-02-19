@@ -28,8 +28,8 @@ mod test {
     #[test]
     fn should_deserialize_filter_from_json() {
         let filename = "./test_resources/filter/filter_01.json";
-        let json =
-            fs::read_to_string(filename).unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
+        let json = fs::read_to_string(filename)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", filename));
 
         let filter = Filter::from_json(&json).unwrap();
 

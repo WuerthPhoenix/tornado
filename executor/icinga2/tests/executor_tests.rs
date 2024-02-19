@@ -27,7 +27,7 @@ async fn should_perform_a_post_request() {
         HttpServer::new(move || {
             let url = format!("{}{}", api, "/v1/actions/icinga2-api-action");
             let sender = sender.clone();
-            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(&url).route(
+            App::new().app_data(Data::new(Arc::new(sender))).service(web::resource(url).route(
                 web::post().to(
                     move |body: Json<Value>, sender: Data<Arc<UnboundedSender<Value>>>| async move {
                         println!("Server received a call");
@@ -185,7 +185,7 @@ async fn should_return_non_retryable_error_in_case_of_outdated_process_check_res
             "payload" => serde_json::to_value(action.payload.get(ICINGA2_ACTION_PAYLOAD_KEY)).unwrap(),
             "method" => "POST".into(),
             "url" => format!("{}/v1/actions/process-check-result", server.url("")).into(),
-            "tags" => serde_json::to_value(&["DISCARDED_PROCESS_CHECK_RESULT"]).unwrap()
+            "tags" => serde_json::to_value(["DISCARDED_PROCESS_CHECK_RESULT"]).unwrap()
         }.into(),
     }))
 }

@@ -181,7 +181,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
             peer.service = "tornado")
         .entered();
         let trace_id = msg.0.event.get_trace_id_for_logging(&span.context());
-        span.record("trace_id", &trace_id.as_ref());
+        span.record("trace_id", trace_id.as_ref());
         let trace_context = TelemetryContextInjector::get_trace_context_map(
             &span.context(),
             &self.trace_context_propagator,

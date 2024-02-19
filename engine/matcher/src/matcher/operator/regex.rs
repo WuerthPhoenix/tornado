@@ -54,11 +54,8 @@ mod test {
 
     #[test]
     fn should_build_the_operator_with_expected_arguments() {
-        let operator = Regex::build(
-            "one",
-            AccessorBuilder::new().build("", "two").unwrap(),
-        )
-        .unwrap();
+        let operator =
+            Regex::build("one", AccessorBuilder::new().build("", "two").unwrap()).unwrap();
 
         let event = Event::new("test_type");
 
@@ -71,20 +68,14 @@ mod test {
 
     #[test]
     fn build_should_fail_if_invalid_regex() {
-        let operator = Regex::build(
-            "[",
-            AccessorBuilder::new().build("", "two").unwrap(),
-        );
+        let operator = Regex::build("[", AccessorBuilder::new().build("", "two").unwrap());
         assert!(operator.is_err());
     }
 
     #[test]
     fn should_evaluate_to_true_if_it_matches_the_regex() {
-        let operator = Regex::build(
-            "[a-fA-F0-9]",
-            AccessorBuilder::new().build("", "f").unwrap(),
-        )
-        .unwrap();
+        let operator =
+            Regex::build("[a-fA-F0-9]", AccessorBuilder::new().build("", "f").unwrap()).unwrap();
 
         let event = Event::new("test_type");
 
