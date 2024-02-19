@@ -7,9 +7,10 @@ authors = [
 edition = "2018"
 
 [dependencies]
-async-trait = "0.1"
-log = "0.4"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-thiserror = "1.0"
+async-trait.workspace = true
+log.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }

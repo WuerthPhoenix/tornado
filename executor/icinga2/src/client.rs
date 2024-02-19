@@ -17,7 +17,7 @@ pub struct ApiClient {
 impl ApiClient {
     pub fn new(config: &Icinga2ClientConfig) -> Result<ApiClient, ExecutorError> {
         let auth = format!("{}:{}", config.username, config.password);
-        let http_auth_header = format!("Basic {}", base64.encode(&auth));
+        let http_auth_header = format!("Basic {}", base64.encode(auth));
 
         let mut client_builder = Client::builder()
             .use_rustls_tls()

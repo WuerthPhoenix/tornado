@@ -37,7 +37,7 @@ fn new_nats_docker_container(
     if tls {
         image = image
             .with_volume(
-                std::fs::canonicalize(&std::path::PathBuf::from("./test_resources"))
+                std::fs::canonicalize(std::path::PathBuf::from("./test_resources"))
                     .unwrap()
                     .to_str()
                     .unwrap(),

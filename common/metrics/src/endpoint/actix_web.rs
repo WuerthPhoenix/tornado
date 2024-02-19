@@ -36,8 +36,7 @@ mod test {
     async fn should_expose_a_metrics_endpoint() {
         // Arrange
         let metrics = Arc::new(Metrics::new("tornado"));
-        let srv =
-            test::init_service(App::new().service(metrics_endpoints(metrics.clone()))).await;
+        let srv = test::init_service(App::new().service(metrics_endpoints(metrics.clone()))).await;
 
         // Record a metric
         {

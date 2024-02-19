@@ -92,7 +92,7 @@ pub struct ApmServerApiCredentials {
 
 impl ApmServerApiCredentials {
     pub fn from_file(apm_server_credentials_filepath: &str) -> Result<Self, LoggerError> {
-        let apm_server_credentials_file = File::open(&apm_server_credentials_filepath)?;
+        let apm_server_credentials_file = File::open(apm_server_credentials_filepath)?;
         let apm_server_credentials_reader = BufReader::new(apm_server_credentials_file);
 
         serde_json::from_reader(apm_server_credentials_reader).map_err(|err| {

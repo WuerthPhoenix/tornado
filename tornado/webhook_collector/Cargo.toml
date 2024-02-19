@@ -5,22 +5,22 @@ authors = ["Francesco Cina <mr.francesco.cina@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-actix = "0.12"
-actix-web = "4.0.0-beta.9"
-chrono = { version = "0.4", default-features = false, features = ["clock"] }
+actix.workspace = true
+actix-web.workspace = true
+chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
-log = "0.4"
-tracing = "0.1"
-serde = { version = "1.0", features = ['derive'] }
-serde_json = "1.0"
-thiserror = "1.0"
+log.workspace = true
+tracing.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
 tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
 tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0.1" }
 tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
-tracing-actix-web = "0.4.0-beta.9"
+tracing-actix-web.workspace = true
 
 [dev-dependencies]
 actix-rt = "2.2"

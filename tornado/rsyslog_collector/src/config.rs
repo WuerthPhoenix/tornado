@@ -11,7 +11,7 @@ pub fn arg_matches() -> ArgMatches {
     App::new("tornado_rsyslog_collector")
         .arg(Arg::new("config-dir")
             .long("config-dir")
-            .about("The filesystem folder where the Tornado Rsyslog Collector configuration is saved")
+            .help("The filesystem folder where the Tornado Rsyslog Collector configuration is saved")
             .default_value(CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado_rsyslog_collector")))
         .get_matches()
 }

@@ -1164,10 +1164,7 @@ mod test {
             .await
             .unwrap();
         let res = api
-            .get_current_config_processing_tree_nodes_by_path(
-                user_root_1,
-                Some("root_1"),
-            )
+            .get_current_config_processing_tree_nodes_by_path(user_root_1, Some("root_1"))
             .await
             .unwrap();
 
@@ -1222,11 +1219,7 @@ mod test {
 
         // Act & Assert
         assert!(!matches!(
-            api.get_current_config_node_details_by_path(
-                not_owner_edit_and_view,
-                "root"
-            )
-            .await,
+            api.get_current_config_node_details_by_path(not_owner_edit_and_view, "root").await,
             Err(ApiError::ForbiddenError { .. })
         ));
         assert!(!matches!(
@@ -1238,8 +1231,7 @@ mod test {
             Err(ApiError::ForbiddenError { .. })
         ));
         assert!(!matches!(
-            api.get_current_config_node_details_by_path(owner_edit_and_view, "root")
-                .await,
+            api.get_current_config_node_details_by_path(owner_edit_and_view, "root").await,
             Err(ApiError::ForbiddenError { .. })
         ));
     }
@@ -1265,14 +1257,10 @@ mod test {
         let filtered_matcher = get_filtered_matcher(config, &user).await.unwrap();
 
         // Act
-        let res_get_node_details = api
-            .get_node_details(&user, &filtered_matcher, "root_1,root_1_2")
-            .await
-            .unwrap();
-        let res = api
-            .get_current_config_node_details_by_path(user, "root_1,root_1_2")
-            .await
-            .unwrap();
+        let res_get_node_details =
+            api.get_node_details(&user, &filtered_matcher, "root_1,root_1_2").await.unwrap();
+        let res =
+            api.get_current_config_node_details_by_path(user, "root_1,root_1_2").await.unwrap();
 
         // Assert
         let expected_res = ProcessingTreeNodeDetailsDto::Ruleset {

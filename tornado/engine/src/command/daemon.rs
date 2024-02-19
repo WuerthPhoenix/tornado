@@ -370,7 +370,7 @@ pub async fn daemon(
                         subscriber_span.set_parent(master_span.context());
                     }
                     let trace_id = event.get_trace_id_for_logging(&master_span.context());
-                    master_span.record("trace_id", &trace_id.as_ref());
+                    master_span.record("trace_id", trace_id.as_ref());
 
                     tornado_meter_nats.events_received_counter.add(1, &[
                         meter_event_souce_label,

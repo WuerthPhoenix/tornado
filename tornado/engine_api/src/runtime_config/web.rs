@@ -112,12 +112,11 @@ mod test {
     async fn current_logger_config_should_return_status_code_unauthorized_if_no_token(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -135,12 +134,11 @@ mod test {
     #[actix_rt::test]
     async fn get_current_logger_config_should_return_config() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::get()
@@ -154,7 +152,7 @@ mod test {
             .to_request();
 
         let dto: tornado_engine_api_dto::runtime_config::LoggerConfigDto =
-            test::read_response_json(&srv, request).await;
+            test::call_and_read_body_json(&srv, request).await;
 
         // Assert
         assert!(!dto.level.is_empty());
@@ -164,12 +162,11 @@ mod test {
     #[actix_rt::test]
     async fn set_current_logger_level_should_set_config() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -196,12 +193,11 @@ mod test {
     #[actix_rt::test]
     async fn set_apm_enabled_should_set_apm() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -225,12 +221,11 @@ mod test {
     #[actix_rt::test]
     async fn set_apm_enabled_should_return_unauthorized() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -249,12 +244,11 @@ mod test {
     #[actix_rt::test]
     async fn set_stdout_enabled_should_set_stdout() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::post()
@@ -280,12 +274,11 @@ mod test {
     #[actix_rt::test]
     async fn set_stdout_enabled_should_return_unauthorized() -> Result<(), ApiError> {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
-                auth: test_auth_service(),
-                api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
-            })))
-            .await;
+        let srv = test::init_service(App::new().service(build_runtime_config_endpoints(ApiData {
+            auth: test_auth_service(),
+            api: RuntimeConfigApi::new(TestRuntimeConfigApiHandler {}),
+        })))
+        .await;
 
         // Act
         let request = test::TestRequest::post()

@@ -298,7 +298,7 @@ impl FsMatcherConfigManager {
         let current_path = if is_root_node {
             root_path.as_ref().to_path_buf()
         } else {
-            root_path.as_ref().join(&node_name)
+            root_path.as_ref().join(node_name)
         };
 
         create_dir_all(&current_path).await.map_err(|err| MatcherError::InternalSystemError {
@@ -316,7 +316,7 @@ impl FsMatcherConfigManager {
         &self,
         draft_id: &str,
     ) -> Result<MatcherConfigDraftData, MatcherError> {
-        let data_json = fs_extra::file::read_to_string(&self.get_draft_data_file_path(draft_id))
+        let data_json = fs_extra::file::read_to_string(self.get_draft_data_file_path(draft_id))
             .map_err(|err| MatcherError::ConfigurationError {
                 message: format!("Cannot read data for draft id [{}]. Err: {:?}", draft_id, err),
             })?;

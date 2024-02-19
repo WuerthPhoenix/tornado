@@ -258,8 +258,8 @@ mod test {
     }
 
     fn get_event(path: &str) -> Event {
-        let event_string =
-            fs::read_to_string(path).unwrap_or_else(|_| panic!("Unable to open the file [{}]", path));
+        let event_string = fs::read_to_string(path)
+            .unwrap_or_else(|_| panic!("Unable to open the file [{}]", path));
         serde_json::from_str(&event_string)
             .unwrap_or_else(|_| panic!("Cannot parse event from file [{}]", path))
     }

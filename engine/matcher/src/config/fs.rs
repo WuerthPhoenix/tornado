@@ -472,8 +472,8 @@ mod test {
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
 
-        fs::create_dir_all(&format!("{}/subdir", dir)).unwrap();
-        fs::File::create(&format!("{}/file.json", dir)).unwrap();
+        fs::create_dir_all(format!("{}/subdir", dir)).unwrap();
+        fs::File::create(format!("{}/file.json", dir)).unwrap();
 
         // Act
         let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
@@ -488,7 +488,7 @@ mod test {
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
 
-        fs::File::create(&format!("{}/file.json", dir)).unwrap();
+        fs::File::create(format!("{}/file.json", dir)).unwrap();
 
         // Act
         let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
@@ -503,9 +503,9 @@ mod test {
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
 
-        fs::File::create(&format!("{}/file_01.json", dir)).unwrap();
-        fs::File::create(&format!("{}/file_02.json", dir)).unwrap();
-        fs::File::create(&format!("{}/file_03.json", dir)).unwrap();
+        fs::File::create(format!("{}/file_01.json", dir)).unwrap();
+        fs::File::create(format!("{}/file_02.json", dir)).unwrap();
+        fs::File::create(format!("{}/file_03.json", dir)).unwrap();
 
         // Act
         let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
@@ -520,8 +520,8 @@ mod test {
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
 
-        fs::create_dir_all(&format!("{}/subdir1", dir)).unwrap();
-        fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
+        fs::create_dir_all(format!("{}/subdir1", dir)).unwrap();
+        fs::create_dir_all(format!("{}/subdir2", dir)).unwrap();
 
         // Act
         let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
@@ -536,10 +536,10 @@ mod test {
         let tempdir = tempfile::tempdir().unwrap();
         let dir = tempdir.path().to_str().unwrap().to_owned();
 
-        fs::create_dir_all(&format!("{}/subdir1", dir)).unwrap();
-        fs::create_dir_all(&format!("{}/subdir2", dir)).unwrap();
-        fs::File::create(&format!("{}/file1.json", dir)).unwrap();
-        fs::File::create(&format!("{}/file2.json", dir)).unwrap();
+        fs::create_dir_all(format!("{}/subdir1", dir)).unwrap();
+        fs::create_dir_all(format!("{}/subdir2", dir)).unwrap();
+        fs::File::create(format!("{}/file1.json", dir)).unwrap();
+        fs::File::create(format!("{}/file2.json", dir)).unwrap();
 
         // Act
         let result = FsMatcherConfigManager::detect_dir_type(&dir).await;
@@ -595,11 +595,6 @@ mod test {
     }
 
     fn get_config_by_name<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
-        for node in nodes {
-            if get_config_name(node).eq(name) {
-                return Some(node);
-            }
-        }
-        None
+        nodes.iter().find(|&node| get_config_name(node).eq(name))
     }
 }

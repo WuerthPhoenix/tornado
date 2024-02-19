@@ -163,7 +163,7 @@ pub mod test {
 
         let mut copy_options = fs_extra::dir::CopyOptions::new();
         copy_options.copy_inside = true;
-        fs_extra::dir::copy(&source_config_dir, &dest_config_dir, &copy_options).unwrap();
+        fs_extra::dir::copy(source_config_dir, &dest_config_dir, &copy_options).unwrap();
 
         let draft_dir = "/draft".to_owned();
         let rules_dir = "/rules.d".to_owned();

@@ -32,7 +32,7 @@ impl Operator for EqualsIgnoreCase {
                 Some(first) => {
                     let option_substring = self.second.get(event);
                     match cow_to_str(&option_substring) {
-                        Some(substring) => (&first.to_lowercase()).eq(&substring.to_lowercase()),
+                        Some(substring) => first.to_lowercase().eq(&substring.to_lowercase()),
                         None => {
                             trace!("EqualsIgnoreCase - The second argument must be of type Value::Text, found instead {:#?}, evaluating to false", option_substring);
                             false

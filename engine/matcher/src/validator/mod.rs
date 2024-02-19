@@ -302,11 +302,8 @@ mod test {
             Filter { filter: Defaultable::Default {}, active: true, description: "".to_owned() };
 
         // Act
-        let matcher = MatcherConfigValidator::new().validate_filter(
-            "wrong.because.of.dots",
-            &filter,
-            &[],
-        );
+        let matcher =
+            MatcherConfigValidator::new().validate_filter("wrong.because.of.dots", &filter, &[]);
 
         // Assert
         assert!(matcher.is_err());

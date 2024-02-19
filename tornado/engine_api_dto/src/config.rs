@@ -149,40 +149,40 @@ impl From<&Operator> for OperatorDto {
                 OperatorDto::Not { operator: Box::new(OperatorDto::from(operator.as_ref())) }
             }
             Operator::Contains { first, second } => OperatorDto::Contains {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::ContainsIgnoreCase { first, second } => OperatorDto::ContainsIgnoreCase {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::Equals { first, second } => OperatorDto::Equals {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::EqualsIgnoreCase { first, second } => OperatorDto::EqualsIgnoreCase {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::GreaterEqualThan { first, second } => OperatorDto::GreaterEqualThan {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::GreaterThan { first, second } => OperatorDto::GreaterThan {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::LessEqualThan { first, second } => OperatorDto::LessEqualThan {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::LessThan { first, second } => OperatorDto::LessThan {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::NotEquals { first, second } => OperatorDto::NotEquals {
-                first: serde_json::to_value(&first).unwrap_or(serde_json::Value::Null),
-                second: serde_json::to_value(&second).unwrap_or(serde_json::Value::Null),
+                first: serde_json::to_value(first).unwrap_or(serde_json::Value::Null),
+                second: serde_json::to_value(second).unwrap_or(serde_json::Value::Null),
             },
             Operator::Regex { regex, target } => {
                 OperatorDto::Regex { regex: regex.to_owned(), target: target.to_owned() }
