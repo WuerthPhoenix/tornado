@@ -1,6 +1,8 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::error::MatcherError;
+use crate::matcher;
+use crate::matcher::Matcher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -174,6 +176,9 @@ impl MatcherConfig {
             });
         }
 
+        // Validate input before saving it to the draft.
+        let _ = Matcher::build(node)?;
+
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
                 message: "A ruleset cannot have children nodes".to_string(),
@@ -196,6 +201,9 @@ impl MatcherConfig {
                 message: "Empty path is not allowed".to_string(),
             });
         }
+
+        // Validate input before saving it to the draft.
+        let _ = Matcher::build(node)?;
 
         let old_node = self.get_mut_node_by_path_or_err(path)?;
         match (old_node, node) {
@@ -253,6 +261,8 @@ impl MatcherConfig {
 
     // Create a node at a specific path
     pub fn create_rule(&mut self, ruleset_path: &[&str], rule: Rule) -> Result<(), MatcherError> {
+        // validate rule before saving to the ruleset
+        matcher::validate_rule(&rule)?;
         let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
         if rules.iter().any(|Rule { name, .. }| name == &rule.name) {
@@ -274,6 +284,8 @@ impl MatcherConfig {
         rule_name: &str,
         new_rule: Rule,
     ) -> Result<(), MatcherError> {
+        // validate rule before saving to the ruleset
+        matcher::validate_rule(&new_rule)?;
         let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
         match rules.iter_mut().find(|rule| rule.name == rule_name) {

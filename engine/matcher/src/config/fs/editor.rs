@@ -5,6 +5,7 @@ use crate::config::{
     MatcherConfigReader,
 };
 use crate::error::MatcherError;
+use crate::matcher::Matcher;
 use crate::validator::MatcherConfigValidator;
 use chrono::Local;
 use log::*;
@@ -175,8 +176,8 @@ impl MatcherConfigEditor for FsMatcherConfigManager {
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
         info!("Deploy new configuration");
 
-        MatcherConfigValidator::new().validate(config)?;
-
+        // Validate also regex and accessor, which the MatcherConfigValidator does not do.
+        let _ = Matcher::build(config)?;
         let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
             message: format!("Cannot create temporary directory. Err: {:?}", err),
         })?;
