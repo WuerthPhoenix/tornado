@@ -110,24 +110,24 @@ mod test {
     #[test]
     fn empty_template_is_not_an_accessor() {
         let template = Template::from("");
-        assert_eq!(template.is_accessor(), false);
+        assert!(!template.is_accessor());
     }
 
     #[test]
     fn wrong_syntax_template_is_not_an_accessor() {
         let template = Template::from("$}sadf}");
-        assert_eq!(template.is_accessor(), false);
+        assert!(!template.is_accessor());
     }
 
     #[test]
     fn interpolator_template_is_not_an_accessor() {
         let template = Template::from("${sadf} sdfhj");
-        assert_eq!(template.is_accessor(), false);
+        assert!(!template.is_accessor());
     }
 
     #[test]
     fn accessor_template_is_not_an_accessor() {
         let template = Template::from("${sadf}");
-        assert_eq!(template.is_accessor(), true);
+        assert!(template.is_accessor());
     }
 }

@@ -1,6 +1,7 @@
 use actix::MailboxError;
 use actix_web::{http, HttpResponse, HttpResponseBuilder};
 use std::collections::HashMap;
+use std::fmt::Display;
 use thiserror::Error;
 use tornado_engine_api_dto::common::WebError;
 use tornado_engine_matcher::error::MatcherError;
@@ -18,6 +19,8 @@ pub enum ApiError {
     BadRequestError { cause: String },
     #[error("InternalServerError: [{cause}]")]
     InternalServerError { cause: String },
+    #[error("PayloadToLarge")]
+    PayloadToLarge,
 
     #[error("MissingAuthTokenError")]
     MissingAuthTokenError,
@@ -84,10 +87,11 @@ impl actix_web::error::ResponseError for ApiError {
                 }
                 _ => HttpResponse::BadRequest().finish(),
             },
-            ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
-            ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::ActixMailboxError { .. }
+            | ApiError::JsonError { .. }
+            | ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::BadRequestError { .. } => HttpResponse::BadRequest().finish(),
-            ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::PayloadToLarge => HttpResponse::PayloadTooLarge().finish(),
             ApiError::NodeNotFoundError { .. } => HttpResponse::NotFound().finish(),
             ApiError::InvalidTokenError { .. }
             | ApiError::ExpiredTokenError { .. }

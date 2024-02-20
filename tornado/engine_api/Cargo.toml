@@ -9,8 +9,10 @@ edition = "2018"
 [dependencies]
 ajars = { version = "0.6", features = ["actix_web"] }
 json-patch = "0.2"
+futures-util = "0.3"
 
 actix.workspace = true
+actix-multipart.workspace = true
 actix-web.workspace = true
 async-trait.workspace = true
 base64.workspace = true

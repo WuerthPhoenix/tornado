@@ -156,7 +156,7 @@ impl MatcherConfig {
     pub fn create_node_in_path(
         &mut self,
         path: &[&str],
-        node: &MatcherConfig,
+        node: MatcherConfig,
     ) -> Result<(), MatcherError> {
         if path.len() < 2 {
             return Err(MatcherError::ConfigurationError {
@@ -194,7 +194,7 @@ impl MatcherConfig {
     pub fn edit_node_in_path(
         &mut self,
         path: &[&str],
-        node: &MatcherConfig,
+        node: MatcherConfig,
     ) -> Result<(), MatcherError> {
         if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
@@ -226,6 +226,16 @@ impl MatcherConfig {
                 });
             }
         }
+        Ok(())
+    }
+
+    pub fn import_node_in_path(
+        &mut self,
+        path: &[&str],
+        node: MatcherConfig,
+    ) -> Result<(), MatcherError> {
+        let old_node = self.get_mut_node_by_path_or_err(path)?;
+        *old_node = node;
         Ok(())
     }
 
@@ -391,13 +401,13 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
 
 /// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait(? Send)]
 pub trait MatcherConfigReader: Sync + Send {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
 }
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait(? Send)]
 pub trait MatcherConfigEditor: Sync + Send {
     /// Returns the list of available drafts
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
@@ -845,11 +855,11 @@ mod tests {
         };
 
         // Act
-        let result_not_existing = config.create_node_in_path(&["root", "filter3"], &new_filter);
+        let result_not_existing = config.create_node_in_path(&["root", "filter3"], new_filter.clone());
         let result_ruleset =
-            config.create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &new_filter);
+            config.create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &new_filter.clone());
         let result_already_existing_node =
-            config.create_node_in_path(&["root", "filter1"], &new_filter);
+            config.create_node_in_path(&["root", "filter1"], new_filter);
 
         // Assert
         assert!(result_not_existing.is_err());
@@ -977,7 +987,7 @@ mod tests {
         };
 
         // Act
-        let result = config.create_node_in_path(&["root", "filter2", "filter3"], &new_filter);
+        let result = config.create_node_in_path(&["root", "filter2", "filter3"], new_filter);
 
         // Assert
         assert!(result.is_ok());
@@ -1048,9 +1058,9 @@ mod tests {
 
         // Act
         let result_not_existing =
-            config.edit_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
+            config.edit_node_in_path(&["root", "filter3", "new_filter"], new_filter.clone());
         let result_node_different_type =
-            config.edit_node_in_path(&["root", "filter2", "filter3"], &new_ruleset);
+            config.edit_node_in_path(&["root", "filter2", "filter3"], new_ruleset);
 
         // Assert
         assert!(result_not_existing.is_err());
@@ -1236,9 +1246,9 @@ mod tests {
 
         // Act
         let result_ruleset = config_ruleset
-            .edit_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &edited_ruleset);
+            .edit_node_in_path(&["root", "filter2", "filter3", "ruleset1"], edited_ruleset.clone());
         let result_filter =
-            config_filter.edit_node_in_path(&["root", "filter2", "filter3"], &edited_filter);
+            config_filter.edit_node_in_path(&["root", "filter2", "filter3"], edited_filter);
 
         // Assert
         assert!(result_ruleset.is_ok());
@@ -1515,6 +1525,7 @@ mod tests {
             })
         );
     }
+
     #[test]
     fn test_create_rule() {
         // Arrange
