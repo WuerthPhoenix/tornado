@@ -167,13 +167,7 @@ impl MatcherConfig {
         let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
-            return Err(MatcherError::ConfigurationError {
-                message: format!(
-                    "A node with name {:?} already exists in path {:?}",
-                    node.get_name(),
-                    path
-                ),
-            });
+            return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
         }
 
         // Validate input before saving it to the draft.
@@ -1068,8 +1062,8 @@ mod tests {
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
                 message:
-                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                        .to_string(),
+                "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
+                    .to_string(),
             })
         );
         assert!(result_node_different_type.is_err());
@@ -1520,8 +1514,8 @@ mod tests {
             result.err(),
             Some(MatcherError::ConfigurationError {
                 message:
-                    "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
-                        .to_string(),
+                "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
+                    .to_string(),
             })
         );
     }

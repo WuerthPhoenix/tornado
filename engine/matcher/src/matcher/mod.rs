@@ -2,6 +2,7 @@ pub mod action;
 pub mod extractor;
 pub mod modifier;
 pub mod operator;
+
 use tracing::instrument;
 
 use crate::config::rule::Rule;
@@ -142,7 +143,7 @@ impl Matcher {
         }
     }
 
-    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Filter: {}", filter_name).as_str()))]
+    #[instrument(level = "debug", skip_all, fields(otel.name = format ! ("Process Filter: {}", filter_name).as_str()))]
     fn process_filter(
         filter_name: &str,
         filter: &MatcherFilter,
@@ -180,7 +181,7 @@ impl Matcher {
         }
     }
 
-    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Ruleset: {}", ruleset_name).as_str()))]
+    #[instrument(level = "debug", skip_all, fields(otel.name = format ! ("Process Ruleset: {}", ruleset_name).as_str()))]
     fn process_rules(
         ruleset_name: &str,
         rules: &[MatcherRule],
@@ -199,7 +200,7 @@ impl Matcher {
                 name = rule.name.as_str(),
                 otel.name = format!("Process Rule: {}", rule.name).as_str()
             )
-            .entered();
+                .entered();
             trace!("Matcher process - check matching of rule: [{}]", &rule.name);
 
             let mut processed_rule = ProcessedRule {
@@ -274,7 +275,7 @@ impl Matcher {
                 "process_action",
                 otel.name = format!("Process Action: {}", action.id).as_str()
             )
-            .entered();
+                .entered();
 
             if let Some(metadata) = &mut processed_rule.meta {
                 let (action, action_metadata) = action.resolve_with_meta(processed_event)?;
@@ -341,7 +342,7 @@ mod test {
             filter,
             nodes: vec![],
         })
-        .unwrap();
+            .unwrap();
 
         // Assert
         match &matcher.node {
@@ -368,7 +369,7 @@ mod test {
                 rules: vec![new_rule("rule1", None)],
             }],
         })
-        .unwrap();
+            .unwrap();
 
         // Assert
         match &matcher.node {
@@ -463,7 +464,7 @@ mod test {
         assert!(matcher.is_err());
 
         match matcher.err().unwrap() {
-            MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
+            MatcherError::NotUniqueNameError { name } => assert_eq!("rule_name", name),
             _ => unreachable!(),
         }
     }
@@ -505,7 +506,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3, rule_4],
         })
-        .unwrap();
+            .unwrap();
 
         // Assert
         match &matcher.node {
@@ -543,7 +544,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3, rule_4],
         })
-        .unwrap();
+            .unwrap();
 
         // Assert
         match &matcher.node {
@@ -588,7 +589,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -647,7 +648,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -694,7 +695,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("sms")), false);
@@ -741,7 +742,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -801,7 +802,7 @@ mod test {
             name: "ruleset1".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         let mut event_payload = Map::new();
         event_payload.insert(String::from("temp"), Value::String(String::from("temp_value")));
@@ -848,7 +849,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -894,7 +895,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -943,7 +944,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -1019,7 +1020,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -1107,7 +1108,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2],
         })
-        .unwrap();
+            .unwrap();
 
         // Act
         let result = matcher.process(json!(Event::new("email")), false);
@@ -1170,7 +1171,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         let mut payload = Payload::new();
         payload.insert(
@@ -1231,7 +1232,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1],
         })
-        .unwrap();
+            .unwrap();
 
         let mut payload = Payload::new();
         let mut inner = Payload::new();
@@ -1816,7 +1817,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // Value equal to 1000 should match
         {
@@ -2071,7 +2072,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // Value containing (case insentitive) "something" should match
         {
@@ -2110,7 +2111,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // Value not containing (case insentitive) "something" should not match
         {
@@ -2146,7 +2147,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // Array containing a string equal to (case insentivive) "something" should match
         {
@@ -2188,7 +2189,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // Array not containing a string equal to (case insentivive) "something" should not match
         {
@@ -2230,7 +2231,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // contains operator should work
         // Value containing "Contains test" should match
@@ -2268,7 +2269,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule.clone()],
         })
-        .unwrap();
+            .unwrap();
 
         // contain alias operator should still work
         // Value containing "Contain alias test" should match
@@ -2337,7 +2338,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2],
         })
-        .expect("should create a matcher");
+            .expect("should create a matcher");
 
         let mut payload = Payload::new();
         payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));
@@ -2449,7 +2450,7 @@ mod test {
             name: "ruleset".to_owned(),
             rules: vec![rule_1, rule_2, rule_3],
         })
-        .expect("should create a matcher");
+            .expect("should create a matcher");
 
         let mut payload = Payload::new();
         payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));

@@ -69,7 +69,7 @@ impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match self {
             ApiError::MatcherError { cause } => match cause {
-                MatcherError::NotUniqueRuleNameError { name } => {
+                MatcherError::NotUniqueNameError { name } => {
                     let mut params = HashMap::new();
                     params.insert("RULE_NAME".to_owned(), name.to_owned());
                     HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
