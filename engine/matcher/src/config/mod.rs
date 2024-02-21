@@ -171,7 +171,7 @@ impl MatcherConfig {
         }
 
         // Validate input before saving it to the draft.
-        let _ = Matcher::build(node)?;
+        let _ = Matcher::build(&node)?;
 
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
@@ -197,7 +197,7 @@ impl MatcherConfig {
         }
 
         // Validate input before saving it to the draft.
-        let _ = Matcher::build(node)?;
+        let _ = Matcher::build(&node)?;
 
         let old_node = self.get_mut_node_by_path_or_err(path)?;
         match (old_node, node) {
@@ -849,9 +849,10 @@ mod tests {
         };
 
         // Act
-        let result_not_existing = config.create_node_in_path(&["root", "filter3"], new_filter.clone());
-        let result_ruleset =
-            config.create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &new_filter.clone());
+        let result_not_existing =
+            config.create_node_in_path(&["root", "filter3"], new_filter.clone());
+        let result_ruleset = config
+            .create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], new_filter.clone());
         let result_already_existing_node =
             config.create_node_in_path(&["root", "filter1"], new_filter);
 
@@ -873,11 +874,7 @@ mod tests {
         assert!(result_already_existing_node.is_err());
         assert_eq!(
             result_already_existing_node.err(),
-            Some(MatcherError::ConfigurationError {
-                message:
-                    "A node with name \"new_filter\" already exists in path [\"root\", \"filter1\"]"
-                        .to_string(),
-            })
+            Some(MatcherError::NotUniqueNameError { name: "new_filter".to_string() })
         );
     }
 
@@ -1062,8 +1059,8 @@ mod tests {
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
                 message:
-                "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                    .to_string(),
+                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
+                        .to_string(),
             })
         );
         assert!(result_node_different_type.is_err());
@@ -1514,8 +1511,8 @@ mod tests {
             result.err(),
             Some(MatcherError::ConfigurationError {
                 message:
-                "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
-                    .to_string(),
+                    "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
+                        .to_string(),
             })
         );
     }
@@ -1956,7 +1953,7 @@ mod tests {
 
         let result = config.create_node_in_path(
             &["root"],
-            &MatcherConfig::Filter {
+            MatcherConfig::Filter {
                 name: "test/name".to_string(),
                 filter: filter.clone(),
                 nodes: vec![],
@@ -1967,7 +1964,7 @@ mod tests {
 
         let result = config.create_node_in_path(
             &["root"],
-            &MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
+            MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
         );
         assert!(result.is_err());
         assert_eq!(old_config, config);
@@ -1987,7 +1984,7 @@ mod tests {
 
         let result = config.edit_node_in_path(
             &["root"],
-            &MatcherConfig::Filter {
+            MatcherConfig::Filter {
                 name: "test/name".to_string(),
                 filter: filter.clone(),
                 nodes: vec![],
@@ -1998,7 +1995,7 @@ mod tests {
 
         let result = config.create_node_in_path(
             &["root"],
-            &MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
+            MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
         );
         assert!(result.is_err());
         assert_eq!(old_config, config);

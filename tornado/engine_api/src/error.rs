@@ -1,7 +1,6 @@
 use actix::MailboxError;
 use actix_web::{http, HttpResponse, HttpResponseBuilder};
 use std::collections::HashMap;
-use std::fmt::Display;
 use thiserror::Error;
 use tornado_engine_api_dto::common::WebError;
 use tornado_engine_matcher::error::MatcherError;

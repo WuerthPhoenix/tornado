@@ -3,15 +3,14 @@ use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
     processing_tree_node_details_dto_into_matcher_config,
 };
-use crate::error::ApiError;
-use actix_multipart::Multipart;
 use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
+use actix_multipart::Multipart;
 use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, HttpResponse, Scope};
 use chrono::{Local, SecondsFormat};
-use gethostname::gethostname;
 use futures_util::TryStreamExt as _;
+use gethostname::gethostname;
 use log::*;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
@@ -22,8 +21,6 @@ use tornado_engine_api_dto::config::{
     ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto, RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
-
-const MAX_CONFIG_UPLOAD_SIZE: usize = 15 * 1024 * 1024;
 
 pub fn build_config_endpoints<
     A: ConfigApiHandler + 'static,
@@ -295,9 +292,6 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
             continue;
         };
         while let Some(chunk) = field.try_next().await? {
-            if file_data.len() + chunk.len() > MAX_CONFIG_UPLOAD_SIZE {
-                return Err(ApiError::PayloadToLarge.into());
-            }
             file_data.extend_from_slice(&chunk);
         }
     }
