@@ -4,6 +4,7 @@ pub mod modifier;
 pub mod operator;
 use tracing::instrument;
 
+use crate::config::rule::Rule;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
@@ -44,6 +45,28 @@ pub struct Matcher {
     node: ProcessingNode,
 }
 
+fn build_matcher_rule(rule: &Rule) -> Result<MatcherRule, MatcherError> {
+    let action_builder = action::ActionResolverBuilder::new();
+    let operator_builder = operator::OperatorBuilder::new();
+    let extractor_builder = MatcherExtractorBuilder::new();
+
+    debug!("Matcher build - Processing rule: [{}]", &rule.name);
+    trace!("Matcher build - Processing rule definition:\n{:?}", rule);
+
+    Ok(MatcherRule {
+        name: rule.name.to_owned(),
+        do_continue: rule.do_continue,
+        operator: operator_builder.build_option(&rule.name, &rule.constraint.where_operator)?,
+        extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
+        actions: action_builder.build_all(&rule.name, &rule.actions)?,
+    })
+}
+
+pub fn validate_rule(rule: &Rule) -> Result<(), MatcherError> {
+    let _ = build_matcher_rule(rule)?;
+    Ok(())
+}
+
 impl Matcher {
     /// Builds a new Matcher and configures it to operate with a set of Rules.
     pub fn build(config: &MatcherConfig) -> Result<Matcher, MatcherError> {
@@ -56,25 +79,11 @@ impl Matcher {
         match config {
             MatcherConfig::Ruleset { name, rules } => {
                 info!("Start processing {} Matcher Config Rules", rules.len());
-
-                let action_builder = action::ActionResolverBuilder::new();
-                let operator_builder = operator::OperatorBuilder::new();
-                let extractor_builder = MatcherExtractorBuilder::new();
-                let mut processed_rules = vec![];
-
-                for rule in rules.iter().filter(|rule| rule.active) {
-                    debug!("Matcher build - Processing rule: [{}]", &rule.name);
-                    trace!("Matcher build - Processing rule definition:\n{:?}", rule);
-
-                    processed_rules.push(MatcherRule {
-                        name: rule.name.to_owned(),
-                        do_continue: rule.do_continue,
-                        operator: operator_builder
-                            .build_option(&rule.name, &rule.constraint.where_operator)?,
-                        extractor: extractor_builder.build(&rule.name, &rule.constraint.with)?,
-                        actions: action_builder.build_all(&rule.name, &rule.actions)?,
-                    })
-                }
+                let mut processed_rules = rules
+                    .iter()
+                    .filter(|rule| rule.active)
+                    .map(build_matcher_rule)
+                    .collect::<Result<_, _>>()?;
 
                 info!("Matcher Rules build completed");
 
