@@ -354,7 +354,7 @@ async fn import_node_in_place<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = parse_uploaded_file(body).await?;
     data.api
-        .edit_draft_config_node(
+        .import_draft_config_node(
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.node_path,
