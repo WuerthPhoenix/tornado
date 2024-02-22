@@ -3,9 +3,12 @@ use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
     processing_tree_node_details_dto_into_matcher_config,
 };
-use crate::model::{ApiData, ApiDataV2};
+use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
+use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
-use actix_web::{web, HttpRequest, Scope};
+use actix_web::{web, HttpRequest, HttpResponse, Scope};
+use chrono::Utc;
+use gethostname::gethostname;
 use log::*;
 use serde::Deserialize;
 use tornado_engine_api_dto::common::Id;
@@ -91,6 +94,10 @@ pub fn build_config_v2_endpoints<
                         .route(web::post().to(create_draft_tree_node::<A, CM>))
                         .route(web::put().to(edit_draft_tree_node::<A, CM>))
                         .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/export/{param_auth}/{draft_id}/{node_path}")
+                        .route(web::get().to(export_draft_tree_starting_from_node_path::<A, CM>)),
                 )
                 .service(
                     web::resource("/rule/details/{param_auth}/{draft_id}/{ruleset_path}")
@@ -487,6 +494,36 @@ async fn get_draft_tree_node_with_node_path<
         )
         .await?;
     Ok(Json(result))
+}
+
+async fn export_draft_tree_starting_from_node_path<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+) -> actix_web::Result<HttpResponse> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = data
+        .api
+        .export_draft_tree_starting_from_node_path(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+        )
+        .await?;
+    let filename =
+        format!("{:?}-{}-{}.json", gethostname(), result.get_name(), Utc::now().to_rfc3339());
+    let response = HttpResponse::Ok()
+        .insert_header((
+            header::CONTENT_DISPOSITION,
+            format!("attachment; filename: \"{}\"", filename),
+        ))
+        .content_type("application/json")
+        .json(ExportVersionedMatcherConfig::V1(result));
+    Ok(response)
 }
 
 async fn get_current_configuration<
