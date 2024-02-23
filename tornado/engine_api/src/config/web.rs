@@ -7,10 +7,11 @@ use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
 use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, HttpResponse, Scope};
-use chrono::Utc;
+use chrono::{Local, SecondsFormat};
 use gethostname::gethostname;
 use log::*;
 use serde::Deserialize;
+use std::os::unix::ffi::OsStrExt;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
@@ -514,8 +515,12 @@ async fn export_draft_tree_starting_from_node_path<
             &endpoint_params.node_path,
         )
         .await?;
-    let filename =
-        format!("{:?}-{}-{}.json", gethostname(), result.get_name(), Utc::now().to_rfc3339());
+    let filename = format!(
+        "{}-{}-{}.json",
+        String::from_utf8_lossy(gethostname().as_bytes()),
+        result.get_name(),
+        Local::now().to_rfc3339_opts(SecondsFormat::Secs, false)
+    );
     let response = HttpResponse::Ok()
         .insert_header((
             header::CONTENT_DISPOSITION,
