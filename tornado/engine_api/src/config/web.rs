@@ -331,7 +331,7 @@ async fn edit_draft_tree_node<
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
     data.api
-        .edit_draft_config_node(
+        .create_draft_config_node(
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.node_path,

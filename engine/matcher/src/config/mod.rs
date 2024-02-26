@@ -178,7 +178,7 @@ impl MatcherConfig {
                 message: "A ruleset cannot have children nodes".to_string(),
             }),
             MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
-                nodes.push(node.clone());
+                nodes.push(node);
                 Ok(())
             }
         }
@@ -205,14 +205,14 @@ impl MatcherConfig {
                 MatcherConfig::Ruleset { name, .. },
                 MatcherConfig::Ruleset { name: new_name, .. },
             ) => {
-                *name = new_name.clone();
+                *name = new_name;
             }
             (
                 MatcherConfig::Filter { name, filter, .. },
                 MatcherConfig::Filter { name: new_name, filter: new_filter, .. },
             ) => {
-                *name = new_name.clone();
-                *filter = new_filter.clone();
+                *name = new_name;
+                *filter = new_filter;
             }
             _ => {
                 return Err(MatcherError::ConfigurationError {
