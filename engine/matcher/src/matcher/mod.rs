@@ -79,7 +79,7 @@ impl Matcher {
         match config {
             MatcherConfig::Ruleset { name, rules } => {
                 info!("Start processing {} Matcher Config Rules", rules.len());
-                let mut processed_rules = rules
+                let processed_rules = rules
                     .iter()
                     .filter(|rule| rule.active)
                     .map(build_matcher_rule)

@@ -128,8 +128,6 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
             .sum()
     }
 
-    /// Returns processing tree node details by path
-    /// in the current configuration of tornado
     pub async fn get_current_config_node_details_by_path(
         &self,
         auth: AuthContextV2<'_>,
@@ -141,8 +139,25 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         self.get_node_details(&auth, &filtered_matcher, node_path).await
     }
 
-    /// Returns processing tree node details by path
-    /// in the current configuration of tornado
+    pub async fn export_draft_tree_starting_from_node_path(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        relative_node_path: &str,
+    ) -> Result<MatcherConfig, ApiError> {
+        auth.has_permission(&Permission::ConfigView)?;
+        let draft_config = self.config_manager.get_draft(draft_id).await?;
+        auth.is_owner(&draft_config)?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, relative_node_path)?;
+        let filtered_matcher = get_filtered_matcher(&draft_config.config, &auth).await?;
+        let node = filtered_matcher.get_node_by_path(absolute_node_path.as_slice()).ok_or(
+            ApiError::NodeNotFoundError {
+                message: format!("Node for relative path {:?} not found", relative_node_path),
+            },
+        )?;
+        Ok(node.to_owned())
+    }
+
     pub async fn get_draft_config_node_details_by_path(
         &self,
         auth: AuthContextV2<'_>,
@@ -1607,5 +1622,33 @@ mod test {
 
         assert_eq!(expected1, result1);
         assert_eq!(expected2, result2);
+    }
+
+    #[actix_rt::test]
+    async fn export_draft_tree_starting_from_a_specific_filter() {
+        // Arrange
+        let api = ConfigApi::new(TestApiHandler {}, Arc::new(TestConfigManager {}));
+        let permissions_map = auth_permissions();
+        let user = AuthContextV2::new(
+            AuthV2 {
+                user: DRAFT_OWNER_ID.to_owned(),
+                authorization: Authorization {
+                    path: vec!["ruleset".to_owned()],
+                    roles: vec!["view".to_owned()],
+                },
+                preferences: None,
+            },
+            &permissions_map,
+        );
+
+        // Act
+        let result = api
+            .export_draft_tree_starting_from_node_path(user, "id", "ruleset".as_ref())
+            .await
+            .unwrap();
+
+        // Assert
+        let expected = MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] };
+        assert_eq!(expected, result);
     }
 }
