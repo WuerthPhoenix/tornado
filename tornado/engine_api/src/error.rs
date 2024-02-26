@@ -71,7 +71,7 @@ impl actix_web::error::ResponseError for ApiError {
                 MatcherError::NotUniqueNameError { name } => {
                     let mut params = HashMap::new();
                     params.insert("RULE_NAME".to_owned(), name.to_owned());
-                    HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
+                    HttpResponseBuilder::new(http::StatusCode::CONFLICT).json(WebError {
                         code: VALIDATION_ERROR.to_owned(),
                         message: Some(format!("{}", cause)),
                         params,

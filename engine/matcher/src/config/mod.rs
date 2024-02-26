@@ -437,6 +437,7 @@ pub trait MatcherConfigEditor: Sync + Send {
 mod tests {
     use super::*;
     use crate::config::rule::{Constraint, Operator};
+    use serde_json::json;
 
     #[test]
     fn test_get_direct_child_nodes_count() {
@@ -2089,5 +2090,79 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_import_node_in_root() {
+        // Arrange
+        let mut config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+
+        let import_config = MatcherConfig::Filter {
+            name: "imported_root".to_string(),
+            filter: Filter {
+                description: "imported root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        config.import_node_in_path(&["root"], import_config.clone()).unwrap();
+
+        // Assert
+        assert_eq!(config, import_config);
+    }
+
+    #[test]
+    fn should_import_node_in_path() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "Root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Filter {
+                name: "master".to_string(),
+                filter: Filter {
+                    description: "master filter".to_string(),
+                    active: false,
+                    filter: Defaultable::Value(Operator::Equals {
+                        first: json!("${event.metadata.tenant}"),
+                        second: json!("master"),
+                    }),
+                },
+                nodes: vec![],
+            }],
+        };
+
+        let import_config = MatcherConfig::Filter {
+            name: "imported_node".to_string(),
+            filter: Filter {
+                description: "imported root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        config.import_node_in_path(&["root", "master"], import_config.clone()).unwrap();
+        let new_node = config.get_node_by_path(&["root", "imported_node"]).unwrap();
+
+        // Assert
+        assert_eq!(new_node, &import_config);
     }
 }
