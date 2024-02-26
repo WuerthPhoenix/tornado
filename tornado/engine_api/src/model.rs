@@ -1,4 +1,3 @@
-use crate::auth::auth_v2::AuthServiceV2;
 use crate::auth::AuthService;
 use serde::{Deserialize, Serialize};
 use tornado_engine_matcher::config::MatcherConfig;
@@ -12,10 +11,5 @@ pub enum ExportVersionedMatcherConfig {
 
 pub struct ApiData<T> {
     pub auth: AuthService,
-    pub api: T,
-}
-
-pub struct ApiDataV2<T> {
-    pub auth: AuthServiceV2,
     pub api: T,
 }

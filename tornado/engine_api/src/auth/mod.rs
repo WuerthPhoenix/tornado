@@ -10,7 +10,6 @@ use tornado_engine_api_dto::auth::Auth;
 use tornado_engine_matcher::config::MatcherConfigDraft;
 
 pub mod auth_v2;
-
 pub const JWT_TOKEN_HEADER: &str = "Authorization";
 pub const JWT_TOKEN_HEADER_SUFFIX: &str = "Bearer ";
 pub const JWT_TOKEN_HEADER_SUFFIX_LEN: usize = JWT_TOKEN_HEADER_SUFFIX.len();

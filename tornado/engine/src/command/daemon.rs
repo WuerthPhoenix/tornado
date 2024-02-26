@@ -36,7 +36,7 @@ use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
 use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::event::api_v2::EventApiV2;
-use tornado_engine_api::model::{ApiData, ApiDataV2};
+use tornado_engine_api::model::ApiData;
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
 use tornado_engine_matcher::dispatcher::Dispatcher;
 use tracing_actix_web::TracingLogger;
@@ -474,17 +474,9 @@ pub async fn daemon(
             auth: auth_service.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
         };
-        let v2_config_api = ApiDataV2 {
-            auth: auth_service_v2.clone(),
-            api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
-        };
         let event_api = ApiData {
             auth: auth_service.clone(),
             api: EventApi::new(api_handler.clone(), matcher_config.clone()),
-        };
-        let event_api_v2 = ApiDataV2 {
-            auth: auth_service_v2.clone(),
-            api: EventApiV2::new(api_handler.clone(), matcher_config.clone()),
         };
         let runtime_config_api = ApiData {
             auth: auth_service.clone(),
@@ -516,10 +508,12 @@ pub async fn daemon(
                     .service(
                         web::scope("/v2_beta")
                             .service(tornado_engine_api::config::web::build_config_v2_endpoints(
-                                v2_config_api,
+                                ConfigApi::new(api_handler.clone(), matcher_config.clone()),
+                                auth_service_v2.clone(),
                             ))
                             .service(tornado_engine_api::event::web::build_event_v2_endpoints(
-                                event_api_v2,
+                                EventApiV2::new(api_handler.clone(), matcher_config.clone()),
+                                auth_service_v2.clone(),
                             )),
                     ),
             )

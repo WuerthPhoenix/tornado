@@ -4,7 +4,7 @@ use crate::error::ApiError;
 use crate::event::api::{EventApi, EventApiHandler, SendEventRequest};
 use crate::event::api_v2::EventApiV2;
 use crate::event::convert::{dto_into_send_event_request, processed_event_into_dto};
-use crate::model::{ApiData, ApiDataV2};
+use crate::model::ApiData;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, Scope};
 use log::*;
@@ -29,10 +29,12 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
 }
 
 pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
-    data: ApiDataV2<EventApiV2<T, CM>>,
+    event_api: EventApiV2<T, CM>,
+    auth_service: AuthServiceV2,
 ) -> Scope {
     web::scope("/event")
-        .app_data(Data::new(data))
+        .app_data(Data::new(event_api))
+        .app_data(Data::new(auth_service))
         .service(
             web::resource("/active/{param_auth}")
                 .route(web::post().to(send_event_to_current_config_v2::<T, CM>)),
@@ -103,7 +105,8 @@ async fn send_event_to_current_config_v2<
     CM: MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    data: Data<ApiDataV2<EventApiV2<T, CM>>>,
+    api: Data<EventApiV2<T, CM>>,
+    auth: Data<AuthServiceV2>,
     params: Path<EndpointParamAuthPath>,
     body: Json<SendEventRequestDto>,
     _param_auth: Path<String>,
@@ -115,16 +118,16 @@ async fn send_event_to_current_config_v2<
     }
 
     let (auth_ctx, send_event_request) =
-        prepare_data_for_send_event_v2(&req, &data.auth, &params.param_auth, body)?;
+        prepare_data_for_send_event_v2(&req, &auth, &params.param_auth, body)?;
 
-    let processed_event =
-        data.api.send_event_to_current_config(auth_ctx, send_event_request).await?;
+    let processed_event = api.send_event_to_current_config(auth_ctx, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
 async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
     req: HttpRequest,
-    data: Data<ApiDataV2<EventApiV2<T, CM>>>,
+    api: Data<EventApiV2<T, CM>>,
+    auth: Data<AuthServiceV2>,
     params: Path<AuthAndDraftId>,
     body: Json<SendEventRequestDto>,
 ) -> actix_web::Result<Json<ProcessedEventDto>> {
@@ -135,9 +138,9 @@ async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigE
     }
 
     let (auth_ctx, send_event_request) =
-        prepare_data_for_send_event_v2(&req, &data.auth, &params.param_auth, body)?;
+        prepare_data_for_send_event_v2(&req, &auth, &params.param_auth, body)?;
     let processed_event =
-        data.api.send_event_to_draft(auth_ctx, &params.draft_id, send_event_request).await?;
+        api.send_event_to_draft(auth_ctx, &params.draft_id, send_event_request).await?;
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 

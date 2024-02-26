@@ -1,9 +1,10 @@
+use crate::auth::auth_v2::AuthServiceV2;
 use crate::config::api::{ConfigApi, ConfigApiHandler};
 use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
     processing_tree_node_details_dto_into_matcher_config,
 };
-use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
+use crate::model::{ApiData, ExportVersionedMatcherConfig};
 use actix_multipart::Multipart;
 use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
@@ -55,10 +56,12 @@ pub fn build_config_v2_endpoints<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
-    data: ApiDataV2<ConfigApi<A, CM>>,
+    config_api: ConfigApi<A, CM>,
+    auth_service: AuthServiceV2,
 ) -> Scope {
     web::scope("/config")
-        .app_data(Data::new(data))
+        .app_data(Data::new(config_api))
+        .app_data(Data::new(auth_service))
         .service(
             web::scope("/active")
                 .service(
@@ -190,13 +193,14 @@ async fn get_current_tree_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     param_auth: Path<String>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
 
-    let result = data.api.get_current_config_processing_tree_nodes_by_path(auth_ctx, None).await?;
+    let result = api.get_current_config_processing_tree_nodes_by_path(auth_ctx, None).await?;
     Ok(Json(result))
 }
 
@@ -206,12 +210,12 @@ async fn get_current_tree_node_with_node_path<
 >(
     req: HttpRequest,
     endpoint_params: Path<AuthAndNodePath>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .get_current_config_processing_tree_nodes_by_path(
             auth_ctx,
             Some(&endpoint_params.node_path),
@@ -226,14 +230,13 @@ async fn get_current_tree_node_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<AuthAndNodePath>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
-        .get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path)
-        .await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result =
+        api.get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path).await?;
     Ok(Json(result))
 }
 
@@ -243,12 +246,12 @@ async fn get_draft_tree_node_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .get_draft_config_node_details_by_path(
             auth_ctx,
             &endpoint_params.draft_id,
@@ -264,20 +267,20 @@ async fn create_draft_tree_node<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    data.api
-        .create_draft_config_node(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-            config,
-        )
-        .await?;
+    api.create_draft_config_node(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.node_path,
+        config,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -305,20 +308,20 @@ async fn import_child_node<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     body: Multipart,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
-    data.api
-        .create_draft_config_node(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-            config,
-        )
-        .await?;
+    api.create_draft_config_node(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.node_path,
+        config,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -328,20 +331,20 @@ async fn edit_draft_tree_node<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    data.api
-        .create_draft_config_node(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-            config,
-        )
-        .await?;
+    api.create_draft_config_node(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.node_path,
+        config,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -351,20 +354,20 @@ async fn import_node_in_path<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     body: Multipart,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
-    data.api
-        .import_draft_config_node(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-            config,
-        )
-        .await?;
+    api.import_draft_config_node(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.node_path,
+        config,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -374,12 +377,12 @@ async fn delete_draft_tree_node<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data.api
-        .delete_draft_config_node(auth_ctx, &endpoint_params.draft_id, &endpoint_params.node_path)
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    api.delete_draft_config_node(auth_ctx, &endpoint_params.draft_id, &endpoint_params.node_path)
         .await?;
     Ok(Json(()))
 }
@@ -390,11 +393,12 @@ async fn get_current_tree_info<
 >(
     req: HttpRequest,
     endpoint_params: Path<String>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<TreeInfoDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params)?;
-    let result = data.api.get_authorized_tree_info(&auth_ctx).await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params)?;
+    let result = api.get_authorized_tree_info(&auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -404,12 +408,12 @@ async fn get_current_rule_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<RuleDetailsParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<RuleDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .get_current_rule_details_by_path(
             &auth_ctx,
             &endpoint_params.ruleset_path,
@@ -425,12 +429,12 @@ async fn get_draft_rule_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<RuleDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .get_draft_rule_details_by_path(
             &auth_ctx,
             &endpoint_params.draft_id,
@@ -447,19 +451,19 @@ async fn create_draft_rule_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsCreateParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     rule_dto: Json<RuleDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data.api
-        .create_draft_rule_details_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.ruleset_path,
-            rule_dto.0,
-        )
-        .await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    api.create_draft_rule_details_by_path(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.ruleset_path,
+        rule_dto.0,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -469,20 +473,20 @@ async fn edit_draft_rule_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     rule_dto: Json<RuleDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data.api
-        .edit_draft_rule_details_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.ruleset_path,
-            &endpoint_params.rule_name,
-            rule_dto.0,
-        )
-        .await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    api.edit_draft_rule_details_by_path(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.ruleset_path,
+        &endpoint_params.rule_name,
+        rule_dto.0,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -492,20 +496,20 @@ async fn draft_move_rule<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     rule_dto: Json<RulePositionDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data.api
-        .move_draft_rule_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.ruleset_path,
-            &endpoint_params.rule_name,
-            rule_dto.0.position,
-        )
-        .await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    api.move_draft_rule_by_path(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.ruleset_path,
+        &endpoint_params.rule_name,
+        rule_dto.0.position,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -515,18 +519,18 @@ async fn delete_draft_rule_details<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    data.api
-        .delete_draft_rule_details_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.ruleset_path,
-            &endpoint_params.rule_name,
-        )
-        .await?;
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    api.delete_draft_rule_details_by_path(
+        auth_ctx,
+        &endpoint_params.draft_id,
+        &endpoint_params.ruleset_path,
+        &endpoint_params.rule_name,
+    )
+    .await?;
     Ok(Json(()))
 }
 
@@ -535,16 +539,15 @@ async fn get_draft_tree_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
     path: Path<DraftPath>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
 
-    let result = data
-        .api
-        .get_draft_config_processing_tree_nodes_by_path(auth_ctx, &path.draft_id, None)
-        .await?;
+    let result =
+        api.get_draft_config_processing_tree_nodes_by_path(auth_ctx, &path.draft_id, None).await?;
     Ok(Json(result))
 }
 
@@ -554,12 +557,12 @@ async fn get_draft_tree_node_with_node_path<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .get_draft_config_processing_tree_nodes_by_path(
             auth_ctx,
             &endpoint_params.draft_id,
@@ -575,12 +578,12 @@ async fn export_draft_tree_starting_from_node_path<
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<HttpResponse> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = data
-        .api
+    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let result = api
         .export_draft_tree_starting_from_node_path(
             auth_ctx,
             &endpoint_params.draft_id,
@@ -636,11 +639,12 @@ async fn get_drafts_by_tenant<
 >(
     req: HttpRequest,
     param_auth: Path<String>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<Vec<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
-    let result = data.api.get_drafts_by_tenant(&auth_ctx).await?;
+    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
+    let result = api.get_drafts_by_tenant(&auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -678,11 +682,12 @@ async fn create_draft_in_tenant<
 >(
     req: HttpRequest,
     param_auth: Path<String>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<Id<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
-    let result = data.api.create_draft_in_tenant(&auth_ctx).await?;
+    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
+    let result = api.create_draft_in_tenant(&auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -722,11 +727,12 @@ async fn delete_draft_in_tenant<
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
-    data.api.delete_draft_in_tenant(&auth_ctx, &path.draft_id).await?;
+    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
+    api.delete_draft_in_tenant(&auth_ctx, &path.draft_id).await?;
     Ok(Json(()))
 }
 
@@ -751,11 +757,12 @@ async fn deploy_draft_for_tenant<
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
-    let result = data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
+    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
+    let result = api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
     let matcher_config_dto = matcher_config_into_dto(result)?;
     Ok(Json(matcher_config_dto))
 }
@@ -780,11 +787,12 @@ async fn draft_take_over_for_tenant<
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
-    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    api: Data<ConfigApi<A, CM>>,
+    auth: Data<AuthServiceV2>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
-    data.api.draft_take_over_for_tenant(&auth_ctx, &path.draft_id).await?;
+    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
+    api.draft_take_over_for_tenant(&auth_ctx, &path.draft_id).await?;
     Ok(Json(()))
 }
 
