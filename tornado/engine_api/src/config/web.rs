@@ -101,8 +101,8 @@ pub fn build_config_v2_endpoints<
                 )
                 .service(
                     web::resource("/tree/import/{param_auth}/{draft_id}/{node_path}")
-                        .route(web::post().to(import_child_tree::<A, CM>))
-                        .route(web::put().to(import_node_in_place::<A, CM>)),
+                        .route(web::post().to(import_child_node::<A, CM>))
+                        .route(web::put().to(import_node_in_path::<A, CM>)),
                 )
                 .service(
                     web::resource("/tree/export/{param_auth}/{draft_id}/{node_path}")
@@ -299,7 +299,7 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
     Ok(serde_json::from_slice(&file_data)?)
 }
 
-async fn import_child_tree<
+async fn import_child_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
@@ -341,7 +341,7 @@ async fn edit_draft_tree_node<
     Ok(Json(()))
 }
 
-async fn import_node_in_place<
+async fn import_node_in_path<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
