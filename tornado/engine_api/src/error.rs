@@ -39,8 +39,8 @@ pub enum ApiError {
     #[error("ForbiddenError [{message}]")]
     ForbiddenError { code: String, message: String, params: HashMap<String, String> },
 
-    #[error("NodeNotFoundError [{message}]")]
-    NodeNotFoundError { message: String },
+    #[error("NodeNotFoundError")]
+    NodeNotFoundError,
 }
 
 impl From<MatcherError> for ApiError {

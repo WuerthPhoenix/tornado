@@ -1,4 +1,5 @@
 use crate::auth::auth_v2::AuthServiceV2;
+use crate::auth::middleware::{AuthorizedPath, ConfigEdit, ConfigView};
 use crate::config::api::{ConfigApi, ConfigApiHandler};
 use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
@@ -81,7 +82,7 @@ pub fn build_config_v2_endpoints<
                         .route(web::get().to(get_current_tree_info::<A, CM>)),
                 )
                 .service(
-                    web::resource("/rule/details/{param_auth}/{ruleset_path}/{rule_name}")
+                    web::resource("/rule/details/{param_auth}/{node_path}/{rule_name}")
                         .route(web::get().to(get_current_rule_details::<A, CM>)),
                 ),
         )
@@ -148,44 +149,19 @@ pub fn build_config_v2_endpoints<
 }
 
 #[derive(Deserialize)]
-struct AuthAndNodePath {
-    param_auth: String,
-    node_path: String,
+struct DraftId {
+    draft_id: String,
 }
 
 #[derive(Deserialize)]
-struct RuleDetailsParams {
-    param_auth: String,
-    ruleset_path: String,
+struct RuleName {
     rule_name: String,
 }
 
 #[derive(Deserialize)]
-struct DraftRuleDetailsParams {
-    param_auth: String,
+struct DraftRuleName {
     draft_id: String,
-    ruleset_path: String,
     rule_name: String,
-}
-
-#[derive(Deserialize)]
-struct DraftRuleDetailsCreateParams {
-    param_auth: String,
-    draft_id: String,
-    ruleset_path: String,
-}
-
-#[derive(Deserialize)]
-struct DraftPath {
-    param_auth: String,
-    draft_id: String,
-}
-
-#[derive(Deserialize)]
-struct DraftPathWithNode {
-    param_auth: String,
-    draft_id: String,
-    node_path: String,
 }
 
 async fn get_current_tree_node<
@@ -194,13 +170,10 @@ async fn get_current_tree_node<
 >(
     req: HttpRequest,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
-    param_auth: Path<String>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
-
-    let result = api.get_current_config_processing_tree_nodes_by_path(auth_ctx, None).await?;
+    let result = api.get_current_config_processing_tree_nodes_by_path(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -209,18 +182,11 @@ async fn get_current_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<AuthAndNodePath>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = api
-        .get_current_config_processing_tree_nodes_by_path(
-            auth_ctx,
-            Some(&endpoint_params.node_path),
-        )
-        .await?;
+    let result = api.get_current_config_processing_tree_nodes_by_path(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -229,14 +195,11 @@ async fn get_current_tree_node_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<AuthAndNodePath>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result =
-        api.get_current_config_node_details_by_path(auth_ctx, &endpoint_params.node_path).await?;
+    let result = api.get_current_config_node_details_by_path(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -245,19 +208,12 @@ async fn get_draft_tree_node_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<ProcessingTreeNodeDetailsDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = api
-        .get_draft_config_node_details_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-        )
-        .await?;
+    let result = api.get_draft_config_node_details_by_path(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(result))
 }
 
@@ -266,21 +222,14 @@ async fn create_draft_tree_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    api.create_draft_config_node(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.node_path,
-        config,
-    )
-    .await?;
+    api.create_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
     Ok(Json(()))
 }
 
@@ -307,21 +256,14 @@ async fn import_child_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     body: Multipart,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
-    api.create_draft_config_node(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.node_path,
-        config,
-    )
-    .await?;
+    api.create_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
     Ok(Json(()))
 }
 
@@ -330,21 +272,14 @@ async fn edit_draft_tree_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     body: Json<ProcessingTreeNodeEditDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    api.create_draft_config_node(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.node_path,
-        config,
-    )
-    .await?;
+    api.create_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
     Ok(Json(()))
 }
 
@@ -353,21 +288,14 @@ async fn import_node_in_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     body: Multipart,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
-    api.import_draft_config_node(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.node_path,
-        config,
-    )
-    .await?;
+    api.import_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
     Ok(Json(()))
 }
 
@@ -376,14 +304,12 @@ async fn delete_draft_tree_node<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    api.delete_draft_config_node(auth_ctx, &endpoint_params.draft_id, &endpoint_params.node_path)
-        .await?;
+    api.delete_draft_config_node(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(()))
 }
 
@@ -392,13 +318,11 @@ async fn get_current_tree_info<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<String>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<TreeInfoDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params)?;
-    let result = api.get_authorized_tree_info(&auth_ctx).await?;
+    let result = api.get_authorized_tree_info(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -407,19 +331,12 @@ async fn get_current_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<RuleDetailsParams>,
+    rule_name: Path<RuleName>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<RuleDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = api
-        .get_current_rule_details_by_path(
-            &auth_ctx,
-            &endpoint_params.ruleset_path,
-            &endpoint_params.rule_name,
-        )
-        .await?;
+    let result = api.get_current_rule_details_by_path(&auth_path, &rule_name.rule_name).await?;
     Ok(Json(result))
 }
 
@@ -428,18 +345,16 @@ async fn get_draft_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsParams>,
+    draft_rule_name: Path<DraftRuleName>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<RuleDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     let result = api
         .get_draft_rule_details_by_path(
-            &auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.ruleset_path,
-            &endpoint_params.rule_name,
+            &auth_path,
+            &draft_rule_name.draft_id,
+            &draft_rule_name.rule_name,
         )
         .await?;
     Ok(Json(result))
@@ -450,20 +365,13 @@ async fn create_draft_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsCreateParams>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     rule_dto: Json<RuleDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    api.create_draft_rule_details_by_path(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.ruleset_path,
-        rule_dto.0,
-    )
-    .await?;
+    api.create_draft_rule_details_by_path(&auth_path, &draft_id.draft_id, rule_dto.0).await?;
     Ok(Json(()))
 }
 
@@ -472,18 +380,16 @@ async fn edit_draft_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsParams>,
+    draft_rule_name: Path<DraftRuleName>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     rule_dto: Json<RuleDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     api.edit_draft_rule_details_by_path(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.ruleset_path,
-        &endpoint_params.rule_name,
+        &auth_path,
+        &draft_rule_name.draft_id,
+        &draft_rule_name.rule_name,
         rule_dto.0,
     )
     .await?;
@@ -495,18 +401,16 @@ async fn draft_move_rule<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsParams>,
+    draft_rule_name: Path<DraftRuleName>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
     rule_dto: Json<RulePositionDto>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     api.move_draft_rule_by_path(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.ruleset_path,
-        &endpoint_params.rule_name,
+        &auth_path,
+        &draft_rule_name.draft_id,
+        &draft_rule_name.rule_name,
         rule_dto.0.position,
     )
     .await?;
@@ -518,17 +422,15 @@ async fn delete_draft_rule_details<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftRuleDetailsParams>,
+    draft_rule_name: Path<DraftRuleName>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
     api.delete_draft_rule_details_by_path(
-        auth_ctx,
-        &endpoint_params.draft_id,
-        &endpoint_params.ruleset_path,
-        &endpoint_params.rule_name,
+        &auth_path,
+        &draft_rule_name.draft_id,
+        &draft_rule_name.rule_name,
     )
     .await?;
     Ok(Json(()))
@@ -540,14 +442,12 @@ async fn get_draft_tree_node<
 >(
     req: HttpRequest,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
-    path: Path<DraftPath>,
+    auth_path: AuthorizedPath<ConfigView>,
+    draft_id: Path<DraftId>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
-
     let result =
-        api.get_draft_config_processing_tree_nodes_by_path(auth_ctx, &path.draft_id, None).await?;
+        api.get_draft_config_processing_tree_nodes_by_path(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(result))
 }
 
@@ -556,19 +456,13 @@ async fn get_draft_tree_node_with_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<Vec<ProcessingTreeNodeConfigDto>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = api
-        .get_draft_config_processing_tree_nodes_by_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            Some(&endpoint_params.node_path),
-        )
-        .await?;
+    let result =
+        api.get_draft_config_processing_tree_nodes_by_path(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(result))
 }
 
@@ -577,19 +471,13 @@ async fn export_draft_tree_starting_from_node_path<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    endpoint_params: Path<DraftPathWithNode>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<HttpResponse> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let result = api
-        .export_draft_tree_starting_from_node_path(
-            auth_ctx,
-            &endpoint_params.draft_id,
-            &endpoint_params.node_path,
-        )
-        .await?;
+    let result =
+        api.export_draft_tree_starting_from_node_path(&auth_path, &draft_id.draft_id).await?;
     let filename = format!(
         "{}-{}-{}.json",
         String::from_utf8_lossy(gethostname().as_bytes()),
@@ -638,13 +526,11 @@ async fn get_drafts_by_tenant<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    param_auth: Path<String>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigView>,
 ) -> actix_web::Result<Json<Vec<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
-    let result = api.get_drafts_by_tenant(&auth_ctx).await?;
+    let result = api.get_drafts_by_tenant(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -681,13 +567,11 @@ async fn create_draft_in_tenant<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    param_auth: Path<String>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<Id<String>>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &param_auth)?;
-    let result = api.create_draft_in_tenant(&auth_ctx).await?;
+    let result = api.create_draft_in_tenant(&auth_path).await?;
     Ok(Json(result))
 }
 
@@ -726,13 +610,12 @@ async fn delete_draft_in_tenant<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    path: Path<DraftPath>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
-    api.delete_draft_in_tenant(&auth_ctx, &path.draft_id).await?;
+    api.delete_draft_in_tenant(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(()))
 }
 
@@ -756,13 +639,12 @@ async fn deploy_draft_for_tenant<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    path: Path<DraftPath>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<MatcherConfigDto>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
-    let result = api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
+    let result = api.deploy_draft_for_tenant(&auth_path, &draft_id.draft_id).await?;
     let matcher_config_dto = matcher_config_into_dto(result)?;
     Ok(Json(matcher_config_dto))
 }
@@ -786,13 +668,12 @@ async fn draft_take_over_for_tenant<
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
 >(
     req: HttpRequest,
-    path: Path<DraftPath>,
+    draft_id: Path<DraftId>,
     api: Data<ConfigApi<A, CM>>,
-    auth: Data<AuthServiceV2>,
+    auth_path: AuthorizedPath<ConfigEdit>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = auth.auth_from_request(&req, &path.param_auth)?;
-    api.draft_take_over_for_tenant(&auth_ctx, &path.draft_id).await?;
+    api.draft_take_over_for_tenant(&auth_path, &draft_id.draft_id).await?;
     Ok(Json(()))
 }
 
