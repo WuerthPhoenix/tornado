@@ -1485,8 +1485,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_filter_without_children() {
+    #[test]
+    fn get_tree_info_should_work_on_filter_without_children() {
         // Arrange
         let test = MatcherConfig::Filter {
             name: "root".to_owned(),
@@ -1509,8 +1509,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_ruleset_as_only_node() {
+    #[test]
+    fn get_tree_info_should_work_on_ruleset_as_only_node() {
         // Arrange
         let test = MatcherConfig::Ruleset {
             name: "root".to_owned(),
@@ -1535,8 +1535,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
+    #[test]
+    fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
         // Arrange
         let test = MatcherConfig::Ruleset { name: "root".to_owned(), rules: vec![] };
 
@@ -1551,8 +1551,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_empty_config() {
+    #[test]
+    fn get_tree_info_should_work_on_empty_config() {
         // Arrange
         let root = [];
 
