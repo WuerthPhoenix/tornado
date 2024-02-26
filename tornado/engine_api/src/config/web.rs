@@ -310,7 +310,7 @@ async fn import_child_node<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let config = parse_uploaded_file(body).await?;
+    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
     let node_path = format!("{},pippo", endpoint_params.node_path);
     data.api
         .create_draft_config_node(auth_ctx, &endpoint_params.draft_id, &node_path, config)
@@ -352,7 +352,7 @@ async fn import_node_in_path<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let config = parse_uploaded_file(body).await?;
+    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
     data.api
         .import_draft_config_node(
             auth_ctx,
