@@ -9,10 +9,15 @@ use log::warn;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 
+// This macro rule allows us to create the necessary permission structs to
+// keep the code-base DRY.
 macro_rules! implement_authorization {
     ($auth:ident, $permission:expr) => {
+        // Create a unit struct as a marker type for the permissions.
+        #[derive(Debug)]
         pub struct $auth;
 
+        // implement FromRequest to make the marker type usable in the endpoints.
         impl FromRequest for AuthorizedPath<$auth> {
             type Error = ApiError;
             type Future = Ready<Result<Self, Self::Error>>;
@@ -24,6 +29,9 @@ macro_rules! implement_authorization {
     };
 }
 
+// The authorized path holds the full path from the root that the user can access and the user name.
+// The generic parameter is a marker type to distinguish between permissions.
+#[derive(Debug)]
 pub struct AuthorizedPath<Auth> {
     auth: PhantomData<Auth>,
     user: String,
@@ -67,24 +75,35 @@ impl<Auth: Send + Sync> AuthContextTrait for &AuthorizedPath<Auth> {
     }
 }
 
+// This take a request, parses the path and headers and returns the AuthorizedPath with
+// the right permissions, if the user has any of the necessary permissions.
 fn from_request<T>(
     req: &HttpRequest,
     permissions: &[&Permission],
 ) -> Result<AuthorizedPath<T>, ApiError> {
     let Some(auth_service) = req.app_data::<Data<AuthServiceV2>>() else {
+        // This is always mounted in the daemon command. If it is missing we cannot make any
+        // authentication and this is a bug. However this will be caught by tests before it
+        // ever can go into production.
         return Err(ApiError::InternalServerError { cause: "AuthServiceV2 was not mounted. This is a bug!".to_string() });
     };
 
+    // If an AuthorizedPath is requested as a endpoint parameter, it needs to accept a param_auth.
     let Some(param_auth) = req.match_info().get("param_auth") else {
         return Err(ApiError::UnauthenticatedError);
     };
 
+    // Check all the user permissions right here to avoid querying them later again.
+    // The Auth marker types guarantee that this check was performed with the correct permissions.
     let auth_context = auth_service.auth_from_request(req, param_auth)?;
     auth_context.has_any_permission(permissions)?;
     auth_context.is_authenticated()?;
+
     let user = auth_context.auth.user;
     let base_path = auth_context.auth.authorization.path;
 
+    // The node path is present if the user wants to access a specific node in the path.
+    // Otherwise the path for the user will be just the base path to the node.
     match req.match_info().get("node_path") {
         None => Ok(AuthorizedPath { auth: Default::default(), user, path: base_path }),
         Some(node_path) => Ok(AuthorizedPath {
@@ -113,6 +132,7 @@ fn join_path(mut base_path: Vec<String>, path_to_node: &str) -> Result<Vec<Strin
     }
 }
 
+// Create all marker types for the Permissions. If permissions are added in the future, add them here!
 implement_authorization!(ConfigView, Permission::ConfigView);
 implement_authorization!(ConfigEdit, Permission::ConfigEdit);
 implement_authorization!(RuntimeConfigView, Permission::RuntimeConfigView);
@@ -121,8 +141,42 @@ implement_authorization!(TestEventExecuteActions, Permission::TestEventExecuteAc
 
 #[cfg(test)]
 mod test {
-    use crate::auth::middleware::join_path;
+    use crate::auth::auth_v2::test::test_auth_service_v2;
+    use crate::auth::middleware::{from_request, join_path, AuthorizedPath, ConfigView};
+    use crate::auth::Permission;
     use crate::error::ApiError;
+    use actix_web::http::header;
+    use actix_web::http::header::HeaderName;
+    use actix_web::test::TestRequest;
+    use actix_web::web::Data;
+    use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
+    use serde_json::json;
+
+    fn auth_header() -> (HeaderName, String) {
+        let permissions = json!({
+            "user": "root",
+            "auths": {
+                "root-auth": {
+                    "path": [ "root" ],
+                    "roles": [ "view", "edit" ]
+                },
+                "master-auth": {
+                    "path": [ "root", "master" ],
+                    "roles": [ "view", "edit" ]
+                },
+                "empty-auth": {
+                    "path": [],
+                    "roles": [ "view" ],
+                }
+            },
+            "preferences": {
+                "language": "en_US"
+            }
+        });
+
+        let token = base64.encode(serde_json::to_string(&permissions).unwrap());
+        (header::AUTHORIZATION, format!("Bearer {token}"))
+    }
 
     #[test]
     fn should_join_paths() {
@@ -182,6 +236,127 @@ mod test {
         // Assert
         match result {
             Err(ApiError::BadRequestError { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_provide_base_path_from_request() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "root-auth")
+            .to_http_request();
+
+        let result: AuthorizedPath<ConfigView> =
+            from_request(&req, &[&Permission::ConfigView]).unwrap();
+
+        assert_eq!("root", &result.user);
+        assert_eq!(vec!["root".to_owned()], result.path);
+    }
+
+    #[test]
+    fn should_fail_on_missing_permission() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "root-auth")
+            .to_http_request();
+
+        let result: Result<AuthorizedPath<ConfigView>, _> =
+            from_request(&req, &[&Permission::RuntimeConfigEdit]);
+
+        match result {
+            Err(ApiError::ForbiddenError { code, .. }) => {
+                assert_eq!("MISSING_REQUIRED_PERMISSIONS", &code);
+            }
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_fail_on_missing_param_auth() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .to_http_request();
+
+        let result: Result<AuthorizedPath<ConfigView>, _> =
+            from_request(&req, &[&Permission::RuntimeConfigEdit]);
+
+        match result {
+            Err(ApiError::UnauthenticatedError { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_provide_full_path_from_request() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "root-auth")
+            .param("node_path", "root,node_1,node_2")
+            .to_http_request();
+
+        let result: AuthorizedPath<ConfigView> =
+            from_request(&req, &[&Permission::ConfigView]).unwrap();
+
+        assert_eq!("root", &result.user);
+        assert_eq!(vec!["root".to_owned(), "node_1".to_owned(), "node_2".to_owned()], result.path);
+    }
+
+    #[test]
+    fn should_fail_on_wrong_path() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "root-auth")
+            .param("node_path", "master,node_1")
+            .to_http_request();
+
+        let result: Result<AuthorizedPath<ConfigView>, _> =
+            from_request(&req, &[&Permission::ConfigView]);
+
+        match result {
+            Err(ApiError::BadRequestError { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_provide_full_path_from_tenant_request() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "master-auth")
+            .param("node_path", "master,node_1,node_2")
+            .to_http_request();
+
+        let result: AuthorizedPath<ConfigView> =
+            from_request(&req, &[&Permission::ConfigView]).unwrap();
+
+        assert_eq!("root", &result.user);
+        assert_eq!(
+            vec!["root".to_owned(), "master".to_owned(), "node_1".to_owned(), "node_2".to_owned()],
+            result.path
+        );
+    }
+
+    #[test]
+    fn should_fail_on_empty_auth() {
+        let req = TestRequest::get()
+            .insert_header(auth_header())
+            .app_data(Data::new(test_auth_service_v2()))
+            .param("param_auth", "empty-auth")
+            .param("node_path", "master,node_1")
+            .to_http_request();
+
+        let result: Result<AuthorizedPath<ConfigView>, _> =
+            from_request(&req, &[&Permission::ConfigView]);
+
+        match result {
+            Err(ApiError::InvalidAuthorizedPath { .. }) => {}
             err => unreachable!("{:?}", err),
         }
     }
