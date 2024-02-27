@@ -281,10 +281,10 @@ mod test {
     #[actix_rt::test]
     async fn should_send_event_to_current_config_v2() {
         // Arrange
-        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_event_v2_endpoints(
+            EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         let metadata = get_something();
@@ -337,10 +337,10 @@ mod test {
     #[actix_rt::test]
     async fn send_event_to_current_config_v2_should_return_unauthorized_if_path_not_in_auths() {
         // Arrange
-        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_event_v2_endpoints(
+            EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         let send_event_request = SendEventRequestDto {
@@ -384,10 +384,10 @@ mod test {
     #[actix_rt::test]
     async fn should_send_event_to_draft_v2() {
         // Arrange
-        let srv = test::init_service(App::new().service(build_event_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_event_v2_endpoints(
+            EventApiV2::new(TestApiHandler {}, Arc::new(TestConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         let metadata = get_something();

@@ -113,19 +113,17 @@ pub fn build_config_v2_endpoints<
                         .route(web::get().to(export_draft_tree_starting_from_node_path::<A, CM>)),
                 )
                 .service(
-                    web::resource("/rule/details/{param_auth}/{draft_id}/{ruleset_path}")
+                    web::resource("/rule/details/{param_auth}/{draft_id}/{node_path}")
                         .route(web::post().to(create_draft_rule_details::<A, CM>)),
                 )
                 .service(
-                    web::resource(
-                        "/rule/details/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}",
-                    )
-                    .route(web::get().to(get_draft_rule_details::<A, CM>))
-                    .route(web::put().to(edit_draft_rule_details::<A, CM>))
-                    .route(web::delete().to(delete_draft_rule_details::<A, CM>)),
+                    web::resource("/rule/details/{param_auth}/{draft_id}/{node_path}/{rule_name}")
+                        .route(web::get().to(get_draft_rule_details::<A, CM>))
+                        .route(web::put().to(edit_draft_rule_details::<A, CM>))
+                        .route(web::delete().to(delete_draft_rule_details::<A, CM>)),
                 )
                 .service(
-                    web::resource("/rule/move/{param_auth}/{draft_id}/{ruleset_path}/{rule_name}")
+                    web::resource("/rule/move/{param_auth}/{draft_id}/{node_path}/{rule_name}")
                         .route(web::put().to(draft_move_rule::<A, CM>)),
                 ),
         )
@@ -279,7 +277,7 @@ async fn edit_draft_tree_node<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
-    api.create_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
+    api.edit_draft_config_node(&auth_path, &draft_id.draft_id, config).await?;
     Ok(Json(()))
 }
 
@@ -1060,10 +1058,10 @@ mod test {
     async fn v2_endpoint_should_have_a_get_drafts_for_tenant_get_endpoint() -> Result<(), ApiError>
     {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1083,10 +1081,10 @@ mod test {
     async fn v2_endpoint_should_have_a_get_draft_single_node_get_endpoint() -> Result<(), ApiError>
     {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1108,10 +1106,10 @@ mod test {
         start_context();
 
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1157,10 +1155,10 @@ mod test {
     async fn v2_endpoint_should_have_a_create_draft_in_tenant_post_endpoint() -> Result<(), ApiError>
     {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1180,10 +1178,10 @@ mod test {
     async fn v2_endpoint_should_have_a_delete_draft_for_tenant_delete_endpoint(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1203,10 +1201,10 @@ mod test {
     async fn v2_endpoint_should_have_a_deploy_draft_for_tenant_post_endpoint(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1226,10 +1224,10 @@ mod test {
     async fn v2_endpoint_should_have_a_draft_take_over_for_tenant_post_endpoint(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1248,10 +1246,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_get_children_should_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1284,10 +1282,10 @@ mod test {
     async fn v2_endpoint_get_children_by_node_path_should_return_status_code_ok(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1320,10 +1318,10 @@ mod test {
     async fn v2_endpoint_get_details_by_node_path_should_return_status_code_ok(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1356,10 +1354,10 @@ mod test {
     async fn v2_endpoint_get_rule_details_by_ruleset_path_should_return_status_code_ok(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1392,10 +1390,10 @@ mod test {
     async fn v2_endpoint_get_draft_details_by_node_path_should_return_status_code_ok(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1427,11 +1425,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_get_draft_rule_details_by_ruleset_path_should_return_status_code_ok(
     ) -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1463,10 +1460,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_get_tree_info_return_status_code_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1498,10 +1495,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_create_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1526,10 +1523,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_create_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1556,10 +1553,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_edit_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1586,10 +1583,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_delete_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1608,10 +1605,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_move_rule_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1632,10 +1629,10 @@ mod test {
     async fn v2_endpoint_move_rule_in_draft_out_of_bounds_by_path_should_return_err(
     ) -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1655,10 +1652,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_edit_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act
@@ -1683,10 +1680,10 @@ mod test {
     #[actix_rt::test]
     async fn v2_endpoint_delete_node_in_draft_by_path_should_return_ok() -> Result<(), ApiError> {
         // Arrange
-        let srv = test::init_service(App::new().service(build_config_v2_endpoints(ApiDataV2 {
-            auth: test_auth_service_v2(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
+        let srv = test::init_service(App::new().service(build_config_v2_endpoints(
+            ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
+            test_auth_service_v2(),
+        )))
         .await;
 
         // Act

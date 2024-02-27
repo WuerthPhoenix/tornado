@@ -13,16 +13,12 @@ macro_rules! implement_authorization {
     ($auth:ident, $permission:expr) => {
         pub struct $auth;
 
-        impl PermissionProvider for $auth {
-            const PERMISSIONS: &'static [&'static Permission] = &[&$permission];
-        }
-
         impl FromRequest for AuthorizedPath<$auth> {
             type Error = ApiError;
             type Future = Ready<Result<Self, Self::Error>>;
 
             fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-                ready(from_request(req))
+                ready(from_request(req, &[&$permission]))
             }
         }
     };
@@ -41,6 +37,11 @@ impl<T> AuthorizedPath<T> {
 
     pub fn path(&self) -> Vec<&str> {
         self.path.iter().map(String::as_str).collect()
+    }
+
+    #[cfg(test)]
+    pub fn new(user: String, path: Vec<String>) -> Self {
+        Self { auth: Default::default(), user, path }
     }
 }
 
@@ -66,11 +67,10 @@ impl<Auth: Send + Sync> AuthContextTrait for &AuthorizedPath<Auth> {
     }
 }
 
-trait PermissionProvider {
-    const PERMISSIONS: &'static [&'static Permission];
-}
-
-fn from_request<T: PermissionProvider>(req: &HttpRequest) -> Result<AuthorizedPath<T>, ApiError> {
+fn from_request<T>(
+    req: &HttpRequest,
+    permissions: &[&Permission],
+) -> Result<AuthorizedPath<T>, ApiError> {
     let Some(auth_service) = req.app_data::<Data<AuthServiceV2>>() else {
         return Err(ApiError::InternalServerError { cause: "AuthServiceV2 was not mounted. This is a bug!".to_string() });
     };
@@ -80,7 +80,7 @@ fn from_request<T: PermissionProvider>(req: &HttpRequest) -> Result<AuthorizedPa
     };
 
     let auth_context = auth_service.auth_from_request(req, param_auth)?;
-    auth_context.has_any_permission(T::PERMISSIONS)?;
+    auth_context.has_any_permission(permissions)?;
     auth_context.is_authenticated()?;
     let user = auth_context.auth.user;
     let base_path = auth_context.auth.authorization.path;
@@ -118,3 +118,71 @@ implement_authorization!(ConfigEdit, Permission::ConfigEdit);
 implement_authorization!(RuntimeConfigView, Permission::RuntimeConfigView);
 implement_authorization!(RuntimeConfigEdit, Permission::RuntimeConfigEdit);
 implement_authorization!(TestEventExecuteActions, Permission::TestEventExecuteActions);
+
+#[cfg(test)]
+mod test {
+    use crate::auth::middleware::join_path;
+    use crate::error::ApiError;
+
+    #[test]
+    fn should_join_paths() {
+        // Arrange
+        let base_path = vec!["root".to_owned()];
+        let path_to_node = "root,node_1,node_2";
+        let expected = vec!["root".to_owned(), "node_1".to_owned(), "node_2".to_owned()];
+
+        // Act
+        let result = join_path(base_path, path_to_node).unwrap();
+
+        // Assert
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn should_return_error_on_empty_base_path() {
+        // Arrange
+        let base_path = vec![];
+        let path_to_node = "root,node_1,node_2";
+
+        // Act
+        let result = join_path(base_path, path_to_node);
+
+        // Assert
+        match result {
+            Err(ApiError::InvalidAuthorizedPath { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_return_error_on_wrong_node_path_root() {
+        // Arrange
+        let base_path = vec!["root".to_owned()];
+        let path_to_node = "node_1,node_2";
+
+        // Act
+        let result = join_path(base_path, path_to_node);
+
+        // Assert
+        match result {
+            Err(ApiError::BadRequestError { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_return_error_on_empty_path_to_node() {
+        // Arrange
+        let base_path = vec!["root".to_owned()];
+        let path_to_node = "";
+
+        // Act
+        let result = join_path(base_path, path_to_node);
+
+        // Assert
+        match result {
+            Err(ApiError::BadRequestError { .. }) => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+}

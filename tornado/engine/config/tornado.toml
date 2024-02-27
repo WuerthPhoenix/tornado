@@ -7,7 +7,7 @@
 #                              |      logger level of 'tornado'
 #                             global logger level
 # Valid values: trace, debug, info, warn, error.
-level = "warn,tornado=info,actix=info"
+level = "warn,tornado=info,azctix=info"
 
 # Whether the Logger should print to standard output.
 # Valid values: true, false

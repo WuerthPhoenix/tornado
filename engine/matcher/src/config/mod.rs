@@ -158,13 +158,12 @@ impl MatcherConfig {
         path: &[&str],
         node: MatcherConfig,
     ) -> Result<(), MatcherError> {
-        if path.len() < 2 {
+        if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let path_to_parent = &path[0..path.len()];
-        let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
@@ -268,14 +267,8 @@ impl MatcherConfig {
         // validate rule before saving to the ruleset
         matcher::validate_rule(&rule)?;
         let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
-
         if rules.iter().any(|Rule { name, .. }| name == &rule.name) {
-            return Err(MatcherError::ConfigurationError {
-                message: format!(
-                    "A rule with name {} already exists in ruleset {:?}",
-                    rule.name, ruleset_path,
-                ),
-            });
+            return Err(MatcherError::NotUniqueNameError { name: rule.name });
         };
 
         rules.push(rule);
@@ -1510,11 +1503,7 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(
             result.err(),
-            Some(MatcherError::ConfigurationError {
-                message:
-                    "A rule with name rule-1 already exists in ruleset [\"root\", \"ruleset1\"]"
-                        .to_string(),
-            })
+            Some(MatcherError::NotUniqueNameError { name: "rule-1".to_string() })
         );
     }
 
