@@ -163,7 +163,7 @@ impl MatcherConfig {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let path_to_parent = &path[0..path.len() - 1];
+        let path_to_parent = &path[0..path.len()];
         let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
@@ -845,14 +845,11 @@ mod tests {
         };
 
         // Act
-        let result_not_existing =
-            config.create_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
-        let result_ruleset = config.create_node_in_path(
-            &["root", "filter2", "filter3", "ruleset1", "new_filter"],
-            &new_filter,
-        );
+        let result_not_existing = config.create_node_in_path(&["root", "filter3"], &new_filter);
+        let result_ruleset =
+            config.create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &new_filter);
         let result_already_existing_node =
-            config.create_node_in_path(&["root", "filter1", "new_filter"], &new_filter);
+            config.create_node_in_path(&["root", "filter1"], &new_filter);
 
         // Assert
         assert!(result_not_existing.is_err());
@@ -873,7 +870,9 @@ mod tests {
         assert_eq!(
             result_already_existing_node.err(),
             Some(MatcherError::ConfigurationError {
-                message: "A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]".to_string(),
+                message:
+                    "A node with name \"new_filter\" already exists in path [\"root\", \"filter1\"]"
+                        .to_string(),
             })
         );
     }
@@ -978,8 +977,7 @@ mod tests {
         };
 
         // Act
-        let result =
-            config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
+        let result = config.create_node_in_path(&["root", "filter2", "filter3"], &new_filter);
 
         // Assert
         assert!(result.is_ok());
