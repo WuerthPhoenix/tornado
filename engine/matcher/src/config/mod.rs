@@ -158,13 +158,12 @@ impl MatcherConfig {
         path: &[&str],
         node: MatcherConfig,
     ) -> Result<(), MatcherError> {
-        if path.len() < 2 {
+        if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let path_to_parent = &path[0..path.len()];
-        let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
