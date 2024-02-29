@@ -4,12 +4,15 @@ use crate::config::convert::{
     processing_tree_node_details_dto_into_matcher_config,
 };
 use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
+use actix_multipart::Multipart;
 use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
 use actix_web::{web, HttpRequest, HttpResponse, Scope};
 use chrono::{Local, SecondsFormat};
+use futures_util::TryStreamExt as _;
 use gethostname::gethostname;
 use log::*;
+use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use std::os::unix::ffi::OsStrExt;
 use tornado_engine_api_dto::common::Id;
@@ -95,6 +98,11 @@ pub fn build_config_v2_endpoints<
                         .route(web::post().to(create_draft_tree_node::<A, CM>))
                         .route(web::put().to(edit_draft_tree_node::<A, CM>))
                         .route(web::delete().to(delete_draft_tree_node::<A, CM>)),
+                )
+                .service(
+                    web::resource("/tree/import/{param_auth}/{draft_id}/{node_path}")
+                        .route(web::post().to(import_child_node::<A, CM>))
+                        .route(web::put().to(import_node_in_path::<A, CM>)),
                 )
                 .service(
                     web::resource("/tree/export/{param_auth}/{draft_id}/{node_path}")
@@ -273,6 +281,47 @@ async fn create_draft_tree_node<
     Ok(Json(()))
 }
 
+async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> actix_web::Result<T> {
+    let mut file_data = Vec::<u8>::new();
+    while let Some(mut field) = payload.try_next().await? {
+        let Some("file") = field.content_disposition().get_name() else {
+            debug!(
+                "Skipping field with Content Disposition {:?} during file upload.",
+                field.content_disposition().get_name()
+            );
+            continue;
+        };
+        while let Some(chunk) = field.try_next().await? {
+            file_data.extend_from_slice(&chunk);
+        }
+    }
+    trace!("File uploaded of size {}", file_data.len());
+    Ok(serde_json::from_slice(&file_data)?)
+}
+
+async fn import_child_node<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    body: Multipart,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    data.api
+        .create_draft_config_node(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+            config,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
 async fn edit_draft_tree_node<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigReader + MatcherConfigEditor + 'static,
@@ -287,6 +336,29 @@ async fn edit_draft_tree_node<
     let config = processing_tree_node_details_dto_into_matcher_config(body.into_inner())?;
     data.api
         .edit_draft_config_node(
+            auth_ctx,
+            &endpoint_params.draft_id,
+            &endpoint_params.node_path,
+            config,
+        )
+        .await?;
+    Ok(Json(()))
+}
+
+async fn import_node_in_path<
+    A: ConfigApiHandler + 'static,
+    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+>(
+    req: HttpRequest,
+    endpoint_params: Path<DraftPathWithNode>,
+    data: Data<ApiDataV2<ConfigApi<A, CM>>>,
+    body: Multipart,
+) -> actix_web::Result<Json<()>> {
+    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
+    let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
+    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    data.api
+        .import_draft_config_node(
             auth_ctx,
             &endpoint_params.draft_id,
             &endpoint_params.node_path,
@@ -744,7 +816,7 @@ mod test {
 
     struct ConfigManager {}
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait(? Send)]
     impl MatcherConfigReader for ConfigManager {
         async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Filter {
@@ -783,7 +855,7 @@ mod test {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait(? Send)]
     impl MatcherConfigEditor for ConfigManager {
         async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
             Ok(vec![])
@@ -880,7 +952,7 @@ mod test {
 
     struct TestApiHandler {}
 
-    #[async_trait(?Send)]
+    #[async_trait(? Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
@@ -990,9 +1062,9 @@ mod test {
                         filter: FilterDto {
                             description: "".to_string(),
                             active: false,
-                            filter: None
+                            filter: None,
                         },
-                        nodes: vec![]
+                        nodes: vec![],
                     },
                     MatcherConfigDto::Ruleset {
                         name: "child_2".to_owned(),
@@ -1008,7 +1080,7 @@ mod test {
                             actions: vec![],
                         }],
                     },
-                ]
+                ],
             },
             dto
         );
@@ -1041,7 +1113,7 @@ mod test {
         assert_eq!(
             tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
                 name: "ruleset_new".to_owned(),
-                rules: vec![]
+                rules: vec![],
             },
             dto
         );

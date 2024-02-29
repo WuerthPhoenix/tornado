@@ -18,6 +18,8 @@ pub enum ApiError {
     BadRequestError { cause: String },
     #[error("InternalServerError: [{cause}]")]
     InternalServerError { cause: String },
+    #[error("PayloadToLarge")]
+    PayloadToLarge,
 
     #[error("MissingAuthTokenError")]
     MissingAuthTokenError,
@@ -66,10 +68,10 @@ impl actix_web::error::ResponseError for ApiError {
     fn error_response(&self) -> HttpResponse {
         match self {
             ApiError::MatcherError { cause } => match cause {
-                MatcherError::NotUniqueRuleNameError { name } => {
+                MatcherError::NotUniqueNameError { name } => {
                     let mut params = HashMap::new();
-                    params.insert("RULE_NAME".to_owned(), name.to_owned());
-                    HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
+                    params.insert("NODE_NAME".to_owned(), name.to_owned());
+                    HttpResponseBuilder::new(http::StatusCode::CONFLICT).json(WebError {
                         code: VALIDATION_ERROR.to_owned(),
                         message: Some(format!("{}", cause)),
                         params,
@@ -84,10 +86,11 @@ impl actix_web::error::ResponseError for ApiError {
                 }
                 _ => HttpResponse::BadRequest().finish(),
             },
-            ApiError::ActixMailboxError { .. } => HttpResponse::InternalServerError().finish(),
-            ApiError::JsonError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::ActixMailboxError { .. }
+            | ApiError::JsonError { .. }
+            | ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
             ApiError::BadRequestError { .. } => HttpResponse::BadRequest().finish(),
-            ApiError::InternalServerError { .. } => HttpResponse::InternalServerError().finish(),
+            ApiError::PayloadToLarge => HttpResponse::PayloadTooLarge().finish(),
             ApiError::NodeNotFoundError { .. } => HttpResponse::NotFound().finish(),
             ApiError::InvalidTokenError { .. }
             | ApiError::ExpiredTokenError { .. }

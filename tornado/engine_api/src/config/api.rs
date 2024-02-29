@@ -18,7 +18,7 @@ const NODE_PATH_SEPARATOR: &str = ",";
 /// The ApiHandler trait defines the contract that a struct has to respect to
 /// be used by the backend.
 /// It permits to decouple the backend from a specific implementation.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait(? Send)]
 pub trait ConfigApiHandler: Send + Sync {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError>;
 }
@@ -519,7 +519,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
-        draft.config.create_node_in_path(&absolute_node_path, &config)?;
+        draft.config.create_node_in_path(&absolute_node_path, config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 
@@ -534,7 +534,22 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
-        draft.config.edit_node_in_path(&absolute_node_path, &config)?;
+        draft.config.edit_node_in_path(&absolute_node_path, config)?;
+        Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
+    }
+
+    pub async fn import_draft_config_node(
+        &self,
+        auth: AuthContextV2<'_>,
+        draft_id: &str,
+        node_path: &str,
+        config: MatcherConfig,
+    ) -> Result<(), ApiError> {
+        auth.has_permission(&Permission::ConfigEdit)?;
+        let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
+        let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
+
+        draft.config.import_node_in_path(&absolute_node_path, config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 
@@ -610,7 +625,7 @@ mod test {
 
     struct TestConfigManager {}
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait(? Send)]
     impl MatcherConfigReader for TestConfigManager {
         async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
             Ok(MatcherConfig::Filter {
@@ -684,7 +699,7 @@ mod test {
         }
     }
 
-    #[async_trait::async_trait(?Send)]
+    #[async_trait::async_trait(? Send)]
     impl MatcherConfigEditor for TestConfigManager {
         async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
             Ok(vec![])
@@ -741,7 +756,7 @@ mod test {
 
     struct TestApiHandler {}
 
-    #[async_trait(?Send)]
+    #[async_trait(? Send)]
     impl ConfigApiHandler for TestApiHandler {
         async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError> {
             Ok(MatcherConfig::Ruleset { name: "ruleset_new".to_owned(), rules: vec![] })
@@ -924,7 +939,7 @@ mod test {
             .update_draft(
                 not_owner_edit_and_view,
                 "id",
-                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] }
+                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] },
             )
             .await
             .is_err());
@@ -932,7 +947,7 @@ mod test {
             .update_draft(
                 owner_view,
                 "id",
-                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] }
+                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] },
             )
             .await
             .is_err());
@@ -940,7 +955,7 @@ mod test {
             .update_draft(
                 owner_edit,
                 "id",
-                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] }
+                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] },
             )
             .await
             .is_ok());
@@ -948,7 +963,7 @@ mod test {
             .update_draft(
                 owner_edit_and_view,
                 "id",
-                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] }
+                MatcherConfig::Ruleset { name: "n".to_owned(), rules: vec![] },
             )
             .await
             .is_ok());
@@ -1470,8 +1485,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_filter_without_children() {
+    #[test]
+    fn get_tree_info_should_work_on_filter_without_children() {
         // Arrange
         let test = MatcherConfig::Filter {
             name: "root".to_owned(),
@@ -1494,8 +1509,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_ruleset_as_only_node() {
+    #[test]
+    fn get_tree_info_should_work_on_ruleset_as_only_node() {
         // Arrange
         let test = MatcherConfig::Ruleset {
             name: "root".to_owned(),
@@ -1520,8 +1535,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
+    #[test]
+    fn get_tree_info_should_return_zero_rules_on_empty_ruleset() {
         // Arrange
         let test = MatcherConfig::Ruleset { name: "root".to_owned(), rules: vec![] };
 
@@ -1536,8 +1551,8 @@ mod test {
         assert_eq!(result, expected);
     }
 
-    #[actix_rt::test]
-    async fn get_tree_info_should_work_on_empty_config() {
+    #[test]
+    fn get_tree_info_should_work_on_empty_config() {
         // Arrange
         let root = [];
 

@@ -22,7 +22,7 @@ pub enum MatcherError {
     UnknownOperatorError { operator: String },
 
     #[error(
-        "WrongNumberOfArgumentsError: While building operator [{operator}], expected arguments [{expected}], found [{found}]"
+    "WrongNumberOfArgumentsError: While building operator [{operator}], expected arguments [{expected}], found [{found}]"
     )]
     WrongNumberOfArgumentsError { operator: &'static str, expected: u64, found: u64 },
 
@@ -38,9 +38,9 @@ pub enum MatcherError {
     #[error("ConfigurationError: [{message}]")]
     ConfigurationError { message: String },
 
-    #[error("NotUniqueRuleNameError: Two or more Rules have the same name [{name}] but it must be unique."
+    #[error("NotUniqueNameError: Two or more Nodes or Rules have the same name [{name}] but it must be unique."
     )]
-    NotUniqueRuleNameError { name: String },
+    NotUniqueNameError { name: String },
 
     #[error("NotValidIdOrNameError: {message}")]
     NotValidIdOrNameError { message: String },

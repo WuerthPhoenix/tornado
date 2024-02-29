@@ -2,6 +2,7 @@ pub mod action;
 pub mod extractor;
 pub mod modifier;
 pub mod operator;
+
 use tracing::instrument;
 
 use crate::config::rule::Rule;
@@ -142,7 +143,7 @@ impl Matcher {
         }
     }
 
-    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Filter: {}", filter_name).as_str()))]
+    #[instrument(level = "debug", skip_all, fields(otel.name = format ! ("Process Filter: {}", filter_name).as_str()))]
     fn process_filter(
         filter_name: &str,
         filter: &MatcherFilter,
@@ -180,7 +181,7 @@ impl Matcher {
         }
     }
 
-    #[instrument(level = "debug", skip_all, fields(otel.name = format!("Process Ruleset: {}", ruleset_name).as_str()))]
+    #[instrument(level = "debug", skip_all, fields(otel.name = format ! ("Process Ruleset: {}", ruleset_name).as_str()))]
     fn process_rules(
         ruleset_name: &str,
         rules: &[MatcherRule],
@@ -463,7 +464,7 @@ mod test {
         assert!(matcher.is_err());
 
         match matcher.err().unwrap() {
-            MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
+            MatcherError::NotUniqueNameError { name } => assert_eq!("rule_name", name),
             _ => unreachable!(),
         }
     }
