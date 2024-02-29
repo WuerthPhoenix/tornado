@@ -93,7 +93,7 @@ impl MatcherConfigValidator {
             &name_string
         );
         if rule_names.contains(&name_string) {
-            return Err(MatcherError::NotUniqueRuleNameError { name: name_string });
+            return Err(MatcherError::NotUniqueNameError { name: name_string });
         }
         rule_names.push(name_string);
         Ok(())
@@ -208,7 +208,7 @@ mod test {
         assert!(matcher.is_err());
 
         match matcher.err().unwrap() {
-            MatcherError::NotUniqueRuleNameError { name } => assert_eq!("rule_name", name),
+            MatcherError::NotUniqueNameError { name } => assert_eq!("rule_name", name),
             _ => unreachable!(),
         }
     }

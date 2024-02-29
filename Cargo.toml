@@ -1,41 +1,42 @@
 [workspace]
+resolver = "2"
 
 members = [
-   "common/api",
-   "common/logger",
-   "common/metrics",
-   "common/parser",
-   "common/types",
-   "collector/common",
-   "collector/email",
-   "collector/jmespath",
-   "collector/json",
-   "engine/matcher",
-   "executor/common",
-   "executor/archive",
-   "executor/director",
-   "executor/elasticsearch",
-   "executor/foreach",
-   "executor/icinga2",
-   "executor/logger",
-   "executor/monitoring",
-   "executor/script",
-   "executor/smart_monitoring_check_result",
-   "network/common",
-   "network/simple",
-   "spike/rsyslog_collector_writer",
-   "spike/tornado_events_generator",
-   "tornado/common",
-   "tornado/email_collector",
-   "tornado/engine",
-   "tornado/engine_api",
-   "tornado/engine_api_dto",
-   "tornado/icinga2_collector",
-   "tornado/nats_json_collector",
-   "tornado/rsyslog_collector",
-   "tornado/webhook_collector",
-   "tornado/sms_collector",
-   "tornado-input-validation"
+    "common/api",
+    "common/logger",
+    "common/metrics",
+    "common/parser",
+    "common/types",
+    "collector/common",
+    "collector/email",
+    "collector/jmespath",
+    "collector/json",
+    "engine/matcher",
+    "executor/common",
+    "executor/archive",
+    "executor/director",
+    "executor/elasticsearch",
+    "executor/foreach",
+    "executor/icinga2",
+    "executor/logger",
+    "executor/monitoring",
+    "executor/script",
+    "executor/smart_monitoring_check_result",
+    "network/common",
+    "network/simple",
+    "spike/rsyslog_collector_writer",
+    "spike/tornado_events_generator",
+    "tornado/common",
+    "tornado/email_collector",
+    "tornado/engine",
+    "tornado/engine_api",
+    "tornado/engine_api_dto",
+    "tornado/icinga2_collector",
+    "tornado/nats_json_collector",
+    "tornado/rsyslog_collector",
+    "tornado/webhook_collector",
+    "tornado/sms_collector",
+    "tornado-input-validation"
 ]
 
 # Link-time optimization (LTO) is a feature that lets the optimizer run on the entire program at once
@@ -65,7 +66,7 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 lazy_static = "1.4"
 maplit = "1.0"
 # reqwest features required to enable system level certificates to be used by tracing-elastic-apm
-reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "stream"]}
+reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls-native-roots", "stream"] }
 thiserror = "1"
 
 serde = { version = "1.0", features = ['derive'] }
@@ -84,6 +85,7 @@ regex = "1.9.1"
 # These dependencies will probably be updated together.
 actix = "0.13"
 actix-web = "4.4"
+actix-multipart = "0.6"
 tracing-actix-web = "0.7"
 tokio-util = { version = "0.7", features = ["codec", "compat"] }
 tokio = { version = "1.35", features = ["full"] }

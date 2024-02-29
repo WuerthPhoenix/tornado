@@ -1,6 +1,8 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::error::MatcherError;
+use crate::matcher;
+use crate::matcher::Matcher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -154,25 +156,21 @@ impl MatcherConfig {
     pub fn create_node_in_path(
         &mut self,
         path: &[&str],
-        node: &MatcherConfig,
+        node: MatcherConfig,
     ) -> Result<(), MatcherError> {
-        if path.len() < 2 {
+        if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let path_to_parent = &path[0..path.len() - 1];
-        let current_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
-            return Err(MatcherError::ConfigurationError {
-                message: format!(
-                    "A node with name {:?} already exists in path {:?}",
-                    node.get_name(),
-                    path
-                ),
-            });
+            return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
         }
+
+        // Validate input before saving it to the draft.
+        let _ = Matcher::build(&node)?;
 
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
@@ -189,13 +187,16 @@ impl MatcherConfig {
     pub fn edit_node_in_path(
         &mut self,
         path: &[&str],
-        node: &MatcherConfig,
+        node: MatcherConfig,
     ) -> Result<(), MatcherError> {
         if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
                 message: "Empty path is not allowed".to_string(),
             });
         }
+
+        // Validate input before saving it to the draft.
+        let _ = Matcher::build(&node)?;
 
         let old_node = self.get_mut_node_by_path_or_err(path)?;
         match (old_node, node) {
@@ -218,6 +219,16 @@ impl MatcherConfig {
                 });
             }
         }
+        Ok(())
+    }
+
+    pub fn import_node_in_path(
+        &mut self,
+        path: &[&str],
+        node: MatcherConfig,
+    ) -> Result<(), MatcherError> {
+        let old_node = self.get_mut_node_by_path_or_err(path)?;
+        *old_node = node;
         Ok(())
     }
 
@@ -253,6 +264,8 @@ impl MatcherConfig {
 
     // Create a node at a specific path
     pub fn create_rule(&mut self, ruleset_path: &[&str], rule: Rule) -> Result<(), MatcherError> {
+        // validate rule before saving to the ruleset
+        matcher::validate_rule(&rule)?;
         let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
         if rules.iter().any(|Rule { name, .. }| name == &rule.name) {
@@ -274,6 +287,8 @@ impl MatcherConfig {
         rule_name: &str,
         new_rule: Rule,
     ) -> Result<(), MatcherError> {
+        // validate rule before saving to the ruleset
+        matcher::validate_rule(&new_rule)?;
         let rules = self.get_mut_rules_by_path_or_err(ruleset_path)?;
 
         match rules.iter_mut().find(|rule| rule.name == rule_name) {
@@ -379,13 +394,13 @@ impl<T: Serialize + Clone> From<Option<T>> for Defaultable<T> {
 
 /// A MatcherConfigReader permits to read and manipulate the Tornado Configuration
 /// from a configuration source.
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait(? Send)]
 pub trait MatcherConfigReader: Sync + Send {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError>;
 }
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait(? Send)]
 pub trait MatcherConfigEditor: Sync + Send {
     /// Returns the list of available drafts
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
@@ -420,7 +435,8 @@ pub trait MatcherConfigEditor: Sync + Send {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::rule::Constraint;
+    use crate::config::rule::{Constraint, Operator};
+    use serde_json::json;
 
     #[test]
     fn test_get_direct_child_nodes_count() {
@@ -834,13 +850,11 @@ mod tests {
 
         // Act
         let result_not_existing =
-            config.create_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
-        let result_ruleset = config.create_node_in_path(
-            &["root", "filter2", "filter3", "ruleset1", "new_filter"],
-            &new_filter,
-        );
+            config.create_node_in_path(&["root", "filter3"], new_filter.clone());
+        let result_ruleset = config
+            .create_node_in_path(&["root", "filter2", "filter3", "ruleset1"], new_filter.clone());
         let result_already_existing_node =
-            config.create_node_in_path(&["root", "filter1", "new_filter"], &new_filter);
+            config.create_node_in_path(&["root", "filter1"], new_filter);
 
         // Assert
         assert!(result_not_existing.is_err());
@@ -860,9 +874,7 @@ mod tests {
         assert!(result_already_existing_node.is_err());
         assert_eq!(
             result_already_existing_node.err(),
-            Some(MatcherError::ConfigurationError {
-                message: "A node with name \"new_filter\" already exists in path [\"root\", \"filter1\", \"new_filter\"]".to_string(),
-            })
+            Some(MatcherError::NotUniqueNameError { name: "new_filter".to_string() })
         );
     }
 
@@ -966,8 +978,7 @@ mod tests {
         };
 
         // Act
-        let result =
-            config.create_node_in_path(&["root", "filter2", "filter3", "new_filter"], &new_filter);
+        let result = config.create_node_in_path(&["root", "filter2", "filter3"], new_filter);
 
         // Assert
         assert!(result.is_ok());
@@ -1038,9 +1049,9 @@ mod tests {
 
         // Act
         let result_not_existing =
-            config.edit_node_in_path(&["root", "filter3", "new_filter"], &new_filter);
+            config.edit_node_in_path(&["root", "filter3", "new_filter"], new_filter.clone());
         let result_node_different_type =
-            config.edit_node_in_path(&["root", "filter2", "filter3"], &new_ruleset);
+            config.edit_node_in_path(&["root", "filter2", "filter3"], new_ruleset);
 
         // Assert
         assert!(result_not_existing.is_err());
@@ -1226,9 +1237,9 @@ mod tests {
 
         // Act
         let result_ruleset = config_ruleset
-            .edit_node_in_path(&["root", "filter2", "filter3", "ruleset1"], &edited_ruleset);
+            .edit_node_in_path(&["root", "filter2", "filter3", "ruleset1"], edited_ruleset.clone());
         let result_filter =
-            config_filter.edit_node_in_path(&["root", "filter2", "filter3"], &edited_filter);
+            config_filter.edit_node_in_path(&["root", "filter2", "filter3"], edited_filter);
 
         // Assert
         assert!(result_ruleset.is_ok());
@@ -1505,6 +1516,7 @@ mod tests {
             })
         );
     }
+
     #[test]
     fn test_create_rule() {
         // Arrange
@@ -1925,5 +1937,231 @@ mod tests {
         assert_eq!(rules[0].name, "my-rule-002");
         assert_eq!(rules[1].name, "my-rule-003");
         assert_eq!(rules[2].name, "my-rule-001")
+    }
+
+    #[test]
+    fn should_refuse_missformated_names() {
+        let filter =
+            Filter { description: "".to_string(), active: false, filter: Defaultable::Default {} };
+
+        let old_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: filter.clone(),
+            nodes: vec![],
+        };
+        let mut config = old_config.clone();
+
+        let result = config.create_node_in_path(
+            &["root"],
+            MatcherConfig::Filter {
+                name: "test/name".to_string(),
+                filter: filter.clone(),
+                nodes: vec![],
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+
+        let result = config.create_node_in_path(
+            &["root"],
+            MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
+        );
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_refuse_missformated_names_on_edit() {
+        let filter =
+            Filter { description: "".to_string(), active: false, filter: Defaultable::Default {} };
+
+        let old_config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: filter.clone(),
+            nodes: vec![],
+        };
+        let mut config = old_config.clone();
+
+        let result = config.edit_node_in_path(
+            &["root"],
+            MatcherConfig::Filter {
+                name: "test/name".to_string(),
+                filter: filter.clone(),
+                nodes: vec![],
+            },
+        );
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+
+        let result = config.create_node_in_path(
+            &["root"],
+            MatcherConfig::Ruleset { name: "test/name".to_string(), rules: vec![] },
+        );
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_refuse_missformated_regex_in_rule() {
+        let old_config = MatcherConfig::Ruleset { name: "root".to_string(), rules: vec![] };
+        let mut config = old_config.clone();
+
+        let result = config.create_rule(
+            &["root"],
+            Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint {
+                    where_operator: Some(Operator::Regex {
+                        regex: "^(.*$".to_string(),
+                        target: "".to_string(),
+                    }),
+                    with: Default::default(),
+                },
+                actions: vec![],
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_refuse_missformated_accessor_in_rule() {
+        let old_config = MatcherConfig::Ruleset { name: "root".to_string(), rules: vec![] };
+        let mut config = old_config.clone();
+        let result = config.create_rule(
+            &["root"],
+            Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint {
+                    where_operator: Some(Operator::Contains {
+                        first: "${pippo}".into(),
+                        second: Default::default(),
+                    }),
+                    with: Default::default(),
+                },
+                actions: vec![],
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_refuse_missformated_accessor_in_rule_on_edit() {
+        let old_config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+        let mut config = old_config.clone();
+        let result = config.edit_rule(
+            &["root"],
+            "test-rule",
+            Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint {
+                    where_operator: Some(Operator::Contains {
+                        first: "${pippo}".into(),
+                        second: Default::default(),
+                    }),
+                    with: Default::default(),
+                },
+                actions: vec![],
+            },
+        );
+
+        assert!(result.is_err());
+        assert_eq!(old_config, config);
+    }
+
+    #[test]
+    fn should_import_node_in_root() {
+        // Arrange
+        let mut config = MatcherConfig::Ruleset {
+            name: "root".to_string(),
+            rules: vec![Rule {
+                name: "test-rule".to_string(),
+                description: "".to_string(),
+                do_continue: false,
+                active: false,
+                constraint: Constraint { where_operator: None, with: Default::default() },
+                actions: vec![],
+            }],
+        };
+
+        let import_config = MatcherConfig::Filter {
+            name: "imported_root".to_string(),
+            filter: Filter {
+                description: "imported root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        config.import_node_in_path(&["root"], import_config.clone()).unwrap();
+
+        // Assert
+        assert_eq!(config, import_config);
+    }
+
+    #[test]
+    fn should_import_node_in_path() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Filter {
+                description: "Root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![MatcherConfig::Filter {
+                name: "master".to_string(),
+                filter: Filter {
+                    description: "master filter".to_string(),
+                    active: false,
+                    filter: Defaultable::Value(Operator::Equals {
+                        first: json!("${event.metadata.tenant}"),
+                        second: json!("master"),
+                    }),
+                },
+                nodes: vec![],
+            }],
+        };
+
+        let import_config = MatcherConfig::Filter {
+            name: "imported_node".to_string(),
+            filter: Filter {
+                description: "imported root filter".to_string(),
+                active: false,
+                filter: Defaultable::Default {},
+            },
+            nodes: vec![],
+        };
+
+        // Act
+        config.import_node_in_path(&["root", "master"], import_config.clone()).unwrap();
+        let new_node = config.get_node_by_path(&["root", "imported_node"]).unwrap();
+
+        // Assert
+        assert_eq!(new_node, &import_config);
     }
 }

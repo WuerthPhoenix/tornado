@@ -9,8 +9,10 @@ edition = "2018"
 [dependencies]
 ajars = { version = "0.6", features = ["actix_web"] }
 json-patch = "0.2"
+futures-util = "0.3"
 
 actix.workspace = true
+actix-multipart.workspace = true
 actix-web.workspace = true
 async-trait.workspace = true
 base64.workspace = true
@@ -18,6 +20,8 @@ log.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+gethostname = "0.4"
+chrono = { default-features = false, features = ["clock"], workspace = true }
 
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 tornado_engine_api_dto = { path = "../engine_api_dto", version = "0.0.1" }
