@@ -187,7 +187,7 @@ impl MatcherConfig {
     pub fn edit_node_in_path(
         &mut self,
         path: &[&str],
-        node: MatcherConfig,
+        new_node: MatcherConfig,
     ) -> Result<(), MatcherError> {
         if path.is_empty() {
             return Err(MatcherError::ConfigurationError {
@@ -195,23 +195,31 @@ impl MatcherConfig {
             });
         }
 
+        let parent_node = self.get_mut_node_by_path_or_err(&path[..path.len() - 1])?;
+        let node_name = path[path.len() - 1];
+        if node_name != new_node.get_name()
+            && parent_node.get_child_node_by_name(new_node.get_name()).is_some()
+        {
+            return Err(MatcherError::NotUniqueNameError { name: new_node.get_name().to_owned() });
+        }
+
         // Validate input before saving it to the draft.
-        let _ = Matcher::build(&node)?;
+        let _ = Matcher::build(&new_node)?;
 
         let old_node = self.get_mut_node_by_path_or_err(path)?;
-        match (old_node, node) {
+        match (old_node, new_node) {
             (
                 MatcherConfig::Ruleset { name, .. },
                 MatcherConfig::Ruleset { name: new_name, .. },
             ) => {
-                *name = new_name.clone();
+                *name = new_name;
             }
             (
                 MatcherConfig::Filter { name, filter, .. },
                 MatcherConfig::Filter { name: new_name, filter: new_filter, .. },
             ) => {
-                *name = new_name.clone();
-                *filter = new_filter.clone();
+                *name = new_name;
+                *filter = new_filter;
             }
             _ => {
                 return Err(MatcherError::ConfigurationError {
@@ -225,10 +233,34 @@ impl MatcherConfig {
     pub fn import_node_in_path(
         &mut self,
         path: &[&str],
-        node: MatcherConfig,
+        new_node: MatcherConfig,
     ) -> Result<(), MatcherError> {
-        let old_node = self.get_mut_node_by_path_or_err(path)?;
-        *old_node = node;
+        let old_node = match path {
+            [] => {
+                return Err(MatcherError::ConfigurationError {
+                    message: "Empty path is not allowed".to_string(),
+                })
+            }
+            [_node] => self,
+            [parent @ .., node_name] => {
+                let parent_node = self.get_mut_node_by_path_or_err(parent)?;
+                if *node_name != new_node.get_name()
+                    && parent_node.get_child_node_by_name(new_node.get_name()).is_some()
+                {
+                    return Err(MatcherError::NotUniqueNameError {
+                        name: new_node.get_name().to_owned(),
+                    });
+                }
+                let Some(new_node) = self.get_mut_child_node_by_name(node_name) else {
+                    return Err(MatcherError::ConfigurationError {
+                        message: format!("Node in this path does not exist: {:?}", path),
+                    });
+                };
+                new_node
+            }
+        };
+
+        *old_node = new_node;
         Ok(())
     }
 
@@ -374,6 +406,12 @@ pub enum Defaultable<T: Serialize + Clone> {
     Default {},
 }
 
+impl<T: Serialize + Clone> Default for Defaultable<T> {
+    fn default() -> Self {
+        Self::Default {}
+    }
+}
+
 impl<T: Serialize + Clone> From<Defaultable<T>> for Option<T> {
     fn from(default: Defaultable<T>) -> Self {
         match default {
@@ -443,21 +481,13 @@ mod tests {
         // Arrange
         let config_no_children = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
         let config_one_children = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "child_ruleset1".to_string(),
                 rules: vec![],
@@ -466,20 +496,12 @@ mod tests {
 
         let config_more_children = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Ruleset { name: "child_ruleset1".to_string(), rules: vec![] },
                 MatcherConfig::Filter {
                     name: "child_filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![
                         MatcherConfig::Ruleset {
                             name: "filter1_child_ruleset1".to_string(),
@@ -510,21 +532,13 @@ mod tests {
         // Arrange
         let config_no_ruleset = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
         let config_no_rules = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "child_ruleset1".to_string(),
                 rules: vec![],
@@ -533,11 +547,7 @@ mod tests {
 
         let config_one_rules = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "child_ruleset1".to_string(),
                 rules: vec![Rule {
@@ -553,82 +563,27 @@ mod tests {
 
         let config_more_rules = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Ruleset {
                     name: "child_ruleset1".to_string(),
                     rules: vec![
-                        Rule {
-                            name: "rule1".to_string(),
-                            description: "".to_string(),
-                            do_continue: false,
-                            active: false,
-                            constraint: Constraint {
-                                where_operator: None,
-                                with: Default::default(),
-                            },
-                            actions: vec![],
-                        },
-                        Rule {
-                            name: "rule2".to_string(),
-                            description: "".to_string(),
-                            do_continue: false,
-                            active: false,
-                            constraint: Constraint {
-                                where_operator: None,
-                                with: Default::default(),
-                            },
-                            actions: vec![],
-                        },
+                        Rule { name: "rule1".to_string(), ..Default::default() },
+                        Rule { name: "rule2".to_string(), ..Default::default() },
                     ],
                 },
                 MatcherConfig::Ruleset {
                     name: "child_ruleset2".to_string(),
-                    rules: vec![Rule {
-                        name: "rule3".to_string(),
-                        description: "".to_string(),
-                        do_continue: false,
-                        active: false,
-                        constraint: Constraint { where_operator: None, with: Default::default() },
-                        actions: vec![],
-                    }],
+                    rules: vec![Rule { name: "rule3".to_string(), ..Default::default() }],
                 },
                 MatcherConfig::Filter {
                     name: "child_filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Ruleset {
                         name: "child_ruleset3".to_string(),
                         rules: vec![
-                            Rule {
-                                name: "rule4".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: false,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            },
-                            Rule {
-                                name: "rule5".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: false,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            },
+                            Rule { name: "rule4".to_string(), ..Default::default() },
+                            Rule { name: "rule5".to_string(), ..Default::default() },
                         ],
                     }],
                 },
@@ -653,35 +608,19 @@ mod tests {
         // Arrange
         let config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
                             rules: vec![],
@@ -727,26 +666,14 @@ mod tests {
         // Arrange
         let config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter2".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![
                             MatcherConfig::Filter {
                                 name: "filter1".to_string(),
@@ -793,43 +720,23 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "new_filter".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![],
                     }],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
                             rules: vec![],
@@ -840,11 +747,7 @@ mod tests {
         };
         let new_filter = MatcherConfig::Filter {
             name: "new_filter".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
@@ -883,35 +786,19 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
                             rules: vec![],
@@ -922,44 +809,24 @@ mod tests {
         };
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![
                             MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] },
                             MatcherConfig::Filter {
                                 name: "new_filter".to_string(),
-                                filter: Filter {
-                                    description: "".to_string(),
-                                    active: false,
-                                    filter: Defaultable::Default {},
-                                },
+                                filter: Default::default(),
                                 nodes: vec![],
                             },
                         ],
@@ -969,11 +836,7 @@ mod tests {
         };
         let new_filter = MatcherConfig::Filter {
             name: "new_filter".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
@@ -990,43 +853,23 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "new_filter".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![],
                     }],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
                             rules: vec![],
@@ -1037,11 +880,7 @@ mod tests {
         };
         let new_filter = MatcherConfig::Filter {
             name: "edited_filter".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
         let new_ruleset =
@@ -1058,9 +897,7 @@ mod tests {
         assert_eq!(
             result_not_existing.err(),
             Some(MatcherError::ConfigurationError {
-                message:
-                    "Node in this path does not exist: [\"root\", \"filter3\", \"new_filter\"]"
-                        .to_string(),
+                message: "Node in this path does not exist: [\"root\", \"filter3\"]".to_string(),
             })
         );
         assert!(result_node_different_type.is_err());
@@ -1077,48 +914,22 @@ mod tests {
         // Arrange
         let mut config_ruleset = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
-                            rules: vec![Rule {
-                                name: "rule1".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: true,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            }],
+                            rules: vec![Rule { name: "rule1".to_string(), ..Default::default() }],
                         }],
                     }],
                 },
@@ -1127,48 +938,22 @@ mod tests {
         let mut config_filter = config_ruleset.clone();
         let expected_config_filter = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "edited_filter".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
-                            rules: vec![Rule {
-                                name: "rule1".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: true,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            }],
+                            rules: vec![Rule { name: "rule1".to_string(), ..Default::default() }],
                         }],
                     }],
                 },
@@ -1176,48 +961,22 @@ mod tests {
         };
         let expected_config_ruleset = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "edited_ruleset".to_string(),
-                            rules: vec![Rule {
-                                name: "rule1".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: true,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            }],
+                            rules: vec![Rule { name: "rule1".to_string(), ..Default::default() }],
                         }],
                     }],
                 },
@@ -1225,11 +984,7 @@ mod tests {
         };
         let edited_filter = MatcherConfig::Filter {
             name: "edited_filter".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
         let edited_ruleset =
@@ -1253,43 +1008,23 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "new_filter".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![],
                     }],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
                             rules: vec![],
@@ -1327,48 +1062,22 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![
                 MatcherConfig::Filter {
                     name: "filter1".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![],
                 },
                 MatcherConfig::Filter {
                     name: "filter2".to_string(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: false,
-                        filter: Defaultable::Default {},
-                    },
+                    filter: Default::default(),
                     nodes: vec![MatcherConfig::Filter {
                         name: "filter3".to_string(),
-                        filter: Filter {
-                            description: "".to_string(),
-                            active: false,
-                            filter: Defaultable::Default {},
-                        },
+                        filter: Default::default(),
                         nodes: vec![MatcherConfig::Ruleset {
                             name: "ruleset1".to_string(),
-                            rules: vec![Rule {
-                                name: "rule1".to_string(),
-                                description: "".to_string(),
-                                do_continue: false,
-                                active: true,
-                                constraint: Constraint {
-                                    where_operator: None,
-                                    with: Default::default(),
-                                },
-                                actions: vec![],
-                            }],
+                            rules: vec![Rule { name: "rule1".to_string(), ..Default::default() }],
                         }],
                     }],
                 },
@@ -1376,11 +1085,7 @@ mod tests {
         };
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Filter {
                 name: "filter1".to_string(),
                 filter: Filter {
@@ -1405,11 +1110,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] }],
         };
 
@@ -1440,18 +1141,10 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Filter {
                 name: "filter1".to_string(),
-                filter: Filter {
-                    description: "nothing relevant".to_string(),
-                    active: true,
-                    filter: Defaultable::Default {},
-                },
+                filter: Default::default(),
                 nodes: vec![],
             }],
         };
@@ -1484,18 +1177,12 @@ mod tests {
         let new_rule = Rule {
             name: "rule-1".to_string(),
             description: "nothing to say here".to_string(),
-            do_continue: false,
             active: true,
-            constraint: Constraint { where_operator: None, with: Default::default() },
-            actions: vec![],
+            ..Default::default()
         };
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "ruleset1".to_string(),
                 rules: vec![new_rule.clone()],
@@ -1522,29 +1209,19 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset { name: "ruleset1".to_string(), rules: vec![] }],
         };
 
         let new_rule = Rule {
             name: "rule-1".to_string(),
             description: "nothing to say here".to_string(),
-            do_continue: false,
             active: true,
-            constraint: Constraint { where_operator: None, with: Default::default() },
-            actions: vec![],
+            ..Default::default()
         };
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "ruleset1".to_string(),
                 rules: vec![new_rule.clone()],
@@ -1564,11 +1241,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![Rule {
@@ -1584,20 +1257,13 @@ mod tests {
 
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![Rule {
                     name: "my-rule2".to_string(),
                     description: "My Second Rule Description".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
+                    ..Default::default()
                 }],
             }],
         };
@@ -1609,10 +1275,7 @@ mod tests {
             Rule {
                 name: "my-rule2".to_string(),
                 description: "My Second Rule Description".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -1626,21 +1289,13 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
         };
 
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset { name: "my-ruleset".to_string(), rules: vec![] }],
         };
 
@@ -1651,10 +1306,7 @@ mod tests {
             Rule {
                 name: "my-rule2".to_string(),
                 description: "My Second Rule Description".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -1669,11 +1321,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
@@ -1684,10 +1332,7 @@ mod tests {
             Rule {
                 name: "my-rule2".to_string(),
                 description: "My Second Rule Description".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -1701,11 +1346,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![
@@ -1720,10 +1361,7 @@ mod tests {
                     Rule {
                         name: "my-rule2".to_string(),
                         description: "My Second Rule Description".to_string(),
-                        do_continue: false,
-                        active: false,
-                        constraint: Constraint { where_operator: None, with: Default::default() },
-                        actions: vec![],
+                        ..Default::default()
                     },
                 ],
             }],
@@ -1731,20 +1369,13 @@ mod tests {
 
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![Rule {
                     name: "my-rule2".to_string(),
                     description: "My Second Rule Description".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
+                    ..Default::default()
                 }],
             }],
         };
@@ -1762,40 +1393,26 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![Rule {
                     name: "my-rule2".to_string(),
                     description: "My Second Rule Description".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
+                    ..Default::default()
                 }],
             }],
         };
 
         let expected_config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![MatcherConfig::Ruleset {
                 name: "my-ruleset".to_string(),
                 rules: vec![Rule {
                     name: "my-rule2".to_string(),
                     description: "My Second Rule Description".to_string(),
-                    do_continue: false,
-                    active: false,
-                    constraint: Constraint { where_operator: None, with: Default::default() },
-                    actions: vec![],
+                    ..Default::default()
                 }],
             }],
         };
@@ -1814,11 +1431,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Default::default(),
             nodes: vec![],
         };
 
@@ -2010,9 +1623,6 @@ mod tests {
             &["root"],
             Rule {
                 name: "test-rule".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
                 constraint: Constraint {
                     where_operator: Some(Operator::Regex {
                         regex: "^(.*$".to_string(),
@@ -2020,7 +1630,7 @@ mod tests {
                     }),
                     with: Default::default(),
                 },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -2036,9 +1646,6 @@ mod tests {
             &["root"],
             Rule {
                 name: "test-rule".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
                 constraint: Constraint {
                     where_operator: Some(Operator::Contains {
                         first: "${pippo}".into(),
@@ -2046,7 +1653,7 @@ mod tests {
                     }),
                     with: Default::default(),
                 },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -2058,14 +1665,7 @@ mod tests {
     fn should_refuse_missformated_accessor_in_rule_on_edit() {
         let old_config = MatcherConfig::Ruleset {
             name: "root".to_string(),
-            rules: vec![Rule {
-                name: "test-rule".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
-            }],
+            rules: vec![Rule { name: "test-rule".to_string(), ..Default::default() }],
         };
         let mut config = old_config.clone();
         let result = config.edit_rule(
@@ -2073,9 +1673,6 @@ mod tests {
             "test-rule",
             Rule {
                 name: "test-rule".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
                 constraint: Constraint {
                     where_operator: Some(Operator::Contains {
                         first: "${pippo}".into(),
@@ -2083,7 +1680,7 @@ mod tests {
                     }),
                     with: Default::default(),
                 },
-                actions: vec![],
+                ..Default::default()
             },
         );
 
@@ -2096,22 +1693,14 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Ruleset {
             name: "root".to_string(),
-            rules: vec![Rule {
-                name: "test-rule".to_string(),
-                description: "".to_string(),
-                do_continue: false,
-                active: false,
-                constraint: Constraint { where_operator: None, with: Default::default() },
-                actions: vec![],
-            }],
+            rules: vec![Rule { name: "test-rule".to_string(), ..Default::default() }],
         };
 
         let import_config = MatcherConfig::Filter {
             name: "imported_root".to_string(),
             filter: Filter {
                 description: "imported root filter".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
+                ..Default::default()
             },
             nodes: vec![],
         };
@@ -2128,11 +1717,7 @@ mod tests {
         // Arrange
         let mut config = MatcherConfig::Filter {
             name: "root".to_string(),
-            filter: Filter {
-                description: "Root filter".to_string(),
-                active: false,
-                filter: Defaultable::Default {},
-            },
+            filter: Filter { description: "Root filter".to_string(), ..Default::default() },
             nodes: vec![MatcherConfig::Filter {
                 name: "master".to_string(),
                 filter: Filter {
@@ -2163,5 +1748,79 @@ mod tests {
 
         // Assert
         assert_eq!(new_node, &import_config);
+    }
+
+    #[test]
+    fn should_return_error_on_edit_to_existing_name() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Default::default(),
+                    nodes: vec![],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Default::default(),
+                    nodes: vec![],
+                },
+            ],
+        };
+
+        // Act
+        let result = config.edit_node_in_path(
+            &["root", "filter2"],
+            MatcherConfig::Filter {
+                name: "filter1".to_string(),
+                filter: Default::default(),
+                nodes: vec![],
+            },
+        );
+
+        // Assert
+        match result {
+            Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
+            err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_return_error_on_import_to_existing_name() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![
+                MatcherConfig::Filter {
+                    name: "filter1".to_string(),
+                    filter: Default::default(),
+                    nodes: vec![],
+                },
+                MatcherConfig::Filter {
+                    name: "filter2".to_string(),
+                    filter: Default::default(),
+                    nodes: vec![],
+                },
+            ],
+        };
+
+        // Act
+        let result = config.import_node_in_path(
+            &["root", "filter2"],
+            MatcherConfig::Filter {
+                name: "filter1".to_string(),
+                filter: Default::default(),
+                nodes: vec![],
+            },
+        );
+
+        // Assert
+        match result {
+            Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
+            err => unreachable!("{:?}", err),
+        }
     }
 }

@@ -3,7 +3,7 @@ use crate::config::Defaultable;
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Filter {
     pub description: String,
