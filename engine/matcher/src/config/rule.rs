@@ -8,7 +8,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use tornado_common_api::Payload;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Rule {
     #[serde(default)]
@@ -21,7 +21,7 @@ pub struct Rule {
     pub actions: Vec<ConfigAction>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct Constraint {
     #[serde(rename = "WHERE")]
