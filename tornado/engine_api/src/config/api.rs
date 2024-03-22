@@ -549,7 +549,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigA
         let mut draft = self.get_draft_and_check_owner(&auth, draft_id).await?;
         let absolute_node_path = self.get_absolute_path_from_relative(&auth, node_path)?;
 
-        draft.config.import_node_in_path(&absolute_node_path, config)?;
+        draft.config.replace_node(&absolute_node_path, config)?;
         Ok(self.config_manager.update_draft(draft_id, auth.auth.user, &draft.config).await?)
     }
 

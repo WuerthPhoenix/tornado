@@ -230,7 +230,7 @@ impl MatcherConfig {
         Ok(())
     }
 
-    pub fn import_node_in_path(
+    pub fn replace_node(
         &mut self,
         path: &[&str],
         new_node: MatcherConfig,
@@ -251,15 +251,9 @@ impl MatcherConfig {
                         name: new_node.get_name().to_owned(),
                     });
                 }
-                let Some(new_node) = self.get_mut_child_node_by_name(node_name) else {
-                    return Err(MatcherError::ConfigurationError {
-                        message: format!("Node in this path does not exist: {:?}", path),
-                    });
-                };
-                new_node
+                self.get_mut_node_by_path_or_err(path)?
             }
         };
-
         *old_node = new_node;
         Ok(())
     }
@@ -1706,7 +1700,7 @@ mod tests {
         };
 
         // Act
-        config.import_node_in_path(&["root"], import_config.clone()).unwrap();
+        config.replace_node(&["root"], import_config.clone()).unwrap();
 
         // Assert
         assert_eq!(config, import_config);
@@ -1728,7 +1722,18 @@ mod tests {
                         second: json!("master"),
                     }),
                 },
-                nodes: vec![],
+                nodes: vec![
+                    MatcherConfig::Filter {
+                        name: "filter1".to_string(),
+                        filter: Default::default(),
+                        nodes: vec![],
+                    },
+                    MatcherConfig::Filter {
+                        name: "filter2".to_string(),
+                        filter: Default::default(),
+                        nodes: vec![],
+                    },
+                ],
             }],
         };
 
@@ -1743,11 +1748,52 @@ mod tests {
         };
 
         // Act
-        config.import_node_in_path(&["root", "master"], import_config.clone()).unwrap();
-        let new_node = config.get_node_by_path(&["root", "imported_node"]).unwrap();
+        config.replace_node(&["root", "master", "filter1"], import_config.clone()).unwrap();
+        let new_node = config.get_node_by_path(&["root", "master", "imported_node"]).unwrap();
 
         // Assert
         assert_eq!(new_node, &import_config);
+    }
+
+    #[test]
+    fn should_return_error_on_import_to_existing_name() {
+        // Arrange
+        let mut config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Filter {
+                name: "master".to_string(),
+                filter: Default::default(),
+                nodes: vec![
+                    MatcherConfig::Filter {
+                        name: "filter1".to_string(),
+                        filter: Default::default(),
+                        nodes: vec![],
+                    },
+                    MatcherConfig::Filter {
+                        name: "filter2".to_string(),
+                        filter: Default::default(),
+                        nodes: vec![],
+                    },
+                ],
+            }],
+        };
+
+        // Act
+        let result = config.replace_node(
+            &["root", "master", "filter2"],
+            MatcherConfig::Filter {
+                name: "filter1".to_string(),
+                filter: Default::default(),
+                nodes: vec![],
+            },
+        );
+
+        // Assert
+        match result {
+            Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
+            err => unreachable!("{:?}", err),
+        }
     }
 
     #[test]
@@ -1772,43 +1818,6 @@ mod tests {
 
         // Act
         let result = config.edit_node_in_path(
-            &["root", "filter2"],
-            MatcherConfig::Filter {
-                name: "filter1".to_string(),
-                filter: Default::default(),
-                nodes: vec![],
-            },
-        );
-
-        // Assert
-        match result {
-            Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
-            err => unreachable!("{:?}", err),
-        }
-    }
-
-    #[test]
-    fn should_return_error_on_import_to_existing_name() {
-        // Arrange
-        let mut config = MatcherConfig::Filter {
-            name: "root".to_string(),
-            filter: Default::default(),
-            nodes: vec![
-                MatcherConfig::Filter {
-                    name: "filter1".to_string(),
-                    filter: Default::default(),
-                    nodes: vec![],
-                },
-                MatcherConfig::Filter {
-                    name: "filter2".to_string(),
-                    filter: Default::default(),
-                    nodes: vec![],
-                },
-            ],
-        };
-
-        // Act
-        let result = config.import_node_in_path(
             &["root", "filter2"],
             MatcherConfig::Filter {
                 name: "filter1".to_string(),
