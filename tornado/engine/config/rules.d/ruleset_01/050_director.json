@@ -19,7 +19,7 @@
     {
       "id": "director",
       "payload": {
-        "action_name": "create_host",
+        "action_name": "CreateHost",
         "action_payload": {
           "object_type": "object",
           "object_name": "${event.payload.data.hostname}",

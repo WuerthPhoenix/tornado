@@ -30,7 +30,7 @@
   },
   "actions": [
     {
-      "id": "Logger",
+      "id": "logger",
       "payload": {
         "type": "${event.type}",
         "subject": "${event.payload.subject}",
