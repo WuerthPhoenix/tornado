@@ -17,7 +17,6 @@ use tracing::instrument;
 pub const MONITORING_ACTION_NAME_KEY: &str = "action_name";
 
 mod action;
-pub mod migration;
 
 /// An executor that performs a process check result and, if needed, creates the underneath host/service
 #[derive(Clone)]

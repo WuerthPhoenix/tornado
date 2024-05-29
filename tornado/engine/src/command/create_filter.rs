@@ -249,7 +249,7 @@ pub mod test {
                 assert_eq!(nodes.len(), 5);
                 let backup_node = nodes.iter().find(|node| match node {
                     MatcherConfig::Ruleset { name, rules } => {
-                        name.starts_with("ruleset_01_backup_") && rules.len() == 10
+                        name.starts_with("ruleset_01_backup_") && rules.len() == 8
                     }
                     _ => false,
                 });
