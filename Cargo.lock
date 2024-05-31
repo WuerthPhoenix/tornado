@@ -4322,7 +4322,6 @@ dependencies = [
  "tornado_executor_foreach",
  "tornado_executor_icinga2",
  "tornado_executor_logger",
- "tornado_executor_monitoring",
  "tornado_executor_script",
  "tornado_executor_smart_monitoring_check_result",
  "tornado_network_common",
@@ -4521,24 +4520,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "tornado_executor_monitoring"
-version = "0.0.1"
-dependencies = [
- "async-trait",
- "httpmock",
- "log",
- "maplit",
- "serde",
- "serde_json",
- "tokio",
- "tornado_common_api",
- "tornado_executor_common",
- "tornado_executor_director",
- "tornado_executor_icinga2",
- "tracing",
-]
-
-[[package]]
 name = "tornado_executor_script"
 version = "0.0.1"
 dependencies = [
@@ -4568,7 +4549,6 @@ dependencies = [
  "tornado_executor_common",
  "tornado_executor_director",
  "tornado_executor_icinga2",
- "tornado_executor_monitoring",
  "tracing",
 ]
 
