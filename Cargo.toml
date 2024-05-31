@@ -19,7 +19,6 @@ members = [
     "executor/foreach",
     "executor/icinga2",
     "executor/logger",
-    "executor/monitoring",
     "executor/script",
     "executor/smart_monitoring_check_result",
     "network/common",

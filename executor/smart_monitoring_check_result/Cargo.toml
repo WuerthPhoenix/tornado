@@ -19,7 +19,6 @@ tornado_executor_common = { path = "../common", version = "0.0.1" }
 tornado_executor_director = { path = "../director", version = "0.0.1" }
 tornado_executor_icinga2 = { path = "../icinga2", version = "0.0.1" }
 tornado_engine_matcher = { path = "../../engine/matcher", version = "0.0.1" }
-tornado_executor_monitoring = { path = "../monitoring", version = "0.0.1" }
 tornado_common_api = { path = "../../common/api", version = "0.0.1" }
 
 [dev-dependencies]

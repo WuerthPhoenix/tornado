@@ -43,7 +43,6 @@ use tracing_actix_web::TracingLogger;
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub const ACTION_ID_SMART_MONITORING_CHECK_RESULT: &str = "smart_monitoring_check_result";
-pub const ACTION_ID_MONITORING: &str = "monitoring";
 pub const ACTION_ID_FOREACH: &str = "foreach";
 pub const ACTION_ID_LOGGER: &str = "logger";
 
@@ -195,25 +194,6 @@ pub async fn daemon(
         )
     };
 
-    // Start monitoring executor actor
-    let monitoring_executor_addr = {
-        let executor = tornado_executor_monitoring::MonitoringExecutor::new(
-            configs.icinga2_executor_config.clone(),
-            configs.director_executor_config.clone(),
-        )
-        .expect("Cannot start the MonitoringExecutor Executor");
-        let stateless_executor_command =
-            StatelessExecutorCommand::new(action_meter.clone(), executor);
-        CommandExecutorActor::start_new(
-            message_queue_size,
-            Rc::new(RetryCommand::new(
-                retry_strategy.clone(),
-                CommandPool::new(threads_per_queue, stateless_executor_command),
-            )),
-            action_meter.clone(),
-        )
-    };
-
     // Start smart_monitoring_check_result executor actor
     let smart_monitoring_check_result_executor_addr = {
         let executor =
@@ -257,14 +237,6 @@ pub async fn daemon(
                     "director" => {
                         director_executor_addr.try_send(message).map_err(|err| {
                             format!("Error sending message to 'director' executor. Err: {:?}", err)
-                        })
-                    }
-                    ACTION_ID_MONITORING => {
-                        monitoring_executor_addr.try_send(message).map_err(|err| {
-                            format!(
-                                "Error sending message to 'monitoring' executor. Err: {:?}",
-                                err
-                            )
                         })
                     }
                     ACTION_ID_SMART_MONITORING_CHECK_RESULT => {
