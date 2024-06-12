@@ -113,8 +113,8 @@ mod test {
     use std::sync::Arc;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
-    use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
+    use tornado_engine_matcher::config::v1::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
     use tornado_engine_matcher::model::{

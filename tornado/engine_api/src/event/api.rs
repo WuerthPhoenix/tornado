@@ -5,8 +5,8 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tornado_common_api::Event;
-use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::operation::NodeFilter;
+use tornado_engine_matcher::config::v1::fs::ROOT_NODE_NAME;
 use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::model::ProcessedEvent;
 

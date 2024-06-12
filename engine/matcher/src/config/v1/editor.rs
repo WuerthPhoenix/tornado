@@ -1,5 +1,5 @@
 use crate::config::filter::Filter;
-use crate::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
+use crate::config::v1::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
 use crate::config::{
     Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
     MatcherConfigReader,

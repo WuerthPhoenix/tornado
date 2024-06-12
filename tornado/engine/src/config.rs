@@ -9,7 +9,7 @@ use tornado_common::{
 };
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
-use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+use tornado_engine_matcher::config::v1::fs::FsMatcherConfigManager;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
@@ -271,7 +271,7 @@ fn build_matcher_config(
 mod test {
 
     use super::*;
-    use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+    use tornado_engine_matcher::config::v1::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 
     #[test]

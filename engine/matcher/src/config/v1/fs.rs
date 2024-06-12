@@ -1,6 +1,6 @@
 use crate::config::filter::Filter;
-use crate::config::fs::editor::is_dir;
 use crate::config::rule::Rule;
+use crate::config::v1::editor::is_dir;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use log::*;
@@ -11,13 +11,11 @@ use std::pin::Pin;
 use tokio::fs::DirEntry;
 use tokio::fs::{read_dir, read_to_string};
 
-pub mod editor;
-
 pub const ROOT_NODE_NAME: &str = "root";
 
 pub struct FsMatcherConfigManager {
-    root_path: String,
-    drafts_path: String,
+    pub(crate) root_path: String,
+    pub(crate) drafts_path: String,
 }
 
 impl FsMatcherConfigManager {
@@ -43,7 +41,7 @@ impl MatcherConfigReader for FsMatcherConfigManager {
 }
 
 impl FsMatcherConfigManager {
-    async fn read_from_root_dir(dir: PathBuf) -> Result<MatcherConfig, MatcherError> {
+    pub(crate) async fn read_from_root_dir(dir: PathBuf) -> Result<MatcherConfig, MatcherError> {
         FsMatcherConfigManager::read_from_dir(ROOT_NODE_NAME.to_owned(), dir).await
     }
 
@@ -245,7 +243,9 @@ impl FsMatcherConfigManager {
         })
     }
 
-    async fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+    pub(crate) async fn read_dir_entries<P: AsRef<Path>>(
+        dir: P,
+    ) -> Result<Vec<DirEntry>, MatcherError> {
         let mut paths = vec![];
 
         let mut read_dir =
@@ -280,7 +280,7 @@ impl FsMatcherConfigManager {
         name
     }
 
-    fn filename(path: &Path) -> Result<&str, MatcherError> {
+    pub(crate) fn filename(path: &Path) -> Result<&str, MatcherError> {
         path.file_name().and_then(OsStr::to_str).ok_or_else(|| MatcherError::ConfigurationError {
             message: format!("Error processing path name: [{}]", path.display()),
         })
