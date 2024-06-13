@@ -310,7 +310,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_rules_from_folder_sorting_by_filename() {
-        let path = "./test_resources/rules";
+        let path = "./test_resources/v1/rules";
         let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
@@ -332,7 +332,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_rules_from_empty_folder() {
-        let path = "./test_resources/config_empty";
+        let path = "./test_resources/v1/config_empty";
         let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
@@ -346,7 +346,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_filter_from_folder() {
-        let path = "./test_resources/config_01";
+        let path = "./test_resources/v1/config_01";
         let config = FsMatcherConfigManager::read_from_dir("custom_name".to_owned(), path.into())
             .await
             .unwrap();
@@ -378,7 +378,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
-        let path = "./test_resources/config_02";
+        let path = "./test_resources/v1/config_02";
         let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         assert!(is_filter(&config, "root", 0));
@@ -386,7 +386,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_filter_from_folder_with_many_subfolders() {
-        let path = "./test_resources/config_03";
+        let path = "./test_resources/v1/config_03";
         let config =
             FsMatcherConfigManager::read_from_dir("emails".to_owned(), path.into()).await.unwrap();
 
@@ -395,7 +395,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_config_from_folder_recursively() {
-        let path = "./test_resources/config_04";
+        let path = "./test_resources/v1/config_04";
         let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         println!("{:?}", config);
@@ -428,7 +428,7 @@ mod test {
 
     #[tokio::test]
     async fn should_create_implicit_filter_recursively() {
-        let path = "./test_resources/config_implicit_filter";
+        let path = "./test_resources/v1/config_implicit_filter";
         let config = FsMatcherConfigManager::read_from_dir("implicit".to_owned(), path.into())
             .await
             .unwrap();
