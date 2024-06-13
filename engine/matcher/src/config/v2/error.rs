@@ -49,6 +49,6 @@ pub enum DeserializationError {
 // Todo: improve this error in NEPROD-1658
 impl From<MatcherConfigError> for MatcherError {
     fn from(value: MatcherConfigError) -> Self {
-        todo!()
+        MatcherError::ConfigurationError { message: format!("{values:?}") }
     }
 }
