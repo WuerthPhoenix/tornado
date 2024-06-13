@@ -17,6 +17,7 @@ pub enum MatcherConfigError {
 pub enum DeserializationError {
     UnknownField {
         path: String,
+        field: String,
     },
     MissingField {
         path: String,

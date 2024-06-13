@@ -32,7 +32,7 @@ impl FsMatcherConfigManagerV2<'_> {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ConfigType {
     Root,
     Filter,
@@ -292,9 +292,9 @@ fn parse_serde_errors(
 
     // Determine whether the error is due to a type missmatch.
     // Example error:
-    //      filter: invalid type: integer `2`, expected struct Filter at line 3 column 19
+    //      invalid type: integer `2`, expected a string at line 3 column 11
     let type_error_regex = Regex::new(
-        "^(?<FIELD_NAME>.+?): invalid type: (?<ACTUAL_TYPE>.+?) .+, expected (?<EXPECTED_TYPE>.+?) at line [0-9]+ column [0-9]+$",
+        "^invalid type: (?<ACTUAL_TYPE>.+?) .+, expected (?:a )?(?<EXPECTED_TYPE>.+?) at line [0-9]+ column [0-9]+$",
     )
         .expect("Static regex should be valid");
     if let Some(result) = type_error_regex.captures(&error) {
@@ -312,13 +312,15 @@ fn parse_serde_errors(
 
     // We disallow unknown fields during parsing, to avoid common human error. Determine if
     // the error occurred due to a not valid field. Example error:
-    //      pippo: unknown field `pippo`, expected one of `type`, `name`, `filter` at line 3 column 15
+    //      unknown field `pippo` at line 3 column 15
     let unknown_field_error_regex = Regex::new(
-        "^(?<FIELD_NAME>.+?): unknown field `(?<FIELD_NAME_2>.+?)`, expected one of (?:`.+?`, )+`.+?` at line [0-9]+ column [0-9]+$",
+        "^unknown field `(?<FIELD_NAME>.+?)`(?:, expected one of (?:`.+?`, )+`.+?`)? at line [0-9]+ column [0-9]+$",
     )
         .expect("Static regex should be valid");
-    if unknown_field_error_regex.is_match(&error) {
-        return DeserializationError::UnknownField { path };
+    if let Some(captures) = unknown_field_error_regex.captures(&error) {
+        if let Some(field) = captures.name("FIELD_NAME") {
+            return DeserializationError::UnknownField { path, field: field.as_str().to_string() };
+        }
     }
 
     // Determine whether an error occurred, due to a missing field.
@@ -335,9 +337,9 @@ fn parse_serde_errors(
 
     // Determine whether an error occurred due to a missmatch in expected values.
     // Example error:
-    //      type: invalid value: string "ruleset", expected string "filter" at line 2 column 25
+    //      invalid value: string "ruleset", expected string "filter" at line 2 column 19
     let expected_value_regex = Regex::new(
-        "^(?<FIELD_NAME>.+?): invalid value: (?<ACTUAL_TYPE>.+?) (?<ACTUAL_CONTENT>.+?), expected (?<EXPECTED_TYPE>.+?) (?<EXPECTED_CONTENT>.+?) at line [0-9]+ column [0-9]+$",
+        "^invalid value: (?<ACTUAL_TYPE>.+?) (?<ACTUAL_CONTENT>.+?), expected (?<EXPECTED_TYPE>.+?) (?<EXPECTED_CONTENT>.+?) at line [0-9]+ column [0-9]+$",
     )
         .expect("Static regex should be valid");
     if let Some(captures) = expected_value_regex.captures(&error) {
@@ -367,9 +369,11 @@ fn parse_serde_errors(
 mod tests {
     use crate::config::filter::Filter;
     use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
+    use crate::config::v2::error::DeserializationError;
     use crate::config::v2::{
         parse_config_from_file, read_config_from_root_dir, read_filter_from_dir,
-        read_rules_from_dir, read_ruleset_from_dir, MatcherConfigFilter, MatcherConfigRuleset,
+        read_node_from_dir, read_rules_from_dir, read_ruleset_from_dir, ConfigType,
+        MatcherConfigError, MatcherConfigFilter, MatcherConfigRuleset,
     };
     use crate::config::{Defaultable, MatcherConfig};
     use monostate::MustBe;
@@ -377,6 +381,7 @@ mod tests {
     use tornado_common_api::Value;
 
     const TEST_CONFIG_DIR: &str = "./test_resources/v2/test_config/";
+    const TEST_BROKEN_CONFIG_DIR: &str = "./test_resources/v2/erroneous_configs/";
 
     #[tokio::test]
     async fn should_parse_filter_from_file() {
@@ -574,6 +579,143 @@ mod tests {
                 assert_eq!("empty_filter", name_filter_1);
                 assert_eq!("master", name_filter_2);
                 assert_eq!("tenant_a", name_filter_3);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_missing_field() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_missing_field.json";
+        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
+            .await
+            .unwrap_err();
+
+        match error {
+            MatcherConfigError::DeserializationError {
+                file,
+                error: DeserializationError::MissingField { path, field },
+            } => {
+                assert_eq!(&test_file_path, &format!("{}", file.display()));
+                assert_eq!(".", &path);
+                assert_eq!("name", &field);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_unknown_field() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_unknown_field.json";
+        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
+            .await
+            .unwrap_err();
+
+        match error {
+            MatcherConfigError::DeserializationError {
+                file,
+                error: DeserializationError::UnknownField { path, field },
+            } => {
+                assert_eq!(&test_file_path, &format!("{}", file.display()));
+                assert_eq!(".", path);
+                assert_eq!("pippo", field);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_wrong_data() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_wrong_data.json";
+        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
+            .await
+            .unwrap_err();
+
+        match error {
+            MatcherConfigError::DeserializationError {
+                file,
+                error: DeserializationError::TypeError { path, expected_type, actual_type },
+            } => {
+                assert_eq!(&test_file_path, &format!("{}", file.display()));
+                assert_eq!("name", path);
+                assert_eq!("string", expected_type);
+                assert_eq!("integer", actual_type);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_wrong_type() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_wrong_type.json";
+        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
+            .await
+            .unwrap_err();
+
+        match error {
+            MatcherConfigError::DeserializationError {
+                file,
+                error:
+                    DeserializationError::InvalidField {
+                        path,
+                        found,
+                        found_type,
+                        expected,
+                        expected_type,
+                    },
+            } => {
+                assert_eq!(&test_file_path, &format!("{}", file.display()));
+                assert_eq!("type", path);
+                assert_eq!("string", found_type);
+                assert_eq!("\"ruleset\"", found);
+                assert_eq!("string", expected_type);
+                assert_eq!("\"filter\"", expected);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_missing_node_file() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "dir_missing_node_file/";
+        let error = read_node_from_dir(Path::new(&test_file_path)).await.unwrap_err();
+
+        match error {
+            MatcherConfigError::UnknownNodeDir { path } => {
+                assert_eq!(&test_file_path, &format!("{}", path.display()));
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_wrong_version() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "config_wrong_version/";
+        let error = read_config_from_root_dir(Path::new(&test_file_path)).await.unwrap_err();
+
+        match error {
+            MatcherConfigError::DeserializationError {
+                file,
+                error: DeserializationError::InvalidField { path, .. },
+            } => {
+                let version_file = test_file_path.clone() + "version.json";
+                assert_eq!(&version_file, &format!("{}", file.display()));
+                assert_eq!("version", path);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_fail_on_extra_file() {
+        let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_extra_file/";
+        let error = read_filter_from_dir(Path::new(&test_file_path)).await.unwrap_err();
+
+        match dbg!(error) {
+            MatcherConfigError::UnexpectedFile { path, config_type } => {
+                let path = format!("{}", path.display());
+                assert!(path.starts_with(&test_file_path));
+                assert_eq!(ConfigType::Filter, config_type);
             }
             result => panic!("{:#?}", result),
         }
