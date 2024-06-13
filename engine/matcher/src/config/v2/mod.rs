@@ -16,6 +16,7 @@ use serde::Deserialize;
 use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
+use tokio::fs::DirEntry;
 
 pub struct FsMatcherConfigManagerV2<'config> {
     root_path: &'config Path,
@@ -31,7 +32,7 @@ impl FsMatcherConfigManagerV2<'_> {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub enum ConfigType {
     Root,
     Filter,
@@ -52,6 +53,7 @@ impl ConfigType {
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigFilter {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     node_type: MustBe!("filter"),
     name: String,
     #[serde(flatten)]
@@ -62,6 +64,7 @@ pub struct MatcherConfigFilter {
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigRuleset {
     #[serde(rename = "type")]
+    #[allow(dead_code)]
     node_type: MustBe!("ruleset"),
     name: String,
 }
@@ -69,6 +72,7 @@ pub struct MatcherConfigRuleset {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Version {
+    #[allow(dead_code)]
     version: MustBe!("2.0"),
 }
 
@@ -104,27 +108,14 @@ async fn read_child_nodes_from_dir(
     dir: &Path,
     config_type: ConfigType,
 ) -> Result<Vec<MatcherConfig>, MatcherConfigError> {
-    let mut root_dir_iter = match tokio::fs::read_dir(dir).await {
-        Ok(root_dir_iter) => root_dir_iter,
-        Err(error) => {
-            return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
-        }
-    };
+    let dir_entries = gather_dir_entries(dir).await?;
 
     let mut processing_nodes_futures = FuturesOrdered::new();
-    loop {
-        let dir_entry = match root_dir_iter.next_entry().await {
-            Ok(Some(entry)) => entry,
-            Ok(None) => break,
-            Err(error) => {
-                return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
-            }
-        };
-
+    for dir_entry in dir_entries {
         let file_type = match dir_entry.file_type().await {
             Ok(file_type) => file_type,
             Err(error) => {
-                return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
+                return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
             }
         };
 
@@ -211,27 +202,14 @@ async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfi
 }
 
 async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError> {
-    let mut root_dir_iter = match tokio::fs::read_dir(dir).await {
-        Ok(root_dir_iter) => root_dir_iter,
-        Err(error) => {
-            return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
-        }
-    };
+    let dir_entries = gather_dir_entries(dir).await?;
 
     let mut rules = vec![];
-    loop {
-        let dir_entry = match root_dir_iter.next_entry().await {
-            Ok(Some(entry)) => entry,
-            Ok(None) => break,
-            Err(error) => {
-                return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
-            }
-        };
-
+    for dir_entry in dir_entries {
         let file_type = match dir_entry.file_type().await {
             Ok(file_type) => file_type,
             Err(error) => {
-                return Err(MatcherConfigError::DirReadError { path: PathBuf::from(dir), error })
+                return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
             }
         };
 
@@ -250,7 +228,7 @@ async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError
 async fn parse_config_from_file<Data: DeserializeOwned>(
     path: &Path,
 ) -> Result<Data, MatcherConfigError> {
-    let content = match tokio::fs::read(&path).await {
+    let content = match tokio::fs::read_to_string(&path).await {
         Ok(content) => content,
         Err(error) => {
             if error.kind() == ErrorKind::NotFound {
@@ -261,7 +239,8 @@ async fn parse_config_from_file<Data: DeserializeOwned>(
         }
     };
 
-    let jd = &mut serde_json::Deserializer::from_slice(&content);
+    let json = content.trim();
+    let jd = &mut serde_json::Deserializer::from_str(json);
     match serde_path_to_error::deserialize(jd) {
         Ok(result) => Ok(result),
         Err(error) => Err(MatcherConfigError::DeserializationError {
@@ -269,6 +248,29 @@ async fn parse_config_from_file<Data: DeserializeOwned>(
             error: parse_serde_errors(error),
         }),
     }
+}
+
+async fn gather_dir_entries(dir: &Path) -> Result<Vec<DirEntry>, MatcherConfigError> {
+    let mut root_dir_iter = match tokio::fs::read_dir(dir).await {
+        Ok(root_dir_iter) => root_dir_iter,
+        Err(error) => {
+            return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
+        }
+    };
+
+    let mut dir_entries = vec![];
+    loop {
+        match root_dir_iter.next_entry().await {
+            Ok(Some(entry)) => dir_entries.push(entry),
+            Ok(None) => break,
+            Err(error) => {
+                return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
+            }
+        };
+    }
+
+    dir_entries.sort_by_key(DirEntry::path);
+    Ok(dir_entries)
 }
 
 // I know this is not pretty, but serde does not model the custom errors to give good user feedback.
@@ -334,11 +336,11 @@ fn parse_serde_errors(
     // Determine whether an error occurred due to a missmatch in expected values.
     // Example error:
     //      type: invalid value: string "ruleset", expected string "filter" at line 2 column 25
-    let expected = Regex::new(
+    let expected_value_regex = Regex::new(
         "^(?<FIELD_NAME>.+?): invalid value: (?<ACTUAL_TYPE>.+?) (?<ACTUAL_CONTENT>.+?), expected (?<EXPECTED_TYPE>.+?) (?<EXPECTED_CONTENT>.+?) at line [0-9]+ column [0-9]+$",
     )
         .expect("Static regex should be valid");
-    if let Some(captures) = missing_field_error.captures(&error) {
+    if let Some(captures) = expected_value_regex.captures(&error) {
         let actual_type = captures.name("ACTUAL_TYPE");
         let actual_content = captures.name("ACTUAL_CONTENT");
         let expected_type = captures.name("EXPECTED_TYPE");
@@ -361,14 +363,219 @@ fn parse_serde_errors(
     return DeserializationError::GenericError { error };
 }
 
-#[test]
-fn deserialize_test() {
-    let json = r#"{
-        "type": "ruleset"
-    }"#;
+#[cfg(test)]
+mod tests {
+    use crate::config::filter::Filter;
+    use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
+    use crate::config::v2::{
+        parse_config_from_file, read_config_from_root_dir, read_filter_from_dir,
+        read_rules_from_dir, read_ruleset_from_dir, MatcherConfigFilter, MatcherConfigRuleset,
+    };
+    use crate::config::{Defaultable, MatcherConfig};
+    use monostate::MustBe;
+    use std::path::Path;
+    use tornado_common_api::Value;
 
-    let jd = &mut serde_json::Deserializer::from_slice(json.as_bytes());
-    let error: Result<MatcherConfigFilter, _> = serde_path_to_error::deserialize(jd);
+    const TEST_CONFIG_DIR: &str = "./test_resources/v2/test_config/";
 
-    println!("{}", error.unwrap_err())
+    #[tokio::test]
+    async fn should_parse_filter_from_file() {
+        let path = String::from(TEST_CONFIG_DIR) + "master/filter.json";
+        let config: MatcherConfigFilter = parse_config_from_file(Path::new(&path)).await.unwrap();
+
+        match config {
+            MatcherConfigFilter {
+                node_type: MustBe!("filter"),
+                name,
+                filter:
+                    Filter { active: true, filter: Defaultable::Value(Operator::And { .. }), .. },
+            } => {
+                assert_eq!("master", name);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_parse_ruleset_from_file() {
+        let path = String::from(TEST_CONFIG_DIR) + "tenant_a/snmp_logger/ruleset.json";
+        let config: MatcherConfigRuleset = parse_config_from_file(Path::new(&path)).await.unwrap();
+
+        match config {
+            MatcherConfigRuleset { node_type: MustBe!("ruleset"), name } => {
+                assert_eq!("snmp_logger", name);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_parse_rule_from_file() {
+        let path = String::from(TEST_CONFIG_DIR)
+            + "tenant_a/snmp_logger/rules/000000010_log_internal_snmp_traps.json";
+        let config: Rule = parse_config_from_file(Path::new(&path)).await.unwrap();
+
+        let actions = match config {
+            Rule {
+                name,
+                do_continue: true,
+                active: true,
+                constraint: Constraint { where_operator: Some(Operator::And { .. }), with },
+                actions,
+                ..
+            } => {
+                assert_eq!("log_internal_snmp_traps", name);
+                assert!(with.is_empty());
+                actions
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        match actions.as_slice() {
+            [ConfigAction { id, payload }] => {
+                assert_eq!("logger", id);
+                assert!(payload.contains_key("event"))
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_read_all_rules_from_directory() {
+        let path = String::from(TEST_CONFIG_DIR) + "tenant_a/snmp_logger/rules";
+        let config = read_rules_from_dir(Path::new(&path)).await.unwrap();
+
+        let (rule1, rule2) = match config.as_slice() {
+            [rule1 @ Rule { name: name_rule_1, do_continue: true, active: true, .. }, rule2 @ Rule { name: name_rule_2, do_continue: true, active: true, .. }] =>
+            {
+                assert_eq!("log_internal_snmp_traps", name_rule_1);
+                assert_eq!("log_external_snmp_traps", name_rule_2);
+                (rule1, rule2)
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        let operators = match rule1 {
+            Rule {
+                constraint: Constraint { where_operator: Some(Operator::And { operators }), with },
+                actions,
+                ..
+            } => {
+                assert!(with.is_empty());
+                assert_eq!(1, actions.len());
+                operators
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        match operators.as_slice() {
+            [Operator::Equals { first, second }, Operator::Regex { .. }] => {
+                assert_eq!(&Value::String("${event.type}".to_string()), first);
+                assert_eq!(&Value::String("snmptrapd".to_string()), second);
+            }
+            result => panic!("{:#?}", result),
+        }
+
+        match rule2 {
+            Rule {
+                constraint: Constraint { where_operator: Some(Operator::And { .. }), with },
+                ..
+            } => {
+                assert!(with.is_empty());
+            }
+            result => panic!("{:#?}", result),
+        };
+    }
+
+    #[tokio::test]
+    async fn should_parse_ruleset_with_rules_from_directory() {
+        let path = String::from(TEST_CONFIG_DIR) + "tenant_a/snmp_logger/";
+        let config = read_ruleset_from_dir(Path::new(&path)).await.unwrap();
+
+        let rules = match config {
+            MatcherConfig::Ruleset { name, rules } => {
+                assert_eq!("snmp_logger", name);
+                rules
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        match rules.as_slice() {
+            [Rule { name: name_rule_1, do_continue: true, active: true, .. }, Rule { name: name_rule_2, do_continue: true, active: true, .. }] =>
+            {
+                assert_eq!("log_internal_snmp_traps", name_rule_1);
+                assert_eq!("log_external_snmp_traps", name_rule_2);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_parse_empty_filter_from_dir() {
+        let path = String::from(TEST_CONFIG_DIR) + "empty_filter/";
+        let config = read_filter_from_dir(Path::new(&path)).await.unwrap();
+
+        match config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("empty_filter", name);
+                assert!(nodes.is_empty());
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn parse_filter_with_children_from_dir() {
+        let path = String::from(TEST_CONFIG_DIR) + "master/";
+        let config = read_filter_from_dir(Path::new(&path)).await.unwrap();
+
+        dbg!(&config);
+
+        let nodes = match config {
+            MatcherConfig::Filter { name, filter, nodes } => {
+                assert_eq!("master", name);
+                assert!(matches!(
+                    filter,
+                    Filter { filter: Defaultable::Value(Operator::And { .. }), .. }
+                ));
+                nodes
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        match nodes.as_slice() {
+            [MatcherConfig::Filter { name, filter, nodes }] => {
+                assert_eq!("master_emails", name);
+                assert!(matches!(
+                    filter,
+                    Filter { filter: Defaultable::Value(Operator::And { .. }), .. }
+                ));
+                assert_eq!(1, nodes.len());
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_read_entire_config_from_dir() {
+        let config = read_config_from_root_dir(Path::new(&TEST_CONFIG_DIR)).await.unwrap();
+        let nodes = match config {
+            MatcherConfig::Filter { name, filter, nodes } => {
+                assert_eq!("root", name);
+                assert!(matches!(filter, Filter { filter: Defaultable::Default {}, .. }));
+                nodes
+            }
+            result => panic!("{:#?}", result),
+        };
+
+        match nodes.as_slice() {
+            [MatcherConfig::Filter { name: name_filter_1, .. }, MatcherConfig::Filter { name: name_filter_2, .. }, MatcherConfig::Filter { name: name_filter_3, .. }] =>
+            {
+                assert_eq!("empty_filter", name_filter_1);
+                assert_eq!("master", name_filter_2);
+                assert_eq!("tenant_a", name_filter_3);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
 }

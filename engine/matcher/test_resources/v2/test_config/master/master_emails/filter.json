@@ -1,0 +1,16 @@
+{
+  "type": "filter",
+  "name": "master_emails",
+  "description": "This filter allows events for master tenant",
+  "active": true,
+  "filter": {
+    "type": "AND",
+    "operators": [
+      {
+        "type": "equals",
+        "first": "${event.type}",
+        "second": "email"
+      }
+    ]
+  }
+}

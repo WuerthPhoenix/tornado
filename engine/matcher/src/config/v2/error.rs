@@ -3,8 +3,9 @@ use crate::error::MatcherError;
 use std::io;
 use std::path::PathBuf;
 
+#[derive(Debug)]
 pub enum MatcherConfigError {
-    DirReadError { path: PathBuf, error: io::Error },
+    DirIoError { path: PathBuf, error: io::Error },
     UnexpectedFile { path: PathBuf, config_type: ConfigType },
     UnknownNodeDir { path: PathBuf },
     FileNotFound { path: PathBuf },
@@ -12,6 +13,7 @@ pub enum MatcherConfigError {
     DeserializationError { file: PathBuf, error: DeserializationError },
 }
 
+#[derive(Debug)]
 pub enum DeserializationError {
     UnknownField {
         path: String,

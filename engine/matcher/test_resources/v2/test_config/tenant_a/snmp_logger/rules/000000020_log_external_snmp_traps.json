@@ -1,0 +1,32 @@
+{
+  "name": "log_external_snmp_traps",
+  "description": "Logs all snmp traps which target a service in the subnet 10.0.63.0/24",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": {
+      "type": "AND",
+      "operators": [
+        {
+          "type": "equals",
+          "first": "${event.type}",
+          "second": "snmptrapd"
+        },
+        {
+          "type": "regex",
+          "target": "${event.payload.dest_ip}",
+          "regex": "^10\\.0\\.63\\.(?:1?[0-9]{1,2}|2[0-4][0-9]|25[0-5])$"
+        }
+      ]
+    },
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "logger",
+      "payload": {
+        "event": "${event.payload}"
+      }
+    }
+  ]
+}
