@@ -92,7 +92,6 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             path.push("config");
             path
         };
-
         atomic_deploy_config(&draft_config_dir, config).await?;
         Ok(())
     }
@@ -316,6 +315,16 @@ async fn serialize_to_file<T: Serialize>(path: &Path, data: &T) -> Result<(), De
         return Err(DeploymentError::FileIo { path: path.to_path_buf(), error });
     }
 
+    let parent = path.parent().unwrap_or(&Path::new("/"));
+    let parent_dir = match tokio::fs::File::open(parent).await {
+        Ok(parent_dir) => parent_dir,
+        Err(error) => return Err(DeploymentError::FileIo { path: path.to_path_buf(), error }),
+    };
+
+    if let Err(error) = parent_dir.sync_all().await {
+        return Err(DeploymentError::DirIo { path: path.to_path_buf(), error });
+    }
+
     Ok(())
 }
 
@@ -423,7 +432,7 @@ async fn create_draft(
         draft_id: draft_id.to_string(),
     };
 
-    if let Err(error) = tokio::fs::create_dir_all(draft_dir).await {
+    if let Err(error) = tokio::fs::create_dir(draft_dir).await {
         return Err(MatcherError::InternalSystemError {
             message: format!("Cannot create draft directory: {:?}", error),
         });
