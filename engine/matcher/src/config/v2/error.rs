@@ -11,6 +11,7 @@ pub enum MatcherConfigError {
     FileNotFound { path: PathBuf },
     FileIoError { path: PathBuf, error: io::Error },
     DeserializationError { file: PathBuf, error: DeserializationError },
+    DuplicateName { name: String, previous: PathBuf, next: PathBuf },
 }
 
 #[derive(Debug)]
@@ -49,6 +50,6 @@ pub enum DeserializationError {
 // Todo: improve this error in NEPROD-1658
 impl From<MatcherConfigError> for MatcherError {
     fn from(value: MatcherConfigError) -> Self {
-        MatcherError::ConfigurationError { message: format!("{values:?}") }
+        MatcherError::ConfigurationError { message: format!("{value:?}") }
     }
 }

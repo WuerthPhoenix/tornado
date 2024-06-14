@@ -159,26 +159,39 @@ async fn read_child_nodes_from_dir(
         processing_nodes_futures.push_back(child_node)
     }
 
-    let mut processing_nodes = vec![];
+    let mut processing_nodes: Vec<FileEntry<MatcherConfig>> = vec![];
     while let Some(result) = processing_nodes_futures.next().await {
-        processing_nodes.push(result?);
+        let config = result?;
+        let duplicate = processing_nodes
+            .iter()
+            .find(|entry| entry.content.get_name() == config.content.get_name());
+
+        if let Some(duplicate) = duplicate {
+            return Err(MatcherConfigError::DuplicateName {
+                name: config.content.get_name().to_string(),
+                previous: duplicate.path.clone(),
+                next: config.path,
+            });
+        }
+
+        processing_nodes.push(config);
     }
 
-    // ToDo: verify that all nodes have a distinct name.
-
-    Ok(processing_nodes)
+    Ok(processing_nodes.into_iter().map(FileEntry::into_inner).collect())
 }
 
-async fn read_node_from_dir<T: AsRef<Path>>(dir: T) -> Result<MatcherConfig, MatcherConfigError> {
+async fn read_node_from_dir<T: AsRef<Path>>(
+    dir: T,
+) -> Result<FileEntry<MatcherConfig>, MatcherConfigError> {
     let dir = dir.as_ref();
     match read_filter_from_dir(dir).await {
-        Ok(config) => return Ok(config),
+        Ok(config) => return Ok(FileEntry { path: dir.to_path_buf(), content: config }),
         Err(MatcherConfigError::FileNotFound { .. }) => {}
         Err(error) => return Err(error),
     }
 
     match read_ruleset_from_dir(dir).await {
-        Ok(config) => Ok(config),
+        Ok(config) => Ok(FileEntry { path: dir.to_path_buf(), content: config }),
         Err(MatcherConfigError::FileNotFound { .. }) => {
             Err(MatcherConfigError::UnknownNodeDir { path: dir.to_path_buf() })
         }
@@ -209,7 +222,7 @@ async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfi
 async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError> {
     let dir_entries = gather_dir_entries(dir).await?;
 
-    let mut rules = vec![];
+    let mut rules: Vec<FileEntry<Rule>> = vec![];
     for dir_entry in dir_entries {
         let file_type = match dir_entry.file_type().await {
             Ok(file_type) => file_type,
@@ -224,12 +237,20 @@ async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError
         }
 
         let rule: Rule = parse_from_file(&dir_entry.path()).await?;
-        rules.push(rule)
+        let duplicate = rules.iter().find(|entry| &entry.content.name == &rule.name);
+
+        if let Some(duplicate) = duplicate {
+            return Err(MatcherConfigError::DuplicateName {
+                name: rule.name,
+                previous: duplicate.path.clone(),
+                next: dir_entry.path(),
+            });
+        }
+
+        rules.push(FileEntry { path: dir_entry.path(), content: rule })
     }
 
-    // todo: verify that all rules have a distinct name.
-
-    Ok(rules)
+    Ok(rules.into_iter().map(FileEntry::into_inner).collect())
 }
 
 async fn parse_node_config_from_file<Data: DeserializeOwned + ConfigNodeDir>(
@@ -380,6 +401,18 @@ fn parse_serde_errors(
 
     // If none of the above match, return a generic error.
     return DeserializationError::GenericError { error };
+}
+
+#[derive(Debug)]
+pub struct FileEntry<T> {
+    path: PathBuf,
+    content: T,
+}
+
+impl<T> FileEntry<T> {
+    fn into_inner(self) -> T {
+        self.content
+    }
 }
 
 #[cfg(test)]
