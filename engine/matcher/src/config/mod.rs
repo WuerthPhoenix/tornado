@@ -1,5 +1,6 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
+use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
 use crate::matcher;
 use crate::matcher::Matcher;
@@ -26,6 +27,12 @@ pub struct MatcherConfigDraftData {
     pub updated_ts_ms: i64,
     pub user: String,
     pub draft_id: String,
+}
+
+impl ConfigNodeDir for MatcherConfigDraftData {
+    fn config_type() -> ConfigType {
+        ConfigType::Draft
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]

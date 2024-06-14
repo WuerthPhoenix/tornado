@@ -1,3 +1,4 @@
+mod editor;
 mod error;
 
 use crate::config::filter::Filter;
@@ -10,7 +11,7 @@ use futures::StreamExt;
 use log::{info, warn};
 use monostate::MustBe;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
 use std::ffi::OsStr;
 use std::io::ErrorKind;
@@ -23,9 +24,9 @@ pub struct FsMatcherConfigManagerV2<'config> {
 }
 
 impl FsMatcherConfigManagerV2<'_> {
-    pub fn new<'config, P: Into<&'config Path>>(
-        root_path: P,
-        drafts_path: P,
+    pub fn new<'config, P1: Into<&'config Path>, P2: Into<&'config Path>>(
+        root_path: P1,
+        drafts_path: P2,
     ) -> FsMatcherConfigManagerV2<'config> {
         FsMatcherConfigManagerV2 { root_path: root_path.into(), drafts_path: drafts_path.into() }
     }
@@ -33,6 +34,7 @@ impl FsMatcherConfigManagerV2<'_> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ConfigType {
+    Draft,
     Root,
     Filter,
     Ruleset,
@@ -48,11 +50,12 @@ impl ConfigType {
             ConfigType::Root => "version.json",
             ConfigType::Filter => "filter.json",
             ConfigType::Ruleset => "ruleset.json",
+            ConfigType::Draft => "data.json",
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigFilter {
     #[serde(rename = "type")]
@@ -69,7 +72,7 @@ impl ConfigNodeDir for MatcherConfigFilter {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigRuleset {
     #[serde(rename = "type")]
@@ -84,7 +87,7 @@ impl ConfigNodeDir for MatcherConfigRuleset {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Version {
     #[allow(dead_code)]

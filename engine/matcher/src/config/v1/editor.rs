@@ -206,7 +206,7 @@ impl FsMatcherConfigManager {
         format!("{}/{}/{}", self.drafts_path, draft_id, DRAFT_DATA_FILE)
     }
 
-    async fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
+    pub(crate) async fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
         source_dir: S,
         dest_dir: D,
     ) -> Result<(), MatcherError> {
