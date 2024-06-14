@@ -39,6 +39,10 @@ pub enum ConfigType {
     Ruleset,
 }
 
+pub trait ConfigNodeDir {
+    fn config_type() -> ConfigType;
+}
+
 impl ConfigType {
     pub fn filename(&self) -> &'static str {
         match self {
@@ -60,6 +64,12 @@ pub struct MatcherConfigFilter {
     filter: Filter,
 }
 
+impl ConfigNodeDir for MatcherConfigFilter {
+    fn config_type() -> ConfigType {
+        ConfigType::Filter
+    }
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigRuleset {
@@ -69,11 +79,23 @@ pub struct MatcherConfigRuleset {
     name: String,
 }
 
-#[derive(Debug, Deserialize)]
+impl ConfigNodeDir for MatcherConfigRuleset {
+    fn config_type() -> ConfigType {
+        ConfigType::Ruleset
+    }
+}
+
+#[derive(Debug, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Version {
     #[allow(dead_code)]
     version: MustBe!("2.0"),
+}
+
+impl ConfigNodeDir for Version {
+    fn config_type() -> ConfigType {
+        ConfigType::Root
+    }
 }
 
 // ToDo: Improve the error handling in NEPROD-1658
@@ -85,12 +107,7 @@ impl MatcherConfigReader for FsMatcherConfigManagerV2<'_> {
 }
 
 async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
-    let version_file = {
-        let mut path = root_dir.to_path_buf();
-        path.push(ConfigType::Root.filename());
-        path
-    };
-    let _: Version = parse_config_from_file(&version_file).await?;
+    let _: Version = parse_node_config_from_file(&root_dir).await?;
     let nodes = read_child_nodes_from_dir(root_dir, ConfigType::Root).await?;
     Ok(MatcherConfig::Filter {
         name: "root".to_string(),
@@ -147,6 +164,8 @@ async fn read_child_nodes_from_dir(
         processing_nodes.push(result?);
     }
 
+    // ToDo: verify that all nodes have a distinct name.
+
     Ok(processing_nodes)
 }
 
@@ -168,34 +187,20 @@ async fn read_node_from_dir<T: AsRef<Path>>(dir: T) -> Result<MatcherConfig, Mat
 }
 
 async fn read_filter_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
-    let dir_type = ConfigType::Filter;
-    let config_file_path = {
-        let mut path = PathBuf::from(dir);
-        path.push(dir_type.filename());
-        path
-    };
-
-    let node: MatcherConfigFilter = parse_config_from_file(&config_file_path).await?;
-    let child_nodes = read_child_nodes_from_dir(dir, dir_type).await?;
+    let node: MatcherConfigFilter = parse_node_config_from_file(&dir).await?;
+    let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigFilter::config_type()).await?;
 
     Ok(MatcherConfig::Filter { name: node.name, filter: node.filter, nodes: child_nodes })
 }
 
 async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
-    let dir_type = ConfigType::Ruleset;
-    let config_file_path = {
-        let mut path = PathBuf::from(dir);
-        path.push(dir_type.filename());
-        path
-    };
-
     let rules_dir_path = {
         let mut path = PathBuf::from(dir);
         path.push("rules");
         path
     };
 
-    let ruleset: MatcherConfigRuleset = parse_config_from_file(&config_file_path).await?;
+    let ruleset: MatcherConfigRuleset = parse_node_config_from_file(&dir).await?;
     let rules = read_rules_from_dir(&rules_dir_path).await?;
 
     Ok(MatcherConfig::Ruleset { name: ruleset.name, rules })
@@ -218,16 +223,28 @@ async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError
             continue;
         }
 
-        let rule: Rule = parse_config_from_file(&dir_entry.path()).await?;
+        let rule: Rule = parse_from_file(&dir_entry.path()).await?;
         rules.push(rule)
     }
+
+    // todo: verify that all rules have a distinct name.
 
     Ok(rules)
 }
 
-async fn parse_config_from_file<Data: DeserializeOwned>(
-    path: &Path,
+async fn parse_node_config_from_file<Data: DeserializeOwned + ConfigNodeDir>(
+    dir: &Path,
 ) -> Result<Data, MatcherConfigError> {
+    let config_file_path = {
+        let mut path = PathBuf::from(dir);
+        path.push(Data::config_type().filename());
+        path
+    };
+
+    parse_from_file(&config_file_path).await
+}
+
+async fn parse_from_file<Data: DeserializeOwned>(path: &Path) -> Result<Data, MatcherConfigError> {
     let content = match tokio::fs::read_to_string(&path).await {
         Ok(content) => content,
         Err(error) => {
@@ -371,9 +388,9 @@ mod tests {
     use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
     use crate::config::v2::error::DeserializationError;
     use crate::config::v2::{
-        parse_config_from_file, read_config_from_root_dir, read_filter_from_dir,
-        read_node_from_dir, read_rules_from_dir, read_ruleset_from_dir, ConfigType,
-        MatcherConfigError, MatcherConfigFilter, MatcherConfigRuleset,
+        parse_from_file, read_config_from_root_dir, read_filter_from_dir, read_node_from_dir,
+        read_rules_from_dir, read_ruleset_from_dir, ConfigType, MatcherConfigError,
+        MatcherConfigFilter, MatcherConfigRuleset,
     };
     use crate::config::{Defaultable, MatcherConfig};
     use monostate::MustBe;
@@ -386,7 +403,7 @@ mod tests {
     #[tokio::test]
     async fn should_parse_filter_from_file() {
         let path = String::from(TEST_CONFIG_DIR) + "master/filter.json";
-        let config: MatcherConfigFilter = parse_config_from_file(Path::new(&path)).await.unwrap();
+        let config: MatcherConfigFilter = parse_from_file(Path::new(&path)).await.unwrap();
 
         match config {
             MatcherConfigFilter {
@@ -404,7 +421,7 @@ mod tests {
     #[tokio::test]
     async fn should_parse_ruleset_from_file() {
         let path = String::from(TEST_CONFIG_DIR) + "tenant_a/snmp_logger/ruleset.json";
-        let config: MatcherConfigRuleset = parse_config_from_file(Path::new(&path)).await.unwrap();
+        let config: MatcherConfigRuleset = parse_from_file(Path::new(&path)).await.unwrap();
 
         match config {
             MatcherConfigRuleset { node_type: MustBe!("ruleset"), name } => {
@@ -418,7 +435,7 @@ mod tests {
     async fn should_parse_rule_from_file() {
         let path = String::from(TEST_CONFIG_DIR)
             + "tenant_a/snmp_logger/rules/000000010_log_internal_snmp_traps.json";
-        let config: Rule = parse_config_from_file(Path::new(&path)).await.unwrap();
+        let config: Rule = parse_from_file(Path::new(&path)).await.unwrap();
 
         let actions = match config {
             Rule {
@@ -587,9 +604,8 @@ mod tests {
     #[tokio::test]
     async fn should_fail_on_missing_field() {
         let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_missing_field.json";
-        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
-            .await
-            .unwrap_err();
+        let error =
+            parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
             MatcherConfigError::DeserializationError {
@@ -607,9 +623,8 @@ mod tests {
     #[tokio::test]
     async fn should_fail_on_unknown_field() {
         let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_unknown_field.json";
-        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
-            .await
-            .unwrap_err();
+        let error =
+            parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
             MatcherConfigError::DeserializationError {
@@ -627,9 +642,8 @@ mod tests {
     #[tokio::test]
     async fn should_fail_on_wrong_data() {
         let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_wrong_data.json";
-        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
-            .await
-            .unwrap_err();
+        let error =
+            parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
             MatcherConfigError::DeserializationError {
@@ -648,9 +662,8 @@ mod tests {
     #[tokio::test]
     async fn should_fail_on_wrong_type() {
         let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_wrong_type.json";
-        let error = parse_config_from_file::<MatcherConfigFilter>(Path::new(&test_file_path))
-            .await
-            .unwrap_err();
+        let error =
+            parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
             MatcherConfigError::DeserializationError {
