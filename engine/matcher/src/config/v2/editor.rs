@@ -432,7 +432,7 @@ async fn create_draft(
         draft_id: draft_id.to_string(),
     };
 
-    if let Err(error) = tokio::fs::create_dir(draft_dir).await {
+    if let Err(error) = tokio::fs::create_dir_all(draft_dir).await {
         return Err(MatcherError::InternalSystemError {
             message: format!("Cannot create draft directory: {:?}", error),
         });
