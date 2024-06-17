@@ -1,36 +1,48 @@
-use crate::config::parse_config_files;
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
+use std::path::Path;
+use tornado_engine_matcher::config::v1::fs::FsMatcherConfigManager;
+use tornado_engine_matcher::config::v2::{
+    gather_dir_entries, get_config_version, FsMatcherConfigManagerV2, Version,
+};
+use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub async fn upgrade_rules(
-    config_dir: &str,
+    _config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     println!("Upgrade Tornado configuration rules");
-    let configs = parse_config_files(config_dir, rules_dir, drafts_dir)?;
-    let mut matcher_config = configs.matcher_config.get_config().await?;
-    let matcher_config_clone = matcher_config.clone();
-    upgrade(&mut matcher_config)?;
-    if matcher_config != matcher_config_clone {
-        configs.matcher_config.deploy_config(&matcher_config).await?;
-        println!("Upgrade Tornado configuration rules completed successfully");
-    } else {
-        println!("Upgrade Tornado configuration rules completed. Nothing to do.");
+    upgrade_config(Path::new(rules_dir)).await?;
+
+    let entries = gather_dir_entries(Path::new(drafts_dir)).await?;
+
+    for entry in entries {
+        upgrade_config(&entry.path()).await?;
     }
+
     Ok(())
 }
 
-fn upgrade(
-    matcher_config: &mut MatcherConfig,
+async fn upgrade_config(
+    config_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
-    match matcher_config {
-        MatcherConfig::Filter { name: _, filter: _, nodes } => {
-            for node in nodes {
-                upgrade(node)?;
-            }
-        }
-        MatcherConfig::Ruleset { .. } => {}
+    let config_version = get_config_version(Path::new(config_dir)).await?;
+    match config_version {
+        Version::V1 => upgrade_to_v2(config_dir).await,
+        Version::V2 => Ok(()),
     }
+}
+
+// ToDo: Improve the error handling in NEPROD-1658
+async fn upgrade_to_v2(
+    rules_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let config_manager_v1 =
+        FsMatcherConfigManager::new(rules_dir.display().to_string().as_str(), "");
+    let config_manager_v2 = FsMatcherConfigManagerV2::new(rules_dir, Path::new(""));
+
+    let config = config_manager_v1.get_config().await?;
+    config_manager_v2.deploy_config(&config).await?;
+
     Ok(())
 }
 

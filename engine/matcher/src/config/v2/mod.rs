@@ -14,6 +14,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
 use std::ffi::OsStr;
+use std::fmt::{Display, Formatter};
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use tokio::fs::DirEntry;
@@ -38,6 +39,17 @@ pub enum ConfigType {
     Root,
     Filter,
     Ruleset,
+}
+
+impl Display for ConfigType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ConfigType::Draft => f.write_str("draft"),
+            ConfigType::Root => f.write_str("root"),
+            ConfigType::Filter => f.write_str("filter"),
+            ConfigType::Ruleset => f.write_str("ruleset"),
+        }
+    }
 }
 
 pub trait ConfigNodeDir {
@@ -88,10 +100,12 @@ impl ConfigNodeDir for MatcherConfigRuleset {
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct Version {
-    #[allow(dead_code)]
-    version: MustBe!("2.0"),
+#[serde(deny_unknown_fields, tag = "version")]
+pub enum Version {
+    V1,
+    #[serde(rename = "2.0")]
+    #[default]
+    V2,
 }
 
 impl ConfigNodeDir for Version {
@@ -108,10 +122,19 @@ impl MatcherConfigReader for FsMatcherConfigManagerV2<'_> {
     }
 }
 
+pub async fn get_config_version(path: &Path) -> Result<Version, MatcherConfigError> {
+    match parse_node_config_from_file::<Version>(path).await {
+        Ok(version) => Ok(version),
+        // Fallback as the file version.json did not exist in version 1.
+        Err(MatcherConfigError::FileNotFound { .. }) => Ok(Version::V1),
+        Err(error) => Err(error),
+    }
+}
+
 async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
     info!("Reading tornado processing tree configuration from {}", root_dir.display());
 
-    let _: Version = parse_node_config_from_file(&root_dir).await?;
+    let _: Version = parse_node_config_from_file(root_dir).await?;
     let nodes = read_child_nodes_from_dir(root_dir, ConfigType::Root).await?;
     Ok(MatcherConfig::Filter {
         name: "root".to_string(),
@@ -220,7 +243,7 @@ async fn read_node_from_dir<T: AsRef<Path>>(
 
 async fn read_filter_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
     trace!("Reading filer node config file from disk.");
-    let node: MatcherConfigFilter = parse_node_config_from_file(&dir).await?;
+    let node: MatcherConfigFilter = parse_node_config_from_file(dir).await?;
     trace!("Reading filer node child nodes from disk.");
     let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigFilter::config_type()).await?;
 
@@ -260,7 +283,7 @@ async fn read_rules_from_dir(dir: &Path) -> Result<Vec<Rule>, MatcherConfigError
         }
 
         let rule: Rule = parse_from_file(&dir_entry.path()).await?;
-        let duplicate = rules.iter().find(|entry| &entry.content.name == &rule.name);
+        let duplicate = rules.iter().find(|entry| entry.content.name == rule.name);
 
         if let Some(duplicate) = duplicate {
             return Err(MatcherConfigError::DuplicateName {
@@ -329,7 +352,7 @@ async fn parse_from_file<Data: DeserializeOwned>(path: &Path) -> Result<Data, Ma
     }
 }
 
-async fn gather_dir_entries(dir: &Path) -> Result<Vec<DirEntry>, MatcherConfigError> {
+pub async fn gather_dir_entries(dir: &Path) -> Result<Vec<DirEntry>, MatcherConfigError> {
     let mut root_dir_iter = match tokio::fs::read_dir(dir).await {
         Ok(root_dir_iter) => root_dir_iter,
         Err(error) => {

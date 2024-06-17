@@ -237,7 +237,7 @@ async fn deploy_filter_node(
         filter: filter.clone(),
     };
 
-    serialize_config_node_to_file(&dir, &config).await?;
+    serialize_config_node_to_file(dir, &config).await?;
     deploy_child_nodes_to_dir(dir, nodes).await?;
     sync_dir_to_disk(dir).await?;
 
@@ -250,7 +250,7 @@ async fn deploy_ruleset_node(
     rules: &[Rule],
 ) -> Result<(), DeploymentError> {
     let config = MatcherConfigRuleset { node_type: Default::default(), name: name.to_string() };
-    serialize_config_node_to_file(&dir, &config).await?;
+    serialize_config_node_to_file(dir, &config).await?;
     deploy_rules(dir, rules).await?;
     sync_dir_to_disk(dir).await?;
 
@@ -398,7 +398,7 @@ async fn get_drafts(drafts_dir: &Path) -> Result<Vec<String>, MatcherConfigError
 
 async fn get_draft_from_dir(draft_dir: &Path) -> Result<MatcherConfigDraft, MatcherConfigError> {
     debug!("Trying to load a draft from the directory {}", draft_dir.display());
-    let draft_data = parse_node_config_from_file::<MatcherConfigDraftData>(&draft_dir).await?;
+    let draft_data = parse_node_config_from_file::<MatcherConfigDraftData>(draft_dir).await?;
 
     let draft_config_dir = {
         let mut path = draft_dir.to_path_buf();
@@ -437,7 +437,7 @@ async fn create_draft(
             message: format!("Cannot create draft directory: {:?}", error),
         });
     };
-    serialize_config_node_to_file(&draft_dir, &draft_data).await?;
+    serialize_config_node_to_file(draft_dir, &draft_data).await?;
     FsMatcherConfigManager::copy_and_override(processing_tree_dir, &draft_config_dir).await
 }
 
@@ -452,7 +452,7 @@ async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
 
             Ok(())
         }
-        Err(error) => return Err(DeploymentError::FileIo { path: dir.to_path_buf(), error }),
+        Err(error) => Err(DeploymentError::FileIo { path: dir.to_path_buf(), error }),
     }
 }
 
