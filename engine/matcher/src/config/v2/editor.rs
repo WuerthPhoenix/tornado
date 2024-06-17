@@ -171,6 +171,7 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
             deploy_child_nodes_to_dir(tempdir.path(), &[config.clone()]).await?;
         }
     };
+    sync_dir_to_disk(tempdir.path()).await?;
 
     if let Err(error) = tokio::fs::remove_dir_all(&dir).await {
         // todo: improve in NEPROD-1658
@@ -235,6 +236,7 @@ async fn deploy_filter_node(
 
     serialize_config_node_to_file(&dir, &config).await?;
     deploy_child_nodes_to_dir(dir, nodes).await?;
+    sync_dir_to_disk(dir).await?;
 
     Ok(())
 }
@@ -247,6 +249,7 @@ async fn deploy_ruleset_node(
     let config = MatcherConfigRuleset { node_type: Default::default(), name: name.to_string() };
     serialize_config_node_to_file(&dir, &config).await?;
     deploy_rules(dir, rules).await?;
+    sync_dir_to_disk(dir).await?;
 
     Ok(())
 }
@@ -262,6 +265,8 @@ async fn deploy_rules(dir: &Path, rules: &[Rule]) -> Result<(), DeploymentError>
         };
         serialize_to_file(&config_file_path, rule).await?;
     }
+
+    sync_dir_to_disk(dir).await?;
 
     Ok(())
 }
@@ -305,16 +310,6 @@ async fn serialize_to_file<T: Serialize>(path: &Path, data: &T) -> Result<(), De
 
     if let Err(error) = file.sync_all().await {
         return Err(DeploymentError::FileIo { path: path.to_path_buf(), error });
-    }
-
-    let parent = path.parent().unwrap_or(&Path::new("/"));
-    let parent_dir = match tokio::fs::File::open(parent).await {
-        Ok(parent_dir) => parent_dir,
-        Err(error) => return Err(DeploymentError::FileIo { path: path.to_path_buf(), error }),
-    };
-
-    if let Err(error) = parent_dir.sync_all().await {
-        return Err(DeploymentError::DirIo { path: path.to_path_buf(), error });
     }
 
     Ok(())
@@ -422,6 +417,19 @@ async fn create_draft(
     };
     serialize_config_node_to_file(&draft_dir, &draft_data).await?;
     FsMatcherConfigManager::copy_and_override(processing_tree_dir, &draft_config_dir).await
+}
+
+async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
+    match tokio::fs::File::open(dir).await {
+        Ok(parent_dir) => {
+            if let Err(error) = parent_dir.sync_all().await {
+                return Err(DeploymentError::DirIo { path: dir.to_path_buf(), error });
+            }
+
+            Ok(())
+        }
+        Err(error) => return Err(DeploymentError::FileIo { path: dir.to_path_buf(), error }),
+    }
 }
 
 #[cfg(test)]
