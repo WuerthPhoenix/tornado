@@ -2,11 +2,10 @@ use crate::config::filter::Filter;
 use crate::config::rule::Rule;
 use crate::config::v1::fs::FsMatcherConfigManager;
 use crate::config::v2::error::DeploymentError;
-use crate::config::v2::MatcherConfigError::UnexpectedFile;
 use crate::config::v2::{
     gather_dir_entries, parse_node_config_from_file, read_config_from_root_dir, ConfigNodeDir,
-    ConfigType, FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter,
-    MatcherConfigRuleset, Version,
+    FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter, MatcherConfigRuleset,
+    Version,
 };
 use crate::config::{
     MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
@@ -16,6 +15,7 @@ use crate::matcher::Matcher;
 use chrono::Local;
 use futures::stream::FuturesUnordered;
 use futures::StreamExt;
+use log::{debug, error, info, trace, warn};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use tokio::io::AsyncWriteExt;
@@ -74,6 +74,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             parse_node_config_from_file(&draft_dir).await?;
 
         if draft_data.user != user {
+            warn!("User {user} tried overwriting a draft that is owned by {}.", draft_data.user);
             // todo: improve in NEPROD-1658
             return Err(MatcherError::ConfigurationError {
                 message: format!(
@@ -114,6 +115,8 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             return Err(MatcherError::DraftNotFoundError { draft_id: draft_id.to_string() });
         }
 
+        info!("Deleting draft {}", draft_id);
+
         let draft_dir = {
             let mut path = self.drafts_path.to_path_buf();
             path.push(draft_id);
@@ -142,6 +145,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
         };
         let mut draft_data: MatcherConfigDraftData =
             parse_node_config_from_file(&draft_dir).await?;
+        info!("User {} is taking over draft {} from user {}", user, draft_id, draft_data.user);
         draft_data.user = user;
         serialize_config_node_to_file(&draft_dir, &draft_data).await?;
         Ok(())
@@ -180,7 +184,7 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
         });
     }
 
-    // todo: If the machine looses power here, or the kernel panics, we will loose the whole configuration.
+    // todo: If the machine looses power here, or the kernel panics, we can loose the whole or parts of the configuration.
 
     // Replace the directory inode. This is an atomic operation to overwrite the directory.
     if let Err(error) = tokio::fs::rename(tempdir.path(), dir).await {
@@ -348,7 +352,9 @@ async fn create_sub_directory(dir: &Path, child_dir: &str) -> Result<PathBuf, De
 }
 
 async fn get_drafts(drafts_dir: &Path) -> Result<Vec<String>, MatcherConfigError> {
+    debug!("Trying to read draft entries from {}", drafts_dir.display());
     if !tokio::fs::try_exists(drafts_dir).await.unwrap_or(false) {
+        warn!("Draft directory {} does not exist.", drafts_dir.display());
         return Ok(vec![]);
     }
 
@@ -362,15 +368,19 @@ async fn get_drafts(drafts_dir: &Path) -> Result<Vec<String>, MatcherConfigError
         };
 
         if !entry_type.is_dir() {
-            return Err(UnexpectedFile { path: entry.path(), config_type: ConfigType::Root });
+            warn!("Found a directory entry in the drafts directory, that is not itself a directory {}", entry.path().display());
+            continue;
         }
 
         let entry_path = entry.path();
         let filename =
             entry_path.file_name().expect("Path comes from read_dir and is a valid path.");
         let Some(draft_name) = filename.to_str() else {
+            error!("Found entry in the drafts directory with a non-utf8 name.");
             return Err(MatcherConfigError::FileNameError { path: entry_path });
         };
+
+        debug!("Found draft with name {}.", draft_name);
         drafts.push(draft_name.to_owned());
     }
 
@@ -378,6 +388,7 @@ async fn get_drafts(drafts_dir: &Path) -> Result<Vec<String>, MatcherConfigError
 }
 
 async fn get_draft_from_dir(draft_dir: &Path) -> Result<MatcherConfigDraft, MatcherConfigError> {
+    debug!("Trying to load a draft from the directory {}", draft_dir.display());
     let draft_data = parse_node_config_from_file::<MatcherConfigDraftData>(&draft_dir).await?;
 
     let draft_config_dir = {
@@ -396,6 +407,8 @@ async fn create_draft(
     user: &str,
     draft_id: &str,
 ) -> Result<(), MatcherError> {
+    info!("Creating a new draft {draft_id} for user {user}");
+
     let draft_config_dir = {
         let mut path = draft_dir.to_path_buf();
         path.push("config");
@@ -410,7 +423,7 @@ async fn create_draft(
         draft_id: draft_id.to_string(),
     };
 
-    if let Err(error) = tokio::fs::create_dir(draft_dir).await {
+    if let Err(error) = tokio::fs::create_dir_all(draft_dir).await {
         return Err(MatcherError::InternalSystemError {
             message: format!("Cannot create draft directory: {:?}", error),
         });
@@ -420,6 +433,8 @@ async fn create_draft(
 }
 
 async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
+    trace!("Syncing directory {} to disk", dir.display());
+
     match tokio::fs::File::open(dir).await {
         Ok(parent_dir) => {
             if let Err(error) = parent_dir.sync_all().await {
