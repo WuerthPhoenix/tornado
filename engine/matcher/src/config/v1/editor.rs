@@ -375,7 +375,10 @@ where
     })
 }
 
-async fn copy_recursive(source_dir: PathBuf, dest_dir: PathBuf) -> Result<(), MatcherError> {
+pub(crate) async fn copy_recursive(
+    source_dir: PathBuf,
+    dest_dir: PathBuf,
+) -> Result<(), MatcherError> {
     tokio::task::spawn_blocking(move || {
 
         use fs_extra::dir::*;

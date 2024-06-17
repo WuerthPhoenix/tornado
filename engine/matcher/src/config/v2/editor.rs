@@ -4,8 +4,8 @@ use crate::config::v1::fs::FsMatcherConfigManager;
 use crate::config::v2::error::DeploymentError;
 use crate::config::v2::MatcherConfigError::UnexpectedFile;
 use crate::config::v2::{
-    gather_dir_entries, parse_from_file, parse_node_config_from_file, read_config_from_root_dir,
-    ConfigNodeDir, ConfigType, FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter,
+    gather_dir_entries, parse_node_config_from_file, read_config_from_root_dir, ConfigNodeDir,
+    ConfigType, FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter,
     MatcherConfigRuleset, Version,
 };
 use crate::config::{
@@ -72,6 +72,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
         };
         let mut draft_data: MatcherConfigDraftData =
             parse_node_config_from_file(&draft_dir).await?;
+
         if draft_data.user != user {
             // todo: improve in NEPROD-1658
             return Err(MatcherError::ConfigurationError {
@@ -86,10 +87,11 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
         serialize_config_node_to_file(&draft_dir, &draft_data).await?;
 
         let draft_config_dir = {
-            let mut path = self.drafts_path.to_path_buf();
+            let mut path = draft_dir;
             path.push("config");
             path
         };
+
         atomic_deploy_config(&draft_config_dir, config).await?;
         Ok(())
     }
@@ -158,7 +160,7 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
         message: format!("Cannot create temporary directory. Err: {:?}", err),
     })?;
 
-    serialize_config_node_to_file(&dir, &Version::default()).await?;
+    serialize_config_node_to_file(tempdir.path(), &Version::default()).await?;
     match config {
         MatcherConfig::Filter { name, nodes, .. } if name == "root" => {
             deploy_child_nodes_to_dir(tempdir.path(), nodes).await?;
@@ -169,6 +171,15 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
             deploy_child_nodes_to_dir(tempdir.path(), &[config.clone()]).await?;
         }
     };
+
+    if let Err(error) = tokio::fs::remove_dir_all(&dir).await {
+        // todo: improve in NEPROD-1658
+        return Err(MatcherError::InternalSystemError {
+            message: format!("Cannot remove draft dir {}. {}", dir.display(), error),
+        });
+    }
+
+    // todo: If the machine looses power here, or the kernel panics, we will loose the whole configuration.
 
     // Replace the directory inode. This is an atomic operation to overwrite the directory.
     if let Err(error) = tokio::fs::rename(tempdir.path(), dir).await {
@@ -413,7 +424,213 @@ async fn create_draft(
     FsMatcherConfigManager::copy_and_override(processing_tree_dir, &draft_config_dir).await
 }
 
-#[test]
-fn test() {
-    std::fs::File::open(".").unwrap().sync_all().unwrap();
+#[cfg(test)]
+mod tests {
+    use crate::config::v1::editor::copy_recursive;
+    use crate::config::v2::editor::{get_draft_from_dir, DRAFT_ID};
+    use crate::config::v2::{parse_node_config_from_file, ConfigType, FsMatcherConfigManagerV2};
+    use crate::config::{
+        MatcherConfig, MatcherConfigDraftData, MatcherConfigEditor, MatcherConfigReader,
+    };
+    use std::path::{Path, PathBuf};
+    use tempfile::TempDir;
+
+    const TEST_CONFIG_DIR: &str = "./test_resources/v2/test_config/";
+    const TEST_DRAFT_DIR: &str = "./test_resources/v2/test_drafts/";
+
+    #[tokio::test]
+    async fn should_load_draft_data_from_file() {
+        let draft_path = String::from(TEST_DRAFT_DIR) + "draft_001";
+        let config = parse_node_config_from_file::<MatcherConfigDraftData>(Path::new(&draft_path))
+            .await
+            .unwrap();
+
+        assert_eq!("root", config.user);
+        assert_eq!("draft_001", config.draft_id);
+    }
+
+    #[tokio::test]
+    async fn should_load_draft_from_config() {
+        let draft_path = String::from(TEST_DRAFT_DIR) + "draft_001";
+        let draft = get_draft_from_dir(Path::new(&draft_path)).await.unwrap();
+
+        assert_eq!("root", draft.data.user);
+        assert_eq!("draft_001", draft.data.draft_id);
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_get_drafts() {
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), Path::new(TEST_DRAFT_DIR));
+        let drafts = config_manager.get_drafts().await.unwrap();
+
+        assert_eq!(1, drafts.len());
+        assert_eq!("draft_001", drafts[0]);
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_get_draft() {
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), Path::new(TEST_DRAFT_DIR));
+        let draft = config_manager.get_draft("draft_001").await.unwrap();
+
+        assert_eq!("root", draft.data.user);
+        match draft.config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(1, nodes.len());
+            }
+            result => panic!("{:?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_create_draft() {
+        // Arrange
+        let temp_dir = TempDir::new().unwrap();
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_dir.path());
+
+        // Act
+        let draft_id = config_manager.create_draft(String::from("pippo")).await.unwrap();
+
+        // Assert
+        let draft = config_manager.get_draft(&draft_id).await.unwrap();
+        assert_eq!("pippo", draft.data.user);
+        match draft.config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(3, nodes.len());
+            }
+            result => panic!("{:?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_update_draft() {
+        // Arrange
+        let temp_dir = TempDir::new().unwrap();
+        let temp_temp_dir = temp_dir.path().to_path_buf();
+        std::mem::forget(temp_dir);
+
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_temp_dir.as_path());
+        let draft_id = config_manager.create_draft(String::from("pippo")).await.unwrap();
+
+        let new_draft_path = {
+            let mut path = PathBuf::from(TEST_DRAFT_DIR);
+            path.push("draft_001");
+            path
+        };
+
+        let new_draft = get_draft_from_dir(&new_draft_path).await.unwrap();
+
+        // Act
+        config_manager
+            .update_draft(&draft_id, String::from("pippo"), &new_draft.config)
+            .await
+            .unwrap();
+
+        // Assert
+        let draft = config_manager.get_draft(&draft_id).await.unwrap();
+        assert_eq!("pippo", draft.data.user);
+        assert!(draft.data.created_ts_ms < draft.data.updated_ts_ms);
+        match draft.config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(1, nodes.len());
+            }
+            result => panic!("{:?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_delete_draft() {
+        // Arrange
+        let temp_dir = TempDir::new().unwrap();
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_dir.path());
+        let draft_id = config_manager.create_draft(String::from("pippo")).await.unwrap();
+
+        let draft_config_path = {
+            let mut path = config_manager.drafts_path.to_path_buf();
+            path.push(&draft_id);
+            path.push(ConfigType::Draft.filename());
+            path
+        };
+
+        // Assert the draft exists, so it fails if no draft was ever present.
+        assert!(draft_config_path.exists());
+
+        // Act
+        config_manager.delete_draft(&draft_id).await.unwrap();
+
+        // Assert
+        assert!(!draft_config_path.exists());
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_deploy_draft() {
+        // Arrange
+        let temp_dir = TempDir::new().unwrap();
+        let draft_temp_dir = {
+            let mut path = temp_dir.path().to_path_buf();
+            path.push("drafts");
+            path
+        };
+        let config_temp_dir = {
+            let mut path = temp_dir.path().to_path_buf();
+            path.push("rules.d");
+            path
+        };
+
+        let config_manager =
+            FsMatcherConfigManagerV2::new(config_temp_dir.as_path(), draft_temp_dir.as_path());
+        copy_recursive(PathBuf::from(TEST_CONFIG_DIR), config_temp_dir.clone()).await.unwrap();
+        copy_recursive(PathBuf::from(TEST_DRAFT_DIR), draft_temp_dir.clone()).await.unwrap();
+
+        // Assert that the old config is present
+        let config = config_manager.get_config().await.unwrap();
+        match config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(3, nodes.len());
+            }
+            result => panic!("{:?}", result),
+        }
+
+        // Act
+        config_manager.deploy_draft(DRAFT_ID).await.unwrap();
+
+        // Assert
+        let config = config_manager.get_config().await.unwrap();
+        match config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", name);
+                assert_eq!(1, nodes.len());
+            }
+            result => panic!("{:?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn matcher_config_editor_should_take_over_draft() {
+        // Arrange
+        let temp_dir = TempDir::new().unwrap();
+        let config_manager =
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_dir.path());
+        let draft_id = config_manager.create_draft("pippo".to_string()).await.unwrap();
+        let config_old = config_manager.get_draft(&draft_id).await.unwrap();
+
+        // Act
+        config_manager.draft_take_over(&draft_id, "root".to_string()).await.unwrap();
+
+        // Assert
+        let config = config_manager.get_draft(&draft_id).await.unwrap();
+        assert_eq!(config_old.data.created_ts_ms, config.data.created_ts_ms);
+        assert_eq!(config_old.data.updated_ts_ms, config.data.updated_ts_ms);
+        assert_eq!(config_old.data.draft_id, config.data.draft_id);
+        assert_eq!("pippo", config_old.data.user);
+        assert_eq!("root", config.data.user);
+    }
 }
