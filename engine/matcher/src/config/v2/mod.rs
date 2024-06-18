@@ -19,16 +19,16 @@ use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use tokio::fs::DirEntry;
 
-pub struct FsMatcherConfigManagerV2<'config> {
-    root_path: &'config Path,
-    drafts_path: &'config Path,
+pub struct FsMatcherConfigManagerV2 {
+    root_path: PathBuf,
+    drafts_path: PathBuf,
 }
 
-impl FsMatcherConfigManagerV2<'_> {
-    pub fn new<'config, P1: Into<&'config Path>, P2: Into<&'config Path>>(
+impl FsMatcherConfigManagerV2 {
+    pub fn new<P1: Into<PathBuf>, P2: Into<PathBuf>>(
         root_path: P1,
         drafts_path: P2,
-    ) -> FsMatcherConfigManagerV2<'config> {
+    ) -> FsMatcherConfigManagerV2 {
         FsMatcherConfigManagerV2 { root_path: root_path.into(), drafts_path: drafts_path.into() }
     }
 }
@@ -116,9 +116,9 @@ impl ConfigNodeDir for Version {
 
 // ToDo: Improve the error handling in NEPROD-1658
 #[async_trait::async_trait(?Send)]
-impl MatcherConfigReader for FsMatcherConfigManagerV2<'_> {
+impl MatcherConfigReader for FsMatcherConfigManagerV2 {
     async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
-        Ok(read_config_from_root_dir(self.root_path).await?)
+        Ok(read_config_from_root_dir(&self.root_path).await?)
     }
 }
 
@@ -257,9 +257,9 @@ async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfi
         path
     };
 
-    trace!("Reading ruleset node config file from disk.");
-    let ruleset: MatcherConfigRuleset = parse_node_config_from_file(&dir).await?;
-    trace!("Reading ruleset node rules from disk.");
+    trace!("Reading ruleset node config file from disl.");
+    let ruleset: MatcherConfigRuleset = parse_node_config_from_file(dir).await?;
+    trace!("Reading ruleset node rules from disc.");
     let rules = read_rules_from_dir(&rules_dir_path).await?;
 
     Ok(MatcherConfig::Ruleset { name: ruleset.name, rules })

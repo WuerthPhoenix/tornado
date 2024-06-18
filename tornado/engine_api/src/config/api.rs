@@ -23,12 +23,12 @@ pub trait ConfigApiHandler: Send + Sync {
     async fn reload_configuration(&self) -> Result<MatcherConfig, ApiError>;
 }
 
-pub struct ConfigApi<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> {
+pub struct ConfigApi<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized> {
     handler: A,
     config_manager: Arc<CM>,
 }
 
-impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor> ConfigApi<A, CM> {
+impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized> ConfigApi<A, CM> {
     pub fn new(handler: A, config_manager: Arc<CM>) -> Self {
         Self { handler, config_manager }
     }

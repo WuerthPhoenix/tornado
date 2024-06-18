@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use tornado_engine_matcher::config::v1::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::v2::{
     gather_dir_entries, get_config_version, FsMatcherConfigManagerV2, Version,
@@ -6,15 +6,26 @@ use tornado_engine_matcher::config::v2::{
 use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
 
 pub async fn upgrade_rules(
-    _config_dir: &str,
+    config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
     println!("Upgrade Tornado configuration rules");
-    upgrade_config(Path::new(rules_dir)).await?;
+    let rules_dir = {
+        let mut config_dir = PathBuf::from(config_dir);
+        config_dir.push(rules_dir);
+        config_dir
+    };
 
-    let entries = gather_dir_entries(Path::new(drafts_dir)).await?;
+    let drafts_dir = {
+        let mut config_dir = PathBuf::from(config_dir);
+        config_dir.push(drafts_dir);
+        config_dir
+    };
 
+    upgrade_config(&rules_dir).await?;
+
+    let entries = gather_dir_entries(&drafts_dir).await?;
     for entry in entries {
         upgrade_config(&entry.path()).await?;
     }
@@ -36,8 +47,11 @@ async fn upgrade_config(
 async fn upgrade_to_v2(
     rules_dir: &Path,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    println!("Migrating config from {}", rules_dir.display());
+
     let config_manager_v1 =
         FsMatcherConfigManager::new(rules_dir.display().to_string().as_str(), "");
+
     let config_manager_v2 = FsMatcherConfigManagerV2::new(rules_dir, Path::new(""));
 
     let config = config_manager_v1.get_config().await?;

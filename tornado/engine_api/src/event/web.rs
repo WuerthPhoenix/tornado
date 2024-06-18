@@ -13,7 +13,10 @@ use std::ops::Deref;
 use tornado_engine_api_dto::event::{ProcessedEventDto, SendEventRequestDto};
 use tornado_engine_matcher::config::MatcherConfigEditor;
 
-pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+pub fn build_event_endpoints<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
+>(
     data: ApiData<EventApi<T, CM>>,
 ) -> Scope {
     web::scope("/v1_beta/event")
@@ -28,7 +31,10 @@ pub fn build_event_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEdit
         )
 }
 
-pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+pub fn build_event_v2_endpoints<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
+>(
     data: ApiDataV2<EventApiV2<T, CM>>,
 ) -> Scope {
     web::scope("/event")
@@ -45,7 +51,7 @@ pub fn build_event_v2_endpoints<T: EventApiHandler + 'static, CM: MatcherConfigE
 
 async fn send_event_to_current_config<
     T: EventApiHandler + 'static,
-    CM: MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     data: Data<ApiData<EventApi<T, CM>>>,
@@ -100,7 +106,7 @@ fn prepare_data_for_send_event_v2<'a>(
 
 async fn send_event_to_current_config_v2<
     T: EventApiHandler + 'static,
-    CM: MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     data: Data<ApiDataV2<EventApiV2<T, CM>>>,
@@ -122,7 +128,10 @@ async fn send_event_to_current_config_v2<
     Ok(Json(processed_event_into_dto(processed_event)?))
 }
 
-async fn send_event_to_draft_v2<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+async fn send_event_to_draft_v2<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
+>(
     req: HttpRequest,
     data: Data<ApiDataV2<EventApiV2<T, CM>>>,
     params: Path<AuthAndDraftId>,
@@ -160,7 +169,10 @@ async fn prepare_data_for_send_event_to_draft<'a>(
     Ok((auth_ctx, send_event_request))
 }
 
-async fn send_event_to_draft<T: EventApiHandler + 'static, CM: MatcherConfigEditor + 'static>(
+async fn send_event_to_draft<
+    T: EventApiHandler + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
+>(
     req: HttpRequest,
     data: Data<ApiData<EventApi<T, CM>>>,
     draft_id: Path<String>,

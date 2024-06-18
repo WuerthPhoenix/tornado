@@ -8,12 +8,12 @@ use tornado_engine_matcher::config::MatcherConfigEditor;
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::model::ProcessedEvent;
 
-pub struct EventApiV2<A: EventApiHandler, CM: MatcherConfigEditor> {
+pub struct EventApiV2<A: EventApiHandler, CM: MatcherConfigEditor + ?Sized> {
     handler: A,
     config_manager: Arc<CM>,
 }
 
-impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApiV2<A, CM> {
+impl<A: EventApiHandler, CM: MatcherConfigEditor + ?Sized> EventApiV2<A, CM> {
     pub fn new(handler: A, config_manager: Arc<CM>) -> Self {
         Self { handler, config_manager }
     }

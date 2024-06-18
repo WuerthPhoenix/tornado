@@ -48,9 +48,10 @@ impl Display for MatcherConfigError {
                 "Could not read a file with filename {}, because it is not utf-8.",
                 path.display()
             )),
-            MatcherConfigError::DeserializationError { file, error } => f.write_fmt(format_args!(
-                "Could not deserialize config file {}. {}",
+            MatcherConfigError::DeserializationError { file, object_path, error,  } => f.write_fmt(format_args!(
+                "Could not deserialize config file {}. Field {} contains erroneous data: {}",
                 file.display(),
+                object_path,
                 error
             )),
             MatcherConfigError::DuplicateName { name, previous, next } => f.write_fmt(format_args!(
@@ -58,6 +59,11 @@ impl Display for MatcherConfigError {
                 name,
                 previous.display(),
                 next.display()
+            )),
+            MatcherConfigError::FormatError { file, error } => f.write_fmt(format_args!(
+                "Could not deserialize config file {}, as it is not a valid json file: {}",
+                file.display(),
+                error
             )),
         }
     }
@@ -69,6 +75,7 @@ impl Error for MatcherConfigError {
             MatcherConfigError::DirIoError { error, .. } => Some(error as &dyn Error),
             MatcherConfigError::FileIoError { error, .. } => Some(error as &dyn Error),
             MatcherConfigError::DeserializationError { error, .. } => Some(error as &dyn Error),
+            MatcherConfigError::FormatError { error, .. } => Some(error as &dyn Error),
             MatcherConfigError::UnexpectedFile { .. } => None,
             MatcherConfigError::UnknownNodeDir { .. } => None,
             MatcherConfigError::FileNotFound { .. } => None,
@@ -77,72 +84,6 @@ impl Error for MatcherConfigError {
         }
     }
 }
-
-#[derive(Debug)]
-pub enum DeserializationError {
-    UnknownField {
-        path: String,
-        field: String,
-    },
-    MissingField {
-        path: String,
-        field: String,
-    },
-    InvalidField {
-        path: String,
-        found: String,
-        found_type: String,
-        expected: String,
-        expected_type: String,
-    },
-    TypeError {
-        path: String,
-        expected_type: String,
-        actual_type: String,
-    },
-    FormatError {
-        line: usize,
-        column: usize,
-    },
-    // This variant should not be in use, however we need it to satisfy the compiler
-    // and to avoid future breaking changes
-    GenericError {
-        error: String,
-    },
-}
-
-impl Display for DeserializationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            DeserializationError::UnknownField { path, field } => {
-                f.write_fmt(format_args!("Unknown field {field} in path {path}"))
-            }
-            DeserializationError::MissingField { path, field } => {
-                f.write_fmt(format_args!("Missing field {field} in path {path}"))
-            }
-            DeserializationError::InvalidField {
-                path,
-                found,
-                found_type,
-                expected,
-                expected_type,
-            } => f.write_fmt(format_args!(
-                "Invalid data in path {path}. Expected a {expected_type} {expected}, but found a {found_type} {found}",
-            )),
-            DeserializationError::TypeError { path, expected_type, actual_type } => {
-                f.write_fmt(format_args!("Invalid data in path {path}. Expected a value of type {expected_type}, but found a {actual_type}."))
-            }
-            DeserializationError::FormatError { line, column } => {
-                f.write_fmt(format_args!("Format error on line {line}, column {column}"))
-            }
-            DeserializationError::GenericError { error } => {
-                f.write_fmt(format_args!("{error}"))
-            }
-        }
-    }
-}
-
-impl Error for DeserializationError {}
 
 #[derive(Debug)]
 pub enum DeploymentError {

@@ -23,9 +23,9 @@ use tokio::io::AsyncWriteExt;
 const DRAFT_ID: &str = "draft_001";
 
 #[async_trait::async_trait(?Send)]
-impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
+impl MatcherConfigEditor for FsMatcherConfigManagerV2 {
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
-        Ok(get_drafts(self.drafts_path).await?)
+        Ok(get_drafts(&self.drafts_path).await?)
     }
 
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
@@ -50,7 +50,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             path
         };
 
-        create_draft(self.root_path, &draft_path, &user, DRAFT_ID).await?;
+        create_draft(&self.root_path, &draft_path, &user, DRAFT_ID).await?;
         Ok(DRAFT_ID.to_string())
     }
 
@@ -103,7 +103,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
         }
 
         let draft = self.get_draft(draft_id).await?;
-        atomic_deploy_config(self.root_path, &draft.config).await?;
+        atomic_deploy_config(&self.root_path, &draft.config).await?;
         self.delete_draft(draft_id).await?;
         Ok(draft.config)
     }
@@ -151,7 +151,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
     }
 
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
-        atomic_deploy_config(self.root_path, config).await?;
+        atomic_deploy_config(&self.root_path, config).await?;
         Ok(config.clone())
     }
 }
@@ -274,7 +274,7 @@ async fn deploy_rules(dir: &Path, rules: &[Rule]) -> Result<(), DeploymentError>
     Ok(())
 }
 
-async fn serialize_config_node_to_file<T: Serialize + ConfigNodeDir>(
+pub async fn serialize_config_node_to_file<T: Serialize + ConfigNodeDir>(
     dir: &Path,
     data: &T,
 ) -> Result<(), DeploymentError> {
@@ -542,11 +542,8 @@ mod tests {
     async fn matcher_config_editor_should_update_draft() {
         // Arrange
         let temp_dir = TempDir::new().unwrap();
-        let temp_temp_dir = temp_dir.path().to_path_buf();
-        std::mem::forget(temp_dir);
-
         let config_manager =
-            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_temp_dir.as_path());
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_dir.path());
         let draft_id = config_manager.create_draft(String::from("pippo")).await.unwrap();
 
         let new_draft_path = {

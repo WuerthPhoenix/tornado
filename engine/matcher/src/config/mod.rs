@@ -441,7 +441,7 @@ pub trait MatcherConfigReader: Sync + Send {
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
 #[async_trait::async_trait(? Send)]
-pub trait MatcherConfigEditor: Sync + Send {
+pub trait MatcherConfigEditor: MatcherConfigReader + Sync + Send {
     /// Returns the list of available drafts
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
 

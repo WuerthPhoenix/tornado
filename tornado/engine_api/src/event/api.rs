@@ -48,12 +48,12 @@ pub enum ProcessType {
     SkipActions,
 }
 
-pub struct EventApi<A: EventApiHandler, CM: MatcherConfigEditor> {
+pub struct EventApi<A: EventApiHandler, CM: MatcherConfigEditor + ?Sized> {
     handler: A,
     config_manager: Arc<CM>,
 }
 
-impl<A: EventApiHandler, CM: MatcherConfigEditor> EventApi<A, CM> {
+impl<A: EventApiHandler, CM: MatcherConfigEditor + ?Sized> EventApi<A, CM> {
     pub fn new(handler: A, config_manager: Arc<CM>) -> Self {
         Self { handler, config_manager }
     }
@@ -93,7 +93,9 @@ pub mod test {
     use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_matcher::config::filter::Filter;
-    use tornado_engine_matcher::config::{Defaultable, MatcherConfigDraft, MatcherConfigDraftData};
+    use tornado_engine_matcher::config::{
+        Defaultable, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,
+    };
     use tornado_engine_matcher::error::MatcherError;
     use tornado_engine_matcher::model::{ProcessedNode, ProcessedRules};
 
@@ -162,6 +164,21 @@ pub mod test {
     pub const DRAFT_OWNER_ID: &str = "OWNER";
 
     pub struct TestConfigManager {}
+
+    #[async_trait::async_trait(?Send)]
+    impl MatcherConfigReader for TestConfigManager {
+        async fn get_config(&self) -> Result<MatcherConfig, MatcherError> {
+            Ok(MatcherConfig::Filter {
+                name: "root".to_owned(),
+                filter: Filter {
+                    description: "".to_string(),
+                    active: true,
+                    filter: Defaultable::Default {},
+                },
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_owned(), rules: vec![] }],
+            })
+        }
+    }
 
     #[async_trait::async_trait(?Send)]
     impl MatcherConfigEditor for TestConfigManager {
