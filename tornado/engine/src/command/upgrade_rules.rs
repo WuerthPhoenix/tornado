@@ -27,10 +27,22 @@ pub async fn upgrade_rules(
 
     let entries = gather_dir_entries(&drafts_dir).await?;
     for entry in entries {
-        upgrade_config(&entry.path()).await?;
+        upgrade_draft(&entry.path()).await?;
     }
 
     Ok(())
+}
+
+async fn upgrade_draft(
+    draft_dir: &Path,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+    let draft_config_dir = {
+        let mut draft_dir = draft_dir.to_path_buf();
+        draft_dir.push("config");
+        draft_dir
+    };
+
+    upgrade_config(&draft_config_dir).await
 }
 
 async fn upgrade_config(
