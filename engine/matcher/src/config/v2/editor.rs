@@ -1,6 +1,5 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
-use crate::config::v1::fs::FsMatcherConfigManager;
 use crate::config::v2::error::DeploymentError;
 use crate::config::v2::{
     gather_dir_entries, parse_node_config_from_file, read_config_from_root_dir, ConfigNodeDir,
@@ -8,7 +7,7 @@ use crate::config::v2::{
     Version,
 };
 use crate::config::{
-    MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
+    v1, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
 };
 use crate::error::MatcherError;
 use crate::matcher::Matcher;
@@ -104,7 +103,6 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2 {
 
         let draft = self.get_draft(draft_id).await?;
         atomic_deploy_config(&self.root_path, &draft.config).await?;
-        self.delete_draft(draft_id).await?;
         Ok(draft.config)
     }
 
@@ -327,7 +325,7 @@ async fn serialize_to_file<T: Serialize>(path: &Path, data: &T) -> Result<(), De
         return Err(DeploymentError::FileIo { path: path.to_path_buf(), error });
     }
 
-    let parent = path.parent().unwrap_or(&Path::new("/"));
+    let parent = path.parent().unwrap_or(Path::new("/"));
     let parent_dir = match tokio::fs::File::open(parent).await {
         Ok(parent_dir) => parent_dir,
         Err(error) => return Err(DeploymentError::FileIo { path: path.to_path_buf(), error }),
@@ -450,7 +448,7 @@ async fn create_draft(
         });
     };
     serialize_config_node_to_file(draft_dir, &draft_data).await?;
-    FsMatcherConfigManager::copy_and_override(processing_tree_dir, &draft_config_dir).await
+    v1::fs::copy_and_override(processing_tree_dir, &draft_config_dir).await
 }
 
 async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
@@ -470,7 +468,7 @@ async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::v1::editor::copy_recursive;
+    use crate::config::v1::fs::copy_recursive;
     use crate::config::v2::editor::{get_draft_from_dir, DRAFT_ID};
     use crate::config::v2::{parse_node_config_from_file, ConfigType, FsMatcherConfigManagerV2};
     use crate::config::{

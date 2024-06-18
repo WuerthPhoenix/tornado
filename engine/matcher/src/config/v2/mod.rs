@@ -257,9 +257,9 @@ async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfi
         path
     };
 
-    trace!("Reading ruleset node config file from disl.");
+    trace!("Reading ruleset node config file from disk.");
     let ruleset: MatcherConfigRuleset = parse_node_config_from_file(dir).await?;
-    trace!("Reading ruleset node rules from disc.");
+    trace!("Reading ruleset node rules from disk.");
     let rules = read_rules_from_dir(&rules_dir_path).await?;
 
     Ok(MatcherConfig::Ruleset { name: ruleset.name, rules })

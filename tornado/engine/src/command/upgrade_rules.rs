@@ -25,13 +25,15 @@ pub async fn upgrade_rules(
 
     let mut upgraded = upgrade_config(&rules_dir).await?;
 
-    let entries = gather_dir_entries(&drafts_dir).await?;
-    for entry in entries {
-        upgraded |= upgrade_draft(&entry.path()).await?;
+    if tokio::fs::try_exists(&drafts_dir).await.unwrap_or(false) {
+        let entries = gather_dir_entries(&drafts_dir).await?;
+        for entry in entries {
+            upgraded |= upgrade_draft(&entry.path()).await?;
+        }
     }
 
     if upgraded {
-        println!("Everything upgraded an good to go.")
+        println!("Everything upgraded and good to go.")
     } else {
         println!("Nothing to upgrade")
     }
