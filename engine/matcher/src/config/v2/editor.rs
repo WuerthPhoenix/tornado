@@ -159,9 +159,17 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2 {
 async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), MatcherError> {
     // Validate also regex and accessor, which the MatcherConfigValidator does not do.
     let _ = Matcher::build(config)?;
-    let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
-        message: format!("Cannot create temporary directory. Err: {:?}", err),
-    })?;
+    let dir_canonical = match dir.canonicalize() {
+        Ok(parent) => parent,
+        Err(error) => {
+            return Err(MatcherConfigError::DirIoError { path: dir.to_path_buf(), error }.into())
+        }
+    };
+    let parent = dir_canonical.parent().unwrap_or(Path::new("/"));
+    let tempdir =
+        tempfile::tempdir_in(parent).map_err(|err| MatcherError::InternalSystemError {
+            message: format!("Cannot create temporary directory. Err: {:?}", err),
+        })?;
 
     serialize_config_node_to_file(tempdir.path(), &Version::default()).await?;
     match config {
@@ -176,18 +184,22 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
     };
     sync_dir_to_disk(tempdir.path()).await?;
 
-    if let Err(error) = tokio::fs::remove_dir_all(&dir).await {
+    if let Err(error) = tokio::fs::remove_dir_all(&dir_canonical).await {
         // todo: improve in NEPROD-1658
         return Err(MatcherError::InternalSystemError {
-            message: format!("Cannot remove config directory {}. {}", dir.display(), error),
+            message: format!(
+                "Cannot remove config directory {}. {}",
+                dir_canonical.display(),
+                error
+            ),
         });
     }
 
     // todo: If the machine looses power here, or the kernel panics, we can loose the whole or parts of the configuration.
 
     // Replace the directory inode. This is an atomic operation to overwrite the directory.
-    if let Err(error) = tokio::fs::rename(tempdir.path(), dir).await {
-        return Err(DeploymentError::DirIo { error, path: dir.to_path_buf() }.into());
+    if let Err(error) = tokio::fs::rename(tempdir.path(), &dir_canonical).await {
+        return Err(DeploymentError::DirIo { error, path: dir_canonical.to_path_buf() }.into());
     }
 
     Ok(())
