@@ -23,11 +23,17 @@ pub async fn upgrade_rules(
         config_dir
     };
 
-    upgrade_config(&rules_dir).await?;
+    let mut upgraded = upgrade_config(&rules_dir).await?;
 
     let entries = gather_dir_entries(&drafts_dir).await?;
     for entry in entries {
-        upgrade_draft(&entry.path()).await?;
+        upgraded |= upgrade_draft(&entry.path()).await?;
+    }
+
+    if upgraded {
+        println!("Everything upgraded an good to go.")
+    } else {
+        println!("Nothing to upgrade")
     }
 
     Ok(())
@@ -35,7 +41,7 @@ pub async fn upgrade_rules(
 
 async fn upgrade_draft(
     draft_dir: &Path,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync + 'static>> {
     let draft_config_dir = {
         let mut draft_dir = draft_dir.to_path_buf();
         draft_dir.push("config");
@@ -47,11 +53,14 @@ async fn upgrade_draft(
 
 async fn upgrade_config(
     config_dir: &Path,
-) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
+) -> Result<bool, Box<dyn std::error::Error + Send + Sync + 'static>> {
     let config_version = get_config_version(Path::new(config_dir)).await?;
     match config_version {
-        Version::V1 => upgrade_to_v2(config_dir).await,
-        Version::V2 => Ok(()),
+        Version::V1 => {
+            upgrade_to_v2(config_dir).await?;
+            Ok(true)
+        }
+        Version::V2 => Ok(false),
     }
 }
 
