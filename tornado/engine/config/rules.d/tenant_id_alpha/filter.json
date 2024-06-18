@@ -1,4 +1,6 @@
 {
+  "type": "filter",
+  "name": "tenant_id_alpha",
   "description": "This filter allows events for tenant_id alpha",
   "active": true,
   "filter": {
