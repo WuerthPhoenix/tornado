@@ -180,7 +180,7 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
     if let Err(error) = tokio::fs::remove_dir_all(&dir).await {
         // todo: improve in NEPROD-1658
         return Err(MatcherError::InternalSystemError {
-            message: format!("Cannot remove draft dir {}. {}", dir.display(), error),
+            message: format!("Cannot remove config directory {}. {}", dir.display(), error),
         });
     }
 
