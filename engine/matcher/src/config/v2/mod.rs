@@ -2,7 +2,6 @@ mod error;
 
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
-use crate::config::v2::error::DeserializationError;
 pub use crate::config::v2::error::MatcherConfigError;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
@@ -10,9 +9,9 @@ use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use log::{info, warn};
 use monostate::MustBe;
-use regex::Regex;
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
+use serde_json::error::Category;
 use std::ffi::OsStr;
 use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
@@ -281,10 +280,17 @@ async fn parse_from_file<Data: DeserializeOwned>(path: &Path) -> Result<Data, Ma
     let jd = &mut serde_json::Deserializer::from_str(json);
     match serde_path_to_error::deserialize(jd) {
         Ok(result) => Ok(result),
-        Err(error) => Err(MatcherConfigError::DeserializationError {
-            file: path.to_path_buf(),
-            error: parse_serde_errors(error),
-        }),
+        Err(error) => match error.inner().classify() {
+            Category::Io | Category::Eof => Err(MatcherConfigError::FormatError {
+                file: path.to_path_buf(),
+                error: error.into_inner(),
+            }),
+            Category::Syntax | Category::Data => Err(MatcherConfigError::DeserializationError {
+                file: path.to_path_buf(),
+                object_path: error.path().to_string(),
+                error: error.into_inner(),
+            }),
+        },
     }
 }
 
@@ -311,98 +317,6 @@ async fn gather_dir_entries(dir: &Path) -> Result<Vec<DirEntry>, MatcherConfigEr
     Ok(dir_entries)
 }
 
-// I know this is not pretty, but serde does not model the custom errors to give good user feedback.
-// Since we know we are using serde_json and the errors are generated from serde_derive, which is
-// on a stable 1.0 release, we can use regex to parse the data from the error message.
-fn parse_serde_errors(
-    error: serde_path_to_error::Error<serde_json::Error>,
-) -> DeserializationError {
-    let json_error = error.inner();
-    if json_error.is_syntax() {
-        return DeserializationError::FormatError {
-            line: json_error.line(),
-            column: json_error.column(),
-        };
-    }
-
-    let path = format!("{}", error.path());
-    let error = format!("{}", json_error);
-
-    // Determine whether the error is due to a type missmatch.
-    // Example error:
-    //      invalid type: integer `2`, expected a string at line 3 column 11
-    let type_error_regex = Regex::new(
-        "^invalid type: (?<ACTUAL_TYPE>.+?) .+, expected (?:a )?(?<EXPECTED_TYPE>.+?) at line [0-9]+ column [0-9]+$",
-    )
-        .expect("Static regex should be valid");
-    if let Some(result) = type_error_regex.captures(&error) {
-        let actual_type = result.name("ACTUAL_TYPE");
-        let expected_type = result.name("EXPECTED_TYPE");
-
-        if let (Some(actual_type), Some(expected_type)) = (actual_type, expected_type) {
-            return DeserializationError::TypeError {
-                path,
-                actual_type: actual_type.as_str().to_string(),
-                expected_type: expected_type.as_str().to_string(),
-            };
-        }
-    }
-
-    // We disallow unknown fields during parsing, to avoid common human error. Determine if
-    // the error occurred due to a not valid field. Example error:
-    //      unknown field `pippo` at line 3 column 15
-    let unknown_field_error_regex = Regex::new(
-        "^unknown field `(?<FIELD_NAME>.+?)`(?:, expected one of (?:`.+?`, )+`.+?`)? at line [0-9]+ column [0-9]+$",
-    )
-        .expect("Static regex should be valid");
-    if let Some(captures) = unknown_field_error_regex.captures(&error) {
-        if let Some(field) = captures.name("FIELD_NAME") {
-            return DeserializationError::UnknownField { path, field: field.as_str().to_string() };
-        }
-    }
-
-    // Determine whether an error occurred, due to a missing field.
-    // Example Error:
-    //      missing field `name` at line 3 column 5
-    let missing_field_error =
-        Regex::new("^missing field `(?<NAME>.+?)` at line [0-9]+ column [0-9]+$")
-            .expect("Static regex should be valid");
-    if let Some(captures) = missing_field_error.captures(&error) {
-        if let Some(field) = captures.name("NAME") {
-            return DeserializationError::MissingField { path, field: field.as_str().to_string() };
-        }
-    }
-
-    // Determine whether an error occurred due to a missmatch in expected values.
-    // Example error:
-    //      invalid value: string "ruleset", expected string "filter" at line 2 column 19
-    let expected_value_regex = Regex::new(
-        "^invalid value: (?<ACTUAL_TYPE>.+?) (?<ACTUAL_CONTENT>.+?), expected (?<EXPECTED_TYPE>.+?) (?<EXPECTED_CONTENT>.+?) at line [0-9]+ column [0-9]+$",
-    )
-        .expect("Static regex should be valid");
-    if let Some(captures) = expected_value_regex.captures(&error) {
-        let actual_type = captures.name("ACTUAL_TYPE");
-        let actual_content = captures.name("ACTUAL_CONTENT");
-        let expected_type = captures.name("EXPECTED_TYPE");
-        let expected_content = captures.name("EXPECTED_CONTENT");
-
-        if let (Some(found_type), Some(found), Some(expected_type), Some(expected)) =
-            (actual_type, actual_content, expected_type, expected_content)
-        {
-            return DeserializationError::InvalidField {
-                path,
-                found: found.as_str().to_string(),
-                found_type: found_type.as_str().to_string(),
-                expected: expected.as_str().to_string(),
-                expected_type: expected_type.as_str().to_string(),
-            };
-        }
-    }
-
-    // If none of the above match, return a generic error.
-    return DeserializationError::GenericError { error };
-}
-
 #[derive(Debug)]
 pub struct FileEntry<T> {
     path: PathBuf,
@@ -419,7 +333,6 @@ impl<T> FileEntry<T> {
 mod tests {
     use crate::config::filter::Filter;
     use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
-    use crate::config::v2::error::DeserializationError;
     use crate::config::v2::{
         parse_from_file, read_config_from_root_dir, read_filter_from_dir, read_node_from_dir,
         read_rules_from_dir, read_ruleset_from_dir, ConfigType, MatcherConfigError,
@@ -641,13 +554,9 @@ mod tests {
             parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
-            MatcherConfigError::DeserializationError {
-                file,
-                error: DeserializationError::MissingField { path, field },
-            } => {
+            MatcherConfigError::DeserializationError { file, object_path, .. } => {
                 assert_eq!(&test_file_path, &format!("{}", file.display()));
-                assert_eq!(".", &path);
-                assert_eq!("name", &field);
+                assert_eq!(".", &object_path);
             }
             result => panic!("{:#?}", result),
         }
@@ -660,13 +569,9 @@ mod tests {
             parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
-            MatcherConfigError::DeserializationError {
-                file,
-                error: DeserializationError::UnknownField { path, field },
-            } => {
+            MatcherConfigError::DeserializationError { file, object_path, .. } => {
                 assert_eq!(&test_file_path, &format!("{}", file.display()));
-                assert_eq!(".", path);
-                assert_eq!("pippo", field);
+                assert_eq!(".", object_path);
             }
             result => panic!("{:#?}", result),
         }
@@ -679,14 +584,9 @@ mod tests {
             parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
-            MatcherConfigError::DeserializationError {
-                file,
-                error: DeserializationError::TypeError { path, expected_type, actual_type },
-            } => {
+            MatcherConfigError::DeserializationError { file, object_path, .. } => {
                 assert_eq!(&test_file_path, &format!("{}", file.display()));
-                assert_eq!("name", path);
-                assert_eq!("string", expected_type);
-                assert_eq!("integer", actual_type);
+                assert_eq!("name", object_path);
             }
             result => panic!("{:#?}", result),
         }
@@ -699,23 +599,9 @@ mod tests {
             parse_from_file::<MatcherConfigFilter>(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
-            MatcherConfigError::DeserializationError {
-                file,
-                error:
-                    DeserializationError::InvalidField {
-                        path,
-                        found,
-                        found_type,
-                        expected,
-                        expected_type,
-                    },
-            } => {
+            MatcherConfigError::DeserializationError { file, object_path, .. } => {
                 assert_eq!(&test_file_path, &format!("{}", file.display()));
-                assert_eq!("type", path);
-                assert_eq!("string", found_type);
-                assert_eq!("\"ruleset\"", found);
-                assert_eq!("string", expected_type);
-                assert_eq!("\"filter\"", expected);
+                assert_eq!("type", object_path);
             }
             result => panic!("{:#?}", result),
         }
@@ -740,13 +626,10 @@ mod tests {
         let error = read_config_from_root_dir(Path::new(&test_file_path)).await.unwrap_err();
 
         match error {
-            MatcherConfigError::DeserializationError {
-                file,
-                error: DeserializationError::InvalidField { path, .. },
-            } => {
+            MatcherConfigError::DeserializationError { file, object_path, .. } => {
                 let version_file = test_file_path.clone() + "version.json";
                 assert_eq!(&version_file, &format!("{}", file.display()));
-                assert_eq!("version", path);
+                assert_eq!("version", object_path);
             }
             result => panic!("{:#?}", result),
         }

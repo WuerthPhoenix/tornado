@@ -10,41 +10,9 @@ pub enum MatcherConfigError {
     UnknownNodeDir { path: PathBuf },
     FileNotFound { path: PathBuf },
     FileIoError { path: PathBuf, error: io::Error },
-    DeserializationError { file: PathBuf, error: DeserializationError },
+    DeserializationError { file: PathBuf, object_path: String, error: serde_json::Error },
+    FormatError { file: PathBuf, error: serde_json::Error },
     DuplicateName { name: String, previous: PathBuf, next: PathBuf },
-}
-
-#[derive(Debug)]
-pub enum DeserializationError {
-    UnknownField {
-        path: String,
-        field: String,
-    },
-    MissingField {
-        path: String,
-        field: String,
-    },
-    InvalidField {
-        path: String,
-        found: String,
-        found_type: String,
-        expected: String,
-        expected_type: String,
-    },
-    TypeError {
-        path: String,
-        expected_type: String,
-        actual_type: String,
-    },
-    FormatError {
-        line: usize,
-        column: usize,
-    },
-    // This variant should not be in use, however we need it to satisfy the compiler
-    // and to avoid future breaking changes
-    GenericError {
-        error: String,
-    },
 }
 
 // Todo: improve this error in NEPROD-1658
