@@ -124,6 +124,10 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
                 MatcherConfig::Ruleset { rules, .. } => {
                     TreeInfoDto { filters_count: 0, rules_count: rules.len() }
                 }
+                MatcherConfig::Iterator { .. } => {
+                    // ToDo: TOR-579
+                    todo!()
+                }
             })
             .sum()
     }
@@ -329,6 +333,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
         match node {
             MatcherConfig::Filter { .. } => Err(ApiError::NodeNotFoundError {
                 message: format!("Found filter instead of ruleset. Path: {:?}", ruleset_path),
+            }),
+            MatcherConfig::Iterator { .. } => Err(ApiError::NodeNotFoundError {
+                message: format!("Found iterator instead of ruleset. Path: {:?}", ruleset_path),
             }),
             MatcherConfig::Ruleset { name: _, rules } => {
                 let rule = rules.iter().find(|rule| rule.name == rule_name);

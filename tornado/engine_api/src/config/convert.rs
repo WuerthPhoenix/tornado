@@ -37,6 +37,10 @@ pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto
             filter: filter.into(),
             nodes: nodes.into_iter().map(matcher_config_into_dto).collect::<Result<Vec<_>, _>>()?,
         },
+        MatcherConfig::Iterator { .. } => {
+            // ToDo: TOR-580
+            todo!()
+        }
     })
 }
 

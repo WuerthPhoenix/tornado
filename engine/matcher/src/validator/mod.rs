@@ -23,6 +23,10 @@ impl MatcherConfigValidator {
             MatcherConfig::Filter { name, filter, nodes } => {
                 self.validate_filter(name, filter, nodes)
             }
+            MatcherConfig::Iterator { .. } => {
+                // ToDo: TOR-577
+                todo!()
+            }
         }
     }
 

@@ -641,14 +641,7 @@ mod test {
         );
     }
 
-    fn get_config_name(config: &MatcherConfig) -> &str {
-        match config {
-            MatcherConfig::Filter { name, .. } => name,
-            MatcherConfig::Ruleset { name, .. } => name,
-        }
-    }
-
     fn get_config_by_name<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
-        nodes.iter().find(|&node| get_config_name(node).eq(name))
+        nodes.iter().find(|&node| node.get_name().eq(name))
     }
 }

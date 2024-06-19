@@ -113,6 +113,10 @@ impl Matcher {
                     nodes: matcher_nodes,
                 })
             }
+            MatcherConfig::Iterator { .. } => {
+                // ToDo : TOR-578
+                todo!()
+            }
         }
     }
 

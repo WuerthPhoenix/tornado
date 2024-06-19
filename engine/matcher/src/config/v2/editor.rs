@@ -230,6 +230,10 @@ async fn deploy_child_node(path: &Path, node: &MatcherConfig) -> Result<(), Depl
         MatcherConfig::Ruleset { name, rules } => {
             deploy_ruleset_node(&parent, name, rules).await?;
         }
+        MatcherConfig::Iterator { .. } => {
+            // ToDo: TOR-591
+            todo!()
+        }
     }
 
     Ok(())

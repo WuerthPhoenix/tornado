@@ -268,6 +268,10 @@ impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
                 name: name.to_owned(),
                 rules_count: matcher_config_node.get_all_rules_count(),
             },
+            MatcherConfig::Iterator { .. } => {
+                // ToDo: TOR-580
+                todo!()
+            }
         }
     }
 }
@@ -305,6 +309,10 @@ impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
                     name: name.to_owned(),
                     rules: rules_details_dto,
                 }
+            }
+            MatcherConfig::Iterator { .. } => {
+                // ToDo: TOR-580
+                todo!()
             }
         }
     }
