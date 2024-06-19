@@ -1,0 +1,5 @@
+{
+  "type": "iterator",
+  "name": "openshift_iterator",
+  "target": "${event.payload.alerts}"
+}
