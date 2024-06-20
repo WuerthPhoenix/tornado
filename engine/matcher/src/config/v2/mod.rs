@@ -437,7 +437,7 @@ mod tests {
         read_node_from_dir, read_rules_from_dir, read_ruleset_from_dir, ConfigType,
         MatcherConfigError, MatcherConfigFilter, MatcherConfigIterator, MatcherConfigRuleset,
     };
-    use crate::config::{filter, Defaultable, MatcherConfig};
+    use crate::config::{Defaultable, MatcherConfig};
     use monostate::MustBe;
     use std::path::Path;
     use tornado_common_api::Value;
