@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 pub mod filter;
-pub mod fs;
 pub mod operation;
 pub mod rule;
+pub mod v1;
+pub mod v2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]

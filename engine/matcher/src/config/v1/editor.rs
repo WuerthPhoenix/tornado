@@ -1,5 +1,5 @@
 use crate::config::filter::Filter;
-use crate::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
+use crate::config::v1::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
 use crate::config::{
     Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
     MatcherConfigReader,
@@ -424,7 +424,7 @@ mod test {
         // Arrange
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) =
-            &prepare_temp_dirs(&tempdir, "./test_resources/config_04").await;
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/config_04").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -456,7 +456,8 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -495,7 +496,7 @@ mod test {
         let current_ts_ms = current_ts_ms();
         let tempdir = tempfile::tempdir()?;
         let (rules_dir, drafts_dir) =
-            &prepare_temp_dirs(&tempdir, "./test_resources/config_04").await;
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/config_04").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let current_config = config_manager.get_config().await.unwrap();
@@ -520,7 +521,8 @@ mod test {
     ) -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -537,7 +539,8 @@ mod test {
     async fn get_drafts_should_return_all_draft_ids() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -562,7 +565,8 @@ mod test {
     async fn should_return_delete_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -584,13 +588,13 @@ mod test {
     #[tokio::test]
     async fn should_save_matcher_config_into_fs() -> Result<(), Box<dyn std::error::Error>> {
         let test_configurations = vec![
-            "./test_resources/config_01",
-            "./test_resources/config_02",
-            "./test_resources/config_03",
-            "./test_resources/config_04",
-            "./test_resources/config_empty",
-            "./test_resources/config_implicit_filter",
-            "./test_resources/rules",
+            "./test_resources/v1/config_01",
+            "./test_resources/v1/config_02",
+            "./test_resources/v1/config_03",
+            "./test_resources/v1/config_04",
+            "./test_resources/v1/config_empty",
+            "./test_resources/v1/config_implicit_filter",
+            "./test_resources/v1/rules",
         ];
 
         for test_configuration in test_configurations {
@@ -628,12 +632,13 @@ mod test {
     async fn should_update_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
         let new_config =
-            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+            FsMatcherConfigManager::new("./test_resources/v1/config_implicit_filter", drafts_dir)
                 .get_config()
                 .await
                 .unwrap();
@@ -665,7 +670,8 @@ mod test {
     async fn should_validate_draft_on_update() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -713,13 +719,14 @@ mod test {
     async fn should_deploy_a_draft_by_id() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let config_before_deploy = config_manager.get_config().await.unwrap();
 
         let new_config =
-            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+            FsMatcherConfigManager::new("./test_resources/v1/config_implicit_filter", drafts_dir)
                 .get_config()
                 .await
                 .unwrap();
@@ -747,7 +754,8 @@ mod test {
     async fn should_take_over_a_draft() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
 
@@ -773,13 +781,14 @@ mod test {
     async fn should_deploy_a_new_config() -> Result<(), Box<dyn std::error::Error>> {
         // Arrange
         let tempdir = tempfile::tempdir()?;
-        let (rules_dir, drafts_dir) = &prepare_temp_dirs(&tempdir, "./test_resources/rules").await;
+        let (rules_dir, drafts_dir) =
+            &prepare_temp_dirs(&tempdir, "./test_resources/v1/rules").await;
 
         let config_manager = FsMatcherConfigManager::new(rules_dir, drafts_dir);
         let config_before_deploy = config_manager.get_config().await.unwrap();
 
         let new_config =
-            FsMatcherConfigManager::new("./test_resources/config_implicit_filter", drafts_dir)
+            FsMatcherConfigManager::new("./test_resources/v1/config_implicit_filter", drafts_dir)
                 .get_config()
                 .await
                 .unwrap();

@@ -1,0 +1,16 @@
+{
+  "type": "filter",
+  "name": "tenant_a",
+  "description": "This filter allows events for tenant_a tenant",
+  "active": true,
+  "filter": {
+    "type": "AND",
+    "operators": [
+      {
+        "type": "equals",
+        "first": "${event.metadata.tenant_id}",
+        "second": "tenant_a"
+      }
+    ]
+  }
+}

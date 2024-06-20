@@ -230,7 +230,7 @@ mod test {
     use maplit::hashmap;
     use serde_json::json;
     use tornado_common_api::{Event, Value};
-    use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+    use tornado_engine_matcher::config::v1::fs::ROOT_NODE_NAME;
     use tornado_engine_matcher::model::ProcessedNode;
     use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
 
