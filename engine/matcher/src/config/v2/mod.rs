@@ -1,3 +1,4 @@
+mod editor;
 mod error;
 
 use crate::config::filter::Filter;
@@ -7,10 +8,10 @@ use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
-use log::{info, warn};
+use log::{debug, error, info, trace, warn};
 use monostate::MustBe;
 use serde::de::DeserializeOwned;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::error::Category;
 use std::ffi::OsStr;
 use std::io::ErrorKind;
@@ -23,9 +24,9 @@ pub struct FsMatcherConfigManagerV2<'config> {
 }
 
 impl FsMatcherConfigManagerV2<'_> {
-    pub fn new<'config, P: Into<&'config Path>>(
-        root_path: P,
-        drafts_path: P,
+    pub fn new<'config, P1: Into<&'config Path>, P2: Into<&'config Path>>(
+        root_path: P1,
+        drafts_path: P2,
     ) -> FsMatcherConfigManagerV2<'config> {
         FsMatcherConfigManagerV2 { root_path: root_path.into(), drafts_path: drafts_path.into() }
     }
@@ -33,6 +34,7 @@ impl FsMatcherConfigManagerV2<'_> {
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ConfigType {
+    Draft,
     Root,
     Filter,
     Ruleset,
@@ -48,11 +50,12 @@ impl ConfigType {
             ConfigType::Root => "version.json",
             ConfigType::Filter => "filter.json",
             ConfigType::Ruleset => "ruleset.json",
+            ConfigType::Draft => "data.json",
         }
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigFilter {
     #[serde(rename = "type")]
@@ -69,7 +72,7 @@ impl ConfigNodeDir for MatcherConfigFilter {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherConfigRuleset {
     #[serde(rename = "type")]
@@ -84,7 +87,7 @@ impl ConfigNodeDir for MatcherConfigRuleset {
     }
 }
 
-#[derive(Debug, Default, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Version {
     #[allow(dead_code)]
@@ -106,6 +109,8 @@ impl MatcherConfigReader for FsMatcherConfigManagerV2<'_> {
 }
 
 async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
+    info!("Reading tornado processing tree configuration from {}", root_dir.display());
+
     let _: Version = parse_node_config_from_file(&root_dir).await?;
     let nodes = read_child_nodes_from_dir(root_dir, ConfigType::Root).await?;
     Ok(MatcherConfig::Filter {
@@ -125,18 +130,29 @@ async fn read_child_nodes_from_dir(
     config_type: ConfigType,
 ) -> Result<Vec<MatcherConfig>, MatcherConfigError> {
     let dir_entries = gather_dir_entries(dir).await?;
+    debug!("Found {} entries in the directory {}", dir_entries.len(), dir.display());
 
     let mut processing_nodes_futures = FuturesOrdered::new();
     for dir_entry in dir_entries {
+        trace!("Parsing directory entry {}", dir_entry.path().display());
+
         let file_type = match dir_entry.file_type().await {
             Ok(file_type) => file_type,
             Err(error) => {
-                return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
+                error!(
+                    "Could not load filetype for directory directory entry {}",
+                    dir_entry.path().display()
+                );
+                return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error });
             }
         };
 
         if file_type.is_file() {
             if dir_entry.file_name() == config_type.filename() {
+                debug!(
+                    "Skipping file {} because it is a node configuration.",
+                    config_type.filename()
+                );
                 continue;
             }
 
@@ -145,6 +161,7 @@ async fn read_child_nodes_from_dir(
                 continue;
             }
 
+            error!("Unexpected file {}", dir_entry.path().display());
             return Err(MatcherConfigError::UnexpectedFile { path: dir_entry.path(), config_type });
         }
 
@@ -185,13 +202,16 @@ async fn read_node_from_dir<T: AsRef<Path>>(
     let dir = dir.as_ref();
     match read_filter_from_dir(dir).await {
         Ok(config) => return Ok(FileEntry { path: dir.to_path_buf(), content: config }),
-        Err(MatcherConfigError::FileNotFound { .. }) => {}
+        Err(MatcherConfigError::FileNotFound { .. }) => {
+            trace!("Directory {} seems not to be a filter node.", dir.display())
+        }
         Err(error) => return Err(error),
     }
 
     match read_ruleset_from_dir(dir).await {
         Ok(config) => Ok(FileEntry { path: dir.to_path_buf(), content: config }),
         Err(MatcherConfigError::FileNotFound { .. }) => {
+            trace!("Directory {} seems not to be a ruleset node.", dir.display());
             Err(MatcherConfigError::UnknownNodeDir { path: dir.to_path_buf() })
         }
         Err(error) => Err(error),
@@ -199,7 +219,9 @@ async fn read_node_from_dir<T: AsRef<Path>>(
 }
 
 async fn read_filter_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
+    trace!("Reading filer node config file from disk.");
     let node: MatcherConfigFilter = parse_node_config_from_file(&dir).await?;
+    trace!("Reading filer node child nodes from disk.");
     let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigFilter::config_type()).await?;
 
     Ok(MatcherConfig::Filter { name: node.name, filter: node.filter, nodes: child_nodes })
@@ -212,7 +234,9 @@ async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfi
         path
     };
 
+    trace!("Reading ruleset node config file from disk.");
     let ruleset: MatcherConfigRuleset = parse_node_config_from_file(&dir).await?;
+    trace!("Reading ruleset node rules from disk.");
     let rules = read_rules_from_dir(&rules_dir_path).await?;
 
     Ok(MatcherConfig::Ruleset { name: ruleset.name, rules })
@@ -261,6 +285,12 @@ async fn parse_node_config_from_file<Data: DeserializeOwned + ConfigNodeDir>(
         path
     };
 
+    trace!(
+        "Try reading data of type {} from file {}",
+        std::any::type_name::<Data>(),
+        config_file_path.display()
+    );
+
     parse_from_file(&config_file_path).await
 }
 
@@ -280,17 +310,22 @@ async fn parse_from_file<Data: DeserializeOwned>(path: &Path) -> Result<Data, Ma
     let jd = &mut serde_json::Deserializer::from_str(json);
     match serde_path_to_error::deserialize(jd) {
         Ok(result) => Ok(result),
-        Err(error) => match error.inner().classify() {
-            Category::Io | Category::Eof => Err(MatcherConfigError::FormatError {
-                file: path.to_path_buf(),
-                error: error.into_inner(),
-            }),
-            Category::Syntax | Category::Data => Err(MatcherConfigError::DeserializationError {
-                file: path.to_path_buf(),
-                object_path: error.path().to_string(),
-                error: error.into_inner(),
-            }),
-        },
+        Err(error) => {
+            error!("Could not parse config from file {}. {}", path.display(), error);
+            match error.inner().classify() {
+                Category::Io | Category::Eof => Err(MatcherConfigError::FormatError {
+                    file: path.to_path_buf(),
+                    error: error.into_inner(),
+                }),
+                Category::Syntax | Category::Data => {
+                    Err(MatcherConfigError::DeserializationError {
+                        file: path.to_path_buf(),
+                        object_path: error.path().to_string(),
+                        error: error.into_inner(),
+                    })
+                }
+            }
+        }
     }
 }
 
@@ -302,10 +337,15 @@ async fn gather_dir_entries(dir: &Path) -> Result<Vec<DirEntry>, MatcherConfigEr
         }
     };
 
+    debug!("Collecting entries of directory {}", dir.display());
+
     let mut dir_entries = vec![];
     loop {
         match root_dir_iter.next_entry().await {
-            Ok(Some(entry)) => dir_entries.push(entry),
+            Ok(Some(entry)) => {
+                trace!("Found entry {}", entry.path().display());
+                dir_entries.push(entry)
+            }
             Ok(None) => break,
             Err(error) => {
                 return Err(MatcherConfigError::DirIoError { path: PathBuf::from(dir), error })
