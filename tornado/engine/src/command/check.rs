@@ -1,5 +1,4 @@
 use crate::config::parse_config_files;
-use tornado_engine_matcher::config::MatcherConfigReader;
 use tornado_engine_matcher::matcher::Matcher;
 
 pub async fn check(

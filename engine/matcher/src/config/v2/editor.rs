@@ -1,6 +1,5 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
-use crate::config::v1::fs::FsMatcherConfigManager;
 use crate::config::v2::error::DeploymentError;
 use crate::config::v2::{
     gather_dir_entries, parse_node_config_from_file, read_config_from_root_dir, ConfigNodeDir,
@@ -8,7 +7,7 @@ use crate::config::v2::{
     Version,
 };
 use crate::config::{
-    MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
+    v1, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
 };
 use crate::error::MatcherError;
 use crate::matcher::Matcher;
@@ -23,9 +22,9 @@ use tokio::io::AsyncWriteExt;
 const DRAFT_ID: &str = "draft_001";
 
 #[async_trait::async_trait(?Send)]
-impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
+impl MatcherConfigEditor for FsMatcherConfigManagerV2 {
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError> {
-        Ok(get_drafts(self.drafts_path).await?)
+        Ok(get_drafts(&self.drafts_path).await?)
     }
 
     async fn get_draft(&self, draft_id: &str) -> Result<MatcherConfigDraft, MatcherError> {
@@ -50,7 +49,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             path
         };
 
-        create_draft(self.root_path, &draft_path, &user, DRAFT_ID).await?;
+        create_draft(&self.root_path, &draft_path, &user, DRAFT_ID).await?;
         Ok(DRAFT_ID.to_string())
     }
 
@@ -92,7 +91,6 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
             path.push("config");
             path
         };
-
         atomic_deploy_config(&draft_config_dir, config).await?;
         Ok(())
     }
@@ -104,8 +102,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
         }
 
         let draft = self.get_draft(draft_id).await?;
-        atomic_deploy_config(self.root_path, &draft.config).await?;
-        self.delete_draft(draft_id).await?;
+        atomic_deploy_config(&self.root_path, &draft.config).await?;
         Ok(draft.config)
     }
 
@@ -152,7 +149,7 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
     }
 
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError> {
-        atomic_deploy_config(self.root_path, config).await?;
+        atomic_deploy_config(&self.root_path, config).await?;
         Ok(config.clone())
     }
 }
@@ -160,9 +157,17 @@ impl MatcherConfigEditor for FsMatcherConfigManagerV2<'_> {
 async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), MatcherError> {
     // Validate also regex and accessor, which the MatcherConfigValidator does not do.
     let _ = Matcher::build(config)?;
-    let tempdir = tempfile::tempdir().map_err(|err| MatcherError::InternalSystemError {
-        message: format!("Cannot create temporary directory. Err: {:?}", err),
-    })?;
+    let dir_canonical = match dir.canonicalize() {
+        Ok(parent) => parent,
+        Err(error) => {
+            return Err(MatcherConfigError::DirIoError { path: dir.to_path_buf(), error }.into())
+        }
+    };
+    let parent = dir_canonical.parent().unwrap_or(Path::new("/"));
+    let tempdir =
+        tempfile::tempdir_in(parent).map_err(|err| MatcherError::InternalSystemError {
+            message: format!("Cannot create temporary directory. Err: {:?}", err),
+        })?;
 
     serialize_config_node_to_file(tempdir.path(), &Version::default()).await?;
     match config {
@@ -177,18 +182,22 @@ async fn atomic_deploy_config(dir: &Path, config: &MatcherConfig) -> Result<(), 
     };
     sync_dir_to_disk(tempdir.path()).await?;
 
-    if let Err(error) = tokio::fs::remove_dir_all(&dir).await {
+    if let Err(error) = tokio::fs::remove_dir_all(&dir_canonical).await {
         // todo: improve in NEPROD-1658
         return Err(MatcherError::InternalSystemError {
-            message: format!("Cannot remove config directory {}. {}", dir.display(), error),
+            message: format!(
+                "Cannot remove config directory {}. {}",
+                dir_canonical.display(),
+                error
+            ),
         });
     }
 
     // todo: If the machine looses power here, or the kernel panics, we can loose the whole or parts of the configuration.
 
     // Replace the directory inode. This is an atomic operation to overwrite the directory.
-    if let Err(error) = tokio::fs::rename(tempdir.path(), dir).await {
-        return Err(DeploymentError::DirIo { error, path: dir.to_path_buf() }.into());
+    if let Err(error) = tokio::fs::rename(tempdir.path(), &dir_canonical).await {
+        return Err(DeploymentError::DirIo { error, path: dir_canonical.to_path_buf() }.into());
     }
 
     Ok(())
@@ -238,7 +247,7 @@ async fn deploy_filter_node(
         filter: filter.clone(),
     };
 
-    serialize_config_node_to_file(&dir, &config).await?;
+    serialize_config_node_to_file(dir, &config).await?;
     deploy_child_nodes_to_dir(dir, nodes).await?;
     sync_dir_to_disk(dir).await?;
 
@@ -251,7 +260,7 @@ async fn deploy_ruleset_node(
     rules: &[Rule],
 ) -> Result<(), DeploymentError> {
     let config = MatcherConfigRuleset { node_type: Default::default(), name: name.to_string() };
-    serialize_config_node_to_file(&dir, &config).await?;
+    serialize_config_node_to_file(dir, &config).await?;
     deploy_rules(dir, rules).await?;
     sync_dir_to_disk(dir).await?;
 
@@ -275,7 +284,7 @@ async fn deploy_rules(dir: &Path, rules: &[Rule]) -> Result<(), DeploymentError>
     Ok(())
 }
 
-async fn serialize_config_node_to_file<T: Serialize + ConfigNodeDir>(
+pub async fn serialize_config_node_to_file<T: Serialize + ConfigNodeDir>(
     dir: &Path,
     data: &T,
 ) -> Result<(), DeploymentError> {
@@ -314,6 +323,16 @@ async fn serialize_to_file<T: Serialize>(path: &Path, data: &T) -> Result<(), De
 
     if let Err(error) = file.sync_all().await {
         return Err(DeploymentError::FileIo { path: path.to_path_buf(), error });
+    }
+
+    let parent = path.parent().unwrap_or(Path::new("/"));
+    let parent_dir = match tokio::fs::File::open(parent).await {
+        Ok(parent_dir) => parent_dir,
+        Err(error) => return Err(DeploymentError::FileIo { path: path.to_path_buf(), error }),
+    };
+
+    if let Err(error) = parent_dir.sync_all().await {
+        return Err(DeploymentError::DirIo { path: path.to_path_buf(), error });
     }
 
     Ok(())
@@ -389,7 +408,7 @@ async fn get_drafts(drafts_dir: &Path) -> Result<Vec<String>, MatcherConfigError
 
 async fn get_draft_from_dir(draft_dir: &Path) -> Result<MatcherConfigDraft, MatcherConfigError> {
     debug!("Trying to load a draft from the directory {}", draft_dir.display());
-    let draft_data = parse_node_config_from_file::<MatcherConfigDraftData>(&draft_dir).await?;
+    let draft_data = parse_node_config_from_file::<MatcherConfigDraftData>(draft_dir).await?;
 
     let draft_config_dir = {
         let mut path = draft_dir.to_path_buf();
@@ -428,8 +447,8 @@ async fn create_draft(
             message: format!("Cannot create draft directory: {:?}", error),
         });
     };
-    serialize_config_node_to_file(&draft_dir, &draft_data).await?;
-    FsMatcherConfigManager::copy_and_override(processing_tree_dir, &draft_config_dir).await
+    serialize_config_node_to_file(draft_dir, &draft_data).await?;
+    v1::fs::copy_and_override(processing_tree_dir, &draft_config_dir).await
 }
 
 async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
@@ -443,13 +462,13 @@ async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
 
             Ok(())
         }
-        Err(error) => return Err(DeploymentError::FileIo { path: dir.to_path_buf(), error }),
+        Err(error) => Err(DeploymentError::FileIo { path: dir.to_path_buf(), error }),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::config::v1::editor::copy_recursive;
+    use crate::config::v1::fs::copy_recursive;
     use crate::config::v2::editor::{get_draft_from_dir, DRAFT_ID};
     use crate::config::v2::{parse_node_config_from_file, ConfigType, FsMatcherConfigManagerV2};
     use crate::config::{
@@ -533,11 +552,8 @@ mod tests {
     async fn matcher_config_editor_should_update_draft() {
         // Arrange
         let temp_dir = TempDir::new().unwrap();
-        let temp_temp_dir = temp_dir.path().to_path_buf();
-        std::mem::forget(temp_dir);
-
         let config_manager =
-            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_temp_dir.as_path());
+            FsMatcherConfigManagerV2::new(Path::new(TEST_CONFIG_DIR), temp_dir.path());
         let draft_id = config_manager.create_draft(String::from("pippo")).await.unwrap();
 
         let new_draft_path = {

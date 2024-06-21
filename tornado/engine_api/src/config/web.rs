@@ -20,11 +20,11 @@ use tornado_engine_api_dto::config::{
     MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
     ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto, RulePositionDto, TreeInfoDto,
 };
-use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
+use tornado_engine_matcher::config::MatcherConfigEditor;
 
 pub fn build_config_endpoints<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     data: ApiData<ConfigApi<A, CM>>,
 ) -> Scope {
@@ -53,7 +53,7 @@ pub fn build_config_endpoints<
 
 pub fn build_config_v2_endpoints<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     data: ApiDataV2<ConfigApi<A, CM>>,
 ) -> Scope {
@@ -187,7 +187,7 @@ struct DraftPathWithNode {
 
 async fn get_current_tree_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
@@ -202,7 +202,7 @@ async fn get_current_tree_node<
 
 async fn get_current_tree_node_with_node_path<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<AuthAndNodePath>,
@@ -222,7 +222,7 @@ async fn get_current_tree_node_with_node_path<
 
 async fn get_current_tree_node_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<AuthAndNodePath>,
@@ -239,7 +239,7 @@ async fn get_current_tree_node_details<
 
 async fn get_draft_tree_node_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -260,7 +260,7 @@ async fn get_draft_tree_node_details<
 
 async fn create_draft_tree_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -301,7 +301,7 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
 
 async fn import_child_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -324,7 +324,7 @@ async fn import_child_node<
 
 async fn edit_draft_tree_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -347,7 +347,7 @@ async fn edit_draft_tree_node<
 
 async fn import_node_in_path<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -370,7 +370,7 @@ async fn import_node_in_path<
 
 async fn delete_draft_tree_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -386,7 +386,7 @@ async fn delete_draft_tree_node<
 
 async fn get_current_tree_info<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<String>,
@@ -400,7 +400,7 @@ async fn get_current_tree_info<
 
 async fn get_current_rule_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<RuleDetailsParams>,
@@ -421,7 +421,7 @@ async fn get_current_rule_details<
 
 async fn get_draft_rule_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
@@ -443,7 +443,7 @@ async fn get_draft_rule_details<
 
 async fn create_draft_rule_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsCreateParams>,
@@ -465,7 +465,7 @@ async fn create_draft_rule_details<
 
 async fn edit_draft_rule_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
@@ -488,7 +488,7 @@ async fn edit_draft_rule_details<
 
 async fn draft_move_rule<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
@@ -511,7 +511,7 @@ async fn draft_move_rule<
 
 async fn delete_draft_rule_details<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftRuleDetailsParams>,
@@ -532,7 +532,7 @@ async fn delete_draft_rule_details<
 
 async fn get_draft_tree_node<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
@@ -550,7 +550,7 @@ async fn get_draft_tree_node<
 
 async fn get_draft_tree_node_with_node_path<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -571,7 +571,7 @@ async fn get_draft_tree_node_with_node_path<
 
 async fn export_draft_tree_starting_from_node_path<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     endpoint_params: Path<DraftPathWithNode>,
@@ -605,7 +605,7 @@ async fn export_draft_tree_starting_from_node_path<
 
 async fn get_current_configuration<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi<A, CM>>>,
@@ -617,10 +617,7 @@ async fn get_current_configuration<
     Ok(Json(matcher_config_dto))
 }
 
-async fn get_drafts<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn get_drafts<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Vec<String>>> {
@@ -632,7 +629,7 @@ async fn get_drafts<
 
 async fn get_drafts_by_tenant<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     param_auth: Path<String>,
@@ -644,10 +641,7 @@ async fn get_drafts_by_tenant<
     Ok(Json(result))
 }
 
-async fn get_draft<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn get_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
@@ -659,10 +653,7 @@ async fn get_draft<
     Ok(Json(matcher_config_dto))
 }
 
-async fn create_draft<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn create_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<Id<String>>> {
@@ -674,7 +665,7 @@ async fn create_draft<
 
 async fn create_draft_in_tenant<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     param_auth: Path<String>,
@@ -686,10 +677,7 @@ async fn create_draft_in_tenant<
     Ok(Json(result))
 }
 
-async fn update_draft<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn update_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     draft_id: Path<String>,
     body: Json<MatcherConfigDto>,
@@ -702,10 +690,7 @@ async fn update_draft<
     Ok(Json(()))
 }
 
-async fn delete_draft<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn delete_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
@@ -718,7 +703,7 @@ async fn delete_draft<
 
 async fn delete_draft_in_tenant<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
@@ -730,10 +715,7 @@ async fn delete_draft_in_tenant<
     Ok(Json(()))
 }
 
-async fn deploy_draft<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
->(
+async fn deploy_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
     req: HttpRequest,
     draft_id: Path<String>,
     data: Data<ApiData<ConfigApi<A, CM>>>,
@@ -747,7 +729,7 @@ async fn deploy_draft<
 
 async fn deploy_draft_for_tenant<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
@@ -762,7 +744,7 @@ async fn deploy_draft_for_tenant<
 
 async fn draft_take_over<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     draft_id: Path<String>,
@@ -776,7 +758,7 @@ async fn draft_take_over<
 
 async fn draft_take_over_for_tenant<
     A: ConfigApiHandler + 'static,
-    CM: MatcherConfigReader + MatcherConfigEditor + 'static,
+    CM: MatcherConfigEditor + ?Sized + 'static,
 >(
     req: HttpRequest,
     path: Path<DraftPath>,
@@ -810,7 +792,7 @@ mod test {
     use tornado_engine_matcher::config::filter::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
-        Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
+        Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,
     };
     use tornado_engine_matcher::error::MatcherError;
 

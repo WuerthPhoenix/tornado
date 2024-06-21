@@ -1,4 +1,5 @@
 {
+  "name": "elasticsearch",
   "description": "An example rule that triggers an Elasticsearch action",
   "continue": true,
   "active": true,

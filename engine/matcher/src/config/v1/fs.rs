@@ -1,6 +1,5 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
-use crate::config::v1::editor::is_dir;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
 use log::*;
@@ -8,13 +7,14 @@ use std::ffi::OsStr;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use tokio::fs::DirEntry;
+use tokio::fs::{metadata, remove_dir_all, DirEntry};
 use tokio::fs::{read_dir, read_to_string};
 
 pub const ROOT_NODE_NAME: &str = "root";
 
 pub struct FsMatcherConfigManager {
     pub(crate) root_path: String,
+    #[allow(dead_code)]
     pub(crate) drafts_path: String,
 }
 
@@ -300,6 +300,60 @@ impl FsMatcherConfigManager {
         }
         Ok(result)
     }
+}
+
+#[inline]
+pub async fn is_dir(path: &Path) -> bool {
+    metadata(&path).await.map(|metadata| metadata.is_dir()).unwrap_or(false)
+}
+
+#[inline]
+pub async fn exists(path: &Path) -> bool {
+    metadata(&path).await.is_ok()
+}
+
+pub(crate) async fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
+    source_dir: S,
+    dest_dir: D,
+) -> Result<(), MatcherError> {
+    if exists(dest_dir.as_ref()).await {
+        remove_dir_all(dest_dir.as_ref()).await.map_err(|err| {
+            MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot delete directory [{}]. Err: {:?}",
+                    dest_dir.as_ref().display(),
+                    err
+                ),
+            }
+        })?;
+    }
+
+    copy_recursive(source_dir.as_ref().into(), dest_dir.as_ref().into()).await
+}
+
+pub(crate) async fn copy_recursive(
+    source_dir: PathBuf,
+    dest_dir: PathBuf,
+) -> Result<(), MatcherError> {
+    tokio::task::spawn_blocking(move || {
+
+        use fs_extra::dir::*;
+
+        let mut copy_options = CopyOptions::new();
+        copy_options.copy_inside = true;
+        copy(&source_dir, &dest_dir, &copy_options)
+            .map_err(|err| MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot copy configuration from [{}] [{}]. Err: {:?}",
+                    source_dir.display(),
+                    dest_dir.display(),
+                    err
+                ),
+            })
+            .map(|_| ())
+    }).await.map_err(|err| MatcherError::InternalSystemError {
+        message: format!("FsMatcherConfigManager - copy_recursive - Cannot execute Tokio internal task. Err: {:?}", err),
+    })?
 }
 
 #[cfg(test)]

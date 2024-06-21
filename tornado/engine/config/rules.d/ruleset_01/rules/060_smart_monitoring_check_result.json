@@ -1,4 +1,5 @@
 {
+  "name": "smart_monitoring_check_result",
   "description": "An example rule that triggers the smart monitoring check result action",
   "continue": true,
   "active": true,

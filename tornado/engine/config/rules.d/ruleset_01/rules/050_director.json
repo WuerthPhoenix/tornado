@@ -1,4 +1,5 @@
 {
+  "name": "director",
   "description": "An example rule that triggers the director action",
   "continue": true,
   "active": true,
