@@ -81,7 +81,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
             .ok_or(ApiError::NodeNotFoundError {
             message: format!("Node for relative path {:?} not found", relative_node_path),
         })?;
-        Ok(child_nodes.iter().map(ProcessingTreeNodeConfigDto::from).collect())
+        let has_iterator_ancestor =
+            filtered_matcher.has_iterator_in_path(absolute_node_path.as_slice());
+        Ok(child_nodes
+            .iter()
+            .map(|node| ProcessingTreeNodeConfigDto::convert(node, has_iterator_ancestor))
+            .collect())
     }
 
     pub async fn get_authorized_tree_info(
@@ -1035,6 +1040,7 @@ mod test {
             rules_count: 2,
             children_count: 2,
             description: "".to_string(),
+            has_iterator_ancestor: false,
             active: false,
         }];
         assert_eq!(
@@ -1091,6 +1097,7 @@ mod test {
             rules_count: 1,
             children_count: 2,
             description: "".to_string(),
+            has_iterator_ancestor: false,
             active: false,
         }];
         assert_eq!(res, expected_result);
@@ -1213,6 +1220,7 @@ mod test {
                 children_count: 0,
                 description: "".to_string(),
                 active: false,
+                has_iterator_ancestor: false,
             },
             ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
         ];

@@ -86,7 +86,8 @@ export type OperatorDto =
 export type RuleDto = {     name: string; description: string; continue: boolean; active:     boolean; constraint: ConstraintDto; actions: ActionDto [] };
 
 export type ProcessingTreeNodeConfigDto = 
- | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; active: boolean } 
+ | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; has_iterator_ancestor: boolean; active:     boolean } 
+ | {     type: "Iterator"; name: string; rules_count: number; children_count: number; description: string; active: boolean } 
  | { type: "Ruleset"; name: string; rules_count: number };
 
 export type ProcessingTreeNodeEditDto = 

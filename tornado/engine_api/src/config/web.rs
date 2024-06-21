@@ -1238,6 +1238,7 @@ mod test {
                 name: "child_1_1".to_owned(),
                 rules_count: 0,
                 children_count: 0,
+                has_iterator_ancestor: false,
                 description: "".to_string(),
                 active: false,
             },],

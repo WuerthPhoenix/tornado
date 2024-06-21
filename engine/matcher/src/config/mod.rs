@@ -148,6 +148,25 @@ impl MatcherConfig {
         }
     }
 
+    pub fn has_iterator_in_path(&self, path: &[&str]) -> bool {
+        if path.is_empty() {
+            return false;
+        }
+        // trim root from path.
+        self.has_iterator_in_path_inner(&path[1..])
+    }
+
+    fn has_iterator_in_path_inner(&self, path: &[&str]) -> bool {
+        match path {
+            [] => false,
+            [node_name, path @ ..] => match self.get_child_node_by_name(node_name) {
+                Some(MatcherConfig::Iterator { .. }) => true,
+                Some(node) => node.has_iterator_in_path(path),
+                None => false,
+            },
+        }
+    }
+
     // Returns the total amount of direct children of a node
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {
@@ -1847,5 +1866,40 @@ mod tests {
             Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
             err => unreachable!("{:?}", err),
         }
+    }
+
+    #[test]
+    fn should_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Iterator {
+                name: "iterator".to_string(),
+                iterator: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(has_iterator_ancestor);
+    }
+
+    #[test]
+    fn should_not_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Filter {
+                name: "iterator".to_string(),
+                filter: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(!has_iterator_ancestor);
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "pippo", "ruleset"]);
+        assert!(!has_iterator_ancestor);
     }
 }
