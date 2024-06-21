@@ -40,6 +40,9 @@ pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, 
             nodes: nodes.into_iter().map(processed_node_into_dto).collect::<Result<Vec<_>, _>>()?,
             filter: processed_filter_into_dto(filter),
         },
+        ProcessedNode::Iterator { .. } => {
+            todo!()
+        }
     })
 }
 

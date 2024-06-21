@@ -5,18 +5,21 @@ pub mod operator;
 
 use tracing::instrument;
 
+use crate::accessor::AccessorBuilder;
 use crate::config::rule::Rule;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::matcher::operator::true_operator;
 use crate::model::{
-    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
-    ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules,
+    InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration,
+    ProcessedIterator, ProcessedNode, ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus,
+    ProcessedRules,
 };
 use crate::validator::MatcherConfigValidator;
 use log::*;
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
+use tornado_common_parser::AccessorExpression;
 
 /// The Matcher's internal Rule representation, which contains the operators and executors built
 ///   from the config::rule::Rule.
@@ -37,6 +40,7 @@ pub struct MatcherFilter {
 
 pub enum ProcessingNode {
     Filter { name: String, filter: MatcherFilter, nodes: Vec<ProcessingNode> },
+    Iterator { name: String, target: AccessorExpression, nodes: Vec<ProcessingNode> },
     Ruleset { name: String, rules: Vec<MatcherRule> },
 }
 
@@ -114,16 +118,16 @@ impl Matcher {
                     nodes: matcher_nodes,
                 })
             }
-            MatcherConfig::Iterator { name, .. } => {
-                // ToDo : TOR-578
-                Ok(ProcessingNode::Filter {
-                    name: name.to_string(),
-                    filter: MatcherFilter {
-                        active: false,
-                        filter: Box::new(true_operator::True {}),
-                    },
-                    nodes: vec![],
-                })
+            MatcherConfig::Iterator { name, iterator, nodes } => {
+                let builder = AccessorBuilder::new();
+                let exp = builder.build(name, iterator.target())?.try_as_expression()?;
+                let children = nodes
+                    .iter()
+                    .filter(|_| iterator.is_active())
+                    .map(Matcher::build_processing_tree)
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(ProcessingNode::Iterator { name: name.clone(), target: exp, nodes: children })
             }
         }
     }
@@ -151,6 +155,9 @@ impl Matcher {
             }
             ProcessingNode::Ruleset { name, rules } => {
                 Matcher::process_rules(name, rules, internal_event, include_metadata)
+            }
+            ProcessingNode::Iterator { name, target, nodes } => {
+                Matcher::process_iterator(name, target, nodes, internal_event, include_metadata)
             }
         }
     }
@@ -190,6 +197,92 @@ impl Matcher {
             name: filter_name.to_owned(),
             filter: ProcessedFilter { status: filter_status },
             nodes: result_nodes,
+        }
+    }
+
+    #[instrument(level = "debug", skip_all, fields(otel.name = format ! ("Process Iterator: {}", name).as_str()))]
+    fn process_iterator(
+        name: &str,
+        target: &AccessorExpression,
+        nodes: &[ProcessingNode],
+        event: &Value,
+        include_metadata: bool,
+    ) -> ProcessedNode {
+        trace!("Matcher process - check matching of iterator: [{}]", name);
+
+        let Some(target) = target.parse_value(event) else {
+            // ToDo: Improve in NEPROD-1682
+            return ProcessedNode::Iterator {
+                name: name.to_string(),
+                iterator: ProcessedIterator::AccessorError,
+                events: vec![],
+            };
+        };
+
+        match target.as_ref() {
+            Value::Array(slice) => {
+                let iterator = slice.iter().enumerate();
+                Matcher::iterate_over(name, iterator, event, nodes, include_metadata)
+            }
+            Value::Object(map) => {
+                let iterator =
+                    map.keys().flat_map(|key| map.get(key).map(|value| (key.as_str(), value)));
+                Matcher::iterate_over(name, iterator, event, nodes, include_metadata)
+            }
+            _ => {
+                return ProcessedNode::Iterator {
+                    name: name.to_string(),
+                    iterator: ProcessedIterator::TypeError,
+                    events: vec![],
+                }
+            }
+        }
+    }
+
+    fn iterate_over<'a, Key, Iter>(
+        name: &str,
+        iterator: Iter,
+        event: &Value,
+        nodes: &[ProcessingNode],
+        include_metadata: bool,
+    ) -> ProcessedNode
+    where
+        Key: Into<Value> + Copy,
+        Iter: Iterator<Item = (Key, &'a Value)>,
+    {
+        let mut processed_events = vec![];
+        for (iteration, item) in iterator {
+            let mut event = event.clone();
+            let Some(event_inner) = event.as_object_mut() else {
+                continue;
+            };
+
+            let Some(iterator) = event_inner.entry("iterator").or_insert(json!({})).as_object_mut()
+            else {
+                // we just inserted it as an iterator. This path will not be taken.
+                continue;
+            };
+
+            iterator.insert("iteration".to_string(), iteration.into());
+            iterator.insert("item".to_string(), item.clone());
+
+            let mut processed_nodes = vec![];
+            for node in nodes {
+                let processed_node = Matcher::process_node(node, &event, include_metadata);
+                processed_nodes.push(processed_node)
+            }
+
+            processed_events.push(if include_metadata {
+                ProcessedIteration { event, result: processed_nodes }
+            } else {
+                ProcessedIteration { event: Value::Null, result: processed_nodes }
+            })
+        }
+
+        ProcessedNode::Iterator {
+            name: name.to_string(),
+            iterator: ProcessedIterator::Matched,
+            events: vec![],
         }
     }
 
@@ -832,11 +925,9 @@ mod test {
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
 
-                assert!(processed_rule
-                    .message
-                    .clone()
-                    .unwrap()
-                    .contains(r#"parser: Exp { keys: [Map { key: \"missing\" }] } "#))
+                assert!(processed_rule.message.clone().unwrap().contains(
+                    r#"parser: Exp(AccessorExpression { keys: [Map { key: \"missing\" }] })"#
+                ))
             }
             _ => unreachable!(),
         };
