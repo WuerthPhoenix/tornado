@@ -77,7 +77,7 @@ pub fn matcher_config_filter(
         }
         (
             NodeFilter::SelectedChildren(selected_children),
-            MatcherConfig::Iterator { name, target, nodes },
+            MatcherConfig::Iterator { name, iterator, nodes },
         ) => {
             let children: Vec<_> = nodes
                 .iter()
@@ -89,7 +89,7 @@ pub fn matcher_config_filter(
             }
             Some(MatcherConfig::Iterator {
                 name: name.to_owned(),
-                target: target.to_owned(),
+                iterator: iterator.to_owned(),
                 nodes: children,
             })
         }

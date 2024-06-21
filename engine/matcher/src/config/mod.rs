@@ -1,4 +1,4 @@
-use crate::config::filter::Filter;
+use crate::config::filter::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
@@ -39,7 +39,7 @@ impl ConfigNodeDir for MatcherConfigDraftData {
 #[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
-    Iterator { name: String, target: String, nodes: Vec<MatcherConfig> },
+    Iterator { name: String, iterator: MatcherIterator, nodes: Vec<MatcherConfig> },
     Ruleset { name: String, rules: Vec<Rule> },
 }
 
