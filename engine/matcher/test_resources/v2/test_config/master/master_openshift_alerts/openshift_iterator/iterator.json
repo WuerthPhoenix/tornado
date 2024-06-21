@@ -1,5 +1,7 @@
 {
   "type": "iterator",
   "name": "openshift_iterator",
+  "description": "This iterator iterates over the alerts sent by openshift.",
+  "active": true,
   "target": "${event.payload.alerts}"
 }

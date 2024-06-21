@@ -1,8 +1,8 @@
 pub mod id;
 
-use crate::config::filter::Filter;
+use crate::config::filter::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
-use crate::config::{filter, MatcherConfig};
+use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use log::*;
 use std::fmt::{Display, Formatter};
@@ -56,8 +56,8 @@ impl MatcherConfigValidator {
             MatcherConfig::Filter { name, filter, nodes } => {
                 self.validate_filter(name, filter, nodes, parent)
             }
-            MatcherConfig::Iterator { name, target, nodes } => {
-                self.validate_iterator(name, target, nodes, parent)
+            MatcherConfig::Iterator { name, iterator, nodes } => {
+                self.validate_iterator(name, iterator, nodes, parent)
             }
         }
     }
@@ -85,7 +85,7 @@ impl MatcherConfigValidator {
     fn validate_iterator(
         &self,
         name: &str,
-        _target: &str,
+        _target: &MatcherIterator,
         nodes: &[MatcherConfig],
         parent: &NodePath,
     ) -> Result<(), MatcherError> {

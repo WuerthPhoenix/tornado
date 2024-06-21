@@ -1,7 +1,7 @@
 mod editor;
 mod error;
 
-use crate::config::filter::Filter;
+use crate::config::filter::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 pub use crate::config::v2::error::MatcherConfigError;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
@@ -109,7 +109,8 @@ pub struct MatcherConfigIterator {
     #[allow(dead_code)]
     node_type: MustBe!("iterator"),
     name: String,
-    target: String,
+    #[serde(flatten)]
+    iterator: MatcherIterator,
 }
 
 impl ConfigNodeDir for MatcherConfigIterator {
@@ -283,7 +284,7 @@ async fn read_iterator_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConf
     trace!("Reading filer node child nodes from disk.");
     let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigIterator::config_type()).await?;
 
-    Ok(MatcherConfig::Iterator { name: node.name, target: node.target, nodes: child_nodes })
+    Ok(MatcherConfig::Iterator { name: node.name, iterator: node.iterator, nodes: child_nodes })
 }
 
 async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
@@ -483,9 +484,9 @@ mod tests {
         let config: MatcherConfigIterator = parse_from_file(Path::new(&path)).await.unwrap();
 
         match config {
-            MatcherConfigIterator { node_type: MustBe!("iterator"), name, target } => {
+            MatcherConfigIterator { node_type: MustBe!("iterator"), name, iterator } => {
                 assert_eq!("openshift_iterator", name);
-                assert_eq!("${event.payload.alerts}", target);
+                assert_eq!("${event.payload.alerts}", &iterator.target);
             }
             result => panic!("{:#?}", result),
         }
@@ -613,7 +614,7 @@ mod tests {
         let config = read_iterator_from_dir(Path::new(&path)).await.unwrap();
 
         match config {
-            MatcherConfig::Iterator { name, target, nodes } => {
+            MatcherConfig::Iterator { name, nodes, .. } => {
                 assert_eq!("openshift_iterator", name);
                 assert_eq!(1, nodes.len());
             }
