@@ -209,8 +209,8 @@ impl Matcher {
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of iterator: [{}]", name);
-
-        let Some(target) = target.parse_value(event) else {
+        let internal_event = InternalEvent { event, extracted_variables: &mut Default::default() };
+        let Some(target) = target.parse_value(&internal_event) else {
             // ToDo: Improve in NEPROD-1682
             return ProcessedNode::Iterator {
                 name: name.to_string(),
@@ -251,9 +251,9 @@ impl Matcher {
         Iter: Iterator<Item = (Key, &'a Value)>,
     {
         let mut processed_events = vec![];
+        let mut iterator_event = event.clone();
         for (iteration, item) in iterator {
-            let mut event = event.clone();
-            let Some(event_inner) = event.as_object_mut() else {
+            let Some(event_inner) = iterator_event.as_object_mut() else {
                 continue;
             };
 
@@ -268,21 +268,24 @@ impl Matcher {
 
             let mut processed_nodes = vec![];
             for node in nodes {
-                let processed_node = Matcher::process_node(node, &event, include_metadata);
+                let processed_node = Matcher::process_node(node, &iterator_event, include_metadata);
                 processed_nodes.push(processed_node)
             }
 
-            processed_events.push(if include_metadata {
-                ProcessedIteration { event, result: processed_nodes }
+            if include_metadata {
+                processed_events
+                    .push(ProcessedIteration { event: iterator_event, result: processed_nodes });
+                iterator_event = event.clone();
             } else {
-                ProcessedIteration { event: Value::Null, result: processed_nodes }
-            })
+                processed_events
+                    .push(ProcessedIteration { event: Value::Null, result: processed_nodes });
+            }
         }
 
         ProcessedNode::Iterator {
             name: name.to_string(),
             iterator: ProcessedIterator::Matched,
-            events: vec![],
+            events: processed_events,
         }
     }
 
@@ -401,10 +404,12 @@ mod test {
     use crate::config::rule::{
         ConfigAction, Constraint, Extractor, ExtractorRegex, Operator, Rule,
     };
-    use crate::config::Defaultable;
+    use crate::config::v2::{parse_from_file, FsMatcherConfigManagerV2};
+    use crate::config::{Defaultable, MatcherConfigReader};
     use serde_json::json;
     use std::collections::HashMap;
-    use tornado_common_api::{Event, Payload, ValueExt, ValueGet};
+    use std::path::Path;
+    use tornado_common_api::{Action, Event, Payload, ValueExt, ValueGet};
 
     #[test]
     fn should_build_the_matcher_with_a_rule_set() {
@@ -592,6 +597,108 @@ mod test {
             }
             _ => unreachable!(),
         }
+    }
+
+    #[test]
+    fn should_build_a_iterator_processing_node() {
+        let config = MatcherConfig::Iterator {
+            name: "master_iterator".to_string(),
+            iterator: MatcherIterator {
+                description: "...".to_string(),
+                active: true,
+                target: "${event.payload}".to_string(),
+            },
+            nodes: vec![],
+        };
+
+        let matcher = Matcher::build_processing_tree(&config).unwrap();
+
+        match matcher {
+            ProcessingNode::Iterator { target, .. } => {
+                assert_eq!(2, target.keys.len());
+            }
+            _ => unreachable!(),
+        };
+    }
+
+    #[tokio::test]
+    async fn should_process_data() {
+        let config = FsMatcherConfigManagerV2::new("./test_resources/v2/test_config_iterator/", "")
+            .get_config()
+            .await
+            .unwrap();
+
+        let processing_node = Matcher::build(&config).unwrap();
+
+        let test_event: Value =
+            parse_from_file(Path::new("./test_resources/test_events/openshift_webhook_event.json"))
+                .await
+                .unwrap();
+
+        let result = processing_node.process(test_event, true);
+
+        let master = match &result.result {
+            ProcessedNode::Filter { name, filter, nodes } => {
+                assert_eq!("root", name);
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(1, nodes.len());
+                &nodes[0]
+            }
+            result => unreachable!("{:?}", result),
+        };
+
+        let iterator_filter = match master {
+            ProcessedNode::Filter { name, filter, nodes } => {
+                assert_eq!("master", name);
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(1, nodes.len());
+                &nodes[0]
+            }
+            result => unreachable!("{:?}", result),
+        };
+
+        let iterator = match iterator_filter {
+            ProcessedNode::Filter { name, filter, nodes } => {
+                assert_eq!("prometheus_alert_manager", name);
+                assert_eq!(ProcessedFilterStatus::Matched, filter.status);
+                assert_eq!(1, nodes.len());
+                &nodes[0]
+            }
+            result => unreachable!("{:?}", result),
+        };
+
+        let [event1, event2, event3, event4, event5] = match iterator {
+            ProcessedNode::Iterator { name, iterator, events } => {
+                assert_eq!("openshift_iterator", name);
+                assert_eq!(&ProcessedIterator::Matched, iterator);
+                assert_eq!(5, events.len());
+                [&events[0], &events[1], &events[2], &events[3], &events[4]]
+            }
+            result => unreachable!("{:?}", result),
+        };
+
+        assert_eq!(0, event1.event["iterator"]["iteration"]);
+        assert_eq!(1, event2.event["iterator"]["iteration"]);
+        assert_eq!(2, event3.event["iterator"]["iteration"]);
+        assert_eq!(3, event4.event["iterator"]["iteration"]);
+        assert_eq!(4, event5.event["iterator"]["iteration"]);
+
+        fn collect_actions(result: ProcessedNode) -> Vec<Action> {
+            match result {
+                ProcessedNode::Filter { nodes, .. } => {
+                    nodes.into_iter().flat_map(collect_actions).collect()
+                }
+                ProcessedNode::Iterator { events, .. } => {
+                    events.into_iter().flat_map(|e| e.result).flat_map(collect_actions).collect()
+                }
+                ProcessedNode::Ruleset { rules, .. } => {
+                    rules.rules.into_iter().flat_map(|r| r.actions).collect()
+                }
+            }
+        }
+
+        let actions = collect_actions(result.result);
+        assert_eq!(15, actions.len());
     }
 
     #[test]

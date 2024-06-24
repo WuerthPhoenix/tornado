@@ -354,7 +354,9 @@ async fn parse_node_config_from_file<Data: DeserializeOwned + ConfigNodeDir>(
     parse_from_file(&config_file_path).await
 }
 
-async fn parse_from_file<Data: DeserializeOwned>(path: &Path) -> Result<Data, MatcherConfigError> {
+pub(crate) async fn parse_from_file<Data: DeserializeOwned>(
+    path: &Path,
+) -> Result<Data, MatcherConfigError> {
     let content = match tokio::fs::read_to_string(&path).await {
         Ok(content) => content,
         Err(error) => {
