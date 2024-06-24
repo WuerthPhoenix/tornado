@@ -4,7 +4,7 @@ use tornado_engine_api_dto::config::{
     MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
     ProcessingTreeNodeEditDto, RuleDto,
 };
-use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::filter::{Filter, MatcherIterator};
 use tornado_engine_matcher::config::rule::{
     ConfigAction, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
 };
@@ -151,6 +151,13 @@ pub fn processing_tree_node_details_dto_into_matcher_config(
             MatcherConfig::Filter {
                 name,
                 filter: Filter { description, filter: filter_matcher_config, active },
+                nodes: vec![],
+            }
+        }
+        ProcessingTreeNodeEditDto::Iterator { name, description, target, active } => {
+            MatcherConfig::Iterator {
+                name,
+                iterator: MatcherIterator::new(description, active, target),
                 nodes: vec![],
             }
         }

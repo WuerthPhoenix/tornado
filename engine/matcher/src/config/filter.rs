@@ -28,6 +28,10 @@ pub struct MatcherIterator {
 }
 
 impl MatcherIterator {
+    pub fn new(description: String, active: bool, target: String) -> MatcherIterator {
+        MatcherIterator { description, active, target }
+    }
+
     pub fn is_active(&self) -> bool {
         self.active
     }

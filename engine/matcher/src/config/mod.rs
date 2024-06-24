@@ -161,7 +161,7 @@ impl MatcherConfig {
             [] => false,
             [node_name, path @ ..] => match self.get_child_node_by_name(node_name) {
                 Some(MatcherConfig::Iterator { .. }) => true,
-                Some(node) => node.has_iterator_in_path(path),
+                Some(node) => node.has_iterator_in_path_inner(path),
                 None => false,
             },
         }

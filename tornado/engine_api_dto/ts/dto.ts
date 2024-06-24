@@ -92,6 +92,7 @@ export type ProcessingTreeNodeConfigDto =
 
 export type ProcessingTreeNodeEditDto = 
  | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
+ | {     type: "Iterator"; name: string; description: string; target: string; active: boolean } 
  | { type: "Ruleset"; name: string };
 
 export type ProcessingTreeNodeDetailsDto = 

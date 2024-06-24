@@ -301,6 +301,7 @@ pub enum ProcessingTreeNodeDetailsDto {
 #[serde(tag = "type")]
 pub enum ProcessingTreeNodeEditDto {
     Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Iterator { name: String, description: String, target: String, active: bool },
     Ruleset { name: String },
 }
 
