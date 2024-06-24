@@ -123,6 +123,7 @@ export enum ProcessedFilterStatusDto { Matched = "Matched", NotMatched = "NotMat
 
 export type ProcessedNodeDto = 
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
+ | { type: "Iterator"; name: string; events: ProcessedIteratorDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };

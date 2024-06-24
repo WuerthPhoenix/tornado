@@ -1,0 +1,194 @@
+{
+  "created_ms": 1712218875257,
+  "metadata": {
+    "tenant_id": "master",
+    "trace_context": {
+      "traceparent": "00-6728a51b76579c03989692c1d700a4eb-4d957c7639c4a979-00",
+      "tracestate": ""
+    }
+  },
+  "payload": {
+    "data": {
+      "alerts": [
+        {
+          "annotations": {
+            "description": "Storage cluster is in warning state for more than 15m.",
+            "message": "Storage cluster is in degraded state",
+            "severity_level": "critical",
+            "storage_type": "ceph"
+          },
+          "endsAt": "0001-01-01T00:00:00Z",
+          "fingerprint": "f25476b813847103",
+          "generatorURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring/graph?g0.expr=ceph_health_status%7Bjob%3D%22rook-ceph-mgr%22%7D+%3D%3D+1&g0.tab=1",
+          "labels": {
+            "alertname": "CephClusterWarningState",
+            "container": "mgr",
+            "endpoint": "http-metrics",
+            "instance": "10.128.2.35:9283",
+            "job": "rook-ceph-mgr",
+            "managedBy": "ocs-storagecluster",
+            "namespace": "openshift-storage",
+            "openshift_io_alert_source": "platform",
+            "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+            "prometheus": "openshift-monitoring/k8s",
+            "service": "rook-ceph-mgr",
+            "severity": "critical"
+          },
+          "startsAt": "2024-04-02T22:09:21.133Z",
+          "status": "firing"
+        },
+        {
+          "annotations": {
+            "description": "104 Ceph OSD requests are taking too long to process. Please check ceph status to find out the cause.",
+            "message": "OSD requests are taking too long to process.",
+            "severity_level": "warning",
+            "storage_type": "ceph"
+          },
+          "endsAt": "2024-04-04T08:05:15.107Z",
+          "fingerprint": "ca45b2793524edaf",
+          "generatorURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring/graph?g0.expr=ceph_healthcheck_slow_ops+%3E+0&g0.tab=1",
+          "labels": {
+            "alertname": "CephOSDSlowOps",
+            "container": "mgr",
+            "endpoint": "http-metrics",
+            "instance": "10.128.2.35:9283",
+            "job": "rook-ceph-mgr",
+            "managedBy": "ocs-storagecluster",
+            "namespace": "openshift-storage",
+            "openshift_io_alert_source": "platform",
+            "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+            "prometheus": "openshift-monitoring/k8s",
+            "service": "rook-ceph-mgr",
+            "severity": "warning"
+          },
+          "startsAt": "2024-04-04T07:56:15.107Z",
+          "status": "resolved"
+        },
+        {
+          "annotations": {
+            "description": "Ceph Monitor mon.ad on host node05.rdopenshift.si.wp.lan.62.62.10.in-addr.arpa has seen 1.42 leader changes per minute recently.",
+            "message": "Storage Cluster has seen many leader changes recently.",
+            "severity_level": "warning",
+            "storage_type": "ceph"
+          },
+          "endsAt": "0001-01-01T00:00:00Z",
+          "fingerprint": "8cc2655a068e8807",
+          "generatorURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring/graph?g0.expr=%28ceph_mon_metadata%7Bjob%3D%22rook-ceph-mgr%22%7D+%2A+on+%28ceph_daemon%2C+namespace%29+group_left+%28%29+%28rate%28ceph_mon_num_elections%7Bjob%3D%22rook-ceph-exporter%22%7D%5B5m%5D%29+%2A+60%29%29+%3E+0.95&g0.tab=1",
+          "labels": {
+            "alertname": "CephMonHighNumberOfLeaderChanges",
+            "ceph_daemon": "mon.ad",
+            "ceph_version": "ceph version 17.2.6-196.el9cp (cbbf2cfb549196ca18c0c9caff9124d83ed681a4) quincy (stable)",
+            "container": "mgr",
+            "endpoint": "http-metrics",
+            "hostname": "node05.rdopenshift.si.wp.lan.62.62.10.in-addr.arpa",
+            "instance": "10.128.2.35:9283",
+            "job": "rook-ceph-mgr",
+            "managedBy": "ocs-storagecluster",
+            "namespace": "openshift-storage",
+            "openshift_io_alert_source": "platform",
+            "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+            "prometheus": "openshift-monitoring/k8s",
+            "public_addr": "172.30.191.41",
+            "rank": "0",
+            "service": "rook-ceph-mgr",
+            "severity": "warning"
+          },
+          "startsAt": "2024-04-04T08:20:50.963Z",
+          "status": "firing"
+        },
+        {
+          "annotations": {
+            "description": "Ceph Monitor mon.ag on host node03.rdopenshift.si.wp.lan has seen 1.42 leader changes per minute recently.",
+            "message": "Storage Cluster has seen many leader changes recently.",
+            "severity_level": "warning",
+            "storage_type": "ceph"
+          },
+          "endsAt": "0001-01-01T00:00:00Z",
+          "fingerprint": "0a437c880bb0af64",
+          "generatorURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring/graph?g0.expr=%28ceph_mon_metadata%7Bjob%3D%22rook-ceph-mgr%22%7D+%2A+on+%28ceph_daemon%2C+namespace%29+group_left+%28%29+%28rate%28ceph_mon_num_elections%7Bjob%3D%22rook-ceph-exporter%22%7D%5B5m%5D%29+%2A+60%29%29+%3E+0.95&g0.tab=1",
+          "labels": {
+            "alertname": "CephMonHighNumberOfLeaderChanges",
+            "ceph_daemon": "mon.ag",
+            "ceph_version": "ceph version 17.2.6-196.el9cp (cbbf2cfb549196ca18c0c9caff9124d83ed681a4) quincy (stable)",
+            "container": "mgr",
+            "endpoint": "http-metrics",
+            "hostname": "node03.rdopenshift.si.wp.lan",
+            "instance": "10.128.2.35:9283",
+            "job": "rook-ceph-mgr",
+            "managedBy": "ocs-storagecluster",
+            "namespace": "openshift-storage",
+            "openshift_io_alert_source": "platform",
+            "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+            "prometheus": "openshift-monitoring/k8s",
+            "public_addr": "172.30.241.196",
+            "rank": "1",
+            "service": "rook-ceph-mgr",
+            "severity": "warning"
+          },
+          "startsAt": "2024-04-04T08:20:50.963Z",
+          "status": "firing"
+        },
+        {
+          "annotations": {
+            "description": "Ceph Monitor mon.aj on host node05.rdopenshift.si.wp.lan.62.62.10.in-addr.arpa has seen 1.02 leader changes per minute recently.",
+            "message": "Storage Cluster has seen many leader changes recently.",
+            "severity_level": "warning",
+            "storage_type": "ceph"
+          },
+          "endsAt": "0001-01-01T00:00:00Z",
+          "fingerprint": "9a11b65cdbf34460",
+          "generatorURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring/graph?g0.expr=%28ceph_mon_metadata%7Bjob%3D%22rook-ceph-mgr%22%7D+%2A+on+%28ceph_daemon%2C+namespace%29+group_left+%28%29+%28rate%28ceph_mon_num_elections%7Bjob%3D%22rook-ceph-exporter%22%7D%5B5m%5D%29+%2A+60%29%29+%3E+0.95&g0.tab=1",
+          "labels": {
+            "alertname": "CephMonHighNumberOfLeaderChanges",
+            "ceph_daemon": "mon.aj",
+            "ceph_version": "ceph version 17.2.6-196.el9cp (cbbf2cfb549196ca18c0c9caff9124d83ed681a4) quincy (stable)",
+            "container": "mgr",
+            "endpoint": "http-metrics",
+            "hostname": "node05.rdopenshift.si.wp.lan.62.62.10.in-addr.arpa",
+            "instance": "10.128.2.35:9283",
+            "job": "rook-ceph-mgr",
+            "managedBy": "ocs-storagecluster",
+            "namespace": "openshift-storage",
+            "openshift_io_alert_source": "platform",
+            "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+            "prometheus": "openshift-monitoring/k8s",
+            "public_addr": "172.30.177.99",
+            "rank": "2",
+            "service": "rook-ceph-mgr",
+            "severity": "warning"
+          },
+          "startsAt": "2024-04-04T08:20:50.963Z",
+          "status": "firing"
+        }
+      ],
+      "commonAnnotations": {
+        "severity_level": "warning",
+        "storage_type": "ceph"
+      },
+      "commonLabels": {
+        "container": "mgr",
+        "endpoint": "http-metrics",
+        "instance": "10.128.2.35:9283",
+        "job": "rook-ceph-mgr",
+        "managedBy": "ocs-storagecluster",
+        "namespace": "openshift-storage",
+        "openshift_io_alert_source": "platform",
+        "pod": "rook-ceph-mgr-a-85bcddd58-6xbd4",
+        "prometheus": "openshift-monitoring/k8s",
+        "service": "rook-ceph-mgr",
+        "severity": "warning"
+      },
+      "externalURL": "https://console-openshift-console.apps.rdopenshift.si.wp.lan/monitoring",
+      "groupKey": "{}/{severity=~\"warning|critical\"}:{namespace=\"openshift-storage\"}",
+      "groupLabels": {
+        "namespace": "openshift-storage"
+      },
+      "receiver": "Tornado",
+      "status": "firing",
+      "truncatedAlerts": 0,
+      "version": "4"
+    }
+  },
+  "trace_id": null,
+  "type": "prometheus_alertmanager"
+}

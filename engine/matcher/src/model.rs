@@ -22,7 +22,7 @@ pub struct ProcessedFilter {
 }
 
 // ToDo: Improve in NEPROD-1682 and NEPROD-1658
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ProcessedIterator {
     Matched,
     AccessorError,

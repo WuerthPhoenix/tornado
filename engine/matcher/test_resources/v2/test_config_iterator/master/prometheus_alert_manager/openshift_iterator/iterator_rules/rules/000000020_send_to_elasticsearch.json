@@ -1,0 +1,21 @@
+{
+  "name": "send_to_elasticsearch",
+  "description": "save a document for each iteration in elasticsearch",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "elasticsearch",
+      "payload": {
+        "data": {
+          "event": "${event.iterator.item}"
+        },
+        "endpoint": "https://elasticsearch.neteyelocal:9200",
+        "index": "tornado-${event.type}"
+      }
+    }
+  ]
+}
