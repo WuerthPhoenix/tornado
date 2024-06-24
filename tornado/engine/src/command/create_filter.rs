@@ -48,6 +48,10 @@ fn add_filter(
             let node_with_same_name = nodes.iter_mut().find(|node| match node {
                 MatcherConfig::Filter { name, .. } => name == filter_to_add_name,
                 MatcherConfig::Ruleset { name, .. } => name == filter_to_add_name,
+                MatcherConfig::Iterator { .. } => {
+                    // ToDo: TOR-592
+                    todo!()
+                }
             });
             if let Some(node_with_same_name) = node_with_same_name {
                 match node_with_same_name {
@@ -71,6 +75,10 @@ fn add_filter(
                             "Node with name {} already exists and needs to be updated. A backup Ruleset will be created with the name: {}.",
                             filter_to_add_name, name
                         );
+                    }
+                    MatcherConfig::Iterator { .. } => {
+                        // ToDo: TOR-592
+                        todo!()
                     }
                 }
             } else {
@@ -115,6 +123,10 @@ fn add_filter(
                 ),
             }),
         },
+        MatcherConfig::Iterator { .. } => {
+            // ToDo: TOR-592
+            todo!()
+        }
     }
 }
 
@@ -162,12 +174,10 @@ pub mod test {
                         assert_eq!(resulting_filter, &filter_to_add);
                         assert_eq!(nodes, &vec![]);
                     }
-                    MatcherConfig::Ruleset { .. } => {
-                        unreachable!()
-                    }
+                    node => panic!("{:?}", node),
                 }
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -213,7 +223,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -259,7 +269,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -320,7 +330,7 @@ pub mod test {
                     _ => unreachable!(),
                 };
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -399,7 +409,7 @@ pub mod test {
                     _ => unreachable!(),
                 };
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -462,7 +472,7 @@ pub mod test {
                 });
                 assert!(added_node.is_some());
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 }

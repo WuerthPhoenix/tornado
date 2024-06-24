@@ -1,4 +1,4 @@
-use crate::config::filter::Filter;
+use crate::config::filter::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
@@ -39,19 +39,22 @@ impl ConfigNodeDir for MatcherConfigDraftData {
 #[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
+    Iterator { name: String, iterator: MatcherIterator, nodes: Vec<MatcherConfig> },
     Ruleset { name: String, rules: Vec<Rule> },
 }
 
 impl MatcherConfig {
     pub fn get_name(&self) -> &str {
         match self {
-            MatcherConfig::Filter { name, .. } | MatcherConfig::Ruleset { name, .. } => name,
+            MatcherConfig::Filter { name, .. }
+            | MatcherConfig::Iterator { name, .. }
+            | MatcherConfig::Ruleset { name, .. } => name,
         }
     }
 
     fn get_child_node_by_name(&self, child_name: &str) -> Option<&MatcherConfig> {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter().find(|child| child.get_name() == child_name)
             }
             MatcherConfig::Ruleset { .. } => None,
@@ -60,7 +63,7 @@ impl MatcherConfig {
 
     fn get_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter_mut().find(|child| child.get_name() == child_name)
             }
             MatcherConfig::Ruleset { .. } => None,
@@ -126,6 +129,9 @@ impl MatcherConfig {
             MatcherConfig::Filter { .. } => Err(MatcherError::ConfigurationError {
                 message: "Cannot access rules in filter nodes".to_string(),
             }),
+            MatcherConfig::Iterator { .. } => Err(MatcherError::ConfigurationError {
+                message: "Cannot access rules in iterator nodes".to_string(),
+            }),
             MatcherConfig::Ruleset { rules, .. } => Ok(rules),
         }
     }
@@ -145,7 +151,9 @@ impl MatcherConfig {
     // Returns the total amount of direct children of a node
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {
-            MatcherConfig::Filter { nodes, .. } => nodes.len(),
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
+                nodes.len()
+            }
             MatcherConfig::Ruleset { .. } => 0,
         }
     }
@@ -153,7 +161,7 @@ impl MatcherConfig {
     // Returns the total amount of rules of the node and its children
     pub fn get_all_rules_count(&self) -> usize {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter().map(MatcherConfig::get_all_rules_count).sum()
             }
             MatcherConfig::Ruleset { rules, .. } => rules.len(),
@@ -184,7 +192,7 @@ impl MatcherConfig {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
                 message: "A ruleset cannot have children nodes".to_string(),
             }),
-            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.push(node.clone());
                 Ok(())
             }
@@ -1477,8 +1485,8 @@ mod tests {
         assert!(result.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1499,8 +1507,8 @@ mod tests {
         assert!(result.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1523,8 +1531,8 @@ mod tests {
         assert!(result2.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1544,8 +1552,8 @@ mod tests {
         assert!(result2.is_err());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);

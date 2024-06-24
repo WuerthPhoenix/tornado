@@ -19,6 +19,14 @@ impl Filter {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(deny_unknown_fields)]
+pub struct MatcherIterator {
+    description: String,
+    active: bool,
+    target: String,
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
