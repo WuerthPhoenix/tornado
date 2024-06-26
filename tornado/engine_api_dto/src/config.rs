@@ -294,6 +294,7 @@ impl ProcessingTreeNodeConfigDto {
 #[serde(tag = "type")]
 pub enum ProcessingTreeNodeDetailsDto {
     Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Iterator { name: String, description: String, active: bool, target: String },
     Ruleset { name: String, rules: Vec<RuleDetailsDto> },
 }
 
@@ -317,17 +318,20 @@ impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
                     Defaultable::Default { .. } => None,
                 },
             },
-
+            MatcherConfig::Iterator { name, iterator, .. } => {
+                ProcessingTreeNodeDetailsDto::Iterator {
+                    name: name.clone(),
+                    description: iterator.description().to_owned(),
+                    active: iterator.is_active(),
+                    target: iterator.target().to_owned(),
+                }
+            }
             MatcherConfig::Ruleset { name, rules, .. } => {
                 let rules_details_dto = rules.iter().map(RuleDetailsDto::from).collect();
                 ProcessingTreeNodeDetailsDto::Ruleset {
                     name: name.to_owned(),
                     rules: rules_details_dto,
                 }
-            }
-            MatcherConfig::Iterator { .. } => {
-                // ToDo: TOR-580
-                todo!()
             }
         }
     }
