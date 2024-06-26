@@ -12,6 +12,7 @@ pub struct AccessorValidationResult {
 }
 
 #[wasm_bindgen]
+#[derive(Copy, Clone)]
 pub enum AccessorType {
     None,
     Expression,
