@@ -4,12 +4,12 @@ use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
     ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
-    ProcessedIterationDto, ProcessedIteratorDto, ProcessedNodeDto, ProcessedRuleDto,
-    ProcessedRuleStatusDto, ProcessedRulesDto, SendEventRequestDto,
+    ProcessedIteratorDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto,
+    ProcessedRulesDto, SendEventRequestDto,
 };
 use tornado_engine_matcher::model::{
-    ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration, ProcessedIterator,
-    ProcessedNode, ProcessedRule, ProcessedRuleStatus, ProcessedRules,
+    ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIterator, ProcessedNode,
+    ProcessedRule, ProcessedRuleStatus, ProcessedRules,
 };
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
@@ -44,24 +44,13 @@ pub fn processed_node_into_dto(node: ProcessedNode) -> Result<ProcessedNodeDto, 
         ProcessedNode::Iterator { name, iterator, events } => ProcessedNodeDto::Iterator {
             name,
             iterator: processed_iterator_into_dto(iterator),
-            events: events
+            nodes: events
                 .into_iter()
-                .map(processed_iteration_into_dto)
+                .take(1)
+                .flat_map(|n| n.result)
+                .map(processed_node_into_dto)
                 .collect::<Result<Vec<_>, _>>()?,
         },
-    })
-}
-
-pub fn processed_iteration_into_dto(
-    iteration: ProcessedIteration,
-) -> Result<ProcessedIterationDto, Error> {
-    Ok(ProcessedIterationDto {
-        event: serde_json::from_value(iteration.event)?,
-        nodes: iteration
-            .result
-            .into_iter()
-            .map(processed_node_into_dto)
-            .collect::<Result<Vec<_>, _>>()?,
     })
 }
 
