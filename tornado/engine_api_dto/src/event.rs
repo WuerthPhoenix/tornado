@@ -37,12 +37,19 @@ pub struct ProcessedEventDto {
 #[serde(tag = "type")]
 pub enum ProcessedNodeDto {
     Filter { name: String, filter: ProcessedFilterDto, nodes: Vec<ProcessedNodeDto> },
-    Iterator { name: String, events: Vec<ProcessedIteratorDto> },
+    Iterator { name: String, iterator: ProcessedIteratorDto, events: Vec<ProcessedIterationDto> },
     Ruleset { name: String, rules: ProcessedRulesDto },
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct ProcessedIteratorDto {
+pub enum ProcessedIteratorDto {
+    Matched,
+    AccessorError,
+    TypeError,
+}
+
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct ProcessedIterationDto {
     pub event: EventDto,
     pub nodes: Vec<ProcessedNodeDto>,
 }
