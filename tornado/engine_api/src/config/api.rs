@@ -131,7 +131,7 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
                     TreeInfoDto { rules_count: rules.len(), ..Default::default() }
                 }
                 MatcherConfig::Iterator { nodes, .. } => {
-                    TreeInfoDto { iterator_count: 1, ..Default::default() }
+                    TreeInfoDto { iterators_count: 1, ..Default::default() }
                         + Self::fetch_tree_info(nodes)
                 }
             })
@@ -1496,7 +1496,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 2, filters_count: 4, iterator_count: 0 };
+        let expected = TreeInfoDto { rules_count: 2, filters_count: 4, iterators_count: 0 };
 
         assert_eq!(result, expected);
     }
@@ -1648,7 +1648,7 @@ mod test {
         let result2 = api.get_authorized_tree_info(&user2).await.unwrap();
 
         // Assert
-        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4, iterator_count: 0 };
+        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4, iterators_count: 0 };
         let expected2 = TreeInfoDto { rules_count: 1, ..Default::default() };
 
         assert_eq!(expected1, result1);
@@ -1692,7 +1692,7 @@ mod test {
             ],
         };
 
-        let expected = TreeInfoDto { rules_count: 3, filters_count: 3, iterator_count: 2 };
+        let expected = TreeInfoDto { rules_count: 3, filters_count: 3, iterators_count: 2 };
 
         let result =
             ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&[test_config]);

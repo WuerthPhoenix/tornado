@@ -341,7 +341,7 @@ impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
 pub struct TreeInfoDto {
     pub rules_count: usize,
     pub filters_count: usize,
-    pub iterator_count: usize,
+    pub iterators_count: usize,
 }
 
 impl Add for TreeInfoDto {
@@ -351,7 +351,7 @@ impl Add for TreeInfoDto {
         TreeInfoDto {
             filters_count: self.filters_count + rhs.filters_count,
             rules_count: self.rules_count + rhs.rules_count,
-            iterator_count: self.iterator_count + rhs.iterator_count,
+            iterators_count: self.iterators_count + rhs.iterators_count,
         }
     }
 }
