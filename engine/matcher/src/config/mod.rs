@@ -256,6 +256,13 @@ impl MatcherConfig {
                 *name = new_name;
                 *filter = new_filter;
             }
+            (
+                MatcherConfig::Iterator { name, iterator, .. },
+                MatcherConfig::Iterator { name: new_name, iterator: new_iterator, .. },
+            ) => {
+                *name = new_name;
+                *iterator = new_iterator;
+            }
             _ => {
                 return Err(MatcherError::ConfigurationError {
                     message: "Node to edit is not of same type of the new one passed".to_string(),
