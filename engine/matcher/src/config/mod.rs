@@ -52,6 +52,14 @@ impl MatcherConfig {
         }
     }
 
+    pub fn get_name_mut(&mut self) -> &mut String {
+        match self {
+            MatcherConfig::Filter { name, .. }
+            | MatcherConfig::Iterator { name, .. }
+            | MatcherConfig::Ruleset { name, .. } => name,
+        }
+    }
+
     fn get_child_node_by_name(&self, child_name: &str) -> Option<&MatcherConfig> {
         match self {
             MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
