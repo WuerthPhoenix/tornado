@@ -1,7 +1,7 @@
 mod editor;
 mod error;
 
-use crate::config::filter::{Filter, MatcherIterator};
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 pub use crate::config::v2::error::MatcherConfigError;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
@@ -431,7 +431,7 @@ impl<T> FileEntry<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::filter::Filter;
+    use crate::config::nodes::Filter;
     use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
     use crate::config::v2::{
         parse_from_file, read_config_from_root_dir, read_filter_from_dir, read_iterator_from_dir,

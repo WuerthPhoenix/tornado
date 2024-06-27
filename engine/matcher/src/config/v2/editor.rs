@@ -1,4 +1,4 @@
-use crate::config::filter::{Filter, MatcherIterator};
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::error::DeploymentError;
 use crate::config::v2::{
@@ -490,7 +490,7 @@ async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
 
 #[cfg(test)]
 mod tests {
-    use crate::config::filter::MatcherIterator;
+    use crate::config::nodes::MatcherIterator;
     use crate::config::v1::fs::copy_recursive;
     use crate::config::v2::editor::{deploy_iterator_node, get_draft_from_dir, DRAFT_ID};
     use crate::config::v2::{

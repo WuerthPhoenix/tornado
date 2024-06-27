@@ -1,6 +1,6 @@
 pub mod id;
 
-use crate::config::filter::{Filter, MatcherIterator};
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;

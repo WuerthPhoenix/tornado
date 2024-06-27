@@ -1,4 +1,4 @@
-use crate::config::filter::{Filter, MatcherIterator};
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
@@ -7,7 +7,7 @@ use crate::matcher::Matcher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-pub mod filter;
+pub mod nodes;
 pub mod operation;
 pub mod rule;
 pub mod v1;
@@ -198,19 +198,20 @@ impl MatcherConfig {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
+        if matches!(node, MatcherConfig::Iterator { .. }) && self.has_iterator_in_path(path) {
+            return Err(MatcherError::ConfigurationError {
+                message: "Cannot create a iterator as a child of another iterator".to_string(),
+            });
+        }
+
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
         }
 
         // Validate input before saving it to the draft.
         let _ = Matcher::build(&node)?;
-        if matches!(node, MatcherConfig::Iterator { .. }) && self.has_iterator_in_path(path) {
-            return Err(MatcherError::ConfigurationError {
-                message: "Cannot create a iterator as a child of another iterator".to_string(),
-            });
-        }
 
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {

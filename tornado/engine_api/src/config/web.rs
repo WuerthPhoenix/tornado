@@ -789,7 +789,7 @@ mod test {
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use tornado_engine_api_dto::config::{ConstraintDto, FilterDto};
-    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,

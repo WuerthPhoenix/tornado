@@ -92,7 +92,7 @@ pub mod test {
     use std::collections::{BTreeMap, HashMap};
     use tornado_common_api::{Map, Value, WithEventData};
     use tornado_engine_api_dto::auth::Auth;
-    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,
     };

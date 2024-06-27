@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::iter::Sum;
 use std::ops::Add;
-use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::nodes::Filter;
 use tornado_engine_matcher::config::rule::{Operator, Rule};
 use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 use typescript_definitions::TypeScriptify;
