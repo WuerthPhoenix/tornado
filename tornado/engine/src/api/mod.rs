@@ -108,13 +108,15 @@ impl MatcherApiHandler {
 mod test {
     use super::*;
     use crate::actor::dispatcher::{ActixEventBus, DispatcherActor};
+    use fs_extra::dir::{copy, CopyOptions};
     use serde_json::Map;
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_common_api::{Event, Value, WithEventData};
     use tornado_engine_api::event::api::ProcessType;
-    use tornado_engine_matcher::config::fs::{FsMatcherConfigManager, ROOT_NODE_NAME};
     use tornado_engine_matcher::config::rule::{Constraint, Operator, Rule};
+    use tornado_engine_matcher::config::v1::fs::ROOT_NODE_NAME;
+    use tornado_engine_matcher::config::v2::{ConfigType, FsMatcherConfigManagerV2, Version};
     use tornado_engine_matcher::config::MatcherConfigReader;
     use tornado_engine_matcher::dispatcher::Dispatcher;
     use tornado_engine_matcher::model::{
@@ -125,7 +127,7 @@ mod test {
     async fn should_send_an_event_to_the_current_config_and_return_the_processed_event() {
         // Arrange
         let path = "./config/rules.d";
-        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
+        let config_manager = Arc::new(FsMatcherConfigManagerV2::new(path, ""));
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
@@ -164,7 +166,17 @@ mod test {
         // Arrange
         let temp_dir = tempfile::TempDir::new().unwrap();
         let temp_path = temp_dir.path().as_os_str().to_str().unwrap().to_owned();
-        let config_manager = Arc::new(FsMatcherConfigManager::new(&temp_path, &temp_path));
+        let config_manager = Arc::new(FsMatcherConfigManagerV2::new(&temp_path, &temp_path));
+
+        // Create a version.json for an empty config
+        let version_file_path = {
+            let mut path = temp_dir.path().to_path_buf();
+            path.push(ConfigType::Root.filename());
+            path
+        };
+        tokio::fs::write(version_file_path, serde_json::to_string(&Version::V2).unwrap())
+            .await
+            .unwrap();
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
@@ -184,19 +196,18 @@ mod test {
 
         // Act
         let res = config_manager.get_config().await;
+
         // Verify
         assert!(res.is_ok());
         match res.unwrap() {
-            MatcherConfig::Ruleset { rules, .. } => assert!(rules.is_empty()),
-            MatcherConfig::Filter { .. } => unreachable!(),
+            MatcherConfig::Filter { nodes, .. } => assert_eq!(0, nodes.len()),
+            result => panic!("{:?}", result),
         }
 
         // Add one rule after the tornado start
-        std::fs::copy(
-            "./config/rules.d/ruleset_01/001_all_emails.json",
-            format!("{}/001_all_emails.json", temp_path),
-        )
-        .unwrap();
+        let mut copy_options = CopyOptions::new();
+        copy_options.copy_inside = true;
+        copy("./config/rules.d/ruleset_01/", temp_dir.path(), &copy_options).unwrap();
 
         // Act
         let res = api.reload_configuration().await;
@@ -204,8 +215,8 @@ mod test {
         // Assert
         assert!(res.is_ok());
         match res.unwrap() {
-            MatcherConfig::Ruleset { rules, .. } => assert_eq!(1, rules.len()),
-            MatcherConfig::Filter { .. } => unreachable!(),
+            MatcherConfig::Filter { nodes, .. } => assert_eq!(1, nodes.len()),
+            result => panic!("{:?}", result),
         }
     }
 
@@ -213,7 +224,7 @@ mod test {
     async fn should_send_an_event_to_the_draft_and_return_the_processed_event() {
         // Arrange
         let path = "./config/rules.d";
-        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
+        let config_manager = Arc::new(FsMatcherConfigManagerV2::new(path, ""));
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 
@@ -274,7 +285,7 @@ mod test {
     async fn send_an_event_should_include_metadata() {
         // Arrange
         let path = "./config/rules.d";
-        let config_manager = Arc::new(FsMatcherConfigManager::new(path, ""));
+        let config_manager = Arc::new(FsMatcherConfigManagerV2::new(path, ""));
 
         let event_bus = Arc::new(ActixEventBus { callback: |_| {} });
 

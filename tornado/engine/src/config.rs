@@ -9,7 +9,8 @@ use tornado_common::{
 };
 use tornado_common_logger::LoggerConfig;
 use tornado_engine_api::auth::Permission;
-use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
+use tornado_engine_matcher::config::v2::FsMatcherConfigManagerV2;
+use tornado_engine_matcher::config::MatcherConfigEditor;
 use tornado_executor_archive::config::ArchiveConfig;
 use tornado_executor_director::config::DirectorClientConfig;
 use tornado_executor_elasticsearch::config::ElasticsearchConfig;
@@ -37,7 +38,7 @@ impl Opt {
     pub fn config_dir(&self) -> &str {
         let config_dir = match &self.config_dir {
             Some(config_dir) => config_dir,
-            None => CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado"),
+            None => CONFIG_DIR_DEFAULT.unwrap_or("/etc/tornado/"),
         };
         // here the logger is not yet available, so print it to stdout
         println!("Start with configuration directory: [{}]", config_dir);
@@ -47,7 +48,7 @@ impl Opt {
     pub fn rules_dir(&self) -> &str {
         let rules_dir = match &self.rules_dir {
             Some(rules_dir) => rules_dir,
-            None => "/rules.d/",
+            None => "rules.d/",
         };
         // here the logger is not yet available, so print it to stdout
         println!("Using rules_dir directory: [{}]", rules_dir);
@@ -57,7 +58,7 @@ impl Opt {
     pub fn drafts_dir(&self) -> &str {
         let drafts_dir = match &self.drafts_dir {
             Some(drafts_dir) => drafts_dir,
-            None => "/drafts/",
+            None => "drafts/",
         };
         // here the logger is not yet available, so print it to stdout
         println!("Using drafts_dir directory: [{}]", drafts_dir);
@@ -230,7 +231,7 @@ fn build_elasticsearch_config(config_dir: &str) -> Result<ElasticsearchConfig, C
 }
 
 pub struct ComponentsConfig {
-    pub matcher_config: Arc<FsMatcherConfigManager>,
+    pub matcher_config: Arc<dyn MatcherConfigEditor>,
     pub archive_executor_config: ArchiveConfig,
     pub icinga2_executor_config: Icinga2ClientConfig,
     pub director_executor_config: DirectorClientConfig,
@@ -260,8 +261,8 @@ fn build_matcher_config(
     config_dir: &str,
     rules_dir: &str,
     drafts_dir: &str,
-) -> FsMatcherConfigManager {
-    FsMatcherConfigManager::new(
+) -> FsMatcherConfigManagerV2 {
+    FsMatcherConfigManagerV2::new(
         format!("{}/{}", config_dir, rules_dir),
         format!("{}/{}", config_dir, drafts_dir),
     )
@@ -271,7 +272,6 @@ fn build_matcher_config(
 mod test {
 
     use super::*;
-    use tornado_engine_matcher::config::fs::FsMatcherConfigManager;
     use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
 
     #[test]
@@ -302,7 +302,7 @@ mod test {
         let drafts_path = "./config/drafts";
 
         // Act
-        let config = FsMatcherConfigManager::new(path, drafts_path).get_config().await.unwrap();
+        let config = FsMatcherConfigManagerV2::new(path, drafts_path).get_config().await.unwrap();
 
         // Assert
         match config {

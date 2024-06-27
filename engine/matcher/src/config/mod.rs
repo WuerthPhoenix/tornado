@@ -1,5 +1,6 @@
 use crate::config::filter::Filter;
 use crate::config::rule::Rule;
+use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
 use crate::matcher;
 use crate::matcher::Matcher;
@@ -7,9 +8,10 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 pub mod filter;
-pub mod fs;
 pub mod operation;
 pub mod rule;
+pub mod v1;
+pub mod v2;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
@@ -25,6 +27,12 @@ pub struct MatcherConfigDraftData {
     pub updated_ts_ms: i64,
     pub user: String,
     pub draft_id: String,
+}
+
+impl ConfigNodeDir for MatcherConfigDraftData {
+    fn config_type() -> ConfigType {
+        ConfigType::Draft
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -433,7 +441,7 @@ pub trait MatcherConfigReader: Sync + Send {
 
 /// A MatcherConfigEditor permits to edit Tornado Configuration drafts
 #[async_trait::async_trait(? Send)]
-pub trait MatcherConfigEditor: Sync + Send {
+pub trait MatcherConfigEditor: MatcherConfigReader + Sync + Send {
     /// Returns the list of available drafts
     async fn get_drafts(&self) -> Result<Vec<String>, MatcherError>;
 

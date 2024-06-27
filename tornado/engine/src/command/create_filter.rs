@@ -3,9 +3,7 @@ use chrono::Local;
 use tornado_common::TornadoError;
 use tornado_engine_api::auth::WithOwner;
 use tornado_engine_matcher::config::filter::Filter;
-use tornado_engine_matcher::config::{
-    Defaultable, MatcherConfig, MatcherConfigEditor, MatcherConfigReader,
-};
+use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 
 pub async fn create_filter(
     config_dir: &str,

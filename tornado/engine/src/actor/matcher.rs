@@ -8,7 +8,7 @@ use std::time::SystemTime;
 use tornado_common_api::{Value, WithEventData};
 use tornado_engine_api::event::api::ProcessType;
 use tornado_engine_matcher::config::operation::{matcher_config_filter, NodeFilter};
-use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigReader};
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor};
 use tornado_engine_matcher::error::MatcherError;
 use tornado_engine_matcher::matcher::Matcher;
 use tornado_engine_matcher::model::ProcessedEvent;
@@ -51,7 +51,7 @@ pub struct GetCurrentConfigMessage {}
 
 pub struct MatcherActor {
     dispatcher_addr: Recipient<ProcessedEventMessage>,
-    matcher_config_manager: Arc<dyn MatcherConfigReader>,
+    matcher_config_manager: Arc<dyn MatcherConfigEditor>,
     matcher_config: Arc<MatcherConfig>,
     matcher: Arc<matcher::Matcher>,
     meter: Arc<TornadoMeter>,
@@ -60,7 +60,7 @@ pub struct MatcherActor {
 impl MatcherActor {
     pub async fn start(
         dispatcher_addr: Recipient<ProcessedEventMessage>,
-        matcher_config_manager: Arc<dyn MatcherConfigReader>,
+        matcher_config_manager: Arc<dyn MatcherConfigEditor>,
         message_mailbox_capacity: usize,
         meter: Arc<TornadoMeter>,
     ) -> Result<Addr<MatcherActor>, MatcherError> {
@@ -230,9 +230,9 @@ mod test {
     use maplit::hashmap;
     use serde_json::json;
     use tornado_common_api::{Event, Value};
-    use tornado_engine_matcher::config::fs::ROOT_NODE_NAME;
+    use tornado_engine_matcher::config::v1::fs::ROOT_NODE_NAME;
+    use tornado_engine_matcher::model::ProcessedFilterStatus;
     use tornado_engine_matcher::model::ProcessedNode;
-    use tornado_engine_matcher::{config::MatcherConfigEditor, model::ProcessedFilterStatus};
 
     #[actix::test]
     async fn should_reconfigure_the_matcher_and_return_the_new_config() {

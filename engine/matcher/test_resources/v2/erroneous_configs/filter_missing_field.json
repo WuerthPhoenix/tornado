@@ -1,0 +1,15 @@
+{
+  "type": "filter",
+  "description": "This filter allows events for master tenant",
+  "active": true,
+  "filter": {
+    "type": "AND",
+    "operators": [
+      {
+        "type": "equals",
+        "first": "${event.metadata.tenant_id}",
+        "second": "master"
+      }
+    ]
+  }
+}

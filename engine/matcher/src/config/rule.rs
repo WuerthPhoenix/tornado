@@ -149,7 +149,7 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json() {
-        let json = file_to_string("./test_resources/rules/001_all_emails_and_syslogs.json");
+        let json = file_to_string("./test_resources/v1/rules/001_all_emails_and_syslogs.json");
         let rule = Rule::from_json(&json).unwrap();
 
         assert_eq!("", rule.name);
@@ -197,7 +197,7 @@ mod test {
     #[test]
     fn should_deserialize_rule_without_where_from_json() {
         // Arrange
-        let json = file_to_string("./test_resources/rules/002_rule_without_where.json");
+        let json = file_to_string("./test_resources/v1/rules/002_rule_without_where.json");
 
         // Act
         let rule = Rule::from_json(&json).unwrap();
@@ -213,7 +213,7 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json_with_map_in_action_payload() {
-        let json = file_to_string("./test_resources/rules/003_map_in_action_payload.json");
+        let json = file_to_string("./test_resources/v1/rules/003_map_in_action_payload.json");
         let rule = Rule::from_json(&json).unwrap();
 
         assert_eq!("", rule.name);
@@ -238,7 +238,7 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json_with_cmp_operators() {
-        let json = file_to_string("./test_resources/rules/004_cmp_operators.json");
+        let json = file_to_string("./test_resources/v1/rules/004_cmp_operators.json");
         let rule = Rule::from_json(&json);
 
         assert!(rule.is_ok());
@@ -246,7 +246,7 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json_with_single_key_match() {
-        let json = file_to_string("./test_resources/rules/006_with_single_key_match.json");
+        let json = file_to_string("./test_resources/v1/rules/006_with_single_key_match.json");
         let rule = Rule::from_json(&json);
 
         assert!(rule.is_ok());
@@ -254,7 +254,7 @@ mod test {
 
     #[test]
     fn should_deserialize_rule_from_json_with_modifiers_post() {
-        let json = file_to_string("./test_resources/rules/007_with_modifiers_post.json");
+        let json = file_to_string("./test_resources/v1/rules/007_with_modifiers_post.json");
         let rule = Rule::from_json(&json);
         assert!(rule.is_ok());
     }

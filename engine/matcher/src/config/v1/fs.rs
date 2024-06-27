@@ -1,5 +1,4 @@
 use crate::config::filter::Filter;
-use crate::config::fs::editor::is_dir;
 use crate::config::rule::Rule;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
@@ -8,16 +7,15 @@ use std::ffi::OsStr;
 use std::future::Future;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
-use tokio::fs::DirEntry;
+use tokio::fs::{metadata, remove_dir_all, DirEntry};
 use tokio::fs::{read_dir, read_to_string};
-
-pub mod editor;
 
 pub const ROOT_NODE_NAME: &str = "root";
 
 pub struct FsMatcherConfigManager {
-    root_path: String,
-    drafts_path: String,
+    pub(crate) root_path: String,
+    #[allow(dead_code)]
+    pub(crate) drafts_path: String,
 }
 
 impl FsMatcherConfigManager {
@@ -43,7 +41,7 @@ impl MatcherConfigReader for FsMatcherConfigManager {
 }
 
 impl FsMatcherConfigManager {
-    async fn read_from_root_dir(dir: PathBuf) -> Result<MatcherConfig, MatcherError> {
+    pub(crate) async fn read_from_root_dir(dir: PathBuf) -> Result<MatcherConfig, MatcherError> {
         FsMatcherConfigManager::read_from_dir(ROOT_NODE_NAME.to_owned(), dir).await
     }
 
@@ -245,7 +243,9 @@ impl FsMatcherConfigManager {
         })
     }
 
-    async fn read_dir_entries<P: AsRef<Path>>(dir: P) -> Result<Vec<DirEntry>, MatcherError> {
+    pub(crate) async fn read_dir_entries<P: AsRef<Path>>(
+        dir: P,
+    ) -> Result<Vec<DirEntry>, MatcherError> {
         let mut paths = vec![];
 
         let mut read_dir =
@@ -280,7 +280,7 @@ impl FsMatcherConfigManager {
         name
     }
 
-    fn filename(path: &Path) -> Result<&str, MatcherError> {
+    pub(crate) fn filename(path: &Path) -> Result<&str, MatcherError> {
         path.file_name().and_then(OsStr::to_str).ok_or_else(|| MatcherError::ConfigurationError {
             message: format!("Error processing path name: [{}]", path.display()),
         })
@@ -302,6 +302,60 @@ impl FsMatcherConfigManager {
     }
 }
 
+#[inline]
+pub async fn is_dir(path: &Path) -> bool {
+    metadata(&path).await.map(|metadata| metadata.is_dir()).unwrap_or(false)
+}
+
+#[inline]
+pub async fn exists(path: &Path) -> bool {
+    metadata(&path).await.is_ok()
+}
+
+pub(crate) async fn copy_and_override<S: AsRef<Path>, D: AsRef<Path>>(
+    source_dir: S,
+    dest_dir: D,
+) -> Result<(), MatcherError> {
+    if exists(dest_dir.as_ref()).await {
+        remove_dir_all(dest_dir.as_ref()).await.map_err(|err| {
+            MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot delete directory [{}]. Err: {:?}",
+                    dest_dir.as_ref().display(),
+                    err
+                ),
+            }
+        })?;
+    }
+
+    copy_recursive(source_dir.as_ref().into(), dest_dir.as_ref().into()).await
+}
+
+pub(crate) async fn copy_recursive(
+    source_dir: PathBuf,
+    dest_dir: PathBuf,
+) -> Result<(), MatcherError> {
+    tokio::task::spawn_blocking(move || {
+
+        use fs_extra::dir::*;
+
+        let mut copy_options = CopyOptions::new();
+        copy_options.copy_inside = true;
+        copy(&source_dir, &dest_dir, &copy_options)
+            .map_err(|err| MatcherError::InternalSystemError {
+                message: format!(
+                    "Cannot copy configuration from [{}] [{}]. Err: {:?}",
+                    source_dir.display(),
+                    dest_dir.display(),
+                    err
+                ),
+            })
+            .map(|_| ())
+    }).await.map_err(|err| MatcherError::InternalSystemError {
+        message: format!("FsMatcherConfigManager - copy_recursive - Cannot execute Tokio internal task. Err: {:?}", err),
+    })?
+}
+
 #[cfg(test)]
 mod test {
 
@@ -310,7 +364,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_rules_from_folder_sorting_by_filename() {
-        let path = "./test_resources/rules";
+        let path = "./test_resources/v1/rules";
         let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
@@ -332,7 +386,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_rules_from_empty_folder() {
-        let path = "./test_resources/config_empty";
+        let path = "./test_resources/v1/config_empty";
         let config = FsMatcherConfigManager::new(path, "").get_config().await.unwrap();
 
         match config {
@@ -346,7 +400,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_filter_from_folder() {
-        let path = "./test_resources/config_01";
+        let path = "./test_resources/v1/config_01";
         let config = FsMatcherConfigManager::read_from_dir("custom_name".to_owned(), path.into())
             .await
             .unwrap();
@@ -378,7 +432,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_from_folder_and_fallback_to_filter_if_not_a_rule() {
-        let path = "./test_resources/config_02";
+        let path = "./test_resources/v1/config_02";
         let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         assert!(is_filter(&config, "root", 0));
@@ -386,7 +440,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_filter_from_folder_with_many_subfolders() {
-        let path = "./test_resources/config_03";
+        let path = "./test_resources/v1/config_03";
         let config =
             FsMatcherConfigManager::read_from_dir("emails".to_owned(), path.into()).await.unwrap();
 
@@ -395,7 +449,7 @@ mod test {
 
     #[tokio::test]
     async fn should_read_config_from_folder_recursively() {
-        let path = "./test_resources/config_04";
+        let path = "./test_resources/v1/config_04";
         let config = FsMatcherConfigManager::read_from_root_dir(path.into()).await.unwrap();
 
         println!("{:?}", config);
@@ -428,7 +482,7 @@ mod test {
 
     #[tokio::test]
     async fn should_create_implicit_filter_recursively() {
-        let path = "./test_resources/config_implicit_filter";
+        let path = "./test_resources/v1/config_implicit_filter";
         let config = FsMatcherConfigManager::read_from_dir("implicit".to_owned(), path.into())
             .await
             .unwrap();

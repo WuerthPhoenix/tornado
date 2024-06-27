@@ -10,6 +10,10 @@ edition = "2018"
 tempfile = "3"
 chrono-tz = "0.8.5"
 fs_extra = "1.2"
+monostate = "0.1"
+serde_path_to_error = "0.1"
+futures = "0.3"
+async-recursion = "1.1"
 
 async-trait.workspace = true
 chrono.workspace = true
