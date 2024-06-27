@@ -283,7 +283,7 @@ impl ProcessingTreeNodeConfigDto {
                     rules_count: matcher_config_node.get_all_rules_count(),
                     children_count: nodes.len(),
                     description: iterator.description().to_owned(),
-                    active: false,
+                    active: iterator.is_active(),
                 }
             }
         }
