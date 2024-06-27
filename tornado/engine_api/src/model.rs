@@ -8,6 +8,8 @@ use tornado_engine_matcher::config::MatcherConfig;
 pub enum ExportVersionedMatcherConfig {
     #[serde(rename = "1.0")]
     V1(MatcherConfig),
+    #[serde(rename = "1.1")]
+    V1_1(MatcherConfig),
 }
 
 pub struct ApiData<T> {
