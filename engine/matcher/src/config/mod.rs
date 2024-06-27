@@ -167,6 +167,16 @@ impl MatcherConfig {
         }
     }
 
+    pub fn contains_iterator(&self) -> bool {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter().any(MatcherConfig::contains_iterator)
+            }
+            MatcherConfig::Iterator { .. } => true,
+            MatcherConfig::Ruleset { .. } => false,
+        }
+    }
+
     // Returns the total amount of direct children of a node
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {
@@ -199,7 +209,7 @@ impl MatcherConfig {
             });
         }
 
-        if matches!(node, MatcherConfig::Iterator { .. }) && self.has_iterator_in_path(path) {
+        if node.contains_iterator() && self.has_iterator_in_path(path) {
             return Err(MatcherError::ConfigurationError {
                 message: "Cannot create a iterator as a child of another iterator".to_string(),
             });
@@ -214,7 +224,7 @@ impl MatcherConfig {
         let _ = Matcher::build(&node)?;
 
         match current_node {
-            MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
+            MatcherConfig::Ruleset { .. } => Err(MatcherError::ConfigurationError {
                 message: "A ruleset cannot have children nodes".to_string(),
             }),
             MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
