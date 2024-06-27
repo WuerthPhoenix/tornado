@@ -206,6 +206,11 @@ impl MatcherConfig {
 
         // Validate input before saving it to the draft.
         let _ = Matcher::build(&node)?;
+        if matches!(node, MatcherConfig::Iterator { .. }) && self.has_iterator_in_path(path) {
+            return Err(MatcherError::ConfigurationError {
+                message: "Cannot create a iterator as a child of another iterator".to_string(),
+            });
+        }
 
         match current_node {
             MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
