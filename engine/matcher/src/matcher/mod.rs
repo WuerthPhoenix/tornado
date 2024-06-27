@@ -400,7 +400,7 @@ impl Matcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::nodes::Filter;
+    use crate::config::nodes::{Filter, MatcherIterator};
     use crate::config::rule::{
         ConfigAction, Constraint, Extractor, ExtractorRegex, Operator, Rule,
     };
