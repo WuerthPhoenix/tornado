@@ -143,8 +143,9 @@ impl MatcherConfig {
             return Some(Cow::Owned(vec![self.to_owned()]));
         }
         match self.get_node_by_path(path) {
-            Some(MatcherConfig::Filter { nodes, .. }) => Some(Cow::Borrowed(nodes)),
-            _ => None,
+            Some(MatcherConfig::Filter { nodes, .. })
+            | Some(MatcherConfig::Iterator { nodes, .. }) => Some(Cow::Borrowed(nodes)),
+            Some(MatcherConfig::Ruleset { .. }) | None => None,
         }
     }
 
