@@ -1,7 +1,7 @@
 mod editor;
 mod error;
 
-use crate::config::filter::Filter;
+use crate::config::filter::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 pub use crate::config::v2::error::MatcherConfigError;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
@@ -38,6 +38,7 @@ pub enum ConfigType {
     Draft,
     Root,
     Filter,
+    Iterator,
     Ruleset,
 }
 
@@ -48,6 +49,7 @@ impl Display for ConfigType {
             ConfigType::Root => f.write_str("root"),
             ConfigType::Filter => f.write_str("filter"),
             ConfigType::Ruleset => f.write_str("ruleset"),
+            ConfigType::Iterator => f.write_str("iterator"),
         }
     }
 }
@@ -63,6 +65,7 @@ impl ConfigType {
             ConfigType::Filter => "filter.json",
             ConfigType::Ruleset => "ruleset.json",
             ConfigType::Draft => "data.json",
+            ConfigType::Iterator => "iterator.json",
         }
     }
 }
@@ -96,6 +99,23 @@ pub struct MatcherConfigRuleset {
 impl ConfigNodeDir for MatcherConfigRuleset {
     fn config_type() -> ConfigType {
         ConfigType::Ruleset
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MatcherConfigIterator {
+    #[serde(rename = "type")]
+    #[allow(dead_code)]
+    node_type: MustBe!("iterator"),
+    name: String,
+    #[serde(flatten)]
+    iterator: MatcherIterator,
+}
+
+impl ConfigNodeDir for MatcherConfigIterator {
+    fn config_type() -> ConfigType {
+        ConfigType::Iterator
     }
 }
 
@@ -231,6 +251,14 @@ async fn read_node_from_dir<T: AsRef<Path>>(
         Err(error) => return Err(error),
     }
 
+    match read_iterator_from_dir(dir).await {
+        Ok(config) => return Ok(FileEntry { path: dir.to_path_buf(), content: config }),
+        Err(MatcherConfigError::FileNotFound { .. }) => {
+            trace!("Directory {} seems not to be a iterator node.", dir.display())
+        }
+        Err(error) => return Err(error),
+    }
+
     match read_ruleset_from_dir(dir).await {
         Ok(config) => Ok(FileEntry { path: dir.to_path_buf(), content: config }),
         Err(MatcherConfigError::FileNotFound { .. }) => {
@@ -248,6 +276,15 @@ async fn read_filter_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfig
     let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigFilter::config_type()).await?;
 
     Ok(MatcherConfig::Filter { name: node.name, filter: node.filter, nodes: child_nodes })
+}
+
+async fn read_iterator_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
+    trace!("Reading filer node config file from disk.");
+    let node: MatcherConfigIterator = parse_node_config_from_file(dir).await?;
+    trace!("Reading filer node child nodes from disk.");
+    let child_nodes = read_child_nodes_from_dir(dir, MatcherConfigIterator::config_type()).await?;
+
+    Ok(MatcherConfig::Iterator { name: node.name, iterator: node.iterator, nodes: child_nodes })
 }
 
 async fn read_ruleset_from_dir(dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
@@ -397,9 +434,9 @@ mod tests {
     use crate::config::filter::Filter;
     use crate::config::rule::{ConfigAction, Constraint, Operator, Rule};
     use crate::config::v2::{
-        parse_from_file, read_config_from_root_dir, read_filter_from_dir, read_node_from_dir,
-        read_rules_from_dir, read_ruleset_from_dir, ConfigType, MatcherConfigError,
-        MatcherConfigFilter, MatcherConfigRuleset,
+        parse_from_file, read_config_from_root_dir, read_filter_from_dir, read_iterator_from_dir,
+        read_node_from_dir, read_rules_from_dir, read_ruleset_from_dir, ConfigType,
+        MatcherConfigError, MatcherConfigFilter, MatcherConfigIterator, MatcherConfigRuleset,
     };
     use crate::config::{Defaultable, MatcherConfig};
     use monostate::MustBe;
@@ -435,6 +472,21 @@ mod tests {
         match config {
             MatcherConfigRuleset { node_type: MustBe!("ruleset"), name } => {
                 assert_eq!("snmp_logger", name);
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_parse_iterator_from_file() {
+        let path = String::from(TEST_CONFIG_DIR)
+            + "master/master_openshift_alerts/openshift_iterator/iterator.json";
+        let config: MatcherConfigIterator = parse_from_file(Path::new(&path)).await.unwrap();
+
+        match config {
+            MatcherConfigIterator { node_type: MustBe!("iterator"), name, iterator } => {
+                assert_eq!("openshift_iterator", name);
+                assert_eq!("${event.payload.alerts}", &iterator.target);
             }
             result => panic!("{:#?}", result),
         }
@@ -556,11 +608,24 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn should_parse_iterator_from_dir() {
+        let path =
+            String::from(TEST_CONFIG_DIR) + "master/master_openshift_alerts/openshift_iterator/";
+        let config = read_iterator_from_dir(Path::new(&path)).await.unwrap();
+
+        match config {
+            MatcherConfig::Iterator { name, nodes, .. } => {
+                assert_eq!("openshift_iterator", name);
+                assert_eq!(1, nodes.len());
+            }
+            result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
     async fn parse_filter_with_children_from_dir() {
         let path = String::from(TEST_CONFIG_DIR) + "master/";
         let config = read_filter_from_dir(Path::new(&path)).await.unwrap();
-
-        dbg!(&config);
 
         let nodes = match config {
             MatcherConfig::Filter { name, filter, nodes } => {
@@ -575,13 +640,17 @@ mod tests {
         };
 
         match nodes.as_slice() {
-            [MatcherConfig::Filter { name, filter, nodes }] => {
-                assert_eq!("master_emails", name);
+            [MatcherConfig::Filter { name: name1, filter: filter1, nodes: nodes1 }, MatcherConfig::Filter { name: name2, nodes: nodes2, .. }] =>
+            {
+                assert_eq!("master_emails", name1);
                 assert!(matches!(
-                    filter,
+                    filter1,
                     Filter { filter: Defaultable::Value(Operator::And { .. }), .. }
                 ));
-                assert_eq!(1, nodes.len());
+                assert_eq!(1, nodes1.len());
+
+                assert_eq!("master_openshift_alerts", name2);
+                assert_eq!(1, nodes2.len());
             }
             result => panic!("{:#?}", result),
         }

@@ -22,9 +22,9 @@ impl Filter {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(deny_unknown_fields)]
 pub struct MatcherIterator {
-    description: String,
-    active: bool,
-    target: String,
+    pub(crate) description: String,
+    pub(crate) active: bool,
+    pub(crate) target: String,
 }
 
 #[cfg(test)]

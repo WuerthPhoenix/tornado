@@ -1,0 +1,22 @@
+{
+  "name": "archive_alerts",
+  "description": "A test rule that triggers the archive action for each iteration.",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "archive",
+      "payload": {
+        "event": {
+          "id": "${event.metadata.tenant_id} - ${event.created_ms}",
+          "iteration": "${event.iterator.iteration}",
+          "item": "${event.iterator.item}"
+        },
+        "archive_type": "one"
+      }
+    }
+  ]
+}
