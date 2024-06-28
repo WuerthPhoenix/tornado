@@ -211,9 +211,7 @@ impl MatcherConfig {
         }
 
         if node.contains_iterator() && self.has_iterator_in_path(path) {
-            return Err(MatcherError::ConfigurationError {
-                message: "Cannot create a iterator as a child of another iterator".to_string(),
-            });
+            return Err(MatcherError::NestedIteratorError);
         }
 
         let current_node = self.get_mut_node_by_path_or_err(path)?;
