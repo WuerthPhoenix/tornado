@@ -62,6 +62,7 @@ impl From<serde_json::Error> for ApiError {
 }
 
 const VALIDATION_ERROR: &str = "VALIDATION_ERROR";
+const NESTED_ITERATOR_ERROR: &str = "NESTED_ITERATOR_ERROR";
 
 // Use default implementation for `error_response()` method.
 impl actix_web::error::ResponseError for ApiError {
@@ -81,6 +82,13 @@ impl actix_web::error::ResponseError for ApiError {
                     HttpResponseBuilder::new(http::StatusCode::BAD_REQUEST).json(WebError {
                         code: VALIDATION_ERROR.to_owned(),
                         message: Some(message.to_owned()),
+                        params: HashMap::new(),
+                    })
+                }
+                MatcherError::NestedIteratorError => {
+                    HttpResponseBuilder::new(http::StatusCode::CONFLICT).json(WebError {
+                        code: NESTED_ITERATOR_ERROR.to_owned(),
+                        message: None,
                         params: HashMap::new(),
                     })
                 }
