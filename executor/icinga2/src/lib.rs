@@ -619,7 +619,7 @@ mod test {
         match icinga2_response {
             Icinga2ActionResponse::OkResponse(results_body) => {
                 assert_eq!(results_body.results.len(), 2);
-                assert_eq!(results_body.results.get(0).unwrap().code as u16, 200);
+                assert_eq!(results_body.results.first().unwrap().code as u16, 200);
                 assert_eq!(results_body.results.get(1).unwrap().code as u16, 500);
             }
             Icinga2ActionResponse::ErrorResponse(_) => {

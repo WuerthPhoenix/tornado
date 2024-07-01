@@ -322,7 +322,7 @@ pub mod test {
                 assert_eq!(name, "root");
                 assert_eq!(nodes.len(), 1);
 
-                match nodes.get(0).unwrap() {
+                match nodes.first().unwrap() {
                     MatcherConfig::Filter { name, filter: _, nodes } => {
                         assert_eq!(name, filter_to_add_name);
                         assert_eq!(nodes.len(), 0);
@@ -401,7 +401,7 @@ pub mod test {
                 );
                 assert_eq!(nodes.len(), 1);
 
-                match nodes.get(0).unwrap() {
+                match nodes.first().unwrap() {
                     MatcherConfig::Filter { name, filter: _, nodes } => {
                         assert_eq!(name, filter_to_add_name);
                         assert_eq!(nodes.len(), 0);

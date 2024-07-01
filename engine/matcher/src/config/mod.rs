@@ -684,12 +684,12 @@ mod tests {
         // Assert
         assert_eq!(empty_path.clone().unwrap().len(), 1);
         assert!(
-            matches!(empty_path.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
+            matches!(empty_path.unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
         );
 
         assert_eq!(one_level.clone().unwrap().len(), 2);
         assert!(
-            matches!(one_level.clone().unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1")
+            matches!(one_level.clone().unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1")
         );
         assert!(
             matches!(one_level.unwrap().get(1).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter2")
@@ -697,7 +697,7 @@ mod tests {
 
         assert_eq!(nested_levels.clone().unwrap().len(), 1);
         assert!(
-            matches!(nested_levels.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3")
+            matches!(nested_levels.unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3")
         );
 
         assert_eq!(nested_levels_path_with_ruleset, None);

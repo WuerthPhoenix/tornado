@@ -48,12 +48,10 @@ pub enum ProcessType {
 #[cfg(test)]
 pub mod test {
     use super::*;
-    use crate::auth::Permission;
     use crate::error::ApiError;
     use async_trait::async_trait;
-    use std::collections::{BTreeMap, HashMap};
-    use tornado_common_api::{Map, Value, WithEventData};
-    use tornado_engine_api_dto::auth::Auth;
+    use std::collections::HashMap;
+    use tornado_common_api::{Map, Value};
     use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
@@ -99,13 +97,6 @@ pub mod test {
                 },
             })
         }
-    }
-
-    fn auth_permissions() -> BTreeMap<Permission, Vec<String>> {
-        let mut permission_roles_map = BTreeMap::new();
-        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
-        permission_roles_map.insert(Permission::ConfigView, vec!["view".to_owned()]);
-        permission_roles_map
     }
 
     pub const DRAFT_OWNER_ID: &str = "OWNER";
