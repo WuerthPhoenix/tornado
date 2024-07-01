@@ -674,7 +674,7 @@ mod test {
     use std::collections::HashMap;
     use std::sync::Arc;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
-    use tornado_engine_api_dto::config::{ConstraintDto, FilterDto};
+    use tornado_engine_api_dto::config::ConstraintDto;
     use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
