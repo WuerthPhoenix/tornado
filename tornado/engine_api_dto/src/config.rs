@@ -3,7 +3,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::iter::Sum;
 use std::ops::Add;
-use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::nodes::Filter;
 use tornado_engine_matcher::config::rule::{Operator, Rule};
 use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 use typescript_definitions::TypeScriptify;
@@ -245,6 +245,14 @@ pub enum ProcessingTreeNodeConfigDto {
         rules_count: usize,
         children_count: usize,
         description: String,
+        has_iterator_ancestor: bool,
+        active: bool,
+    },
+    Iterator {
+        name: String,
+        rules_count: usize,
+        children_count: usize,
+        description: String,
         active: bool,
     },
     Ruleset {
@@ -253,14 +261,15 @@ pub enum ProcessingTreeNodeConfigDto {
     },
 }
 
-impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
-    fn from(matcher_config_node: &MatcherConfig) -> Self {
+impl ProcessingTreeNodeConfigDto {
+    pub fn convert(matcher_config_node: &MatcherConfig, has_iterator_ancestor: bool) -> Self {
         match matcher_config_node {
             MatcherConfig::Filter { name, filter, .. } => ProcessingTreeNodeConfigDto::Filter {
                 name: name.to_owned(),
                 rules_count: matcher_config_node.get_all_rules_count(),
                 children_count: matcher_config_node.get_direct_child_nodes_count(),
                 description: filter.to_owned().description,
+                has_iterator_ancestor,
                 active: filter.active,
             },
 
@@ -268,9 +277,14 @@ impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
                 name: name.to_owned(),
                 rules_count: matcher_config_node.get_all_rules_count(),
             },
-            MatcherConfig::Iterator { .. } => {
-                // ToDo: TOR-580
-                todo!()
+            MatcherConfig::Iterator { name, nodes, iterator } => {
+                ProcessingTreeNodeConfigDto::Iterator {
+                    name: name.clone(),
+                    rules_count: matcher_config_node.get_all_rules_count(),
+                    children_count: nodes.len(),
+                    description: iterator.description().to_owned(),
+                    active: iterator.is_active(),
+                }
             }
         }
     }
@@ -280,6 +294,7 @@ impl From<&MatcherConfig> for ProcessingTreeNodeConfigDto {
 #[serde(tag = "type")]
 pub enum ProcessingTreeNodeDetailsDto {
     Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Iterator { name: String, description: String, active: bool, target: String },
     Ruleset { name: String, rules: Vec<RuleDetailsDto> },
 }
 
@@ -287,6 +302,7 @@ pub enum ProcessingTreeNodeDetailsDto {
 #[serde(tag = "type")]
 pub enum ProcessingTreeNodeEditDto {
     Filter { name: String, description: String, active: bool, filter: Option<OperatorDto> },
+    Iterator { name: String, description: String, target: String, active: bool },
     Ruleset { name: String },
 }
 
@@ -302,17 +318,20 @@ impl From<&MatcherConfig> for ProcessingTreeNodeDetailsDto {
                     Defaultable::Default { .. } => None,
                 },
             },
-
+            MatcherConfig::Iterator { name, iterator, .. } => {
+                ProcessingTreeNodeDetailsDto::Iterator {
+                    name: name.clone(),
+                    description: iterator.description().to_owned(),
+                    active: iterator.is_active(),
+                    target: iterator.target().to_owned(),
+                }
+            }
             MatcherConfig::Ruleset { name, rules, .. } => {
                 let rules_details_dto = rules.iter().map(RuleDetailsDto::from).collect();
                 ProcessingTreeNodeDetailsDto::Ruleset {
                     name: name.to_owned(),
                     rules: rules_details_dto,
                 }
-            }
-            MatcherConfig::Iterator { .. } => {
-                // ToDo: TOR-580
-                todo!()
             }
         }
     }

@@ -27,6 +27,24 @@ pub struct MatcherIterator {
     pub(crate) target: String,
 }
 
+impl MatcherIterator {
+    pub fn new(description: String, active: bool, target: String) -> MatcherIterator {
+        MatcherIterator { description, active, target }
+    }
+
+    pub fn is_active(&self) -> bool {
+        self.active
+    }
+
+    pub fn description(&self) -> &str {
+        &self.description
+    }
+
+    pub fn target(&self) -> &str {
+        &self.target
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

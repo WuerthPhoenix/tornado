@@ -99,7 +99,7 @@ pub fn matcher_config_filter(
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::filter::Filter;
+    use crate::config::nodes::Filter;
     use crate::config::Defaultable;
     use maplit::hashmap;
 

@@ -2,7 +2,7 @@ use crate::config::{parse_config_files, FilterCreateOpt};
 use chrono::Local;
 use tornado_common::TornadoError;
 use tornado_engine_api::auth::WithOwner;
-use tornado_engine_matcher::config::filter::Filter;
+use tornado_engine_matcher::config::nodes::Filter;
 use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 
 pub async fn create_filter(

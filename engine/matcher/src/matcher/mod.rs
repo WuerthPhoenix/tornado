@@ -9,6 +9,7 @@ use crate::config::rule::Rule;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
+use crate::matcher::operator::true_operator;
 use crate::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedNode,
     ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus, ProcessedRules,
@@ -113,9 +114,16 @@ impl Matcher {
                     nodes: matcher_nodes,
                 })
             }
-            MatcherConfig::Iterator { .. } => {
+            MatcherConfig::Iterator { name, .. } => {
                 // ToDo : TOR-578
-                todo!()
+                Ok(ProcessingNode::Filter {
+                    name: name.to_string(),
+                    filter: MatcherFilter {
+                        active: false,
+                        filter: Box::new(true_operator::True {}),
+                    },
+                    nodes: vec![],
+                })
             }
         }
     }
@@ -296,7 +304,7 @@ impl Matcher {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::filter::Filter;
+    use crate::config::nodes::Filter;
     use crate::config::rule::{
         ConfigAction, Constraint, Extractor, ExtractorRegex, Operator, Rule,
     };

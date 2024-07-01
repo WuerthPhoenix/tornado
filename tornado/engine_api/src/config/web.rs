@@ -789,7 +789,7 @@ mod test {
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
     use tornado_engine_api_dto::config::{ConstraintDto, FilterDto};
-    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,
@@ -1238,6 +1238,7 @@ mod test {
                 name: "child_1_1".to_owned(),
                 rules_count: 0,
                 children_count: 0,
+                has_iterator_ancestor: false,
                 description: "".to_string(),
                 active: false,
             },],

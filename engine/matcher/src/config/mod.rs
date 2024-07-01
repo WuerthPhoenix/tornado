@@ -1,4 +1,4 @@
-use crate::config::filter::{Filter, MatcherIterator};
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
@@ -7,7 +7,7 @@ use crate::matcher::Matcher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-pub mod filter;
+pub mod nodes;
 pub mod operation;
 pub mod rule;
 pub mod v1;
@@ -143,8 +143,28 @@ impl MatcherConfig {
             return Some(Cow::Owned(vec![self.to_owned()]));
         }
         match self.get_node_by_path(path) {
-            Some(MatcherConfig::Filter { nodes, .. }) => Some(Cow::Borrowed(nodes)),
-            _ => None,
+            Some(MatcherConfig::Filter { nodes, .. })
+            | Some(MatcherConfig::Iterator { nodes, .. }) => Some(Cow::Borrowed(nodes)),
+            Some(MatcherConfig::Ruleset { .. }) | None => None,
+        }
+    }
+
+    pub fn has_iterator_in_path(&self, path: &[&str]) -> bool {
+        if path.is_empty() {
+            return false;
+        }
+        // trim root from path.
+        self.has_iterator_in_path_inner(&path[1..])
+    }
+
+    fn has_iterator_in_path_inner(&self, path: &[&str]) -> bool {
+        match path {
+            [] => false,
+            [node_name, path @ ..] => match self.get_child_node_by_name(node_name) {
+                Some(MatcherConfig::Iterator { .. }) => true,
+                Some(node) => node.has_iterator_in_path_inner(path),
+                None => false,
+            },
         }
     }
 
@@ -179,8 +199,14 @@ impl MatcherConfig {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
+        if matches!(node, MatcherConfig::Iterator { .. }) && self.has_iterator_in_path(path) {
+            return Err(MatcherError::ConfigurationError {
+                message: "Cannot create a iterator as a child of another iterator".to_string(),
+            });
+        }
+
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
         }
@@ -236,6 +262,13 @@ impl MatcherConfig {
             ) => {
                 *name = new_name;
                 *filter = new_filter;
+            }
+            (
+                MatcherConfig::Iterator { name, iterator, .. },
+                MatcherConfig::Iterator { name: new_name, iterator: new_iterator, .. },
+            ) => {
+                *name = new_name;
+                *iterator = new_iterator;
             }
             _ => {
                 return Err(MatcherError::ConfigurationError {
@@ -1847,5 +1880,40 @@ mod tests {
             Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
             err => unreachable!("{:?}", err),
         }
+    }
+
+    #[test]
+    fn should_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Iterator {
+                name: "iterator".to_string(),
+                iterator: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(has_iterator_ancestor);
+    }
+
+    #[test]
+    fn should_not_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Filter {
+                name: "iterator".to_string(),
+                filter: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(!has_iterator_ancestor);
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "pippo", "ruleset"]);
+        assert!(!has_iterator_ancestor);
     }
 }

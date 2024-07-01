@@ -1,4 +1,4 @@
-use crate::config::filter::Filter;
+use crate::config::nodes::Filter;
 use crate::config::rule::Rule;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
