@@ -1,7 +1,5 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{
-    matcher_config_into_dto, processing_tree_node_details_dto_into_matcher_config,
-};
+use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
 use crate::error::ApiError;
 use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
 use actix_multipart::Multipart;
@@ -17,8 +15,8 @@ use serde::Deserialize;
 use std::os::unix::ffi::OsStrExt;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
-    MatcherConfigDto, ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto,
-    ProcessingTreeNodeEditDto, RuleDto, RulePositionDto, TreeInfoDto,
+    ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto,
+    RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::MatcherConfigEditor;
 
@@ -637,12 +635,11 @@ async fn deploy_draft_for_tenant<
     req: HttpRequest,
     path: Path<DraftPath>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDto>> {
+) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
-    let result = data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
-    let matcher_config_dto = matcher_config_into_dto(result)?;
-    Ok(Json(matcher_config_dto))
+    data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
+    Ok(Json(()))
 }
 
 async fn draft_take_over_for_tenant<

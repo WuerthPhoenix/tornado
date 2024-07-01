@@ -204,12 +204,6 @@ pub struct FilterDto {
     pub filter: Option<OperatorDto>,
 }
 
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-#[serde(tag = "type")]
-pub enum MatcherConfigDto {
-    Filter { name: String, filter: FilterDto, nodes: Vec<MatcherConfigDto> },
-    Ruleset { name: String, rules: Vec<RuleDto> },
-}
 impl From<Filter> for FilterDto {
     fn from(filter: Filter) -> Self {
         FilterDto {
@@ -221,12 +215,6 @@ impl From<Filter> for FilterDto {
             active: filter.active,
         }
     }
-}
-
-#[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
-pub struct MatcherConfigDraftDto {
-    pub data: MatcherConfigDraftDataDto,
-    pub config: MatcherConfigDto,
 }
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
