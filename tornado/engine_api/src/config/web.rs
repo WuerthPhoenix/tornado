@@ -297,8 +297,8 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
         }
     }
     trace!("File uploaded of size {}", file_data.len());
-    let jd = &mut serde_json::Deserializer::from_slice(&file_data);
-    let result: Result<T, _> = serde_path_to_error::deserialize(jd);
+    let json_deserializer = &mut serde_json::Deserializer::from_slice(&file_data);
+    let result: Result<T, _> = serde_path_to_error::deserialize(json_deserializer);
 
     match result {
         Ok(data) => Ok(data),
