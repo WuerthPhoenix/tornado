@@ -16,6 +16,19 @@ impl<'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ProcessedFilter {
+    pub status: ProcessedFilterStatus,
+}
+
+// ToDo: Improve in NEPROD-1682 and NEPROD-1658
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProcessedIterator {
+    Matched,
+    AccessorError,
+    TypeError,
+}
+
 impl<'o> ValueGet for InternalEvent<'o> {
     fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
         match key {
@@ -38,15 +51,18 @@ pub struct ProcessedEvent {
     pub result: ProcessedNode,
 }
 
+// Todo: Improve in NEPROD-1682
 #[derive(Debug, Clone)]
-pub enum ProcessedNode {
-    Filter { name: String, filter: ProcessedFilter, nodes: Vec<ProcessedNode> },
-    Ruleset { name: String, rules: ProcessedRules },
+pub struct ProcessedIteration {
+    pub event: Value,
+    pub result: Vec<ProcessedNode>,
 }
 
 #[derive(Debug, Clone)]
-pub struct ProcessedFilter {
-    pub status: ProcessedFilterStatus,
+pub enum ProcessedNode {
+    Filter { name: String, filter: ProcessedFilter, nodes: Vec<ProcessedNode> },
+    Iterator { name: String, iterator: ProcessedIterator, events: Vec<ProcessedIteration> },
+    Ruleset { name: String, rules: ProcessedRules },
 }
 
 #[derive(Debug, Clone, PartialEq)]

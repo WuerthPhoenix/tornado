@@ -4,7 +4,7 @@ use crate::{error::MatcherError, model::InternalEvent};
 use log::*;
 use serde_json::Value;
 use std::borrow::Cow;
-use tornado_common_parser::{Parser, ParserBuilder};
+use tornado_common_parser::{AccessorExpression, Parser, ParserBuilder};
 
 #[derive(Default)]
 pub struct AccessorBuilder;
@@ -57,6 +57,15 @@ impl Accessor {
     /// based on the event and extracted_vars content
     pub fn dynamic_value(&self) -> bool {
         !matches!(&self.parser, Parser::Val(_))
+    }
+
+    pub fn try_as_expression(self) -> Result<AccessorExpression, MatcherError> {
+        match self.parser {
+            Parser::Exp(exp) => Ok(exp),
+            accessor => Err(MatcherError::ConfigurationError {
+                message: format!("Expression {:?} is not a simple accessor and can not be used as the iterator target.", accessor)
+            }),
+        }
     }
 }
 
@@ -504,7 +513,7 @@ mod test {
         let accessor = builder.build("", &value).unwrap();
 
         match accessor {
-            Accessor { parser: Parser::Exp { keys }, rule_name } => {
+            Accessor { parser: Parser::Exp(AccessorExpression { keys }), rule_name } => {
                 assert_eq!(
                     vec![
                         ValueGetter::Map { key: "event".to_owned() },
@@ -526,7 +535,7 @@ mod test {
         let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
-            Accessor { parser: Parser::Exp { keys }, rule_name } => {
+            Accessor { parser: Parser::Exp(AccessorExpression { keys }), rule_name } => {
                 assert_eq!(
                     vec![
                         ValueGetter::Map { key: "event".to_owned() },
@@ -549,7 +558,7 @@ mod test {
         let accessor = builder.build("rule", &value).unwrap();
 
         match accessor {
-            Accessor { parser: Parser::Exp { keys }, rule_name } => {
+            Accessor { parser: Parser::Exp(AccessorExpression { keys }), rule_name } => {
                 assert_eq!(
                     vec![
                         ValueGetter::Map { key: "event".to_owned() },
@@ -617,7 +626,7 @@ mod test {
         assert_eq!(&event_value, result.as_ref());
 
         match accessor {
-            Accessor { parser: Parser::Exp { keys }, rule_name } => {
+            Accessor { parser: Parser::Exp(AccessorExpression { keys }), rule_name } => {
                 assert_eq!(vec![ValueGetter::Map { key: "event".to_owned() },], keys);
                 assert_eq!(rule_name, "rule");
             }

@@ -56,6 +56,19 @@ impl Dispatcher {
                     self.dispatch_actions(node)?;
                 }
             }
+            ProcessedNode::Iterator { name, events, .. } => {
+                let _span = tracing::error_span!(
+                    "dispatch_iterator",
+                    name = name.as_str(),
+                    otel.name = format!("Emit Actions of Iterator: {}", name).as_str()
+                )
+                .entered();
+                for event in events {
+                    for node in event.result {
+                        self.dispatch_actions(node)?;
+                    }
+                }
+            }
         };
         Ok(())
     }
