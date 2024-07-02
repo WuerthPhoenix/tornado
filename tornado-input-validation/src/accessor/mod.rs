@@ -33,7 +33,7 @@ pub fn validate_accessor(input: &str) -> AccessorValidationResult {
     let result =
         AccessorValidationResult { is_valid: true, r#type: AccessorType::Expression, error: None };
     match ParserBuilder::engine_matcher(input) {
-        Ok(Parser::Exp(_)) | Ok(Parser::Custom { .. }) => result,
+        Ok(Parser::Exp { .. }) | Ok(Parser::Custom { .. }) => result,
         Ok(Parser::Interpolator { .. }) => {
             AccessorValidationResult { r#type: AccessorType::StringInterpolator, ..result }
         }
