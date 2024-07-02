@@ -16,6 +16,7 @@ It is intended to handle millions of events each second on standard server hardw
 
 Tornado is structured as a library, with three example binaries included that show how it can
 be used. The three main components of the Tornado architecture are:
+
 * The *Tornado Collector(s)*, or just *Collector(s)*
 * The *Tornado Engine*, or *Engine*
 * The *Tornado Executor(s)*, or *Executor(s)*
@@ -24,6 +25,7 @@ The term *Tornado* refers to the whole project or to a deployed system that incl
 all three components.
 
 Along with the main components, the following concepts are fundamental to the Tornado architecture:
+
 * A *Datasource*: A system that sends *External Events* to Tornado,
   or a system to which Tornado subscribes to receive *External Events*.
 * An *External Event*: An input received from a datasource. Its format depends on its source.
@@ -41,7 +43,6 @@ converted into a *Tornado Event*. Then it is forwarded to the *Tornado Engine* w
 matched against user-defined, composable *Rules*. Finally, generated *Actions* are dispatched
 to the *Executors*.
 
-
 The Tornado pipeline:
 
     Datasources (e.g. rsyslog)
@@ -58,9 +59,7 @@ The Tornado pipeline:
                   |
                   \-> Tornado Executors (execute the Actions)
 
-
 <!-- Add an architecture diagram? -->
-
 
 ### Collectors
 
@@ -75,6 +74,7 @@ rsyslog, JSON from Nats channels and generic Webhooks.
 
 Because all Collectors are defined with a simple format, Collectors for new event types
 can easily be added or extended from existing types for:
+
 * Monitoring events
 * Email messages
 * Telegram
@@ -85,27 +85,26 @@ can easily be added or extended from existing types for:
 * SMS
 * Operating system and authorization events
 
-
-
 ### Engine
 
 The *Engine* is the second step of the pipeline. It receives and processes the events produced
-by the *Collectors*. The outcome of this step is fully defined by a processing tree composed 
+by the *Collectors*. The outcome of this step is fully defined by a processing tree composed
 of *Filters* and *Rule Sets*.
 
 A *Filter* is a processing node that defines an access condition on the children nodes.
 
+An *Iterator* is a processing node that can iterate over an array or object from the input event.
+
 A *Rule Set* is a node that contains an ordered set of *Rules*, where each *Rule* determines:
+
 * The conditions a *Tornado Event* has to respect to match it
 * The actions to be executed in case of a match
 
-The processing tree is parsed at startup from a configuration folder 
+The processing tree is parsed at startup from a configuration folder
 where the node definitions are stored in JSON format.
 
 When an event matches one or more *Rules*, the Engine produces a set of *Actions*
 and forwards them to one or more *Executors*.
-
-
 
 ### Executors
 
@@ -114,14 +113,13 @@ produced from the *Engine* and trigger the associated executable instructions.
 
 An *Action* can be any command, process or operation.
 For example it can include:
+
 * Forwarding the events to a monitoring system
 * Logging events locally (e.g., as processed, discarded or matched) or remotely
 * Archiving events using software such as the Elastic Stack
 * Invoking a custom shell script
 
 A single *Executor* usually takes care of a single *Action* type.
-
-
 
 ## Compiling and Running Tornado
 
@@ -131,17 +129,14 @@ to use the external tools such as rsyslog and SNMP traps that you intend to conn
 Collector, and those that the Executors will send actions to. We also do not yet provide
 user-friendly installable packages such as .rpm's.
 
-
-
 ### Prerequisites
 
 The following prerequisites must be met in order to compile and run Tornado:
+
 - You must have Rust version 1.44 or later installed.
 - To build the Tornado executables, the *openssl-dev* library should be present in your build
   environment.
 - Some tests require Docker to be installed on the localhost.
-
-
 
 ### Repository Structure
 
@@ -181,12 +176,11 @@ The repository structure is shown here:
       |     |-- snmptrapd_collector # A Tornado Collector written in Perl to handle snmptrapd events
       |     |-- webhook_collector # A Tornado Collector to handle generic Webhook events
 
-
-
 ### Build Process
 
 To build the source, open a shell where you cloned the repository, change to the *src* directory,
 and launch:
+
 ```
 $ cargo build
 ```
@@ -195,6 +189,7 @@ This will build the entire project and produces executable files in the *target/
 It may require from 5 to 10 minutes depending on your hardware.
 
 Alternatively, you can perform a release build with:
+
 ```
 $ cargo build --release
 ```
@@ -204,6 +199,7 @@ If you intend to run benchmarks, or assess or deploy Tornado in a production env
 the way you should built it.
 
 The elements of the Tornado build process can be grouped into three categories:
+
 - Tornado libraries: Everything not in the the "spike" or "tornado" folder.
   These are common Rust libraries used by Tornado, and can be imported by other projects as well.
 - Tornado executables: The crates on the "tornado" folder generate the Tornado executables. These
@@ -211,12 +207,11 @@ The elements of the Tornado build process can be grouped into three categories:
 - Spikes: The crates on the "spike" folder generate executables suffixed with *spike_*. These are
   experimental crates that are not part of the basic Tornado architecture.
 
-
-
 ### How to Run Tornado
 
 To run Tornado, follow the configuration instructions of the Tornado executables provided by
 their respective documentation pages:
+
 * [tornado_engine documentation](tornado/engine/README.md)
 * [tornado_email_collector documentation](tornado/email_collector/README.md)
 * [tornado_icinga2_collector documentation](tornado/icinga2_collector/README.md)
@@ -224,16 +219,12 @@ their respective documentation pages:
 * [tornado_nats_json_collector documentation](tornado/nats_json_collector/README.md)
 * [tornado_webhook_collector documentation](tornado/webhook_collector/README.md)
 
-
-
 ### How to Run Tornado Locally with *cargo-make*
 
 To test Tornado easily in a local environment, you can run it using cargo-make as
 [described here](./RUN_WITH_CARGO_MAKE.md).
 
 <!-- Future section on running via yum?  Need list of explicit steps (currently there are errors with missing config files) -->
-
-
 
 ## The Tornado Project
 
@@ -254,8 +245,6 @@ and is fully open source.
 
 <!-- The official repository is on [GitHub](link.html), and it is available under the X license. -->
 
-
-
 ## Contributing
 
 <!-- Do we need to mention Support as some other projects do? -->
@@ -268,109 +257,116 @@ Check the ['contributing' documentation](CONTRIBUTING.md) for more details.
 
 <!-- Do we have a forum or other feedback channel?  If so, should we mention it? -->
 
-
-
 ## Tornado Crates Documentation Links
 
 Tornado's crate docs are produced according to the
 [Rust documentation standards](https://doc.rust-lang.org/book/index.html).
 The shortcuts below, organized thematically, will take you to the documentation for each module.
 
-
-
 ### Common Traits and Code
 
 The Common API page describes the API and defines the Event and Action structures.
+
 - [tornado_common_api](common/api/README.md)
 
 The Logger page describes how Tornado logs its own actions.
+
 - [tornado_common_logger](common/logger/README.md)
-
-
 
 ### Collectors
 
 This crate describes the commonalities of all Collector types.
 <!-- This page of doc. is very short. -->
+
 - [tornado_collector_common](collector/common/README.md)
 
 Describes a collector that receives a MIME email message and generates an Event.
+
 - [tornado_collector_email](collector/email/README.md)
 
 This page illustrates the Collector for JSON events using the JMESPath JSON query language.
+
 - [tornado_collector_jmespath](collector/jmespath/README.md)
 
 Presents the standard JSON collector that deserializes an unstructured JSON string into an Event.
-- [tornado_collector_json](collector/json/README.md)
 
+- [tornado_collector_json](collector/json/README.md)
 
 ### Engine
 
 The Matcher page describes the structure of the rules used in matching.
 <!-- It doesn't describe anything else about the matcher besides the rule structure. -->
+
 - [tornado_engine_matcher](engine/matcher/README.md)
-
-
 
 ### Executors
 
 This crate describes the commonalities of all Executor types.
 <!-- This page of doc. is very short. -->
+
 - [tornado_executor_common](executor/common/README.md)
 
 This page describes how the Archive executor writes to log files on locally mounted file systems,
 with a focus on configuration.
+
 - [tornado_executor_archive](executor/archive/README.md)
 
-The Icinga2 executor forwards Tornado Actions to the 
+The Icinga2 executor forwards Tornado Actions to the
 [Icinga2 API](https://icinga.com/docs/icinga2/latest/12-icinga2-api).
+
 - [tornado_executor_icinga2](executor/icinga2/README.md)
 
 The Logger executor simply outputs the whole Action body
 to the standard [log](https://crates.io/crates/log) at the _info_ level.
 <!-- This page of doc. is very short. -->
+
 - [tornado_executor_logger](executor/logger/README.md)
 
 The Executor Script page defines how to configure Actions that launch shell scripts.
+
 - [tornado_executor_script](executor/script/README.md)
-
-
 
 ### Network
 
 This page contains high level traits not bound to any specific network technology.
 <!-- This page of doc. is very short. -->
+
 - [tornado_network_common](network/common/README.md)
 
 Describes tests that dispatch Events and Actions on a single process without actually making network calls.
 <!-- This page of doc. is very short. -->
+
 - [tornado_network_simple](network/simple/README.md)
-
-
 
 ### Executables
 
 Describes the structure of the Tornado binary executable, and the structure and configuration of many of its components.
+
 - [tornado_engine](tornado/engine/README.md)
 
 An executable that processes incoming emails and generates Tornado Events.
+
 - [tornado_email_collector](tornado/email_collector/README.md)
 
 An executable that subscribes to Icinga2 Event Streams API and generates Tornado Events.
+
 - [tornado_icinga2_collector](tornado/icinga2_collector/README.md)
 
 An executable that subscribes to Nats channels and generates Tornado Events.
+
 - [tornado_nats_json_collector](tornado/nats_json_collector/README.md)
 
 The description of a binary executable that generates Tornado Events from _rsyslog_ inputs.
+
 - [tornado_rsyslog_collector](tornado/rsyslog_collector/README.md)
 
 A Perl trap handler for Net-SNMP's to subscribe to snmptrapd events.
+
 - [tornado_snmptrapd_collector](tornado/snmptrapd_collector/README.md)
 
 A standalone HTTP server binary executable that listens for REST calls from a generic Webhook.
-- [tornado_webhook_collector](tornado/webhook_collector/README.md)
 
+- [tornado_webhook_collector](tornado/webhook_collector/README.md)
 
 ### License
 
