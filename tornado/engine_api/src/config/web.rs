@@ -3,6 +3,7 @@ use crate::config::convert::{
     dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
     processing_tree_node_details_dto_into_matcher_config,
 };
+use crate::error::ApiError;
 use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
 use actix_multipart::Multipart;
 use actix_web::http::header;
@@ -296,7 +297,13 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
         }
     }
     trace!("File uploaded of size {}", file_data.len());
-    Ok(serde_json::from_slice(&file_data)?)
+    let json_deserializer = &mut serde_json::Deserializer::from_slice(&file_data);
+    let result: Result<T, _> = serde_path_to_error::deserialize(json_deserializer);
+
+    match result {
+        Ok(data) => Ok(data),
+        Err(error) => Err(ApiError::BadRequestError { cause: format!("{}", error) }.into()),
+    }
 }
 
 async fn import_child_node<
@@ -310,7 +317,11 @@ async fn import_child_node<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    let config = match parse_uploaded_file(body).await? {
+        ExportVersionedMatcherConfig::V1(config) | ExportVersionedMatcherConfig::V1_1(config) => {
+            config
+        }
+    };
     data.api
         .create_draft_config_node(
             auth_ctx,
@@ -356,7 +367,11 @@ async fn import_node_in_path<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    let config = match parse_uploaded_file(body).await? {
+        ExportVersionedMatcherConfig::V1(config) | ExportVersionedMatcherConfig::V1_1(config) => {
+            config
+        }
+    };
     data.api
         .import_draft_config_node(
             auth_ctx,
@@ -599,7 +614,7 @@ async fn export_draft_tree_starting_from_node_path<
             format!("attachment; filename: \"{}\"", filename),
         ))
         .content_type("application/json")
-        .json(ExportVersionedMatcherConfig::V1(result));
+        .json(ExportVersionedMatcherConfig::V1_1(result));
     Ok(response)
 }
 
