@@ -102,7 +102,7 @@ export type ProcessingTreeNodeDetailsDto =
 
 export type RuleDetailsDto = {     name: string; description: string; continue: boolean; active:     boolean; actions: string [] };
 
-export type TreeInfoDto = { rules_count: number; filters_count: number };
+export type TreeInfoDto = { rules_count: number; filters_count: number; iterators_count: number };
 
 export type RulePositionDto = { position: number };
 
