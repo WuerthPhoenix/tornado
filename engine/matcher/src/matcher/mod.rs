@@ -10,7 +10,6 @@ use crate::config::rule::Rule;
 use crate::config::MatcherConfig;
 use crate::error::MatcherError;
 use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
-use crate::matcher::operator::true_operator;
 use crate::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration,
     ProcessedIterator, ProcessedNode, ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus,
