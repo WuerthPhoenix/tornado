@@ -373,7 +373,7 @@ mod test {
 
                 assert_eq!(7, rules.len());
 
-                assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
+                assert_eq!("all_emails_and_syslogs", rules.first().unwrap().name);
                 assert_eq!("rule_without_where", rules.get(1).unwrap().name);
                 assert_eq!("map_in_action_payload", rules.get(2).unwrap().name);
                 assert_eq!("cmp_operators", rules.get(3).unwrap().name);

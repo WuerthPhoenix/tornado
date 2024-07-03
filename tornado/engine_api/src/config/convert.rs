@@ -1,48 +1,13 @@
 use serde_json::Error;
 use tornado_engine_api_dto::config::{
-    ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, FilterDto,
-    MatcherConfigDraftDataDto, MatcherConfigDraftDto, MatcherConfigDto, ModifierDto, OperatorDto,
+    ActionDto, ConstraintDto, ExtractorDto, ExtractorRegexDto, ModifierDto, OperatorDto,
     ProcessingTreeNodeEditDto, RuleDto,
 };
 use tornado_engine_matcher::config::nodes::{Filter, MatcherIterator};
 use tornado_engine_matcher::config::rule::{
     ConfigAction, Constraint, Extractor, ExtractorRegex, Modifier, Operator, Rule,
 };
-use tornado_engine_matcher::config::{
-    Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
-};
-
-pub fn matcher_config_draft_into_dto(
-    draft: MatcherConfigDraft,
-) -> Result<MatcherConfigDraftDto, Error> {
-    Ok(MatcherConfigDraftDto {
-        data: MatcherConfigDraftDataDto {
-            user: draft.data.user,
-            created_ts_ms: draft.data.created_ts_ms,
-            updated_ts_ms: draft.data.updated_ts_ms,
-            draft_id: draft.data.draft_id,
-        },
-        config: matcher_config_into_dto(draft.config)?,
-    })
-}
-
-pub fn matcher_config_into_dto(config: MatcherConfig) -> Result<MatcherConfigDto, Error> {
-    Ok(match config {
-        MatcherConfig::Ruleset { name, rules } => MatcherConfigDto::Ruleset {
-            name,
-            rules: rules.into_iter().map(rule_into_dto).collect::<Result<Vec<_>, _>>()?,
-        },
-        MatcherConfig::Filter { name, filter, nodes } => MatcherConfigDto::Filter {
-            name,
-            filter: filter.into(),
-            nodes: nodes.into_iter().map(matcher_config_into_dto).collect::<Result<Vec<_>, _>>()?,
-        },
-        MatcherConfig::Iterator { .. } => {
-            // ToDo: TOR-580
-            todo!()
-        }
-    })
-}
+use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
 
 pub fn rule_into_dto(rule: Rule) -> Result<RuleDto, Error> {
     Ok(RuleDto {
@@ -107,34 +72,6 @@ fn extractor_regex_into_dto(extractor_regex: ExtractorRegex) -> ExtractorRegexDt
     }
 }
 
-pub fn dto_into_matcher_config_draft(
-    draft: MatcherConfigDraftDto,
-) -> Result<MatcherConfigDraft, Error> {
-    Ok(MatcherConfigDraft {
-        data: MatcherConfigDraftData {
-            user: draft.data.user,
-            created_ts_ms: draft.data.created_ts_ms,
-            updated_ts_ms: draft.data.updated_ts_ms,
-            draft_id: draft.data.draft_id,
-        },
-        config: dto_into_matcher_config(draft.config)?,
-    })
-}
-
-pub fn dto_into_matcher_config(config: MatcherConfigDto) -> Result<MatcherConfig, Error> {
-    Ok(match config {
-        MatcherConfigDto::Ruleset { name, rules } => MatcherConfig::Ruleset {
-            name,
-            rules: rules.into_iter().map(dto_into_rule).collect::<Result<Vec<_>, _>>()?,
-        },
-        MatcherConfigDto::Filter { name, filter, nodes } => MatcherConfig::Filter {
-            name,
-            filter: dto_into_filter(filter)?,
-            nodes: nodes.into_iter().map(dto_into_matcher_config).collect::<Result<Vec<_>, _>>()?,
-        },
-    })
-}
-
 pub fn processing_tree_node_details_dto_into_matcher_config(
     config: ProcessingTreeNodeEditDto,
 ) -> Result<MatcherConfig, Error> {
@@ -161,15 +98,6 @@ pub fn processing_tree_node_details_dto_into_matcher_config(
                 nodes: vec![],
             }
         }
-    })
-}
-
-fn dto_into_filter(filter: FilterDto) -> Result<Filter, Error> {
-    let option_filter = filter.filter.map(dto_into_operator).transpose()?;
-    Ok(Filter {
-        description: filter.description,
-        filter: option_filter.into(),
-        active: filter.active,
     })
 }
 
