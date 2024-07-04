@@ -1934,4 +1934,22 @@ mod tests {
         let has_iterator_ancestor = config.has_iterator_in_path(&["root", "pippo", "ruleset"]);
         assert!(!has_iterator_ancestor);
     }
+
+    #[test]
+    fn should_delete_child_node_in_iterator() {
+        let mut nodes = MatcherConfig::Iterator {
+            name: "root".to_string(),
+            iterator: Default::default(),
+            nodes: vec![MatcherConfig::Ruleset { name: "pippo".to_string(), rules: vec![] }],
+        };
+
+        nodes.delete_node_in_path(&["root", "pippo"]).unwrap();
+
+        match nodes {
+            MatcherConfig::Iterator { nodes, .. } => {
+                assert!(nodes.is_empty())
+            }
+            result => panic!("{:?}", result),
+        }
+    }
 }
