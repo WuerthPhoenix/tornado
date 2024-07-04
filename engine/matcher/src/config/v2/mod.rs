@@ -122,10 +122,23 @@ impl ConfigNodeDir for MatcherConfigIterator {
 #[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, tag = "version")]
 pub enum Version {
+    #[serde(rename = "1.0")]
     V1,
     #[serde(rename = "2.0")]
     #[default]
     V2,
+}
+
+impl Version {
+    pub fn current() -> Self {
+        Version::V2
+    }
+}
+
+impl Display for Version {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&serde_json::to_string(self).expect("Version is always serializable"))
+    }
 }
 
 impl ConfigNodeDir for Version {
@@ -154,8 +167,22 @@ pub async fn get_config_version(path: &Path) -> Result<Version, MatcherConfigErr
 async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, MatcherConfigError> {
     info!("Reading tornado processing tree configuration from {}", root_dir.display());
 
-    let _: Version = parse_node_config_from_file(root_dir).await?;
-    let nodes = read_child_nodes_from_dir(root_dir, ConfigType::Root).await?;
+    let nodes = match parse_node_config_from_file::<Version>(root_dir).await {
+        Ok(Version::V1) => {
+            return Err(MatcherConfigError::OldVersion { found_version: Version::V1 })
+        }
+        Ok(Version::V2) => read_child_nodes_from_dir(root_dir, ConfigType::Root).await?,
+        Err(error @ MatcherConfigError::FileNotFound { .. }) => {
+            // If the dir contains no entries at all, it's a new config, and we create a root node.
+            let entires = gather_dir_entries(root_dir).await?;
+            if !entires.is_empty() {
+                return Err(error.into());
+            }
+            vec![]
+        }
+        Err(error) => return Err(error.into()),
+    };
+
     Ok(MatcherConfig::Filter {
         name: "root".to_string(),
         filter: Filter {
@@ -781,6 +808,20 @@ mod tests {
                 assert_eq!(ConfigType::Filter, config_type);
             }
             result => panic!("{:#?}", result),
+        }
+    }
+
+    #[tokio::test]
+    async fn should_parse_empty_config_dir() {
+        let dir = tempfile::tempdir().unwrap();
+        let config = read_config_from_root_dir(dir.path()).await.unwrap();
+
+        match config {
+            MatcherConfig::Filter { name, nodes, .. } => {
+                assert_eq!("root", &name);
+                assert_eq!(0, nodes.len());
+            }
+            result => unreachable!("{:?}", result),
         }
     }
 }

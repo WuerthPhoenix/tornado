@@ -1,4 +1,4 @@
-use crate::config::v2::ConfigType;
+use crate::config::v2::{ConfigType, Version};
 use crate::error::MatcherError;
 use std::error::Error;
 use std::fmt::{Display, Formatter};
@@ -16,6 +16,7 @@ pub enum MatcherConfigError {
     FormatError { file: PathBuf, error: serde_json::Error },
     FileNameError { path: PathBuf },
     DuplicateName { name: String, previous: PathBuf, next: PathBuf },
+    OldVersion { found_version: Version },
 }
 
 impl Display for MatcherConfigError {
@@ -65,6 +66,11 @@ impl Display for MatcherConfigError {
                 file.display(),
                 error
             )),
+            MatcherConfigError::OldVersion { found_version } => f.write_fmt(format_args!(
+                "Found old version {}, but the current supported version is {}",
+                serde_json::to_string(found_version).unwrap(),
+                Version::current()
+            )),
         }
     }
 }
@@ -81,6 +87,7 @@ impl Error for MatcherConfigError {
             MatcherConfigError::FileNotFound { .. } => None,
             MatcherConfigError::FileNameError { .. } => None,
             MatcherConfigError::DuplicateName { .. } => None,
+            MatcherConfigError::OldVersion { .. } => None,
         }
     }
 }
