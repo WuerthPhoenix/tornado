@@ -395,7 +395,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
-                action_one.get(0).unwrap().0.action.deref()
+                action_one.first().unwrap().0.action.deref()
             );
         }
 
@@ -420,7 +420,7 @@ mod test {
             );
             assert_eq!(
                 &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
-                action_two.get(0).unwrap().0.action.deref()
+                action_two.first().unwrap().0.action.deref()
             );
         }
 
@@ -528,7 +528,7 @@ mod test {
             payload.insert("item".to_owned(), Value::String("first_item".to_owned()));
             assert_eq!(
                 &Action::new_with_payload_and_created_ms("id_two", payload, created_ms),
-                action_two.get(0).unwrap().0.action.deref()
+                action_two.first().unwrap().0.action.deref()
             );
         }
 
@@ -618,7 +618,7 @@ mod test {
             payload.insert("value".to_owned(), Value::String("first + second".to_owned()));
             assert_eq!(
                 &Action::new_with_payload_and_created_ms("id_one", payload, created_ms),
-                action_two.get(0).unwrap().0.action.deref()
+                action_two.first().unwrap().0.action.deref()
             );
         }
 
@@ -688,7 +688,7 @@ mod test {
         let lock = execution_results.read().unwrap();
         assert_eq!(1, lock.len());
 
-        let value = lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_map().unwrap();
+        let value = lock.first().unwrap().0.action.payload.get("inner").unwrap().get_map().unwrap();
         let mut expected_map = Map::new();
         expected_map.insert("value".to_owned(), Value::String("first".to_owned()));
         assert_eq!(&expected_map, value);
@@ -753,7 +753,7 @@ mod test {
         assert_eq!(1, lock.len());
 
         let value =
-            lock.get(0).unwrap().0.action.payload.get("inner").unwrap().get_array().unwrap();
+            lock.first().unwrap().0.action.payload.get("inner").unwrap().get_array().unwrap();
         let expected_array =
             vec![Value::String("first".to_owned()), Value::String("second".to_owned())];
         assert_eq!(&expected_array, value);
