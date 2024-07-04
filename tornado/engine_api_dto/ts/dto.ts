@@ -54,12 +54,6 @@ export type FilterDto = { description: string; active: boolean; filter: Operator
 
 export type MatcherConfigDraftDataDto = {     user: string; created_ts_ms: number; updated_ts_ms: number; draft_id: string };
 
-export type MatcherConfigDraftDto = { data: MatcherConfigDraftDataDto; config: MatcherConfigDto };
-
-export type MatcherConfigDto = 
- | {     type: "Filter"; name: string; filter: FilterDto; nodes:     MatcherConfigDto [] } 
- | { type: "Ruleset"; name: string; rules: RuleDto [] };
-
 export type ModifierDto = 
  | { type: "Lowercase" } 
  | {     type: "Map"; mapping: { [key: string]: string }; default_value:     string | null } 

@@ -34,7 +34,6 @@ use tornado_common_metrics::Metrics;
 use tornado_engine_api::auth::auth_v2::AuthServiceV2;
 use tornado_engine_api::auth::{roles_map_to_permissions_map, AuthService};
 use tornado_engine_api::config::api::ConfigApi;
-use tornado_engine_api::event::api::EventApi;
 use tornado_engine_api::event::api_v2::EventApiV2;
 use tornado_engine_api::model::{ApiData, ApiDataV2};
 use tornado_engine_api::runtime_config::api::RuntimeConfigApi;
@@ -442,17 +441,9 @@ pub async fn daemon(
     let server_binding_result = HttpServer::new(move || {
         let daemon_config = daemon_config.clone();
 
-        let v1_config_api = ApiData {
-            auth: auth_service.clone(),
-            api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
-        };
         let v2_config_api = ApiDataV2 {
             auth: auth_service_v2.clone(),
             api: ConfigApi::new(api_handler.clone(), matcher_config.clone()),
-        };
-        let event_api = ApiData {
-            auth: auth_service.clone(),
-            api: EventApi::new(api_handler.clone(), matcher_config.clone()),
         };
         let event_api_v2 = ApiDataV2 {
             auth: auth_service_v2.clone(),
@@ -478,8 +469,6 @@ pub async fn daemon(
                                 .unwrap_or(MAX_JSON_PAYLOAD_SIZE),
                         ), // Limit request payload size in byte
                     )
-                    .service(tornado_engine_api::config::web::build_config_endpoints(v1_config_api))
-                    .service(tornado_engine_api::event::web::build_event_endpoints(event_api))
                     .service(
                         tornado_engine_api::runtime_config::web::build_runtime_config_endpoints(
                             runtime_config_api,
