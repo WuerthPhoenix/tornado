@@ -335,22 +335,24 @@ impl MatcherConfig {
         let node_to_delete = path.last().unwrap_or(&"");
         let parent_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
-        if parent_node.get_child_node_by_name(node_to_delete).is_none() {
-            return Err(MatcherError::ConfigurationError {
-                message: format!(
-                    "A node with name {:?} not found in {:?}",
-                    node_to_delete, path_to_parent,
-                ),
-            });
+        match parent_node {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
+                let num_nodes_before = nodes.len();
+                nodes.retain(|n| n.get_name() != *node_to_delete);
+                if nodes.len() == num_nodes_before {
+                    return Err(MatcherError::ConfigurationError {
+                        message: format!(
+                            "A node with name {:?} not found in {:?}",
+                            node_to_delete, path_to_parent,
+                        ),
+                    });
+                }
+                Ok(())
+            }
+            MatcherConfig::Ruleset { .. } => Err(MatcherError::ConfigurationError {
+                message: "Can't delete a node in a ruleset.".to_string(),
+            }),
         }
-
-        // Parent node is guaranteed to be of type filter because get_child_node_by_name return
-        // Option<None> if the parent node is of type ruleset and this match arm is never reached.
-        if let MatcherConfig::Filter { nodes, .. } = parent_node {
-            nodes.retain(|node| &node.get_name() != node_to_delete);
-        }
-
-        Ok(())
     }
 
     // Create a node at a specific path

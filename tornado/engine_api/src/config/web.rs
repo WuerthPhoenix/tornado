@@ -18,6 +18,7 @@ use tornado_engine_api_dto::config::{
     RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::MatcherConfigEditor;
+use crate::error::ApiError;
 
 pub fn build_config_v2_endpoints<
     A: ConfigApiHandler + 'static,
