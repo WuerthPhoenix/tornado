@@ -1,4 +1,4 @@
-use crate::config::filter::Filter;
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
@@ -7,7 +7,7 @@ use crate::matcher::Matcher;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
-pub mod filter;
+pub mod nodes;
 pub mod operation;
 pub mod rule;
 pub mod v1;
@@ -39,19 +39,30 @@ impl ConfigNodeDir for MatcherConfigDraftData {
 #[serde(deny_unknown_fields)]
 pub enum MatcherConfig {
     Filter { name: String, filter: Filter, nodes: Vec<MatcherConfig> },
+    Iterator { name: String, iterator: MatcherIterator, nodes: Vec<MatcherConfig> },
     Ruleset { name: String, rules: Vec<Rule> },
 }
 
 impl MatcherConfig {
     pub fn get_name(&self) -> &str {
         match self {
-            MatcherConfig::Filter { name, .. } | MatcherConfig::Ruleset { name, .. } => name,
+            MatcherConfig::Filter { name, .. }
+            | MatcherConfig::Iterator { name, .. }
+            | MatcherConfig::Ruleset { name, .. } => name,
+        }
+    }
+
+    pub fn get_name_mut(&mut self) -> &mut String {
+        match self {
+            MatcherConfig::Filter { name, .. }
+            | MatcherConfig::Iterator { name, .. }
+            | MatcherConfig::Ruleset { name, .. } => name,
         }
     }
 
     fn get_child_node_by_name(&self, child_name: &str) -> Option<&MatcherConfig> {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter().find(|child| child.get_name() == child_name)
             }
             MatcherConfig::Ruleset { .. } => None,
@@ -60,7 +71,7 @@ impl MatcherConfig {
 
     fn get_mut_child_node_by_name(&mut self, child_name: &str) -> Option<&mut MatcherConfig> {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter_mut().find(|child| child.get_name() == child_name)
             }
             MatcherConfig::Ruleset { .. } => None,
@@ -126,6 +137,9 @@ impl MatcherConfig {
             MatcherConfig::Filter { .. } => Err(MatcherError::ConfigurationError {
                 message: "Cannot access rules in filter nodes".to_string(),
             }),
+            MatcherConfig::Iterator { .. } => Err(MatcherError::ConfigurationError {
+                message: "Cannot access rules in iterator nodes".to_string(),
+            }),
             MatcherConfig::Ruleset { rules, .. } => Ok(rules),
         }
     }
@@ -137,15 +151,47 @@ impl MatcherConfig {
             return Some(Cow::Owned(vec![self.to_owned()]));
         }
         match self.get_node_by_path(path) {
-            Some(MatcherConfig::Filter { nodes, .. }) => Some(Cow::Borrowed(nodes)),
-            _ => None,
+            Some(MatcherConfig::Filter { nodes, .. })
+            | Some(MatcherConfig::Iterator { nodes, .. }) => Some(Cow::Borrowed(nodes)),
+            Some(MatcherConfig::Ruleset { .. }) | None => None,
+        }
+    }
+
+    pub fn has_iterator_in_path(&self, path: &[&str]) -> bool {
+        if path.is_empty() {
+            return false;
+        }
+        // trim root from path.
+        self.has_iterator_in_path_inner(&path[1..])
+    }
+
+    fn has_iterator_in_path_inner(&self, path: &[&str]) -> bool {
+        match path {
+            [] => false,
+            [node_name, path @ ..] => match self.get_child_node_by_name(node_name) {
+                Some(MatcherConfig::Iterator { .. }) => true,
+                Some(node) => node.has_iterator_in_path_inner(path),
+                None => false,
+            },
+        }
+    }
+
+    pub fn contains_iterator(&self) -> bool {
+        match self {
+            MatcherConfig::Filter { nodes, .. } => {
+                nodes.iter().any(MatcherConfig::contains_iterator)
+            }
+            MatcherConfig::Iterator { .. } => true,
+            MatcherConfig::Ruleset { .. } => false,
         }
     }
 
     // Returns the total amount of direct children of a node
     pub fn get_direct_child_nodes_count(&self) -> usize {
         match self {
-            MatcherConfig::Filter { nodes, .. } => nodes.len(),
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
+                nodes.len()
+            }
             MatcherConfig::Ruleset { .. } => 0,
         }
     }
@@ -153,7 +199,7 @@ impl MatcherConfig {
     // Returns the total amount of rules of the node and its children
     pub fn get_all_rules_count(&self) -> usize {
         match self {
-            MatcherConfig::Filter { nodes, .. } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.iter().map(MatcherConfig::get_all_rules_count).sum()
             }
             MatcherConfig::Ruleset { rules, .. } => rules.len(),
@@ -171,8 +217,12 @@ impl MatcherConfig {
                 message: "The node path must specify a parent node".to_string(),
             });
         }
-        let current_node = self.get_mut_node_by_path_or_err(path)?;
 
+        if node.contains_iterator() && self.has_iterator_in_path(path) {
+            return Err(MatcherError::NestedIteratorError);
+        }
+
+        let current_node = self.get_mut_node_by_path_or_err(path)?;
         if current_node.get_child_node_by_name(node.get_name()).is_some() {
             return Err(MatcherError::NotUniqueNameError { name: node.get_name().to_owned() });
         }
@@ -181,10 +231,10 @@ impl MatcherConfig {
         let _ = Matcher::build(&node)?;
 
         match current_node {
-            MatcherConfig::Ruleset { rules: _, .. } => Err(MatcherError::ConfigurationError {
+            MatcherConfig::Ruleset { .. } => Err(MatcherError::ConfigurationError {
                 message: "A ruleset cannot have children nodes".to_string(),
             }),
-            MatcherConfig::Filter { name: _, filter: _, ref mut nodes } => {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
                 nodes.push(node.clone());
                 Ok(())
             }
@@ -228,6 +278,13 @@ impl MatcherConfig {
             ) => {
                 *name = new_name;
                 *filter = new_filter;
+            }
+            (
+                MatcherConfig::Iterator { name, iterator, .. },
+                MatcherConfig::Iterator { name: new_name, iterator: new_iterator, .. },
+            ) => {
+                *name = new_name;
+                *iterator = new_iterator;
             }
             _ => {
                 return Err(MatcherError::ConfigurationError {
@@ -278,22 +335,24 @@ impl MatcherConfig {
         let node_to_delete = path.last().unwrap_or(&"");
         let parent_node = self.get_mut_node_by_path_or_err(path_to_parent)?;
 
-        if parent_node.get_child_node_by_name(node_to_delete).is_none() {
-            return Err(MatcherError::ConfigurationError {
-                message: format!(
-                    "A node with name {:?} not found in {:?}",
-                    node_to_delete, path_to_parent,
-                ),
-            });
+        match parent_node {
+            MatcherConfig::Filter { nodes, .. } | MatcherConfig::Iterator { nodes, .. } => {
+                let num_nodes_before = nodes.len();
+                nodes.retain(|n| n.get_name() != *node_to_delete);
+                if nodes.len() == num_nodes_before {
+                    return Err(MatcherError::ConfigurationError {
+                        message: format!(
+                            "A node with name {:?} not found in {:?}",
+                            node_to_delete, path_to_parent,
+                        ),
+                    });
+                }
+                Ok(())
+            }
+            MatcherConfig::Ruleset { .. } => Err(MatcherError::ConfigurationError {
+                message: "Can't delete a node in a ruleset.".to_string(),
+            }),
         }
-
-        // Parent node is guaranteed to be of type filter because get_child_node_by_name return
-        // Option<None> if the parent node is of type ruleset and this match arm is never reached.
-        if let MatcherConfig::Filter { nodes, .. } = parent_node {
-            nodes.retain(|node| &node.get_name() != node_to_delete);
-        }
-
-        Ok(())
     }
 
     // Create a node at a specific path
@@ -643,12 +702,12 @@ mod tests {
         // Assert
         assert_eq!(empty_path.clone().unwrap().len(), 1);
         assert!(
-            matches!(empty_path.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
+            matches!(empty_path.unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "root")
         );
 
         assert_eq!(one_level.clone().unwrap().len(), 2);
         assert!(
-            matches!(one_level.clone().unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1")
+            matches!(one_level.clone().unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "filter1")
         );
         assert!(
             matches!(one_level.unwrap().get(1).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter2")
@@ -656,7 +715,7 @@ mod tests {
 
         assert_eq!(nested_levels.clone().unwrap().len(), 1);
         assert!(
-            matches!(nested_levels.unwrap().get(0).unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3")
+            matches!(nested_levels.unwrap().first().unwrap(), MatcherConfig::Filter {name, ..} if name == "filter3")
         );
 
         assert_eq!(nested_levels_path_with_ruleset, None);
@@ -1477,8 +1536,8 @@ mod tests {
         assert!(result.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1499,8 +1558,8 @@ mod tests {
         assert!(result.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1523,8 +1582,8 @@ mod tests {
         assert!(result2.is_ok());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1544,8 +1603,8 @@ mod tests {
         assert!(result2.is_err());
 
         let rules = match &config {
-            MatcherConfig::Filter { .. } => panic!("config is a ruleset"),
             MatcherConfig::Ruleset { rules, .. } => rules,
+            config => panic!("{:?}", config),
         };
 
         assert_eq!(rules.len(), 3);
@@ -1838,6 +1897,59 @@ mod tests {
         match result {
             Err(MatcherError::NotUniqueNameError { name }) if name == "filter1" => {}
             err => unreachable!("{:?}", err),
+        }
+    }
+
+    #[test]
+    fn should_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Iterator {
+                name: "iterator".to_string(),
+                iterator: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(has_iterator_ancestor);
+    }
+
+    #[test]
+    fn should_not_find_iterator_ancestor() {
+        let config = MatcherConfig::Filter {
+            name: "root".to_string(),
+            filter: Default::default(),
+            nodes: vec![MatcherConfig::Filter {
+                name: "iterator".to_string(),
+                filter: Default::default(),
+                nodes: vec![MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] }],
+            }],
+        };
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "iterator", "ruleset"]);
+        assert!(!has_iterator_ancestor);
+
+        let has_iterator_ancestor = config.has_iterator_in_path(&["root", "pippo", "ruleset"]);
+        assert!(!has_iterator_ancestor);
+    }
+
+    #[test]
+    fn should_delete_child_node_in_iterator() {
+        let mut nodes = MatcherConfig::Iterator {
+            name: "root".to_string(),
+            iterator: Default::default(),
+            nodes: vec![MatcherConfig::Ruleset { name: "pippo".to_string(), rules: vec![] }],
+        };
+
+        nodes.delete_node_in_path(&["root", "pippo"]).unwrap();
+
+        match nodes {
+            MatcherConfig::Iterator { nodes, .. } => {
+                assert!(nodes.is_empty())
+            }
+            result => panic!("{:?}", result),
         }
     }
 }

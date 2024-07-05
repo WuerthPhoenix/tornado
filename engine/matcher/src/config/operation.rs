@@ -53,43 +53,53 @@ pub fn matcher_config_filter(
 
     let node_name = matcher_config.get_name();
 
-    if let Some(node_filter) = filter.get(node_name) {
-        match matcher_config {
-            MatcherConfig::Ruleset { .. } => Some(matcher_config.clone()),
-            MatcherConfig::Filter { name, filter, nodes } => match node_filter {
-                NodeFilter::AllChildren => Some(MatcherConfig::Filter {
-                    name: name.to_owned(),
-                    filter: filter.to_owned(),
-                    nodes: nodes.clone(),
-                }),
-                NodeFilter::SelectedChildren(selected_children) => {
-                    let mut children = vec![];
-                    for node in nodes {
-                        if let Some(child_node) = matcher_config_filter(node, selected_children) {
-                            children.push(child_node)
-                        }
-                    }
-                    if children.is_empty() {
-                        None
-                    } else {
-                        Some(MatcherConfig::Filter {
-                            name: name.to_owned(),
-                            filter: filter.to_owned(),
-                            nodes: children,
-                        })
-                    }
-                }
-            },
+    let node_filter = filter.get(node_name)?;
+    match (node_filter, matcher_config) {
+        (_, MatcherConfig::Ruleset { .. }) => Some(matcher_config.clone()),
+        (NodeFilter::AllChildren, node) => Some(node.clone()),
+        (
+            NodeFilter::SelectedChildren(selected_children),
+            MatcherConfig::Filter { name, filter, nodes },
+        ) => {
+            let children: Vec<_> = nodes
+                .iter()
+                .flat_map(|node| matcher_config_filter(node, selected_children))
+                .collect();
+
+            if children.is_empty() {
+                return None;
+            }
+            Some(MatcherConfig::Filter {
+                name: name.to_owned(),
+                filter: filter.to_owned(),
+                nodes: children,
+            })
         }
-    } else {
-        None
+        (
+            NodeFilter::SelectedChildren(selected_children),
+            MatcherConfig::Iterator { name, iterator, nodes },
+        ) => {
+            let children: Vec<_> = nodes
+                .iter()
+                .flat_map(|node| matcher_config_filter(node, selected_children))
+                .collect();
+
+            if children.is_empty() {
+                return None;
+            }
+            Some(MatcherConfig::Iterator {
+                name: name.to_owned(),
+                iterator: iterator.to_owned(),
+                nodes: children,
+            })
+        }
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::config::filter::Filter;
+    use crate::config::nodes::Filter;
     use crate::config::Defaultable;
     use maplit::hashmap;
 

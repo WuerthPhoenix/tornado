@@ -2,8 +2,8 @@ use crate::config::{parse_config_files, FilterCreateOpt};
 use chrono::Local;
 use tornado_common::TornadoError;
 use tornado_engine_api::auth::WithOwner;
-use tornado_engine_matcher::config::filter::Filter;
-use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
+use tornado_engine_matcher::config::nodes::Filter;
+use tornado_engine_matcher::config::MatcherConfig;
 
 pub async fn create_filter(
     config_dir: &str,
@@ -43,79 +43,48 @@ fn add_filter(
     filter_to_add_name: &str,
     filter_to_add: Filter,
 ) -> Result<(), TornadoError> {
-    match matcher_config {
-        MatcherConfig::Filter { name: _, filter: _, nodes } => {
-            let node_with_same_name = nodes.iter_mut().find(|node| match node {
-                MatcherConfig::Filter { name, .. } => name == filter_to_add_name,
-                MatcherConfig::Ruleset { name, .. } => name == filter_to_add_name,
-            });
-            if let Some(node_with_same_name) = node_with_same_name {
-                match node_with_same_name {
-                    MatcherConfig::Filter { name, filter, nodes: _ } => {
-                        if filter.filter == filter_to_add.filter {
-                            println!(
-                                "Filter with name {} already exists and does not need to be updated. Nothing to do.",
-                                filter_to_add_name
-                            );
-                            return Ok(());
-                        }
-                        *name = node_backup_name(name);
-                        println!(
-                            "Filter with name {} already exists and needs to be updated. A backup Filter will be created with the name: {}.",
-                            filter_to_add_name, name
-                        );
-                    }
-                    MatcherConfig::Ruleset { name, rules: _ } => {
-                        *name = node_backup_name(name);
-                        println!(
-                            "Node with name {} already exists and needs to be updated. A backup Ruleset will be created with the name: {}.",
-                            filter_to_add_name, name
-                        );
-                    }
-                }
-            } else {
-                println!(
-                    "No node found with name: {}. Filter {} will be created.",
-                    filter_to_add_name, filter_to_add_name
-                );
-            }
-            nodes.push(MatcherConfig::Filter {
-                name: filter_to_add_name.to_string(),
-                filter: filter_to_add,
-                nodes: vec![],
-            });
-            Ok(())
-        }
-        MatcherConfig::Ruleset { name, rules } => match rules.len() {
-            0 => {
-                println!(
-                        "Found an empty Ruleset as root node, named: {}. Ruleset will be transformed into a Filter. The Filter {} will be a child of the Filter {}.",
-                        name, filter_to_add_name, name
-                    );
+    dbg!(&matcher_config);
+    let MatcherConfig::Filter { nodes, .. } = matcher_config else {
+        return Err(TornadoError::ConfigurationError {
+            message: format!(
+                "Unexpected Node at root level. Node name: {}",
+                matcher_config.get_name()
+            ),
+        });
+    };
 
-                *matcher_config = MatcherConfig::Filter {
-                    name: name.to_owned(),
-                    filter: Filter {
-                        description: "".to_string(),
-                        active: true,
-                        filter: Defaultable::Default {},
-                    },
-                    nodes: vec![MatcherConfig::Filter {
-                        name: filter_to_add_name.to_owned(),
-                        filter: filter_to_add,
-                        nodes: vec![],
-                    }],
-                };
-                Ok(())
-            }
-            _ => Err(TornadoError::ConfigurationError {
-                message: format!(
-                    "Unexpected non-empty ruleset at root level. Ruleset name: {}. Rules: {:?}",
-                    name, rules
-                ),
-            }),
-        },
+    let node_with_same_name = nodes.iter_mut().find(|node| node.get_name() == filter_to_add_name);
+
+    match node_with_same_name {
+        None => {
+            println!(
+                "No node found with name: {}. Filter {} will be created.",
+                filter_to_add_name, filter_to_add_name
+            );
+        }
+        Some(MatcherConfig::Filter { filter, .. }) if filter.filter == filter_to_add.filter => {
+            println!(
+                "Filter with name {} already exists and does not need to be updated. Nothing to do.",
+                filter_to_add_name
+            );
+            return Ok(());
+        }
+        Some(node) => {
+            let name = node.get_name_mut();
+            *name = node_backup_name(name);
+            println!(
+                "Node with name {} already exists and needs to be updated. A backup will be created with the name: {}.",
+                filter_to_add_name, name
+            );
+        }
     }
+
+    nodes.push(MatcherConfig::Filter {
+        name: filter_to_add_name.to_string(),
+        filter: filter_to_add,
+        nodes: vec![],
+    });
+    Ok(())
 }
 
 fn node_backup_name(name: &str) -> String {
@@ -162,12 +131,10 @@ pub mod test {
                         assert_eq!(resulting_filter, &filter_to_add);
                         assert_eq!(nodes, &vec![]);
                     }
-                    MatcherConfig::Ruleset { .. } => {
-                        unreachable!()
-                    }
+                    node => panic!("{:?}", node),
                 }
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -213,7 +180,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -259,7 +226,7 @@ pub mod test {
                 });
                 assert_eq!(added_node.unwrap().get_direct_child_nodes_count(), 0);
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -287,41 +254,6 @@ pub mod test {
 
         // Assert
         assert_eq!(matcher_config_before, matcher_config);
-    }
-
-    #[tokio::test]
-    async fn should_add_filter_if_root_node_is_an_empty_ruleset() {
-        // Arrange
-        let mut matcher_config = MatcherConfig::Ruleset { name: "root".to_string(), rules: vec![] };
-        let matcher_config_before = matcher_config.clone();
-
-        let filter_to_add_name = "tenant_id_alpha";
-        let filter_to_add = Filter {
-            description: "my new filter".to_string(),
-            active: true,
-            filter: Defaultable::Default {},
-        };
-
-        // Act
-        add_filter(&mut matcher_config, filter_to_add_name, filter_to_add).unwrap();
-
-        // Assert
-        assert_ne!(matcher_config_before, matcher_config);
-        match matcher_config {
-            MatcherConfig::Filter { name, filter: _, nodes } => {
-                assert_eq!(name, "root");
-                assert_eq!(nodes.len(), 1);
-
-                match nodes.get(0).unwrap() {
-                    MatcherConfig::Filter { name, filter: _, nodes } => {
-                        assert_eq!(name, filter_to_add_name);
-                        assert_eq!(nodes.len(), 0);
-                    }
-                    _ => unreachable!(),
-                };
-            }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
-        }
     }
 
     #[tokio::test]
@@ -391,7 +323,7 @@ pub mod test {
                 );
                 assert_eq!(nodes.len(), 1);
 
-                match nodes.get(0).unwrap() {
+                match nodes.first().unwrap() {
                     MatcherConfig::Filter { name, filter: _, nodes } => {
                         assert_eq!(name, filter_to_add_name);
                         assert_eq!(nodes.len(), 0);
@@ -399,7 +331,7 @@ pub mod test {
                     _ => unreachable!(),
                 };
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 
@@ -462,7 +394,7 @@ pub mod test {
                 });
                 assert!(added_node.is_some());
             }
-            MatcherConfig::Ruleset { .. } => unreachable!(),
+            node => panic!("{:?}", node),
         }
     }
 }

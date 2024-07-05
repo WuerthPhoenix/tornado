@@ -1,4 +1,4 @@
-use crate::config::filter::Filter;
+use crate::config::nodes::Filter;
 use crate::config::rule::Rule;
 use crate::config::{Defaultable, MatcherConfig, MatcherConfigReader};
 use crate::error::MatcherError;
@@ -373,7 +373,7 @@ mod test {
 
                 assert_eq!(7, rules.len());
 
-                assert_eq!("all_emails_and_syslogs", rules.get(0).unwrap().name);
+                assert_eq!("all_emails_and_syslogs", rules.first().unwrap().name);
                 assert_eq!("rule_without_where", rules.get(1).unwrap().name);
                 assert_eq!("map_in_action_payload", rules.get(2).unwrap().name);
                 assert_eq!("cmp_operators", rules.get(3).unwrap().name);
@@ -641,14 +641,7 @@ mod test {
         );
     }
 
-    fn get_config_name(config: &MatcherConfig) -> &str {
-        match config {
-            MatcherConfig::Filter { name, .. } => name,
-            MatcherConfig::Ruleset { name, .. } => name,
-        }
-    }
-
     fn get_config_by_name<'a>(name: &str, nodes: &'a [MatcherConfig]) -> Option<&'a MatcherConfig> {
-        nodes.iter().find(|&node| get_config_name(node).eq(name))
+        nodes.iter().find(|&node| node.get_name().eq(name))
     }
 }

@@ -3,7 +3,7 @@ use tornado_engine_matcher::config::v1::fs::FsMatcherConfigManager;
 use tornado_engine_matcher::config::v2::{
     gather_dir_entries, get_config_version, FsMatcherConfigManagerV2, Version,
 };
-use tornado_engine_matcher::config::{MatcherConfigEditor, MatcherConfigReader};
+use tornado_engine_matcher::config::{MatcherConfig, MatcherConfigEditor, MatcherConfigReader};
 
 pub async fn upgrade_rules(
     config_dir: &str,
@@ -78,9 +78,20 @@ async fn upgrade_to_v2(
     let config_manager_v2 = FsMatcherConfigManagerV2::new(rules_dir, Path::new(""));
 
     let config = config_manager_v1.get_config().await?;
+    let config = fixup_empty_config(config);
     config_manager_v2.deploy_config(&config).await?;
 
     Ok(())
+}
+
+fn fixup_empty_config(config: MatcherConfig) -> MatcherConfig {
+    match config {
+        MatcherConfig::Ruleset { name, rules } if name == "root" && rules.is_empty() => {
+            // If the root node is a ruleset with no rules, the dir is empty and should be considered a filter.
+            MatcherConfig::Filter { name, filter: Default::default(), nodes: vec![] }
+        }
+        config => config,
+    }
 }
 
 #[cfg(test)]
