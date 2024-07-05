@@ -82,8 +82,10 @@ impl ParserBuilder {
             .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
 
         match parser_builder.build_parser(input) {
-            Ok(Parser::Exp { keys }) if is_valid_matcher_root(&keys) => Ok(Parser::Exp { keys }),
-            Ok(Parser::Exp { mut keys }) => match keys.first_mut() {
+            Ok(Parser::Exp(AccessorExpression { keys })) if is_valid_matcher_root(&keys) => {
+                Ok(Parser::Exp(AccessorExpression { keys }))
+            }
+            Ok(Parser::Exp(AccessorExpression { mut keys })) => match keys.first_mut() {
                 Some(ValueGetter::Array { index }) => {
                     Err(ParserError::UnknownKeyError { key: format!("{}", index) })
                 }
@@ -117,7 +119,7 @@ impl ParserBuilder {
             [ValueGetter::Map { .. }] // "${event}"
             | [ValueGetter::Array { .. }, ..] // "${[123]event}"
             | [ValueGetter::Map { .. }, ValueGetter::Array { .. }, ..] => { // "${event[123]}"
-                return Ok(Parser::Exp { keys: getters })
+                return Ok(Parser::Exp(AccessorExpression { keys: getters }))
             }
             [ValueGetter::Map { key }, tail @ ..] => (key, tail), // "${event.timestamp}"
         };
@@ -131,16 +133,32 @@ impl ParserBuilder {
             }
         }
 
-        Ok(Parser::Exp { keys: getters })
+        Ok(Parser::Exp(AccessorExpression { keys: getters }))
     }
 }
 
 #[derive(Debug)]
 pub enum Parser {
-    Exp { keys: Vec<ValueGetter> },
+    Exp(AccessorExpression),
     Interpolator { interpolator: StringInterpolator },
     Val(Value),
     Custom { key: ValueGetter, parser: Box<dyn CustomParser> },
+}
+
+#[derive(Debug)]
+pub struct AccessorExpression {
+    pub keys: Vec<ValueGetter>,
+}
+
+impl AccessorExpression {
+    pub fn parse_value<'o, I: ValueGet>(&'o self, value: &'o I) -> Option<Cow<'o, Value>> {
+        let mut iter = self.keys.iter();
+        let mut tmp = iter.next()?.get(value)?;
+        for key in iter {
+            tmp = key.get(tmp)?;
+        }
+        Some(Cow::Borrowed(tmp))
+    }
 }
 
 impl Parser {
@@ -186,18 +204,7 @@ impl Parser {
         context: &str,
     ) -> Option<Cow<'o, Value>> {
         match self {
-            Parser::Exp { keys } => {
-                let mut key_iter = keys.iter();
-                if let Some(key) = key_iter.next() {
-                    let mut temp_value = key.get(value);
-                    while let (Some(key), Some(val)) = (key_iter.next(), temp_value) {
-                        temp_value = key.get(val);
-                    }
-                    temp_value.map(Cow::Borrowed)
-                } else {
-                    None
-                }
-            }
+            Parser::Exp(exp) => exp.parse_value(value),
             Parser::Interpolator { interpolator } => {
                 interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text)))
             }
@@ -246,7 +253,7 @@ struct ExtractedVarParser {
 
 impl ExtractedVarParser {
     fn try_new(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
-        let parser = Parser::Exp { keys: expression.to_vec() };
+        let parser = Parser::Exp(AccessorExpression { keys: expression.to_vec() });
         Ok(Box::new(ExtractedVarParser { parser }))
     }
 }
@@ -290,7 +297,7 @@ mod test {
 
         // Assert
         match parser {
-            Parser::Exp { keys } => {
+            Parser::Exp(AccessorExpression { keys }) => {
                 assert!(!keys.is_empty());
             }
             _ => unreachable!(),

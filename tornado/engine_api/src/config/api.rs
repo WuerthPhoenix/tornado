@@ -81,7 +81,12 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
             .ok_or(ApiError::NodeNotFoundError {
             message: format!("Node for relative path {:?} not found", relative_node_path),
         })?;
-        Ok(child_nodes.iter().map(ProcessingTreeNodeConfigDto::from).collect())
+        let has_iterator_ancestor =
+            filtered_matcher.has_iterator_in_path(absolute_node_path.as_slice());
+        Ok(child_nodes
+            .iter()
+            .map(|node| ProcessingTreeNodeConfigDto::convert(node, has_iterator_ancestor))
+            .collect())
     }
 
     pub async fn get_authorized_tree_info(
@@ -119,10 +124,15 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
             .iter()
             .map(|child| match child {
                 MatcherConfig::Filter { nodes, .. } => {
-                    TreeInfoDto { filters_count: 1, rules_count: 0 } + Self::fetch_tree_info(nodes)
+                    TreeInfoDto { filters_count: 1, ..Default::default() }
+                        + Self::fetch_tree_info(nodes)
                 }
                 MatcherConfig::Ruleset { rules, .. } => {
-                    TreeInfoDto { filters_count: 0, rules_count: rules.len() }
+                    TreeInfoDto { rules_count: rules.len(), ..Default::default() }
+                }
+                MatcherConfig::Iterator { nodes, .. } => {
+                    TreeInfoDto { iterators_count: 1, ..Default::default() }
+                        + Self::fetch_tree_info(nodes)
                 }
             })
             .sum()
@@ -329,6 +339,9 @@ impl<A: ConfigApiHandler, CM: MatcherConfigReader + MatcherConfigEditor + ?Sized
         match node {
             MatcherConfig::Filter { .. } => Err(ApiError::NodeNotFoundError {
                 message: format!("Found filter instead of ruleset. Path: {:?}", ruleset_path),
+            }),
+            MatcherConfig::Iterator { .. } => Err(ApiError::NodeNotFoundError {
+                message: format!("Found iterator instead of ruleset. Path: {:?}", ruleset_path),
             }),
             MatcherConfig::Ruleset { name: _, rules } => {
                 let rule = rules.iter().find(|rule| rule.name == rule_name);
@@ -614,7 +627,7 @@ mod test {
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthV2, Authorization};
     use tornado_engine_api_dto::config::{ConstraintDto, RuleDetailsDto};
-    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData,
@@ -1028,6 +1041,7 @@ mod test {
             rules_count: 2,
             children_count: 2,
             description: "".to_string(),
+            has_iterator_ancestor: false,
             active: false,
         }];
         assert_eq!(
@@ -1084,6 +1098,7 @@ mod test {
             rules_count: 1,
             children_count: 2,
             description: "".to_string(),
+            has_iterator_ancestor: false,
             active: false,
         }];
         assert_eq!(res, expected_result);
@@ -1206,6 +1221,7 @@ mod test {
                 children_count: 0,
                 description: "".to_string(),
                 active: false,
+                has_iterator_ancestor: false,
             },
             ProcessingTreeNodeConfigDto::Ruleset { name: "root_1_2".to_string(), rules_count: 1 },
         ];
@@ -1480,7 +1496,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 2, filters_count: 4 };
+        let expected = TreeInfoDto { rules_count: 2, filters_count: 4, iterators_count: 0 };
 
         assert_eq!(result, expected);
     }
@@ -1504,7 +1520,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 0, filters_count: 1 };
+        let expected = TreeInfoDto { filters_count: 1, ..Default::default() };
 
         assert_eq!(result, expected);
     }
@@ -1530,7 +1546,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 1, filters_count: 0 };
+        let expected = TreeInfoDto { rules_count: 1, ..Default::default() };
 
         assert_eq!(result, expected);
     }
@@ -1546,7 +1562,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 0, filters_count: 0 };
+        let expected = TreeInfoDto::default();
 
         assert_eq!(result, expected);
     }
@@ -1560,7 +1576,7 @@ mod test {
         let result = ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&root);
 
         // Assert
-        let expected = TreeInfoDto { rules_count: 0, filters_count: 0 };
+        let expected = Default::default();
 
         assert_eq!(result, expected);
     }
@@ -1632,11 +1648,56 @@ mod test {
         let result2 = api.get_authorized_tree_info(&user2).await.unwrap();
 
         // Assert
-        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4 };
-        let expected2 = TreeInfoDto { rules_count: 1, filters_count: 0 };
+        let expected1 = TreeInfoDto { rules_count: 2, filters_count: 4, iterators_count: 0 };
+        let expected2 = TreeInfoDto { rules_count: 1, ..Default::default() };
 
         assert_eq!(expected1, result1);
         assert_eq!(expected2, result2);
+    }
+
+    #[actix_rt::test]
+    async fn should_count_iterator_nodes_in_test_config() {
+        let test_config = MatcherConfig::Filter {
+            name: "".to_string(),
+            filter: Default::default(),
+            nodes: vec![
+                MatcherConfig::Ruleset {
+                    name: "".to_string(),
+                    rules: vec![Rule::default(), Rule::default()],
+                },
+                MatcherConfig::Filter {
+                    name: "".to_string(),
+                    filter: Default::default(),
+                    nodes: vec![MatcherConfig::Iterator {
+                        name: "".to_string(),
+                        iterator: Default::default(),
+                        nodes: vec![],
+                    }],
+                },
+                MatcherConfig::Iterator {
+                    name: "".to_string(),
+                    iterator: Default::default(),
+                    nodes: vec![
+                        MatcherConfig::Ruleset {
+                            name: "".to_string(),
+                            rules: vec![Rule::default()],
+                        },
+                        MatcherConfig::Filter {
+                            name: "".to_string(),
+                            filter: Default::default(),
+                            nodes: vec![],
+                        },
+                    ],
+                },
+            ],
+        };
+
+        let expected = TreeInfoDto { rules_count: 3, filters_count: 3, iterators_count: 2 };
+
+        let result =
+            ConfigApi::<TestApiHandler, TestConfigManager>::fetch_tree_info(&[test_config]);
+
+        assert_eq!(expected, result);
     }
 
     #[actix_rt::test]

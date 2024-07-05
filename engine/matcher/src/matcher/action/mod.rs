@@ -335,9 +335,9 @@ mod test {
 
         // Assert
         assert_eq!(1, actions.len());
-        assert_eq!("an_action_id", &actions.get(0).unwrap().id);
+        assert_eq!("an_action_id", &actions.first().unwrap().id);
 
-        let action_payload = &actions.get(0).unwrap().payload;
+        let action_payload = &actions.first().unwrap().payload;
         assert_eq!(1, action_payload.len());
         assert!(action_payload.contains_key("key"));
     }

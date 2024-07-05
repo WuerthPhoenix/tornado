@@ -1,8 +1,6 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
-use crate::config::convert::{
-    dto_into_matcher_config, matcher_config_draft_into_dto, matcher_config_into_dto,
-    processing_tree_node_details_dto_into_matcher_config,
-};
+use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
+use crate::error::ApiError;
 use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
 use actix_multipart::Multipart;
 use actix_web::http::header;
@@ -17,39 +15,10 @@ use serde::Deserialize;
 use std::os::unix::ffi::OsStrExt;
 use tornado_engine_api_dto::common::Id;
 use tornado_engine_api_dto::config::{
-    MatcherConfigDraftDto, MatcherConfigDto, ProcessingTreeNodeConfigDto,
-    ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto, RulePositionDto, TreeInfoDto,
+    ProcessingTreeNodeConfigDto, ProcessingTreeNodeDetailsDto, ProcessingTreeNodeEditDto, RuleDto,
+    RulePositionDto, TreeInfoDto,
 };
 use tornado_engine_matcher::config::MatcherConfigEditor;
-
-pub fn build_config_endpoints<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigEditor + ?Sized + 'static,
->(
-    data: ApiData<ConfigApi<A, CM>>,
-) -> Scope {
-    web::scope("/v1_beta/config")
-        .app_data(Data::new(data))
-        .service(web::resource("/current").route(web::get().to(get_current_configuration::<A, CM>)))
-        .service(
-            web::resource("/drafts")
-                .route(web::get().to(get_drafts::<A, CM>))
-                .route(web::post().to(create_draft::<A, CM>)),
-        )
-        .service(
-            web::resource("/drafts/{draft_id}")
-                .route(web::get().to(get_draft::<A, CM>))
-                .route(web::put().to(update_draft::<A, CM>))
-                .route(web::delete().to(delete_draft::<A, CM>)),
-        )
-        .service(
-            web::resource("/drafts/{draft_id}/deploy").route(web::post().to(deploy_draft::<A, CM>)),
-        )
-        .service(
-            web::resource("/drafts/{draft_id}/take_over")
-                .route(web::post().to(draft_take_over::<A, CM>)),
-        )
-}
 
 pub fn build_config_v2_endpoints<
     A: ConfigApiHandler + 'static,
@@ -296,7 +265,13 @@ async fn parse_uploaded_file<T: DeserializeOwned>(mut payload: Multipart) -> act
         }
     }
     trace!("File uploaded of size {}", file_data.len());
-    Ok(serde_json::from_slice(&file_data)?)
+    let json_deserializer = &mut serde_json::Deserializer::from_slice(&file_data);
+    let result: Result<T, _> = serde_path_to_error::deserialize(json_deserializer);
+
+    match result {
+        Ok(data) => Ok(data),
+        Err(error) => Err(ApiError::BadRequestError { cause: format!("{}", error) }.into()),
+    }
 }
 
 async fn import_child_node<
@@ -310,7 +285,11 @@ async fn import_child_node<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    let config = match parse_uploaded_file(body).await? {
+        ExportVersionedMatcherConfig::V1(config) | ExportVersionedMatcherConfig::V1_1(config) => {
+            config
+        }
+    };
     data.api
         .create_draft_config_node(
             auth_ctx,
@@ -356,7 +335,11 @@ async fn import_node_in_path<
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &endpoint_params.param_auth)?;
-    let ExportVersionedMatcherConfig::V1(config) = parse_uploaded_file(body).await?;
+    let config = match parse_uploaded_file(body).await? {
+        ExportVersionedMatcherConfig::V1(config) | ExportVersionedMatcherConfig::V1_1(config) => {
+            config
+        }
+    };
     data.api
         .import_draft_config_node(
             auth_ctx,
@@ -599,32 +582,8 @@ async fn export_draft_tree_starting_from_node_path<
             format!("attachment; filename: \"{}\"", filename),
         ))
         .content_type("application/json")
-        .json(ExportVersionedMatcherConfig::V1(result));
+        .json(ExportVersionedMatcherConfig::V1_1(result));
     Ok(response)
-}
-
-async fn get_current_configuration<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigEditor + ?Sized + 'static,
->(
-    req: HttpRequest,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDto>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_current_configuration(auth_ctx).await?;
-    let matcher_config_dto = matcher_config_into_dto(result)?;
-    Ok(Json(matcher_config_dto))
-}
-
-async fn get_drafts<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<Vec<String>>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_drafts(auth_ctx).await?;
-    Ok(Json(result))
 }
 
 async fn get_drafts_by_tenant<
@@ -638,28 +597,6 @@ async fn get_drafts_by_tenant<
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
     let auth_ctx = data.auth.auth_from_request(&req, &param_auth)?;
     let result = data.api.get_drafts_by_tenant(&auth_ctx).await?;
-    Ok(Json(result))
-}
-
-async fn get_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDraftDto>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.get_draft(auth_ctx, &draft_id.into_inner()).await?;
-    let matcher_config_dto = matcher_config_draft_into_dto(result)?;
-    Ok(Json(matcher_config_dto))
-}
-
-async fn create_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<Id<String>>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.create_draft(auth_ctx).await?;
     Ok(Json(result))
 }
 
@@ -677,30 +614,6 @@ async fn create_draft_in_tenant<
     Ok(Json(result))
 }
 
-async fn update_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    draft_id: Path<String>,
-    body: Json<MatcherConfigDto>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<()>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let config = dto_into_matcher_config(body.into_inner())?;
-    data.api.update_draft(auth_ctx, &draft_id.into_inner(), config).await?;
-    Ok(Json(()))
-}
-
-async fn delete_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<()>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    data.api.delete_draft(auth_ctx, &draft_id.into_inner()).await?;
-    Ok(Json(()))
-}
-
 async fn delete_draft_in_tenant<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigEditor + ?Sized + 'static,
@@ -715,18 +628,6 @@ async fn delete_draft_in_tenant<
     Ok(Json(()))
 }
 
-async fn deploy_draft<A: ConfigApiHandler + 'static, CM: MatcherConfigEditor + ?Sized + 'static>(
-    req: HttpRequest,
-    draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDto>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    let result = data.api.deploy_draft(auth_ctx, &draft_id.into_inner()).await?;
-    let matcher_config_dto = matcher_config_into_dto(result)?;
-    Ok(Json(matcher_config_dto))
-}
-
 async fn deploy_draft_for_tenant<
     A: ConfigApiHandler + 'static,
     CM: MatcherConfigEditor + ?Sized + 'static,
@@ -734,25 +635,10 @@ async fn deploy_draft_for_tenant<
     req: HttpRequest,
     path: Path<DraftPath>,
     data: Data<ApiDataV2<ConfigApi<A, CM>>>,
-) -> actix_web::Result<Json<MatcherConfigDto>> {
-    debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
-    let result = data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
-    let matcher_config_dto = matcher_config_into_dto(result)?;
-    Ok(Json(matcher_config_dto))
-}
-
-async fn draft_take_over<
-    A: ConfigApiHandler + 'static,
-    CM: MatcherConfigEditor + ?Sized + 'static,
->(
-    req: HttpRequest,
-    draft_id: Path<String>,
-    data: Data<ApiData<ConfigApi<A, CM>>>,
 ) -> actix_web::Result<Json<()>> {
     debug!("HttpRequest method [{}] path [{}]", req.method(), req.path());
-    let auth_ctx = data.auth.auth_from_request(&req)?;
-    data.api.draft_take_over(auth_ctx, &draft_id.into_inner()).await?;
+    let auth_ctx = data.auth.auth_from_request(&req, &path.param_auth)?;
+    data.api.deploy_draft_for_tenant(&auth_ctx, &path.draft_id).await?;
     Ok(Json(()))
 }
 
@@ -774,8 +660,6 @@ async fn draft_take_over_for_tenant<
 mod test {
     use super::*;
     use crate::auth::auth_v2::AuthServiceV2;
-    use crate::auth::test::test_auth_service;
-    use crate::auth::AuthService;
     use crate::error::ApiError;
     use crate::{auth::auth_v2::test::test_auth_service_v2, test_root::start_context};
     use actix_web::http::header::HeaderName;
@@ -786,10 +670,9 @@ mod test {
     use async_trait::async_trait;
     use std::collections::HashMap;
     use std::sync::Arc;
-    use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::auth_v2::{AuthHeaderV2, Authorization};
-    use tornado_engine_api_dto::config::{ConstraintDto, FilterDto};
-    use tornado_engine_matcher::config::filter::Filter;
+    use tornado_engine_api_dto::config::ConstraintDto;
+    use tornado_engine_matcher::config::nodes::Filter;
     use tornado_engine_matcher::config::rule::{Constraint, Rule};
     use tornado_engine_matcher::config::{
         Defaultable, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigReader,
@@ -941,193 +824,6 @@ mod test {
         }
     }
 
-    #[actix_rt::test]
-    async fn current_config_should_return_status_code_unauthorized_if_no_token(
-    ) -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::get().uri("/v1_beta/config/current").to_request();
-
-        let response = test::call_service(&srv, request).await;
-
-        // Assert
-        assert_eq!(StatusCode::UNAUTHORIZED, response.status());
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn current_config_should_return_status_code_unauthorized_if_no_view_permission(
-    ) -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::get()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec![""]))?,
-            ))
-            .uri("/v1_beta/config/current")
-            .to_request();
-
-        let response = test::call_service(&srv, request).await;
-
-        // Assert
-        assert_eq!(StatusCode::FORBIDDEN, response.status());
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn should_return_status_code_ok() -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::get()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            ))
-            .uri("/v1_beta/config/current")
-            .to_request();
-
-        let response = test::call_service(&srv, request).await;
-
-        // Assert
-        assert_eq!(StatusCode::OK, response.status());
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn should_return_the_matcher_config() -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::get()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            ))
-            .uri("/v1_beta/config/current")
-            .to_request();
-
-        // Assert
-        let dto: tornado_engine_api_dto::config::MatcherConfigDto =
-            test::call_and_read_body_json(&srv, request).await;
-
-        assert_eq!(
-            MatcherConfigDto::Filter {
-                name: "root".to_owned(),
-                filter: FilterDto { description: "".to_string(), active: false, filter: None },
-                nodes: vec![
-                    MatcherConfigDto::Filter {
-                        name: "child_1".to_owned(),
-                        filter: FilterDto {
-                            description: "".to_string(),
-                            active: false,
-                            filter: None,
-                        },
-                        nodes: vec![],
-                    },
-                    MatcherConfigDto::Ruleset {
-                        name: "child_2".to_owned(),
-                        rules: vec![RuleDto {
-                            name: "rule_1".to_string(),
-                            description: "Rule 1 description".to_string(),
-                            do_continue: false,
-                            active: true,
-                            constraint: ConstraintDto {
-                                where_operator: None,
-                                with: Default::default(),
-                            },
-                            actions: vec![],
-                        }],
-                    },
-                ],
-            },
-            dto
-        );
-
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn should_return_the_reloaded_matcher_config() -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            ))
-            .uri("/v1_beta/config/drafts/1/deploy")
-            .to_request();
-
-        // Assert
-        let dto: tornado_engine_api_dto::config::MatcherConfigDto =
-            test::call_and_read_body_json(&srv, request).await;
-
-        assert_eq!(
-            tornado_engine_api_dto::config::MatcherConfigDto::Ruleset {
-                name: "ruleset_new".to_owned(),
-                rules: vec![],
-            },
-            dto
-        );
-
-        Ok(())
-    }
-
-    #[actix_rt::test]
-    async fn should_have_a_draft_take_over_post_endpoint() -> Result<(), ApiError> {
-        // Arrange
-        let srv = test::init_service(App::new().service(build_config_endpoints(ApiData {
-            auth: test_auth_service(),
-            api: ConfigApi::new(TestApiHandler {}, Arc::new(ConfigManager {})),
-        })))
-        .await;
-
-        // Act
-        let request = test::TestRequest::post()
-            .insert_header((
-                header::AUTHORIZATION,
-                AuthService::auth_to_token_header(&Auth::new("user", vec!["edit"]))?,
-            ))
-            .uri("/v1_beta/config/drafts/draft123/take_over")
-            .to_request();
-
-        let response = test::call_service(&srv, request).await;
-
-        // Assert
-        assert_eq!(StatusCode::OK, response.status());
-        Ok(())
-    }
-
     fn auth_map(name: &str, auth: Authorization) -> HashMap<String, Authorization> {
         let mut auths = HashMap::new();
         auths.insert(name.to_owned(), auth);
@@ -1238,6 +934,7 @@ mod test {
                 name: "child_1_1".to_owned(),
                 rules_count: 0,
                 children_count: 0,
+                has_iterator_ancestor: false,
                 description: "".to_string(),
                 active: false,
             },],

@@ -54,12 +54,6 @@ export type FilterDto = { description: string; active: boolean; filter: Operator
 
 export type MatcherConfigDraftDataDto = {     user: string; created_ts_ms: number; updated_ts_ms: number; draft_id: string };
 
-export type MatcherConfigDraftDto = { data: MatcherConfigDraftDataDto; config: MatcherConfigDto };
-
-export type MatcherConfigDto = 
- | {     type: "Filter"; name: string; filter: FilterDto; nodes:     MatcherConfigDto [] } 
- | { type: "Ruleset"; name: string; rules: RuleDto [] };
-
 export type ModifierDto = 
  | { type: "Lowercase" } 
  | {     type: "Map"; mapping: { [key: string]: string }; default_value:     string | null } 
@@ -86,20 +80,23 @@ export type OperatorDto =
 export type RuleDto = {     name: string; description: string; continue: boolean; active:     boolean; constraint: ConstraintDto; actions: ActionDto [] };
 
 export type ProcessingTreeNodeConfigDto = 
- | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; active: boolean } 
+ | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; has_iterator_ancestor: boolean; active:     boolean } 
+ | {     type: "Iterator"; name: string; rules_count: number; children_count: number; description: string; active: boolean } 
  | { type: "Ruleset"; name: string; rules_count: number };
 
 export type ProcessingTreeNodeEditDto = 
  | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
+ | {     type: "Iterator"; name: string; description: string; target: string; active: boolean } 
  | { type: "Ruleset"; name: string };
 
 export type ProcessingTreeNodeDetailsDto = 
  | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
+ | {     type: "Iterator"; name: string; description: string; active:     boolean; target: string } 
  | { type: "Ruleset"; name: string; rules: RuleDetailsDto [] };
 
 export type RuleDetailsDto = {     name: string; description: string; continue: boolean; active:     boolean; actions: string [] };
 
-export type TreeInfoDto = { rules_count: number; filters_count: number };
+export type TreeInfoDto = { rules_count: number; filters_count: number; iterators_count: number };
 
 export type RulePositionDto = { position: number };
 
@@ -118,8 +115,11 @@ export type ProcessedFilterDto = { status: ProcessedFilterStatusDto };
 
 export enum ProcessedFilterStatusDto { Matched = "Matched", NotMatched = "NotMatched", Inactive = "Inactive" };
 
+export enum ProcessedIteratorDto {     Matched = "Matched", AccessorError = "AccessorError", TypeError =     "TypeError" };
+
 export type ProcessedNodeDto = 
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
+ | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto;     nodes: ProcessedNodeDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };

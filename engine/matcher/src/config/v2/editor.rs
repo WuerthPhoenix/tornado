@@ -1,10 +1,10 @@
-use crate::config::filter::Filter;
+use crate::config::nodes::{Filter, MatcherIterator};
 use crate::config::rule::Rule;
 use crate::config::v2::error::DeploymentError;
 use crate::config::v2::{
     gather_dir_entries, parse_node_config_from_file, read_config_from_root_dir, ConfigNodeDir,
-    FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter, MatcherConfigRuleset,
-    Version,
+    FsMatcherConfigManagerV2, MatcherConfigError, MatcherConfigFilter, MatcherConfigIterator,
+    MatcherConfigRuleset, Version,
 };
 use crate::config::{
     v1, MatcherConfig, MatcherConfigDraft, MatcherConfigDraftData, MatcherConfigEditor,
@@ -230,6 +230,9 @@ async fn deploy_child_node(path: &Path, node: &MatcherConfig) -> Result<(), Depl
         MatcherConfig::Ruleset { name, rules } => {
             deploy_ruleset_node(&parent, name, rules).await?;
         }
+        MatcherConfig::Iterator { name, iterator, nodes } => {
+            deploy_iterator_node(&parent, name, iterator, nodes).await?
+        }
     }
 
     Ok(())
@@ -245,6 +248,25 @@ async fn deploy_filter_node(
         node_type: Default::default(),
         name: name.to_string(),
         filter: filter.clone(),
+    };
+
+    serialize_config_node_to_file(dir, &config).await?;
+    deploy_child_nodes_to_dir(dir, nodes).await?;
+    sync_dir_to_disk(dir).await?;
+
+    Ok(())
+}
+
+async fn deploy_iterator_node(
+    dir: &Path,
+    name: &str,
+    iterator: &MatcherIterator,
+    nodes: &[MatcherConfig],
+) -> Result<(), DeploymentError> {
+    let config = MatcherConfigIterator {
+        node_type: Default::default(),
+        name: name.to_string(),
+        iterator: iterator.to_owned(),
     };
 
     serialize_config_node_to_file(dir, &config).await?;
@@ -468,9 +490,12 @@ async fn sync_dir_to_disk(dir: &Path) -> Result<(), DeploymentError> {
 
 #[cfg(test)]
 mod tests {
+    use crate::config::nodes::MatcherIterator;
     use crate::config::v1::fs::copy_recursive;
-    use crate::config::v2::editor::{get_draft_from_dir, DRAFT_ID};
-    use crate::config::v2::{parse_node_config_from_file, ConfigType, FsMatcherConfigManagerV2};
+    use crate::config::v2::editor::{deploy_iterator_node, get_draft_from_dir, DRAFT_ID};
+    use crate::config::v2::{
+        parse_node_config_from_file, ConfigType, FsMatcherConfigManagerV2, MatcherConfigIterator,
+    };
     use crate::config::{
         MatcherConfig, MatcherConfigDraftData, MatcherConfigEditor, MatcherConfigReader,
     };
@@ -671,5 +696,29 @@ mod tests {
         assert_eq!(config_old.data.draft_id, config.data.draft_id);
         assert_eq!("pippo", config_old.data.user);
         assert_eq!("root", config.data.user);
+    }
+
+    #[tokio::test]
+    async fn should_deploy_and_load_iterator_node() {
+        let temp_dir = TempDir::new().unwrap();
+        let config = MatcherConfig::Ruleset { name: "ruleset".to_string(), rules: vec![] };
+
+        deploy_iterator_node(
+            temp_dir.path(),
+            "master_iterator",
+            &MatcherIterator {
+                description: "".to_string(),
+                active: true,
+                target: "${event.payload.alerts}.to_string()".to_string(),
+            },
+            &[config],
+        )
+        .await
+        .unwrap();
+
+        let loaded: MatcherConfigIterator =
+            parse_node_config_from_file(temp_dir.path()).await.unwrap();
+
+        assert_eq!("master_iterator", loaded.name);
     }
 }

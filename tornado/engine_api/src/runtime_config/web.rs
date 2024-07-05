@@ -95,18 +95,31 @@ async fn set_stdout_priority_config<A: RuntimeConfigApiHandler + 'static>(
 
 #[cfg(test)]
 mod test {
-    use crate::auth::test::test_auth_service;
-    use crate::auth::AuthService;
+    use crate::auth::{AuthService, Permission};
     use crate::error::ApiError;
     use crate::model::ApiData;
     use crate::runtime_config::api::test::TestRuntimeConfigApiHandler;
     use crate::runtime_config::api::RuntimeConfigApi;
     use crate::runtime_config::web::build_runtime_config_endpoints;
     use actix_web::{http::header, http::StatusCode, test, App};
+    use std::collections::BTreeMap;
+    use std::sync::Arc;
     use tornado_engine_api_dto::auth::Auth;
     use tornado_engine_api_dto::runtime_config::{
         SetLoggerApmRequestDto, SetLoggerLevelRequestDto, SetLoggerStdoutRequestDto,
     };
+
+    pub fn test_auth_service() -> AuthService {
+        let mut permission_roles_map = BTreeMap::new();
+        permission_roles_map.insert(Permission::ConfigEdit, vec!["edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::ConfigView, vec!["edit".to_owned(), "view".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigEdit, vec!["runtime_config_edit".to_owned()]);
+        permission_roles_map
+            .insert(Permission::RuntimeConfigView, vec!["runtime_config_view".to_owned()]);
+        AuthService::new(Arc::new(permission_roles_map))
+    }
 
     #[actix_rt::test]
     async fn current_logger_config_should_return_status_code_unauthorized_if_no_token(

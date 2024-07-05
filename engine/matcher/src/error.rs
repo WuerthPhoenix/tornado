@@ -58,6 +58,9 @@ pub enum MatcherError {
 
     #[error("DraftNotFoundError: Could not find draft with id [{draft_id}]")]
     DraftNotFoundError { draft_id: String },
+
+    #[error("NestedIteratorError")]
+    NestedIteratorError,
 }
 
 impl From<ParserError> for MatcherError {
