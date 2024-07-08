@@ -115,11 +115,13 @@ export type ProcessedFilterDto = { status: ProcessedFilterStatusDto };
 
 export enum ProcessedFilterStatusDto { Matched = "Matched", NotMatched = "NotMatched", Inactive = "Inactive" };
 
+export type ProcessedIterationDto = { event: EventDto; nodes: ProcessedNodeDto [] };
+
 export enum ProcessedIteratorDto {     Matched = "Matched", AccessorError = "AccessorError", TypeError =     "TypeError" };
 
 export type ProcessedNodeDto = 
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
- | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto;     nodes: ProcessedNodeDto [] } 
+ | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto;     events: ProcessedIterationDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };
