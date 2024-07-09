@@ -43,7 +43,6 @@ fn add_filter(
     filter_to_add_name: &str,
     filter_to_add: Filter,
 ) -> Result<(), TornadoError> {
-    dbg!(&matcher_config);
     let MatcherConfig::Filter { nodes, .. } = matcher_config else {
         return Err(TornadoError::ConfigurationError {
             message: format!(

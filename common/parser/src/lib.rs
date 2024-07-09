@@ -4,7 +4,6 @@ mod parser;
 use lazy_static::lazy_static;
 use regex::{Match, Regex};
 use serde_json::Value;
-use std::borrow::Cow;
 use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
@@ -55,10 +54,6 @@ impl Template<'_> {
     pub fn is_interpolator(&self) -> bool {
         !self.matches.is_empty() && !self.is_accessor()
     }
-}
-
-pub trait CustomParser: Sync + Send + Debug {
-    fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>>;
 }
 
 #[derive(PartialEq, Debug, Clone)]

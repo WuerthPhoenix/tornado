@@ -345,27 +345,19 @@ mod test {
     #[test]
     fn should_build_an_action() {
         // Arrange
-        let mut config_action = ConfigAction { id: "an_action_id".to_owned(), payload: Map::new() };
-        config_action.payload.insert("type".to_owned(), Value::String("${event.type}".to_owned()));
-        config_action
-            .payload
-            .insert("payload_body".to_owned(), Value::String("${event.payload.body}".to_owned()));
-        config_action.payload.insert(
-            "payload_subject".to_owned(),
-            Value::String("${event.payload.subject}".to_owned()),
-        );
-        config_action
-            .payload
-            .insert("constant".to_owned(), Value::String("constant value".to_owned()));
-        config_action
-            .payload
-            .insert("created_ms".to_owned(), Value::String("${event.created_ms}".to_owned()));
-        config_action
-            .payload
-            .insert("var_test_1".to_owned(), Value::String("${_variables.test1}".to_owned()));
-        config_action
-            .payload
-            .insert("var_test_2".to_owned(), Value::String("${_variables.test2}".to_owned()));
+        let config_action: ConfigAction = serde_json::from_value(json!({
+            "id": "an_action_id",
+            "payload": {
+                "type": "${event.type}",
+                "payload_body": "${event.payload.body}",
+                "payload_subject": "${event.payload.subject}",
+                "constant": "constant value",
+                "created_ms": "${event.created_ms}",
+                "var_test_1": "${_variables.test1}",
+                "var_test_2": "${_variables.test2}"
+            }
+        }))
+        .unwrap();
 
         let rule_name = "rule_for_test";
         let config = vec![config_action];
@@ -378,13 +370,16 @@ mod test {
 
         let event = json!(Event::new_with_payload("event_type_value".to_owned(), payload));
 
+        let mut extracted_vars = Map::new();
         let mut extracted_vars_inner = Map::new();
         extracted_vars_inner
             .insert("test1".to_owned(), Value::String("var_test_1_value".to_owned()));
         extracted_vars_inner
             .insert("test2".to_owned(), Value::String("var_test_2_value".to_owned()));
 
-        let mut extracted_vars = Map::new();
+        for (key, value) in extracted_vars_inner.iter() {
+            extracted_vars.insert(key.clone(), value.clone());
+        }
         extracted_vars.insert("rule_for_test".to_owned(), Value::Object(extracted_vars_inner));
 
         // Act

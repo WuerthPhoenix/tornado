@@ -176,11 +176,11 @@ async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, Mat
             // If the dir contains no entries at all, it's a new config, and we create a root node.
             let entires = gather_dir_entries(root_dir).await?;
             if !entires.is_empty() {
-                return Err(error.into());
+                return Err(error);
             }
             vec![]
         }
-        Err(error) => return Err(error.into()),
+        Err(error) => return Err(error),
     };
 
     Ok(MatcherConfig::Filter {
@@ -801,7 +801,7 @@ mod tests {
         let test_file_path = String::from(TEST_BROKEN_CONFIG_DIR) + "filter_extra_file/";
         let error = read_filter_from_dir(Path::new(&test_file_path)).await.unwrap_err();
 
-        match dbg!(error) {
+        match error {
             MatcherConfigError::UnexpectedFile { path, config_type } => {
                 let path = format!("{}", path.display());
                 assert!(path.starts_with(&test_file_path));

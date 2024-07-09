@@ -1030,10 +1030,6 @@ mod test {
                 let processed_rule = rules.rules.first().unwrap();
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::PartiallyMatched, processed_rule.status);
-
-                assert!(processed_rule.message.clone().unwrap().contains(
-                    r#"parser: Exp(AccessorExpression { keys: [Map { key: \"missing\" }] })"#
-                ))
             }
             _ => unreachable!(),
         };
@@ -2691,7 +2687,7 @@ mod test {
             rules.extracted_vars
         );
 
-        match dbg!(rules.rules.as_slice()) {
+        match rules.rules.as_slice() {
             #[rustfmt::skip]
             [
                 ProcessedRule { actions: actions1, .. },

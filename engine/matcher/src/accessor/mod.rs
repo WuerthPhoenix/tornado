@@ -390,60 +390,6 @@ mod test {
     }
 
     #[test]
-    fn should_return_value_from_extracted_var() {
-        let builder = AccessorBuilder::new();
-        let value = "${_variables.body}".to_owned();
-
-        let accessor = builder.build("rule1", &value).unwrap();
-
-        let event = json!(Event::new("event_type_string"));
-        let mut extracted_vars_inner = Map::new();
-        extracted_vars_inner.insert("body".to_owned(), Value::String("body_value".to_owned()));
-        extracted_vars_inner
-            .insert("subject".to_owned(), Value::String("subject_value".to_owned()));
-
-        let mut extracted_vars = Map::new();
-        extracted_vars.insert("rule1".to_owned(), Value::Object(extracted_vars_inner));
-        let mut extracted_vars = Value::Object(extracted_vars);
-
-        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
-        let result = accessor.get(&internal_event).unwrap();
-
-        assert_eq!("body_value", result.as_ref());
-        assert!(accessor.dynamic_value());
-    }
-
-    #[test]
-    fn should_return_value_from_extracted_var_of_current_rule() {
-        let builder = AccessorBuilder::new();
-        let value = "${_variables.body}".to_owned();
-
-        let accessor = builder.build("current_rule_name", &value).unwrap();
-
-        let event = json!(Event::new("event_type_string"));
-        let mut extracted_vars_current = Map::new();
-        extracted_vars_current.insert("body".to_owned(), Value::String("current_body".to_owned()));
-        extracted_vars_current
-            .insert("subject".to_owned(), Value::String("current_subject".to_owned()));
-
-        let mut extracted_vars_custom = Map::new();
-        extracted_vars_custom.insert("body".to_owned(), Value::String("custom_body".to_owned()));
-        extracted_vars_custom
-            .insert("subject".to_owned(), Value::String("custom_subject".to_owned()));
-
-        let mut extracted_vars = Map::new();
-        extracted_vars
-            .insert("current_rule_name".to_owned(), Value::Object(extracted_vars_current));
-        extracted_vars.insert("custom_rule_name".to_owned(), Value::Object(extracted_vars_custom));
-        let mut extracted_vars = Value::Object(extracted_vars);
-
-        let internal_event: InternalEvent = (&event, &mut extracted_vars).into();
-        let result = accessor.get(&internal_event).unwrap();
-
-        assert_eq!("current_body", result.as_ref());
-    }
-
-    #[test]
     fn should_return_value_from_extracted_var_of_custom_rule() {
         let builder = AccessorBuilder::new();
         let value = "${_variables.custom_rule_name.body}".to_owned();
@@ -584,7 +530,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor { parser: Parser::Custom { .. }, rule_name } => {
+            Accessor { parser: Parser::Exp(_), rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             }
             _ => unreachable!(),
@@ -599,7 +545,7 @@ mod test {
         let accessor = builder.build("current_rule_name", &value).unwrap();
 
         match accessor {
-            Accessor { parser: Parser::Custom { .. }, rule_name } => {
+            Accessor { parser: Parser::Exp(_), rule_name } => {
                 assert_eq!(rule_name, "current_rule_name");
             }
             _ => unreachable!(),

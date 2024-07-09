@@ -1,10 +1,9 @@
 use crate::interpolator::StringInterpolator;
-use crate::{is_valid_matcher_root, CustomParser, Template, ValueGetter, FOREACH_ITEM_KEY};
+use crate::{is_valid_matcher_root, Template, ValueGetter, FOREACH_ITEM_KEY};
 use lazy_static::*;
 use regex::Regex;
 use serde_json::Value;
 use std::borrow::Cow;
-use std::collections::HashMap;
 use std::convert::identity;
 use std::fmt::Debug;
 use thiserror::Error;
@@ -33,28 +32,12 @@ pub enum ParserError {
     EmptyAccessorError,
 }
 
-pub trait ParserFactory {
-    fn build(&self, expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError>;
-}
-
-impl<F: Fn(&[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError>> ParserFactory for F {
-    fn build(&self, expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
-        self(expression)
-    }
-}
-
 #[derive(Default)]
 pub struct ParserBuilder {
-    custom_parser_factories: HashMap<String, Box<dyn ParserFactory>>,
     ignored_expressions: Vec<String>,
 }
 
 impl ParserBuilder {
-    fn add_parser_factory(mut self, key: String, factory: Box<dyn ParserFactory>) -> Self {
-        self.custom_parser_factories.insert(key, factory);
-        self
-    }
-
     fn add_ignored_expression(mut self, field: String) -> Self {
         self.ignored_expressions.push(field);
         self
@@ -74,12 +57,8 @@ impl ParserBuilder {
     }
 
     pub fn engine_matcher(input: &str) -> Result<Parser, ParserError> {
-        let parser_builder = ParserBuilder::default()
-            .add_parser_factory(
-                EXTRACTED_VARIABLES_KEY.to_owned(),
-                Box::new(ExtractedVarParser::try_new),
-            )
-            .add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
+        let parser_builder =
+            ParserBuilder::default().add_ignored_expression(FOREACH_ITEM_KEY.to_owned());
 
         match parser_builder.build_parser(input) {
             Ok(Parser::Exp(AccessorExpression { keys })) if is_valid_matcher_root(&keys) => {
@@ -114,23 +93,8 @@ impl ParserBuilder {
         let expression = &keys[2..keys.len() - 1];
 
         let getters = Parser::parse_keys(expression)?;
-        let (head, tail) = match getters.as_slice() {
-            [] => return Err(ParserError::EmptyAccessorError), // "${}"
-            [ValueGetter::Map { .. }] // "${event}"
-            | [ValueGetter::Array { .. }, ..] // "${[123]event}"
-            | [ValueGetter::Map { .. }, ValueGetter::Array { .. }, ..] => { // "${event[123]}"
-                return Ok(Parser::Exp(AccessorExpression { keys: getters }))
-            }
-            [ValueGetter::Map { key }, tail @ ..] => (key, tail), // "${event.timestamp}"
-        };
-
-        for (key, factory) in &self.custom_parser_factories {
-            if key == head {
-                return Ok(Parser::Custom {
-                    key: ValueGetter::Map { key: head.to_owned() },
-                    parser: factory.build(tail)?,
-                });
-            }
+        if getters.is_empty() {
+            return Err(ParserError::EmptyAccessorError);
         }
 
         Ok(Parser::Exp(AccessorExpression { keys: getters }))
@@ -142,7 +106,6 @@ pub enum Parser {
     Exp(AccessorExpression),
     Interpolator { interpolator: StringInterpolator },
     Val(Value),
-    Custom { key: ValueGetter, parser: Box<dyn CustomParser> },
 }
 
 #[derive(Debug)]
@@ -209,9 +172,6 @@ impl Parser {
                 interpolator.render(value, context).map(|text| Cow::Owned(Value::String(text)))
             }
             Parser::Val(value) => Some(Cow::Borrowed(value)),
-            Parser::Custom { key, parser } => {
-                key.get(value).and_then(|val| parser.parse_value(val, context))
-            }
         }
     }
 }
@@ -244,27 +204,6 @@ fn key_is_root_entry_of_expression(key: &str, expression: &str) -> bool {
                 || rest.starts_with(PAYLOAD_ARRAY_KEY_START_DELIMITER)
         })
         .unwrap_or(false)
-}
-
-#[derive(Debug)]
-struct ExtractedVarParser {
-    parser: Parser,
-}
-
-impl ExtractedVarParser {
-    fn try_new(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
-        let parser = Parser::Exp(AccessorExpression { keys: expression.to_vec() });
-        Ok(Box::new(ExtractedVarParser { parser }))
-    }
-}
-
-impl CustomParser for ExtractedVarParser {
-    fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>> {
-        value
-            .get_from_map(context)
-            .and_then(|rule_vars| self.parser.parse_value(rule_vars, context))
-            .or_else(|| self.parser.parse_value(value, context))
-    }
 }
 
 #[cfg(test)]
@@ -598,29 +537,6 @@ mod test {
     }
 
     #[test]
-    fn builder_should_register_and_use_a_custom_parser() {
-        // Arrange
-        let parser = ParserBuilder::default()
-            .add_parser_factory("custom_key".to_owned(), Box::new(custom_parser))
-            .build_parser("${custom_key.something.else}")
-            .unwrap();
-
-        let map = json!({
-            "key": true,
-            "custom_key": {
-                "one": 1,
-                "two": 2
-            }
-        });
-
-        // Act
-        let result = parser.parse_value(&map, "custom_context").unwrap();
-
-        // Assert
-        assert_eq!(&json!({"one": 1, "two": 2 }), result.as_ref());
-    }
-
-    #[test]
     fn builder_should_register_and_use_an_ignored_expressions_if_expression_is_equal_to_ignored() {
         // Arrange
         let parser = ParserBuilder::default().add_ignored_expression("ignored_expr".to_owned());
@@ -720,22 +636,5 @@ mod test {
 
         // Assert
         assert_eq!(&json!(1), result.as_ref());
-    }
-
-    #[derive(Debug)]
-    pub struct MyParser {
-        pub expression: Vec<ValueGetter>,
-    }
-
-    impl CustomParser for MyParser {
-        fn parse_value<'o>(&'o self, value: &'o Value, context: &str) -> Option<Cow<'o, Value>> {
-            assert_eq!("custom_context", context);
-            Some(Cow::Borrowed(value))
-        }
-    }
-
-    fn custom_parser(expression: &[ValueGetter]) -> Result<Box<dyn CustomParser>, ParserError> {
-        println!("build custom parser with expression: [{:?}]", expression);
-        Ok(Box::new(MyParser { expression: expression.to_vec() }))
     }
 }
