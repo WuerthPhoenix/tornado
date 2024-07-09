@@ -67,7 +67,7 @@ impl MatcherExtractorBuilder {
     ///    let result = matcher_extractor.process_all(&mut internal_event);
     ///
     ///    assert!(result.is_ok());
-    ///    assert_eq!(1, extracted_vars.get_map().unwrap().len());
+    ///    assert_eq!(2, extracted_vars.get_map().unwrap().len());
     ///    assert_eq!(
     ///        "44",
     ///        extracted_vars.get_from_map("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
@@ -124,6 +124,10 @@ impl MatcherExtractor {
             }
 
             if let Some(map) = event.extracted_variables.get_map_mut() {
+                for (key, value) in vars.iter() {
+                    map.insert(key.to_owned(), value.to_owned());
+                }
+
                 map.insert(self.rule_name.to_string(), Value::Object(vars));
             } else {
                 return Err(MatcherError::InternalSystemError {
@@ -779,7 +783,7 @@ mod test {
 
         extractor.process_all(&mut (&event, &mut extracted_vars).into()).unwrap();
 
-        assert_eq!(1, extracted_vars.get_map().unwrap().len());
+        assert_eq!(3, extracted_vars.get_map().unwrap().len());
         assert_eq!(2, extracted_vars.get_from_map("rule").unwrap().get_map().unwrap().len());
         assert_eq!(
             "44",

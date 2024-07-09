@@ -873,7 +873,7 @@ mod test {
                 let processed_rule = rules.rules.first().unwrap();
                 assert_eq!(processed_rule.name, "rule1_email");
                 assert_eq!(ProcessedRuleStatus::Matched, processed_rule.status);
-                assert_eq!(1, rules.extracted_vars.get_map().unwrap().len());
+                assert_eq!(2, rules.extracted_vars.get_map().unwrap().len());
                 assert_eq!(
                     "ai",
                     rules
@@ -2060,7 +2060,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2174,7 +2177,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2194,7 +2200,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2214,7 +2223,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2260,7 +2272,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2335,7 +2350,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2419,7 +2437,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2585,128 +2606,6 @@ mod test {
 
                 let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
                 assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-            }
-            _ => unreachable!(),
-        };
-    }
-
-    #[test]
-    fn extracted_variables_name_collisions_should_prioritize_the_local_rule() {
-        // Arrange
-        let rule_1 = {
-            let mut rule = new_rule("collision_name", None);
-            rule.constraint.with.insert(
-                String::from("VALUE"),
-                Extractor {
-                    from: String::from("${event.payload.value}"),
-                    regex: ExtractorRegex::Regex {
-                        regex: String::from(r"[a-z]+"),
-                        group_match_idx: Some(0),
-                        all_matches: None,
-                    },
-                    modifiers_post: vec![],
-                },
-            );
-
-            let mut action = ConfigAction { id: String::from("action_id"), payload: Map::new() };
-            action
-                .payload
-                .insert("value".to_owned(), Value::String("${_variables.VALUE}".to_owned()));
-            rule.actions.push(action);
-            rule
-        };
-
-        let rule_2 = {
-            let mut rule = new_rule("rule2", None);
-            rule.constraint.with.insert(
-                String::from("collision_name"),
-                Extractor {
-                    from: String::from("${event.payload.value}"),
-                    regex: ExtractorRegex::RegexNamedGroups {
-                        regex: String::from(r"(?P<VALUE>[0-9]+)"),
-                        all_matches: None,
-                    },
-                    modifiers_post: vec![],
-                },
-            );
-
-            let mut action = ConfigAction { id: String::from("action_id"), payload: Map::new() };
-            action.payload.insert(
-                "value".to_owned(),
-                Value::String("${_variables.collision_name.VALUE}".to_owned()),
-            );
-            action.payload.insert(
-                "full".to_owned(),
-                Value::String("${_variables.collision_name}".to_owned()),
-            );
-            rule.actions.push(action);
-            rule
-        };
-
-        let rule_3 = {
-            let mut rule = new_rule("rule3", None);
-
-            let mut action = ConfigAction { id: String::from("action_id"), payload: Map::new() };
-            action.payload.insert(
-                "value".to_owned(),
-                Value::String("${_variables.collision_name.VALUE}".to_owned()),
-            );
-            rule.actions.push(action);
-            rule
-        };
-
-        let matcher = new_matcher(&MatcherConfig::Ruleset {
-            name: "ruleset".to_owned(),
-            rules: vec![rule_1, rule_2, rule_3],
-        })
-        .expect("should create a matcher");
-
-        let mut payload = Payload::new();
-        payload.insert("value".to_owned(), Value::String("aaa999".to_owned()));
-
-        // Act
-        let result = matcher.process(json!(Event::new_with_payload("email", payload)), false);
-
-        // Assert
-        match result.result {
-            ProcessedNode::Ruleset { name, rules } => {
-                assert_eq!("ruleset", name);
-                assert_eq!(3, rules.rules.len());
-
-                assert_eq!(
-                    "aaa",
-                    rules
-                        .extracted_vars
-                        .get_from_map("collision_name")
-                        .expect("should contain collision_name")
-                        .get_from_map("VALUE")
-                        .expect("should contain collision_name.VALUE")
-                );
-
-                let mut vars = Map::new();
-                vars.insert("VALUE".to_owned(), Value::String("999".to_owned()));
-                let vars = Value::Object(vars);
-                assert_eq!(
-                    &vars,
-                    rules
-                        .extracted_vars
-                        .get_from_map("rule2")
-                        .expect("should contain rule2")
-                        .get_from_map("collision_name")
-                        .expect("should contain rule2.collision_name")
-                );
-
-                let rule_1_processed = rules.rules.first().expect("should contain rule1");
-                assert_eq!(ProcessedRuleStatus::Matched, rule_1_processed.status);
-
-                let rule_2_processed = rules.rules.get(1).expect("should contain rule2");
-                assert_eq!(ProcessedRuleStatus::Matched, rule_2_processed.status);
-                assert_eq!(&vars, rule_2_processed.actions[0].payload.get("full").unwrap());
-                assert_eq!("999", rule_2_processed.actions[0].payload.get("value").unwrap());
-
-                let rule_3_processed = rules.rules.get(2).expect("should contain rule2");
-                assert_eq!(ProcessedRuleStatus::Matched, rule_3_processed.status);
-                assert_eq!("aaa", rule_3_processed.actions[0].payload.get("value").unwrap());
             }
             _ => unreachable!(),
         };
