@@ -117,7 +117,9 @@ export enum ProcessedFilterStatusDto { Matched = "Matched", NotMatched = "NotMat
 
 export type ProcessedIterationDto = { event: EventDto; nodes: ProcessedNodeDto [] };
 
-export enum ProcessedIteratorDto {     Matched = "Matched", AccessorError = "AccessorError", TypeError =     "TypeError" };
+export enum ProcessedIteratorStatusDto {     Matched = "Matched", AccessorError = "AccessorError", TypeError =     "TypeError" };
+
+export type ProcessedIteratorDto = { status: ProcessedIteratorStatusDto };
 
 export type ProcessedNodeDto = 
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
