@@ -4,8 +4,8 @@ use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
 use tornado_engine_api_dto::event::{
     ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
-    ProcessedIterationDto, ProcessedIteratorDto, ProcessedNodeDto, ProcessedRuleDto,
-    ProcessedRuleStatusDto, ProcessedRulesDto, SendEventRequestDto,
+    ProcessedIterationDto, ProcessedIteratorDto, ProcessedIteratorStatusDto, ProcessedNodeDto,
+    ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto, SendEventRequestDto,
 };
 use tornado_engine_matcher::model::{
     ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration, ProcessedIterator,
@@ -105,9 +105,16 @@ pub fn processed_filter_into_dto(node: ProcessedFilter) -> ProcessedFilterDto {
 
 pub fn processed_iterator_into_dto(node: ProcessedIterator) -> ProcessedIteratorDto {
     match node {
-        ProcessedIterator::Matched => ProcessedIteratorDto::Matched,
-        ProcessedIterator::AccessorError => ProcessedIteratorDto::AccessorError,
-        ProcessedIterator::TypeError => ProcessedIteratorDto::TypeError,
+        ProcessedIterator::Matched => {
+            ProcessedIteratorDto { status: ProcessedIteratorStatusDto::Matched }
+        }
+        ProcessedIterator::AccessorError => {
+            ProcessedIteratorDto { status: ProcessedIteratorStatusDto::AccessorError }
+        }
+
+        ProcessedIterator::TypeError => {
+            ProcessedIteratorDto { status: ProcessedIteratorStatusDto::TypeError }
+        }
     }
 }
 
