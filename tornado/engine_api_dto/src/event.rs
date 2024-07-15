@@ -42,10 +42,15 @@ pub enum ProcessedNodeDto {
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
-pub enum ProcessedIteratorDto {
+pub enum ProcessedIteratorStatusDto {
     Matched,
     AccessorError,
     TypeError,
+}
+
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct ProcessedIteratorDto {
+    pub status: ProcessedIteratorStatusDto,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
