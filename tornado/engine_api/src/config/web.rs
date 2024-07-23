@@ -1,7 +1,7 @@
 use crate::config::api::{ConfigApi, ConfigApiHandler};
 use crate::config::convert::processing_tree_node_details_dto_into_matcher_config;
 use crate::error::ApiError;
-use crate::model::{ApiData, ApiDataV2, ExportVersionedMatcherConfig};
+use crate::model::{ApiDataV2, ExportVersionedMatcherConfig};
 use actix_multipart::Multipart;
 use actix_web::http::header;
 use actix_web::web::{Data, Json, Path};
