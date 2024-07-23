@@ -105,7 +105,13 @@ export type RulePositionDto = { position: number };
 /* 'event' types */
 /* ------------- */
 
-export type EventDto = {     type: string; created_ms: number; metadata:     { [key: string]: Value }; payload: { [key: string]: Value } };
+export type EventDto = {     type: string; created_ms: number; metadata:     { [key: string]: Value }; payload: { [key: string]: Value };     iterator: EventIteratorDataDto | null };
+
+export type EventIteratorDataDto = { item: Value; iteration: StringOrInt };
+
+export type StringOrInt = 
+ | string 
+ | number;
 
 export enum ProcessType { Full = "Full", SkipActions = "SkipActions" };
 

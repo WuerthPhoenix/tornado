@@ -25,6 +25,21 @@ pub struct EventDto {
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
     pub payload: HashMap<String, Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iterator: Option<EventIteratorDataDto>
+}
+
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct EventIteratorDataDto {
+    pub item: Value,
+    pub iteration: StringOrInt,
+}
+
+#[derive(Clone, Serialize, Deserialize, TypeScriptify)]
+#[serde(untagged)]
+pub enum StringOrInt {
+    String(String),
+    Int(u64),
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]
