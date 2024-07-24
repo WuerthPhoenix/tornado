@@ -135,6 +135,7 @@ mod test {
                 payload: HashMap::new(),
                 metadata: metadata.clone(),
                 created_ms: 0,
+                iterator: None,
             },
             process_type: ProcessType::SkipActions,
         };
@@ -163,7 +164,6 @@ mod test {
         // Assert
 
         let resp = test::call_service(&srv, request).await;
-        //println!("resp: [{:?}]", resp);
 
         assert_eq!(200, resp.status());
 
@@ -189,6 +189,7 @@ mod test {
                 payload: HashMap::new(),
                 metadata: Default::default(),
                 created_ms: 0,
+                iterator: None,
             },
             process_type: ProcessType::SkipActions,
         };
@@ -237,6 +238,7 @@ mod test {
                 payload: HashMap::new(),
                 metadata: metadata.clone(),
                 created_ms: 0,
+                iterator: None,
             },
             process_type: ProcessType::SkipActions,
         };

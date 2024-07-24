@@ -142,6 +142,8 @@ export type Value = any;"#;
 /* ------------- */"#,
     );
     push_ts(&mut ts_code, &event::EventDto::type_script_ify());
+    push_ts(&mut ts_code, &event::EventIteratorDataDto::type_script_ify());
+    push_ts(&mut ts_code, &event::StringOrInt::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessType::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedEventDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedFilterDto::type_script_ify());
