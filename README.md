@@ -178,8 +178,8 @@ The repository structure is shown here:
 
 ### Build Process
 
-To build the source, open a shell where you cloned the repository, change to the *src* directory,
-and launch:
+To build the source, open a shell where you cloned the repository, change to the
+base directory, and launch:
 
 ```
 $ cargo build
