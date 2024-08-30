@@ -9,7 +9,7 @@ use std::fmt::Debug;
 use tornado_common_types::ValueGet;
 
 pub use crate::parser::{
-    AccessorExpression, Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY,
+    AccessorExpression, Parser, ParserBuilder, ParserError, EXTRACTED_VARIABLES_KEY, RULESET_SCOPE_KEY
 };
 
 pub const EXPRESSION_START_DELIMITER: &str = "${";

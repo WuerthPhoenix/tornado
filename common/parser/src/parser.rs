@@ -16,6 +16,7 @@ const PAYLOAD_MAP_KEY_PARSE_TRAILING_DELIMITER: &str = "\"";
 const PAYLOAD_ARRAY_KEY_START_DELIMITER: &str = "[";
 const PAYLOAD_ARRAY_KEY_END_DELIMITER: &str = "]";
 pub const EXTRACTED_VARIABLES_KEY: &str = "_variables";
+pub const RULESET_SCOPE_KEY: &str = "_ruleset";
 
 lazy_static! {
     static ref RE: Regex = Regex::new(PAYLOAD_KEY_PARSE_REGEX).expect("Parser regex must be valid");

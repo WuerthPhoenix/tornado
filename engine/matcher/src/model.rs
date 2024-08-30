@@ -2,17 +2,18 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 use tornado_common_api::{Action, ValueGet};
-use tornado_common_parser::{EVENT_KEY, EXTRACTED_VARIABLES_KEY};
+use tornado_common_parser::{EVENT_KEY, EXTRACTED_VARIABLES_KEY, RULESET_SCOPE_KEY};
 use typescript_definitions::TypeScriptify;
 
 pub struct InternalEvent<'o> {
     pub event: &'o Value,
-    pub extracted_variables: &'o mut Value,
+    pub extracted_variables: &'o Value,
+    pub ruleset_scope: &'o Value,
 }
 
-impl<'o> From<(&'o Value, &'o mut Value)> for InternalEvent<'o> {
-    fn from((event, extracted_variables): (&'o Value, &'o mut Value)) -> Self {
-        Self { event, extracted_variables }
+impl<'o> From<(&'o Value, &'o Value, &'o Value)> for InternalEvent<'o> {
+    fn from((event, extracted_variables, ruleset_scope): (&'o Value, &'o Value, &'o Value)) -> Self {
+        Self { event, extracted_variables, ruleset_scope}
     }
 }
 
@@ -34,6 +35,7 @@ impl<'o> ValueGet for InternalEvent<'o> {
         match key {
             EVENT_KEY => Some(self.event),
             EXTRACTED_VARIABLES_KEY => Some(self.extracted_variables),
+            RULESET_SCOPE_KEY=> Some(self.ruleset_scope),
             _ => None,
         }
     }

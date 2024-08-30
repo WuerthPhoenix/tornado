@@ -79,7 +79,7 @@ impl MatcherExtractorBuilder {
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
         let mut matcher_extractor =
-            MatcherExtractor { rule_name: rule_name.to_owned(), extractors: HashMap::new() };
+            MatcherExtractor { extractors: HashMap::new() };
         for (key, extractor) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
@@ -98,40 +98,22 @@ impl MatcherExtractorBuilder {
 
 #[derive(Debug)]
 pub struct MatcherExtractor {
-    rule_name: String,
     extractors: HashMap<String, ValueExtractor>,
 }
 
 impl MatcherExtractor {
-    /*
-    /// Returns the value of the variable named 'key' generated from the provided Event.
-    fn extract(&self, key: &str, event: &InternalEvent, extracted_vars: Option<&Value>) -> Result<String, MatcherError> {
-        let extracted = self.extractors.get(key).and_then(|extractor| extractor.extract(event, extracted_vars));
-        self.check_extracted(key, extracted)
-    }
-    */
-
     /// Fills the Event with the extracted variables defined in the rule and generated from the Event itself.
     /// Returns an Error if not all variables can be correctly extracted.
     /// The variable 'key' in the event.extracted_vars map has the form:
     /// rule_name.extracted_var_name
-    pub fn process_all(&self, event: &mut InternalEvent) -> Result<(), MatcherError> {
-        if !self.extractors.is_empty() {
-            let mut vars = Map::new();
-            for (key, extractor) in &self.extractors {
-                let value = extractor.extract(key, event)?;
-                vars.insert(extractor.key.to_string(), value);
-            }
-
-            if let Some(map) = event.extracted_variables.get_map_mut() {
-                map.insert(self.rule_name.to_string(), Value::Object(vars));
-            } else {
-                return Err(MatcherError::InternalSystemError {
-                    message: "MatcherExtractor - process_all - expected a Value::Map".to_owned(),
-                });
-            }
+    pub fn process_all(&self, event: &InternalEvent) -> Result<Map<String, Value>, MatcherError> {
+        let mut vars = Map::new();
+        for (key, extractor) in &self.extractors {
+            let value = extractor.extract(key, event)?;
+            vars.insert(extractor.key.to_string(), value);
         }
-        Ok(())
+
+        Ok(vars)
     }
 }
 

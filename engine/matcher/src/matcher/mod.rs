@@ -174,7 +174,7 @@ impl Matcher {
         let mut result_nodes = vec![];
 
         let filter_status = if filter.active {
-            let internal_event = InternalEvent { event, extracted_variables: &mut Value::Null };
+            let internal_event = InternalEvent { event, extracted_variables: &Value::Null, ruleset_scope: &Value::Null };
             if filter.filter.evaluate(&internal_event) {
                 trace!(
                         "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
@@ -208,7 +208,7 @@ impl Matcher {
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of iterator: [{}]", name);
-        let internal_event = InternalEvent { event, extracted_variables: &mut Default::default() };
+        let internal_event = InternalEvent { event, extracted_variables: &Value::Null, ruleset_scope: &Value::Null };
         let Some(target) = target.parse_value(&internal_event) else {
             // ToDo: Improve in NEPROD-1682
             return ProcessedNode::Iterator {
@@ -229,7 +229,7 @@ impl Matcher {
                 Matcher::iterate_over(name, iterator, event, nodes, include_metadata)
             }
             _ => {
-                return ProcessedNode::Iterator {
+                ProcessedNode::Iterator {
                     name: name.to_string(),
                     iterator: ProcessedIterator::TypeError,
                     events: vec![],
@@ -297,7 +297,7 @@ impl Matcher {
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
         let mut extracted_vars = Value::Object(Map::new());
-        let mut internal_event = InternalEvent { event, extracted_variables: &mut extracted_vars };
+        let mut ruleset_scope = Value::Object(Map::new());
 
         let mut processed_rules = vec![];
 
@@ -322,42 +322,62 @@ impl Matcher {
                 processed_rule.meta = Some(ProcessedRuleMetaData { actions: vec![] })
             }
 
-            if rule.operator.evaluate(&internal_event) {
-                trace!(
-                    "Matcher process - event matches rule: [{}]. Checking extracted variables.",
-                    &rule.name
-                );
+            if ! rule.operator.evaluate(&InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope}) {
+                processed_rules.push(processed_rule);
+                continue;
+            }
+            trace!(
+                "Matcher process - event matches rule: [{}]. Checking extracted variables.",
+                &rule.name
+            );
 
-                match rule.extractor.process_all(&mut internal_event) {
-                    Ok(_) => {
-                        trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
-
-                        match Matcher::process_actions(
-                            &internal_event,
-                            &mut processed_rule,
-                            &rule.actions,
-                        ) {
-                            Ok(_) => {
-                                processed_rule.status = ProcessedRuleStatus::Matched;
-                                if !rule.do_continue {
-                                    processed_rules.push(processed_rule);
-                                    break;
-                                }
-                            }
-                            Err(e) => {
-                                let message = format!("Matcher process - The event matches the rule [{}] and all variables are extracted correctly; however, some actions cannot be resolved: [{:?}]", &rule.name, e);
-                                debug!("{}", &message);
-                                processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
-                                processed_rule.message = Some(message);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{:?}]", &rule.name, e);
-                        debug!("{}", &message);
+            match rule.extractor.process_all(&InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope}) {
+                Ok(vars) => {
+                    let (Some(extracted_vars), Some(ruleset_scope)) = (extracted_vars.as_object_mut(), ruleset_scope.as_object_mut()) else {
+                        error!("Internal error. Extracted vars where not an object");
                         processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
-                        processed_rule.message = Some(message);
+                        processed_rule.message = Some("Internal System Error".to_owned());
+                        processed_rules.push(processed_rule);
+                        continue;
+                    };
+
+                    for (key, value) in vars.iter() {
+                        ruleset_scope.insert(key.clone(), value.clone());
+                        // todo: insert into data for test-events.
                     }
+
+                    extracted_vars.insert(rule.name.clone(), Value::Object(vars));
+
+                }
+                Err(e) => {
+                    let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{:?}]", &rule.name, e);
+                    debug!("{}", &message);
+                    processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
+                    processed_rule.message = Some(message);
+                    processed_rules.push(processed_rule);
+                    continue;
+                }
+            };
+
+            trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
+
+            match Matcher::process_actions(
+                &InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope},
+                &mut processed_rule,
+                &rule.actions,
+            ) {
+                Ok(_) => {
+                    processed_rule.status = ProcessedRuleStatus::Matched;
+                    if !rule.do_continue {
+                        processed_rules.push(processed_rule);
+                        break;
+                    }
+                }
+                Err(e) => {
+                    let message = format!("Matcher process - The event matches the rule [{}] and all variables are extracted correctly; however, some actions cannot be resolved: [{:?}]", &rule.name, e);
+                    debug!("{}", &message);
+                    processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
+                    processed_rule.message = Some(message);
                 }
             }
 
