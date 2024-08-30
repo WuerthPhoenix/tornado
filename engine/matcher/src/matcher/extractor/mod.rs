@@ -114,6 +114,10 @@ impl MatcherExtractor {
 
         Ok(vars)
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.extractors.is_empty()
+    }
 }
 
 #[derive(Debug)]

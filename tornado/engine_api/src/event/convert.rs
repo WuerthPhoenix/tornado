@@ -1,10 +1,18 @@
-use std::collections::HashMap;
 use crate::event::api::SendEventRequest;
 use serde_json::Error;
+use std::collections::HashMap;
 use tornado_common_api::Action;
 use tornado_engine_api_dto::config::ActionDto;
-use tornado_engine_api_dto::event::{ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto, ProcessedIterationDto, ProcessedIteratorDto, ProcessedIteratorStatusDto, ProcessedNodeDto, ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto, ScopeVariableDto, SendEventRequestDto};
-use tornado_engine_matcher::model::{ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration, ProcessedIterator, ProcessedNode, ProcessedRule, ProcessedRuleStatus, ProcessedRules, ScopeVariable};
+use tornado_engine_api_dto::event::{
+    ProcessType, ProcessedEventDto, ProcessedFilterDto, ProcessedFilterStatusDto,
+    ProcessedIterationDto, ProcessedIteratorDto, ProcessedIteratorStatusDto, ProcessedNodeDto,
+    ProcessedRuleDto, ProcessedRuleStatusDto, ProcessedRulesDto, ScopeVariableDto,
+    SendEventRequestDto,
+};
+use tornado_engine_matcher::model::{
+    ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration, ProcessedIterator,
+    ProcessedNode, ProcessedRule, ProcessedRuleStatus, ProcessedRules, ScopeVariable,
+};
 
 pub fn dto_into_send_event_request(dto: SendEventRequestDto) -> Result<SendEventRequest, Error> {
     Ok(SendEventRequest {
@@ -90,15 +98,16 @@ pub fn processed_rule_status_into_dto(node: ProcessedRuleStatus) -> ProcessedRul
     }
 }
 
-pub fn process_scope_states(scope_variable: Option<HashMap<String, ScopeVariable>>) -> Option<HashMap<String, ScopeVariableDto>> {
-    Some(scope_variable?.into_iter().map(|(key, value)| (key, process_scope_state(value))).collect())
+pub fn process_scope_states(
+    scope_variable: Option<HashMap<String, ScopeVariable>>,
+) -> Option<HashMap<String, ScopeVariableDto>> {
+    Some(
+        scope_variable?.into_iter().map(|(key, value)| (key, process_scope_state(value))).collect(),
+    )
 }
 
 pub fn process_scope_state(scope_variable: ScopeVariable) -> ScopeVariableDto {
-    ScopeVariableDto {
-        source: scope_variable.source,
-        value: scope_variable.value,
-    }
+    ScopeVariableDto { source: scope_variable.source, value: scope_variable.value }
 }
 
 pub fn action_into_dto(action: Action) -> Result<ActionDto, Error> {

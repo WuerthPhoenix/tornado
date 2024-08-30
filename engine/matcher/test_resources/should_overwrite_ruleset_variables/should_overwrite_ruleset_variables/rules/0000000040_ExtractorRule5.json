@@ -1,0 +1,30 @@
+{
+  "name": "ExtractorRule5",
+  "description": "Tries extracting non-existing field",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": null,
+    "WITH": {
+      "ruleset_variable": {
+        "from": "should_not_overwrite",
+        "regex": {
+          "match": ".*",
+          "group_match_idx": null,
+          "all_matches": false
+        },
+        "modifiers_post": []
+      },
+      "failing_variable": {
+        "from": "${event.payload.pippo}",
+        "regex": {
+          "match": ".*",
+          "group_match_idx": null,
+          "all_matches": false
+        },
+        "modifiers_post": []
+      }
+    }
+  },
+  "actions": []
+}

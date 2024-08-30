@@ -1,0 +1,19 @@
+{
+  "name": "ExtrractorRule4",
+  "description": "Ruleset variable should have been overwritten ",
+  "continue": true,
+  "active": true,
+  "constraint": {
+    "WHERE": null,
+    "WITH": {}
+  },
+  "actions": [
+    {
+      "id": "archive",
+      "payload": {
+        "archive_type": "one",
+        "event": "${_ruleset.ruleset_variable}"
+      }
+    }
+  ]
+}

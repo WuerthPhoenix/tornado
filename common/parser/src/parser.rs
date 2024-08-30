@@ -739,4 +739,23 @@ mod test {
         println!("build custom parser with expression: [{:?}]", expression);
         Ok(Box::new(MyParser { expression: expression.to_vec() }))
     }
+
+    #[test]
+    fn should_parser_ruleset_scope_namespace() {
+        let accessor = format!("${{{RULESET_SCOPE_KEY}.pippo}}");
+        let result = ParserBuilder::default().build_parser(&accessor).unwrap();
+
+        let keys = match result {
+            Parser::Exp(AccessorExpression { keys }) => keys,
+            result => panic!("{:#?}", result),
+        };
+
+        match keys.as_slice() {
+            [ValueGetter::Map { key: ruleset }, ValueGetter::Map { key: pippo }] => {
+                assert_eq!(RULESET_SCOPE_KEY, ruleset);
+                assert_eq!("pippo", pippo);
+            }
+            keys => panic!("{:?}", keys),
+        }
+    }
 }

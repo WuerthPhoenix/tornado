@@ -91,7 +91,7 @@ impl StringInterpolator {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{AccessorExpression, Parser, ValueGetter};
+    use crate::{AccessorExpression, Parser, ValueGetter, RULESET_SCOPE_KEY};
     use serde_json::json;
     use tornado_common_types::Payload;
 
@@ -328,5 +328,40 @@ mod test {
         println!("Template: \n{}", template);
         println!("Rendered template: \n{}", result.unwrap());
         println!("---------------------------");
+    }
+
+    #[test]
+    fn should_interpolate_ruleset_scope_namespace() {
+        let accessor = format!("${{{RULESET_SCOPE_KEY}.pippo}} - ${{event}}");
+        let result = ParserBuilder::default().build_parser(&accessor).unwrap();
+
+        let parsers = match result {
+            Parser::Interpolator { interpolator: StringInterpolator { parsers, .. } } => parsers,
+            result => panic!("{:#?}", result),
+        };
+
+        let (accessor1, accessor2) = match parsers.as_slice() {
+            #[rustfmt::skip]
+            [
+                BoundedAccessor { start: 0, end: 17, parser: Parser::Exp(accessor1) },
+                BoundedAccessor { start: 20, end: 28, parser: Parser::Exp(accessor2) },
+            ] => (accessor1, accessor2),
+            result => panic!("{:#?}", result),
+        };
+
+        match accessor1.keys.as_slice() {
+            [ValueGetter::Map { key: ruleset }, ValueGetter::Map { key: pippo }] => {
+                assert_eq!(RULESET_SCOPE_KEY, ruleset);
+                assert_eq!("pippo", pippo);
+            }
+            keys => panic!("{:?}", keys),
+        }
+
+        match accessor2.keys.as_slice() {
+            [ValueGetter::Map { key: event }] => {
+                assert_eq!("event", event);
+            }
+            keys => panic!("{:?}", keys),
+        }
     }
 }

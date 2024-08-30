@@ -375,7 +375,9 @@ impl Matcher {
                         processed_rule.ruleset_scope_state = Some(state.clone());
                     }
 
-                    extracted_vars.insert(rule.name.clone(), Value::Object(vars));
+                    if !rule.extractor.is_empty() {
+                        extracted_vars.insert(rule.name.clone(), Value::Object(vars));
+                    }
                 }
                 Err(e) => {
                     let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{:?}]", &rule.name, e);
@@ -2831,6 +2833,85 @@ mod test {
             }
             _ => unreachable!(),
         };
+    }
+
+    #[tokio::test]
+    async fn should_overwrite_ruleset_variables() {
+        let config_path = Path::new("test_resources/should_overwrite_ruleset_variables");
+        let loader = FsMatcherConfigManagerV2::new(config_path, "");
+        let config = loader.get_config().await.unwrap();
+        let processing_tree = Matcher::build(&config).unwrap();
+
+        let processed = processing_tree.process(json!(Event::new("test-event")), false);
+        let ruleset = match processed {
+            ProcessedEvent { result: ProcessedNode::Filter { mut nodes, .. }, .. } => {
+                assert_eq!(1, nodes.len());
+                nodes.pop().unwrap()
+            }
+            _ => panic!("{:#?}", processed),
+        };
+
+        let rules = match ruleset {
+            ProcessedNode::Ruleset { rules, .. } => rules,
+            result => panic!("{:#?}", result),
+        };
+
+        assert_eq!(
+            json!({
+                "ExtractorRule1": {
+                    "ruleset_variable": "ruleset_variable_state1"
+                },
+                "ExtractorRule3": {
+                    "ruleset_variable": "test-event"
+                },
+            }),
+            rules.extracted_vars
+        );
+
+        match rules.rules.as_slice() {
+            #[rustfmt::skip]
+            [
+                ProcessedRule { actions: actions1, .. },
+                ProcessedRule { actions: actions2, .. },
+                ProcessedRule { actions: actions3, .. },
+                ProcessedRule { actions: actions4, .. },
+                ProcessedRule { actions: actions5, status: status5, .. },
+                ProcessedRule { actions: actions6, .. },
+            ] => {
+                assert_eq!(1, actions1.len());
+                assert_eq!(
+                    json!({"archive_type":"one","event":"ruleset_variable_state1"}),
+                    json!(actions1[0].payload)
+                );
+
+                assert_eq!(
+                    json!({"archive_type":"one","event":"ruleset_variable_state1"}),
+                    json!(actions2[0].payload)
+                );
+
+                assert_eq!(1, actions3.len());
+                assert_eq!(
+                    json!({"archive_type":"one","event":"test-event"}),
+                    json!(actions3[0].payload)
+                );
+
+                assert_eq!(1, actions4.len());
+                assert_eq!(
+                    json!({"archive_type":"one","event":"test-event"}),
+                    json!(actions4[0].payload)
+                );
+
+                assert_eq!(0, actions5.len());
+                assert_eq!(&ProcessedRuleStatus::PartiallyMatched, status5);
+
+                assert_eq!(1, actions6.len());
+                assert_eq!(
+                    json!({"archive_type":"one","event":"test-event"}),
+                    json!(actions6[0].payload)
+                );
+            }
+            result => panic!("{:#?}", result),
+        }
     }
 
     fn new_matcher(config: &MatcherConfig) -> Result<Matcher, MatcherError> {

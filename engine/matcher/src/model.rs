@@ -142,3 +142,23 @@ pub struct ValueMetaData {
     pub modified: bool,
     pub is_leaf: bool,
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::model::InternalEvent;
+    use tornado_common_api::Value;
+    use tornado_common_parser::{AccessorExpression, Parser, ValueGetter, RULESET_SCOPE_KEY};
+
+    #[test]
+    fn should_access_ruleset_namespace_correctly() {
+        let parser = Parser::Exp(AccessorExpression {
+            keys: vec![ValueGetter::Map { key: RULESET_SCOPE_KEY.to_owned() }],
+        });
+
+        let v = Value::from(42);
+        let internal_event: InternalEvent = (&Value::Null, &Value::Null, &v).into();
+        let value = parser.parse_value(&internal_event, "").unwrap();
+
+        assert_eq!(&v, value.as_ref());
+    }
+}
