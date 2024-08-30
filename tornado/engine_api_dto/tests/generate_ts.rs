@@ -153,6 +153,7 @@ export type Value = any;"#;
     push_ts(&mut ts_code, &event::ProcessedIteratorDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedNodeDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedRuleDto::type_script_ify());
+    push_ts(&mut ts_code, &event::ScopeVariableDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedRulesDto::type_script_ify());
     push_ts(&mut ts_code, &event::ProcessedRuleStatusDto::type_script_ify());
     push_ts(&mut ts_code, &event::SendEventRequestDto::type_script_ify());

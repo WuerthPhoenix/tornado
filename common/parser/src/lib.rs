@@ -98,7 +98,7 @@ pub fn is_valid_matcher_root(keys: &[ValueGetter]) -> bool {
             true
         }
         [ValueGetter::Map { key }, ValueGetter::Map { .. }, ..]
-            if key == EXTRACTED_VARIABLES_KEY =>
+            if key == EXTRACTED_VARIABLES_KEY || key == RULESET_SCOPE_KEY =>
         {
             true
         }

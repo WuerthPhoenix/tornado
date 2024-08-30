@@ -81,32 +81,34 @@ pub struct ProcessedRules {
     pub extracted_vars: Value,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ProcessedRule {
     pub name: String,
     pub status: ProcessedRuleStatus,
     pub actions: Vec<Action>,
     pub message: Option<String>,
+    pub ruleset_scope_state: Option<HashMap<String, ScopeVariable>>,
     pub meta: Option<ProcessedRuleMetaData>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScopeVariable {
+    pub source: String,
+    pub value: Value,
 }
 
 impl ProcessedRule {
     pub fn new(rule_name: String) -> ProcessedRule {
-        ProcessedRule {
-            name: rule_name,
-            status: ProcessedRuleStatus::NotProcessed,
-            actions: vec![],
-            message: None,
-            meta: None,
-        }
+        ProcessedRule { name: rule_name, ..Default::default() }
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub enum ProcessedRuleStatus {
     Matched,
     PartiallyMatched,
     NotMatched,
+    #[default]
     NotProcessed,
 }
 

@@ -98,7 +98,14 @@ pub struct ProcessedRuleDto {
     pub status: ProcessedRuleStatusDto,
     pub actions: Vec<ActionDto>,
     pub message: Option<String>,
+    pub ruleset_scope_state: Option<HashMap<String, ScopeVariableDto>>,
     pub meta: Option<ProcessedRuleMetaData>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, TypeScriptify)]
+pub struct ScopeVariableDto {
+    pub source: String,
+    pub value: Value,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]

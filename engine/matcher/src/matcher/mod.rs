@@ -3,6 +3,7 @@ pub mod extractor;
 pub mod modifier;
 pub mod operator;
 
+use std::collections::HashMap;
 use tracing::instrument;
 
 use crate::accessor::AccessorBuilder;
@@ -13,7 +14,7 @@ use crate::matcher::extractor::{MatcherExtractor, MatcherExtractorBuilder};
 use crate::model::{
     InternalEvent, ProcessedEvent, ProcessedFilter, ProcessedFilterStatus, ProcessedIteration,
     ProcessedIterator, ProcessedNode, ProcessedRule, ProcessedRuleMetaData, ProcessedRuleStatus,
-    ProcessedRules,
+    ProcessedRules, ScopeVariable,
 };
 use crate::validator::MatcherConfigValidator;
 use log::*;
@@ -301,8 +302,11 @@ impl Matcher {
         trace!("Matcher process - check matching of ruleset: [{}]", ruleset_name);
         let mut extracted_vars = Value::Object(Map::new());
         let mut ruleset_scope = Value::Object(Map::new());
-
         let mut processed_rules = vec![];
+        let mut ruleset_scope_state = None;
+        if include_metadata {
+            ruleset_scope_state = Some(HashMap::new());
+        }
 
         for rule in rules {
             let _rule_span = tracing::debug_span!(
@@ -318,6 +322,7 @@ impl Matcher {
                 status: ProcessedRuleStatus::NotMatched,
                 actions: vec![],
                 message: None,
+                ruleset_scope_state: None,
                 meta: None,
             };
 
@@ -356,7 +361,18 @@ impl Matcher {
 
                     for (key, value) in vars.iter() {
                         ruleset_scope.insert(key.clone(), value.clone());
-                        // todo: insert into data for test-events.
+                    }
+
+                    // Include data for test events.
+                    if let Some(state) = &mut ruleset_scope_state {
+                        for (key, value) in vars.iter() {
+                            state.insert(
+                                key.clone(),
+                                ScopeVariable { source: rule.name.clone(), value: value.clone() },
+                            );
+                        }
+
+                        processed_rule.ruleset_scope_state = Some(state.clone());
                     }
 
                     extracted_vars.insert(rule.name.clone(), Value::Object(vars));

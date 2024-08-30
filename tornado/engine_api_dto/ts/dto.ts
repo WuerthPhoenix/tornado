@@ -132,7 +132,9 @@ export type ProcessedNodeDto =
  | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto;     events: ProcessedIterationDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
-export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };
+export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; ruleset_scope_state:     { [key: string]: ScopeVariableDto } | null; meta:     ProcessedRuleMetaData | null };
+
+export type ScopeVariableDto = { source: string; value: Value };
 
 export type ProcessedRulesDto = { rules: ProcessedRuleDto []; extracted_vars: Value };
 
