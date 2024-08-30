@@ -62,7 +62,11 @@ mod test {
         assert_eq!("one", operator.regex.to_string());
         assert_eq!(
             "two",
-            operator.target.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+            operator
+                .target
+                .get(&(&json!(event), &Value::Null, &Value::Null).into())
+                .unwrap()
+                .as_ref()
         );
     }
 
@@ -79,7 +83,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -96,7 +100,7 @@ mod test {
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -113,7 +117,7 @@ mod test {
 
         let event = Event::new_with_payload("test_type", payload);
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -126,7 +130,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -140,7 +144,7 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), Value::Bool(true));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -154,6 +158,6 @@ mod test {
         let mut event = Event::new("test_type");
         event.payload.insert("value".to_owned(), json!(999));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 }

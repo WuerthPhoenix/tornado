@@ -174,7 +174,11 @@ impl Matcher {
         let mut result_nodes = vec![];
 
         let filter_status = if filter.active {
-            let internal_event = InternalEvent { event, extracted_variables: &Value::Null, ruleset_scope: &Value::Null };
+            let internal_event = InternalEvent {
+                event,
+                extracted_variables: &Value::Null,
+                ruleset_scope: &Value::Null,
+            };
             if filter.filter.evaluate(&internal_event) {
                 trace!(
                         "Matcher process - event matches filter: [{}]. Passing the Event to the nested nodes.",
@@ -208,7 +212,8 @@ impl Matcher {
         include_metadata: bool,
     ) -> ProcessedNode {
         trace!("Matcher process - check matching of iterator: [{}]", name);
-        let internal_event = InternalEvent { event, extracted_variables: &Value::Null, ruleset_scope: &Value::Null };
+        let internal_event =
+            InternalEvent { event, extracted_variables: &Value::Null, ruleset_scope: &Value::Null };
         let Some(target) = target.parse_value(&internal_event) else {
             // ToDo: Improve in NEPROD-1682
             return ProcessedNode::Iterator {
@@ -228,13 +233,11 @@ impl Matcher {
                     map.keys().flat_map(|key| map.get(key).map(|value| (key.as_str(), value)));
                 Matcher::iterate_over(name, iterator, event, nodes, include_metadata)
             }
-            _ => {
-                ProcessedNode::Iterator {
-                    name: name.to_string(),
-                    iterator: ProcessedIterator::TypeError,
-                    events: vec![],
-                }
-            }
+            _ => ProcessedNode::Iterator {
+                name: name.to_string(),
+                iterator: ProcessedIterator::TypeError,
+                events: vec![],
+            },
         }
     }
 
@@ -322,7 +325,11 @@ impl Matcher {
                 processed_rule.meta = Some(ProcessedRuleMetaData { actions: vec![] })
             }
 
-            if ! rule.operator.evaluate(&InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope}) {
+            if !rule.operator.evaluate(&InternalEvent {
+                event,
+                extracted_variables: &extracted_vars,
+                ruleset_scope: &ruleset_scope,
+            }) {
                 processed_rules.push(processed_rule);
                 continue;
             }
@@ -331,9 +338,15 @@ impl Matcher {
                 &rule.name
             );
 
-            match rule.extractor.process_all(&InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope}) {
+            match rule.extractor.process_all(&InternalEvent {
+                event,
+                extracted_variables: &extracted_vars,
+                ruleset_scope: &ruleset_scope,
+            }) {
                 Ok(vars) => {
-                    let (Some(extracted_vars), Some(ruleset_scope)) = (extracted_vars.as_object_mut(), ruleset_scope.as_object_mut()) else {
+                    let (Some(extracted_vars), Some(ruleset_scope)) =
+                        (extracted_vars.as_object_mut(), ruleset_scope.as_object_mut())
+                    else {
                         error!("Internal error. Extracted vars where not an object");
                         processed_rule.status = ProcessedRuleStatus::PartiallyMatched;
                         processed_rule.message = Some("Internal System Error".to_owned());
@@ -347,7 +360,6 @@ impl Matcher {
                     }
 
                     extracted_vars.insert(rule.name.clone(), Value::Object(vars));
-
                 }
                 Err(e) => {
                     let message = format!("Matcher process - The event matches the rule [{}] but some variables cannot be extracted: [{:?}]", &rule.name, e);
@@ -359,10 +371,17 @@ impl Matcher {
                 }
             };
 
-            trace!("Matcher process - event matches rule: [{}] and its extracted variables.", &rule.name);
+            trace!(
+                "Matcher process - event matches rule: [{}] and its extracted variables.",
+                &rule.name
+            );
 
             match Matcher::process_actions(
-                &InternalEvent { event, extracted_variables: &extracted_vars, ruleset_scope: &ruleset_scope},
+                &InternalEvent {
+                    event,
+                    extracted_variables: &extracted_vars,
+                    ruleset_scope: &ruleset_scope,
+                },
                 &mut processed_rule,
                 &rule.actions,
             ) {
@@ -2080,7 +2099,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2194,7 +2216,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2214,7 +2239,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2234,7 +2262,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2280,7 +2311,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2355,7 +2389,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2439,7 +2476,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };

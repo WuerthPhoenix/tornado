@@ -36,7 +36,7 @@ mod test {
         let event = Event::new("test_type");
 
         // Act
-        let result = operator.evaluate(&(&json!(event), &mut Value::Null).into());
+        let result = operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result);

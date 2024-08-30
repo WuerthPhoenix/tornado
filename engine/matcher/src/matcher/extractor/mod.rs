@@ -62,15 +62,15 @@ impl MatcherExtractorBuilder {
     ///    let matcher_extractor = MatcherExtractorBuilder::new().build("rule_name", &extractor_config).unwrap();
     ///
     ///    let event = json!(Event::new("temp=44'C"));
-    ///    let mut extracted_vars = Value::Object(Map::new());
-    ///    let mut internal_event: InternalEvent = (&event, &mut extracted_vars).into();
-    ///    let result = matcher_extractor.process_all(&mut internal_event);
+    ///    let extracted_vars = Value::Object(Map::new());
+    ///    let mut internal_event: InternalEvent = (&event, &extracted_vars, &Value::Null).into();
+    ///    let result = matcher_extractor.process_all(&internal_event);
     ///
-    ///    assert!(result.is_ok());
-    ///    assert_eq!(1, extracted_vars.get_map().unwrap().len());
+    ///    let map = result.unwrap();
+    ///    assert_eq!(1, map.len());
     ///    assert_eq!(
     ///        "44",
-    ///        extracted_vars.get_from_map("rule_name").unwrap().get_from_map("extracted_temp").unwrap()
+    ///        map.get_from_map("extracted_temp").unwrap()
     ///    );
     /// ```
     pub fn build(
@@ -78,8 +78,7 @@ impl MatcherExtractorBuilder {
         rule_name: &str,
         config: &HashMap<String, Extractor>,
     ) -> Result<MatcherExtractor, MatcherError> {
-        let mut matcher_extractor =
-            MatcherExtractor { extractors: HashMap::new() };
+        let mut matcher_extractor = MatcherExtractor { extractors: HashMap::new() };
         for (key, extractor) in config.iter() {
             matcher_extractor.extractors.insert(
                 key.to_owned(),
@@ -573,7 +572,7 @@ mod test {
 
         assert_eq!(
             Value::String("http://stackoverflow.com/".to_owned()),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -599,7 +598,7 @@ mod test {
 
         assert_eq!(
             Value::String("http".to_owned()),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -625,7 +624,7 @@ mod test {
 
         assert_eq!(
             Value::Array(vec![Value::String("http".to_owned()), Value::String("ftp".to_owned()),]),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -651,7 +650,7 @@ mod test {
 
         assert_eq!(
             Value::String("stackoverflow.com".to_owned()),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -675,7 +674,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -698,7 +697,7 @@ mod test {
 
         let event = new_event("http://stackoverflow.com/");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -721,7 +720,7 @@ mod test {
 
         let event = new_event("");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -757,20 +756,12 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("rule", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
-        let mut extracted_vars = Value::Object(Map::new());
 
-        extractor.process_all(&mut (&event, &mut extracted_vars).into()).unwrap();
+        let map = extractor.process_all(&(&event, &Value::Null, &Value::Null).into()).unwrap();
 
-        assert_eq!(1, extracted_vars.get_map().unwrap().len());
-        assert_eq!(2, extracted_vars.get_from_map("rule").unwrap().get_map().unwrap().len());
-        assert_eq!(
-            "44",
-            extracted_vars.get_from_map("rule").unwrap().get_from_map("extracted_temp").unwrap()
-        );
-        assert_eq!(
-            "temp",
-            extracted_vars.get_from_map("rule").unwrap().get_from_map("extracted_text").unwrap()
-        );
+        assert_eq!(2, map.len());
+        assert_eq!("44", map.get_from_map("extracted_temp").unwrap());
+        assert_eq!("temp", map.get_from_map("extracted_text").unwrap());
     }
 
     #[test]
@@ -806,9 +797,9 @@ mod test {
         let extractor = MatcherExtractorBuilder::new().build("", &from_config).unwrap();
 
         let event = new_event("temp=44'C");
-        let mut extracted_vars = Value::Object(Map::new());
+        let extracted_vars = Value::Object(Map::new());
 
-        assert!(extractor.process_all(&mut (&event, &mut extracted_vars).into()).is_err());
+        assert!(extractor.process_all(&(&event, &extracted_vars, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -838,7 +829,7 @@ mod test {
                 Value::String("stackoverflow.com".to_owned()),
                 Value::String("/".to_owned()),
             ]),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -863,7 +854,7 @@ mod test {
         let event = new_event("http://stackoverflow.com\nftp://test.org");
 
         assert_eq!(
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap(),
             Value::Array(vec![
                 Value::Array(vec![
                     Value::String("http://stackoverflow.com".to_owned()),
@@ -901,7 +892,7 @@ mod test {
 
         let event = new_event("http://stackoverflow/");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -924,7 +915,7 @@ mod test {
 
         let event = new_event("abd");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -947,7 +938,7 @@ mod test {
 
         let event = new_event("http://stackoverflow/");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -978,7 +969,7 @@ mod test {
                 Value::String("stackoverflow".to_owned()),
                 Value::String("com".to_owned()),
             ]),
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap()
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap()
         );
     }
 
@@ -1003,7 +994,7 @@ mod test {
         let event = new_event("http://stackoverflow.com");
 
         assert_eq!(
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap(),
             json!(hashmap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "NAME".to_string() => Value::String("stackoverflow".to_owned()),
@@ -1033,7 +1024,7 @@ mod test {
         let event = new_event("http://stackoverflow.com");
 
         assert_eq!(
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap(),
             json!(hashmap![
                 "PROTOCOL".to_string() => Value::String("http".to_owned()),
                 "EXTENSION".to_string() => Value::String("com".to_owned()),
@@ -1060,7 +1051,7 @@ mod test {
 
         let event = new_event("123");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -1084,7 +1075,7 @@ mod test {
         let event = new_event("http://stackoverflow.com\nftp://test.org");
 
         assert_eq!(
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap(),
             Value::Array(vec![
                 json!(hashmap![
                     "PROTOCOL".to_string() => Value::String("http".to_owned()),
@@ -1119,7 +1110,7 @@ mod test {
 
         let event = new_event("123");
 
-        assert!(extractor.extract("", &(&event, &mut Value::Null).into()).is_err());
+        assert!(extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).is_err());
     }
 
     #[test]
@@ -1155,7 +1146,7 @@ mod test {
         let event = json!(Event::new_with_payload("", payload));
 
         assert_eq!(
-            extractor.extract("", &(&event, &mut Value::Null).into()).unwrap(),
+            extractor.extract("", &(&event, &Value::Null, &Value::Null).into()).unwrap(),
             Value::Array(vec![
                 json!(hashmap![
                     "PID".to_string() => Value::String("483".to_owned()),
@@ -1307,7 +1298,7 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into());
+        let result = extractor.extract("var", &(&event, &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result.is_ok());
@@ -1346,7 +1337,7 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into());
+        let result = extractor.extract("var", &(&event, &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result.is_err());
@@ -1396,7 +1387,7 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into());
+        let result = extractor.extract("var", &(&event, &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result.is_err());
@@ -1438,7 +1429,7 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into());
+        let result = extractor.extract("var", &(&event, &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result.is_err());
@@ -1489,8 +1480,10 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result_1 = extractor_1.extract("var", &(&event, &mut Value::Null).into()).unwrap();
-        let result_2 = extractor_2.extract("var", &(&event, &mut Value::Null).into()).unwrap();
+        let result_1 =
+            extractor_1.extract("var", &(&event, &Value::Null, &Value::Null).into()).unwrap();
+        let result_2 =
+            extractor_2.extract("var", &(&event, &Value::Null, &Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(Value::String("Hello not to be trimmed".to_owned()), result_1);
@@ -1525,7 +1518,7 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into());
+        let result = extractor.extract("var", &(&event, &Value::Null, &Value::Null).into());
 
         // Assert
         assert!(result.is_err());
@@ -1570,7 +1563,8 @@ mod test {
         let event = json!(Event::new_with_payload("event", payload));
 
         // Act
-        let result = extractor.extract("var", &(&event, &mut Value::Null).into()).unwrap();
+        let result =
+            extractor.extract("var", &(&event, &Value::Null, &Value::Null).into()).unwrap();
 
         // Assert
         assert_eq!(Value::String("hello to be trimmed replaced_and lowercased".to_owned()), result);

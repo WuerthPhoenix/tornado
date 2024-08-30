@@ -26,7 +26,7 @@ pub struct EventDto {
     pub metadata: HashMap<String, Value>,
     pub payload: HashMap<String, Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub iterator: Option<EventIteratorDataDto>
+    pub iterator: Option<EventIteratorDataDto>,
 }
 
 #[derive(Clone, Serialize, Deserialize, TypeScriptify)]

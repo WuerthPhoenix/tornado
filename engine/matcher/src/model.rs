@@ -12,8 +12,10 @@ pub struct InternalEvent<'o> {
 }
 
 impl<'o> From<(&'o Value, &'o Value, &'o Value)> for InternalEvent<'o> {
-    fn from((event, extracted_variables, ruleset_scope): (&'o Value, &'o Value, &'o Value)) -> Self {
-        Self { event, extracted_variables, ruleset_scope}
+    fn from(
+        (event, extracted_variables, ruleset_scope): (&'o Value, &'o Value, &'o Value),
+    ) -> Self {
+        Self { event, extracted_variables, ruleset_scope }
     }
 }
 
@@ -35,7 +37,7 @@ impl<'o> ValueGet for InternalEvent<'o> {
         match key {
             EVENT_KEY => Some(self.event),
             EXTRACTED_VARIABLES_KEY => Some(self.extracted_variables),
-            RULESET_SCOPE_KEY=> Some(self.ruleset_scope),
+            RULESET_SCOPE_KEY => Some(self.ruleset_scope),
             _ => None,
         }
     }

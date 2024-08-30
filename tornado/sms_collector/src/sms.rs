@@ -15,7 +15,9 @@ pub struct SmsEventPayload {
 
 pub fn parse_sms(sms: &str) -> Result<SmsEventPayload, SmsParseError> {
     let Some((headers, text)) = sms.split_once("\n\n") else {
-        return Err(SmsParseError::FormatError("The sms does not have the expected format, the text seems to be missing.".to_owned()))
+        return Err(SmsParseError::FormatError(
+            "The sms does not have the expected format, the text seems to be missing.".to_owned(),
+        ));
     };
 
     let mut fields = HashMap::new();

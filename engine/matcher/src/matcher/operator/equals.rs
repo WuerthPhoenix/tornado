@@ -59,11 +59,19 @@ mod test {
 
         assert_eq!(
             "one",
-            operator.first_arg.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+            operator
+                .first_arg
+                .get(&(&json!(event), &Value::Null, &Value::Null).into())
+                .unwrap()
+                .as_ref()
         );
         assert_eq!(
             "two",
-            operator.second_arg.get(&(&json!(event), &mut Value::Null).into()).unwrap().as_ref()
+            operator
+                .second_arg
+                .get(&(&json!(event), &Value::Null, &Value::Null).into())
+                .unwrap()
+                .as_ref()
         );
     }
 
@@ -77,7 +85,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -90,7 +98,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -103,7 +111,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -119,7 +127,7 @@ mod test {
 
         let event = Event::new_with_payload("type", payload);
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -132,7 +140,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -145,7 +153,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -160,7 +168,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Bool(false));
         event.payload.insert("two".to_owned(), Value::Bool(false));
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -175,7 +183,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Bool(true));
         event.payload.insert("two".to_owned(), Value::Bool(false));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -190,7 +198,7 @@ mod test {
         event.payload.insert("one".to_owned(), json!(1.1));
         event.payload.insert("two".to_owned(), json!(1.1));
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -205,7 +213,7 @@ mod test {
         event.payload.insert("one".to_owned(), json!(1.1));
         event.payload.insert("two".to_owned(), json!(1.2));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -220,7 +228,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Array(vec![json!(1.1), json!(-2)]));
         event.payload.insert("two".to_owned(), Value::Array(vec![json!(1.1), json!(-2)]));
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -235,7 +243,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Array(vec![json!(1.1), json!(2.2)]));
         event.payload.insert("two".to_owned(), Value::Array(vec![json!(1.1)]));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -255,7 +263,7 @@ mod test {
         event.payload.insert("one".to_owned(), Value::Object(payload.clone()));
         event.payload.insert("two".to_owned(), Value::Object(payload.clone()));
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -276,7 +284,7 @@ mod test {
         payload.insert("three".to_owned(), Value::String("hello".to_owned()));
         event.payload.insert("two".to_owned(), Value::Object(payload.clone()));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -291,6 +299,6 @@ mod test {
         event.payload.insert("one".to_owned(), Value::String("1.2".to_owned()));
         event.payload.insert("two".to_owned(), json!(1.2));
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 }

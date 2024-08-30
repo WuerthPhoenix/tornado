@@ -76,7 +76,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("".to_owned()), input);
@@ -89,7 +89,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("not to replace".to_owned()), input);
@@ -102,7 +102,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("to replace new_text".to_owned()), input);
@@ -115,7 +115,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("to replace new_text and new_text".to_owned()), input);
@@ -140,7 +140,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("this is value_1_from_payload".to_owned()), input);
@@ -165,7 +165,7 @@ mod test {
     //
     //     {
     //         let mut input = Value::String("this is text".to_owned());
-    //         replace_all("", &mut input, find_text, &replace_text, &(&event, &mut Value::Null).into()).unwrap();
+    //         replace_all("", &mut input, find_text, &replace_text, &(&event, &Value::Null, &Value::Null).into()).unwrap();
     //         assert_eq!(Value::String("this is new_text and value_1_from_payload".to_owned()), input);
     //     }
     // }
@@ -183,7 +183,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("text".to_owned()), input);
@@ -196,7 +196,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("new_TexT".to_owned()), input);
@@ -216,7 +216,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into()
+                &(&event, &Value::Null, &Value::Null).into()
             )
             .is_err());
         }
@@ -228,7 +228,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into()
+                &(&event, &Value::Null, &Value::Null).into()
             )
             .is_err());
         }
@@ -240,7 +240,7 @@ mod test {
                 &mut input,
                 find_text,
                 &replace_text,
-                &(&event, &mut Value::Null).into()
+                &(&event, &Value::Null, &Value::Null).into()
             )
             .is_err());
         }
@@ -259,7 +259,7 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("".to_owned()), input);
@@ -272,7 +272,7 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("not to replace".to_owned()), input);
@@ -285,7 +285,7 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("to replace replaced and replaced".to_owned()), input);
@@ -305,7 +305,7 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("Bruce Springsteen".to_owned()), input);
@@ -325,7 +325,7 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("John Deacon".to_owned()), input);
@@ -351,59 +351,63 @@ mod test {
                 &mut input,
                 &find_regex,
                 &replace_text,
-                &(&event, &mut Value::Null).into(),
+                &(&event, &Value::Null, &Value::Null).into(),
             )
             .unwrap();
             assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
         }
     }
 
-    // To be fixed in TOR-289
-    // #[test]
-    // fn replace_all_with_modifier_should_interpolate_extract_data_from_event_with_positional_groups()
-    // {
-    //     let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+./*)").unwrap();
-    //     let replace_text =
-    //         AccessorBuilder::new().build("", "$2 $1: ${event.payload.role}").unwrap();
-    //     println!("{:#?}", replace_text);
-    //
-    //     let event = json!(Event::new_with_payload(
-    //         "my_type",
-    //         hashmap!(
-    //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),
-    //         ),
-    //     ));
-    //     let variables = None;
-    //
-    //     {
-    //         let mut input = Value::String("Deacon, John".to_owned());
-    //         replace_all_with_regex("", &mut input, &find_regex, &replace_text, &(&event, &mut Value::Null).into())
-    //             .unwrap();
-    //         assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
-    //     }
-    // }
+    #[test]
+    fn replace_all_with_modifier_should_interpolate_extract_data_from_event_with_positional_groups()
+    {
+        let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+./*)").unwrap();
+        let replace_text =
+            AccessorBuilder::new().build("", "$2 $1: ${event.payload.role}").unwrap();
+        println!("{:#?}", replace_text);
 
-    // To be fixed in TOR-289
-    // #[test]
-    // fn replace_all_with_modifier_should_interpolate_extract_data_from_event_with_named_groups() {
-    //     let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+./*)").unwrap();
-    //     let replace_text =
-    //         AccessorBuilder::new().build("", "$first $last: ${event.payload.role}").unwrap();
-    //     println!("{:#?}", replace_text);
-    //
-    //     let event = json!(Event::new_with_payload(
-    //         "my_type",
-    //         hashmap!(
-    //             "role".to_owned() => Value::String("Great Bass Player".to_owned()),
-    //         ),
-    //     ));
-    //     let variables = None;
-    //
-    //     {
-    //         let mut input = Value::String("Deacon, John".to_owned());
-    //         replace_all_with_regex("", &mut input, &find_regex, &replace_text, &(&event, &mut Value::Null).into())
-    //             .unwrap();
-    //         assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
-    //     }
-    // }
+        let payload = {
+            let mut payload = Map::new();
+            payload.insert("role".to_owned(), Value::String("Great Bass Player".to_owned()));
+            payload
+        };
+        let event = json!(Event::new_with_payload("my_type", payload));
+
+        let mut input = Value::String("Deacon, John".to_owned());
+        replace_all_with_regex(
+            "",
+            &mut input,
+            &find_regex,
+            &replace_text,
+            &(&event, &Value::Null, &Value::Null).into(),
+        )
+        .unwrap();
+        assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
+    }
+
+    #[test]
+    fn replace_all_with_modifier_should_interpolate_extract_data_from_event_with_named_groups() {
+        let find_regex = RegexWrapper::new(r"(?P<last>[^,\s]+),\s+(?P<first>\S+./*)").unwrap();
+        let replace_text =
+            AccessorBuilder::new().build("", "$first $last: ${event.payload.role}").unwrap();
+        println!("{:#?}", replace_text);
+
+        let payload = {
+            let mut payload = Map::new();
+            payload.insert("role".to_owned(), Value::String("Great Bass Player".to_owned()));
+            payload
+        };
+        let event = json!(Event::new_with_payload("my_type", payload));
+
+        let mut input = Value::String("Deacon, John".to_owned());
+        replace_all_with_regex(
+            "",
+            &mut input,
+            &find_regex,
+            &replace_text,
+            &(&event, &Value::Null, &Value::Null).into(),
+        )
+        .unwrap();
+        assert_eq!(Value::String("John Deacon: Great Bass Player".to_owned()), input);
+    }
 }

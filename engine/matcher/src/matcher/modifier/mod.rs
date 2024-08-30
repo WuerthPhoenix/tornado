@@ -78,7 +78,7 @@ impl ValueModifier {
                     let Ok(timezone): Result<Tz, _> = timezone.trim().parse() else {
                         return Err(MatcherError::ConfigurationError {
                             message: format!("Unknown timezone ({timezone}). Expected timezone from the IANA timezone database.")
-                        })
+                        });
                     };
                     value_modifiers.push(ValueModifier::DateAndTime { timezone });
                 }
@@ -277,19 +277,25 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
             let mut input = Value::String("not to trim".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("not to trim".to_owned()), input);
         }
 
         {
             let mut input = Value::String(" to be trimmed  ".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("to be trimmed".to_owned()), input);
         }
     }
@@ -303,19 +309,25 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("".to_owned()), input);
         }
 
         {
             let mut input = Value::String("ok".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("ok".to_owned()), input);
         }
 
         {
             let mut input = Value::String("OK".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("ok".to_owned()), input);
         }
     }
@@ -332,7 +344,9 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("Hello World".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("World World".to_owned()), input);
         }
     }
@@ -346,26 +360,32 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("12".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(json!(12), input);
         }
 
         {
             let mut input = Value::String("-3412".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(json!(-3412), input);
         }
 
         {
             let mut input = Value::String("3.14".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(json!(3.14), input);
         }
 
         {
             let mut input = Value::String("something".to_owned());
             assert!(value_modifier
-                .apply("", &mut input, &(&event, &mut Value::Null).into())
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
                 .is_err());
         }
     }
@@ -382,7 +402,9 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("Hello World 123 4!".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("Hello World number number!".to_owned()), input);
         }
     }
@@ -401,7 +423,9 @@ mod test {
         // Act & Assert
         {
             let mut input = Value::String("0".to_owned());
-            value_modifier.apply("", &mut input, &(&event, &mut Value::Null).into()).unwrap();
+            value_modifier
+                .apply("", &mut input, &(&event, &Value::Null, &Value::Null).into())
+                .unwrap();
             assert_eq!(Value::String("David Gilmour".to_owned()), input);
         }
     }

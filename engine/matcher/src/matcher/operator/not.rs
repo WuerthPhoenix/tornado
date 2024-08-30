@@ -111,7 +111,7 @@ mod test {
 
         let event = Event::new("test_type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -128,7 +128,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod test {
 
         let event = Event::new("");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(!operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(!operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 
     #[test]
@@ -197,6 +197,6 @@ mod test {
 
         let event = Event::new("type");
 
-        assert!(operator.evaluate(&(&json!(event), &mut Value::Null).into()));
+        assert!(operator.evaluate(&(&json!(event), &Value::Null, &Value::Null).into()));
     }
 }
