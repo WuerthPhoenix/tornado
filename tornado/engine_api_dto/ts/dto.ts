@@ -43,7 +43,7 @@ export type ActionDto = { id: string; payload: Value };
 
 export type ConstraintDto = { WHERE: OperatorDto | null; WITH: { [key: string]: ExtractorDto } };
 
-export type ExtractorDto = {     from: string; regex: ExtractorRegexDto; modifiers_post: ModifierDto     [] };
+export type ExtractorDto = { from: string; regex: ExtractorRegexDto; modifiers_post: ModifierDto [] };
 
 export type ExtractorRegexDto = 
  | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean | null } 
@@ -52,12 +52,12 @@ export type ExtractorRegexDto =
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };
 
-export type MatcherConfigDraftDataDto = {     user: string; created_ts_ms: number; updated_ts_ms: number; draft_id: string };
+export type MatcherConfigDraftDataDto = {     user: string; created_ts_ms: number; updated_ts_ms: number; draft_id:     string };
 
 export type ModifierDto = 
  | { type: "Lowercase" } 
  | {     type: "Map"; mapping: { [key: string]: string }; default_value:     string | null } 
- | {     type: "ReplaceAll"; find: string; replace: string; is_regex:     boolean } 
+ | { type: "ReplaceAll"; find: string; replace: string; is_regex: boolean } 
  | { type: "ToNumber" } 
  | { type: "Trim" } 
  | { type: "DateAndTime"; timezone: string };
@@ -77,24 +77,24 @@ export type OperatorDto =
  | { type: "ne"; first: Value; second: Value } 
  | { type: "regex"; regex: string; target: string };
 
-export type RuleDto = {     name: string; description: string; continue: boolean; active:     boolean; constraint: ConstraintDto; actions: ActionDto [] };
+export type RuleDto = {     name: string; description: string; continue: boolean; active: boolean;     constraint: ConstraintDto; actions: ActionDto [] };
 
 export type ProcessingTreeNodeConfigDto = 
  | {     type: "Filter"; name: string; rules_count: number; children_count:     number; description: string; has_iterator_ancestor: boolean; active:     boolean } 
- | {     type: "Iterator"; name: string; rules_count: number; children_count: number; description: string; active: boolean } 
+ | {     type: "Iterator"; name: string; rules_count: number; children_count:     number; description: string; active: boolean } 
  | { type: "Ruleset"; name: string; rules_count: number };
 
 export type ProcessingTreeNodeEditDto = 
- | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
- | {     type: "Iterator"; name: string; description: string; target: string; active: boolean } 
+ | {     type: "Filter"; name: string; description: string; active: boolean;     filter: OperatorDto | null } 
+ | {     type: "Iterator"; name: string; description: string; target: string;     active: boolean } 
  | { type: "Ruleset"; name: string };
 
 export type ProcessingTreeNodeDetailsDto = 
- | {     type: "Filter"; name: string; description: string; active: boolean; filter: OperatorDto | null } 
- | {     type: "Iterator"; name: string; description: string; active:     boolean; target: string } 
+ | {     type: "Filter"; name: string; description: string; active: boolean;     filter: OperatorDto | null } 
+ | {     type: "Iterator"; name: string; description: string; active: boolean;     target: string } 
  | { type: "Ruleset"; name: string; rules: RuleDetailsDto [] };
 
-export type RuleDetailsDto = {     name: string; description: string; continue: boolean; active:     boolean; actions: string [] };
+export type RuleDetailsDto = {     name: string; description: string; continue: boolean; active: boolean;     actions: string [] };
 
 export type TreeInfoDto = { rules_count: number; filters_count: number; iterators_count: number };
 
@@ -105,7 +105,7 @@ export type RulePositionDto = { position: number };
 /* 'event' types */
 /* ------------- */
 
-export type EventDto = {     type: string; created_ms: number; metadata:     { [key: string]: Value }; payload: { [key: string]: Value };     iterator: EventIteratorDataDto | null };
+export type EventDto = {     type: string; created_ms: number; metadata: { [key: string]: Value };     payload: { [key: string]: Value }; iterator: EventIteratorDataDto |     null };
 
 export type EventIteratorDataDto = { item: Value; iteration: StringOrInt };
 
@@ -129,7 +129,7 @@ export type ProcessedIteratorDto = { status: ProcessedIteratorStatusDto };
 
 export type ProcessedNodeDto = 
  | {     type: "Filter"; name: string; filter: ProcessedFilterDto; nodes:     ProcessedNodeDto [] } 
- | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto;     events: ProcessedIterationDto [] } 
+ | {     type: "Iterator"; name: string; iterator: ProcessedIteratorDto; events: ProcessedIterationDto [] } 
  | { type: "Ruleset"; name: string; rules: ProcessedRulesDto };
 
 export type ProcessedRuleDto = {     name: string; status: ProcessedRuleStatusDto; actions: ActionDto [];     message: string | null; meta: ProcessedRuleMetaData | null };
