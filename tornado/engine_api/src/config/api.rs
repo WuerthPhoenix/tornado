@@ -585,7 +585,7 @@ pub async fn get_filtered_matcher(
     auth: &AuthContextV2<'_>,
 ) -> Result<MatcherConfig, ApiError> {
     let node_filter = NodeFilter::map_from(&[auth.auth.authorization.path.clone()]);
-    matcher_config_filter(config, &node_filter).ok_or({
+    matcher_config_filter(config, &node_filter).ok_or_else(|| {
         let message = "The authorized node path does not exist.";
         warn!("{} Path: {:?}", message, &auth.auth.authorization.path);
         ApiError::InvalidAuthorizedPath { message: message.to_owned() }
