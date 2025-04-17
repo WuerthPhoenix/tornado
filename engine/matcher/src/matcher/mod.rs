@@ -842,7 +842,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -943,7 +943,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -993,7 +993,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1143,7 +1143,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1198,7 +1198,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1219,7 +1219,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[em]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1286,7 +1286,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1307,7 +1307,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[ai]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1370,7 +1370,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1431,7 +1431,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1919,7 +1919,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1934,7 +1934,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -2060,7 +2060,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2174,7 +2177,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2194,7 +2200,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2214,7 +2223,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2260,7 +2272,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2335,7 +2350,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2419,7 +2437,10 @@ mod test {
                     assert_eq!(name, "ruleset");
                     assert_eq!(1, rules.rules.len());
                     assert_eq!(rules.rules.first().unwrap().name, rule.name);
-                    assert_eq!(ProcessedRuleStatus::NotMatched, rules.rules.first().unwrap().status);
+                    assert_eq!(
+                        ProcessedRuleStatus::NotMatched,
+                        rules.rules.first().unwrap().status
+                    );
                 }
                 _ => unreachable!(),
             };
@@ -2516,7 +2537,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -2537,7 +2558,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -2602,7 +2623,7 @@ mod test {
                     regex: ExtractorRegex::Regex {
                         regex: String::from(r"[a-z]+"),
                         group_match_idx: Some(0),
-                        all_matches: None,
+                        all_matches: false,
                     },
                     modifiers_post: vec![],
                 },
@@ -2624,7 +2645,7 @@ mod test {
                     from: String::from("${event.payload.value}"),
                     regex: ExtractorRegex::RegexNamedGroups {
                         regex: String::from(r"(?P<VALUE>[0-9]+)"),
-                        all_matches: None,
+                        all_matches: false,
                     },
                     modifiers_post: vec![],
                 },
