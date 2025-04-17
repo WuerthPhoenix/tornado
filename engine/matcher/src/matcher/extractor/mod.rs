@@ -50,7 +50,7 @@ impl MatcherExtractorBuilder {
     ///            regex: ExtractorRegex::Regex {
     ///                regex: String::from(r"[0-9]+"),
     ///                group_match_idx: Some(0),
-    ///                all_matches: None,
+    ///                all_matches: false,
     ///            },
     ///            modifiers_post: vec![],
     ///        },
@@ -192,8 +192,6 @@ impl RegexValueExtractor {
             ExtractorRegex::Regex { regex, group_match_idx, all_matches } => {
                 let rust_regex = RegexWrapper::new(regex)?;
 
-                let all_matches = all_matches.unwrap_or(false);
-
                 if has_named_groups(&rust_regex) {
                     warn!(
                         "The regex [{}] has named groups but the extractor is index based.",
@@ -203,7 +201,7 @@ impl RegexValueExtractor {
 
                 match group_match_idx {
                     Some(group_match_idx) => {
-                        if all_matches {
+                        if *all_matches {
                             Ok(RegexValueExtractor::AllMatchesSingleGroup {
                                 target,
                                 group_match_idx: *group_match_idx,
@@ -218,7 +216,7 @@ impl RegexValueExtractor {
                         }
                     }
                     None => {
-                        if all_matches {
+                        if *all_matches {
                             Ok(RegexValueExtractor::AllMatchesAllGroups {
                                 target,
                                 regex: rust_regex,
@@ -244,7 +242,7 @@ impl RegexValueExtractor {
                     });
                 }
 
-                if all_matches.unwrap_or(false) {
+                if *all_matches {
                     Ok(RegexValueExtractor::AllMatchesNamedGroups { regex: rust_regex, target })
                 } else {
                     Ok(RegexValueExtractor::SingleMatchNamedGroups { regex: rust_regex, target })
@@ -515,7 +513,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: "".to_string(),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -532,7 +530,7 @@ mod test {
             regex: ExtractorRegex::Regex {
                 regex: "".to_string(),
                 group_match_idx: Some(0),
-                all_matches: None,
+                all_matches: false,
             },
             modifiers_post: vec![Modifier::Trim {}],
         };
@@ -560,7 +558,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: "[".to_string(),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -579,7 +577,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -605,7 +603,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -631,7 +629,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -657,7 +655,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(2),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -683,7 +681,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(10000),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -706,7 +704,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(10000),
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -729,7 +727,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: Some(1),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -753,7 +751,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -766,7 +764,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -802,7 +800,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -815,7 +813,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[a-z]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -839,7 +837,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^/\r\n]+)(/[^\r\n]*)?".to_string(),
                     group_match_idx: None,
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -870,7 +868,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
                     group_match_idx: None,
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -909,7 +907,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).(/[^.\n]*)?".to_string(),
                     group_match_idx: None,
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -932,7 +930,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"ab(c)*d".to_string(),
                     group_match_idx: None,
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -955,7 +953,7 @@ mod test {
                 regex: ExtractorRegex::Regex {
                     regex: r"(https?|ftp)://([^.\n]+).(/[^.\n]*)?".to_string(),
                     group_match_idx: None,
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -979,7 +977,7 @@ mod test {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
                     group_match_idx: None,
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1010,7 +1008,7 @@ mod test {
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1040,7 +1038,7 @@ mod test {
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://([^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
-                    all_matches: Some(false),
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1068,7 +1066,7 @@ mod test {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1091,7 +1089,7 @@ mod test {
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+).(?P<EXTENSION>[^.\n]*)?"
                         .to_string(),
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -1127,7 +1125,7 @@ mod test {
                 from: "${event.type}".to_string(),
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(?P<PROTOCOL>https?|ftp)://(?P<NAME>[^.\n]+)?".to_string(),
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -1150,7 +1148,7 @@ mod test {
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r#"(?P<PID>[0-9]+)\s+(?P<Time>[0-9:]+)\s+(?P<UserId>[0-9]+)\s+(?P<UserName>\w+)\s+(?P<ServerName>\w+)\s+(?P<Level>[0-9]+)"#
                     .to_string(),
-                    all_matches: Some(true),
+                    all_matches: true,
                 },
                 modifiers_post: vec![],
             },
@@ -1234,7 +1232,7 @@ mod test {
                 from: "&{event.payload}".to_string(),
                 regex: ExtractorRegex::RegexNamedGroups {
                     regex: r"(https?|ftp)://([^.\n]+).([^.\n]*)?".to_string(),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
@@ -1495,7 +1493,7 @@ mod test {
                 from: "${event.payload.oids.2}".to_string(),
                 regex: ExtractorRegex::Regex {
                     regex: r#".*"#.to_string(),
-                    all_matches: Some(false),
+                    all_matches: false,
                     group_match_idx: Some(0),
                 },
                 modifiers_post: vec![Modifier::Trim {}],
@@ -1531,7 +1529,7 @@ mod test {
                 from: "${event.payload.oids.2}".to_string(),
                 regex: ExtractorRegex::Regex {
                     regex: r#".*"#.to_string(),
-                    all_matches: Some(true),
+                    all_matches: true,
                     group_match_idx: None,
                 },
                 modifiers_post: vec![Modifier::Trim {}],
@@ -1568,7 +1566,7 @@ mod test {
                 from: "${event.payload.oids.1}".to_string(),
                 regex: ExtractorRegex::Regex {
                     regex: r#".*"#.to_string(),
-                    all_matches: Some(false),
+                    all_matches: false,
                     group_match_idx: Some(0),
                 },
                 modifiers_post: vec![

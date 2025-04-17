@@ -46,8 +46,8 @@ export type ConstraintDto = { WHERE: OperatorDto | null; WITH: { [key: string]: 
 export type ExtractorDto = { from: string; regex: ExtractorRegexDto; modifiers_post: ModifierDto [] };
 
 export type ExtractorRegexDto = 
- | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean | null } 
- | {     type: "RegexNamedGroups"; named_match: string; all_matches: boolean |     null } 
+ | {     type: "Regex"; match: string; group_match_idx: number | null;     all_matches: boolean } 
+ | { type: "RegexNamedGroups"; named_match: string; all_matches: boolean } 
  | { type: "KeyRegex"; single_key_match: string };
 
 export type FilterDto = { description: string; active: boolean; filter: OperatorDto | null };

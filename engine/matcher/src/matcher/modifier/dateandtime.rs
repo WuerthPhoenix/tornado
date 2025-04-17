@@ -1,5 +1,3 @@
-#![allow(illegal_floating_point_literal_pattern)]
-
 use crate::error::MatcherError;
 use chrono::TimeZone;
 use chrono_tz::Tz;
