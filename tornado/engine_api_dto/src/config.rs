@@ -5,7 +5,7 @@ use std::iter::Sum;
 use std::ops::Add;
 use tornado_engine_matcher::config::nodes::Filter;
 use tornado_engine_matcher::config::rule::{Operator, Rule};
-use tornado_engine_matcher::config::{Defaultable, MatcherConfig};
+use tornado_engine_matcher::config::{deserialize_null_default, Defaultable, MatcherConfig};
 use typescript_definitions::TypeScriptify;
 
 #[derive(Debug, PartialEq, Clone, Serialize, Deserialize, TypeScriptify)]
@@ -92,12 +92,14 @@ pub enum ExtractorRegexDto {
         #[serde(rename = "match")]
         regex: String,
         group_match_idx: Option<usize>,
-        all_matches: Option<bool>,
+        #[serde(default, deserialize_with = "deserialize_null_default")]
+        all_matches: bool,
     },
     RegexNamedGroups {
         #[serde(rename = "named_match")]
         regex: String,
-        all_matches: Option<bool>,
+        #[serde(default, deserialize_with = "deserialize_null_default")]
+        all_matches: bool,
     },
     KeyRegex {
         #[serde(rename = "single_key_match")]
