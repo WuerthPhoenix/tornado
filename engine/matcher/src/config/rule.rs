@@ -2,6 +2,7 @@
 //! For example, it contains the definition of the Rule and Filter structs and the mapping to
 //! serialize/deserialize them to/from json format.
 
+use crate::config::deserialize_null_default;
 use crate::error::MatcherError;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -69,12 +70,14 @@ pub enum ExtractorRegex {
         #[serde(rename = "match")]
         regex: String,
         group_match_idx: Option<usize>,
-        all_matches: Option<bool>,
+        #[serde(default, deserialize_with = "deserialize_null_default")]
+        all_matches: bool,
     },
     RegexNamedGroups {
         #[serde(rename = "named_match")]
         regex: String,
-        all_matches: Option<bool>,
+        #[serde(default, deserialize_with = "deserialize_null_default")]
+        all_matches: bool,
     },
     SingleKeyRegex {
         #[serde(rename = "single_key_match")]
@@ -167,7 +170,7 @@ mod test {
             ExtractorRegex::Regex { regex, all_matches, group_match_idx } => {
                 assert_eq!("([0-9]+\\sDegrees)", regex);
                 assert_eq!(&Some(2), group_match_idx);
-                assert_eq!(all_matches, &None);
+                assert_eq!(*all_matches, false);
             }
             _ => unreachable!(),
         }
@@ -178,7 +181,7 @@ mod test {
             ExtractorRegex::Regex { regex, group_match_idx, all_matches } => {
                 assert_eq!("([0-9]+\\sDegrees)", regex);
                 assert_eq!(&None, group_match_idx);
-                assert_eq!(all_matches, &Some(true));
+                assert_eq!(*all_matches, true);
             }
             _ => unreachable!(),
         }
@@ -188,7 +191,7 @@ mod test {
         match &extractor2.regex {
             ExtractorRegex::RegexNamedGroups { regex, all_matches } => {
                 assert_eq!("(?P<DEGREES>[0-9]+\\sDegrees)", regex);
-                assert_eq!(all_matches, &None);
+                assert_eq!(*all_matches, false);
             }
             _ => unreachable!(),
         }
@@ -230,7 +233,7 @@ mod test {
         match &extractor1.regex {
             ExtractorRegex::Regex { regex, all_matches, group_match_idx: _ } => {
                 assert_eq!("([0-9]+\\sDegrees)", regex);
-                assert_eq!(all_matches, &None);
+                assert_eq!(*all_matches, false);
             }
             _ => unreachable!(),
         }

@@ -4,7 +4,7 @@ use crate::config::v2::{ConfigNodeDir, ConfigType};
 use crate::error::MatcherError;
 use crate::matcher;
 use crate::matcher::Matcher;
-use serde::{Deserialize, Serialize};
+use serde::{de::Deserializer, Deserialize, Serialize};
 use std::borrow::Cow;
 
 pub mod nodes;
@@ -529,6 +529,15 @@ pub trait MatcherConfigEditor: MatcherConfigReader + Sync + Send {
 
     /// Deploys a new configuration overriding the current one
     async fn deploy_config(&self, config: &MatcherConfig) -> Result<MatcherConfig, MatcherError>;
+}
+
+pub fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    T: Default + Deserialize<'de>,
+    D: Deserializer<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
 }
 
 #[cfg(test)]
