@@ -31,12 +31,12 @@ apm_server_url = "http://localhost:8200"
 
 # The configuration of the thread pools bound to the internal queues.
 # This entry is optional and should be rarely configured manually.
-# For more details see https://neteye.guide/current/monitoring/tornado/configuration.html#example-of-thread-pool-s-dynamical-configuration
+# For more details see https://neteye.guide/current/core-modules/tornado/advanced-topics/thread-pool.html#thread-pool-configuration
 #thread_pool_config = {type = "CPU", factor = 1.0}
 #thread_pool_config = {type = "Fixed", size = 18}
 
 # The global retry policy for reprocessing failed actions. (Optional. Defaults to 'MaxRetries' if not provided).
-# For more details see https://neteye.guide/current/monitoring/tornado/configuration.html#structure-and-configuration-retry-strategy-configuration
+# For more details see https://neteye.guide/current/core-modules/tornado/advanced-topics/retry.html
 #retry_strategy.retry_policy = {type = "MaxRetries", retries = 5}
 #retry_strategy.backoff_policy = {type = "Exponential", ms = 1000, multiplier = 2}
 
@@ -55,7 +55,7 @@ nats_enabled = false
 #   - "FromSubject": using a regex, extracts the first matching group from the Nats subject and adds its value to
 #                    the event.metadata scope using the specified key.
 nats_extractors = [
-    { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" }
+    { type = "FromSubject", key = "tenant_id", regex = "^([^.]+)\\.tornado\\.events" },
 ]
 
 # Array of addresses of the NATS nodes of a cluster. (Mandatory if "nats_enabled" is set to "true").
@@ -93,7 +93,13 @@ message_queue_size = 10000
 # you can create new users and assign them permissions here.
 # The available roles are: ConfigEdit, ConfigView, RuntimeConfigEdit, RuntimeConfigView, TestEventExecuteAction
 # Example: new_user = [ "RuntimeConfigView" ]
-admin = ["ConfigEdit", "ConfigView", "RuntimeConfigEdit", "RuntimeConfigView", "TestEventExecuteActions"]
+admin = [
+    "ConfigEdit",
+    "ConfigView",
+    "RuntimeConfigEdit",
+    "RuntimeConfigView",
+    "TestEventExecuteActions",
+]
 edit = ["ConfigEdit"]
 view = ["ConfigView"]
 test_event_execute_actions = ["TestEventExecuteActions"]
