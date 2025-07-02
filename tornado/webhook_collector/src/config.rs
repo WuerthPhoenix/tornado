@@ -42,6 +42,8 @@ pub struct WebhookCollectorConfig {
 
     pub server_bind_address: String,
     pub server_port: u32,
+
+    pub payload_max_size: usize,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {

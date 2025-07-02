@@ -27,6 +27,7 @@ apm_server_url = "http://localhost:8200"
 # When Tornado restarts, all messages in the buffer will be sent.
 # When the buffer is full, the Collector will start discarding older messages first.
 message_queue_size = 10000
+payload_max_size = 1000000 # Maximum size of the payload in bytes. Default is 1MB.
 
 # IP to bind the HTTP server to.
 server_bind_address = "0.0.0.0"

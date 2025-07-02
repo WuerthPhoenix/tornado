@@ -18,6 +18,7 @@ use tornado_common_api::{Event, TracedEvent};
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tracing_actix_web::TracingLogger;
+use actix_web::web::PayloadConfig;
 
 mod config;
 mod handler;
@@ -49,6 +50,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     let port = collector_config.webhook_collector.server_port;
     let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
+    let payload_max_size = collector_config.webhook_collector.payload_max_size;
 
     info!("Starting web server at port {}", port);
 
@@ -70,7 +72,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             tornado_tcp_address,
             collector_config.webhook_collector.message_queue_size,
         );
-        start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+        start_http_server(actor_address, webhooks_config, bind_address, port, payload_max_size).await?;
     } else if let Some(connection_channel) =
         collector_config.webhook_collector.tornado_connection_channel
     {
@@ -82,7 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     collector_config.webhook_collector.message_queue_size,
                 )
                 .await?;
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, payload_max_size).await?;
             }
             TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -93,7 +95,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     tornado_tcp_address,
                     collector_config.webhook_collector.message_queue_size,
                 );
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, payload_max_size).await?;
             }
         };
     } else {
@@ -147,12 +149,14 @@ async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     webhooks_config: Vec<WebhookConfig>,
     bind_address: String,
     port: u32,
+    payload_max_size: usize,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
     HttpServer::new(move || {
         App::new()
+            .app_data(PayloadConfig::new(payload_max_size))
             .wrap(Logger::default())
             .wrap(TracingLogger::default())
             .service(
