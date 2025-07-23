@@ -3,9 +3,10 @@ use crate::handler::{Handler, HandlerError, TokenQuery};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
 use actix_web::middleware::Logger;
-use actix_web::web::{Data, Query};
+use actix_web::web::{Data, PayloadConfig, Query};
 use actix_web::{web, App, HttpServer, Responder, Scope};
 use chrono::prelude::Local;
+use human_units::Size;
 use log::*;
 use tornado_collector_common::CollectorError;
 use tornado_collector_jmespath::JMESPathEventCollector;
@@ -21,6 +22,8 @@ use tracing_actix_web::TracingLogger;
 
 mod config;
 mod handler;
+
+const DEFAULT_PAYLOAD_SIZE: Size = Size(5_242_880);
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -133,6 +136,10 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
         debug!("Creating endpoint: [{}]", &path);
 
         let new_scope = web::scope(&path)
+            .app_data(
+                PayloadConfig::default()
+                    .limit((config.max_payload_size.unwrap_or(DEFAULT_PAYLOAD_SIZE)).0 as usize),
+            )
             .app_data(Data::new(handler))
             .service(web::resource("").route(web::post().to(handle::<R>)));
 
@@ -227,6 +234,7 @@ mod test {
             WebhookConfig {
                 id: "hook_1".to_owned(),
                 token: "hook_1_token".to_owned(),
+                max_payload_size: None,
                 collector_config: JMESPathEventCollectorConfig {
                     event_type: "hook_1_type".to_owned(),
                     payload: HashMap::new(),
@@ -235,6 +243,7 @@ mod test {
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
+                max_payload_size: None,
                 collector_config: JMESPathEventCollectorConfig {
                     event_type: "hook_2_type".to_owned(),
                     payload: HashMap::new(),
@@ -276,6 +285,7 @@ mod test {
             WebhookConfig {
                 id: "hook_1".to_owned(),
                 token: "hook_1_token".to_owned(),
+                max_payload_size: None,
                 collector_config: JMESPathEventCollectorConfig {
                     event_type: "hook_1_type".to_owned(),
                     payload: HashMap::new(),
@@ -284,6 +294,7 @@ mod test {
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
+                max_payload_size: None,
                 collector_config: JMESPathEventCollectorConfig {
                     event_type: "hook_2_type".to_owned(),
                     payload: HashMap::new(),
@@ -321,6 +332,7 @@ mod test {
         let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
+            max_payload_size: None,
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
@@ -372,6 +384,7 @@ mod test {
         let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
+            max_payload_size: None,
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
@@ -401,6 +414,7 @@ mod test {
         let webhooks_config = vec![WebhookConfig {
             id: "hook_1".to_owned(),
             token: "hook_1_token".to_owned(),
+            max_payload_size: None,
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
@@ -429,6 +443,7 @@ mod test {
         let webhooks_config = vec![WebhookConfig {
             id: "hook with space".to_owned(),
             token: "token&#?=".to_owned(),
+            max_payload_size: None,
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "type".to_owned(),
                 payload: HashMap::new(),
@@ -450,5 +465,76 @@ mod test {
 
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());
+    }
+
+        #[actix_rt::test]
+    async fn should_refuse_large_payload() {
+        // Arrange
+        let mut webhooks_config = vec![];
+
+        webhooks_config.push(WebhookConfig {
+            id: "limit_payload".to_owned(),
+            token: "123".to_owned(),
+            max_payload_size: Some(Size(1024 * 512)),
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "type".to_owned(),
+                payload: HashMap::new(),
+            },
+        });
+
+        webhooks_config.push(WebhookConfig {
+            id: "default_payload".to_owned(),
+            token: "123".to_owned(),
+            max_payload_size: None,
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "type".to_owned(),
+                payload: HashMap::new(),
+            },
+        });
+
+        let mut srv = test::init_service(
+            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+        )
+        .await;
+
+        let json = vec![b'{', b'}'];
+        let payload_1kb = [vec![b' '; 1024], json.clone()].concat();
+        let payload_1mb = [vec![b' '; 1024 * 1024], json.clone()].concat();
+        let payload_10mb = [vec![b' '; 1024 * 1024 * 10], json.clone()].concat();
+
+        // Act
+        let request = test::TestRequest::post()
+            .uri("/event/limit_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1kb)
+            .to_request();
+        let response_in_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/limit_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1mb.clone())
+            .to_request();
+        let response_over_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/default_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1mb)
+            .to_request();
+        let response_in_default_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/default_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_10mb)
+            .to_request();
+        let response_over_default_limit = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(http::StatusCode::OK, response_in_limit.status());
+        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response_over_limit.status());
+        assert_eq!(http::StatusCode::OK, response_in_default_limit.status());
+        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response_over_default_limit.status());
     }
 }

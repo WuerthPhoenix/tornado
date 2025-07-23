@@ -1,5 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
+use human_units::Size;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -90,6 +91,7 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
 pub struct WebhookConfig {
     pub id: String,
     pub token: String,
+    pub max_payload_size: Option<Size>,
     pub collector_config: JMESPathEventCollectorConfig,
 }
 

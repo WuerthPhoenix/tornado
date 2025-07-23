@@ -17,13 +17,16 @@ an endpoint are processed by the embedded
 that uses them to produce Tornado Events. In the final step, the Events are forwarded to the
 Tornado Engine through the configured connection type.
 
-For each webhook, you must provide three values in order to successfully create an endpoint:
+For each webhook, you must provide these values in order to successfully create an endpoint:
 - _id_:  The webhook identifier. This will determine the path of the endpoint; it must be
   unique per webhook.
 - _token_:  A security token that the webhook issuer has to include in the URL as part of the
   query string (see the example at the bottom of this page for details). If the token provided
   by the issuer is missing or does not match the one owned by the collector, then the call will
   be rejected and an HTTP 401 code (UNAUTHORIZED) will be returned.
+- _max_payload_size_ (optional):  This value defines the maximum size in bytes of the payload sent
+  to the collector. If not provided, it will default to 5MB (5_242_880 bytes). The value can be passed as
+  human-readable form, thanks to [human_units](https://docs.rs/human-units/latest/human_units/) crate.
 - *collector_config*:  The transformation logic that converts a webhook JSON object into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
   [specific documentation](../../collector/jmespath/README.md).
@@ -117,7 +120,7 @@ to the Webhook configurations, and each webhook is configured by providing _id_,
 _collector_config_.
 
 As an example, consider how to configure a webhook for a repository hosted on
-[Github](https://github.com/).
+[GitHub](https://github.com/).
 
 If we start the application using the command line provided in the previous section, the webhook
 configuration files should be located in the _/tornado-webhook-collector/config/webhooks_
@@ -147,11 +150,11 @@ An example of valid content for a Webhook configuration JSON file is:
 }
 ```
 
-This configuration assumes that this endpoint has been created:
+This configuration defines that this endpoint will be created:
 
-__http(s)://collector_ip:collector_port/event/github_repository__
+http(s)://collector_ip:collector_port/event/__github_repository__
 
-However, the Github webhook issuer must pass the token at each call. Consequently, the actual URL
+However, the GitHub webhook issuer must pass the __token__ at each call. Consequently, the actual URL
 to be called will have this structure:
 
 __http(s)://collector_ip:collector_port/event/github_repository?token=secret_token__
@@ -161,14 +164,17 @@ important that the webhook collector is always deployed with HTTPS in production
 token will be sent unencrypted along with the entire URL.
 
 Consequently, if the public IP of the collector is, for example, 35.35.35.35 and the server
-port is 1234, in Github, the webhook settings page should look like this:
+port is 1234, in GitHub, the webhook settings page should look like this:
 
 ![github_webhook_settings](./github_webhook_01.png)
+
+The value for __max_payload_size__ is optional, and in our case will reduce the maximum payload size
+to about 2MB.
 
 Finally, the *collector_config* configuration entry determines the content of the tornado Event
 associated with each webhook input.
 
-So for example, if Github sends this JSON (only the relevant parts shown here):
+So for example, if GitHub sends this JSON (only the relevant parts shown here):
 ```json
 {
   "ref": "refs/heads/master",
