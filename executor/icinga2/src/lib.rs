@@ -18,7 +18,9 @@ pub const ICINGA2_ACTION_NAME_KEY: &str = "icinga2_action_name";
 pub const ICINGA2_ACTION_PAYLOAD_KEY: &str = "icinga2_action_payload";
 
 const ICINGA2_OBJECT_NOT_EXISTING_RESPONSE: &str = "No objects found";
+const ICINGA2_SHUTTING_DOWN_RESPONSE: &str = "Shutting down";
 const ICINGA2_OBJECT_NOT_EXISTING_STATUS_CODE: u16 = 404;
+const ICINGA2_SERVICE_UNAVAILABLE_STATUS_CODE: u16 = 503;
 pub const ICINGA2_OBJECT_NOT_EXISTING_EXECUTOR_ERROR_CODE: &str = "IcingaObjectNotExisting";
 const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_CODE: u16 = 409;
 const ICINGA2_PROCESS_CHECK_RESULT_WAS_DISCARDED_RESULT_STATUS: &str =
@@ -187,6 +189,10 @@ impl<'a> Icinga2ActionResponseType<'a> {
             && icinga2_action_response.is_no_object_found_error()
         {
             Self::ObjectNotFoundError(icinga2_action_response)
+        } else if response_status_code.eq(&ICINGA2_SERVICE_UNAVAILABLE_STATUS_CODE)
+            && !icinga2_action_response.is_shutting_down_error()
+        {
+            Self::GenericRecoverableError(icinga2_action_response)
         } else if icinga2_action_response.contains_errors()
             && !icinga2_action_response.is_recoverable()
         {
@@ -204,6 +210,15 @@ impl Icinga2ActionResponse {
         match &self {
             Icinga2ActionResponse::ErrorResponse(error_body) => {
                 error_body.status.contains(ICINGA2_OBJECT_NOT_EXISTING_RESPONSE)
+            }
+            Icinga2ActionResponse::OkResponse(_) => false,
+        }
+    }
+
+    fn is_shutting_down_error(&self) -> bool {
+        match &self {
+            Icinga2ActionResponse::ErrorResponse(error_body) => {
+                error_body.status.contains(ICINGA2_SHUTTING_DOWN_RESPONSE)
             }
             Icinga2ActionResponse::OkResponse(_) => false,
         }
@@ -728,6 +743,11 @@ mod test {
                     status: "No objects found.".to_string(),
                     additional_fields: Default::default(),
                 },
+                Icinga2Result {
+                    code: 503.0,
+                    status: "Shutting down.".to_string(),
+                    additional_fields: Default::default(),
+                },
             ],
         };
 
@@ -825,5 +845,25 @@ mod test {
 
         // Assert
         assert!(!response.is_no_object_found_error())
+    }
+
+    #[test]
+    fn is_shutting_down_error_should_return_true_for_such_response() {
+        // Arrange
+        let response = r#"{"error":503.0,"status":"Shutting down."}"#;
+        let response: Icinga2ActionResponse = serde_json::from_str(response).unwrap();
+
+        // Assert
+        assert!(response.is_shutting_down_error())
+    }
+
+    #[test]
+    fn is_shutting_down_error_should_return_false_for_other_errors() {
+        // Arrange
+        let response = r#"{"error":503.0,"status":"Totally different error..."}"#;
+        let response: Icinga2ActionResponse = serde_json::from_str(response).unwrap();
+
+        // Assert
+        assert!(!response.is_shutting_down_error())
     }
 }

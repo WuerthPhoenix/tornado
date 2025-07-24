@@ -5,7 +5,6 @@ use regex::Regex;
 use serde_json::Value;
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::convert::identity;
 use std::fmt::Debug;
 use thiserror::Error;
 use tornado_common_types::ValueGet;
@@ -67,8 +66,7 @@ impl ParserBuilder {
             .map(|rest| {
                 self.ignored_expressions
                     .iter()
-                    .map(|expr| key_is_root_entry_of_expression(expr, rest))
-                    .any(identity)
+                    .any(|expr| key_is_root_entry_of_expression(expr, rest))
             })
             .unwrap_or(false)
     }

@@ -28,10 +28,10 @@ impl ScriptExecutor {
                 cmd.arg(args);
             }
             Value::Bool(arg) => {
-                cmd.arg(&arg.to_string());
+                cmd.arg(arg.to_string());
             }
             Value::Number(arg) => {
-                cmd.arg(&arg.to_string());
+                cmd.arg(arg.to_string());
             }
             Value::Array(args) => {
                 for value in args {
@@ -40,7 +40,7 @@ impl ScriptExecutor {
             }
             Value::Object(args) => {
                 for (key, value) in args {
-                    cmd.arg(&format!("--{}", key));
+                    cmd.arg(format!("--{}", key));
                     ScriptExecutor::append_args(cmd, value);
                 }
             }
