@@ -31,7 +31,7 @@ impl Operator for Regex {
 
     fn evaluate(&self, event: &InternalEvent) -> bool {
         let cow_value = self.target.get(event);
-        cow_to_str(&cow_value).map_or(false, |text| self.regex.is_match(text))
+        cow_to_str(&cow_value).is_some_and(|text| self.regex.is_match(text))
     }
 }
 

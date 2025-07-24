@@ -29,7 +29,7 @@ pub enum ProcessedIterator {
     TypeError,
 }
 
-impl<'o> ValueGet for InternalEvent<'o> {
+impl ValueGet for InternalEvent<'_> {
     fn get_from_map(&self, key: &str) -> Option<&tornado_common_api::Value> {
         match key {
             EVENT_KEY => Some(self.event),

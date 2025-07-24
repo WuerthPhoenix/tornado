@@ -324,10 +324,11 @@ async fn serialize_to_file<T: Serialize>(path: &Path, data: &T) -> Result<(), De
         }
     };
 
-    let mut file = match tokio::fs::File::options().write(true).create(true).open(path).await {
-        Ok(file) => file,
-        Err(error) => return Err(DeploymentError::DirIo { path: path.to_path_buf(), error }),
-    };
+    let mut file =
+        match tokio::fs::File::options().write(true).create(true).truncate(true).open(path).await {
+            Ok(file) => file,
+            Err(error) => return Err(DeploymentError::DirIo { path: path.to_path_buf(), error }),
+        };
 
     if let Err(error) = file.write_all(&bytes).await {
         return Err(DeploymentError::FileIo { path: path.to_path_buf(), error });
