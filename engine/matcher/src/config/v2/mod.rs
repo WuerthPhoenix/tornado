@@ -176,11 +176,11 @@ async fn read_config_from_root_dir(root_dir: &Path) -> Result<MatcherConfig, Mat
             // If the dir contains no entries at all, it's a new config, and we create a root node.
             let entires = gather_dir_entries(root_dir).await?;
             if !entires.is_empty() {
-                return Err(error.into());
+                return Err(error);
             }
             vec![]
         }
-        Err(error) => return Err(error.into()),
+        Err(error) => return Err(error),
     };
 
     Ok(MatcherConfig::Filter {
