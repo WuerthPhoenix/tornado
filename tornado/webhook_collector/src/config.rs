@@ -3,6 +3,7 @@ use config_rs::{Config, ConfigError, File};
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::num::NonZeroU16;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
@@ -42,6 +43,8 @@ pub struct WebhookCollectorConfig {
 
     pub server_bind_address: String,
     pub server_port: u32,
+
+    pub workers: Option<NonZeroU16>,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
