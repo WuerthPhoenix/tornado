@@ -2,6 +2,7 @@ use crate::config::WebhookConfig;
 use crate::handler::{Handler, HandlerError, TokenQuery};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
+use actix_web::http::KeepAlive;
 use actix_web::middleware::Logger;
 use actix_web::web::{Data, PayloadConfig, Query};
 use actix_web::{web, App, HttpServer, Responder, Scope};
@@ -168,6 +169,7 @@ where
             }),
         )
     })
+    .keep_alive(KeepAlive::Disabled)
     .bind(format!("{}:{}", bind_address, port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
     .unwrap_or_else(|err| {
