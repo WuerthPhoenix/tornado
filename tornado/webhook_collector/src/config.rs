@@ -132,4 +132,25 @@ mod test {
             webhooks_config.iter().filter(|val| "github_test_repository".eq(&val.id)).count()
         );
     }
+
+    #[test]
+    fn should_have_valid_webhook_collector_config_workers() {
+        // Arrange
+        let config_without = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080}"#;
+        let config_valid_number = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":4}"#;
+        let config_zero = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":0}"#;
+        let config_invalid = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":"invalid"}"#;
+
+        // Act
+        let res_without = serde_json::from_str::<WebhookCollectorConfig>(config_without);
+        let res_valid_number = serde_json::from_str::<WebhookCollectorConfig>(config_valid_number);
+        let res_zero = serde_json::from_str::<WebhookCollectorConfig>(config_zero);
+        let res_invalid = serde_json::from_str::<WebhookCollectorConfig>(config_invalid);
+
+        // Assert
+        assert!(res_without.is_ok());
+        assert!(res_valid_number.is_ok());
+        assert!(res_zero.is_err());
+        assert!(res_invalid.is_err());
+    }
 }
