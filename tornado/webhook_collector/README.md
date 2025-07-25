@@ -169,7 +169,7 @@ port is 1234, in GitHub, the webhook settings page should look like this:
 ![github_webhook_settings](./github_webhook_01.png)
 
 The value for __max_payload_size__ is optional, and in our case will reduce the maximum payload size
-to about 2MB.
+to about 5MB.
 
 Finally, the *collector_config* configuration entry determines the content of the tornado Event
 associated with each webhook input.

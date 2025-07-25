@@ -1821,20 +1821,19 @@ dependencies = [
 
 [[package]]
 name = "human-units"
-version = "0.5.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa278779af6c287fce44ee986aa42df639dae95e9436bff2bf17cf1a23f03be7"
+checksum = "4e1d63aab644735cd690c3e7a57f1225fed63099f3201a6dfeed927d52a47fbf"
 dependencies = [
  "human-units-derive",
- "paste",
  "serde",
 ]
 
 [[package]]
 name = "human-units-derive"
-version = "0.5.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0831b88b3ac65571ad515c881da58dd80ff41a61284b92dd95186dddf7c8f9c9"
+checksum = "d470ce4e27b263f2e33643caee5176ac9d32c407fae1e1268277d4512b07c3e0"
 dependencies = [
  "quote 1.0.40",
  "syn 2.0.104",
