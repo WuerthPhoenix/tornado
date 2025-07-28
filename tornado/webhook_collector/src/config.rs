@@ -1,5 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
+use human_units::Size;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -89,10 +90,16 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
     Ok(webhooks)
 }
 
+pub(crate) fn default_webhook_config_max_payload_size() -> Size {
+    Size(5242880)
+}
+
 #[derive(Deserialize, Clone)]
 pub struct WebhookConfig {
     pub id: String,
     pub token: String,
+    #[serde(default = "default_webhook_config_max_payload_size")]
+    pub max_payload_size: Size, // Support human-readable sizes with these suffixes: b, k, m, g, t, p, e
     pub collector_config: JMESPathEventCollectorConfig,
 }
 
@@ -152,5 +159,26 @@ mod test {
         assert!(res_workers_valid.is_ok());
         assert!(res_workers_zero.is_err());
         assert!(res_workers_invalid.is_err());
+    }
+
+    #[test]
+    fn should_have_valid_webhook_config_max_payload_size() {
+        // Arrange
+        let config_null = r#"{"id":"hook_1","token":"hook_1_token","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_numeric = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"12345","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_human_units = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"2m","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_invalid = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"invalid","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+
+        // Act
+        let res_null = serde_json::from_str::<WebhookConfig>(config_null);
+        let res_numeric = serde_json::from_str::<WebhookConfig>(config_numeric);
+        let res_human_units = serde_json::from_str::<WebhookConfig>(config_human_units);
+        let res_invalid = serde_json::from_str::<WebhookConfig>(config_invalid);
+
+        // Assert
+        assert!(res_null.is_ok());
+        assert!(res_numeric.is_ok());
+        assert!(res_human_units.is_ok());
+        assert!(res_invalid.is_err());
     }
 }
