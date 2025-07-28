@@ -4,6 +4,7 @@ use human_units::Size;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::num::NonZeroU16;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
@@ -43,6 +44,8 @@ pub struct WebhookCollectorConfig {
 
     pub server_bind_address: String,
     pub server_port: u32,
+
+    pub workers: Option<NonZeroU16>,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
@@ -138,6 +141,27 @@ mod test {
     }
 
     #[test]
+    fn should_have_valid_webhook_collector_config_workers() {
+        // Arrange
+        let config_workers_unspecified = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080}"#;
+        let config_workers_valid = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":4}"#;
+        let config_workers_zero = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":0}"#;
+        let config_workers_invalid = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":"invalid"}"#;
+
+        // Act
+        let res_workers_unspecified = serde_json::from_str::<WebhookCollectorConfig>(config_workers_unspecified);
+        let res_workers_valid = serde_json::from_str::<WebhookCollectorConfig>(config_workers_valid);
+        let res_workers_zero = serde_json::from_str::<WebhookCollectorConfig>(config_workers_zero);
+        let res_workers_invalid = serde_json::from_str::<WebhookCollectorConfig>(config_workers_invalid);
+
+        // Assert
+        assert!(res_workers_unspecified.is_ok());
+        assert!(res_workers_valid.is_ok());
+        assert!(res_workers_zero.is_err());
+        assert!(res_workers_invalid.is_err());
+    }
+
+    #[test]
     fn should_have_valid_webhook_config_max_payload_size() {
         // Arrange
         let config_null = r#"{"id":"hook_1","token":"hook_1_token","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
@@ -158,4 +182,3 @@ mod test {
         assert!(res_invalid.is_err());
     }
 }
-

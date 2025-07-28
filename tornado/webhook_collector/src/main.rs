@@ -1,3 +1,5 @@
+use std::num::NonZeroU16;
+
 use crate::config::WebhookConfig;
 use crate::handler::{Handler, HandlerError, TokenQuery};
 use actix::dev::ToEnvelope;
@@ -48,6 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
     let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)?;
 
+    let workers = collector_config.webhook_collector.workers;
+
     let port = collector_config.webhook_collector.server_port;
     let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
 
@@ -71,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             tornado_tcp_address,
             collector_config.webhook_collector.message_queue_size,
         );
-        start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+        start_http_server(actor_address, webhooks_config, bind_address, port, workers).await?;
     } else if let Some(connection_channel) =
         collector_config.webhook_collector.tornado_connection_channel
     {
@@ -83,7 +87,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     collector_config.webhook_collector.message_queue_size,
                 )
                 .await?;
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
+                    .await?;
             }
             TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -94,7 +99,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     tornado_tcp_address,
                     collector_config.webhook_collector.message_queue_size,
                 );
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
+                    .await?;
             }
         };
     } else {
@@ -149,11 +155,12 @@ async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     webhooks_config: Vec<WebhookConfig>,
     bind_address: String,
     port: u32,
+    workers: Option<NonZeroU16>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
-    HttpServer::new(move || {
+    let mut srv = HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(TracingLogger::default())
@@ -175,9 +182,14 @@ where
     .unwrap_or_else(|err| {
         error!("Server cannot start on port {}. Err: {:?}", port, err);
         std::process::exit(1);
-    })
-    .run()
-    .await?;
+    });
+
+    if let Some(workers) = workers {
+        info!("Setting up {} workers", workers);
+        srv = srv.workers(workers.get() as usize);
+    }
+
+    srv.run().await?;
 
     Ok(())
 }
