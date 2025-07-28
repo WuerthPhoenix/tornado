@@ -1,9 +1,12 @@
+use std::num::NonZeroU16;
+
 use crate::config::WebhookConfig;
 use crate::handler::{Handler, HandlerError, TokenQuery};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
+use actix_web::http::KeepAlive;
 use actix_web::middleware::Logger;
-use actix_web::web::{Data, Query};
+use actix_web::web::{Data, PayloadConfig, Query};
 use actix_web::{web, App, HttpServer, Responder, Scope};
 use chrono::prelude::Local;
 use log::*;
@@ -47,6 +50,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     let webhooks_dir_full_path = format!("{}/{}", &config_dir, &webhooks_dir);
     let webhooks_config = config::read_webhooks_from_config(&webhooks_dir_full_path)?;
 
+    let workers = collector_config.webhook_collector.workers;
+
     let port = collector_config.webhook_collector.server_port;
     let bind_address = collector_config.webhook_collector.server_bind_address.to_owned();
 
@@ -70,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             tornado_tcp_address,
             collector_config.webhook_collector.message_queue_size,
         );
-        start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+        start_http_server(actor_address, webhooks_config, bind_address, port, workers).await?;
     } else if let Some(connection_channel) =
         collector_config.webhook_collector.tornado_connection_channel
     {
@@ -82,7 +87,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     collector_config.webhook_collector.message_queue_size,
                 )
                 .await?;
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
+                    .await?;
             }
             TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -93,7 +99,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     tornado_tcp_address,
                     collector_config.webhook_collector.message_queue_size,
                 );
-                start_http_server(actor_address, webhooks_config, bind_address, port).await?;
+                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
+                    .await?;
             }
         };
     } else {
@@ -133,6 +140,7 @@ fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
         debug!("Creating endpoint: [{}]", &path);
 
         let new_scope = web::scope(&path)
+            .app_data(PayloadConfig::default().limit(config.max_payload_size.0 as usize))
             .app_data(Data::new(handler))
             .service(web::resource("").route(web::post().to(handle::<R>)));
 
@@ -147,11 +155,12 @@ async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     webhooks_config: Vec<WebhookConfig>,
     bind_address: String,
     port: u32,
+    workers: Option<NonZeroU16>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
     <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
 {
-    HttpServer::new(move || {
+    let mut srv = HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(TracingLogger::default())
@@ -167,14 +176,20 @@ where
             }),
         )
     })
+    .keep_alive(KeepAlive::Disabled)
     .bind(format!("{}:{}", bind_address, port))
     // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
     .unwrap_or_else(|err| {
         error!("Server cannot start on port {}. Err: {:?}", port, err);
         std::process::exit(1);
-    })
-    .run()
-    .await?;
+    });
+
+    if let Some(workers) = workers {
+        info!("Setting up {} workers", workers);
+        srv = srv.workers(workers.get() as usize);
+    }
+
+    srv.run().await?;
 
     Ok(())
 }
@@ -197,11 +212,26 @@ async fn handle<F: Fn(Event) + 'static>(
 #[cfg(test)]
 mod test {
 
+    use crate::config::default_webhook_config_max_payload_size;
+
     use super::*;
     use actix_web::{http, test};
+    use human_units::Size;
     use std::collections::HashMap;
     use std::sync::{Arc, Mutex};
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
+
+    fn test_webhook_config() -> WebhookConfig {
+        WebhookConfig {
+            id: "hook_1".to_owned(),
+            token: "hook_1_token".to_owned(),
+            max_payload_size: default_webhook_config_max_payload_size(),
+            collector_config: JMESPathEventCollectorConfig {
+                event_type: "hook_1_type".to_owned(),
+                payload: HashMap::new(),
+            },
+        }
+    }
 
     #[actix_rt::test]
     async fn ping_should_return_pong() {
@@ -224,14 +254,7 @@ mod test {
     async fn should_create_a_path_per_webhook() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig {
-                id: "hook_1".to_owned(),
-                token: "hook_1_token".to_owned(),
-                collector_config: JMESPathEventCollectorConfig {
-                    event_type: "hook_1_type".to_owned(),
-                    payload: HashMap::new(),
-                },
-            },
+            WebhookConfig { ..test_webhook_config() },
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -239,6 +262,7 @@ mod test {
                     event_type: "hook_2_type".to_owned(),
                     payload: HashMap::new(),
                 },
+                ..test_webhook_config()
             },
         ];
         let srv = test::init_service(
@@ -273,14 +297,7 @@ mod test {
     async fn should_accept_calls_only_if_token_matches() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig {
-                id: "hook_1".to_owned(),
-                token: "hook_1_token".to_owned(),
-                collector_config: JMESPathEventCollectorConfig {
-                    event_type: "hook_1_type".to_owned(),
-                    payload: HashMap::new(),
-                },
-            },
+            WebhookConfig { ..test_webhook_config() },
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -288,6 +305,7 @@ mod test {
                     event_type: "hook_2_type".to_owned(),
                     payload: HashMap::new(),
                 },
+                ..test_webhook_config()
             },
         ];
         let srv = test::init_service(
@@ -319,12 +337,11 @@ mod test {
     async fn should_call_the_callback_on_each_event() {
         // Arrange
         let webhooks_config = vec![WebhookConfig {
-            id: "hook_1".to_owned(),
-            token: "hook_1_token".to_owned(),
             collector_config: JMESPathEventCollectorConfig {
                 event_type: "${map.first}".to_owned(),
                 payload: HashMap::new(),
             },
+            ..test_webhook_config()
         }];
 
         let event = Arc::new(Mutex::new(None));
@@ -369,14 +386,8 @@ mod test {
     #[actix_rt::test]
     async fn should_return_404_if_hook_does_not_exists() {
         // Arrange
-        let webhooks_config = vec![WebhookConfig {
-            id: "hook_1".to_owned(),
-            token: "hook_1_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "${map.first}".to_owned(),
-                payload: HashMap::new(),
-            },
-        }];
+        let webhooks_config =
+            vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
 
         let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
@@ -398,14 +409,8 @@ mod test {
     #[actix_rt::test]
     async fn should_return_405_if_get_instead_of_post() {
         // Arrange
-        let webhooks_config = vec![WebhookConfig {
-            id: "hook_1".to_owned(),
-            token: "hook_1_token".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "${map.first}".to_owned(),
-                payload: HashMap::new(),
-            },
-        }];
+        let webhooks_config =
+            vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
 
         let srv = test::init_service(
             App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
@@ -429,10 +434,7 @@ mod test {
         let webhooks_config = vec![WebhookConfig {
             id: "hook with space".to_owned(),
             token: "token&#?=".to_owned(),
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "type".to_owned(),
-                payload: HashMap::new(),
-            },
+            ..test_webhook_config()
         }];
 
         let srv = test::init_service(
@@ -450,5 +452,69 @@ mod test {
 
         // Assert
         assert_eq!(http::StatusCode::OK, response.status());
+    }
+
+    #[actix_rt::test]
+    async fn should_refuse_large_payload() {
+        // Arrange
+        let mut webhooks_config = vec![];
+
+        webhooks_config.push(WebhookConfig {
+            id: "limit_payload".to_owned(),
+            token: "123".to_owned(),
+            max_payload_size: Size(1024 * 512), // 512 KB
+            ..test_webhook_config()
+        });
+
+        webhooks_config.push(WebhookConfig {
+            id: "default_payload".to_owned(),
+            token: "123".to_owned(),
+            ..test_webhook_config()
+        });
+
+        let mut srv = test::init_service(
+            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+        )
+        .await;
+
+        let json = vec![b'{', b'}'];
+        let payload_1kb = [vec![b' '; 1024], json.clone()].concat();
+        let payload_1mb = [vec![b' '; 1024 * 1024], json.clone()].concat();
+        let payload_10mb = [vec![b' '; 1024 * 1024 * 10], json.clone()].concat();
+
+        // Act
+        let request = test::TestRequest::post()
+            .uri("/event/limit_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1kb)
+            .to_request();
+        let response_in_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/limit_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1mb.clone())
+            .to_request();
+        let response_over_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/default_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_1mb)
+            .to_request();
+        let response_in_default_limit = test::call_service(&mut srv, request).await;
+
+        let request = test::TestRequest::post()
+            .uri("/event/default_payload?token=123")
+            .insert_header((http::header::CONTENT_TYPE, "application/json"))
+            .set_payload(payload_10mb)
+            .to_request();
+        let response_over_default_limit = test::call_service(&mut srv, request).await;
+
+        // Assert
+        assert_eq!(http::StatusCode::OK, response_in_limit.status());
+        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response_over_limit.status());
+        assert_eq!(http::StatusCode::OK, response_in_default_limit.status());
+        assert_eq!(http::StatusCode::PAYLOAD_TOO_LARGE, response_over_default_limit.status());
     }
 }

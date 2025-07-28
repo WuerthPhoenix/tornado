@@ -1,8 +1,10 @@
 use clap::{App, Arg, ArgMatches};
 use config_rs::{Config, ConfigError, File};
+use human_units::Size;
 use log::*;
 use serde::{Deserialize, Serialize};
 use std::fs;
+use std::num::NonZeroU16;
 use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
@@ -42,6 +44,8 @@ pub struct WebhookCollectorConfig {
 
     pub server_bind_address: String,
     pub server_port: u32,
+
+    pub workers: Option<NonZeroU16>,
 }
 
 pub fn build_config(config_dir: &str) -> Result<CollectorConfig, ConfigError> {
@@ -86,10 +90,16 @@ pub fn read_webhooks_from_config(path: &str) -> Result<Vec<WebhookConfig>, Torna
     Ok(webhooks)
 }
 
+pub(crate) fn default_webhook_config_max_payload_size() -> Size {
+    Size(5242880)
+}
+
 #[derive(Deserialize, Clone)]
 pub struct WebhookConfig {
     pub id: String,
     pub token: String,
+    #[serde(default = "default_webhook_config_max_payload_size")]
+    pub max_payload_size: Size, // Support human-readable sizes with these suffixes: b, k, m, g, t, p, e
     pub collector_config: JMESPathEventCollectorConfig,
 }
 
@@ -128,5 +138,47 @@ mod test {
             1,
             webhooks_config.iter().filter(|val| "github_test_repository".eq(&val.id)).count()
         );
+    }
+
+    #[test]
+    fn should_have_valid_webhook_collector_config_workers() {
+        // Arrange
+        let config_workers_unspecified = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080}"#;
+        let config_workers_valid = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":4}"#;
+        let config_workers_zero = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":0}"#;
+        let config_workers_invalid = r#"{"message_queue_size":1000,"tornado_connection_channel":null,"tornado_event_socket_ip":"127.0.0.1","tornado_event_socket_port":8081,"server_bind_address":"0.0.0.0","server_port":8080,"workers":"invalid"}"#;
+
+        // Act
+        let res_workers_unspecified = serde_json::from_str::<WebhookCollectorConfig>(config_workers_unspecified);
+        let res_workers_valid = serde_json::from_str::<WebhookCollectorConfig>(config_workers_valid);
+        let res_workers_zero = serde_json::from_str::<WebhookCollectorConfig>(config_workers_zero);
+        let res_workers_invalid = serde_json::from_str::<WebhookCollectorConfig>(config_workers_invalid);
+
+        // Assert
+        assert!(res_workers_unspecified.is_ok());
+        assert!(res_workers_valid.is_ok());
+        assert!(res_workers_zero.is_err());
+        assert!(res_workers_invalid.is_err());
+    }
+
+    #[test]
+    fn should_have_valid_webhook_config_max_payload_size() {
+        // Arrange
+        let config_null = r#"{"id":"hook_1","token":"hook_1_token","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_numeric = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"12345","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_human_units = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"2m","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+        let config_invalid = r#"{"id":"hook_1","token":"hook_1_token","max_payload_size":"invalid","collector_config":{"event_type":"${map.first}","payload":{}}}"#;
+
+        // Act
+        let res_null = serde_json::from_str::<WebhookConfig>(config_null);
+        let res_numeric = serde_json::from_str::<WebhookConfig>(config_numeric);
+        let res_human_units = serde_json::from_str::<WebhookConfig>(config_human_units);
+        let res_invalid = serde_json::from_str::<WebhookConfig>(config_invalid);
+
+        // Assert
+        assert!(res_null.is_ok());
+        assert!(res_numeric.is_ok());
+        assert!(res_human_units.is_ok());
+        assert!(res_invalid.is_err());
     }
 }

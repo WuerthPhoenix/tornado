@@ -10,6 +10,7 @@ actix-web.workspace = true
 chrono.workspace = true
 clap = { version = "3.0.0-beta.5", default-features = false, features = ["derive", "std"] }
 config_rs = { version = "0.11", package = "config", default-features = false, features = ["toml"] }
+human-units = { version = "=0.3", features = ["serde"] }
 log.workspace = true
 tracing.workspace = true
 serde.workspace = true
