@@ -26,7 +26,7 @@ pub fn bench(c: &mut Criterion) {
                 regex: ExtractorRegex::Regex {
                     regex: String::from(r"[0-9]+"),
                     group_match_idx: Some(0),
-                    all_matches: None,
+                    all_matches: false,
                 },
                 modifiers_post: vec![],
             },
