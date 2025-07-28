@@ -200,7 +200,8 @@ impl Handler<EventMessage> for NatsPublisherActor {
             let client = connection.clone();
             let config = self.config.clone();
 
-            actix::spawn(async move {
+            let handler = tokio::runtime::Handle::current();
+            handler.block_on(async move {
                 debug!("NatsPublisherActor - Publishing event to NATS");
                 match client.publish(&config.subject, &event).await {
                     Ok(_) => trace!(
