@@ -4,8 +4,6 @@ The Webhook Collector is a standalone HTTP server that listens for REST calls fr
 webhook, generates Tornado Events from the webhook JSON body, and sends them to the
 Tornado Engine.
 
-
-
 ## How It Works
 
 The webhook collector executable is an HTTP server built on
@@ -18,20 +16,21 @@ that uses them to produce Tornado Events. In the final step, the Events are forw
 Tornado Engine through the configured connection type.
 
 For each webhook, you must provide these values in order to successfully create an endpoint:
-- _id_:  The webhook identifier. This will determine the path of the endpoint; it must be
+
+- _id_: The webhook identifier. This will determine the path of the endpoint; it must be
   unique per webhook.
-- _token_:  A security token that the webhook issuer has to include in the URL as part of the
+- _token_: A security token that the webhook issuer has to include in the URL as part of the
   query string (see the example at the bottom of this page for details). If the token provided
   by the issuer is missing or does not match the one owned by the collector, then the call will
   be rejected and an HTTP 401 code (UNAUTHORIZED) will be returned.
-- _max_payload_size_ (optional):  This value defines the maximum size in bytes of the payload sent
-  to the collector. If not provided, it will default to 5MB (5_242_880 bytes). The value can be passed as
-  human-readable form, thanks to [human_units](https://docs.rs/human-units/latest/human_units/) crate.
-- *collector_config*:  The transformation logic that converts a webhook JSON object into a Tornado
+- _max_payload_size_: (Optional) The maximum size of the payload that the webhook can accept.
+  If the payload exceeds this size, the call will be rejected and an HTTP 413 code (PAYLOAD TOO LARGE)
+  will be returned. The value can be specified as a number in bytes, or as a string using human-readable units:
+  `b` (bytes), `k` (kilobytes), `m` (megabytes), `g` (gigabytes), `p` (petabytes), or `e` (exabytes).
+  If not specified, the default value is 5MB.
+- _collector_config_: The transformation logic that converts a webhook JSON object into a Tornado
   Event. It consists of a JMESPath collector configuration as described in its
   [specific documentation](../../collector/jmespath/README.md).
-
-
 
 ## Configuration
 
@@ -39,79 +38,77 @@ The executable configuration is based partially on configuration files, and part
 line parameters.
 
 The available startup parameters are:
-- __config-dir__:  The filesystem folder from which the collector configuration is read.
+
+- **config-dir**: The filesystem folder from which the collector configuration is read.
   The default path is _/etc/tornado_webhook_collector/_.
-- __webhooks-dir__:  The folder where the Webhook configurations are saved in JSON format;
+- **webhooks-dir**: The folder where the Webhook configurations are saved in JSON format;
   this folder is relative to the `config_dir`. The default value is _/webhooks/_.
 
-In addition to these parameters, the following configuration entries are available in the 
+In addition to these parameters, the following configuration entries are available in the
 file _'config-dir'/webhook_collector.toml_:
-- __logger__:
-    - __level__:  The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
-      _error_.
-    - __stdout__:  Determines whether the Logger should print to standard output.
-      Valid values are `true` and `false`.
-    - __file_output_path__:  A file path in the file system; if provided, the Logger will
-      append any output to it.
-- **webhook_collector**:
-    - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
-      This should be the address where the Tornado Engine listens for incoming events.
-      If present, this value overrides what specified by the `tornado_connection_channel` entry.
-      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
-    - **tornado_event_socket_port**:  The port where outgoing events will be written.
-      This should be the port where the Tornado Engine listens for incoming events.
-      This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
-      If present, this value overrides what specified by the `tornado_connection_channel` entry.
-      *This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead.*
-    - **message_queue_size**:  The in-memory buffer size for Events. It makes the application
-      resilient to errors or temporary unavailability of the Tornado connection channel.
-      When the connection on the channel is restored, all messages in the buffer will be sent.
-      When the buffer is full, the collector will start discarding older messages first.
-    - **server_bind_address**:  The IP to bind the HTTP server to.
-    - **server_port**:  The port to be used by the HTTP Server.
-    - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries
-    required to configure a *Nats* or a *TCP* connection.
-    *Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided.*  
-        - In case of connection using *Nats*, these entries are mandatory:
-            - **nats.client.addresses**: The addresses of the  NATS server.
-            - **nats.client.auth.type**:  The type of authentication used to authenticate to NATS
-            (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
-            - **nats.client.auth.certificate_path**:  The path to the client certificate (in `.pem` format) that will be
-            used for authenticating to NATS.
-            (Mandatory if `nats.client.auth.type` is set to `Tls`).
-            - **nats.client.auth.private_key_path**:  The path to the client certificate private key (in `.pem` format)
-            that will be used for authenticating to NATS.
-            - **nats.client.auth.path_to_root_certificate**:  The path to a root certificate (in `.pem` format) to trust in
-            addition to system's trust root. May be useful if the NATS server is not trusted by the system as default.
-            (Optional, valid if `nats.client.auth.type` is set to `Tls`).
-            - **nats.subject**: The NATS Subject where tornado will subscribe and listen for incoming events.
-        - In case of connection using *TCP*, these entries are mandatory:
-            - **tcp_socket_ip**:  The IP address where outgoing events will be written.
-              This should be the address where the Tornado Engine listens for incoming events.
-            - **tcp_socket_port**:  The port where outgoing events will be written.
-              This should be the port where the Tornado Engine listens for incoming events.
 
-   
+- **logger**:
+  - **level**: The Logger level; valid values are _trace_, _debug_, _info_, _warn_, and
+    _error_.
+  - **stdout**: Determines whether the Logger should print to standard output.
+    Valid values are `true` and `false`.
+  - **file_output_path**: A file path in the file system; if provided, the Logger will
+    append any output to it.
+- **webhook_collector**:
+  - **tornado_event_socket_ip**: The IP address where outgoing events will be written.
+    This should be the address where the Tornado Engine listens for incoming events.
+    If present, this value overrides what specified by the `tornado_connection_channel` entry.
+    _This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead._
+  - **tornado_event_socket_port**: The port where outgoing events will be written.
+    This should be the port where the Tornado Engine listens for incoming events.
+    This entry is mandatory if `tornado_connection_channel` is set to `TCP`.
+    If present, this value overrides what specified by the `tornado_connection_channel` entry.
+    _This entry is deprecated and will be removed in the next release of tornado. Please, use the `tornado_connection_channel` instead._
+  - **message_queue_size**: The in-memory buffer size for Events. It makes the application
+    resilient to errors or temporary unavailability of the Tornado connection channel.
+    When the connection on the channel is restored, all messages in the buffer will be sent.
+    When the buffer is full, the collector will start discarding older messages first.
+  - **server_bind_address**: The IP to bind the HTTP server to.
+  - **server_port**: The port to be used by the HTTP Server.
+  - **tornado_connection_channel**: The channel to send events to Tornado. It contains the set of entries required to configure a _Nats_ or a _TCP_ connection.
+    _Beware that this entry will be taken into account only if `tornado_event_socket_ip` and `tornado_event_socket_port` are not provided._
+    - In case of connection using _Nats_, these entries are mandatory:
+      - **nats.client.addresses**: The addresses of the NATS server.
+      - **nats.client.auth.type**: The type of authentication used to authenticate to NATS
+        (Optional. Valid values are `None` and `Tls`. Defaults to `None` if not provided).
+      - **nats.client.auth.certificate_path**: The path to the client certificate (in `.pem` format) that will be used for authenticating to NATS.
+        (Mandatory if `nats.client.auth.type` is set to `Tls`).
+      - **nats.client.auth.private_key_path**: The path to the client certificate private key (in `.pem` format) that will be used for authenticating to NATS.
+      - **nats.client.auth.path_to_root_certificate**: The path to a root certificate (in `.pem` format) to trust in addition to system's trust root.
+        May be useful if the NATS server is not trusted by the system as default. (Optional, valid if `nats.client.auth.type` is set to `Tls`).
+      - **nats.subject**: The NATS Subject where tornado will subscribe and listen for incoming events.
+    - In case of connection using _TCP_, these entries are mandatory:
+      - **tcp_socket_ip**: The IP address where outgoing events will be written. This should be the address where the Tornado Engine listens for incoming events.
+      - **tcp_socket_port**: The port where outgoing events will be written. This should be the port where the Tornado Engine listens for incoming events.
+  - **workers**: The number of worker threads to be used by the webhook collector. This value must be a positive integer number.
+    (Optional. If not specified, the number of workers will be calculated based on your machines core count).
+
 More information about the logger configuration
 [is available here](../../common/logger/README.md).
 
-The default __config-dir__ value can be customized at build time by specifying
-the environment variable *TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT*. 
-For example, this will build an executable that uses */my/custom/path* 
+The default **config-dir** value can be customized at build time by specifying
+the environment variable _TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT_.
+For example, this will build an executable that uses _/my/custom/path_
 as the default value:
+
 ```bash
-TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build 
+TORNADO_WEBHOOK_COLLECTOR_CONFIG_DIR_DEFAULT=/my/custom/path cargo build
 ```
 
 An example of a full startup command is:
+
 ```bash
 ./tornado_webhook_collector \
       --config-dir=/tornado-webhook-collector/config
 ```
 
-In this example the Webhook Collector starts up and then reads 
+In this example the Webhook Collector starts up and then reads
 the configuration from the _/tornado-webhook-collector/config_ directory.
-
 
 ## Webhooks Configuration
 
@@ -126,6 +123,7 @@ If we start the application using the command line provided in the previous sect
 configuration files should be located in the _/tornado-webhook-collector/config/webhooks_
 directory. Each configuration is saved in a separate file in that directory in JSON format
 (the order shown in the directory is not necessarily the order in which the hooks are processed):
+
 ```
 /tornado-webhook-collector/config/webhooks
                  |- github.json
@@ -135,6 +133,7 @@ directory. Each configuration is saved in a separate file in that directory in J
 ```
 
 An example of valid content for a Webhook configuration JSON file is:
+
 ```json
 {
   "id": "github_repository",
@@ -152,14 +151,14 @@ An example of valid content for a Webhook configuration JSON file is:
 
 This configuration defines that this endpoint will be created:
 
-http(s)://collector_ip:collector_port/event/__github_repository__
+http(s)://collector_ip:collector_port/event/**github_repository**
 
-However, the GitHub webhook issuer must pass the __token__ at each call. Consequently, the actual URL
+However, the GitHub webhook issuer must pass the **token** at each call. Consequently, the actual URL
 to be called will have this structure:
 
-__http(s)://collector_ip:collector_port/event/github_repository?token=secret_token__
+**http(s)://collector_ip:collector_port/event/github_repository?token=secret_token**
 
-__Security warning:__  Since the security token is present in the query string, it is extremely
+**Security warning:** Since the security token is present in the query string, it is extremely
 important that the webhook collector is always deployed with HTTPS in production. Otherwise, the
 token will be sent unencrypted along with the entire URL.
 
@@ -168,14 +167,15 @@ port is 1234, in GitHub, the webhook settings page should look like this:
 
 ![github_webhook_settings](./github_webhook_01.png)
 
-The value for __max_payload_size__ is optional, and in our case will reduce the maximum payload size
+The value for **max_payload_size** is optional, and in our case will reduce the maximum payload size
 to about 5MB. The value has to be a string with a number or in human units, where b is for bytes, k for kilobytes,
 m for megabytes, g for gigabytes, p for petabytes, e for exabytes: e.g. "5m" is 5MB.
 
-Finally, the *collector_config* configuration entry determines the content of the tornado Event
+Finally, the _collector_config_ configuration entry determines the content of the tornado Event
 associated with each webhook input.
 
 So for example, if GitHub sends this JSON (only the relevant parts shown here):
+
 ```json
 {
   "ref": "refs/heads/master",
@@ -201,6 +201,7 @@ So for example, if GitHub sends this JSON (only the relevant parts shown here):
 ```
 
 then the resulting Event will be:
+
 ```json
 {
   "type": "GitHub",
