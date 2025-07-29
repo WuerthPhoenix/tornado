@@ -9,7 +9,10 @@ use actix_web::{
 };
 use chrono::Local;
 use log::{debug, error, info, trace};
-use opentelemetry::{metrics::Counter, KeyValue};
+use opentelemetry::{
+    metrics::{Counter, Meter},
+    KeyValue,
+};
 use serde::Deserialize;
 use thiserror::Error;
 use tornado_collector_common::{Collector, CollectorError};
@@ -19,7 +22,7 @@ use tornado_common_api::TracedEvent;
 use tornado_common_metrics::Metrics;
 use tracing::info_span;
 
-use crate::{config::WebhookConfig, APP_NAME};
+use crate::config::WebhookConfig;
 
 pub fn create_app<A>(endpoints: Vec<EndpointState<A>>, meter: Arc<Metrics>) -> Scope
 where
@@ -47,13 +50,14 @@ where
 
 pub fn create_endpoint_state<A: Actor>(
     configs: Vec<WebhookConfig>,
+    meter: &Meter,
     addr: Addr<A>,
 ) -> Result<Vec<EndpointState<A>>, CollectorError> {
-    let shared_metrics = SharedEndpointMetrics::new(APP_NAME);
+    let shared_metrics = SharedEndpointMetrics::new(meter);
 
     let mut endpoints = vec![];
     for config in configs {
-        let metrics = EndpointMetrics::new(APP_NAME);
+        let metrics = EndpointMetrics::new(meter);
         let jmespath_collector = JMESPathEventCollector::build(config.collector_config)?;
 
         endpoints.push(EndpointState {
@@ -108,8 +112,7 @@ struct EndpointMetrics {
 }
 
 impl EndpointMetrics {
-    fn new(name: &'static str) -> Self {
-        let meter = opentelemetry::global::meter(name);
+    fn new(meter: &Meter) -> Self {
         Self {
             webhooks_received: meter.u64_counter("webhooks_received").init(),
             bytes_received: meter.u64_counter("bytes_received").init(),
@@ -124,8 +127,7 @@ struct SharedEndpointMetrics {
 }
 
 impl SharedEndpointMetrics {
-    fn new(name: &'static str) -> Self {
-        let meter = opentelemetry::global::meter(name);
+    fn new(meter: &Meter) -> Self {
         SharedEndpointMetrics { events_dropped: meter.u64_counter("events_dropped").init() }
     }
 }

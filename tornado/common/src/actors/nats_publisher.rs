@@ -3,7 +3,7 @@ use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
-use opentelemetry::metrics::Counter;
+use opentelemetry::metrics::{Counter, Meter};
 use opentelemetry::trace::SpanKind;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
@@ -32,9 +32,7 @@ struct NatsMetrics {
 }
 
 impl NatsMetrics {
-    fn new(name: &'static str) -> Self {
-        let meter = opentelemetry::global::meter(name);
-
+    fn new(meter: &Meter) -> Self {
         NatsMetrics {
             bytes_sent: meter.u64_counter("nats_bytes_sent").init(),
             send_failed: meter.u64_counter("nats_send_failed").init(),
@@ -115,21 +113,32 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+        Self::new(config).start(message_mailbox_capacity).await
+    }
+
+    pub fn new(config: NatsPublisherConfig) -> Self {
         let trace_context_propagator = TraceContextPropagator::new();
+        NatsPublisherActor {
+            config,
+            nats_connection: Rc::new(None),
+            restarted: false,
+            trace_context_propagator,
+            metrics: None,
+        }
+    }
+
+    pub async fn start(
+        self,
+        message_mailbox_capacity: usize,
+    ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor {
-                config,
-                nats_connection: Rc::new(None),
-                restarted: false,
-                trace_context_propagator,
-                metrics: None,
-            }
+            self
         }))
     }
 
-    pub fn enable_metrics(mut self, name: &'static str) -> Self {
-        self.metrics = Some(NatsMetrics::new(name));
+    pub fn enable_metrics(mut self, meter: &Meter) -> Self {
+        self.metrics = Some(NatsMetrics::new(meter));
         self
     }
 }
