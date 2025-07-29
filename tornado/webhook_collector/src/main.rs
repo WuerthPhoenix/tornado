@@ -172,11 +172,20 @@ mod test {
         }
     }
 
+    macro_rules! init_test_service {
+        ($config:expr) => {{
+            let addr =
+                actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
+            let endpoints = create_endpoint_state($config, addr).unwrap();
+            let metrics = Arc::new(Metrics::new("app_name"));
+            test::init_service(App::new().service(create_app(endpoints, metrics))).await
+        }};
+    }
+
     #[actix_rt::test]
     async fn ping_should_return_pong() {
         // Arrange
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(App::new().service(create_app(vec![], addr).unwrap())).await;
+        let srv = init_test_service!(vec![]);
 
         // Act
         let request = test::TestRequest::get().uri("/ping").to_request();
@@ -193,7 +202,7 @@ mod test {
     async fn should_create_a_path_per_webhook() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig { ..test_webhook_config() },
+            test_webhook_config(),
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -204,12 +213,7 @@ mod test {
                 ..test_webhook_config()
             },
         ];
-
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -238,7 +242,7 @@ mod test {
     async fn should_accept_calls_only_if_token_matches() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig { ..test_webhook_config() },
+            test_webhook_config(),
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -250,11 +254,7 @@ mod test {
             },
         ];
 
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -281,12 +281,7 @@ mod test {
         // Arrange
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
-
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::post()
@@ -305,12 +300,7 @@ mod test {
         // Arrange
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
-
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::get()
@@ -331,12 +321,7 @@ mod test {
             token: "token&#?=".to_owned(),
             ..test_webhook_config()
         }];
-
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::post()
@@ -353,26 +338,20 @@ mod test {
     #[actix_rt::test]
     async fn should_refuse_large_payload() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
-            id: "limit_payload".to_owned(),
-            token: "123".to_owned(),
-            max_payload_size: Size(1024 * 512), // 512 KB
-            ..test_webhook_config()
-        });
-
-        webhooks_config.push(WebhookConfig {
-            id: "default_payload".to_owned(),
-            token: "123".to_owned(),
-            ..test_webhook_config()
-        });
-
-        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-        let mut srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
-        )
-        .await;
+        let webhooks_config = vec![
+            WebhookConfig {
+                id: "limit_payload".to_owned(),
+                token: "123".to_owned(),
+                max_payload_size: Size(1024 * 512), // 512 KB
+                ..test_webhook_config()
+            },
+            WebhookConfig {
+                id: "default_payload".to_owned(),
+                token: "123".to_owned(),
+                ..test_webhook_config()
+            },
+        ];
+        let srv = init_test_service!(webhooks_config);
 
         let json = vec![b'{', b'}'];
         let payload_1kb = [vec![b' '; 1024], json.clone()].concat();
@@ -385,28 +364,28 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1kb)
             .to_request();
-        let response_in_limit = test::call_service(&mut srv, request).await;
+        let response_in_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/limit_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1mb.clone())
             .to_request();
-        let response_over_limit = test::call_service(&mut srv, request).await;
+        let response_over_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/default_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1mb)
             .to_request();
-        let response_in_default_limit = test::call_service(&mut srv, request).await;
+        let response_in_default_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/default_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_10mb)
             .to_request();
-        let response_over_default_limit = test::call_service(&mut srv, request).await;
+        let response_over_default_limit = test::call_service(&srv, request).await;
 
         // Assert
         assert_eq!(http::StatusCode::OK, response_in_limit.status());

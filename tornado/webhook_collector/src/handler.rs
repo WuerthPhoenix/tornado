@@ -35,7 +35,7 @@ where
         debug!("Creating endpoint: [{}]", &path);
 
         let new_scope = web::scope(&path)
-            .app_data(PayloadConfig::default().limit(endpoint.max_payload_size as usize))
+            .app_data(PayloadConfig::default().limit(endpoint.max_payload_size))
             .app_data(Data::new(endpoint))
             .service(web::resource("").route(web::post().to(handle::<A>)));
 
@@ -91,7 +91,7 @@ impl<A: Actor> Clone for EndpointState<A> {
         Self {
             id: self.id.clone(),
             token: self.token.clone(),
-            max_payload_size: self.max_payload_size.clone(),
+            max_payload_size: self.max_payload_size,
             jmespath_collector: self.jmespath_collector.clone(),
             actor_address: self.actor_address.clone(),
             metrics: self.metrics.clone(),
@@ -137,7 +137,7 @@ pub enum HandlerError {
     #[error("NotValidToken")]
     WrongTokenError,
     #[error("QueueFull")]
-    QueueFullError,
+    QueueFull,
 }
 
 #[derive(Deserialize)]
@@ -152,7 +152,7 @@ impl error::ResponseError for HandlerError {
                 HttpResponse::new(http::StatusCode::INTERNAL_SERVER_ERROR)
             }
             HandlerError::WrongTokenError => HttpResponse::new(http::StatusCode::UNAUTHORIZED),
-            HandlerError::QueueFullError => HttpResponse::new(StatusCode::TOO_MANY_REQUESTS),
+            HandlerError::QueueFull => HttpResponse::new(StatusCode::TOO_MANY_REQUESTS),
         }
     }
 }
@@ -196,10 +196,10 @@ where
     };
 
     let msg = EventMessage(TracedEvent { event, span: tracing::Span::current() });
-    if let Err(_) = state.actor_address.try_send(msg) {
+    if state.actor_address.try_send(msg).is_err() {
         state.shared_metrics.events_dropped.add(1, &[]);
         error!("Endpoint {}: Dropping event because the queue is full.", &state.id);
-        return Err(HandlerError::QueueFullError);
+        return Err(HandlerError::QueueFull);
     }
 
     Ok(state.id.to_string())
