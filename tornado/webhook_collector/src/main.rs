@@ -1,7 +1,8 @@
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
 use crate::config::WebhookConfig;
-use crate::handler::create_app;
+use crate::handler::{create_app, create_endpoint_state};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
 use actix_web::http::KeepAlive;
@@ -15,10 +16,13 @@ use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::Metrics;
 use tracing_actix_web::TracingLogger;
 
 mod config;
 mod handler;
+
+const APP_NAME: &str = "tornado_webhook_collector";
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -118,15 +122,14 @@ async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
 where
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
+    let metrics = Arc::new(Metrics::new(APP_NAME));
+    let endpoints = create_endpoint_state(webhooks_config, actor_address)?;
+
     HttpServer::new(move || {
-        App::new().wrap(Logger::default()).wrap(TracingLogger::default()).service(
-            create_app(webhooks_config.clone(), actor_address.clone())
-                // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-                .unwrap_or_else(|err| {
-                    error!("Cannot create the webhook handlers. Err: {:?}", err);
-                    std::process::exit(1);
-                }),
-        )
+        App::new()
+            .wrap(Logger::default())
+            .wrap(TracingLogger::default())
+            .service(create_app(endpoints.clone(), metrics.clone()))
     })
     .keep_alive(KeepAlive::Disabled)
     .bind(format!("{}:{}", bind_address, port))

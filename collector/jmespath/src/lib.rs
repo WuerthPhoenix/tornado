@@ -13,6 +13,7 @@ pub mod config;
 
 /// A Collector that receives an input in JSON format and allows the creation of Events
 ///   using the JMESPath JSON query language.
+#[derive(Clone)]
 pub struct JMESPathEventCollector {
     processor: EventProcessor,
 }
@@ -40,6 +41,7 @@ impl<'a> Collector<&'a str> for JMESPathEventCollector {
     }
 }
 
+#[derive(Clone)]
 struct EventProcessor {
     event_type: ValueProcessor,
     payload: EventProcessorPayload,
@@ -129,7 +131,7 @@ impl EventProcessor {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 enum ValueProcessor {
     Expression { exp: jmespath::Expression<'static> },
     Null,

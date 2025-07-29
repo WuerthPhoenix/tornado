@@ -9,7 +9,7 @@ use actix_web::{
 };
 use chrono::Local;
 use log::{debug, error, info, trace};
-use opentelemetry::metrics::Counter;
+use opentelemetry::{metrics::Counter, KeyValue};
 use serde::Deserialize;
 use thiserror::Error;
 use tornado_collector_common::{Collector, CollectorError};
@@ -19,45 +19,55 @@ use tornado_common_api::TracedEvent;
 use tornado_common_metrics::Metrics;
 use tracing::info_span;
 
-use crate::config::WebhookConfig;
+use crate::{config::WebhookConfig, APP_NAME};
 
-pub fn create_app<A>(
-    webhooks_config: Vec<WebhookConfig>,
-    address: Addr<A>,
-) -> Result<Scope, CollectorError>
+pub fn create_app<A>(endpoints: Vec<EndpointState<A>>, meter: Arc<Metrics>) -> Scope
 where
     A: Actor + Handler<EventMessage>,
     <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    let metrics = Arc::new(Metrics::new("tornado_webhook_collector"));
-
     let mut scope = web::scope("")
         .service(web::resource("/ping").route(web::get().to(pong)))
-        .service(tornado_common_metrics::endpoint::actix_web::metrics_endpoints(metrics));
+        .service(tornado_common_metrics::endpoint::actix_web::metrics_endpoints(meter));
 
-    let shared_metrics = SharedEndpointMetrics::new();
-
-    for config in webhooks_config {
-        let path = format!("/event/{}", config.id);
-        info!("Creating endpoint: [{}]", &path);
-        let metrics = EndpointMetrics::new(&config.id);
+    for endpoint in endpoints {
+        let path = format!("/event/{}", endpoint.id);
+        debug!("Creating endpoint: [{}]", &path);
 
         let new_scope = web::scope(&path)
-            .app_data(PayloadConfig::default().limit(config.max_payload_size.0 as usize))
-            .app_data(Data::new(EndpointState {
-                id: config.id,
-                token: config.token,
-                jmspath_collector: JMESPathEventCollector::build(config.collector_config)?,
-                actor_address: address.clone(),
-                metrics,
-                shared_metrics: shared_metrics.clone(),
-            }))
+            .app_data(PayloadConfig::default().limit(endpoint.max_payload_size as usize))
+            .app_data(Data::new(endpoint))
             .service(web::resource("").route(web::post().to(handle::<A>)));
 
         scope = scope.service(new_scope);
     }
 
-    Ok(scope)
+    scope
+}
+
+pub fn create_endpoint_state<A: Actor>(
+    configs: Vec<WebhookConfig>,
+    addr: Addr<A>,
+) -> Result<Vec<EndpointState<A>>, CollectorError> {
+    let shared_metrics = SharedEndpointMetrics::new(APP_NAME);
+
+    let mut endpoints = vec![];
+    for config in configs {
+        let metrics = EndpointMetrics::new(APP_NAME);
+        let jmespath_collector = JMESPathEventCollector::build(config.collector_config)?;
+
+        endpoints.push(EndpointState {
+            id: config.id,
+            token: config.token,
+            jmespath_collector,
+            actor_address: addr.clone(),
+            metrics,
+            shared_metrics: shared_metrics.clone(),
+            max_payload_size: config.max_payload_size.0 as usize,
+        })
+    }
+
+    Ok(endpoints)
 }
 
 async fn pong() -> impl Responder {
@@ -66,15 +76,31 @@ async fn pong() -> impl Responder {
     format!("pong - {}", created_ms)
 }
 
-struct EndpointState<A: Actor> {
+pub struct EndpointState<A: Actor> {
     id: String,
     token: String,
-    jmspath_collector: JMESPathEventCollector,
+    max_payload_size: usize,
+    jmespath_collector: JMESPathEventCollector,
     actor_address: Addr<A>,
     metrics: EndpointMetrics,
     shared_metrics: SharedEndpointMetrics,
 }
 
+impl<A: Actor> Clone for EndpointState<A> {
+    fn clone(&self) -> Self {
+        Self {
+            id: self.id.clone(),
+            token: self.token.clone(),
+            max_payload_size: self.max_payload_size.clone(),
+            jmespath_collector: self.jmespath_collector.clone(),
+            actor_address: self.actor_address.clone(),
+            metrics: self.metrics.clone(),
+            shared_metrics: self.shared_metrics.clone(),
+        }
+    }
+}
+
+#[derive(Clone)]
 struct EndpointMetrics {
     webhooks_received: Counter<u64>,
     bytes_received: Counter<u64>,
@@ -82,12 +108,8 @@ struct EndpointMetrics {
 }
 
 impl EndpointMetrics {
-    fn new(name: &str) -> Self {
-        let name = format!("webhook.{name}");
-
-        // We are leaking memory here. This is ok, as we  are only initializing
-        // it once and it will live until the application terminates.
-        let meter = opentelemetry::global::meter(name.leak());
+    fn new(name: &'static str) -> Self {
+        let meter = opentelemetry::global::meter(name);
         Self {
             webhooks_received: meter.u64_counter("webhooks_received").init(),
             bytes_received: meter.u64_counter("bytes_received").init(),
@@ -102,8 +124,8 @@ struct SharedEndpointMetrics {
 }
 
 impl SharedEndpointMetrics {
-    fn new() -> Self {
-        let meter = opentelemetry::global::meter("webhooks");
+    fn new(name: &'static str) -> Self {
+        let meter = opentelemetry::global::meter(name);
         SharedEndpointMetrics { events_dropped: meter.u64_counter("events_dropped").init() }
     }
 }
@@ -148,8 +170,10 @@ where
     trace!("Endpoint [{}] called with token [{}]", state.id, received_token);
     debug!("Received call with body [{}]", body);
     info!("Received {} bytes on webhook  {}", body.len(), state.id);
-    state.metrics.webhooks_received.add(1, &[]);
-    state.metrics.bytes_received.add(body.len() as u64, &[]);
+
+    let metric_attrs = &[KeyValue::new("id", state.id.clone())];
+    state.metrics.webhooks_received.add(1, metric_attrs);
+    state.metrics.bytes_received.add(body.len() as u64, metric_attrs);
 
     if !(state.token.eq(received_token)) {
         error!("Endpoint [{}] - Token is not valid: [{}]", state.id, received_token);
@@ -159,13 +183,13 @@ where
     let span = info_span!("processing_event", otel.name = "jmspath_collector");
     let process_result = {
         let _handle = span.enter();
-        state.jmspath_collector.to_event(&body)
+        state.jmespath_collector.to_event(&body)
     };
 
     let event = match process_result {
         Ok(event) => event,
         Err(err) => {
-            state.metrics.webhooks_failed.add(1, &[]);
+            state.metrics.webhooks_failed.add(1, metric_attrs);
             error!("Endpoint {}: Error wile processing the payload: {}", &state.id, err);
             return Err(HandlerError::CollectorError { message: err.to_string() });
         }
