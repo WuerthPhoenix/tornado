@@ -22,7 +22,7 @@ pub struct NatsPublisherActor {
     nats_connection: Rc<Option<Connection>>,
     restarted: bool,
     trace_context_propagator: TraceContextPropagator,
-    metrics: NatsMetrics,
+    metrics: Option<NatsMetrics>,
 }
 
 struct NatsMetrics {
@@ -32,13 +32,13 @@ struct NatsMetrics {
 }
 
 impl NatsMetrics {
-    fn new() -> Self {
-        let meter = opentelemetry::global::meter("nats_publisher");
+    fn new(name: &'static str) -> Self {
+        let meter = opentelemetry::global::meter(name);
 
         NatsMetrics {
-            bytes_sent: meter.u64_counter("bytes_sent").init(),
-            send_failed: meter.u64_counter("send_failed").init(),
-            reconnect_attempts: meter.u64_counter("reconnect_attempts").init(),
+            bytes_sent: meter.u64_counter("nats_bytes_sent").init(),
+            send_failed: meter.u64_counter("nats_send_failed").init(),
+            reconnect_attempts: meter.u64_counter("nats_reconnect_attempts").init(),
         }
     }
 }
@@ -123,9 +123,14 @@ impl NatsPublisherActor {
                 nats_connection: Rc::new(None),
                 restarted: false,
                 trace_context_propagator,
-                metrics: NatsMetrics::new(),
+                metrics: None,
             }
         }))
+    }
+
+    pub fn enable_metrics(mut self, name: &'static str) -> Self {
+        self.metrics = Some(NatsMetrics::new(name));
+        self
     }
 }
 
@@ -141,7 +146,9 @@ impl Actor for NatsPublisherActor {
         let client_config = self.config.client.clone();
         let nats_connection = self.nats_connection.clone();
         let restarted = self.restarted;
-        self.metrics.reconnect_attempts.add(1, &[]);
+        if let Some(metrics) = &self.metrics {
+            metrics.reconnect_attempts.add(1, &[]);
+        }
         ctx.wait(
             async move {
                 if restarted {
@@ -241,9 +248,13 @@ impl Handler<EventMessage> for NatsPublisherActor {
                 .instrument(span.exit())
                 .into_actor(self)
             );
-            self.metrics.bytes_sent.add(event_len as u64, &[]);
+            if let Some(metrics) = &self.metrics {
+                metrics.bytes_sent.add(event_len as u64, &[]);
+            }
         } else {
-            self.metrics.send_failed.add(1, &[]);
+            if let Some(metrics) = &self.metrics {
+                metrics.send_failed.add(1, &[]);
+            }
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();
             address.try_send(msg).unwrap_or_else(|err| {
