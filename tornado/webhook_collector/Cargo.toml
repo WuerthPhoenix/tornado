@@ -16,11 +16,13 @@ tracing.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-tornado_common_api = { path = "../../common/api", version = "0.0.1" }
-tornado_common_logger = { path = "../../common/logger", version = "0.0.1" }
-tornado_collector_common = { path = "../../collector/common", version = "0.0.1" }
-tornado_collector_jmespath = { path = "../../collector/jmespath", version = "0.0.1" }
-tornado_common = { path = "../common", version = "0.0.1", features = ["nats"] }
+opentelemetry.workspace = true
+tornado_common_api = { path = "../../common/api" }
+tornado_common_logger = { path = "../../common/logger" }
+tornado_common_metrics = { path = "../../common/metrics", features = ["actix_web"] }
+tornado_collector_common = { path = "../../collector/common" }
+tornado_collector_jmespath = { path = "../../collector/jmespath" }
+tornado_common = { path = "../common", features = ["nats"] }
 tracing-actix-web.workspace = true
 
 [dev-dependencies]

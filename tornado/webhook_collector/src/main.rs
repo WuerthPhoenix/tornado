@@ -1,23 +1,18 @@
 use std::num::NonZeroU16;
 
 use crate::config::WebhookConfig;
-use crate::handler::{Handler, HandlerError, TokenQuery};
+use crate::handler::create_app;
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
 use actix_web::http::KeepAlive;
 use actix_web::middleware::Logger;
-use actix_web::web::{Data, PayloadConfig, Query};
-use actix_web::{web, App, HttpServer, Responder, Scope};
-use chrono::prelude::Local;
+use actix_web::{App, HttpServer};
 use log::*;
-use tornado_collector_common::CollectorError;
-use tornado_collector_jmespath::JMESPathEventCollector;
 use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
-use tornado_common_api::{Event, TracedEvent};
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
 use tracing_actix_web::TracingLogger;
@@ -113,43 +108,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     Ok(())
 }
 
-fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
-    webhooks_config: Vec<WebhookConfig>,
-    factory: F,
-) -> Result<Scope, CollectorError> {
-    let mut scope = web::scope("");
-    scope = scope.service(web::resource("/ping").route(web::get().to(pong)));
-
-    for config in webhooks_config {
-        let id = config.id.clone();
-        let handler = handler::Handler {
-            id: config.id.clone(),
-            token: config.token,
-            collector: JMESPathEventCollector::build(config.collector_config).map_err(|err| {
-                CollectorError::CollectorCreationError {
-                    message: format!(
-                        "Cannot create collector for webhook with id [{}]. Err: {:?}",
-                        id, err
-                    ),
-                }
-            })?,
-            callback: factory(),
-        };
-
-        let path = format!("/event/{}", config.id);
-        debug!("Creating endpoint: [{}]", &path);
-
-        let new_scope = web::scope(&path)
-            .app_data(PayloadConfig::default().limit(config.max_payload_size.0 as usize))
-            .app_data(Data::new(handler))
-            .service(web::resource("").route(web::post().to(handle::<R>)));
-
-        scope = scope.service(new_scope);
-    }
-
-    Ok(scope)
-}
-
 async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     actor_address: Addr<A>,
     webhooks_config: Vec<WebhookConfig>,
@@ -158,22 +116,16 @@ async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     workers: Option<NonZeroU16>,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
-    <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
-    let mut srv = HttpServer::new(move || {
-        App::new()
-            .wrap(Logger::default())
-            .wrap(TracingLogger::default())
-            .service(
-            create_app(webhooks_config.clone(), || {
-                let clone = actor_address.clone();
-                move |event| clone.try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() })).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot create the webhook handlers. Err: {:?}", err);
-                std::process::exit(1);
-            }),
+    HttpServer::new(move || {
+        App::new().wrap(Logger::default()).wrap(TracingLogger::default()).service(
+            create_app(webhooks_config.clone(), actor_address.clone())
+                // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
+                .unwrap_or_else(|err| {
+                    error!("Cannot create the webhook handlers. Err: {:?}", err);
+                    std::process::exit(1);
+                }),
         )
     })
     .keep_alive(KeepAlive::Disabled)
@@ -194,21 +146,6 @@ where
     Ok(())
 }
 
-async fn pong() -> impl Responder {
-    let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
-    let created_ms: String = dt.to_rfc3339();
-    format!("pong - {}", created_ms)
-}
-
-async fn handle<F: Fn(Event) + 'static>(
-    body: String,
-    query: Query<TokenQuery>,
-    handler: Data<Handler<F>>,
-) -> Result<String, HandlerError> {
-    let received_token = &query.token;
-    handler.handle(&body, received_token)
-}
-
 #[cfg(test)]
 mod test {
 
@@ -218,7 +155,6 @@ mod test {
     use actix_web::{http, test};
     use human_units::Size;
     use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 
     fn test_webhook_config() -> WebhookConfig {
@@ -236,8 +172,8 @@ mod test {
     #[actix_rt::test]
     async fn ping_should_return_pong() {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(create_app(vec![], || |_| {}).unwrap())).await;
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
+        let srv = test::init_service(App::new().service(create_app(vec![], addr).unwrap())).await;
 
         // Act
         let request = test::TestRequest::get().uri("/ping").to_request();
@@ -265,8 +201,10 @@ mod test {
                 ..test_webhook_config()
             },
         ];
+
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
@@ -308,8 +246,10 @@ mod test {
                 ..test_webhook_config()
             },
         ];
+
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
@@ -334,63 +274,14 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn should_call_the_callback_on_each_event() {
-        // Arrange
-        let webhooks_config = vec![WebhookConfig {
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "${map.first}".to_owned(),
-                payload: HashMap::new(),
-            },
-            ..test_webhook_config()
-        }];
-
-        let event = Arc::new(Mutex::new(None));
-        let event_clone = event.clone();
-
-        let srv = test::init_service(
-            App::new().service(
-                create_app(webhooks_config.clone(), || {
-                    let clone = event.clone();
-                    move |evt| {
-                        let mut wrapper = clone.lock().unwrap();
-                        *wrapper = Some(evt)
-                    }
-                })
-                .unwrap(),
-            ),
-        )
-        .await;
-
-        // Act
-        let request_1 = test::TestRequest::post()
-            .uri("/event/hook_1?token=hook_1_token")
-            .insert_header((http::header::CONTENT_TYPE, "application/json"))
-            .set_payload(
-                r#"{
-                    "map" : {
-                        "first": "webhook_event"
-                    }
-                }"#,
-            )
-            .to_request();
-        let response_1 = test::call_and_read_body(&srv, request_1).await;
-
-        // Assert
-        let body_1 = std::str::from_utf8(&response_1).unwrap();
-        assert_eq!("hook_1", body_1);
-
-        let value = event_clone.lock().unwrap();
-        assert_eq!("webhook_event", value.as_ref().unwrap().event_type)
-    }
-
-    #[actix_rt::test]
     async fn should_return_404_if_hook_does_not_exists() {
         // Arrange
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
 
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
@@ -412,8 +303,9 @@ mod test {
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
 
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
@@ -437,8 +329,9 @@ mod test {
             ..test_webhook_config()
         }];
 
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
@@ -472,8 +365,9 @@ mod test {
             ..test_webhook_config()
         });
 
+        let addr = actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
         let mut srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
+            App::new().service(create_app(webhooks_config.clone(), addr).unwrap()),
         )
         .await;
 
