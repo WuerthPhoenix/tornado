@@ -7,7 +7,7 @@ authors = [
 edition = "2018"
 
 [dependencies]
-jmespath = "0.3.0"
+jmespath =  { version = "0.3.0", features = ["sync"] }
 
 log.workspace = true
 serde.workspace = true

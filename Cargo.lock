@@ -4745,6 +4745,7 @@ dependencies = [
  "config",
  "human-units",
  "log",
+ "opentelemetry",
  "serde",
  "serde_json",
  "thiserror",
@@ -4753,6 +4754,7 @@ dependencies = [
  "tornado_common",
  "tornado_common_api",
  "tornado_common_logger",
+ "tornado_common_metrics",
  "tracing",
  "tracing-actix-web",
 ]
